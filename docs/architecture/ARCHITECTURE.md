@@ -105,7 +105,7 @@ Current rule:
 
 > Keep the seams healthy enough that future expansion is possible, but spend no roadmap budget on a second condition or broad plugin ecosystem before retention + payer evidence.
 
-Detailed historical implementation plans belong in `platform-transformation-plan.md` and git history, not in this active architecture contract.
+Detailed implementation history remains available in git history and the immutable ADR/timeline record; obsolete forward plans are not kept as active-looking documents.
 
 ## 5. Safety decision flow
 
@@ -245,6 +245,6 @@ A locale/dialect is disabled for patient pilot until it has:
 - `docs/SPECS.md` — current capability/API contract.
 - `docs/adr/` — immutable decisions.
 - `ARCHITECTURE-TIMELINE.md` — historical evolution.
-- `platform-transformation-plan.md` — archived implementation record only.
+- Git history — deleted obsolete implementation plans and prior snapshots.
 
 Do not copy historical phase status or test counts into this document.
