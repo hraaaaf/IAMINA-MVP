@@ -11,12 +11,13 @@ fully deterministic emergency/safety responses for patients who declined AI.
 
 from __future__ import annotations
 
+import inspect
 import logging
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from functools import wraps
-from typing import Callable, Iterator
+from typing import Callable, Iterator, get_type_hints
 
 from core.models import BasePatientProfile
 
@@ -128,6 +129,32 @@ def assert_ai_egress_allowed(modality: str) -> AIEgressContext:
     return context
 
 
+def _resolved_signature(func: Callable) -> inspect.Signature:
+    """Return a signature with forward annotations resolved in the endpoint module.
+
+    Decorators live in ``core.ai_egress`` while Ninja endpoints may annotate
+    parameters with module-local types such as ``UploadedFile``. Without resolving
+    those annotations before wrapping, Django Ninja later tries to resolve them in
+    this module's globals and OpenAPI generation fails.
+    """
+    signature = inspect.signature(func)
+    try:
+        hints = get_type_hints(func, include_extras=True)
+    except (NameError, TypeError):
+        # A non-Ninja helper may contain an intentionally unresolved annotation.
+        # Keep its original signature rather than breaking runtime decoration.
+        return signature
+
+    parameters = [
+        parameter.replace(annotation=hints.get(name, parameter.annotation))
+        for name, parameter in signature.parameters.items()
+    ]
+    return signature.replace(
+        parameters=parameters,
+        return_annotation=hints.get("return", signature.return_annotation),
+    )
+
+
 def patient_ai_egress_scope(
     purpose: str,
     *modalities: str,
@@ -137,6 +164,8 @@ def patient_ai_egress_scope(
     _validate_scope(purpose, modality_set)
 
     def decorator(func: Callable) -> Callable:
+        resolved_signature = _resolved_signature(func)
+
         @wraps(func)
         def wrapped(request, *args, **kwargs):
             user = getattr(request, "user", None) or getattr(request, "auth", None)
@@ -144,6 +173,16 @@ def patient_ai_egress_scope(
             with ai_egress_scope(patient_id, purpose, *modalities):
                 return func(request, *args, **kwargs)
 
+        # Django Ninja introspects the decorated callable. Preserve a signature whose
+        # annotations are concrete objects, not forward-ref strings tied to func globals.
+        wrapped.__signature__ = resolved_signature
+        wrapped.__annotations__ = {
+            name: parameter.annotation
+            for name, parameter in resolved_signature.parameters.items()
+            if parameter.annotation is not inspect.Parameter.empty
+        }
+        if resolved_signature.return_annotation is not inspect.Signature.empty:
+            wrapped.__annotations__["return"] = resolved_signature.return_annotation
         return wrapped
 
     return decorator
