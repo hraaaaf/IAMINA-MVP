@@ -83,9 +83,10 @@ class ComputeGriTests(SimpleTestCase):
         result = _compute_gri(stats)
         self.assertAlmostEqual(result, 29.2, places=1)
 
-    def test_returns_none_if_fewer_than_5_readings(self):
+    def test_formula_is_independent_of_reading_count(self):
+        """Coverage eligibility is a caller concern, not part of the pure formula."""
         stats = {"vlow_pct": 10, "low_pct": 5, "vhigh_pct": 10, "high_pct": 20, "log_count": 4}
-        self.assertIsNone(_compute_gri(stats))
+        self.assertEqual(_compute_gri(stats), 74.0)
 
     def test_score_capped_at_100(self):
         # Extreme values that would exceed 100
@@ -328,10 +329,10 @@ class IllnessImpactTests(SimpleTestCase):
 
 class GriEdgeCaseTests(SimpleTestCase):
 
-    def test_empty_logs_gri_is_none(self):
-        """_compute_gri with log_count=0 returns None (insufficient data)."""
+    def test_zero_percentages_return_zero(self):
+        """The pure formula returns zero; clinical eligibility is enforced upstream."""
         stats = {"vlow_pct": 0, "low_pct": 0, "vhigh_pct": 0, "high_pct": 0, "log_count": 0}
-        self.assertIsNone(_compute_gri(stats))
+        self.assertEqual(_compute_gri(stats), 0.0)
 
     def test_gri_zero_maps_to_zone_a(self):
         self.assertEqual(gri_zone(0.0), "A")
@@ -339,12 +340,9 @@ class GriEdgeCaseTests(SimpleTestCase):
     def test_gri_zone_a_label_is_not_none(self):
         self.assertIsNotNone(gri_label_fr("A"))
 
-    def test_gri_score_exactly_5_readings(self):
-        """Minimum 5 readings boundary — should compute, not return None."""
-        stats = {"vlow_pct": 0, "low_pct": 0, "vhigh_pct": 0, "high_pct": 0, "log_count": 5}
-        self.assertIsNotNone(_compute_gri(stats))
-
-    def test_gri_score_4_readings_returns_none(self):
-        """4 readings is below threshold — must return None."""
-        stats = {"vlow_pct": 0, "low_pct": 0, "vhigh_pct": 0, "high_pct": 0, "log_count": 4}
-        self.assertIsNone(_compute_gri(stats))
+    def test_log_count_does_not_change_formula_result(self):
+        """No arbitrary sample-count threshold belongs inside the Klonoff formula."""
+        base = {"vlow_pct": 1, "low_pct": 2, "vhigh_pct": 3, "high_pct": 4}
+        with_four = {**base, "log_count": 4}
+        with_five = {**base, "log_count": 5}
+        self.assertEqual(_compute_gri(with_four), _compute_gri(with_five))
