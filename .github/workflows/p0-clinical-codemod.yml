@@ -1,0 +1,65 @@
+name: P0 Clinical Analytics Codemod
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  codemod:
+    if: github.head_ref == 'fix/p0-clinical-analytics-postgres'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply clinical analytics safety corrections
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('backend/diabetes/services/clinical/sql_analytics.py')
+          text = path.read_text()
+
+          replacements = [
+              (
+                  'COUNT(DISTINCT date(logged_at))                            AS days_with_data,',
+                  'COUNT(DISTINCT date(COALESCE(logged_at, created_at)))      AS days_with_data,',
+              ),
+              (
+                  'GROUP BY date(logged_at)\nORDER BY date(logged_at) ASC',
+                  'GROUP BY date(COALESCE(logged_at, created_at))\nORDER BY date(COALESCE(logged_at, created_at)) ASC',
+              ),
+          ]
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one match for {old!r}, got {count}')
+              text = text.replace(old, new, 1)
+
+          old_gri = '''        # GRI — Glycemia Risk Index (Klonoff et al. 2022)\n        stats = {\n            "vlow_pct":  float(vlow_pct  or 0),\n            "low_pct":   float(tbr_pct   or 0),\n            "vhigh_pct": float(vhigh_pct or 0),\n            "high_pct":  float(tar_pct   or 0),\n            "log_count": int(log_count   or 0),\n        }\n        gri_score = _compute_gri(stats)\n        gri_zone_val = gri_zone(gri_score) if gri_score is not None else None\n        gri_label_val = gri_label_fr(gri_zone_val) if gri_zone_val is not None else None\n'''
+          new_gri = '''        # GRI is intentionally not published yet. The validated GRI is a CGM\n        # tracing metric built from four DISJOINT zones (<54, 54-69, 181-250,\n        # >250 mg/dL). LogEntry currently stores provenance but not the device\n        # sampling cadence / expected reading count needed to prove valid CGM\n        # wear-time coverage. Publishing a score from sparse or mixed SMBG/CGM\n        # readings would create false clinical precision, so fail closed until a\n        # real CGM coverage contract exists. Keep _compute_gri() as the normative\n        # pure formula for the future validated-CGM path.\n        gri_score = None\n        gri_zone_val = None\n        gri_label_val = None\n'''
+          if text.count(old_gri) != 1:
+              raise SystemExit(f'Expected one legacy GRI caller block, got {text.count(old_gri)}')
+          text = text.replace(old_gri, new_gri, 1)
+
+          old_formula = '''def _compute_gri(stats: dict) -> Optional[float]:\n    """\n    Glycemia Risk Index — Klonoff et al. 2022 / ADA consensus.\n\n    GRI = 3.0 × VLow% + 2.4 × Low% + 1.6 × VHigh% + 0.8 × High%\n\n    Requires at least 5 readings; returns None otherwise.\n    All percentage inputs are 0-100 (not fractions).\n\n    Args:\n        stats: dict with keys vlow_pct, low_pct, vhigh_pct, high_pct, log_count\n    """\n    if stats.get("log_count", 0) < 5:\n        return None\n    score = (\n'''
+          new_formula = '''def _compute_gri(stats: dict) -> Optional[float]:\n    """Return the normative Klonoff GRI formula for already-valid CGM zones.\n\n    GRI = 3.0 × VLow% + 2.4 × Low% + 1.6 × VHigh% + 0.8 × High%.\n\n    Inputs MUST be the four disjoint CGM percentages from the original formula:\n    VLow <54 mg/dL, Low 54-69, High 181-250, VHigh >250. This helper\n    intentionally does not decide CGM data sufficiency; callers must prove valid\n    coverage before using the result clinically. Percentages are 0-100.\n    """\n    score = (\n'''
+          if text.count(old_formula) != 1:
+              raise SystemExit(f'Expected one legacy _compute_gri header, got {text.count(old_formula)}')
+          text = text.replace(old_formula, new_formula, 1)
+
+          path.write_text(text)
+          PY
+      - name: Commit corrections
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add backend/diabetes/services/clinical/sql_analytics.py
+          git commit -m 'fix(p0): fail closed on unvalidated GRI and align SQL grouping'
+          git push origin HEAD:${{ github.head_ref }}
