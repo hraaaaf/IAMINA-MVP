@@ -79,10 +79,12 @@ Current/representative diabetes analytics include metrics such as:
 Rules:
 
 - KPI authority remains SQL-first where ADR-0007 applies.
-- Units are normalized before calculation.
+- Units are normalized before calculation and unexpected normalization failure must fail closed on protected clinical routes.
 - Confidence/eligibility must be explicit when a metric requires sufficient data density/duration.
 - A narrative model may explain a metric but must not recalculate or override it.
 - Clinical thresholds/formulas must be versioned, cited in implementation documentation/tests, and reviewed when standards change.
+- A metric must not be presented outside the population/data modality for which its normative definition is valid.
+- PostgreSQL-specific analytical SQL requires PostgreSQL validation; SQLite fallback success alone is not certification.
 
 ## 5. Pattern detection
 
@@ -115,12 +117,23 @@ Emergency handling is a deterministic pre-model gate.
 Requirements:
 
 - no generative model is required to decide whether the emergency path triggers;
+- authoritative deterministic triage logic belongs on the shared safety side of the architecture boundary, not behind a disease-module dependency;
 - enabled languages/dialects must have safety-equivalent coverage;
 - mixed-language and transliterated input must be tested where relevant;
 - country-specific emergency resources must be validated before locale launch;
 - emergency events must follow the operating model in the roadmap, including monitored escalation where required.
 
-## 8. MENA locale safety
+## 8. Input/unit safety
+
+Clinical inputs must reach domain/AI logic only after deterministic normalization and validation.
+
+Current invariant after P0-A:
+
+- protected legacy and registry-mounted module routes are covered by the unit guard;
+- namespaced routes such as `/api/v1/diabetes/...` must not bypass normalization;
+- unexpected normalization failures are fail-closed rather than allowing unvalidated clinical payloads to continue.
+
+## 9. MENA locale safety
 
 Clinical meaning and safety must remain equivalent across enabled locales.
 
@@ -134,13 +147,33 @@ For every pilot language/dialect:
 
 A translation being linguistically correct is not sufficient; the safety intent must remain equivalent.
 
-## 9. AI/model use with clinical data
+## 10. AI/model use with clinical data
 
-The outbound AI/media boundary is default-deny.
+### Current enforced authorization layer
 
-External models may receive only the minimum approved payload for an explicit purpose.
+P0-B introduced a central server-side AI egress authorization boundary for currently wired live external operations.
 
-Do not send by default:
+Before a real external model/media call, the system requires:
+
+- an authenticated patient scope;
+- a registered purpose;
+- an authorized modality;
+- server-side patient AI consent.
+
+The following conditions deny egress by default:
+
+- no active egress scope;
+- missing consent record or no consent;
+- unknown purpose;
+- undeclared/unauthorized modality.
+
+This authorization is intentionally evaluated at real egress time so deterministic emergency/safety handling remains available even when a patient declines AI.
+
+### Data minimization contract still being completed
+
+Authorization alone does **not** prove that every outbound payload is sufficiently minimized.
+
+External models may receive only the minimum approved payload for an explicit purpose. Do not send by default:
 
 - direct identity/contact fields;
 - internal/external user identifiers;
@@ -148,24 +181,49 @@ Do not send by default:
 - raw unrelated clinical logs;
 - unrelated health data.
 
-Audio/images require separate approval because sensitive content can be embedded in the media itself.
+Raw audio/images/documents require stronger treatment because sensitive content can be embedded in the media itself.
 
-## 10. Clinical feature acceptance checklist
+Remaining P0 obligations include:
+
+- explicit field/payload allowlists by purpose;
+- uniformly enforced minimization/redaction;
+- purpose/modality-granular raw-media consent where required;
+- processor/subprocessor and residency metadata;
+- retention/no-training terms;
+- timeout/failure/fallback policy.
+
+CI must prevent new live direct provider callsites from bypassing the sanctioned authorization boundary.
+
+## 11. Clinical feature acceptance checklist
 
 Before enabling a new metric, detector, or patient-facing clinical insight:
 
 - [ ] deterministic definition exists;
 - [ ] source/version is documented;
-- [ ] data sufficiency behavior is explicit;
+- [ ] data sufficiency and modality eligibility are explicit;
 - [ ] unit/time handling is tested;
+- [ ] PostgreSQL behavior is tested when production SQL differs from SQLite fallback;
 - [ ] no diagnosis/prescription/treatment-optimization boundary is crossed;
 - [ ] positive + negative + edge-case tests exist;
 - [ ] patient wording is safe for relevant treatment contexts;
 - [ ] every enabled locale has safety-equivalent reviewed wording/tests;
-- [ ] outbound AI usage, if any, receives only approved minimized structured context;
+- [ ] outbound AI usage, if any, passes patient/purpose/modality/consent authorization;
+- [ ] outbound AI payload, if any, is explicitly minimized/allowlisted for that purpose;
 - [ ] fallback behavior is deterministic when AI/provider services fail.
 
-## 11. Backlog ownership
+## 12. Documentation closeout rule
+
+After a merged clinical/safety task:
+
+1. update `docs/ROADMAP.md` with the actual closeout state;
+2. update this file only if the clinical/data/safety contract changed;
+3. update `docs/SPECS.md` if a durable capability changed;
+4. update `docs/architecture/ARCHITECTURE.md` if an as-built boundary changed;
+5. remove or rewrite resolved debt in `docs/TECHDEBT.md`.
+
+A code merge is not a complete closeout while canonical documentation still describes the previous behavior.
+
+## 13. Backlog ownership
 
 This file is not a feature backlog.
 
