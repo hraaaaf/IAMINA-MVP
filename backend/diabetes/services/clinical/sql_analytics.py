@@ -163,7 +163,7 @@ WHERE
 _KPI_SQL_SQLITE = """
 SELECT
     COUNT(*)                                                    AS log_count,
-    COUNT(DISTINCT date(logged_at))                            AS days_with_data,
+    COUNT(DISTINCT date(COALESCE(logged_at, created_at)))      AS days_with_data,
     AVG(blood_sugar)                                           AS avg_glucose,
     NULL                                                       AS std_dev,
     NULL                                                       AS cv_pct,
@@ -275,17 +275,17 @@ def compute_kpis(
                 avg_glucose=float(avg_glucose),
             )
 
-        # GRI — Glycemia Risk Index (Klonoff et al. 2022)
-        stats = {
-            "vlow_pct":  float(vlow_pct  or 0),
-            "low_pct":   float(tbr_pct   or 0),
-            "vhigh_pct": float(vhigh_pct or 0),
-            "high_pct":  float(tar_pct   or 0),
-            "log_count": int(log_count   or 0),
-        }
-        gri_score = _compute_gri(stats)
-        gri_zone_val = gri_zone(gri_score) if gri_score is not None else None
-        gri_label_val = gri_label_fr(gri_zone_val) if gri_zone_val is not None else None
+        # GRI is intentionally not published yet. The validated GRI is a CGM
+        # tracing metric built from four DISJOINT zones (<54, 54-69, 181-250,
+        # >250 mg/dL). LogEntry currently stores provenance but not the device
+        # sampling cadence / expected reading count needed to prove valid CGM
+        # wear-time coverage. Publishing a score from sparse or mixed SMBG/CGM
+        # readings would create false clinical precision, so fail closed until a
+        # real CGM coverage contract exists. Keep _compute_gri() as the normative
+        # pure formula for the future validated-CGM path.
+        gri_score = None
+        gri_zone_val = None
+        gri_label_val = None
 
         return AnalyticalKPIs(
             avg_glucose=_round(avg_glucose),
@@ -327,8 +327,8 @@ WHERE
     AND COALESCE(logged_at, created_at) >= %(cutoff)s
     AND blood_sugar IS NOT NULL
     AND blood_sugar > 0
-GROUP BY date(logged_at)
-ORDER BY date(logged_at) ASC
+GROUP BY date(COALESCE(logged_at, created_at))
+ORDER BY date(COALESCE(logged_at, created_at)) ASC
 """
 
 
@@ -592,19 +592,15 @@ def _empty_kpis() -> AnalyticalKPIs:
 
 
 def _compute_gri(stats: dict) -> Optional[float]:
+    """Return the normative Klonoff GRI formula for already-valid CGM zones.
+
+    GRI = 3.0 × VLow% + 2.4 × Low% + 1.6 × VHigh% + 0.8 × High%.
+
+    Inputs MUST be the four disjoint CGM percentages from the original formula:
+    VLow <54 mg/dL, Low 54-69, High 181-250, VHigh >250. This helper
+    intentionally does not decide CGM data sufficiency; callers must prove valid
+    coverage before using the result clinically. Percentages are 0-100.
     """
-    Glycemia Risk Index — Klonoff et al. 2022 / ADA consensus.
-
-    GRI = 3.0 × VLow% + 2.4 × Low% + 1.6 × VHigh% + 0.8 × High%
-
-    Requires at least 5 readings; returns None otherwise.
-    All percentage inputs are 0-100 (not fractions).
-
-    Args:
-        stats: dict with keys vlow_pct, low_pct, vhigh_pct, high_pct, log_count
-    """
-    if stats.get("log_count", 0) < 5:
-        return None
     score = (
         3.0 * stats.get("vlow_pct",  0.0)
         + 2.4 * stats.get("low_pct",   0.0)
