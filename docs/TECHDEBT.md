@@ -9,13 +9,14 @@ Rules:
 - A roadmap blocker appears here only when it represents a persistent technical compromise in the current system.
 - Provider-brand migration wishes are not technical debt unless they reflect a concrete current defect.
 
-## TD-001 — External AI/provider calls are not yet governed by one enforceable boundary
+## TD-001 — AI egress authorization exists, but payload/media governance is not yet complete
 
 - **Area:** Privacy / AI architecture
 - **Priority:** Critical before real-patient pilot
-- **Current compromise:** legacy text/STT/vision/document integrations and direct/provider-specific call paths exist.
-- **Risk:** inconsistent consent, minimization, redaction, retention, timeout, and processor policy; bypass risk.
-- **Resolution:** P0-MENA-1 — one sanctioned outbound boundary + CI enforcement + default-deny payload/media policy.
+- **Resolved foundation:** P0-B introduced one central provider-agnostic authorization boundary for currently wired live external AI/media operations. Patient, purpose, modality, and server-side consent are enforced at real egress time; missing/unknown authorization state fails closed; CI blocks new direct callsites that omit the central authorization assertion.
+- **Current compromise:** authorization is stronger than payload governance. Explicit field allowlists, uniformly enforced minimization/redaction, purpose/modality-granular raw-media consent, processor/subprocessor metadata, residency/retention/no-training metadata, and timeout/failure policy are not yet complete as one enforceable contract.
+- **Risk:** an authorized call can still be insufficiently minimized or insufficiently described operationally even though it cannot bypass consent/scope authorization.
+- **Resolution:** finish P0-MENA-1 by making payload/media eligibility and processor/retention/failure policy explicit and testable at the boundary.
 
 ## TD-002 — Firebase remains sovereignty-critical legacy authentication infrastructure
 
@@ -104,6 +105,25 @@ Rules:
 - **Current compromise:** some large widgets/services and broad/silent error catches remain from rapid iteration.
 - **Risk:** hidden failures and expensive regression surface.
 - **Resolution:** refactor opportunistically in focused PRs; typed/logged error handling first, cosmetic decomposition second.
+
+## TD-013 — Clinical analytics lack complete PostgreSQL source-of-truth certification
+
+- **Area:** Clinical analytics / database parity
+- **Priority:** Critical before real-patient pilot
+- **Current compromise:** production-authoritative SQL includes PostgreSQL-specific behavior while the historical main CI path has relied heavily on SQLite. At least one GRI implementation issue and one daily-average SQL divergence were identified during the P0 audit.
+- **Risk:** a metric can be mathematically wrong or pass SQLite tests while failing/diverging on PostgreSQL.
+- **Resolution:** P0-C — normative formula verification, metric eligibility rules, PostgreSQL CI execution, and regression fixtures. Remove this debt only after P0-C is merged and green.
+
+## Documentation closeout rule
+
+After every merged task/phase:
+
+1. update `docs/ROADMAP.md`;
+2. update architecture/spec/domain docs only where merged truth changed;
+3. **remove** debt that was fully paid;
+4. rewrite partially paid debt so it describes only the remaining compromise.
+
+Do not leave a debt entry worded as “not implemented” after the foundation has actually shipped.
 
 ## Removed obsolete debt
 
