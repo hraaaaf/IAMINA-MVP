@@ -7,6 +7,14 @@ on:
     branches: [main, dev]
 
 jobs:
+  secret-hygiene:
+    name: Secret hygiene — tracked files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject tracked credentials and local secret files
+        run: python scripts/check_secrets.py
+
   backend:
     name: Backend — ruff + pytest
     runs-on: ubuntu-latest
