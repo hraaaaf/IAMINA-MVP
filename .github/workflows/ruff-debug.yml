@@ -1,0 +1,24 @@
+name: Ruff Debug
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  ruff-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Ruff
+        run: pip install ruff==0.15.17
+      - name: Capture Ruff output
+        run: |
+          cd backend
+          ruff check . --output-format=concise > ../ruff-output.txt || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ruff-output
+          path: ruff-output.txt
