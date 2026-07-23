@@ -1,19 +1,30 @@
-<!-- One PR = one ROADMAP unit. CI gates the merge; no human approval required. -->
+<!-- One focused PR = one ROADMAP unit or one clearly scoped maintenance purpose. -->
 
-## ROADMAP unit
-<!-- Which single ROADMAP item does this implement? e.g. "Phase 26 → Platform seam debt: auth→DiabetesProfile lazy creation" -->
-
-
-## What changed & why
+## Scope
+<!-- Name the exact ROADMAP item or maintenance purpose. -->
 
 
-## Scope check
-- [ ] Maps to **exactly one** ROADMAP unit (not several bundled)
-- [ ] Kept small (< ~400 lines) — or labelled why it can't be
-- [ ] Tests + checks pass locally (`manage.py check && pytest`, `flutter analyze`)
-- [ ] ROADMAP checkbox(es) ticked + CLAUDE.md Session State refreshed (replaced, not appended)
+## What changed and why
 
-## ⚠️ Needs manual inspection (human dev, read this)
-<!-- Anything an agent can't fully verify: migrations, middleware order, deploy steps,
-     security-sensitive changes, API-breaking changes, judgement calls. Write "none" if none. -->
+
+## Safety / privacy impact
+<!-- State impact on emergency handling, clinical authority, locale safety, auth, data egress, consent, or write "none". -->
+
+
+## Validation
+- [ ] Relevant focused tests added/run
+- [ ] Backend checks/tests run when applicable
+- [ ] Flutter analyze/tests run when applicable
+- [ ] API/OpenAPI artifact updated when applicable
+- [ ] Migration/recovery path validated when applicable
+
+## Documentation
+- [ ] `docs/ROADMAP.md` updated only if forward status/gates changed
+- [ ] `docs/architecture/ARCHITECTURE.md` / ADR updated only if a durable architecture decision changed
+- [ ] `docs/SPECS.md` updated only if current capability/API contract changed
+- [ ] No session-state/status diary added to `CLAUDE.md` or `AGENTS.md`
+
+## Manual inspection required
+<!-- List judgement calls, security/safety-sensitive changes, migrations, deployment steps, or API-breaking changes. Write "none" if none. -->
+
 none
