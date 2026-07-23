@@ -18,8 +18,6 @@ import pytest
 
 from core.contracts.companion_identity import CompanionIdentity
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
-
 
 @pytest.fixture
 def diabetes_identity():
@@ -39,9 +37,6 @@ def cardio_identity():
     )
 
 
-# ── T1: companion_name in output ──────────────────────────────────────────────
-
-
 def test_build_system_prompt_uses_companion_name(diabetes_identity):
     from companion.prompts import build_system_prompt
 
@@ -57,19 +52,12 @@ def test_build_system_prompt_uses_custom_companion_name(cardio_identity):
     assert "hypertension" in result
 
 
-# ── T2: domain_description substituted ───────────────────────────────────────
-
-
 def test_build_system_prompt_uses_domain_description(cardio_identity):
     from companion.prompts import build_system_prompt
 
     result = build_system_prompt(cardio_identity, "fr", "gentle")
     assert "compagnon hypertension" in result
-    # Hardcoded diabetes persona must NOT appear
     assert "compagnon bienveillant pour patient diabétique" not in result
-
-
-# ── T3: language label injected ───────────────────────────────────────────────
 
 
 def test_build_system_prompt_uses_language_label(diabetes_identity):
@@ -87,9 +75,6 @@ def test_build_system_prompt_french_label(diabetes_identity):
     assert get_language_label("fr") in result
 
 
-# ── T4: sentinel guard raises on drift ───────────────────────────────────────
-
-
 def test_build_system_prompt_raises_if_sentinel_not_found(diabetes_identity):
     from companion.prompts import build_system_prompt
 
@@ -98,11 +83,9 @@ def test_build_system_prompt_raises_if_sentinel_not_found(diabetes_identity):
             build_system_prompt(diabetes_identity, "fr")
 
 
-# ── T5: narrate() uses build_system_prompt() ─────────────────────────────────
-
-
 @pytest.mark.django_db
 def test_narrate_delegates_to_build_system_prompt():
+    """This unit test isolates prompt delegation; egress policy is tested separately."""
     from core.contracts.domain_context import DomainContext
     from core.contracts.patient_context import ModulePatientContext
     from llm.base import LLMResponse
@@ -128,7 +111,6 @@ def test_narrate_delegates_to_build_system_prompt():
     mock_provider.model_name = "mock"
 
     calls = []
-
     original = __import__(
         "companion.prompts",
         fromlist=["build_system_prompt"],
@@ -138,21 +120,21 @@ def test_narrate_delegates_to_build_system_prompt():
         calls.append((id_.companion_name, lang, tone))
         return original(id_, lang, tone)
 
-    with patch("core.llm_gateway.get_llm", return_value=mock_provider):
-        with patch(
+    with (
+        patch("core.llm_gateway.assert_ai_egress_allowed"),
+        patch("core.llm_gateway.get_llm", return_value=mock_provider),
+        patch(
             "companion.prompts.build_system_prompt",
             side_effect=tracking_build,
-        ):
-            from core.llm_gateway import narrate
+        ),
+    ):
+        from core.llm_gateway import narrate
 
-            narrate(patient_ctx, domain_ctx, identity, "fr")
+        narrate(patient_ctx, domain_ctx, identity, "fr")
 
     assert len(calls) == 1
     assert calls[0][0] == "IAmina Test"
     assert calls[0][1] == "fr"
-
-
-# ── T6: engine _format_with_llm is exempt ────────────────────────────────────
 
 
 def test_engine_format_with_llm_has_narrate_exempt_comment():
@@ -164,9 +146,6 @@ def test_engine_format_with_llm_has_narrate_exempt_comment():
     assert "NARRATE-EXEMPT" in source, (
         "_format_with_llm must carry NARRATE-EXEMPT(P4) comment"
     )
-
-
-# ── T7: IAmina.__init__ no longer stores self.llm ────────────────────────────
 
 
 @pytest.mark.django_db
@@ -187,9 +166,6 @@ def test_iamina_init_has_no_llm_attribute():
     assert not hasattr(iamina, "llm"), (
         "IAmina.__init__ must not store self.llm — LLM is provisioned lazily by sub-modules"
     )
-
-
-# ── T8: react() self-provisions sanctioned gateway when none passed ──────────
 
 
 def test_react_self_provisions_llm_when_none():
@@ -219,17 +195,12 @@ def test_react_self_provisions_llm_when_none():
         mock_get_gateway.assert_called_once_with()
 
 
-# ── T9: summarize() self-provisions sanctioned gateway when none passed ──────
-
-
 def test_summarize_self_provisions_llm_when_none():
     from companion.narrator import summarize
 
     mock_llm = MagicMock()
-
     mock_patient = MagicMock()
     mock_patient.id = 1
-
     mock_memory = MagicMock()
     mock_memory.current_tone = "encouraging"
 
