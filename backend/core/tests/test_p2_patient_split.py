@@ -196,12 +196,12 @@ class DiabetesTablePreservationTest(TestCase):
     """Critical safety check: diabetes_patientprofile table was NOT dropped."""
 
     def test_diabetes_patientprofile_table_exists(self):
-        """diabetes_patientprofile table must still exist after P2 migration."""
+        """The preserved table must exist on every supported database backend."""
         from django.db import connection
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='diabetes_patientprofile'"
-            )
-            row = cursor.fetchone()
-        self.assertIsNotNone(row, "diabetes_patientprofile table was dropped — CRITICAL ERROR")
-        self.assertEqual(row[0], "diabetes_patientprofile")
+
+        table_names = connection.introspection.table_names()
+        self.assertIn(
+            "diabetes_patientprofile",
+            table_names,
+            "diabetes_patientprofile table was dropped — CRITICAL ERROR",
+        )
