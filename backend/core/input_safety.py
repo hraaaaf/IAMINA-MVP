@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from core.medical_safety import is_insulin_prescription_request
 from core.middleware.triage_vital import detect_vital_distress
-from diabetes.middleware.triage_classification import TriageClass, classify
+from core.triage_classification import TriageClass, classify
 
 
 @dataclass(frozen=True)
@@ -18,7 +18,10 @@ URGENT = "URGENT"
 INSULIN_BLOCK = "INSULIN_BLOCK"
 
 
-def evaluate_input_safety(message: str | None, language: str | None = None) -> InputSafetyDecision:
+def evaluate_input_safety(
+    message: str | None,
+    language: str | None = None,
+) -> InputSafetyDecision:
     """Return the deterministic pre-LLM decision for a text message."""
     del language
     classification = classify(message or "")

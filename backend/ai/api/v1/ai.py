@@ -240,11 +240,10 @@ def get_doctor_brief(request, days: int = 14):
     from companion.parser import parse_llm_json
     from companion.prompts import SUMMARY_USER, SYSTEM_BASE, get_language_label
     from companion.tone import get_tone_instruction, select_tone
+    from core.medical_safety import apply_no_prescription_policy
     from diabetes.services.clinical.engine import run_clinical_analysis
     from diabetes.services.clinical.sql_analytics import compute_kpis
     from llm.factory import get_llm
-
-    from core.medical_safety import apply_no_prescription_policy
 
     kpis = compute_kpis(patient_id=user.id, days=days)
 
@@ -481,7 +480,7 @@ def chat_stream(request, message: str, context_days: int = 14):
 
             # Step 1: Route the user input
             latest_glucose = entries[-1].blood_sugar if entries else None
-            routing = route(message, latest_glucose=float(latest_glucose) if latest_glucose else None)
+            route(message, latest_glucose=float(latest_glucose) if latest_glucose else None)
 
             # Step 3: Real streaming with sentence-level tail-hold.
             import re as _re
