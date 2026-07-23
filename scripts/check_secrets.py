@@ -39,6 +39,14 @@ SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ),
 )
 
+# Firebase client configuration is compiled into the public app bundle by
+# design. Its Google API identifiers are not treated like server credentials.
+# The exception is deliberately restricted to this generated client file and
+# ONLY the Google API key pattern; every other secret pattern still applies.
+PATTERN_PATH_EXCEPTIONS: dict[str, frozenset[str]] = {
+    "Google API key": frozenset({"frontend/lib/firebase_options.dart"}),
+}
+
 # Only explicit, non-secret examples may be allow-listed. Never add a real token
 # or a prefix copied from a real token here.
 SAFE_EXAMPLE_FRAGMENTS = (
@@ -64,6 +72,10 @@ def is_forbidden_path(path: str) -> bool:
     return any(pattern.search(path) for pattern in FORBIDDEN_TRACKED_PATHS)
 
 
+def pattern_is_allowed_for_path(label: str, path: str) -> bool:
+    return path in PATTERN_PATH_EXCEPTIONS.get(label, frozenset())
+
+
 def scan_file(path: str) -> list[tuple[int, str]]:
     absolute = ROOT / path
     try:
@@ -79,6 +91,8 @@ def scan_file(path: str) -> list[tuple[int, str]]:
         if any(fragment in line for fragment in SAFE_EXAMPLE_FRAGMENTS):
             continue
         for label, pattern in SECRET_PATTERNS:
+            if pattern_is_allowed_for_path(label, path):
+                continue
             if pattern.search(line):
                 findings.append((line_number, label))
     return findings
