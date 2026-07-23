@@ -71,11 +71,17 @@ No locale/dialect is enabled for a real-patient pilot until it passes:
 - validated emergency resources;
 - privacy/compliance readiness.
 
-## 4. Authentication
+## 4. Authentication and API write security
 
 ### Current
 
 A Firebase JWT bridge exists in the current codebase and maps authenticated identities into Django users/accounts.
+
+P0-A hardened API write security:
+
+- cookie/session-authenticated API writes are not covered by a blanket `/api/` CSRF exemption;
+- narrow Bearer/bootstrap exemptions remain where required;
+- protected clinical routes use fail-closed unit normalization across legacy and namespaced module paths.
 
 ### Target
 
@@ -120,11 +126,27 @@ Analytics must distinguish between:
 
 A narrative model must never silently become the source of truth for a numeric KPI or clinical rule.
 
+Durable analytics requirements:
+
+- formulas/thresholds must have a documented normative source/version;
+- metric eligibility and data-sufficiency rules must be explicit;
+- a metric must not be exposed outside the data modality/population supported by its definition;
+- production-authoritative PostgreSQL SQL must be validated on PostgreSQL, not inferred from SQLite fallback success.
+
 ## 7. Safety contract
 
 ### Emergency handling
 
 Emergency/high-severity recognition and routing must be deterministic and upstream of generative AI.
+
+Authoritative deterministic triage belongs to shared safety/core ownership rather than a reverse dependency from core into the diabetes module.
+
+### Unit normalization
+
+Clinical input normalization is upstream of domain/AI logic on protected routes.
+
+- legacy and `/api/v1/{module}/...` namespaced routes must not diverge in unit-safety coverage;
+- unexpected normalization errors fail closed rather than passing an unvalidated clinical payload onward.
 
 ### Treatment boundary
 
@@ -145,21 +167,39 @@ IAmina must not:
 
 ## 8. AI / model contract
 
-### Current reality
+### Current enforced capability after P0-B
 
-Legacy Gemini/provider-specific call paths exist for text and some media/document flows. The system must not be documented as fully provider-agnostic until P0-MENA-1 is complete.
+Currently wired live external AI/model/media operations use a central server-side authorization boundary.
 
-### Target contract
+Before real external egress, the boundary requires:
 
-Every external text/STT/vision/document call passes one sanctioned outbound boundary with:
+- authenticated patient scope;
+- registered purpose;
+- declared/authorized modality;
+- server-side patient AI consent.
 
-- purpose;
-- modality;
-- consent/legal basis where required;
-- allowlisted payload;
+The following fail closed:
+
+- no active egress scope;
+- missing consent record or no consent;
+- unknown purpose;
+- modality not allowed for the purpose.
+
+The authorization is evaluated lazily at actual provider egress so deterministic emergency/safety behavior remains available when AI consent is absent, provided no external call is attempted.
+
+Currently inventoried/wired surfaces include text/gateway narration, chat, summary/doctor brief, STT/audio, vision/OCR, and document-processing paths.
+
+CI prevents new direct external model/provider callsites from omitting the central authorization assertion.
+
+### Remaining target contract
+
+The authorization layer is not yet the complete sovereignty contract. P0-MENA-1 must still enforce consistently:
+
+- allowlisted payload fields/media per purpose;
 - minimization/redaction;
+- purpose/modality-granular media consent where required;
 - processor/subprocessor metadata;
-- retention/training terms;
+- residency and retention/no-training terms;
 - timeout/failure/fallback policy.
 
 Provider selection is per modality and must follow the P0-MENA-4 benchmark.
@@ -190,7 +230,7 @@ Current code includes flows for some combination of:
 - image/OCR-assisted capture;
 - audio transcription/voice input.
 
-These flows are subject to P0-MENA-1 outbound-media policy and may be disabled until approved.
+External model/media portions of these flows must pass the P0-B authorization boundary and remain subject to the unfinished P0-MENA-1 payload/media policy.
 
 ### IAmina companion
 
@@ -224,18 +264,20 @@ Do not expand disease/module scope before the Retention Gate in `docs/ROADMAP.md
 
 Update this file only for durable capability or contract changes.
 
+After a merged task, update this file during docs closeout **only when the current capability/API contract actually changed**.
+
 Do not put here:
 
 - sprint checklists;
-- commit hashes;
-- exact test counts;
+- raw test counts;
 - provider shopping notes;
 - completed historical phase narratives;
 - speculative features.
 
 Use:
 
-- `ROADMAP.md` for forward work;
+- `ROADMAP.md` for forward work and recent closeout state;
 - `ARCHITECTURE.md` for boundaries;
-- ADRs for decisions;
+- `TECHDEBT.md` for unresolved compromise;
+- ADRs for durable decisions;
 - OpenAPI for exact endpoint schemas.
