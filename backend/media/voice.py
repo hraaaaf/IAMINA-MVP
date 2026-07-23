@@ -21,6 +21,7 @@ import base64
 import logging
 import os
 
+from core.ai_egress import AUDIO, assert_ai_egress_allowed
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -113,6 +114,7 @@ def transcribe(
     audio_b64     = base64.b64encode(audio_bytes).decode("utf-8")
 
     try:
+        assert_ai_egress_allowed(AUDIO)
         from google import genai
 
         client = genai.Client(

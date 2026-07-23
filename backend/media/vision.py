@@ -21,6 +21,7 @@ import logging
 import os
 from typing import Optional
 
+from core.ai_egress import IMAGE, assert_ai_egress_allowed
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
@@ -116,6 +117,7 @@ def analyze_meal_image(image_b64: str, mime_type: str) -> dict:
         return _fallback()
 
     try:
+        assert_ai_egress_allowed(IMAGE)
         from google import genai
         from google.genai import types as genai_types
 
@@ -211,6 +213,7 @@ def analyze_glucometer_image(image_b64: str, mime_type: str) -> dict:
         return _gluco_fallback()
 
     try:
+        assert_ai_egress_allowed(IMAGE)
         from google import genai
         from google.genai import types as genai_types
 

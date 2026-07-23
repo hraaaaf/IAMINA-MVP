@@ -32,6 +32,7 @@ from ninja import File, Router
 from ninja.files import UploadedFile
 from pydantic import BaseModel
 
+from core.ai_egress import AUDIO, TEXT, patient_ai_egress_scope
 from core.models import BasePatientProfile
 from diabetes.config.stt_vocabulary import AR_MA_STT_HINTS
 from media.voice import (
@@ -98,6 +99,7 @@ _ERROR_REPLIES: dict[str, str] = {
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @router.post("/ai/voice", response=VoiceChatResponse)
+@patient_ai_egress_scope("voice_chat", AUDIO, TEXT)
 def voice_chat(
     request,
     audio: UploadedFile = File(...),
@@ -183,6 +185,7 @@ def voice_chat(
 # ── Transcribe-only endpoint (no IAmina pipeline) ────────────────────────────
 
 @router.post("/ai/transcribe", response=TranscribeResponse)
+@patient_ai_egress_scope("voice_transcription", AUDIO)
 def transcribe_audio(
     request,
     audio: UploadedFile = File(...),
