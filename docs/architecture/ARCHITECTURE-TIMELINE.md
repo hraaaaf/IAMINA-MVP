@@ -61,7 +61,7 @@ This was a technical optionality investment, not permission to launch multiple c
 
 **Still true after ADR-0008:** diabetes remains the only live condition until the Retention Gate passes.
 
-Detailed implementation history lives in git and `platform-transformation-plan.md` (archived).
+Detailed implementation history remains available in git history and ADRs. The obsolete transformation-plan document was intentionally removed so agents do not mistake historical execution instructions for current work.
 
 ## 2026-07-23 — MENA sovereignty reset
 
