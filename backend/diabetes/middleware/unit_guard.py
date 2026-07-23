@@ -10,7 +10,8 @@ This middleware intercepts incoming API requests and outgoing responses to:
 4. Log any unit mismatch for clinical audit.
 
 Unit confusion (mg/dL vs g/L) is a documented source of dangerous dosing errors.
-This middleware makes such confusion technically impossible.
+The guard therefore fails closed on unexpected normalization errors and protects
+both legacy API paths and registry-mounted module paths.
 
 See docs/adr/0007-analytical-sql-over-llm.md
 """
@@ -37,18 +38,18 @@ _MAX_GLUCOSE_MG_DL = 700.0
 # Conversion factors TO mg/dL
 _CONVERSION_FACTORS: dict[str, float] = {
     "mg/dl": 1.0,
-    "mgdl":  1.0,
-    "g/l":   100.0,   # 1 g/L = 100 mg/dL
-    "gl":    100.0,
+    "mgdl": 1.0,
+    "g/l": 100.0,  # 1 g/L = 100 mg/dL
+    "gl": 100.0,
     "mmol/l": 18.016,  # 1 mmol/L = 18.016 mg/dL
-    "mmol":  18.016,
+    "mmol": 18.016,
     "mmoll": 18.016,
 }
 
-# API paths that carry glucose values and must be guarded
-_GUARDED_PATHS = (
+# Legacy paths that carry glucose values and must remain guarded during route migration.
+_LEGACY_GUARDED_PATHS = (
     "/api/v1/logs",
-    "/api/v1/ai/",
+    "/api/v1/ai",
 )
 
 # JSON body field names that may carry a glucose value
@@ -98,7 +99,9 @@ def convert_to_mg_dl(value: float, unit: str) -> float:
     if unit.lower() not in ("mg/dl", "mgdl"):
         logger.info(
             "UnitGuard: Converted %.1f %s → %.1f mg/dL",
-            value, unit, converted,
+            value,
+            unit,
+            converted,
         )
 
     return converted
@@ -149,17 +152,50 @@ class UnitGuardMiddleware:
                     status=422,
                 )
             except Exception:
-                # Never block on unexpected errors — log and pass through
-                logger.exception("UnitGuard: Unexpected error, passing through.")
+                # Safety boundary: an unexpected normalization failure must never
+                # allow an unvalidated glucose payload to continue downstream.
+                logger.exception("UnitGuard: Unexpected normalization error — request blocked.")
+                return JsonResponse(
+                    {
+                        "error": "Unable to safely validate glucose payload.",
+                        "code": "UNIT_GUARD_INTERNAL_REJECTION",
+                    },
+                    status=422,
+                )
 
         return self.get_response(request)
 
     # ── private ──
 
+    @staticmethod
+    def _path_matches_prefix(path: str, prefix: str) -> bool:
+        normalized = prefix.rstrip("/")
+        return path == normalized or path.startswith(f"{normalized}/")
+
+    @staticmethod
+    def _module_guarded_paths() -> tuple[str, ...]:
+        """Return current registry-mounted API prefixes without hard-coding modules."""
+        try:
+            from core.registry import ModuleRegistry
+
+            return tuple(
+                f"/api/v1{registered.manifest.url_prefix}"
+                for registered in ModuleRegistry.all()
+            )
+        except Exception:
+            # Registry lookup failure must not remove protection from legacy paths.
+            logger.exception("UnitGuard: Could not resolve module registry paths.")
+            return ()
+
     def _is_guarded(self, request) -> bool:
         if request.method not in ("POST", "PUT", "PATCH"):
             return False
-        return any(request.path.startswith(p) for p in _GUARDED_PATHS)
+
+        guarded_paths = _LEGACY_GUARDED_PATHS + self._module_guarded_paths()
+        return any(
+            self._path_matches_prefix(request.path, prefix)
+            for prefix in guarded_paths
+        )
 
     def _normalise_request(self, request):
         """
@@ -177,7 +213,7 @@ class UnitGuardMiddleware:
         try:
             payload: dict[str, Any] = json.loads(raw_body)
         except json.JSONDecodeError:
-            return request  # malformed JSON handled by DRF/Ninja validators
+            return request  # malformed JSON handled by Ninja validators
 
         modified = False
 
