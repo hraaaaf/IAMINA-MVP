@@ -7,7 +7,6 @@ import re
 
 from django.conf import settings
 
-
 _FORBIDDEN_PATTERNS = [
     re.compile(r"\baugment(?:e|ez|er)?\b.{0,40}\b(?:dose|insuline|traitement)\b", re.IGNORECASE),
     re.compile(r"\bdiminu(?:e|ez|er)?\b.{0,40}\b(?:dose|insuline|traitement)\b", re.IGNORECASE),
