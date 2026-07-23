@@ -47,11 +47,9 @@ jobs:
         run: lint-imports
 
       - name: LLM gateway anti-bypass
-        # Temporary debt allow-list during pilot-hardening Phase 1:
-        # - backend/ai/api/v1/ai.py
-        # - backend/diabetes/services/summary.py
-        # - backend/diabetes/services/clinical/engine.py
-        # Companion paths are already unified and must not regress.
+        # Temporary debt allow-list during pilot hardening. Companion paths are
+        # already unified and must not regress; remaining direct structured callsites
+        # must additionally pass the AI egress authorization gate below.
         run: |
           if rg -n "get_llm" . \
             -g '!core/llm_gateway.py' \
@@ -67,6 +65,19 @@ jobs:
             echo "::error::Unauthorized get_llm usage found outside sanctioned gateway/internal paths."
             exit 1
           fi
+
+      - name: AI egress authorization anti-bypass
+        # Any network-capable model callsite outside provider adapters must prove it
+        # passes through the central patient/purpose/modality authorization boundary.
+        run: |
+          FILES=$(rg -l 'get_llm\(|genai\.Client\(|GenerativeModel\(' . \
+            -g '!llm/**' -g '!**/tests/**' -g '!**/migrations/**' || true)
+          for FILE in $FILES; do
+            if ! rg -q 'assert_ai_egress_allowed' "$FILE"; then
+              echo "::error file=$FILE::External AI callsite lacks central egress authorization assertion."
+              exit 1
+            fi
+          done
 
       - name: SAST (bandit)
         # HIGH severity only — skip B101 (assert) and B311 (random) which are dev-only patterns

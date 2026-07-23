@@ -13,6 +13,8 @@ from __future__ import annotations
 import base64
 import logging
 
+from core.ai_egress import IMAGE, assert_ai_egress_allowed
+
 logger = logging.getLogger(__name__)
 
 _ALLOWED_MIME = frozenset({"image/jpeg", "image/png", "image/webp", "image/heic"})
@@ -36,6 +38,7 @@ def extract_image(file_bytes: bytes, mime_type: str) -> str:
     b64 = base64.b64encode(file_bytes).decode('ascii')
 
     try:
+        assert_ai_egress_allowed(IMAGE)
         import os
 
         import google.generativeai as genai

@@ -31,6 +31,7 @@ from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
+from core.ai_egress import IMAGE, TEXT, assert_ai_egress_allowed, patient_ai_egress_scope
 from core.llm_gateway import (
     narrate,  # noqa: F401 — P1.4: imported, full wiring pending (see TODO below)
 )
@@ -145,6 +146,7 @@ class GlucometerOcrResponse(BaseModel):
 # ──────────────────────────────────────────────────────────────
 
 @router.post("/ai/summary", response=SummaryResponse)
+@patient_ai_egress_scope("clinical_summary", TEXT)
 def get_summary(request, data: SummaryRequest):
     """
     Full Phase 6 analytical pipeline.
@@ -217,6 +219,7 @@ def get_summary(request, data: SummaryRequest):
 # ──────────────────────────────────────────────────────────────
 
 @router.get("/ai/doctor-brief", response=DoctorBriefResponse)
+@patient_ai_egress_scope("doctor_brief", TEXT)
 def get_doctor_brief(request, days: int = 14):
     """
     GET /api/v1/ai/doctor-brief?days=14
@@ -303,6 +306,7 @@ def get_doctor_brief(request, days: int = 14):
     doctor_brief = ""
 
     try:
+        assert_ai_egress_allowed(TEXT)
         result = llm.complete(system, user_prompt)
         parsed = parse_llm_json(result.content, ["narrative", "key_insight", "doctor_brief"])
         narrative = parsed["narrative"]
@@ -331,6 +335,7 @@ def get_doctor_brief(request, days: int = 14):
 # ──────────────────────────────────────────────────────────────
 
 @router.post("/ai/chat", response=ChatResponse)
+@patient_ai_egress_scope("companion_chat", TEXT)
 def chat_with_amina(request, data: ChatRequest):
     """
     Phase 6 chat with English Pivot Layer.
@@ -372,6 +377,7 @@ def chat_with_amina(request, data: ChatRequest):
 # ──────────────────────────────────────────────────────────────
 
 @router.post("/ai/analyze-glucometer-image", response=GlucometerOcrResponse)
+@patient_ai_egress_scope("glucometer_ocr", IMAGE)
 def analyze_glucometer_image_web(request, data: MealImageRequest):
     """
     Phase 11-D — Gemini Vision glucometer OCR for web clients.
@@ -394,6 +400,7 @@ def analyze_glucometer_image_web(request, data: MealImageRequest):
 
 
 @router.post("/ai/analyze-meal-image", response=MealImageResponse)
+@patient_ai_egress_scope("meal_vision", IMAGE)
 def analyze_meal_image(request, data: MealImageRequest):
     """
     Phase 11-C — Gemini Vision meal recognition.
@@ -429,6 +436,7 @@ def analyze_meal_image(request, data: MealImageRequest):
 # ──────────────────────────────────────────────────────────────
 
 @router.get("/ai/chat/stream")
+@patient_ai_egress_scope("companion_chat", TEXT)
 def chat_stream(request, message: str, context_days: int = 14):
     """
     GET /api/v1/ai/chat/stream?message=...

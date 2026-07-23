@@ -103,7 +103,13 @@ def _mock_genai_client(text="Bonjour"):
 
 
 class STTGeminiCallTests(SimpleTestCase):
-    """Mocked Gemini calls: model selection, language hints, error handling."""
+    """Mocked provider calls; egress policy behavior is tested in core/tests."""
+
+    def setUp(self):
+        super().setUp()
+        self._egress_patcher = patch("media.voice.assert_ai_egress_allowed")
+        self._egress_patcher.start()
+        self.addCleanup(self._egress_patcher.stop)
 
     def test_returns_stripped_transcript(self):
         from media.voice import transcribe
