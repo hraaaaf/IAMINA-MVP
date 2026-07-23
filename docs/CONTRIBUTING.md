@@ -7,12 +7,15 @@ This document defines the engineering workflow and guardrails. Product priority 
 A change touching any item below requires explicit human review in the PR description and focused tests.
 
 - Deterministic emergency handling must remain upstream of generative AI.
-- Glucose unit normalization must remain upstream of clinical/AI logic.
+- Glucose unit normalization must remain upstream of clinical/AI logic and fail closed on unexpected normalization failures.
+- Cookie/session-authenticated API writes must retain CSRF protection; exemptions must be narrow and explicit.
 - External model/media calls must use the sanctioned outbound boundary; direct provider bypasses are forbidden.
-- Outbound payloads are default-deny and must follow purpose, consent, minimization, redaction, retention, and processor rules.
+- External egress requires patient/purpose/modality authorization and server-side consent before a real provider call.
+- Outbound payloads remain default-deny and must ultimately follow purpose, consent, minimization, redaction, retention, residency, and processor rules.
 - IAmina must not diagnose, prescribe, or optimize treatment.
 - `client_uuid` on log entries is the offline-sync idempotency key.
 - KPI calculations covered by ADR-0007 remain SQL-first.
+- PostgreSQL-specific analytical behavior must be tested on PostgreSQL before pilot-critical certification.
 - A language/dialect cannot enter a real-patient pilot without native-speaker safety parity and validated emergency resources.
 - Historical ADRs are immutable. Changed decisions require a superseding ADR, not history rewriting.
 
@@ -23,7 +26,8 @@ Before any real-patient pilot, the roadmap's pilot safety/compliance gate must b
 - high-severity language-variant safety coverage for the enabled pilot locale;
 - monitored emergency-event handling or an explicitly documented alternative operating model;
 - enforced AI/model consent at the outbound boundary;
-- documented processors/subprocessors, retention, incident response, and pilot escalation;
+- complete payload/media governance for approved external model flows;
+- documented processors/subprocessors, retention, residency, incident response, and pilot escalation;
 - no reachable committed secrets and rotation of exposed credentials.
 
 ## Branch model
@@ -42,12 +46,13 @@ One roadmap unit should normally map to one focused branch and one PR.
 
 ## Source of truth discipline
 
-- `docs/ROADMAP.md`: single forward backlog, priorities, gates, current status.
+- `docs/ROADMAP.md`: single forward backlog, priorities, gates, recent closeout state.
 - `docs/architecture/ARCHITECTURE.md`: current architecture and target boundaries.
 - `docs/SPECS.md`: current product/API capability contract.
+- `docs/MEDICAL_DATA_PLAN.md`: current clinical-data and safety contract.
 - `docs/TECHDEBT.md`: unresolved technical debt only.
 - `docs/MISTAKES.md`: reusable engineering lessons only.
-- `CLAUDE.md`: stable agent brief, never a session diary.
+- `CLAUDE.md` / `AGENTS.md`: stable agent briefs, never session diaries.
 - ADRs / architecture timeline / assessments: historical evidence, not active backlog.
 
 Do not duplicate roadmap state across multiple documents.
@@ -60,9 +65,31 @@ A PR should state:
 2. what changed and why;
 3. safety/privacy impact;
 4. tests/checks run;
-5. any manual verification still required.
+5. any manual verification still required;
+6. which canonical docs must change at closeout.
 
 Keep PRs focused. Large diffs are acceptable when a coherent cleanup cannot safely be split, but explain why.
+
+## Mandatory documentation closeout
+
+**A task/phase is not complete when code merges. It is complete when the merged truth and canonical documentation agree.**
+
+Before starting the next roadmap unit, perform this closeout:
+
+1. **Always inspect `docs/ROADMAP.md`.**
+   - mark/remove the completed work;
+   - record only the concise operationally relevant closeout;
+   - identify the next open blocker.
+2. **Update `docs/architecture/ARCHITECTURE.md` only if the as-built architecture changed.**
+3. **Update `docs/SPECS.md` only if a durable current capability/API contract changed.**
+4. **Update domain contracts** such as `docs/MEDICAL_DATA_PLAN.md` when safety/data/clinical truth changed.
+5. **Update `docs/TECHDEBT.md`.**
+   - delete fully resolved debt;
+   - rewrite partially resolved debt so it describes only what remains.
+6. **Update README/onboarding/migrations only when their current instructions or product truth changed.**
+7. **Create/supersede an ADR only for a durable architectural decision**, not for routine implementation status.
+
+Do not carry stale checkboxes or “not implemented” statements into the next phase when the code has already changed.
 
 ## Validation
 
@@ -90,6 +117,7 @@ flutter test
 - Database migrations: test forward migration and rollback/recovery strategy appropriate to the migration risk.
 - Locale changes: test script/RTL where relevant, mixed-language input, deterministic fallback, and native-reviewed safety corpus.
 - Provider/outbound changes: prove no direct bypass and inspect minimized payloads.
+- Clinical analytics changes: cite the normative definition, test eligibility/insufficient-data behavior, and run production-database parity checks.
 
 ## Commit format
 
@@ -122,4 +150,4 @@ Do not select an AI provider by brand preference alone. Text, STT, and vision ma
 
 ## Hotfixes
 
-For urgent production fixes, branch from `main`, keep scope minimal, run the most relevant safety/regression checks, and merge back through a PR whenever operationally possible.
+For urgent production fixes, branch from `main`, keep scope minimal, run the most relevant safety/regression checks, merge back through a PR whenever operationally possible, then perform the same documentation closeout before normal roadmap work resumes.
