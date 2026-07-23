@@ -1,0 +1,39 @@
+name: P0 Egress Runtime Codemod
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  codemod:
+    if: github.head_ref == 'fix/p0-ai-egress-consent-boundary'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply runtime-only portion of codemod
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          source = Path('.github/workflows/p0-egress-codemod.yml').read_text()
+          block = source.split("python - <<'PY'\n", 1)[1].split("\n          PY", 1)[0]
+          script = textwrap.dedent(block)
+          exec(compile(script, '<p0-egress-codemod>', 'exec'))
+          PY
+          git restore .github/workflows/ci.yml
+      - name: Commit runtime wiring
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add backend
+          git commit -m 'feat(p0): wire AI egress authorization across live callsites'
+          git push origin HEAD:${{ github.head_ref }}
