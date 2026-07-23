@@ -29,6 +29,7 @@ from django.core.cache import cache
 from django.http import HttpRequest
 from ninja import File, Router, Schema, UploadedFile
 
+from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
 from diabetes.models import LabReport
 from diabetes.services.documents.store import persist
 from media.documents.pulper import ingest
@@ -122,6 +123,7 @@ def _pending_key(batch_id: str) -> str:
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/documents/ingest", response={200: PulperPreviewResponse, 422: dict})
+@patient_ai_egress_scope("document_ingest", TEXT, IMAGE)
 def ingest_document(
     request: HttpRequest,
     file: UploadedFile = File(...),

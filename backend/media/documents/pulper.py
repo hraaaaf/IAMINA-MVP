@@ -21,6 +21,7 @@ import logging
 import re
 from datetime import datetime
 
+from core.ai_egress import TEXT, assert_ai_egress_allowed
 from diabetes.services.documents.extractors.docx import extract_docx
 from diabetes.services.documents.extractors.image import extract_image
 from diabetes.services.documents.extractors.pdf import extract_pdf
@@ -219,6 +220,7 @@ def _parse_with_llm(output: PulperOutput, raw_text: str) -> None:
     prompt = _PARSE_PROMPT_TEMPLATE.format(text=safe_text)
 
     try:
+        assert_ai_egress_allowed(TEXT)
         llm = get_llm()
         response = llm.complete(_SYSTEM_PROMPT, prompt)
         json_text = (response.content or '').strip()

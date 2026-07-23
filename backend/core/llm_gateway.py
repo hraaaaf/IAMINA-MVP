@@ -17,6 +17,7 @@ See docs/architecture/module-contract-spec.md section 4 (narrate() contract).
 import logging
 from collections.abc import Iterator
 
+from core.ai_egress import TEXT, assert_ai_egress_allowed
 from core.contracts.companion_identity import CompanionIdentity
 from core.contracts.domain_context import DomainContext
 from core.contracts.patient_context import ModulePatientContext
@@ -46,6 +47,7 @@ class GatewayLLM:
         )
 
     def complete(self, system: str, user: str):
+        assert_ai_egress_allowed(TEXT)
         safe_system = self._pseudonymizer.mask(system)
         safe_user = self._pseudonymizer.mask(user)
         response = self._pipeline.complete(safe_system, safe_user)
@@ -57,6 +59,7 @@ class GatewayLLM:
             yield self.complete(system, user).content
             return
 
+        assert_ai_egress_allowed(TEXT)
         safe_system = self._pseudonymizer.mask(system)
         safe_user = self._pseudonymizer.mask(user)
         chunks = list(self._provider.stream(safe_system, safe_user))
@@ -64,6 +67,7 @@ class GatewayLLM:
         yield restored
 
     def think(self, system: str, user: str) -> tuple[str, str]:
+        assert_ai_egress_allowed(TEXT)
         safe_system = self._pseudonymizer.mask(system)
         safe_user = self._pseudonymizer.mask(user)
         thinking, response = self._provider.think(safe_system, safe_user)
@@ -102,6 +106,7 @@ def narrate(
         PHILeakError: if PHI patterns are detected in the prompts after masking.
         Exception: propagated from the LLM provider on unrecoverable errors.
     """
+    assert_ai_egress_allowed(TEXT)
     pseudonymizer = PHIPseudonymizer()
     llm = LLMPipeline(get_llm(), [PHIStrippingMiddleware(), LoggingMiddleware()])
 
