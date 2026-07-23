@@ -14,6 +14,7 @@ import base64
 import logging
 
 from core.ai_egress import IMAGE, assert_ai_egress_allowed
+
 logger = logging.getLogger(__name__)
 
 _ALLOWED_MIME = frozenset({"image/jpeg", "image/png", "image/webp", "image/heic"})
