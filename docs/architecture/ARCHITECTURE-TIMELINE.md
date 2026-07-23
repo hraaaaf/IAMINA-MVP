@@ -1,78 +1,101 @@
-# Architecture Timeline — how the design got here
+# IAmina — Architecture Timeline
 
-> This is the condensed decision history. It exists so the superseded version docs (v1.0, v2.x,
-> v3.0, v3.1, the multi-capsule audit, the French implementation log) could be deleted without
-> losing *why* each direction was chosen and then changed. Current design: `ARCHITECTURE.md`.
-> Formal decisions: `docs/adr/`. Forward tracker: `docs/ROADMAP.md`.
+> **Historical document.** This file explains how the architecture evolved.  
+> Current architecture: `ARCHITECTURE.md`  
+> Forward work: `../ROADMAP.md`  
+> Formal decisions: `../adr/`
 
-The project changed architectural direction several times. The throughline: **a Darija/Arabic
-diabetes companion whose real success metric is 90-day retention, not feature/condition breadth.**
-Every reversal was a re-answer to one question — *build platform optionality now, or defer it until
-retention proves there's a business?*
+Do not use this timeline as a backlog.
 
----
+## v1 — Diabetes monolith
 
-## v1.0 — Modular monolith (baseline)
+The original system combined the Django application, diabetes data, clinical logic, companion behavior, provider integrations, and safety middleware with limited modular boundaries.
 
-The original Django app: LLM factory, IAmina companion, clinical engine, middleware pipeline, one
-condition (diabetes). No module abstraction. This is the substrate everything below refactors.
+Stable ideas already present:
 
-## v2.0 — Engine / capsule split (implemented, branch `refactor/chassis-architecture`)
+- one live condition: diabetes;
+- deterministic safety middleware;
+- diabetes analytics and pattern detection;
+- conversational companion layer;
+- offline/mobile direction.
 
-Introduced a hard boundary: a domain-agnostic **engine** vs a diabetes **capsule**, with
-`SemanticCompressor` as the single seam between clinical data and the LLM. Renamed `tracking`→
-`diabetes` and the chassis concept for clarity. Real refactor, shipped. (v2.0-chassis-target was a
-pure naming-clarification artifact on top of this.)
+## v2 — Engine / domain separation
 
-## v2.2 — Engine decomposition (proposal, NOT implemented)
+The codebase began separating shared engine concerns from diabetes-specific concerns.
 
-Proposed splitting `engine/` into `llm/`, `safety/`, `companion/`, `clinical/`, `media/` packages,
-plus an `EngineRegistry` with plugin dispatch. The package decomposition idea partly survived; the
-`EngineRegistry`/plugin-dispatch machinery was rejected downstream as premature. Superseded by v3.1.
+Goals included:
 
-## v3.0 — Multi-condition platform (proposal)
+- clearer domain ownership;
+- reusable clinical/companion seams;
+- fewer accidental dependencies;
+- easier future refactoring without committing to a full plugin platform.
 
-The full platform vision: `BaseEngine` ABC, **`EngineRegistry` runtime dispatch**, modular
-middleware, `LLMPipeline`, split `PatientProfile`. The high-water mark of "build the platform now."
-The `BaseEngine` ABC survived; the runtime registry/dispatch did not (yet).
+Some package names and layouts from this period were later replaced.
 
-## v3.1 / DA-03 — "Modular monolith, NOT a platform" (ACCEPTED 2026-06-03)
+## v3 / DA-03 — Modular monolith, not a platform
 
-**The first reversal.** Decision: ship ONE condition with *cheap seams* (`BaseEngine` ABC,
-`BasePatientProfile`) so a second condition is a future refactor, not a rewrite — but do **NOT**
-build platform machinery (plugin API, `EngineRegistry` dispatch, webhooks, multi-tenancy). Rationale:
-it's premature for a pre-revenue product. **Redirect that budget into observability/retention
-instrumentation**, because 90-day retention is the metric that decides whether this is a business.
+The strategy deliberately favored:
 
-The **Retention Gate** was born here: don't build condition #2 or any platform machinery until BOTH
-(1) D90 retention clears a go threshold AND (2) one named payer signal exist. This gate still stands.
+- one condition;
+- cheap extension seams;
+- retention instrumentation;
+- no broad plugin ecosystem or multi-tenancy before product proof.
 
-> The cheap fixes from the v3.x multi-capsule readiness audit (move universal account/auth/health
-> endpoints to `core/`, triage path registry) were folded into v3.1's seam work (S1–S5).
+This is where the enduring **Retention Gate** became explicit: disease/module expansion should follow evidence, not architecture enthusiasm.
 
-## ADR-0008 — Platform chassis (ACCEPTED 2026-06-04) — **CURRENT**
+## ADR-0008 — Platform chassis + module contracts
 
-**The second reversal.** The founder reopened the DA-03 decision and authorized building the full
-**platform chassis + module contracts** model now (`ARCHITECTURE.md`), as a *scoped, gated detour*.
-What changed: the cheap seams became real seams (registry, contracts, profile split, import-linter).
-What did NOT change: DA-03's strategic core — **one condition live, retention-first, no live second
-module until the Retention Gate passes.**
+The founder later authorized building stronger chassis/module seams earlier than DA-03 proposed.
 
-An expert review (Software Architect · Backend · Security · Product) returned
-APPROVE_WITH_CONDITIONS with 14 conditions (PHI gateway, triage registry, RGPD cascade,
-SeparateDatabaseAndState migration risk, static router mount, `analyze()` signature, etc.). All 14
-were resolved during the build — see the Expert Review section in `ARCHITECTURE.md`.
+Implemented concepts included:
 
-The chassis program (P0–P6 + P8.1) was built and merged 2026-06-05 → 06-07. It is now tracked as
-**ROADMAP Phases 18–26**; the detailed implementation record is `platform-transformation-plan.md`
-(archived). Phases 25–26 (live second module, third-party infra) remain **gated**.
+- module manifests/contracts;
+- registry/router seams;
+- patient identity/domain separation;
+- safety registries;
+- account deletion hooks;
+- import-boundary enforcement;
+- observability/retention foundations.
 
----
+This was a technical optionality investment, not permission to launch multiple conditions.
 
-## What survived every reversal (the stable core)
+**Still true after ADR-0008:** diabetes remains the only live condition until the Retention Gate passes.
 
-- One condition live (diabetes); breadth is deferred, not the strategy.
-- **The Retention Gate** — still the go/stop for a second module (D90 threshold still unset).
-- `BaseEngine` ABC as the clinical seam (refactored, never discarded).
-- SQL-first KPIs (ADR-0007), PHI stripped before the LLM, `TriageVitalMiddleware` first in chain,
-  `client_uuid` offline idempotency, no diagnosis / no prescription.
+Detailed implementation history lives in git and `platform-transformation-plan.md` (archived).
+
+## 2026-07-23 — MENA sovereignty reset
+
+The product strategy changed from a primarily Morocco/Darija beachhead with a simple Gulf expansion narrative to a broader but more disciplined **MENA-first architecture**.
+
+Key changes:
+
+1. **MENA became the target region**, with country-by-country and locale-by-locale enablement.
+2. Language architecture changed from a small fixed language list to a contract separating country, UI language, response language, dialect, script/transliteration, units, time zone, and emergency jurisdiction.
+3. Location was explicitly demoted to a suggestion signal; it must not silently determine language, consent, or safety behavior.
+4. The AI architecture moved away from “pick the next preferred LLM provider” toward a **provider-agnostic outbound boundary** with independent text/STT/vision choices.
+5. Data sovereignty/minimization became P0: legacy direct/provider-specific calls must be inventoried and governed before pilot.
+6. Firebase became **legacy current-state**, with Django-native authentication as the sovereignty target.
+7. The clinical authority model was clarified: deterministic IAmina logic decides structured results; models may verbalize approved minimized output or perform explicitly permitted media tasks.
+8. Diabetes remains the only live condition; MENA expansion does not authorize multi-disease expansion.
+
+## What survived every architectural reversal
+
+- Diabetes is the only live condition until evidence justifies expansion.
+- Retention, especially D90, is the core product proof metric.
+- Deterministic safety must precede generative AI.
+- No diagnosis/prescription/treatment optimization without a separate explicit product/regulatory decision.
+- SQL-first KPI authority remains where ADR-0007 applies.
+- Offline sync idempotency remains critical.
+- Architecture should preserve future optionality without letting optionality become the roadmap.
+
+## What must not be inferred from old documents
+
+Historical statements such as these are **not current strategy**:
+
+- “Kimi is the target LLM.”
+- “Morocco determines the product language architecture.”
+- “Firebase is the permanent auth architecture.”
+- “The chassis means a second condition should be built next.”
+- “PHI stripping in one middleware proves all model egress is safe.”
+
+Use `ARCHITECTURE.md` and `ROADMAP.md` for current truth.
