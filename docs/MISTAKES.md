@@ -1,134 +1,143 @@
-# Mistakes Log
+# IAmina — Mistakes and Durable Lessons
 
-Errors caught during development. Read at the start of every session to avoid repeating them.
+Read this before high-risk work. This file contains **reusable lessons only** — not current status, backlog, provider preferences, or resolved sprint history.
 
----
+## 1. Documentation can become a production bug
 
-## Tools
+Stale docs previously described old branches, old provider plans, old framework versions, and contradictory product strategy as if they were current.
 
-**1. One file per edit call.**
-Attempting to modify two different files in a single tool call injects content into the wrong file. Use separate calls per file.
+**Rule:** every doc must have one purpose. Use:
 
-**2. Clean generated code.**
-Auto-generated imports (`json_annotation`, `dart:convert`, etc.) left in place pollute lint reports. Strip unused imports from generated files immediately.
+- ROADMAP = forward work;
+- ARCHITECTURE = current boundaries;
+- SPECS = current capability;
+- TECHDEBT = unresolved compromises;
+- ADR/timeline = history.
 
-**3. Async test syntax (Drift).**
-`() async` not `async` alone in test closures. Missing parentheses breaks `build_runner` compilation.
+Do not duplicate status across files.
 
-**4. Windows sandboxing.**
-`run_command` fails on Windows. Create file structures via write tools. Delegate `manage.py check` to the user if the environment blocks execution.
+## 2. Never commit secrets in local agent/tool configuration
 
-**5. `__init__.py` re-exports during module migrations.**
-When moving modules, add re-exports in `__init__.py` to avoid breaking circular imports or global config files like `urls.py`.
+Local permission/config files can contain literal API keys inside allowed shell commands.
 
----
+**Rule:** `.env` is not the only secret risk. Audit `.claude/`, IDE launch configs, shell scripts, fixtures, notebooks, CI examples, and docs. If a key is committed, treat it as compromised and rotate/revoke it.
 
-## Flutter
+## 3. One edit target at a time when the editing tool is path-sensitive
 
-**6. `withOpacity` is deprecated.**
-Use `.withValues(alpha: ...)` to align with Flutter 2024+ standards.
+Multi-file mutation through a tool that expects one file can put content in the wrong target.
 
-**7. Accidental field deletion during refactoring.**
-When adding a new constructor parameter, verify all existing fields are still present. Missing `heroTag` after adding `initialOffset` caused immediate compile error.
+**Rule:** use atomic per-file writes unless the tool explicitly supports a multi-file transaction.
 
-**8. Theme variables in helper methods.**
-Always define `final isDark = Theme.of(context).brightness == Brightness.dark;` at the top of any `build` or helper method that uses it.
+## 4. Generated code/imports must be cleaned
 
-**9. Provider injection.**
-All classes accessed via `context.watch` or `context.read` must be registered in `MultiProvider`. Common miss: `PatientProfileData` from Drift.
+Generated or refactored files can keep stale imports and configuration that silently pollute lint or dependency behavior.
 
-**10. `Expanded` inside `SingleChildScrollView`.**
-Never nest a widget with `Expanded` inside `SingleChildScrollView` without a fixed-height parent. Results in a blank screen on web.
+**Rule:** run formatter/analyzer after generation/refactor and remove unused generated artifacts immediately.
 
-**11. `GoRouter` in `build` method.**
-Never create the `GoRouter` instance inside `build` — it resets navigation state on every rebuild. Instantiate in `initState` or at the app level.
+## 5. Django test transactions do not reset external cache state
 
-**12. `StreamProvider<T?>` typing.**
-When watching a `StreamProvider<T?>`, watch the nullable type `T?` explicitly. Type mismatch causes a runtime provider lookup failure.
+Database rollback does not imply Redis/Django cache rollback.
 
-**13. Django cache not rolled back in TestCase.**
-`django.test.TestCase` wraps each test in a DB transaction but does NOT reset the Django cache. If test A writes to cache and test B runs alphabetically after it, test B sees stale cache data. Fix: `setUp` with `cache.clear()` + unique usernames per test (`f"user_{self._testMethodName}"`).
+**Rule:** tests that use cache must isolate/clear relevant keys and use unique identities where necessary.
 
-**14. Demo seed in production.**
-`db.seedDemoData()` called unconditionally on empty DB shows fake clinical data ("87% en cible") to real patients. Always guard with `kDebugMode` in Flutter. In Django, seed commands must be opt-in only.
+## 6. Never seed demo data into real patient UX by accident
 
-**15. `FallbackProvider` silently swallows quota errors.**
-When Gemini daily cap is hit and no paid failover is configured, returning the generic `FallbackProvider` response gives no signal to the user that they've run out of quota. Use `QuotaExhaustedProvider` instead — it surfaces the quota message explicitly so users understand and can upgrade.
+Unconditional demo seeding can display fake clinical information to a real user.
 
----
+**Rule:** demo data is opt-in/debug-only and must be impossible to confuse with real patient data.
 
-## Navigation
+## 7. Demo dates must be relative or resettable
 
-**16. `_NavItem._navigate()` must stay in sync with index assignments.**
-> ✅ FIXED in P6-A (Phase 24): nav/routes are now generated from `ModuleRegistry`; the integer-index
-> switch is gone. Kept as a warning — do not reintroduce index-based routing.
-The sidebar `_NavItem` uses integer indices to decide which route to push. If the index-to-route mapping in `_selectedIndex()` or the item list is changed, `_navigate()` **must** be updated in the same commit. Mismatched indices cause silent mis-routing (e.g. pressing IAmina navigates to /ajouter). Checklist:
-1. `_selectedIndex()` — path → int
-2. Sidebar `_NavItem(index: N, ...)` constructor calls
-3. `_NavItem._navigate()` switch cases
-4. Bottom `NavigationBar.onDestinationSelected` cases
-All four must agree.
+Fixed seed dates eventually fall outside analysis windows and create silent “no data” degradation.
 
-**17. Flutter web cannot be tested with Playwright / Selenium.**
-Flutter web renders entirely to a `<canvas>` element — the DOM contains no visible widgets, no text nodes, no buttons. `getByText()`, `locator('button')`, and all CSS/text selectors return empty. `signInAnonymously()` also requires a live Firebase project and network. Testing Flutter web UI requires **Flutter Integration Tests** (`flutter_test` + `IntegrationTestWidgetsFlutterBinding`), not browser-automation tools.
+**Rule:** generate demo timelines relative to now or provide an explicit idempotent reset path.
 
----
+## 8. Never use process-local dictionaries for cross-request workflow state
 
-## LLM / AI
+A module-level dict can appear to work in single-process development and fail immediately with multiple workers.
 
-**18. Smaller LLM models are unreliable with JSON schemas.**
-`gemini-2.5-flash-lite` frequently ignores the specified JSON schema and returns keys like `"response"` instead of the required `"reply"`. Always use `gemini-2.5-flash` (or better) for schema-constrained prompts. Add a parser-level alias fallback (`_REPLY_ALIASES`) as a safety net, but treat it as a last resort — not an excuse to use a weaker model.
+**Rule:** use a shared bounded-TTL store (for example Redis/Django cache) for cross-request state and define consume-once/idempotency behavior.
 
-**19. `strip_fences()` must handle newlines after the opening fence.**
-LLMs sometimes return ` ```json\n{...}\n``` ` (newline immediately after `json`). A regex that only strips ` ```json ` (with a space) will leave a leading newline, causing `json.loads()` to fail. Use `re.sub(r'^```(?:json)?\s*', '', s)` (with `\s*`) to strip the fence and any trailing whitespace including newlines.
+## 9. Flutter navigation objects must not be recreated in `build`
 
----
+Recreating routing/stateful infrastructure during rebuilds resets state and causes hard-to-debug navigation behavior.
 
-## Product
+**Rule:** initialize long-lived navigation/state infrastructure at the proper lifecycle/application level.
 
-**20. IAmina is NOT a POC — it is a real medical product.**
-Never refer to IAmina as a "proof of concept", "POC", "demo", or "prototype" in code comments, documentation, commit messages, or conversation. It is a production medical application used by real patients managing diabetes. Consequences of incorrect framing: reduced rigor in safety decisions, misleading documentation, loss of user trust.
+## 10. Provider state must be registered before `watch/read`
 
----
+Flutter Provider lookups fail at runtime when types are not registered at the correct ancestor.
 
-## Medical / Clinical
+**Rule:** every dependency accessed through context must have an explicit provider registration path and test coverage for the screen entry point.
 
-**21. Treatment-type-specific advice must be conditional on `treatment_type`.**
-Never include insulin-specific instructions (e.g. "check your dose", "verify your injection") in generic alert messages shown to all patients. Type 2 patients on oral medication or lifestyle-only management will receive confusing or inapplicable advice — "check your insulin" has no meaning for them and may cause distress or unsafe self-experimentation.
+## 11. Avoid unbounded layout combinations
 
-**Rule:** Before including any insulin-related content in an alert or recommendation, check `profile.treatment_type` and gate on `insulin_dependent` / `insulin_pump` / `mdi` values. Always provide a safe universal fallback ("Ne modifie pas ton traitement sans avis médical.") for patients whose treatment type is unknown or non-insulin.
+`Expanded` inside an unconstrained scroll context can produce blank/broken layouts.
 
-*Caught in diabetologist review (commit e64a8b6): `HYPER_SEVERE` alert previously instructed all patients to "Vérifiez votre insuline" — removed and replaced with universal guidance.*
+**Rule:** reason explicitly about constraints when mixing flex and scrolling widgets.
 
-**22. Demo seed staleness — IAmina 14-day window.**
-`setup_demo` seeds log entries with absolute dates at first run. After 14 days all entries fall outside IAmina's analysis window, causing it to report "pas de données" despite the DB containing records. This produces silent degradation: the app appears functional but the AI returns useless responses.
+## 12. Do not reintroduce integer-index navigation coupling
 
-**Fix pattern:** Never store absolute seed dates. Either:
-- Use relative dates (`now() - N days`) recomputed at each seed call, or
-- Add a `--reset` flag (`python manage.py setup_demo --reset`) that deletes and reseeds entries relative to today.
-**Always run `setup_demo --reset` before a demo or QA session longer than 14 days after initial setup.**
+Historical navigation used duplicated integer→route mappings that drifted.
 
----
+**Rule:** keep navigation generated from one route/module configuration source. Do not re-create parallel index switch tables.
 
-## Backend / Infrastructure
+## 13. Flutter web is not a normal DOM application
 
-**23. Never use a module-level dict as a cross-request session store.**
-`_pending: dict = {}` in `documents.py` worked in single-process dev but silently failed on any multi-worker deploy (Gunicorn `--workers 3` = 3 separate dicts; `confirm_import` on a different worker always returns 404). Also a DoS vector: unauthenticated uploads with no TTL bloat memory indefinitely.
+Canvas-rendered Flutter surfaces cannot be reliably tested with ordinary text/CSS selectors as if they were HTML widgets.
 
-**Fix pattern:** Use `django.core.cache` (backed by Redis in production). Set a bounded TTL (`_PENDING_TTL = 3600`). Use namespaced keys (`"pulper:pending:{batch_id}"`). Consume-once semantics: `cache.get()` then `cache.delete()` before processing, not `pop()` on a dict.
+**Rule:** use Flutter widget/integration testing for product UI behavior; browser automation may still be useful for shell/network/smoke concerns where selectors actually exist.
 
-**Note:** Django cache with `IGNORE_EXCEPTIONS=True` gracefully degrades to `None` on Redis miss — the app stays up, the user sees "Session expirée — veuillez réimporter" and can retry.
+## 14. Never trust model output shape without validation
 
----
+Models can ignore requested JSON schemas, add fences, rename keys, or return prose.
 
-## IAmina — Throttle & Streaming
+**Rule:** strict parser/validator + bounded aliases only when justified + deterministic fallback. A prompt is not a schema guarantee.
 
-**24. Advice throttle SSE : la garantie est sur ce que le patient voit, pas sur la DB.**
-Le tail-hold (sentence-buffering dans `_event_generator()`) filtre les disclaimers avant qu'ils atteignent le client. Pour le premier disclaimer de la fenêtre 24h : le client le voit, le timestamp est stampé, et `apply_advice_throttle()` dans `stream_chat()` le retire ensuite de `full_reply` avant persist DB. La copie DB n'a donc pas le disclaimer — c'est voulu. Ce qui compte est que le patient l'a vu et que le timestamp est posé.
+## 15. Streaming output and persisted transcript may differ
 
-**Règle :** ne jamais supposer que DB reflète exactement ce que le patient a vu en mode SSE. Le canal d'autorité pour "le patient a vu le disclaimer" est `deep_memory.last_advice_given_at`, pas l'historique de chat.
+Filtering/throttling can operate on streamed content before or after persistence.
 
-**25. Arabic comma ، (U+060C) non couvert par `_SENTENCE_RE`.**
-`_SENTENCE_RE = re.compile(r'(?<=[.!?؟\n])\s+')` ne split pas sur ،. Conséquence : une réponse Darija courte du type `"الماكلة زينة، شوف الطبيب."` est traitée comme une seule phrase. Si suppression tenterait de la vider, `apply_advice_throttle()` retourne l'original (garde anti-vide) — le disclaimer passe, timestamp inchangé.
+**Rule:** document which state is authoritative for safety/audit claims; never assume the stored chat row is byte-identical to what the patient saw.
 
-**À ne pas corriger en ajoutant ، au splitter :** trop agressif, ، est une virgule ordinaire en arabe. Le garde anti-vide est le bon comportement. Documenter comme gap accepté, pas comme bug à corriger.
+## 16. Language punctuation/tokenization rules are not universal
+
+Sentence splitting and safety matching designed around French/English punctuation can behave differently in Arabic-script or mixed-language text.
+
+**Rule:** treat tokenizer/sentence-boundary behavior as locale-sensitive and test native examples; do not “fix” punctuation globally without false-positive analysis.
+
+## 17. Treatment-context wording must never imply autonomous treatment change
+
+Generic clinical alerts can accidentally contain treatment-specific wording that is irrelevant or unsafe for other patient profiles.
+
+**Rule:** keep patient-facing guidance within the companion boundary and avoid dose/treatment-change instructions. Treatment-context-specific wording requires explicit safe gating and clinical review.
+
+## 18. A deterministic safety gate is only useful if every interactive path reaches it
+
+Adding a new endpoint or modality can accidentally bypass the established safety chain.
+
+**Rule:** endpoint/provider expansion must include route registration and tests proving safety interception occurs before generative processing.
+
+## 19. “PHI stripped” is not a blanket proof of safe model egress
+
+Media, raw context, identifiers embedded in text, or alternate direct call paths can still disclose sensitive information.
+
+**Rule:** privacy must be enforced at one outbound boundary with default-deny payload/media policy; do not rely on one pseudonymizer call as a global claim.
+
+## 20. Location is not language, consent, or emergency jurisdiction logic
+
+Automatically inferring all locale behavior from country/IP creates wrong and potentially unsafe assumptions.
+
+**Rule:** location may suggest. The user confirms language/dialect; emergency resources and consent rules are explicit jurisdictional configuration.
+
+## 21. Do not call IAmina a POC — but do not falsely claim deployment either
+
+The previous wording swung between “POC/demo” and “production app used by real patients.” Both can be misleading.
+
+**Rule:** describe the actual stage precisely: **real product under development / pre-pilot or closed-pilot status as recorded in ROADMAP**. Never lower engineering rigor by calling it a toy, and never claim real-patient/GA status before it is true.
+
+## 22. Historical architecture is not current instruction
+
+Old platform plans and accepted-then-superseded directions remain useful evidence but can mislead agents.
+
+**Rule:** active work comes from ROADMAP + current ARCHITECTURE. Historical docs must be labeled and must not carry “next step” authority.

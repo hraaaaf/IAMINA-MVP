@@ -1,137 +1,86 @@
-# IAmina — Claude Code Session Memory
+# IAmina — Agent Brief
 
-## Current Branch
-dev
+This file is a **stable execution brief**, not a session diary or status tracker.
 
-## Quick Start
+## Read first
+
+1. `docs/ROADMAP.md` — single forward backlog and gates.
+2. `docs/architecture/ARCHITECTURE.md` — current architecture and target boundaries.
+3. `docs/CONTRIBUTING.md` — workflow + non-negotiable safety rules.
+4. `docs/MISTAKES.md` — reusable engineering lessons.
+
+Do not infer current priorities from old commit messages, assessments, archived transformation plans, or historical phase numbers.
+
+## Product doctrine
+
+- IAmina is a **MENA diabetes companion**.
+- Diabetes is the only live condition.
+- MENA rollout is country-by-country and locale-by-locale.
+- Language/dialect is user-selected; location may suggest but never silently decide.
+- Deterministic clinical/safety logic decides; generative models may verbalize approved minimized output or perform explicitly permitted media tasks.
+- No diagnosis, prescription, or treatment optimization.
+- Privacy, consent, minimization, and data-sovereignty constraints apply before provider convenience.
+- D90 retention + a credible payer/distribution signal gate disease/module expansion.
+
+## Current strategic reset
+
+The critical path is:
+
+1. Enforce one outbound AI/data-egress boundary.
+2. Define MENA locale + safety contract.
+3. Migrate sovereignty-critical auth from legacy Firebase dependencies to Django-native identity.
+4. Benchmark text/STT/vision providers independently.
+5. Deploy one safe pilot locale/cohort.
+6. Measure D90 and decide.
+
+See `docs/ROADMAP.md` for exact checkboxes.
+
+## Architecture facts
+
+- Frontend: Flutter only.
+- Backend: Django + django-ninja.
+- Database: PostgreSQL for Docker/staging/production path; SQLite may exist as lightweight manual-dev fallback.
+- Auth: Firebase bridge is **legacy current-state**, not the target architecture.
+- AI: provider-specific runtime exists as legacy current-state; target is a provider-agnostic, privacy-gated outbound boundary.
+- Chassis/module seams from ADR-0008 exist, but **this does not authorize multi-condition product expansion**.
+- Diabetes owns diabetes-specific clinical data and logic.
+- Shared core owns cross-cutting identity/contracts/safety/observability concerns.
+
+## Non-negotiable invariants
+
+- Never bypass or silently reorder emergency and unit-normalization safety gates.
+- Never let an external model decide emergency handling.
+- Never send unapproved identifiers, unrelated raw clinical history, or media to a model provider.
+- Every external AI/media call must ultimately pass the sanctioned outbound boundary.
+- Never add a locale/dialect to a patient pilot without native safety parity and emergency-resource validation.
+- KPIs remain SQL-first where ADR-0007 applies.
+- `client_uuid` remains the offline-sync idempotency key.
+- Do not edit historical ADRs to rewrite the past; add a superseding ADR when a decision changes.
+
+## Work rules
+
+- `main` is the current canonical branch in this repository.
+- One roadmap unit = one short-lived branch = one focused PR.
+- Keep status in `docs/ROADMAP.md`; do not create parallel state files or append session logs here.
+- Update docs only when the change alters a durable contract, architecture fact, guardrail, or forward backlog.
+- Historical documents are evidence, not instructions.
+- Never commit `.env`, service-account credentials, API keys, local agent permission files containing secrets, or generated secret-bearing configuration.
+
+## Validation baseline
+
+Run the checks relevant to the changed surface before merge. At minimum for mixed backend/frontend work:
+
 ```bash
-./dev.sh        # setup (first run) + backend + frontend
-./run.sh        # backend only (VM / production)
+python backend/manage.py check
+python -m pytest
+cd frontend && flutter analyze && flutter test
 ```
 
-## Session State (2026-06-16)
-> **Phase status lives in `docs/ROADMAP.md` (Phases 18–26) — the single tracker. Don't duplicate it here.**
-> History of the chassis detour: `docs/architecture/ARCHITECTURE-TIMELINE.md`. Detailed build
-> record: `docs/architecture/platform-transformation-plan.md` (archived).
-- **Branch:** `dev` is the integration branch; latest chassis work (P6-A + P8.1 + audit port) merged at `d96ae44`.
-- **Tests:** backend 764 passed / 3 xfailed; import-linter 2 kept / 0 broken.
-- **Next actionable (single-module value):** auth→DiabetesProfile lazy-creation fix (login-path,
-  careful), then route diabetes engine→llm via `core/llm_gateway` + re-enable the llm import-linter
-  contract. (ROADMAP → "Platform seam debt".)
-- **Gated:** P7 (D90 retention), P7.4 DetectorRegistry, P7.5 (companion→core + table moves), P6-B URL namespacing.
-- **Active blocker:** Kimi `KIMI_API_KEY` pending (blocks the Gemini→Kimi LLM cutover).
-- **Known bug:** demo data stale after ~14 days → `setup_demo --reset` before demos (MISTAKES #22).
-- **Note:** `export_openapi` needs `django-redis` (in requirements.txt; `pip install -r` if it errors "No module named 'django_redis'").
+Security/safety changes require focused tests proving the guardrail itself, not only broad regression tests.
 
-## Architecture (locked — see docs/adr/ + docs/architecture/ARCHITECTURE.md)
-- Monorepo: Flutter frontend + Django Ninja backend
-- **Platform chassis + modules (ADR-0008, 2026-06-04). Chassis built: P0–P6 + P8.1 merged on `dev`.**
-  One live module (diabetes); second module gated behind the Retention Gate (ROADMAP Phase 25).
-- **Strategy: Darija/Arabic diabetes companion (not medical-device). Morocco = beachhead,
-  Gulf + pharma B2B = monetization. #1 metric = 90-day retention** (Phase 16 = top priority).
-- Backend: Django 6.0.3 + django-ninja + Firebase Admin SDK
-- Frontend: Flutter/Dart — GoRouter 14, Drift 2.20, Provider
-- Auth: Firebase Auth (JWT) → Django custom backend
-- DB dev: SQLite | DB prod: PostgreSQL
-- LLM current: Gemini 2.5 Flash (active)
-- LLM target: Kimi 2.5 Moonshot (Phase 5 — pending API key)
-- Platforms: PWA + iOS + Android (Windows not configured)
-- **core/contracts/:** ModuleManifest, ModulePatientContext, DomainContext, CompanionIdentity
-- **core/registry.py:** ModuleRegistry + RegisteredModule — chassis module registry (P3)
-- **core/llm_gateway.py:** narrate() — sole sanctioned LLM entry point
-- **core/safety_registry.py:** AppendOnlyTriageRegistry + TRIAGE_REGISTRY singleton
-- **core/middleware/triage_vital.py:** TriageVitalMiddleware (moved from diabetes/middleware/)
-- **diabetes/manifest.py:** DIABETES_MANIFEST frozen dataclass (P3)
+## Commit format
 
-## Critical — Never Touch Without Explicit Order
-- `TriageVitalMiddleware` — medical emergency gate, never bypass
-- `UnitGuardMiddleware` — glucose unit normalization, upstream of all AI logic
-- `client_uuid` on `LogEntry` — offline sync idempotency
-- `BasePatientProfile.firebase_uid` — bridge Firebase Auth ↔ Django User (P2: moved from PatientProfile to chassis)
-
-## Conventions (enforced)
-- KPIs: SQL-first, never Python-computed (ADR-0007)
-- LLM input: English Pivot Text only, never raw patient data
-- Offline-first: Drift local → batch sync via SyncService
-- Error handling: `except Exception → log → FallbackProvider` (static template); `QuotaExhaustedProvider` when Gemini daily cap hit
-- Medical urgency: fixed pre-validated response, never routed to LLM
-- Priority order: Security > Integrity > Performance > Style
-- Code principles: SOLID, DRY, KISS — no premature abstraction
-
-## Known Technical Debt
-### Blocking deployment
-- [x] firebase-credentials.json exposed in repo (REVOKED)
-- [x] SECRET_KEY hardcoded default → now raises ValueError
-- [x] CORS_ALLOWED_ORIGINS unrestricted → validation added
-- [x] Demo credentials hardcoded → now String.fromEnvironment
-- [x] .env duplicated → consolidated to project root
-
-### Next sprint
-- [x] Flutter API URL hardcoded → String.fromEnvironment('API_BASE_URL')
-- [x] Drift MigrationStrategy added (schemaVersion 3, v1→v2→v3)
-- [x] Edit + delete log entries (swipe-to-delete, tap-to-edit)
-- [x] mmol/L conversion on save
-- [x] SSE streaming chat
-- [x] IAminaMemorySnapshot — DB persistence for IAmina memory
-- [x] AuditLog + RGPD endpoints (consent, DELETE /account)
-- [x] AGP real percentiles (PERCENTILE_CONT PG / Python linear interpolation SQLite)
-- [x] Gemini rate-guard → QuotaExhaustedProvider → Kimi failover
-- [x] Sprint 4 Flutter: IAmina post-save sheet, sleep/fatigue, date picker, danger dialog
-- [x] Dashboard UX: seed guard (kDebugMode), dead links wired, touch targets 44px
-- [x] P0/P1 clinical engine fixes: insulin prescription removed, CV→ADA 36%, Somogyi≥2, Moroccan foods, top_culprit Counter
-- [x] P2-A: Darija (ar-MA) fallback strings all 8 clinical detectors
-- [x] P2-B: GMI confidence tiers (high/medium/low/null) + visual badges frontend
-- [x] P2-C: AGP real CustomPainter (p5/p25/p50/p75/p95 bands) replacing fl_chart LineChart
-- [x] Dockerize backend (Dockerfile + gunicorn)
-- [x] docker-compose.yml (Django + Postgres + Redis)
-- [x] CI/CD (GitHub Actions: ruff, pytest, flutter analyze) + bandit SAST
-- [x] Increase Test Coverage (Target: 70%, Current: ~70% — 232 tests, sql_analytics fully covered)
-- [x] S4 — core/observability/ events + ClinicalLogger + emit_inactive_events (672 tests)
-- [x] S5 — GET /api/v1/analytics/overview retention dashboard (staff-only)
-- [x] P0 — Spec & Decisions (ADR-0008, contracts, rename) — 705 tests
-- [x] P1 — Security Foundations (triage registry, RGPD hooks, PHI, gateway) — 705 tests
-- [x] P2 — PatientProfile split (BasePatientProfile + DiabetesProfile + PatientModule) — 720 tests
-- [x] P3 — Module Registry + Chassis Router (ModuleRegistry, DIABETES_MANIFEST, dynamic routes, activation endpoint) — 731+ tests
-- [x] P4.5 — Companion on single analyze()→DomainContext (completes P4.2): enriched DomainContext + DomainAlert, core/companion/clinical.py engine resolver+cache, session_cache retired; companion/ has zero module imports — 764 tests
-- [ ] Kimi activation (blocked: API key)
-- [x] Dashboard: NavigationBar (ShellRoute) — sidebar + bottom nav redesigned, /ajouter full-screen
-- [x] Add Log: express mode (3 taps) vs detailed mode — AnimatedContainer expand toggle
-
-### Refactor
-- [x] Dashboard context.watch → context.read
-- [x] API Client 401 refresh + 5xx backoff
-- [x] KPI deduplication (SQL-only endpoint)
-- [x] Firebase mobile config scaffold (stubs)
-- [ ] Firebase iOS/Android: real values from Firebase Console
-- [ ] Django admin: confirm removal timeline
-- [x] S1 — BaseEngine ABC seam in core/engine/base.py (DA-03, faible risque)
-- [x] S2 — LLMPipeline + LoggingMiddleware + PHI gaps fix (DA-03, risque moyen)
-- [x] S3 — Move account/auth/health endpoints → core/api/v1/ (DA-03, faible risque)
-
-## Open Decisions
-- Firebase mobile config: when will firebase_options.dart be configured for iOS/Android?
-- Django admin: no timeline set — confirm before deploying
-- D90 retention threshold: non fixé (placeholder ≥25% dans ROADMAP) — à confirmer quand données réelles disponibles
-- [x] PatientProfile split (P2 DONE): core.BasePatientProfile (chassis identity) + diabetes.DiabetesProfile (module extension) + core.PatientModule (junction table). Backward-compat alias PatientProfile = DiabetesProfile removed in P3.
-
-## Rules
-- Read this file at start of every session
-- **`docs/ROADMAP.md` is the single backlog + status tracker** — pick the next unstarted unit from it; never duplicate its phase status here
-- **Replace** the "Session State" block before closing — never append a new one (that's how it drifted to 3 stacked blocks)
-- Handoff lives in git (branch + PR + ROADMAP checkboxes), not a separate status file — see `docs/CONTRIBUTING.md` → "Working in parallel"
-- If decision conflicts with ADR, STOP and ask
-- `docs/MISTAKES.md` is mandatory — read at session start, update on new errors
-- Never modify middleware order without explicit approval
-
-## Session Workflow
-1. **Start:** Read CLAUDE.md + docs/MISTAKES.md + docs/ROADMAP.md; `git checkout dev && git pull`
-2. **Execute:** One unit from ROADMAP → one short-lived branch off `dev` → one small PR
-3. **Test:** Run Django check + flutter analyze before closing
-4. **Document (2 steps):** tick the ROADMAP checkbox(es); refresh (replace) this file's Session State block
-5. **Close:** Commit with type(scope): description format
-
-## Commit Format
-```
+```text
 feat(scope): description
 fix(scope): description
 chore(scope): description
