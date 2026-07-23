@@ -31,13 +31,13 @@ class BasePatientProfileTests(TestCase):
         )
 
     def test_base_profile_has_identity_fields(self):
-        """BasePatientProfile has all chassis identity fields."""
+        """BasePatientProfile has all chassis identity fields without fabricated facts."""
         self.assertEqual(self.base.patient, self.user)
         self.assertEqual(self.base.firebase_uid, "p2-uid-alice")
         self.assertEqual(self.base.preferred_language, "ar-MA")
         self.assertIsNone(self.base.ai_consent_given_at)
         self.assertIsNone(self.base.premium_valid_until)
-        self.assertEqual(self.base.gender, "female")
+        self.assertIsNone(self.base.gender)
         self.assertEqual(self.base.date_of_birth, date(1990, 5, 15))
         self.assertIsNone(self.base.weight)
         self.assertIsNone(self.base.height)
@@ -56,7 +56,7 @@ class BasePatientProfileTests(TestCase):
             with transaction.atomic():
                 BasePatientProfile.objects.create(
                     patient=other_user,
-                    firebase_uid="p2-uid-alice",  # duplicate
+                    firebase_uid="p2-uid-alice",
                     date_of_birth=date(1988, 1, 1),
                 )
 
@@ -123,7 +123,6 @@ class P2RoundTripTests(TestCase):
             diabetes_type="type1",
             treatment_type="insulin_pump",
         )
-        # Re-fetch from DB
         fetched_base = BasePatientProfile.objects.get(firebase_uid="rt-uid-001")
         self.assertEqual(fetched_base.patient, user)
         self.assertEqual(fetched_base.preferred_language, "fr")
