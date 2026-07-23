@@ -1,11 +1,9 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, List, Optional
 from uuid import UUID
 
 from ninja import Schema
 from pydantic import Field
-
-from diabetes.models import LogEntry
 
 # ── Shared constraint ─────────────────────────────────────────────────────────
 # Physiological range accepted at the API boundary (30–600 mg/dL).
@@ -22,7 +20,7 @@ class PatientProfileSchema(Schema):
     unit_preference: str
     preferred_language: str = "ar-MA"
     gender: Optional[str] = None
-    date_of_birth: Optional[datetime] = None
+    date_of_birth: Optional[date] = None
     weight: Optional[float] = None
     height: Optional[float] = None
 
