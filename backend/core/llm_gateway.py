@@ -1,0 +1,139 @@
+"""
+core/llm_gateway.py — The ONLY sanctioned LLM call surface for the chassis.
+
+Modules must call narrate() instead of importing get_llm() directly.
+PHI is stripped before reaching the model; the response is unmasked after.
+
+Data flow:
+  ModulePatientContext + DomainContext + CompanionIdentity
+    → build system/user prompts
+    → PHIPseudonymizer.mask() on both prompts
+    → LLMPipeline (PHIStrippingMiddleware → LoggingMiddleware → inner provider)
+    → PHIPseudonymizer.unmask_medical_report() on response.content
+    → str
+
+See docs/architecture/module-contract-spec.md section 4 (narrate() contract).
+"""
+import logging
+from collections.abc import Iterator
+
+from core.contracts.companion_identity import CompanionIdentity
+from core.contracts.domain_context import DomainContext
+from core.contracts.patient_context import ModulePatientContext
+from core.medical_safety import medical_streaming_enabled
+from llm.factory import get_llm
+from llm.middleware.logging import LoggingMiddleware
+from llm.middleware.phi_stripping import PHIStrippingMiddleware
+from llm.pipeline import LLMPipeline
+from llm.pseudonymizer import PHIPseudonymizer
+
+logger = logging.getLogger(__name__)
+
+
+class GatewayLLM:
+    """
+    Shared LLM client that enforces the same gateway protections for companion paths.
+
+    Stream remains buffered unless medical streaming is explicitly enabled.
+    """
+
+    def __init__(self) -> None:
+        self._pseudonymizer = PHIPseudonymizer()
+        self._provider = get_llm()
+        self._pipeline = LLMPipeline(
+            self._provider,
+            [PHIStrippingMiddleware(), LoggingMiddleware()],
+        )
+
+    def complete(self, system: str, user: str):
+        safe_system = self._pseudonymizer.mask(system)
+        safe_user = self._pseudonymizer.mask(user)
+        response = self._pipeline.complete(safe_system, safe_user)
+        response.content = self._pseudonymizer.unmask_medical_report(response.content)
+        return response
+
+    def stream(self, system: str, user: str) -> Iterator[str]:
+        if not medical_streaming_enabled():
+            yield self.complete(system, user).content
+            return
+
+        safe_system = self._pseudonymizer.mask(system)
+        safe_user = self._pseudonymizer.mask(user)
+        chunks = list(self._provider.stream(safe_system, safe_user))
+        restored = self._pseudonymizer.unmask_medical_report("".join(chunks))
+        yield restored
+
+    def think(self, system: str, user: str) -> tuple[str, str]:
+        safe_system = self._pseudonymizer.mask(system)
+        safe_user = self._pseudonymizer.mask(user)
+        thinking, response = self._provider.think(safe_system, safe_user)
+        return (
+            self._pseudonymizer.unmask_medical_report(thinking),
+            self._pseudonymizer.unmask_medical_report(response),
+        )
+
+
+def get_gateway_llm() -> GatewayLLM:
+    return GatewayLLM()
+
+
+def narrate(
+    patient_context: ModulePatientContext,
+    domain_context: DomainContext,
+    companion_identity: CompanionIdentity,
+    language: str,
+) -> str:
+    """
+    The ONLY sanctioned LLM call surface for the chassis.
+
+    Modules must call this instead of importing get_llm() directly.
+    PHI is stripped before reaching the model; response is unmasked after.
+
+    Args:
+        patient_context: Frozen patient snapshot (no ORM objects, no raw PHI).
+        domain_context:  Clinical output from module.analyze() — KPIs + patterns + pivot.
+        companion_identity: Companion persona (name, domain, unit).
+        language: BCP-47 language code for the response (e.g. "fr", "ar-MA").
+
+    Returns:
+        str — narrative text in the requested language.
+
+    Raises:
+        PHILeakError: if PHI patterns are detected in the prompts after masking.
+        Exception: propagated from the LLM provider on unrecoverable errors.
+    """
+    pseudonymizer = PHIPseudonymizer()
+    llm = LLMPipeline(get_llm(), [PHIStrippingMiddleware(), LoggingMiddleware()])
+
+    system = _build_system_prompt(companion_identity, language)
+    user = _build_user_prompt(domain_context, patient_context)
+
+    # Strip PHI before sending to the LLM pipeline
+    system = pseudonymizer.mask(system)
+    user = pseudonymizer.mask(user)
+
+    response = llm.complete(system, user)
+
+    # Restore any session tokens introduced by pseudonymizer (safe no-op if none were added)
+    return pseudonymizer.unmask_medical_report(response.content)
+
+
+def _build_system_prompt(identity: CompanionIdentity, language: str) -> str:
+    """Build the system prompt from companion identity and target language."""
+    from companion.prompts import build_system_prompt
+    return build_system_prompt(identity, language, tone="encouraging")
+
+
+def _build_user_prompt(
+    domain_context: DomainContext,
+    patient_context: ModulePatientContext,
+) -> str:
+    """Build the user prompt from domain context and patient context."""
+    lines = []
+    if domain_context.pivot_text:
+        lines.append(domain_context.pivot_text)
+    if domain_context.kpi_summary:
+        lines.append(f"KPIs: {domain_context.kpi_summary}")
+    if domain_context.detected_patterns:
+        lines.append(f"Patterns: {', '.join(domain_context.detected_patterns)}")
+    return "\n".join(lines) if lines else "No clinical data available."

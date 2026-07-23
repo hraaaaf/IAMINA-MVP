@@ -1,0 +1,611 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "IAmina API",
+    "version": "0.1.0",
+    "description": "Diabetes companion API — Flutter web/iOS/Android + 3rd party integrations"
+  },
+  "paths": {
+    "/api/v1/logs": {
+      "get": {
+        "operationId": "tracking_api_v1_logs_list_logs",
+        "summary": "List Logs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LogEntrySchema"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "logs"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "tracking_api_v1_logs_create_log",
+        "summary": "Create Log",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogEntrySchema"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "logs"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogEntryCreateSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/logs/{log_id}": {
+      "get": {
+        "operationId": "tracking_api_v1_logs_get_log",
+        "summary": "Get Log",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "log_id",
+            "schema": {
+              "title": "Log Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogEntrySchema"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "logs"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "tracking_api_v1_logs_delete_log",
+        "summary": "Delete Log",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "log_id",
+            "schema": {
+              "title": "Log Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "logs"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile": {
+      "get": {
+        "operationId": "tracking_api_v1_profile_get_profile",
+        "summary": "Get Profile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientProfileSchema"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profile"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/summary": {
+      "post": {
+        "operationId": "tracking_api_v1_ai_get_summary",
+        "summary": "Get Summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Generate IAmina summary for a patient's recent logs.\n\nPhase 2 MVP: Returns template response based on log patterns.\nPhase 6: Integrates clinical_engine + LLM reformulation.",
+        "tags": [
+          "ai"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/chat": {
+      "post": {
+        "operationId": "tracking_api_v1_ai_chat_with_amina",
+        "summary": "Chat With Amina",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Chat endpoint for persistent conversation with IAmina.\n\nPhase 2 MVP: Returns template response.\nPhase 6: Integrates LLM + conversation history.",
+        "tags": [
+          "ai"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "LogEntrySchema": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "logged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logged At"
+          },
+          "meal_type": {
+            "title": "Meal Type",
+            "type": "string"
+          },
+          "blood_sugar": {
+            "title": "Blood Sugar",
+            "type": "number"
+          },
+          "meal_description": {
+            "default": "",
+            "title": "Meal Description",
+            "type": "string"
+          },
+          "insulin_units": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insulin Units"
+          },
+          "exercised": {
+            "default": "no",
+            "title": "Exercised",
+            "type": "string"
+          },
+          "sleep_quality": {
+            "default": "good",
+            "title": "Sleep Quality",
+            "type": "string"
+          },
+          "stressed": {
+            "default": "no",
+            "title": "Stressed",
+            "type": "string"
+          },
+          "fatigue_level": {
+            "default": "ok",
+            "title": "Fatigue Level",
+            "type": "string"
+          },
+          "is_sick": {
+            "default": "no",
+            "title": "Is Sick",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "logged_at",
+          "meal_type",
+          "blood_sugar",
+          "created_at"
+        ],
+        "title": "LogEntrySchema",
+        "type": "object"
+      },
+      "LogEntryCreateSchema": {
+        "properties": {
+          "logged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logged At"
+          },
+          "meal_type": {
+            "default": "",
+            "title": "Meal Type",
+            "type": "string"
+          },
+          "blood_sugar": {
+            "title": "Blood Sugar",
+            "type": "number"
+          },
+          "meal_description": {
+            "default": "",
+            "title": "Meal Description",
+            "type": "string"
+          },
+          "insulin_units": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insulin Units"
+          },
+          "exercised": {
+            "default": "no",
+            "title": "Exercised",
+            "type": "string"
+          },
+          "sleep_quality": {
+            "default": "good",
+            "title": "Sleep Quality",
+            "type": "string"
+          },
+          "stressed": {
+            "default": "no",
+            "title": "Stressed",
+            "type": "string"
+          },
+          "fatigue_level": {
+            "default": "ok",
+            "title": "Fatigue Level",
+            "type": "string"
+          },
+          "is_sick": {
+            "default": "no",
+            "title": "Is Sick",
+            "type": "string"
+          }
+        },
+        "required": [
+          "blood_sugar"
+        ],
+        "title": "LogEntryCreateSchema",
+        "type": "object"
+      },
+      "Error": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "Error",
+        "type": "object"
+      },
+      "PatientProfileSchema": {
+        "properties": {
+          "diabetes_type": {
+            "title": "Diabetes Type",
+            "type": "string"
+          },
+          "treatment_type": {
+            "title": "Treatment Type",
+            "type": "string"
+          },
+          "target_range_low": {
+            "title": "Target Range Low",
+            "type": "number"
+          },
+          "target_range_high": {
+            "title": "Target Range High",
+            "type": "number"
+          },
+          "unit_preference": {
+            "title": "Unit Preference",
+            "type": "string"
+          },
+          "gender": {
+            "default": "",
+            "title": "Gender",
+            "type": "string"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "format": "double",
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "format": "double",
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          }
+        },
+        "required": [
+          "diabetes_type",
+          "treatment_type",
+          "target_range_low",
+          "target_range_high",
+          "unit_preference"
+        ],
+        "title": "PatientProfileSchema",
+        "type": "object"
+      },
+      "SummaryResponse": {
+        "properties": {
+          "insights": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Insights",
+            "type": "array"
+          },
+          "alerts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "kpis": {
+            "additionalProperties": true,
+            "title": "Kpis",
+            "type": "object"
+          },
+          "recommendations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recommendations",
+            "type": "array"
+          },
+          "next_steps": {
+            "title": "Next Steps",
+            "type": "string"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "insights",
+          "alerts",
+          "kpis",
+          "recommendations",
+          "next_steps",
+          "generated_at"
+        ],
+        "title": "SummaryResponse",
+        "type": "object"
+      },
+      "SummaryRequest": {
+        "properties": {
+          "days": {
+            "default": 21,
+            "title": "Days",
+            "type": "integer"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "integer"
+          }
+        },
+        "title": "SummaryRequest",
+        "type": "object"
+      },
+      "ChatResponse": {
+        "properties": {
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reply",
+          "conversation_id",
+          "timestamp"
+        ],
+        "title": "ChatResponse",
+        "type": "object"
+      },
+      "ChatRequest": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "context_type": {
+            "default": "general",
+            "title": "Context Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ChatRequest",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "SessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sessionid"
+      }
+    }
+  },
+  "servers": []
+}

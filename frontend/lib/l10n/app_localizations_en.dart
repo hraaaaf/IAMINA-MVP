@@ -1,0 +1,312 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for English (`en`).
+class AppLocalizationsEn extends AppLocalizations {
+  AppLocalizationsEn([String locale = 'en']) : super(locale);
+
+  @override
+  String get appTitle => 'IAmina';
+
+  @override
+  String get appSubtitle => 'Diabetes Companion';
+
+  @override
+  String get appTagline => 'Your blood sugar balance, every day';
+
+  @override
+  String get brandName => 'Diabetes Log';
+
+  @override
+  String get brandTagShort => 'AI · AMINA';
+
+  @override
+  String get dataPrivacyNote => 'Pseudonymised data';
+
+  @override
+  String get sensorStatus => 'Sensor G7 · IAmina';
+
+  @override
+  String get login => 'Log in';
+
+  @override
+  String get logout => 'Log out';
+
+  @override
+  String get signIn => 'Sign in';
+
+  @override
+  String get signOut => 'Sign out';
+
+  @override
+  String get signOutConfirmTitle => 'Sign out?';
+
+  @override
+  String get signOutConfirmBody =>
+      'Your data remains saved. You can sign back in at any time.';
+
+  @override
+  String get confirmSignOut => 'Sign out';
+
+  @override
+  String get createAccount => 'Create account';
+
+  @override
+  String get forgotPassword => 'Forgot password?';
+
+  @override
+  String get resetPassword => 'Reset password';
+
+  @override
+  String get resetPasswordDescription =>
+      'Enter your email address. You will receive a link to create a new password.';
+
+  @override
+  String get resetEmailSent => 'Email sent — check your inbox.';
+
+  @override
+  String get emailNotFound => 'Address not found or invalid email.';
+
+  @override
+  String get loginError => 'Incorrect email or password.';
+
+  @override
+  String get loginSubtitle => 'Sign in to access your health log.';
+
+  @override
+  String get emailLabel => 'Email address';
+
+  @override
+  String get emailPlaceholder => 'you@example.com';
+
+  @override
+  String get passwordLabel => 'Password';
+
+  @override
+  String get send => 'Send';
+
+  @override
+  String get or => 'or';
+
+  @override
+  String get demoAccess => 'Demo access — 21 days of data';
+
+  @override
+  String get dashboard => 'Dashboard';
+
+  @override
+  String get addEntry => 'Add entry';
+
+  @override
+  String get addMeasurement => 'Add a reading';
+
+  @override
+  String get summary => 'IAmina Summary';
+
+  @override
+  String get profile => 'Profile';
+
+  @override
+  String get myProfile => 'My Profile';
+
+  @override
+  String get profileUpdated => 'Profile updated';
+
+  @override
+  String get navSectionMain => 'Main';
+
+  @override
+  String get navSectionAccount => 'Account';
+
+  @override
+  String get navHome => 'Home';
+
+  @override
+  String get navIamina => 'IAmina';
+
+  @override
+  String get navHistory => 'History';
+
+  @override
+  String get navImport => 'Import';
+
+  @override
+  String get navSettings => 'Settings';
+
+  @override
+  String get navJournal => 'Journal';
+
+  @override
+  String get journalSubtitle => 'Full history';
+
+  @override
+  String get glucose => 'Glucose';
+
+  @override
+  String get insulin => 'Insulin';
+
+  @override
+  String get meal => 'Meal';
+
+  @override
+  String get fatigue => 'Fatigue';
+
+  @override
+  String get sick => 'Sick';
+
+  @override
+  String get stressed => 'Stressed';
+
+  @override
+  String get freeMeasurement => 'Free reading';
+
+  @override
+  String get enterValue => 'Enter a value';
+
+  @override
+  String get diabetesType => 'Diabetes type';
+
+  @override
+  String get diabetesType1 => 'Type 1 Diabetes';
+
+  @override
+  String get diabetesType2 => 'Type 2 Diabetes';
+
+  @override
+  String get diabetesGestational => 'Gestational';
+
+  @override
+  String get diabetesPreDiabetes => 'Pre-diabetes';
+
+  @override
+  String get treatment => 'Treatment';
+
+  @override
+  String get treatmentInsulin => 'Insulin';
+
+  @override
+  String get treatmentTablets => 'Tablets';
+
+  @override
+  String get treatmentLifestyle => 'Lifestyle only';
+
+  @override
+  String get glucoseTarget => 'Glucose target (mg/dL)';
+
+  @override
+  String get measureUnit => 'Unit of measure';
+
+  @override
+  String get dangerZone => 'Danger zone';
+
+  @override
+  String get configureWithIamina => 'Configure with IAmina';
+
+  @override
+  String get conversationalAssistant => 'Use the conversational assistant';
+
+  @override
+  String get journalEmpty => 'Your journal is empty';
+
+  @override
+  String get journalEmptySubtitle =>
+      'Add your first reading\nto start tracking.';
+
+  @override
+  String get last7Days => 'Last 7 days';
+
+  @override
+  String get last30Days => 'Last 30 days';
+
+  @override
+  String get allHistory => 'All history';
+
+  @override
+  String get today => 'TODAY';
+
+  @override
+  String get deleteEntryTitle => 'Delete this reading?';
+
+  @override
+  String get actionIrreversible => 'This action cannot be undone.';
+
+  @override
+  String get entryDeleted => 'Reading deleted';
+
+  @override
+  String get consentTitle => 'Privacy & AI';
+
+  @override
+  String get consentHeadline => 'IAmina analyses your glucose data with AI';
+
+  @override
+  String get consentBody =>
+      'To provide personalised insights, IAmina uses Gemini AI to process your glucose readings, meals, and health context. Your data is pseudonymised before transmission and never sold to third parties.\n\nYou can withdraw this consent at any time from your profile settings.';
+
+  @override
+  String get consentDataPoint1 => '📊 Glucose readings and trends';
+
+  @override
+  String get consentDataPoint2 => '🍽️ Meal context and insulin doses';
+
+  @override
+  String get consentDataPoint3 => '😴 Fatigue and life event markers';
+
+  @override
+  String get consentAccept => 'Accept & continue';
+
+  @override
+  String get consentDeclineWithoutAI => 'Continue without AI';
+
+  @override
+  String get consentAlreadyGiven => 'Consent given';
+
+  @override
+  String get consentWithdraw => 'Withdraw AI consent';
+
+  @override
+  String get consentWithdrawConfirmTitle => 'Withdraw AI consent?';
+
+  @override
+  String get consentWithdrawConfirmBody =>
+      'AI features (IAmina Summary, Chat, Voice) will be disabled until you give consent again.';
+
+  @override
+  String get consentWithdrawn => 'AI consent withdrawn';
+
+  @override
+  String get consentRequired => 'AI consent required to use this feature';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get saveProfile => 'Save';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get edit => 'Edit';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get error => 'Error';
+
+  @override
+  String get loading => 'Loading...';
+
+  @override
+  String get noData => 'No data';
+
+  @override
+  String get welcome => 'Welcome to IAmina';
+}

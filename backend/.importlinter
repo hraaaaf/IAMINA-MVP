@@ -1,0 +1,40 @@
+# Architectural boundary enforcement (import-linter).
+# Run: cd backend && lint-imports
+#
+# Ratchet model: the boundaries we built (P4.5 companion seam, chassis/module
+# split) are enforced strictly. Three pre-existing core→diabetes leaks are
+# allow-listed below as documented debt — no NEW leak can be added, and each
+# allow-list line is a TODO to remove once fixed.
+
+[importlinter]
+root_packages =
+    core
+    companion
+    diabetes
+    llm
+
+[importlinter:contract:companion-independent-of-modules]
+name = Companion runtime must not import any condition module (P4.5 seam)
+type = forbidden
+source_modules =
+    companion
+forbidden_modules =
+    diabetes
+
+[importlinter:contract:core-independent-of-modules]
+name = Chassis (core) must not import any condition module
+type = forbidden
+source_modules =
+    core
+forbidden_modules =
+    diabetes
+ignore_imports =
+    # Tests may use module fixtures/models.
+    core.tests.** -> diabetes.**
+    # DEBT (P2 leftover): auth should create BasePatientProfile only; DiabetesProfile
+    # lazily by the module. Track: lazy-profile-creation.
+    core.api.v1.auth -> diabetes.models
+    # DEBT: triage classifier should be module-registered, not imported by the gate.
+    # Safety-critical middleware — change only with explicit approval (CLAUDE.md).
+    core.middleware.triage_vital -> diabetes.middleware.triage_classification
+    # FIXED: account audit now goes through core.audit port (was -> diabetes.models.AuditLog).

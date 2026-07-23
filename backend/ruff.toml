@@ -1,0 +1,10 @@
+target-version = "py312"
+line-length = 100
+exclude = ["migrations", "__pycache__", "flutter_sdk"]
+
+[lint]
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E501",   # line too long — enforced by formatter, not linter
+    "F401",   # unused import — too noisy during active dev
+]

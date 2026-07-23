@@ -1,0 +1,3184 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "IAmina API",
+    "version": "1.0.0",
+    "description": "Diabetes companion API \u2014 Flutter web/iOS/Android + 3rd party integrations"
+  },
+  "paths": {
+    "/api/v1/auth/firebase": {
+      "post": {
+        "operationId": "core_api_v1_auth_firebase_auth",
+        "summary": "Firebase Auth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Verify Firebase JWT and link/create Django User.\n\nFlow:\n  1. Verify id_token with Firebase Admin SDK \u2192 raises 401 on failure.\n  2. Extract uid (stable) + email from decoded payload.\n  3. Look up Django User by firebase_uid on BasePatientProfile (stable key).\n     Fall back to email lookup for existing accounts not yet migrated.\n  4. Create user + profile if brand new.\n  5. Sync firebase_uid + email on every login (they can change in Firebase).\n  6. Establish Django session for web/PWA clients.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirebaseAuthRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/v1/demo/scenarios": {
+      "get": {
+        "operationId": "diabetes_api_v1_demo_list_demo_scenarios",
+        "summary": "List Demo Scenarios",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DemoScenarioResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/api/v1/demo/seed": {
+      "post": {
+        "operationId": "diabetes_api_v1_demo_seed_demo_data",
+        "summary": "Seed Demo Data",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeedResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Injects 30 days of realistic glucose logs for the current authenticated user.\nIdempotent \u2014 skips if the user already has \u2265 20 entries.",
+        "tags": [
+          "demo"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "operationId": "core_api_v1_health_health_check",
+        "summary": "Health Check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthSchema"
+                }
+              }
+            }
+          }
+        },
+        "description": "Liveness + readiness probe.\n\n- DB unreachable \u2192 503 (blocks gunicorn from receiving traffic)\n- Cache unavailable \u2192 200 degraded (non-fatal: falls back to DB)",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
+    "/api/v1/logs": {
+      "get": {
+        "operationId": "diabetes_api_v1_logs_list_logs",
+        "summary": "List Logs",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "schema": {
+              "default": 50,
+              "title": "Page Size",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedLogsResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Paginated log list.  Query params: ?page=1&page_size=50.\npage_size is clamped to [1, 200] to prevent runaway queries.",
+        "tags": [
+          "logs"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "diabetes_api_v1_logs_create_log",
+        "summary": "Create Log",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogEntrySchema"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "logs"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogEntryCreateSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/logs/batch": {
+      "post": {
+        "operationId": "diabetes_api_v1_logs_batch_create_logs",
+        "summary": "Batch Create Logs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSyncResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "logs"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "$ref": "#/components/schemas/LogEntryCreateSchema"
+                },
+                "title": "Data",
+                "type": "array"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/logs/{log_id}": {
+      "get": {
+        "operationId": "diabetes_api_v1_logs_get_log",
+        "summary": "Get Log",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "log_id",
+            "schema": {
+              "title": "Log Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogEntrySchema"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "logs"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "diabetes_api_v1_logs_update_log",
+        "summary": "Update Log",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "log_id",
+            "schema": {
+              "title": "Log Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogEntrySchema"
+                }
+              }
+            }
+          }
+        },
+        "description": "Partial update \u2014 only supplied fields are written.  404 on cross-patient access.",
+        "tags": [
+          "logs"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogEntryUpdateSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "diabetes_api_v1_logs_delete_log",
+        "summary": "Delete Log",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "log_id",
+            "schema": {
+              "title": "Log Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "logs"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile": {
+      "get": {
+        "operationId": "diabetes_api_v1_profile_get_profile",
+        "summary": "Get Profile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientProfileSchema"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profile"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "diabetes_api_v1_profile_patch_profile",
+        "summary": "Patch Profile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientProfileSchema"
+                }
+              }
+            }
+          }
+        },
+        "description": "Partial update \u2014 only fields explicitly provided are written.\nValidates language choices, unit choices, and physiological glucose bounds.\nInvalidates IAmina session cache when target range or language changes.",
+        "tags": [
+          "profile"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfilePatchSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/kpis/": {
+      "get": {
+        "operationId": "diabetes_api_v1_kpis_get_kpis",
+        "summary": "Get Kpis",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "default": 21,
+              "title": "Days",
+              "type": "integer"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "target_low",
+            "schema": {
+              "default": 70.0,
+              "title": "Target Low",
+              "type": "number"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "target_high",
+            "schema": {
+              "default": 180.0,
+              "title": "Target High",
+              "type": "number"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KPIsOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns canonical KPIs for the authenticated patient.\n\nComputed via SQL (ADR-0007). On SQLite, cv_pct and std_dev are null\n(STDDEV_SAMP not available). Full precision requires PostgreSQL.\n\nPhase 10: Response is Redis-cached for 5 min.\nCache miss is transparent \u2014 falls back to SQL query.\n\nQuery params:\n    days        \u2014 look-back window in days (default 21)\n    target_low  \u2014 lower TIR bound in mg/dL (default 70)\n    target_high \u2014 upper TIR bound in mg/dL (default 180)",
+        "tags": [
+          "kpis"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/consent": {
+      "get": {
+        "operationId": "core_api_v1_account_get_consent_status",
+        "summary": "Get Consent Status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentStatusSchema"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "core_api_v1_account_give_consent",
+        "summary": "Give Consent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentStatusSchema"
+                }
+              }
+            }
+          }
+        },
+        "description": "Record explicit AI processing consent (RGPD Art. 7).",
+        "tags": [
+          "account"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "core_api_v1_account_withdraw_consent",
+        "summary": "Withdraw Consent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentStatusSchema"
+                }
+              }
+            }
+          }
+        },
+        "description": "Withdraw AI processing consent. AI features are suspended until re-consent.",
+        "tags": [
+          "account"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account": {
+      "delete": {
+        "operationId": "core_api_v1_account_delete_account",
+        "summary": "Delete Account",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Full RGPD erasure. Cascade-deletes all patient data.\nRequires explicit confirmation string to prevent accidental calls.\n\nPreserved (immutable audit trail):\n  - AuditLog rows (patient FK \u2192 NULL)",
+        "tags": [
+          "account"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteConfirmSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/modules/{module_name}/activate": {
+      "post": {
+        "operationId": "core_api_v1_modules_activate_module",
+        "summary": "Activate Module",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "module_name",
+            "schema": {
+              "title": "Module Name",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Enrol the authenticated patient into *module_name*.\n\nReturns 404 if the module is not registered with the chassis ModuleRegistry.\nIdempotent \u2014 calling twice does not create a duplicate row.",
+        "tags": [
+          "modules"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/account/modules": {
+      "get": {
+        "operationId": "core_api_v1_modules_list_modules",
+        "summary": "List Modules",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Return all modules currently active for the authenticated patient.",
+        "tags": [
+          "modules"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/import/librelink": {
+      "post": {
+        "operationId": "diabetes_api_v1_imports_import_librelink_csv",
+        "summary": "Import Librelink Csv",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResultResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Import a LibreLink / LibreView CSV file for the authenticated patient.\n\nAccepts multipart/form-data with a single field ``csv_file``.\nIdempotent: re-uploading the same file produces zero new rows.\n\nReturns:\n    imported        \u2014 number of new LogEntry rows created\n    duplicates      \u2014 rows skipped because client_uuid already existed\n    rejected_values \u2014 rows dropped for out-of-physiological-range glucose\n    skipped_rows    \u2014 rows dropped for unparseable timestamp or missing value\n    detected_format \u2014 \"librelink_detailed\" | \"simple\" | \"unknown\"\n    sample          \u2014 first 3 parsed readings (for UI preview)",
+        "tags": [
+          "import"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "csv_file": {
+                    "format": "binary",
+                    "title": "Csv File",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "csv_file"
+                ],
+                "title": "FileParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/documents/ingest": {
+      "post": {
+        "operationId": "diabetes_api_v1_documents_ingest_document",
+        "summary": "Ingest Document",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "confirm",
+            "schema": {
+              "default": false,
+              "title": "Confirm",
+              "type": "boolean"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PulperPreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response",
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "description": "Stage 1 (confirm=False): Extract and validate.  Returns preview.\nStage 2 (confirm=True):  Persist from a previously staged batch_id\n                         passed as query param ?batch_id=<uuid>.",
+        "tags": [
+          "documents"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "title": "File",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "title": "FileParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/documents/confirm/{batch_id}": {
+      "post": {
+        "operationId": "diabetes_api_v1_documents_confirm_import",
+        "summary": "Confirm Import",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PulperConfirmResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Persist a previously staged extraction (batch_id from /ingest response).\nCalled when the user taps \"Confirmer\" in the Flutter UI.",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/documents/": {
+      "get": {
+        "operationId": "diabetes_api_v1_documents_list_lab_reports",
+        "summary": "List Lab Reports",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LabReportOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the most recent LabReport rows for the authenticated patient.",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/summary": {
+      "post": {
+        "operationId": "ai_api_v1_ai_get_summary",
+        "summary": "Get Summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Full Phase 6 analytical pipeline.\n\nStep 1: SQL computes all KPIs (never Python arithmetic).\nStep 2: Pattern detection engine runs against ORM queryset.\nStep 3: SemanticCompressor \u2192 English pivot text.\nStep 4: Gemini interprets and generates empathetic patient response.",
+        "tags": [
+          "ai"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummaryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/doctor-brief": {
+      "get": {
+        "operationId": "ai_api_v1_ai_get_doctor_brief",
+        "summary": "Get Doctor Brief",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "default": 14,
+              "title": "Days",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DoctorBriefResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "GET /api/v1/ai/doctor-brief?days=14\n\nGenerates a compact medical summary (narrative + doctor_brief + key_insight)\nusing IAmina's narrator module. Intended for pre-consultation export.\n\nReturns all three fields from the SUMMARY_USER prompt:\n  - narrative: warm patient-facing summary\n  - key_insight: the single most important observation\n  - doctor_brief: one-sentence clinical digest for the physician",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/chat": {
+      "post": {
+        "operationId": "ai_api_v1_ai_chat_with_amina",
+        "summary": "Chat With Amina",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Phase 6 chat with English Pivot Layer.\n\nNote: TriageVitalMiddleware has already screened 'data.message' upstream.\nIf this view is reached, the message is NOT a medical emergency.\n\nSteps:\n  1. Fetch minimal KPIs for context (SQL, lightweight).\n  2. Compress into English pivot chat context.\n  3. Build English system prompt + FR/Darija user message.\n  4. Call LLM \u2192 respond in patient language.",
+        "tags": [
+          "ai"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/analyze-glucometer-image": {
+      "post": {
+        "operationId": "ai_api_v1_ai_analyze_glucometer_image_web",
+        "summary": "Analyze Glucometer Image Web",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlucometerOcrResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Phase 11-D \u2014 Gemini Vision glucometer OCR for web clients.\n\nPOST /api/v1/ai/analyze-glucometer-image\nBody: { \"image_base64\": \"<base64>\", \"mime_type\": \"image/jpeg\" }\n\nMobile uses on-device ML Kit (offline, faster).\nWeb uses this endpoint as fallback.",
+        "tags": [
+          "ai"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealImageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/analyze-meal-image": {
+      "post": {
+        "operationId": "ai_api_v1_ai_analyze_meal_image",
+        "summary": "Analyze Meal Image",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealImageResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Phase 11-C \u2014 Gemini Vision meal recognition.\n\nPOST /api/v1/ai/analyze-meal-image\nBody: { \"image_base64\": \"<base64>\", \"mime_type\": \"image/jpeg\" }\n\nPipeline:\n  1. MealVisionShield validates input (mime type, size, base64 sanity).\n  2. Gemini Vision identifies visible foods (English Pivot prompt).\n  3. MealVisionShield sanitises output (max 8 French food names).\n  4. Flutter maps returned names to CulinaryItem chips (fuzzy match).\n\nNo patient clinical data is sent to the LLM \u2014 only the food image.\nfallback=True in the response means Flutter must ask the user to pick manually.",
+        "tags": [
+          "ai"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MealImageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/chat/stream": {
+      "get": {
+        "operationId": "ai_api_v1_ai_chat_stream",
+        "summary": "Chat Stream",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "message",
+            "schema": {
+              "title": "Message",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "context_days",
+            "schema": {
+              "default": 14,
+              "title": "Context Days",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "GET /api/v1/ai/chat/stream?message=...\nReturns Server-Sent Events \u2014 one `data:` line per token chunk.\nTerminal event: `data: [DONE]`",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/voice": {
+      "post": {
+        "operationId": "ai_api_v1_voice_voice_chat",
+        "summary": "Voice Chat",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "context_days",
+            "schema": {
+              "default": 14,
+              "title": "Context Days",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceChatResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "POST /api/v1/ai/voice\nContent-Type: multipart/form-data\n\nFields:\n  audio        \u2014 audio file (mp4 / m4a / webm / wav / ogg / mpeg / flac)\n  context_days \u2014 look-back window for clinical context (default 14)\n\nReturns:\n  transcript   \u2014 what IAmina heard (display as subtitle in Flutter)\n  reply        \u2014 IAmina's text reply (pass to flutter_tts for playback)\n  is_emergency \u2014 if True, Flutter should display the emergency UI immediately",
+        "tags": [
+          "voice"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "audio": {
+                    "format": "binary",
+                    "title": "Audio",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "audio"
+                ],
+                "title": "FileParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/transcribe": {
+      "post": {
+        "operationId": "ai_api_v1_voice_transcribe_audio",
+        "summary": "Transcribe Audio",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscribeResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "POST /api/v1/ai/transcribe\nContent-Type: multipart/form-data\n\nSTT-only \u2014 no IAmina pipeline.\nUsed for inline dictation on the add-log page (meal note field).\n\nReturns:\n  transcript \u2014 verbatim transcription of the audio clip\n  confidence \u2014 \"high\" | \"medium\" | \"low\" (length heuristic)",
+        "tags": [
+          "voice"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "audio": {
+                    "format": "binary",
+                    "title": "Audio",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "audio"
+                ],
+                "title": "FileParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/analytics/overview": {
+      "get": {
+        "operationId": "diabetes_api_v1_analytics_get_overview",
+        "summary": "Get Overview",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "module",
+            "schema": {
+              "default": "diabetes",
+              "title": "Module",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Return retention + engagement KPIs for the staff dashboard.\n\nRequires: request.user.is_staff == True.\n\nArgs:\n    module: module_id whose manifest.acquisition_event is used as the\n            cohort acquisition anchor. Defaults to \"diabetes\".\n\nReturns: JSON object matching the shape defined in the API spec.",
+        "tags": [
+          "analytics"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthResponse": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserResponse"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "message"
+        ],
+        "title": "AuthResponse",
+        "type": "object"
+      },
+      "UserResponse": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "first_name",
+          "last_name",
+          "created_at"
+        ],
+        "title": "UserResponse",
+        "type": "object"
+      },
+      "FirebaseAuthRequest": {
+        "properties": {
+          "id_token": {
+            "title": "Id Token",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          }
+        },
+        "required": [
+          "id_token"
+        ],
+        "title": "FirebaseAuthRequest",
+        "type": "object"
+      },
+      "DemoScenarioResponse": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "title": "DemoScenarioResponse",
+        "type": "object"
+      },
+      "SeedResponse": {
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "created",
+          "message"
+        ],
+        "title": "SeedResponse",
+        "type": "object"
+      },
+      "HealthSchema": {
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "db": {
+            "title": "Db",
+            "type": "string"
+          },
+          "cache": {
+            "title": "Cache",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "db",
+          "cache"
+        ],
+        "title": "HealthSchema",
+        "type": "object"
+      },
+      "LogEntrySchema": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "logged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logged At"
+          },
+          "meal_type": {
+            "title": "Meal Type",
+            "type": "string"
+          },
+          "blood_sugar": {
+            "title": "Blood Sugar",
+            "type": "number"
+          },
+          "meal_description": {
+            "default": "",
+            "title": "Meal Description",
+            "type": "string"
+          },
+          "insulin_units": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insulin Units"
+          },
+          "exercised": {
+            "default": "no",
+            "title": "Exercised",
+            "type": "string"
+          },
+          "sleep_quality": {
+            "default": "good",
+            "title": "Sleep Quality",
+            "type": "string"
+          },
+          "stressed": {
+            "default": "no",
+            "title": "Stressed",
+            "type": "string"
+          },
+          "fatigue_level": {
+            "default": "ok",
+            "title": "Fatigue Level",
+            "type": "string"
+          },
+          "is_sick": {
+            "default": "no",
+            "title": "Is Sick",
+            "type": "string"
+          },
+          "source": {
+            "default": "manual",
+            "title": "Source",
+            "type": "string"
+          },
+          "client_uuid": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Uuid"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "logged_at",
+          "meal_type",
+          "blood_sugar",
+          "created_at"
+        ],
+        "title": "LogEntrySchema",
+        "type": "object"
+      },
+      "PaginatedLogsResponse": {
+        "description": "Paginated wrapper for GET /logs.  Use ?page=N&page_size=M (defaults: 1, 50).",
+        "properties": {
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LogEntrySchema"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "page_size",
+          "items"
+        ],
+        "title": "PaginatedLogsResponse",
+        "type": "object"
+      },
+      "LogEntryCreateSchema": {
+        "properties": {
+          "logged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logged At"
+          },
+          "meal_type": {
+            "default": "",
+            "title": "Meal Type",
+            "type": "string"
+          },
+          "blood_sugar": {
+            "maximum": 600.0,
+            "minimum": 30.0,
+            "title": "Blood Sugar",
+            "type": "number"
+          },
+          "meal_description": {
+            "default": "",
+            "title": "Meal Description",
+            "type": "string"
+          },
+          "insulin_units": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insulin Units"
+          },
+          "exercised": {
+            "default": "no",
+            "title": "Exercised",
+            "type": "string"
+          },
+          "sleep_quality": {
+            "default": "good",
+            "title": "Sleep Quality",
+            "type": "string"
+          },
+          "stressed": {
+            "default": "no",
+            "title": "Stressed",
+            "type": "string"
+          },
+          "fatigue_level": {
+            "default": "ok",
+            "title": "Fatigue Level",
+            "type": "string"
+          },
+          "is_sick": {
+            "default": "no",
+            "title": "Is Sick",
+            "type": "string"
+          },
+          "source": {
+            "default": "manual",
+            "title": "Source",
+            "type": "string"
+          },
+          "client_uuid": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Uuid"
+          }
+        },
+        "required": [
+          "blood_sugar"
+        ],
+        "title": "LogEntryCreateSchema",
+        "type": "object"
+      },
+      "BatchSyncResponse": {
+        "properties": {
+          "synced_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Synced Ids",
+            "type": "array"
+          },
+          "errors": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "synced_ids"
+        ],
+        "title": "BatchSyncResponse",
+        "type": "object"
+      },
+      "LogEntryUpdateSchema": {
+        "description": "Partial update \u2014 all fields optional.  Only supplied fields are written.",
+        "properties": {
+          "logged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logged At"
+          },
+          "meal_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Type"
+          },
+          "blood_sugar": {
+            "anyOf": [
+              {
+                "maximum": 600.0,
+                "minimum": 30.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blood Sugar"
+          },
+          "meal_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Description"
+          },
+          "insulin_units": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insulin Units"
+          },
+          "exercised": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exercised"
+          },
+          "sleep_quality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleep Quality"
+          },
+          "stressed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stressed"
+          },
+          "fatigue_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fatigue Level"
+          },
+          "is_sick": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Sick"
+          }
+        },
+        "title": "LogEntryUpdateSchema",
+        "type": "object"
+      },
+      "Error": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "Error",
+        "type": "object"
+      },
+      "PatientProfileSchema": {
+        "properties": {
+          "diabetes_type": {
+            "title": "Diabetes Type",
+            "type": "string"
+          },
+          "treatment_type": {
+            "title": "Treatment Type",
+            "type": "string"
+          },
+          "target_range_low": {
+            "title": "Target Range Low",
+            "type": "number"
+          },
+          "target_range_high": {
+            "title": "Target Range High",
+            "type": "number"
+          },
+          "unit_preference": {
+            "title": "Unit Preference",
+            "type": "string"
+          },
+          "preferred_language": {
+            "default": "ar-MA",
+            "title": "Preferred Language",
+            "type": "string"
+          },
+          "gender": {
+            "default": "",
+            "title": "Gender",
+            "type": "string"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          }
+        },
+        "required": [
+          "diabetes_type",
+          "treatment_type",
+          "target_range_low",
+          "target_range_high",
+          "unit_preference"
+        ],
+        "title": "PatientProfileSchema",
+        "type": "object"
+      },
+      "ProfilePatchSchema": {
+        "description": "All fields optional \u2014 only provided fields are updated.",
+        "properties": {
+          "preferred_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Language"
+          },
+          "unit_preference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Preference"
+          },
+          "target_range_low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Range Low"
+          },
+          "target_range_high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Range High"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          }
+        },
+        "title": "ProfilePatchSchema",
+        "type": "object"
+      },
+      "KPIsOut": {
+        "properties": {
+          "avg_glucose": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Glucose"
+          },
+          "std_dev": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Std Dev"
+          },
+          "cv_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cv Pct"
+          },
+          "tir_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tir Pct"
+          },
+          "tar_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tar Pct"
+          },
+          "tbr_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tbr Pct"
+          },
+          "gmi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gmi"
+          },
+          "log_count": {
+            "title": "Log Count",
+            "type": "integer"
+          },
+          "days_with_data": {
+            "title": "Days With Data",
+            "type": "integer"
+          },
+          "has_sufficient_data": {
+            "title": "Has Sufficient Data",
+            "type": "boolean"
+          },
+          "gmi_confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gmi Confidence"
+          },
+          "gmi_basis": {
+            "title": "Gmi Basis",
+            "type": "string"
+          },
+          "gri": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gri"
+          },
+          "gri_zone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gri Zone"
+          },
+          "gri_label_fr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gri Label Fr"
+          }
+        },
+        "required": [
+          "avg_glucose",
+          "std_dev",
+          "cv_pct",
+          "tir_pct",
+          "tar_pct",
+          "tbr_pct",
+          "gmi",
+          "log_count",
+          "days_with_data",
+          "has_sufficient_data",
+          "gmi_confidence",
+          "gmi_basis",
+          "gri",
+          "gri_zone",
+          "gri_label_fr"
+        ],
+        "title": "KPIsOut",
+        "type": "object"
+      },
+      "ConsentStatusSchema": {
+        "properties": {
+          "ai_consent_given": {
+            "title": "Ai Consent Given",
+            "type": "boolean"
+          },
+          "ai_consent_given_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Consent Given At"
+          }
+        },
+        "required": [
+          "ai_consent_given",
+          "ai_consent_given_at"
+        ],
+        "title": "ConsentStatusSchema",
+        "type": "object"
+      },
+      "DeleteConfirmSchema": {
+        "properties": {
+          "confirm": {
+            "title": "Confirm",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirm"
+        ],
+        "title": "DeleteConfirmSchema",
+        "type": "object"
+      },
+      "ImportResultResponse": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "imported": {
+            "title": "Imported",
+            "type": "integer"
+          },
+          "duplicates": {
+            "title": "Duplicates",
+            "type": "integer"
+          },
+          "rejected_values": {
+            "title": "Rejected Values",
+            "type": "integer"
+          },
+          "skipped_rows": {
+            "title": "Skipped Rows",
+            "type": "integer"
+          },
+          "detected_format": {
+            "title": "Detected Format",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "sample": {
+            "items": {
+              "$ref": "#/components/schemas/ImportSample"
+            },
+            "title": "Sample",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ok",
+          "imported",
+          "duplicates",
+          "rejected_values",
+          "skipped_rows",
+          "detected_format",
+          "sample"
+        ],
+        "title": "ImportResultResponse",
+        "type": "object"
+      },
+      "ImportSample": {
+        "properties": {
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "glucose": {
+            "title": "Glucose",
+            "type": "number"
+          },
+          "record_type": {
+            "title": "Record Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timestamp",
+          "glucose",
+          "record_type"
+        ],
+        "title": "ImportSample",
+        "type": "object"
+      },
+      "GlucoseReadingOut": {
+        "properties": {
+          "value_mgdl": {
+            "title": "Value Mgdl",
+            "type": "number"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
+          "original_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Value"
+          },
+          "original_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Unit"
+          }
+        },
+        "required": [
+          "value_mgdl"
+        ],
+        "title": "GlucoseReadingOut",
+        "type": "object"
+      },
+      "LabValuesOut": {
+        "properties": {
+          "hba1c_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hba1C Pct"
+          },
+          "fasting_glucose_mgdl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fasting Glucose Mgdl"
+          },
+          "total_cholesterol_mgdl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Cholesterol Mgdl"
+          },
+          "hdl_mgdl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hdl Mgdl"
+          },
+          "ldl_mgdl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ldl Mgdl"
+          },
+          "triglycerides_mgdl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triglycerides Mgdl"
+          },
+          "creatinine_umol": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creatinine Umol"
+          },
+          "report_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Date"
+          }
+        },
+        "title": "LabValuesOut",
+        "type": "object"
+      },
+      "MedicationOut": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "dose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dose"
+          },
+          "frequency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency"
+          },
+          "drug_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drug Type"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "MedicationOut",
+        "type": "object"
+      },
+      "PulperPreviewResponse": {
+        "description": "Returned on confirm=False \u2014 nothing persisted yet.",
+        "properties": {
+          "batch_id": {
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "document_type": {
+            "title": "Document Type",
+            "type": "string"
+          },
+          "source_format": {
+            "title": "Source Format",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "needs_review": {
+            "title": "Needs Review",
+            "type": "boolean"
+          },
+          "glucose_readings": {
+            "items": {
+              "$ref": "#/components/schemas/GlucoseReadingOut"
+            },
+            "title": "Glucose Readings",
+            "type": "array"
+          },
+          "lab_values": {
+            "$ref": "#/components/schemas/LabValuesOut"
+          },
+          "medications": {
+            "items": {
+              "$ref": "#/components/schemas/MedicationOut"
+            },
+            "title": "Medications",
+            "type": "array"
+          },
+          "clinical_notes": {
+            "title": "Clinical Notes",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "batch_id",
+          "document_type",
+          "source_format",
+          "confidence",
+          "needs_review",
+          "glucose_readings",
+          "lab_values",
+          "medications",
+          "clinical_notes",
+          "warnings",
+          "errors"
+        ],
+        "title": "PulperPreviewResponse",
+        "type": "object"
+      },
+      "PulperConfirmResponse": {
+        "description": "Returned on confirm=True \u2014 data has been persisted.",
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "lab_report_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lab Report Id"
+          },
+          "glucose_readings_saved": {
+            "title": "Glucose Readings Saved",
+            "type": "integer"
+          },
+          "glucose_duplicates": {
+            "title": "Glucose Duplicates",
+            "type": "integer"
+          },
+          "errors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Errors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ok",
+          "lab_report_id",
+          "glucose_readings_saved",
+          "glucose_duplicates",
+          "errors"
+        ],
+        "title": "PulperConfirmResponse",
+        "type": "object"
+      },
+      "LabReportOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "document_type": {
+            "title": "Document Type",
+            "type": "string"
+          },
+          "source_format": {
+            "title": "Source Format",
+            "type": "string"
+          },
+          "report_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Date"
+          },
+          "hba1c_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hba1C Pct"
+          },
+          "fasting_glucose_mgdl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fasting Glucose Mgdl"
+          },
+          "total_cholesterol_mgdl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Cholesterol Mgdl"
+          },
+          "hdl_mgdl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hdl Mgdl"
+          },
+          "ldl_mgdl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ldl Mgdl"
+          },
+          "triglycerides_mgdl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triglycerides Mgdl"
+          },
+          "creatinine_umol": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creatinine Umol"
+          },
+          "glucose_readings_imported": {
+            "title": "Glucose Readings Imported",
+            "type": "integer"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "clinical_notes": {
+            "title": "Clinical Notes",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "document_type",
+          "source_format",
+          "report_date",
+          "hba1c_pct",
+          "fasting_glucose_mgdl",
+          "total_cholesterol_mgdl",
+          "hdl_mgdl",
+          "ldl_mgdl",
+          "triglycerides_mgdl",
+          "creatinine_umol",
+          "glucose_readings_imported",
+          "confidence",
+          "clinical_notes",
+          "created_at"
+        ],
+        "title": "LabReportOut",
+        "type": "object"
+      },
+      "InsightSchema": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "icon": {
+            "title": "Icon",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "action": {
+            "title": "Action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "priority",
+          "icon",
+          "title",
+          "content",
+          "action"
+        ],
+        "title": "InsightSchema",
+        "type": "object"
+      },
+      "KPISchema": {
+        "properties": {
+          "avg_glucose": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Glucose"
+          },
+          "std_dev": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Std Dev"
+          },
+          "cv_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cv Pct"
+          },
+          "tir_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tir Pct"
+          },
+          "tar_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tar Pct"
+          },
+          "tbr_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tbr Pct"
+          },
+          "gmi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gmi"
+          },
+          "log_count": {
+            "title": "Log Count",
+            "type": "integer"
+          },
+          "days_with_data": {
+            "title": "Days With Data",
+            "type": "integer"
+          },
+          "gmi_confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gmi Confidence"
+          },
+          "gmi_basis": {
+            "default": "",
+            "title": "Gmi Basis",
+            "type": "string"
+          }
+        },
+        "required": [
+          "avg_glucose",
+          "std_dev",
+          "cv_pct",
+          "tir_pct",
+          "tar_pct",
+          "tbr_pct",
+          "gmi",
+          "log_count",
+          "days_with_data"
+        ],
+        "title": "KPISchema",
+        "type": "object"
+      },
+      "SummaryResponse": {
+        "properties": {
+          "kpis": {
+            "$ref": "#/components/schemas/KPISchema"
+          },
+          "insights": {
+            "items": {
+              "$ref": "#/components/schemas/InsightSchema"
+            },
+            "title": "Insights",
+            "type": "array"
+          },
+          "daily_averages": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Daily Averages",
+            "type": "array"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "has_sufficient_data": {
+            "title": "Has Sufficient Data",
+            "type": "boolean"
+          },
+          "ai_provider": {
+            "default": "gemini",
+            "title": "Ai Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kpis",
+          "insights",
+          "daily_averages",
+          "generated_at",
+          "has_sufficient_data"
+        ],
+        "title": "SummaryResponse",
+        "type": "object"
+      },
+      "SummaryRequest": {
+        "properties": {
+          "days": {
+            "default": 21,
+            "title": "Days",
+            "type": "integer"
+          },
+          "target_low": {
+            "default": 70.0,
+            "title": "Target Low",
+            "type": "number"
+          },
+          "target_high": {
+            "default": 180.0,
+            "title": "Target High",
+            "type": "number"
+          }
+        },
+        "title": "SummaryRequest",
+        "type": "object"
+      },
+      "DoctorBriefResponse": {
+        "properties": {
+          "doctor_brief": {
+            "title": "Doctor Brief",
+            "type": "string"
+          },
+          "narrative": {
+            "title": "Narrative",
+            "type": "string"
+          },
+          "key_insight": {
+            "title": "Key Insight",
+            "type": "string"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "has_sufficient_data": {
+            "title": "Has Sufficient Data",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "doctor_brief",
+          "narrative",
+          "key_insight",
+          "days",
+          "generated_at",
+          "has_sufficient_data"
+        ],
+        "title": "DoctorBriefResponse",
+        "type": "object"
+      },
+      "ChatResponse": {
+        "properties": {
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "is_emergency": {
+            "default": false,
+            "title": "Is Emergency",
+            "type": "boolean"
+          },
+          "reply_language": {
+            "default": "fr",
+            "title": "Reply Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reply",
+          "conversation_id",
+          "timestamp"
+        ],
+        "title": "ChatResponse",
+        "type": "object"
+      },
+      "ChatRequest": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "context_days": {
+            "default": 14,
+            "title": "Context Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ChatRequest",
+        "type": "object"
+      },
+      "GlucometerOcrResponse": {
+        "description": "Phase 11-D: glucose value extracted from a glucometer photo (web OCR fallback).",
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "string"
+          },
+          "fallback": {
+            "title": "Fallback",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "value",
+          "unit",
+          "confidence",
+          "fallback"
+        ],
+        "title": "GlucometerOcrResponse",
+        "type": "object"
+      },
+      "MealImageRequest": {
+        "description": "Phase 11-C: meal photo sent as base64-encoded image.",
+        "properties": {
+          "image_base64": {
+            "title": "Image Base64",
+            "type": "string"
+          },
+          "mime_type": {
+            "default": "image/jpeg",
+            "title": "Mime Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_base64"
+        ],
+        "title": "MealImageRequest",
+        "type": "object"
+      },
+      "MealImageResponse": {
+        "description": "Phase 11-C: list of identified French food names + confidence level.\nfallback=True means the LLM could not identify foods \u2014 UI shows a manual fallback.",
+        "properties": {
+          "foods": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Foods",
+            "type": "array"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "string"
+          },
+          "fallback": {
+            "title": "Fallback",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "foods",
+          "confidence",
+          "fallback"
+        ],
+        "title": "MealImageResponse",
+        "type": "object"
+      },
+      "VoiceChatResponse": {
+        "properties": {
+          "transcript": {
+            "title": "Transcript",
+            "type": "string"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "is_emergency": {
+            "default": false,
+            "title": "Is Emergency",
+            "type": "boolean"
+          },
+          "reply_language": {
+            "default": "fr",
+            "title": "Reply Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transcript",
+          "reply",
+          "conversation_id",
+          "timestamp"
+        ],
+        "title": "VoiceChatResponse",
+        "type": "object"
+      },
+      "TranscribeResponse": {
+        "properties": {
+          "transcript": {
+            "title": "Transcript",
+            "type": "string"
+          },
+          "confidence": {
+            "default": "medium",
+            "title": "Confidence",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transcript"
+        ],
+        "title": "TranscribeResponse",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "FirebaseAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "SessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sessionid"
+      }
+    }
+  },
+  "servers": []
+}

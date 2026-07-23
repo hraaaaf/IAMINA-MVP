@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "amina",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/hilyas/Dev/diabetes-poc && source venv/bin/activate && cd backend && python manage.py migrate --run-syncdb 2>/dev/null; python manage.py setup_demo 2>/dev/null; python manage.py runserver 8001"],
+      "port": 8001
+    }
+  ]
+}
