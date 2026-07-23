@@ -8,7 +8,7 @@ from typing import Optional
 
 from ninja import Router
 from ninja.errors import HttpError
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from core.models import BasePatientProfile
 from diabetes.models import DiabetesProfile
@@ -22,6 +22,12 @@ _VALID_UNITS = {"mg_dl", "mmol_l"}
 _VALID_DIABETES_TYPES = {value for value, _ in DiabetesProfile.DIABETES_TYPE_CHOICES}
 _VALID_TREATMENTS = {value for value, _ in DiabetesProfile.TREATMENT_TYPE_CHOICES}
 _VALID_GENDERS = {value for value, _ in BasePatientProfile.GENDER_CHOICES}
+_NON_NULLABLE_PATCH_FIELDS = {
+    "preferred_language",
+    "unit_preference",
+    "target_range_low",
+    "target_range_high",
+}
 
 
 class ProfilePatchSchema(BaseModel):
@@ -86,6 +92,18 @@ class ProfilePatchSchema(BaseModel):
         if v is not None and not (100.0 <= v <= 400.0):
             raise ValueError("target_range_high must be between 100 and 400 mg/dL")
         return v
+
+    @model_validator(mode="after")
+    def reject_explicit_null_for_non_nullable_fields(self):
+        """Omission is allowed in PATCH; explicit null is not for required DB fields."""
+        invalid = sorted(
+            field
+            for field in self.model_fields_set & _NON_NULLABLE_PATCH_FIELDS
+            if getattr(self, field) is None
+        )
+        if invalid:
+            raise ValueError(f"Fields cannot be null: {', '.join(invalid)}")
+        return self
 
 
 def _get_diabetes_profile(user) -> DiabetesProfile:
