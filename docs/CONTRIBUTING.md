@@ -1,159 +1,125 @@
-# Contributing
+# Contributing to IAmina
 
----
+This document defines the engineering workflow and guardrails. Product priority lives only in `docs/ROADMAP.md`.
 
-## ⛔ Guardrails — never break these (patient safety + compliance)
+## Non-negotiable safety and privacy guardrails
 
-These are non-negotiable. A change that touches any of them needs an explicit human decision —
-flag it in the PR's "Needs manual inspection" section. Do **not** let an agent silently alter them.
+A change touching any item below requires explicit human review in the PR description and focused tests.
 
-- **`TriageVitalMiddleware` runs first** in the middleware chain — the medical-emergency gate.
-  Never bypass, reorder, or route an emergency message to the LLM. New interactive endpoints must
-  register in the triage registry.
-- **`UnitGuardMiddleware` runs second** — glucose-unit normalization, upstream of all AI logic.
-- **PHI is stripped before the LLM** — patient data never reaches the model. The only sanctioned
-  LLM entry point is `core/llm_gateway.narrate()`; modules must not call `get_llm()` directly.
-- **KPIs are SQL-first** (ADR-0007) — never computed in Python.
-- **No diagnosis, no prescription** — companion role only; medical urgencies get a fixed,
-  pre-validated response, never an LLM-generated one.
-- **Never modify middleware order** without explicit approval.
-- **`client_uuid` on log entries** is the offline-sync idempotency key — don't remove or repurpose it.
+- Deterministic emergency handling must remain upstream of generative AI.
+- Glucose unit normalization must remain upstream of clinical/AI logic.
+- External model/media calls must use the sanctioned outbound boundary; direct provider bypasses are forbidden.
+- Outbound payloads are default-deny and must follow purpose, consent, minimization, redaction, retention, and processor rules.
+- IAmina must not diagnose, prescribe, or optimize treatment.
+- `client_uuid` on log entries is the offline-sync idempotency key.
+- KPI calculations covered by ADR-0007 remain SQL-first.
+- A language/dialect cannot enter a real-patient pilot without native-speaker safety parity and validated emergency resources.
+- Historical ADRs are immutable. Changed decisions require a superseding ADR, not history rewriting.
 
-**Hard safety gate — must clear before a single real patient touches the app:**
-- **Darija orthographic-variant suicidal-ideation coverage** — one `xfail` documents that misspelled
-  high-severity terms in Darija slip past the triage gate. Close it with a native corpus. **Hard
-  launch blocker**, not a soft one.
-- **Emergency events must reach a human** — `ClinicalLogger` emergency events must route to a
-  monitored alert channel before any pilot. A triage gate that fires into an unread log protects no one.
+### Hard pilot blockers
 
-> Full architectural rationale: `docs/architecture/ARCHITECTURE.md` (Key Invariants) and `docs/adr/`.
+Before any real-patient pilot, the roadmap's pilot safety/compliance gate must be complete, including:
 
----
+- high-severity language-variant safety coverage for the enabled pilot locale;
+- monitored emergency-event handling or an explicitly documented alternative operating model;
+- enforced AI/model consent at the outbound boundary;
+- documented processors/subprocessors, retention, incident response, and pilot escalation;
+- no reachable committed secrets and rotation of exposed credentials.
 
-## Branches
+## Branch model
 
-```
-main          production-ready, tagged releases
-dev           integration — all feature branches merge here
-```
+The repository currently uses `main` as the canonical branch.
 
 ```bash
-# Always branch from dev
-git checkout dev && git pull origin dev
-git checkout -b feature/short-description   # or fix/, chore/, docs/
+git checkout main
+git pull origin main
+git checkout -b feature/short-description
 ```
 
----
+Use short-lived prefixes such as `feature/`, `fix/`, `docs/`, or `chore/`.
 
-## Working in parallel (2-person / agent handoff)
+One roadmap unit should normally map to one focused branch and one PR.
 
-The goal: either of us (or an agent) can pick up work, ship it, and hand off — without stepping
-on each other. There is **no claim/lock layer**; collisions are avoided by keeping units small and
-merging fast. The discipline:
+## Source of truth discipline
 
-- **`docs/ROADMAP.md` is the backlog.** Pick the next unstarted item from there (prelaunch path or
-  "Platform seam debt"), in order. It is the single source of truth for *what* and *what's next*.
-- **`CLAUDE.md` is the auto-loaded brief** — it's read into every agent session automatically. Its
-  "Session State" block is a *pointer* to ROADMAP plus the current branch + next actionable. Keep
-  it tiny. **Replace** that block each session — never append a new one (that's how it drifted to
-  three stacked blocks before).
-- **One unit = one short-lived branch off `dev` = one small PR.** Branch from up-to-date `dev`,
-  keep the change focused (< ~400 lines), open the PR, merge fast (`--rebase --delete-branch`).
-  A taken unit is visible as an open branch/PR — that's the only signal you need at this size.
-- **Pull before you start.** `git checkout dev && git pull` so you branch from the latest.
-- **Handoff lives in git, not prose.** The next person's context = the open PR (description + diff),
-  commit messages, and ROADMAP checkboxes. Don't maintain a separate "where we are" status file —
-  it rots and forks. (This is why `STATE.md` was removed.)
+- `docs/ROADMAP.md`: single forward backlog, priorities, gates, current status.
+- `docs/architecture/ARCHITECTURE.md`: current architecture and target boundaries.
+- `docs/SPECS.md`: current product/API capability contract.
+- `docs/TECHDEBT.md`: unresolved technical debt only.
+- `docs/MISTAKES.md`: reusable engineering lessons only.
+- `CLAUDE.md`: stable agent brief, never a session diary.
+- ADRs / architecture timeline / assessments: historical evidence, not active backlog.
 
-### Update ritual (after any unit of work — only 2 steps)
+Do not duplicate roadmap state across multiple documents.
 
-1. Tick / update the relevant checkbox(es) in `docs/ROADMAP.md`.
-2. Refresh the single "Session State" block in `CLAUDE.md` (branch + next actionable). Replace, don't append.
+## Pull requests
 
-That's it. Don't update multiple "compass" files — one backlog (ROADMAP), one brief (CLAUDE.md).
+A PR should state:
 
----
+1. the exact roadmap unit or durable maintenance purpose;
+2. what changed and why;
+3. safety/privacy impact;
+4. tests/checks run;
+5. any manual verification still required.
 
-## Commits
+Keep PRs focused. Large diffs are acceptable when a coherent cleanup cannot safely be split, but explain why.
 
-Format: `type(scope): subject` — keep subject under 50 chars, imperative mood.
+## Validation
 
-```
-feat(api): add batch log endpoint
-fix(flutter): null guard on fatigueLevel in SyncService
-chore(deps): upgrade firebase_core to 3.15
-docs(roadmap): update Phase 5 status
-```
+Run checks relevant to the changed surface.
 
-Types: `feat` `fix` `refactor` `test` `chore` `docs`
-
----
-
-## Pull Requests
+### Backend
 
 ```bash
-git push origin feature/short-description
-gh pr create --title "type(scope): description" --body "..."
-```
-
-PR body: follow `.github/pull_request_template.md` — name the **one ROADMAP unit**, what/why,
-and fill the "⚠️ Needs manual inspection" section (that's how an agent flags judgement calls,
-migrations, or middleware/security changes to the human dev). Keep PRs under ~400 lines.
-
-### Merge model — CI gates, no human approval
-
-Development is done by agents; **no one reviews/approves PRs**. The gate is **CI, not a human**:
-
-- A PR merges as soon as CI is green. Use auto-merge so the agent doesn't wait or merge on red:
-  ```bash
-  gh pr merge --auto --rebase --delete-branch
-  ```
-- **CI is the integration gate** (runs on PRs to `dev` and `main`): ruff · import-linter · bandit ·
-  OpenAPI-schema-current · pytest · flutter analyze. Red CI = the merge does not happen. Fix and push.
-- **`pr-size` is advisory, not blocking** — it warns (PR summary) when a diff exceeds ~400 lines so a
-  large or multi-unit PR is visible to the human dev, without stopping the agent pipeline.
-- If the OpenAPI check fails, regenerate: `python backend/manage.py export_openapi > docs/api/openapi.json`.
-
-Merge strategy: **rebase** (`--rebase --delete-branch`). No merge commits.
-
-> To *enforce* "green before merge" without a human, enable GitHub branch protection on `dev` with
-> **required status checks + 0 required reviewers** (not done yet — `dev` currently relies on agents
-> using `--auto`). That's the only setting that hard-blocks a red merge while requiring no approval.
-
----
-
-## Pre-PR Checklist
-
-```bash
-# Backend
-source venv/bin/activate
 python backend/manage.py check
-python backend/manage.py test
+python -m pytest
+```
 
-# Frontend
+### Frontend
+
+```bash
 cd frontend
 flutter analyze
 flutter test
 ```
 
----
+### Additional requirements
 
-## Code Standards
+- Safety changes: add focused positive + negative tests for the guardrail.
+- API schema changes: regenerate and verify the OpenAPI artifact if the repository enforces it.
+- Database migrations: test forward migration and rollback/recovery strategy appropriate to the migration risk.
+- Locale changes: test script/RTL where relevant, mixed-language input, deterministic fallback, and native-reviewed safety corpus.
+- Provider/outbound changes: prove no direct bypass and inspect minimized payloads.
 
-**Python:** PEP 8, type hints on function signatures, `ruff format backend/` before committing.
+## Commit format
 
-**Dart:** 2-space indent, trailing commas on multiline, `dart format lib/` before committing.
+Use imperative, scoped commits:
 
-**Migrations:** Never edit generated migration files. Always test `migrate` → `migrate zero` → `migrate` locally.
-
----
-
-## Hotfix
-
-```bash
-git checkout -b hotfix/description main
-# fix, test, then:
-gh pr create --title "fix: ..." --base main
-# after merge, also merge into dev
-git checkout dev && git merge main
+```text
+feat(scope): description
+fix(scope): description
+refactor(scope): description
+test(scope): description
+chore(scope): description
+docs(scope): description
 ```
+
+## Secrets and local configuration
+
+Never commit:
+
+- `.env` files containing secrets;
+- service-account credentials;
+- API keys/tokens;
+- local agent permission/configuration files that embed credentials;
+- production exports or patient data.
+
+If a secret is committed, deleting the line later is not enough. Treat it as compromised: rotate/revoke it, remove it from reachable history where appropriate, and document the incident response.
+
+## Dependency and provider changes
+
+Do not select an AI provider by brand preference alone. Text, STT, and vision may use different providers. Any production selection must satisfy the current roadmap benchmark criteria: privacy/residency, contractual retention/training terms, MENA quality, safety, latency, availability, and cost.
+
+## Hotfixes
+
+For urgent production fixes, branch from `main`, keep scope minimal, run the most relevant safety/regression checks, and merge back through a PR whenever operationally possible.
