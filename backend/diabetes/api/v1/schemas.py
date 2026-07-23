@@ -14,16 +14,18 @@ _BloodSugar = Annotated[float, Field(ge=30.0, le=600.0)]
 
 
 class PatientProfileSchema(Schema):
-    diabetes_type: str
-    treatment_type: str
+    diabetes_type: Optional[str] = None
+    treatment_type: Optional[str] = None
+    clinical_profile_complete: bool = False
     target_range_low: float
     target_range_high: float
     unit_preference: str
     preferred_language: str = "ar-MA"
-    gender: str = ""
+    gender: Optional[str] = None
     date_of_birth: Optional[datetime] = None
     weight: Optional[float] = None
     height: Optional[float] = None
+
 
 class LogEntrySchema(Schema):
     id: int
@@ -41,6 +43,7 @@ class LogEntrySchema(Schema):
     client_uuid: Optional[UUID] = None
     created_at: datetime
 
+
 class LogEntryCreateSchema(Schema):
     logged_at: Optional[datetime] = None
     meal_type: str = ""
@@ -57,7 +60,8 @@ class LogEntryCreateSchema(Schema):
 
 
 class LogEntryUpdateSchema(Schema):
-    """Partial update — all fields optional.  Only supplied fields are written."""
+    """Partial update — all fields optional. Only supplied fields are written."""
+
     logged_at: Optional[datetime] = None
     meal_type: Optional[str] = None
     blood_sugar: Optional[_BloodSugar] = None
@@ -71,7 +75,8 @@ class LogEntryUpdateSchema(Schema):
 
 
 class PaginatedLogsResponse(Schema):
-    """Paginated wrapper for GET /logs.  Use ?page=N&page_size=M (defaults: 1, 50)."""
+    """Paginated wrapper for GET /logs. Use ?page=N&page_size=M (defaults: 1, 50)."""
+
     total: int
     page: int
     page_size: int
@@ -81,6 +86,7 @@ class PaginatedLogsResponse(Schema):
 class BatchSyncResponse(Schema):
     synced_ids: List[UUID]
     errors: List[str] = []
+
 
 class Error(Schema):
     message: str
