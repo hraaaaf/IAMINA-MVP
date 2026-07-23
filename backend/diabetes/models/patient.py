@@ -16,7 +16,11 @@ class DiabetesProfile(models.Model):
 
     Linked to core.BasePatientProfile via base_profile (OneToOneField).
     Access identity fields via: profile.base_profile.firebase_uid, etc.
-    Access via reverse: base_profile_instance.diabetes_profile
+    Access via reverse: base_profile_instance.diabetes_profile.
+
+    Clinical identity fields are nullable by design. Authentication may create the
+    extension shell, but must never guess a diabetes diagnosis or treatment. NULL
+    means "not yet declared/validated", not a clinical default.
     """
 
     DIABETES_TYPE_CHOICES = [
@@ -49,13 +53,17 @@ class DiabetesProfile(models.Model):
     diabetes_type = models.CharField(
         max_length=20,
         choices=DIABETES_TYPE_CHOICES,
-        help_text="Type of diabetes",
+        null=True,
+        blank=True,
+        help_text="Patient-declared/validated type of diabetes. NULL = unknown.",
     )
 
     treatment_type = models.CharField(
         max_length=20,
         choices=TREATMENT_TYPE_CHOICES,
-        help_text="Current treatment approach",
+        null=True,
+        blank=True,
+        help_text="Patient-declared current treatment approach. NULL = unknown.",
     )
 
     target_range_low = models.IntegerField(
@@ -84,7 +92,17 @@ class DiabetesProfile(models.Model):
         verbose_name_plural = 'Diabetes Profiles'
 
     def __str__(self):
-        return f"{self.base_profile.patient.username} - {self.get_diabetes_type_display()}"
+        diabetes_label = (
+            self.get_diabetes_type_display()
+            if self.diabetes_type
+            else "clinical profile incomplete"
+        )
+        return f"{self.base_profile.patient.username} - {diabetes_label}"
+
+    @property
+    def clinical_profile_complete(self) -> bool:
+        """True only when core diabetes identity fields were actually provided."""
+        return bool(self.diabetes_type and self.treatment_type)
 
     # ── Convenience accessors for backward-compat code paths ─────────────────
     # These proxy to base_profile so callers that do profile.preferred_language
