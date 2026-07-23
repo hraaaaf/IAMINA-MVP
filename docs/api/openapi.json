@@ -23,7 +23,7 @@
             }
           }
         },
-        "description": "Verify Firebase JWT and link/create Django User.\n\nFlow:\n  1. Verify id_token with Firebase Admin SDK \u2192 raises 401 on failure.\n  2. Extract uid (stable) + email from decoded payload.\n  3. Look up Django User by firebase_uid on BasePatientProfile (stable key).\n     Fall back to email lookup for existing accounts not yet migrated.\n  4. Create user + profile if brand new.\n  5. Sync firebase_uid + email on every login (they can change in Firebase).\n  6. Establish Django session for web/PWA clients.",
+        "description": "Verify Firebase JWT and link/create Django User.\n\nFlow:\n  1. Verify id_token with Firebase Admin SDK \u2192 raises 401 on failure.\n  2. Extract uid (stable) + email from decoded payload.\n  3. Look up Django User by firebase_uid on BasePatientProfile (stable key).\n     Fall back to username/email for legacy identities.\n  4. Create identity + empty profile shells if brand new.\n  5. Sync firebase_uid + email on every login.\n  6. Establish Django session for web/PWA clients.\n\nClinical/demographic fields remain NULL until explicitly declared.",
         "tags": [
           "auth"
         ],
@@ -435,7 +435,7 @@
             }
           }
         },
-        "description": "Partial update \u2014 only fields explicitly provided are written.\nValidates language choices, unit choices, and physiological glucose bounds.\nInvalidates IAmina session cache when target range or language changes.",
+        "description": "Persist only explicitly supplied patient-declared profile fields.",
         "tags": [
           "profile"
         ],
@@ -1557,7 +1557,7 @@
         "type": "object"
       },
       "PaginatedLogsResponse": {
-        "description": "Paginated wrapper for GET /logs.  Use ?page=N&page_size=M (defaults: 1, 50).",
+        "description": "Paginated wrapper for GET /logs. Use ?page=N&page_size=M (defaults: 1, 50).",
         "properties": {
           "total": {
             "title": "Total",
@@ -1704,7 +1704,7 @@
         "type": "object"
       },
       "LogEntryUpdateSchema": {
-        "description": "Partial update \u2014 all fields optional.  Only supplied fields are written.",
+        "description": "Partial update \u2014 all fields optional. Only supplied fields are written.",
         "properties": {
           "logged_at": {
             "anyOf": [
@@ -1839,12 +1839,31 @@
       "PatientProfileSchema": {
         "properties": {
           "diabetes_type": {
-            "title": "Diabetes Type",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diabetes Type"
           },
           "treatment_type": {
-            "title": "Treatment Type",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Treatment Type"
+          },
+          "clinical_profile_complete": {
+            "default": false,
+            "title": "Clinical Profile Complete",
+            "type": "boolean"
           },
           "target_range_low": {
             "title": "Target Range Low",
@@ -1864,14 +1883,20 @@
             "type": "string"
           },
           "gender": {
-            "default": "",
-            "title": "Gender",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
           },
           "date_of_birth": {
             "anyOf": [
               {
-                "format": "date-time",
+                "format": "date",
                 "type": "string"
               },
               {
@@ -1904,8 +1929,6 @@
           }
         },
         "required": [
-          "diabetes_type",
-          "treatment_type",
           "target_range_low",
           "target_range_high",
           "unit_preference"
@@ -1914,7 +1937,7 @@
         "type": "object"
       },
       "ProfilePatchSchema": {
-        "description": "All fields optional \u2014 only provided fields are updated.",
+        "description": "All fields optional; supplied values are treated as patient declarations.",
         "properties": {
           "preferred_language": {
             "anyOf": [
@@ -1926,6 +1949,28 @@
               }
             ],
             "title": "Preferred Language"
+          },
+          "diabetes_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diabetes Type"
+          },
+          "treatment_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Treatment Type"
           },
           "unit_preference": {
             "anyOf": [
@@ -1959,6 +2004,29 @@
               }
             ],
             "title": "Target Range High"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
           },
           "weight": {
             "anyOf": [
