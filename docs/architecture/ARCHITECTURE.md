@@ -9,7 +9,7 @@
 
 ## 1. Product architecture in one sentence
 
-IAmina is a **Flutter + Django modular monolith for one live diabetes companion**, with existing chassis/module seams, deterministic clinical/safety logic, offline-first data capture, and legacy provider/auth integrations being migrated toward a MENA-focused sovereignty architecture.
+IAmina is a **Flutter + Django modular monolith for one live diabetes companion**, with existing chassis/module seams, deterministic clinical/safety logic, offline-first data capture, a server-enforced AI egress authorization boundary, and legacy provider/auth integrations being migrated toward a MENA-focused sovereignty architecture.
 
 The existence of platform seams does **not** mean IAmina is currently a multi-condition platform.
 
@@ -23,15 +23,16 @@ The existence of platform seams does **not** mean IAmina is currently a multi-co
 - Diabetes-specific clinical data, KPI logic, pattern detection, and companion context.
 - Shared core contracts, safety registry/middleware, account/auth infrastructure, observability, and retention instrumentation.
 - Legacy Firebase authentication bridge.
-- Legacy provider-specific AI/STT/vision/document call paths still exist.
+- Provider-specific AI/STT/vision/document adapters still exist.
+- A central `core.ai_egress` boundary now authorizes live external model/media operations by patient, purpose, modality, and server-side consent.
+- CI blocks new direct external AI callsites that omit the central authorization assertion.
 
 ### Target direction
 
 - MENA country-by-country/locale-by-locale rollout.
 - Django-native identity as sovereignty-critical source of truth.
-- One enforceable outbound AI/media boundary.
+- Complete outbound AI/media policy contract with explicit payload allowlists, minimization/redaction, granular media consent, processor/subprocessor metadata, residency/retention/no-training terms, and timeout/failure policy.
 - Provider-agnostic text/STT/vision architecture selected independently by benchmark.
-- Explicit consent, minimization, redaction, retention, and processor metadata for outbound calls.
 - No second condition until the Retention Gate passes.
 
 ## 3. Layer model
@@ -63,7 +64,7 @@ Shared core responsibilities include:
 - authentication bridge/current auth surface;
 - safety middleware/registries;
 - shared module contracts;
-- outbound AI/media policy boundary target;
+- AI/media egress authorization policy;
 - observability and retention instrumentation;
 - account deletion/consent hooks;
 - cross-cutting operational controls.
@@ -109,7 +110,7 @@ Detailed implementation history remains available in git history and the immutab
 
 ## 5. Safety decision flow
 
-The intended authority order is:
+The current authority order is:
 
 ```text
 patient input
@@ -117,7 +118,11 @@ patient input
   → deterministic emergency and safety gates
   → diabetes/domain analysis
   → approved structured result
-  → optional minimized AI verbalization/media task
+  → optional external AI/media task
+       → patient/purpose/modality egress scope
+       → server-side consent authorization
+       → payload minimization/redaction where implemented
+       → provider call
   → output safety policy
   → patient UI
 ```
@@ -130,27 +135,55 @@ Generative AI must never be the authority for:
 - treatment/dose optimization;
 - whether a prohibited payload may leave the system.
 
+### P0-A safety boundary changes now as-built
+
+- Cookie/session-authenticated API writes are no longer protected by a blanket `/api/` CSRF exemption.
+- Bearer-token/bootstrap paths retain the narrow exemptions they require.
+- Unit normalization covers legacy and registry-mounted module routes, including `/api/v1/diabetes/...`.
+- Unexpected unit-normalization failures are fail-closed.
+- Authoritative deterministic triage classification belongs to shared `core` safety ownership; compatibility shims may remain for historical imports, but core safety must not depend on the diabetes module.
+
 ## 6. AI / model boundary
 
-### Current state
+### Current state after P0-B
 
-The codebase still contains legacy provider-specific integrations and more than one type of model call path. Do **not** document the system as fully provider-agnostic or fully egress-controlled until P0-MENA-1 is complete.
+`core.ai_egress` is the central authorization layer for currently wired live external model/media operations.
 
-### Target state
+It enforces before real egress:
 
-All external text/STT/vision/document calls must pass an enforceable boundary that records or enforces:
+- valid authenticated patient scope;
+- registered purpose;
+- declared/allowed modality;
+- server-side consent from the patient profile.
 
-- purpose;
-- modality;
-- user consent/legal basis where required;
-- allowed fields/media;
-- minimization/redaction;
-- provider + processor/subprocessor;
-- retention/training terms;
-- timeout/failure policy;
-- audit/observability metadata that does not itself leak sensitive content.
+Default-deny conditions include:
 
-Direct provider imports/calls outside sanctioned infrastructure should fail CI.
+- no egress scope;
+- missing patient consent record/consent;
+- unknown purpose;
+- modality not authorized for that purpose.
+
+The boundary is intentionally **lazy**: entering a request scope does not itself require AI consent. Deterministic emergency/safety behavior can still complete for a patient who declined AI as long as no external provider call is attempted.
+
+Live call paths wired through this policy include the currently inventoried text/gateway, chat, summary/doctor-brief, STT/audio, vision/OCR, and document-processing flows.
+
+CI contains an AI-egress anti-bypass gate so new direct model/provider callsites cannot silently omit the authorization assertion.
+
+### Important remaining limitations
+
+P0-B does **not** mean the complete sovereignty/data-egress program is finished.
+
+Still required under P0-MENA-1:
+
+- structured payload/field allowlists per purpose;
+- uniformly enforced minimization/redaction contracts;
+- purpose/modality-granular raw-media consent where required;
+- processor/subprocessor and residency metadata;
+- retention/no-training terms;
+- timeout/failure/fallback policy;
+- final removal/isolation of provider-specific seams.
+
+Therefore the system is **egress-authorized**, but not yet fully provider-agnostic or fully sovereignty-certified.
 
 ## 7. Data-egress policy
 
@@ -166,13 +199,15 @@ Do not send by default:
 - raw unrelated clinical logs;
 - unrelated health data.
 
-Raw audio/images may disclose sensitive information even without explicit text fields, so media transmission requires a separately approved flow.
+Raw audio/images/documents may disclose sensitive information even without explicit text fields, so media transmission requires an approved purpose and the consent/policy level defined by P0-MENA-1.
 
 ## 8. Authentication
 
 ### Current
 
 Firebase-based identity/token handling remains present as legacy infrastructure.
+
+The API safety hardening from P0-A distinguishes Bearer/bootstrap behavior from cookie/session CSRF behavior; it does **not** complete the Firebase → Django sovereignty migration.
 
 ### Target
 
@@ -223,15 +258,18 @@ A locale/dialect is disabled for patient pilot until it has:
 - `client_uuid` is the sync idempotency key and must not be repurposed.
 - KPI calculations covered by ADR-0007 remain SQL-first.
 - Clinical data ownership stays inside the diabetes domain unless a clearly shared concept is proven.
+- Normative clinical metrics require source/version, eligibility rules, and regression fixtures; SQLite-only success is insufficient evidence for PostgreSQL-specific raw SQL.
 
 ## 11. Key invariants
 
 | Invariant | Reason |
 |---|---|
 | Deterministic emergency gate before generative AI | Patient safety |
-| Unit normalization before clinical/AI logic | Data integrity |
+| Unit normalization before clinical/AI logic, fail-closed on unexpected normalization failure | Data integrity |
+| Cookie/session API writes retain CSRF protection | Web/API security |
 | No diagnosis/prescription/treatment optimization | Product/regulatory boundary |
-| One sanctioned outbound provider boundary | Privacy + sovereignty |
+| Every live external model/media call requires sanctioned egress authorization | Privacy + sovereignty |
+| Missing scope/consent/purpose/modality authorization denies egress | Default-deny safety |
 | Default-deny sensitive outbound data/media | Data minimization |
 | SQL-first KPI authority where ADR-0007 applies | Single analytical source of truth |
 | `client_uuid` preserved | Offline sync idempotency |
@@ -240,11 +278,12 @@ A locale/dialect is disabled for patient pilot until it has:
 
 ## 12. Documentation authority
 
-- `docs/ROADMAP.md` — what happens next.
+- `docs/ROADMAP.md` — what happens next and recent closeout state.
 - This file — current architecture + target boundaries.
 - `docs/SPECS.md` — current capability/API contract.
+- `docs/TECHDEBT.md` — unresolved compromise only.
 - `docs/adr/` — immutable decisions.
 - `ARCHITECTURE-TIMELINE.md` — historical evolution.
 - Git history — deleted obsolete implementation plans and prior snapshots.
 
-Do not copy historical phase status or test counts into this document.
+Do not copy historical phase diaries or raw test counts into this document. Update it after a merged task only when the **as-built architecture** actually changed.
