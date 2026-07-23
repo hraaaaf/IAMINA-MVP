@@ -24,14 +24,26 @@ db.sqlite3-journal
 staticfiles/
 *.log
 
-# Environment variables
+# Environment variables / credentials
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Firebase credentials — NEVER commit service account keys
 firebase-credentials.json
 **/firebase-credentials.json
+*service-account*.json
+*service_account*.json
+
+# Local AI-agent settings — may contain shell history, tokens or machine paths
+.claude/settings.local.json
+.claude/settings.local.*
+**/.claude/settings.local.json
+**/.claude/settings.local.*
 
 # OS
 .DS_Store
