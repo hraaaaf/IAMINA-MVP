@@ -91,6 +91,9 @@ jobs:
         # HIGH severity only — skip B101 (assert) and B311 (random) which are dev-only patterns
         run: bandit -r . -ll -ii --skip B101,B311 -x ./tracking/tests,./amina/tests
 
+      - name: Model/migration drift is forbidden
+        run: python manage.py makemigrations --check --dry-run
+
       - name: OpenAPI schema is current
         # docs/api/openapi.json must match `manage.py export_openapi`. If this fails,
         # regenerate: `python backend/manage.py export_openapi > docs/api/openapi.json`
