@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev, feat/**, fix/**, chore/**, docs/**]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  backend:
+    name: Backend — ruff + pytest
+    runs-on: ubuntu-latest
+
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-secret-key-not-for-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      DATABASE_URL: sqlite:///ci-test.db
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        # Pin linters so a new upstream release can't turn CI red without a code change.
+        run: pip install -r requirements.txt ruff==0.15.17 bandit[toml] import-linter
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Architecture boundaries (import-linter)
+        # Enforces the chassis/module/companion seams (.importlinter). Pre-existing
+        # core→diabetes leaks are allow-listed there as tracked debt.
+        run: lint-imports
+
+      - name: LLM gateway anti-bypass
+        # Temporary debt allow-list during pilot-hardening Phase 1:
+        # - backend/ai/api/v1/ai.py
+        # - backend/diabetes/services/summary.py
+        # - backend/diabetes/services/clinical/engine.py
+        # Companion paths are already unified and must not regress.
+        run: |
+          if rg -n "get_llm" . \
+            -g '!core/llm_gateway.py' \
+            -g '!llm/factory.py' \
+            -g '!llm/pipeline.py' \
+            -g '!llm/tests/**' \
+            -g '!diabetes/tests/test_llm_factory.py' \
+            -g '!core/tests/**' \
+            -g '!ai/api/v1/ai.py' \
+            -g '!diabetes/services/summary.py' \
+            -g '!diabetes/services/clinical/engine.py' \
+            -g '!media/documents/pulper.py'; then
+            echo "::error::Unauthorized get_llm usage found outside sanctioned gateway/internal paths."
+            exit 1
+          fi
+
+      - name: SAST (bandit)
+        # HIGH severity only — skip B101 (assert) and B311 (random) which are dev-only patterns
+        run: bandit -r . -ll -ii --skip B101,B311 -x ./tracking/tests,./amina/tests
+
+      - name: OpenAPI schema is current
+        # docs/api/openapi.json must match `manage.py export_openapi`. If this fails,
+        # regenerate: `python backend/manage.py export_openapi > docs/api/openapi.json`
+        run: |
+          python manage.py export_openapi > /tmp/openapi.json
+          if ! diff -q /tmp/openapi.json ../docs/api/openapi.json > /dev/null; then
+            echo "::error::docs/api/openapi.json is stale. Regenerate: python backend/manage.py export_openapi > docs/api/openapi.json"
+            diff ../docs/api/openapi.json /tmp/openapi.json | head -40 || true
+            exit 1
+          fi
+
+      - name: Run tests
+        run: pytest --tb=short -q
+
+  frontend:
+    name: Frontend — flutter analyze
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+  pr-size:
+    name: PR size (advisory)
+    runs-on: ubuntu-latest
+    # Non-blocking: surfaces large/multi-unit PRs to the human dev without
+    # stopping agent auto-merge. One PR should map to one ROADMAP unit.
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Warn on large diff
+        run: |
+          BASE="origin/${{ github.base_ref }}"
+          git fetch origin "${{ github.base_ref }}" --depth=1 || true
+          CHANGED=$(git diff --numstat "$BASE"...HEAD -- . ':(exclude)docs/api/openapi.json' \
+            | awk '{a+=$1; d+=$2} END {print a+d}')
+          CHANGED=${CHANGED:-0}
+          echo "Changed lines (excl. generated schema): $CHANGED"
+          THRESHOLD=400
+          if [ "$CHANGED" -gt "$THRESHOLD" ]; then
+            echo "::warning::Large PR — $CHANGED changed lines (> $THRESHOLD). Confirm this is ONE ROADMAP unit; split if it bundles several."
+            { echo "### ⚠️ Large PR — $CHANGED changed lines (> $THRESHOLD)";
+              echo "One PR should map to one ROADMAP unit. If this bundles several steps, split it.";
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "PR size OK ($CHANGED ≤ $THRESHOLD)."
+          fi

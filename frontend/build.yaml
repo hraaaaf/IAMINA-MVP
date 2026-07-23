@@ -1,0 +1,11 @@
+targets:
+  $default:
+    builders:
+      swagger_dart_code_generator:
+        options:
+          input_folder: "lib/services/api/"
+          output_folder: "lib/services/api/generated/"
+          separate_models: true
+          use_path_for_request_names: true
+          include_default_to_json: true
+          generate_for_json_serializable: true

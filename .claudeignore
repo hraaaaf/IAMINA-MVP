@@ -1,0 +1,7 @@
+# Large directories — excluded from Claude Code indexing
+flutter_sdk/
+venv/
+.pytest_cache/
+.ruff_cache/
+**/__pycache__/
+**/*.pyc

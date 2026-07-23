@@ -1,0 +1,68 @@
+# Tailwind CSS standalone CLI binary (platform-specific, not committed)
+tailwindcss
+tailwindcss-linux-x64
+tailwindcss-macos-arm64
+tailwindcss-macos-x64
+tailwindcss-windows-x64.exe
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+*.log
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Firebase credentials — NEVER commit service account keys
+firebase-credentials.json
+**/firebase-credentials.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Claude Code worktrees — local only, never commit
+.claude/worktrees/
+frontend/.claude/
+
+# Flutter build artifacts — never commit
+frontend/.dart_tool/
+frontend/build/
+frontend/windows/flutter/generated_plugin_registrant.cc
+frontend/windows/flutter/generated_plugin_registrant.h
+frontend/windows/flutter/generated_plugins.cmake
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+
+# PID files
+*.pid
+.backend.pid
+
+# Medical corpus PDFs — large files, not versioned
+backend/data/corpus/*.pdf

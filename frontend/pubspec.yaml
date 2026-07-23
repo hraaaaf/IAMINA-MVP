@@ -1,0 +1,76 @@
+name: amina
+description: IAmina — Diabetes companion mobile + web app.
+publish_to: 'none'
+
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+
+  # Routing
+  go_router: ^14.1.0
+
+  # Firebase
+  firebase_auth: ^5.1.0
+  firebase_core: ^3.3.0
+
+  # Offline-first database
+  drift: ^2.20.0
+  sqlite3_flutter_libs: ^0.5.25
+  path_provider: ^2.1.2
+
+  # Networking
+  http: ^1.2.0
+  http_parser: ^4.0.0
+  connectivity_plus: ^6.0.0
+
+  # Voice — recording + TTS
+  record: ^5.0.0          # audio capture (web:WebM  iOS/Android:m4a)
+  flutter_tts: ^4.0.0     # text-to-speech (web:SpeechSynthesis  mobile:native)
+
+  # OCR — on-device glucometer reader (Phase 11-B)
+  # Mobile only (iOS/Android). Web/desktop: button hidden via kIsWeb guard.
+  image_picker: ^1.1.2
+  google_mlkit_text_recognition: ^0.13.0
+
+  # Document Pulper — Phase 12 (multi-format file import)
+  file_picker: ^8.1.4
+
+  # Utilities
+  uuid: ^4.0.0
+  intl_utils: ^2.8.1
+  provider: ^6.1.1
+  chopper: ^8.0.0
+  fl_chart: ^0.70.2
+  json_annotation: ^4.11.0
+  drift_flutter: ^0.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+  # Code generation
+  drift_dev: ^2.20.0
+  build_runner: ^2.4.0
+  swagger_dart_code_generator: ^4.1.1
+  json_serializable: ^6.8.0
+  chopper_generator: ^8.6.1
+
+  # Testing
+  mocktail: ^1.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
