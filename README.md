@@ -66,11 +66,11 @@ Legacy `dev.sh` / `dev.ps1` launchers remain during migration but are **not the 
 ## Repository map
 
 ```text
-backend/       Django API, safety, clinical/domain logic, AI/provider integrations
-frontend/      Flutter application and offline-first local data
-core/          Shared chassis contracts, auth/account, safety registry, observability
-diabetes/      The only live disease module
-docs/          Product, architecture, safety, roadmap, ADRs, technical debt
+backend/               Django project and APIs
+backend/core/          Shared chassis contracts, auth/account, safety, observability
+backend/diabetes/      The only live disease module
+frontend/              Flutter application and offline-first local data
+docs/                  Product, architecture, safety, roadmap, ADRs, technical debt
 ```
 
 ## Canonical documentation
