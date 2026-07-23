@@ -16,7 +16,11 @@ class BasePatientProfile(models.Model):
 
     Owns all cross-cutting patient identity fields:
     auth bridge (firebase_uid), language, RGPD consent, monetisation,
-    and biometrics (gender, DOB, weight, height).
+    and optional patient-declared biometrics/demographics.
+
+    Authentication must never invent clinical or demographic facts. Fields such
+    as gender and date of birth therefore remain NULL until explicitly declared
+    by the patient (or imported through a separately validated flow).
 
     Module-specific fields live in their respective extension models
     (e.g. diabetes.DiabetesProfile) linked via OneToOneField.
@@ -70,12 +74,15 @@ class BasePatientProfile(models.Model):
     gender = models.CharField(
         max_length=6,
         choices=GENDER_CHOICES,
-        default='female',
-        help_text="Genre",
+        null=True,
+        blank=True,
+        help_text="Patient-declared gender. NULL = not provided.",
     )
 
     date_of_birth = models.DateField(
-        help_text="Date de naissance",
+        null=True,
+        blank=True,
+        help_text="Patient-declared date of birth. NULL = not provided.",
     )
 
     weight = models.DecimalField(
