@@ -43,15 +43,21 @@ jobs:
           cache-dependency-path: backend/requirements.txt
 
       - name: Install dependencies
+        # Pin linters so a new upstream release can't turn CI red without a code change.
         run: pip install -r requirements.txt ruff==0.15.17 bandit[toml] import-linter
 
       - name: Lint (ruff)
         run: ruff check .
 
       - name: Architecture boundaries (import-linter)
+        # Enforces the chassis/module/companion seams (.importlinter). Pre-existing
+        # core→diabetes leaks are allow-listed there as tracked debt.
         run: lint-imports
 
       - name: LLM gateway anti-bypass
+        # Temporary debt allow-list during pilot hardening. Companion paths are
+        # already unified and must not regress; remaining direct structured callsites
+        # must additionally pass the AI egress authorization gate below.
         run: |
           if rg -n "get_llm" . \
             -g '!core/llm_gateway.py' \
@@ -69,6 +75,8 @@ jobs:
           fi
 
       - name: AI egress authorization anti-bypass
+        # Any network-capable model callsite outside provider adapters must prove it
+        # passes through the central patient/purpose/modality authorization boundary.
         run: |
           FILES=$(rg -l 'get_llm\(|genai\.Client\(|GenerativeModel\(' . \
             -g '!llm/**' -g '!**/tests/**' -g '!**/migrations/**' || true)
@@ -80,9 +88,12 @@ jobs:
           done
 
       - name: SAST (bandit)
+        # HIGH severity only — skip B101 (assert) and B311 (random) which are dev-only patterns
         run: bandit -r . -ll -ii --skip B101,B311 -x ./tracking/tests,./amina/tests
 
       - name: OpenAPI schema is current
+        # docs/api/openapi.json must match `manage.py export_openapi`. If this fails,
+        # regenerate: `python backend/manage.py export_openapi > docs/api/openapi.json`
         run: |
           python manage.py export_openapi > /tmp/openapi.json
           if ! diff -q /tmp/openapi.json ../docs/api/openapi.json > /dev/null; then
@@ -171,6 +182,8 @@ jobs:
   pr-size:
     name: PR size (advisory)
     runs-on: ubuntu-latest
+    # Non-blocking: surfaces large/multi-unit PRs to the human dev without
+    # stopping agent auto-merge. One PR should map to one ROADMAP unit.
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
