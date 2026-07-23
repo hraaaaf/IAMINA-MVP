@@ -95,11 +95,11 @@ Legacy `dev.sh` / `dev.ps1` wrappers may still exist during migration. Do not up
 ## 7. Repository architecture
 
 ```text
-backend/                 Django project and APIs
-core/                    Shared contracts, safety, auth/account, observability
-diabetes/                Only live disease module
-frontend/                Flutter application + Drift offline store
-docs/                    Canonical docs, ADRs, architecture history, assessments
+backend/               Django project and APIs
+backend/core/          Shared contracts, safety, auth/account, observability
+backend/diabetes/      Only live disease module
+frontend/              Flutter application + Drift offline store
+docs/                  Canonical docs, ADRs, architecture history, assessments
 ```
 
 Key principles:
