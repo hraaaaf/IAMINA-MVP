@@ -22,6 +22,7 @@ import logging
 import os
 
 from core.ai_egress import AUDIO, assert_ai_egress_allowed
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────

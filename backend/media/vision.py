@@ -22,6 +22,7 @@ import os
 from typing import Optional
 
 from core.ai_egress import IMAGE, assert_ai_egress_allowed
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
