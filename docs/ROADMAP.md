@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last strategic reset:** 2026-07-23 — MENA, sovereignty, provider-agnostic AI.
+> **Last updated:** 2026-07-23 — P0-A/P0-B closeout after the MENA sovereignty reset.
 >
 > **Authority:** this file is the **single forward tracker**. Historical phase numbers, completed chassis work, old provider plans, and prior strategy belong in git history, ADRs, assessments, or `docs/architecture/ARCHITECTURE-TIMELINE.md` — not in the active backlog.
 
@@ -21,21 +21,64 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 
 ---
 
+# P0 closeout ledger
+
+This section records only recently completed P0 foundations whose operational meaning still affects the next work.
+
+## ✅ P0-A — API safety boundaries — MERGED
+
+Closed on 2026-07-23.
+
+- Session/cookie-authenticated API writes are no longer covered by a blanket `/api/` CSRF exemption.
+- Bearer-token/bootstrap behavior remains supported without weakening cookie/session CSRF protection.
+- `UnitGuardMiddleware` covers legacy and registry-mounted module paths such as `/api/v1/diabetes/...`.
+- Unexpected unit-normalization failures are **fail-closed**, not fail-open.
+- Authoritative deterministic triage classification was moved to shared `core` safety ownership instead of creating a `core → diabetes` dependency.
+- Regression coverage and the full repository CI were green before merge.
+
+## ✅ P0-B — Server-side AI egress authorization boundary — MERGED
+
+Closed on 2026-07-23.
+
+Implemented foundation:
+
+- central provider-agnostic `core.ai_egress` authorization boundary;
+- explicit patient, purpose, and modality scope for live external model/media operations;
+- server-side consent check immediately before real egress;
+- default-deny behavior for missing scope, missing consent, unknown purpose, or undeclared modality;
+- live text, STT/audio, vision/OCR, document, chat, summary, and doctor-brief call paths wired to the boundary;
+- CI anti-bypass rule preventing new direct external AI callsites from omitting the authorization assertion;
+- deterministic emergency/safety behavior remains usable without AI consent unless a real external call is attempted.
+
+**Still open inside P0-MENA-1:** payload-level allowlists/minimization are not yet uniformly expressed as one structured contract; raw-media consent is still global rather than modality/purpose-granular; processor/subprocessor, retention/training, timeout/failure and residency metadata are not yet fully enforced per call.
+
+---
+
 # NOW — pilot-critical path
 
 Work top-down. Do not pull SOON/GATED work forward unless it becomes a direct blocker.
 
-## P0-MENA-1 — Enforce one outbound AI/data-egress boundary
+## P0-MENA-1 — Complete the outbound AI/data-egress contract
 
-**Goal:** no uncontrolled provider call leaves the application.
+**Goal:** no uncontrolled or insufficiently governed provider call leaves the application.
 
-- [ ] Inventory every text, streaming, reasoning, STT, vision, OCR/document-extraction, embedding, and fallback provider call.
-- [ ] Route every external model/media call through one enforceable outbound boundary.
-- [ ] Default-deny fields and media.
-- [ ] Require purpose, consent, minimization, redaction, retention, and processor/subprocessor metadata per call type.
-- [ ] Add CI enforcement preventing direct provider imports/calls outside sanctioned infrastructure.
-- [ ] Remove or explicitly isolate legacy direct `get_llm()`/provider callsites.
+### Completed foundation
+
+- [x] Inventory and wire the currently live text, STT/audio, vision/OCR, document, summary/brief, chat and gateway egress paths into one authorization boundary.
+- [x] Require a registered purpose + modality + authenticated patient scope for live external operations.
+- [x] Enforce server-side AI consent immediately before external egress.
+- [x] Add CI enforcement against new unauthorized direct provider callsites.
+- [x] Default-deny missing scope, missing consent, unknown purpose, and undeclared modality.
+
+### Remaining P0-MENA-1 work
+
+- [ ] Define explicit payload/field allowlists per purpose and modality.
+- [ ] Make minimization/redaction rules enforceable and testable at the boundary rather than relying on uneven callsite behavior.
+- [ ] Introduce purpose/modality-granular media consent for raw audio/images/documents where required.
+- [ ] Attach approved processor/subprocessor, residency, retention/no-training, and legal-basis metadata to each egress policy.
+- [ ] Remove or deliberately isolate remaining provider-specific/direct runtime seams so provider choice is downstream of policy.
 - [ ] Add provider timeouts, streaming timeouts, typed failure handling, and safe frontend error UX.
+- [ ] Verify fallback paths cannot bypass the same policy.
 
 ### Data-egress acceptance gate
 
@@ -48,9 +91,9 @@ No external model provider receives, by default:
 - raw unrelated clinical logs;
 - unrelated health data.
 
-Raw audio/images are blocked by default. Each approved media flow requires explicit purpose and consent, documented processor/retention terms, and proof that only the minimum required media is transmitted.
+Raw audio/images/documents remain sensitive even when text fields are absent. Each approved media flow requires explicit purpose, appropriate consent, a documented processor/retention policy, and proof that only the minimum required media is transmitted.
 
-**Done when:** CI and tests prove there is no provider bypass and the allowed outbound payload contract is explicit.
+**Done when:** tests and CI prove both **no provider bypass** and a complete explicit outbound payload/media policy contract.
 
 ---
 
@@ -118,7 +161,7 @@ All items below are hard blockers unless the founder records an explicit defer d
 - [ ] Doctor-facing/summary outputs proven to pass the same no-prescription policy.
 - [ ] Emergency events route to a **monitored human channel** or the product explicitly adopts a documented self-care-only operating mode.
 - [ ] Darija orthographic high-severity safety gap closed.
-- [ ] AI/model consent enforced at the outbound boundary.
+- [x] Base AI/model consent enforced server-side at the outbound boundary. **Granular raw-media consent remains open under P0-MENA-1.**
 - [ ] Consent matrix + processor/subprocessor register documented.
 - [ ] Cross-border/data-residency assumptions documented for the pilot country.
 - [ ] Data export implemented or an operationally valid export process documented for the closed pilot.
@@ -126,6 +169,20 @@ All items below are hard blockers unless the founder records an explicit defer d
 - [ ] Incident response and escalation procedure defined.
 - [ ] Pilot onboarding, monitoring, escalation, and exit checklist approved.
 - [ ] No committed/reachable secrets remain; exposed keys are rotated.
+
+---
+
+## P0-C — Clinical analytics correctness + PostgreSQL parity
+
+**Status:** IN PROGRESS on a dedicated draft PR. Do not mark complete until normative formulas and PostgreSQL source-of-truth tests are green.
+
+Targets:
+
+- [ ] Revalidate GRI against the original normative definition and use disjoint glycemic zones correctly.
+- [ ] Do not expose a GRI when valid CGM coverage/eligibility cannot be proven.
+- [ ] Fix SQLite/PostgreSQL SQL divergence in daily analytics.
+- [ ] Add PostgreSQL CI coverage for raw SQL that is production-authoritative.
+- [ ] Add normative regression fixtures.
 
 ---
 
@@ -167,8 +224,6 @@ If the gate fails, diagnose retention/business-model causes before adding condit
 
 # BUSINESS VALIDATION — founder-owned, parallel
 
-These do not replace the safety/deployment critical path but should run in parallel.
-
 - [ ] One-page monetization memo: channel hypotheses, cost per active patient, payer logic.
 - [ ] Competitive landscape focused on why IAmina wins for selected MENA language/dialect cohorts.
 - [ ] At least 5 structured market conversations: clinicians/distributors + pharma/insurer/patient-support stakeholders.
@@ -178,7 +233,7 @@ These do not replace the safety/deployment critical path but should run in paral
 
 # GATED — explicitly not now
 
-- Second disease module (including hypertension).
+- Second disease module, including hypertension.
 - Third-party plugin marketplace or broad external module ecosystem.
 - Worldwide language coverage.
 - Multi-tenant enterprise platform machinery without a validated business need.
@@ -188,12 +243,13 @@ These do not replace the safety/deployment critical path but should run in paral
 
 # Completed foundations — summary only
 
-The repository already contains substantial prior work. Keep details out of the active backlog; git history and architecture docs are the record.
-
 - Flutter-only frontend and versioned Django Ninja API.
 - Offline-first Drift synchronization patterns.
-- Deterministic emergency/unit safety middleware.
-- SQL-first diabetes KPI analytics.
+- Deterministic emergency safety gate.
+- API CSRF/session safety hardening and fail-closed unit normalization across legacy + namespaced module routes.
+- Shared-core deterministic triage authority without `core → diabetes` reverse dependency.
+- Server-side AI egress authorization boundary with patient/purpose/modality/consent enforcement and CI anti-bypass.
+- SQL-first diabetes KPI analytics foundation.
 - Diabetes clinical/pattern engine and structured context contracts.
 - Platform/chassis seams from ADR-0008, while diabetes remains the only live condition.
 - Observability and retention instrumentation foundations.
@@ -204,8 +260,9 @@ The repository already contains substantial prior work. Keep details out of the 
 
 ## Roadmap maintenance rules
 
-1. This file contains **only current forward work, gates, and concise completed foundations**.
-2. Do not append session diaries, test counts, commit hashes, provider experiments, or obsolete phase narratives.
-3. When a roadmap item is completed, either remove it into the completed-foundations summary or mark it complete only while its completion matters operationally.
-4. ADRs are immutable decisions; historical strategy belongs in architecture timeline/assessments/git history.
-5. Any new MENA country/dialect must pass the same locale, safety, privacy, and emergency-resource gates as the first pilot.
+1. This file contains **only current forward work, gates, and concise recently completed foundations**.
+2. Do not append session diaries, raw test logs, provider shopping notes, or obsolete phase narratives.
+3. **Every completed task/phase requires a documentation closeout before the next task starts:** update this roadmap, then architecture/specs/technical debt/domain docs only where the actual merged truth changed.
+4. A task is not “closed” merely because code merged; its canonical documentation must match the merged state.
+5. ADRs are immutable decisions; historical strategy belongs in architecture timeline/assessments/git history.
+6. Any new MENA country/dialect must pass the same locale, safety, privacy, and emergency-resource gates as the first pilot.
