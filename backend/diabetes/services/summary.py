@@ -4,6 +4,8 @@ import statistics
 from django.conf import settings
 from django.utils import timezone
 
+from core.ai_egress import TEXT, assert_ai_egress_allowed
+
 from ..models import AISummary
 from .llm.pseudonymizer import PHIPseudonymizer
 
@@ -156,6 +158,7 @@ Now analyze the data following the strict REQUIRED OUTPUT FORMAT exactly. Do not
         pseudonymizer = PHIPseudonymizer()
         secure_token, secure_prompt = pseudonymizer.mask_patient_identity(first_name, user_prompt)
 
+        assert_ai_egress_allowed(TEXT)
         provider = get_llm()
         raw_summary_text = provider.complete(system_prompt, secure_prompt).content
         summary_text = pseudonymizer.unmask_medical_report(raw_summary_text)
