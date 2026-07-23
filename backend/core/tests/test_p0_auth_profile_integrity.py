@@ -68,3 +68,29 @@ def test_invalid_clinical_declaration_is_rejected():
 
     with pytest.raises(ValueError):
         ProfilePatchSchema(treatment_type="guessed-treatment")
+
+
+def test_required_profile_fields_cannot_be_explicitly_cleared():
+    for field in (
+        "preferred_language",
+        "unit_preference",
+        "target_range_low",
+        "target_range_high",
+    ):
+        with pytest.raises(ValueError):
+            ProfilePatchSchema(**{field: None})
+
+
+def test_nullable_patient_declarations_can_be_explicitly_cleared():
+    patch = ProfilePatchSchema(
+        diabetes_type=None,
+        treatment_type=None,
+        gender=None,
+        date_of_birth=None,
+    )
+    assert patch.model_fields_set == {
+        "diabetes_type",
+        "treatment_type",
+        "gender",
+        "date_of_birth",
+    }
