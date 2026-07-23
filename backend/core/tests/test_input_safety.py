@@ -34,7 +34,9 @@ def test_none_and_empty_are_allowed():
 
 def test_sse_urgent_fast_path_does_not_initialize_iamina(monkeypatch):
     from types import SimpleNamespace
+
     from django.test import RequestFactory
+
     from ai.api.v1 import ai
 
     monkeypatch.setattr("core.input_safety.evaluate_input_safety", lambda message: type("D", (), {"action": URGENT})())
@@ -49,7 +51,9 @@ def test_sse_urgent_fast_path_does_not_initialize_iamina(monkeypatch):
 
 def test_sse_insulin_fast_path_does_not_initialize_iamina(monkeypatch):
     from types import SimpleNamespace
+
     from django.test import RequestFactory
+
     from ai.api.v1 import ai
 
     monkeypatch.setattr("core.input_safety.evaluate_input_safety", lambda message: type("D", (), {"action": INSULIN_BLOCK})())
