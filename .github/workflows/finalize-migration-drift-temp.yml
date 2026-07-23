@@ -1,0 +1,40 @@
+name: TEMP Finalize Migration Drift P0
+
+on:
+  push:
+    branches:
+      - fix/p0-migration-drift
+    paths:
+      - .github/workflows/finalize-migration-drift-temp.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add permanent migration drift gate and clean diagnostics
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('.github/workflows/ci.yml')
+          text = p.read_text()
+          needle = '''      - name: Run tests\n        run: pytest --tb=short -q\n'''
+          replacement = '''      - name: Django model/migration drift\n        # Prevent model changes from landing without matching migration state.\n        run: python manage.py makemigrations --check --dry-run\n\n      - name: Run tests\n        run: pytest --tb=short -q\n'''
+          if 'name: Django model/migration drift' not in text:
+              if needle not in text:
+                  raise SystemExit('CI insertion anchor not found')
+              p.write_text(text.replace(needle, replacement, 1))
+          PY
+          rm -f .ci/migration-drift.txt
+          rm -f .github/workflows/migration-drift-temp.yml
+          rm -f .github/workflows/finalize-migration-drift-temp.yml
+      - name: Commit final P0 scope
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "ci: enforce zero Django migration drift"
+          git push origin HEAD:fix/p0-migration-drift
