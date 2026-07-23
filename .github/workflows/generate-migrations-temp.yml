@@ -31,19 +31,25 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: Install dependencies
         run: pip install -q -r backend/requirements.txt
-      - name: Capture migration state and generate real migrations if needed
+      - name: Capture migration state without aborting diagnostics
         run: |
+          set +e
           mkdir -p .ci
           cd backend
           {
             echo "=== makemigrations dry-run ==="
             python manage.py makemigrations core diabetes --dry-run --verbosity 3
+            echo "dry_run_exit=$?"
             echo "=== showmigrations core diabetes ==="
             python manage.py showmigrations core diabetes
+            echo "showmigrations_exit=$?"
+            echo "=== real makemigrations ==="
+            python manage.py makemigrations core diabetes
+            echo "makemigrations_exit=$?"
           } > ../.ci/migration-diagnostic.txt 2>&1
-          python manage.py makemigrations core diabetes >> ../.ci/migration-diagnostic.txt 2>&1
           cd ..
-      - name: Commit migration outputs
+          exit 0
+      - name: Commit diagnostic and any generated migrations
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -52,5 +58,5 @@ jobs:
             echo "Nothing to commit."
             exit 0
           fi
-          git commit -m "fix(db): generate patient profile migration state"
+          git commit -m "fix(db): capture and generate patient profile migration state"
           git push origin HEAD:fix/p0-auth-profile-integrity
