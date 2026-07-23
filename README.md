@@ -69,9 +69,7 @@ Legacy `dev.sh` / `dev.ps1` launchers remain during migration but are **not the 
 backend/       Django API, safety, clinical/domain logic, AI/provider integrations
 frontend/      Flutter application and offline-first local data
 core/          Shared chassis contracts, auth/account, safety registry, observability
-
 diabetes/      The only live disease module
-
 docs/          Product, architecture, safety, roadmap, ADRs, technical debt
 ```
 
@@ -89,7 +87,7 @@ docs/          Product, architecture, safety, roadmap, ADRs, technical debt
 | [`docs/adr/`](docs/adr/) | Immutable architecture decisions/history |
 | [`docs/architecture/ARCHITECTURE-TIMELINE.md`](docs/architecture/ARCHITECTURE-TIMELINE.md) | Historical architecture evolution only |
 
-Historical assessments and archived transformation plans are evidence, **not forward instructions**.
+Dated assessments and deleted legacy plans remain available through git history as evidence, **not forward instructions**.
 
 ## Non-negotiable safety rules
 
