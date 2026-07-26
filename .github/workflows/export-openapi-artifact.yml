@@ -1,15 +1,14 @@
 name: Export OpenAPI artifact
 
 on:
-  push:
-    branches: [feat/p0-mena-media-consent-api]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   export:
-    if: ${{ !contains(github.event.head_commit.message, 'docs(api): regenerate OpenAPI') }}
     runs-on: ubuntu-latest
     env:
       DJANGO_SETTINGS_MODULE: amina.settings
@@ -42,5 +41,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/api/openapi.json
-          git commit -m "docs(api): regenerate OpenAPI"
+          git commit -m "docs(api): regenerate OpenAPI for media consent API"
           git push origin HEAD:feat/p0-mena-media-consent-api
