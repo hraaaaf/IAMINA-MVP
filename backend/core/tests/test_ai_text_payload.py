@@ -87,7 +87,8 @@ def test_provider_is_not_called_when_consent_is_missing(db):
         date_of_birth=date(1990, 1, 1),
     )
     provider = MagicMock()
-    provider.complete = MagicMock()
+    original_complete = MagicMock()
+    provider.complete = original_complete
     provider.stream = MagicMock()
     provider.think = MagicMock()
     guarded = _enforce_text_payload_policy(provider)
@@ -96,12 +97,13 @@ def test_provider_is_not_called_when_consent_is_missing(db):
         with pytest.raises(AIConsentRequired):
             guarded.complete("system", "user")
 
-    provider.complete.assert_not_called()
+    original_complete.assert_not_called()
 
 
 def test_provider_is_not_called_when_payload_is_oversized(consenting_patient):
     provider = MagicMock()
-    provider.complete = MagicMock()
+    original_complete = MagicMock()
+    provider.complete = original_complete
     provider.stream = MagicMock()
     provider.think = MagicMock()
     guarded = _enforce_text_payload_policy(provider)
@@ -110,7 +112,7 @@ def test_provider_is_not_called_when_payload_is_oversized(consenting_patient):
         with pytest.raises(AIPayloadDenied):
             guarded.complete("system", "x" * 16_001)
 
-    provider.complete.assert_not_called()
+    original_complete.assert_not_called()
 
 
 def test_valid_payload_reaches_provider_unchanged(consenting_patient):
