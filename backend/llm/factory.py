@@ -7,10 +7,16 @@ Priority order (when LLM_PROVIDER = "gemini"):
   3. FallbackProvider (static templates, always available)
 
 Explicit overrides (LLM_PROVIDER = "kimi" | "claude") bypass the chain.
+Every network-capable provider returned by this module is decorated with the
+central text payload contract before it can perform egress.
 """
 import logging
+from collections.abc import Iterator
+from typing import Any
 
 from django.conf import settings
+
+from core.ai_egress import authorize_text_payload
 
 from .base import BaseLLMProvider
 
@@ -40,6 +46,45 @@ def _get_kimi() -> BaseLLMProvider | None:
         return None
 
 
+def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
+    """Decorate one provider instance without changing its concrete type.
+
+    Keeping the original concrete instance preserves rate guards, failover checks,
+    provider-name reporting and existing interface tests. Authorization happens
+    before the original complete/stream/think method can touch the network.
+    """
+    if getattr(provider, "_iamina_text_payload_policy", False):
+        return provider
+
+    original_complete = provider.complete
+    original_stream = provider.stream
+    original_think = provider.think
+
+    def guarded_complete(system: str, user: str):
+        payload = authorize_text_payload(
+            {"system_prompt": system, "user_prompt": user}
+        )
+        return original_complete(payload.system_prompt, payload.user_prompt)
+
+    def guarded_stream(system: str, user: str) -> Iterator[str]:
+        payload = authorize_text_payload(
+            {"system_prompt": system, "user_prompt": user}
+        )
+        yield from original_stream(payload.system_prompt, payload.user_prompt)
+
+    def guarded_think(system: str, user: str) -> tuple[str, str]:
+        payload = authorize_text_payload(
+            {"system_prompt": system, "user_prompt": user}
+        )
+        return original_think(payload.system_prompt, payload.user_prompt)
+
+    provider.complete = guarded_complete  # type: ignore[method-assign]
+    provider.stream = guarded_stream  # type: ignore[method-assign]
+    provider.think = guarded_think  # type: ignore[method-assign]
+    setattr(provider, "_iamina_text_payload_policy", True)
+    return provider
+
+
 def _build_gemini_with_failover() -> BaseLLMProvider:
     """Guarded Gemini → Kimi → FallbackProvider chain."""
     from .gemini import GeminiProvider
@@ -50,11 +95,11 @@ def _build_gemini_with_failover() -> BaseLLMProvider:
         kimi = _get_kimi()
         if kimi:
             logger.info("LLM factory: Gemini cap hit — using Kimi.")
-            return kimi
+            return _enforce_text_payload_policy(kimi)
         logger.warning("LLM factory: Gemini daily cap hit, no paid fallback — surfacing quota message.")
         return _get_quota_exhausted()
 
-    return GuardedGeminiProvider(GeminiProvider())
+    return _enforce_text_payload_policy(GuardedGeminiProvider(GeminiProvider()))
 
 
 def get_ai_provider_name() -> str:
@@ -88,11 +133,13 @@ def get_llm() -> BaseLLMProvider:
 
     if provider == "kimi":
         from .kimi import KimiProvider
-        return KimiProvider(model=model) if model else KimiProvider()
+        resolved = KimiProvider(model=model) if model else KimiProvider()
+        return _enforce_text_payload_policy(resolved)
 
     if provider == "claude":
         from .claude import ClaudeProvider
-        return ClaudeProvider(model=model) if model else ClaudeProvider()
+        resolved = ClaudeProvider(model=model) if model else ClaudeProvider()
+        return _enforce_text_payload_policy(resolved)
 
     if provider == "fallback":
         return _get_fallback()
