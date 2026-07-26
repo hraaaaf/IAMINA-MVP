@@ -1,16 +1,21 @@
 """
-Patient profile under /api/v1/profile.
-GET   /api/v1/profile  — read current profile
-PATCH /api/v1/profile  — partial update of patient-declared profile fields
+Patient profile and patient-owned AI media consent management.
+
+GET    /api/v1/profile
+PATCH  /api/v1/profile
+GET    /api/v1/profile/ai-media-consents
+PUT    /api/v1/profile/ai-media-consents/{purpose}/{modality}
+DELETE /api/v1/profile/ai-media-consents/{purpose}/{modality}
 """
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from ninja import Router
 from ninja.errors import HttpError
 from pydantic import BaseModel, field_validator, model_validator
 
-from core.models import BasePatientProfile
+from core.ai_egress import grant_media_consent, revoke_media_consent
+from core.models import AIMediaConsentGrant, BasePatientProfile
 from diabetes.models import DiabetesProfile
 
 from .schemas import PatientProfileSchema
@@ -28,6 +33,19 @@ _NON_NULLABLE_PATCH_FIELDS = {
     "target_range_low",
     "target_range_high",
 }
+
+# Consumer-facing options intentionally enumerate only raw-media operations that
+# already exist in the central egress registry. The central grant helper remains
+# authoritative and rejects any pair that drifts from the egress policy.
+_MEDIA_CONSENT_OPTIONS: tuple[tuple[str, str], ...] = (
+    ("document_ingest", "document"),
+    ("document_ingest", "image"),
+    ("glucometer_ocr", "image"),
+    ("meal_vision", "image"),
+    ("voice_chat", "audio"),
+    ("voice_transcription", "audio"),
+)
+_MEDIA_CONSENT_OPTION_SET = frozenset(_MEDIA_CONSENT_OPTIONS)
 
 
 class ProfilePatchSchema(BaseModel):
@@ -106,15 +124,49 @@ class ProfilePatchSchema(BaseModel):
         return self
 
 
+class MediaConsentStateSchema(BaseModel):
+    purpose: str
+    modality: str
+    active: bool
+    granted_at: Optional[datetime] = None
+    revoked_at: Optional[datetime] = None
+
+
+def _get_base_profile(user) -> BasePatientProfile:
+    try:
+        return BasePatientProfile.objects.get(patient=user)
+    except BasePatientProfile.DoesNotExist as exc:
+        raise HttpError(404, "Profile not found") from exc
+
+
 def _get_diabetes_profile(user) -> DiabetesProfile:
     """Resolve DiabetesProfile for a user, raise 404 if not found."""
     try:
         base = BasePatientProfile.objects.select_related("diabetes_profile").get(patient=user)
         return base.diabetes_profile
-    except BasePatientProfile.DoesNotExist:
-        raise HttpError(404, "Profile not found")
-    except DiabetesProfile.DoesNotExist:
-        raise HttpError(404, "Diabetes profile not found")
+    except BasePatientProfile.DoesNotExist as exc:
+        raise HttpError(404, "Profile not found") from exc
+    except DiabetesProfile.DoesNotExist as exc:
+        raise HttpError(404, "Diabetes profile not found") from exc
+
+
+def _validate_media_consent_option(purpose: str, modality: str) -> None:
+    if (purpose, modality) not in _MEDIA_CONSENT_OPTION_SET:
+        raise HttpError(422, "Unsupported media consent purpose/modality pair")
+
+
+def _media_consent_state(
+    purpose: str,
+    modality: str,
+    grant: AIMediaConsentGrant | None,
+) -> dict:
+    return {
+        "purpose": purpose,
+        "modality": modality,
+        "active": grant is not None and grant.revoked_at is None,
+        "granted_at": grant.granted_at if grant is not None else None,
+        "revoked_at": grant.revoked_at if grant is not None else None,
+    }
 
 
 @router.get("/profile", response=PatientProfileSchema)
@@ -147,8 +199,6 @@ def patch_profile(request, data: ProfilePatchSchema):
     diabetes_changed: list[str] = []
     needs_cache_invalidation = False
 
-    # exclude_unset preserves the distinction between "not supplied" and an
-    # explicitly cleared nullable declaration.
     for field, value in data.model_dump(exclude_unset=True).items():
         if field in base_fields:
             setattr(base, field, value)
@@ -177,3 +227,49 @@ def patch_profile(request, data: ProfilePatchSchema):
         invalidate(request.user.id)
 
     return profile
+
+
+@router.get("/profile/ai-media-consents", response=list[MediaConsentStateSchema])
+def list_ai_media_consents(request):
+    """Return every supported raw-media consent option for the authenticated patient."""
+    _get_base_profile(request.user)
+    grants = {
+        (grant.purpose, grant.modality): grant
+        for grant in AIMediaConsentGrant.objects.filter(patient=request.user)
+    }
+    return [
+        _media_consent_state(purpose, modality, grants.get((purpose, modality)))
+        for purpose, modality in _MEDIA_CONSENT_OPTIONS
+    ]
+
+
+@router.put(
+    "/profile/ai-media-consents/{purpose}/{modality}",
+    response=MediaConsentStateSchema,
+)
+def grant_ai_media_consent(request, purpose: str, modality: str):
+    """Grant or reactivate one exact raw-media purpose/modality permission."""
+    _validate_media_consent_option(purpose, modality)
+    base = _get_base_profile(request.user)
+    if base.ai_consent_given_at is None:
+        raise HttpError(409, "Global AI consent is required before media consent")
+
+    grant = grant_media_consent(request.user.id, purpose, modality)
+    return _media_consent_state(purpose, modality, grant)
+
+
+@router.delete(
+    "/profile/ai-media-consents/{purpose}/{modality}",
+    response=MediaConsentStateSchema,
+)
+def revoke_ai_media_consent(request, purpose: str, modality: str):
+    """Revoke one exact raw-media permission; repeated revocation is idempotent."""
+    _validate_media_consent_option(purpose, modality)
+    _get_base_profile(request.user)
+    revoke_media_consent(request.user.id, purpose, modality)
+    grant = AIMediaConsentGrant.objects.filter(
+        patient=request.user,
+        purpose=purpose,
+        modality=modality,
+    ).first()
+    return _media_consent_state(purpose, modality, grant)
