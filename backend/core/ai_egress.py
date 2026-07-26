@@ -1,13 +1,8 @@
 """Central authorization boundary for patient data leaving IAmina.
 
-The boundary is deliberately provider-agnostic. It does not choose Gemini,
-Claude, Kimi, or any future provider; it decides whether an external model
-operation is authorized and whether its payload matches the declared purpose.
-
-Authorization is lazy: entering a scope does not require AI consent. Consent
-and payload checks happen only when an actual external egress is attempted.
-This preserves fully deterministic emergency/safety responses for patients who
-declined AI.
+Authorization is provider-agnostic and lazy. Declaring a scope never performs
+an external operation; consent and payload checks happen immediately before
+real egress so deterministic safety paths remain available without AI.
 """
 
 from __future__ import annotations
@@ -24,7 +19,9 @@ from functools import wraps
 from types import MappingProxyType
 from typing import Callable, Iterator, get_type_hints
 
-from core.models import BasePatientProfile
+from django.utils import timezone
+
+from core.models import AIMediaConsentGrant, BasePatientProfile
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +29,9 @@ TEXT = "text"
 AUDIO = "audio"
 IMAGE = "image"
 DOCUMENT = "document"
+_RAW_MEDIA_MODALITIES = frozenset({AUDIO, IMAGE, DOCUMENT})
 
-# Explicit purpose registry. Unknown purposes are denied by construction.
+# Unknown purposes and undeclared modalities are denied by construction.
 _PURPOSE_MODALITIES: dict[str, frozenset[str]] = {
     "clinical_summary": frozenset({TEXT}),
     "doctor_brief": frozenset({TEXT}),
@@ -45,9 +43,6 @@ _PURPOSE_MODALITIES: dict[str, frozenset[str]] = {
     "document_ingest": frozenset({DOCUMENT, IMAGE, TEXT}),
 }
 
-# Text providers receive exactly two flattened prompt fields. The purpose-specific
-# character ceilings are deliberately conservative and form an enforceable
-# minimisation boundary, not a provider token-limit approximation.
 _TEXT_PAYLOAD_FIELDS = frozenset({"system_prompt", "user_prompt"})
 _TEXT_PAYLOAD_LIMITS: dict[str, dict[str, int]] = {
     "clinical_summary": {"system_prompt": 12_000, "user_prompt": 24_000},
@@ -57,9 +52,6 @@ _TEXT_PAYLOAD_LIMITS: dict[str, dict[str, int]] = {
     "document_ingest": {"system_prompt": 12_000, "user_prompt": 48_000},
 }
 
-# DLP is intentionally deterministic and deny-by-default. These rules target
-# identifiers that must not leave IAmina in free text. They do not attempt to
-# infer diagnoses or replace clinical safety logic.
 _DLP_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "email",
@@ -92,8 +84,6 @@ _DLP_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ),
 )
 
-# Explicit identity labels catch free-text disclosures that pattern-only DLP
-# cannot safely infer, including French, English and Arabic labels.
 _IDENTITY_LABEL_PATTERN = re.compile(
     r"(?:\b(?:nom(?:\s+complet)?|prenom|prénom|name|full\s+name|"
     r"telephone|téléphone|phone|mobile|email|e-mail|courriel|adresse|address|"
@@ -104,7 +94,6 @@ _IDENTITY_LABEL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# Only documented placeholders may survive after upstream pseudonymisation.
 _ALLOWED_DLP_PLACEHOLDERS = frozenset(
     {
         "[PATIENT_NAME]",
@@ -124,7 +113,7 @@ class AIEgressDenied(PermissionError):
 
 
 class AIConsentRequired(AIEgressDenied):
-    """Raised when a patient has not explicitly consented to AI processing."""
+    """Raised when the required global or granular consent is absent."""
 
 
 class AIPayloadDenied(AIEgressDenied):
@@ -170,17 +159,52 @@ def _validate_scope(purpose: str, modalities: frozenset[str]) -> None:
         )
 
 
+def _validate_raw_media_grant(purpose: str, modality: str) -> None:
+    if modality not in _RAW_MEDIA_MODALITIES:
+        raise AIEgressDenied(f"Modality {modality} is not a raw-media consent modality")
+    _validate_scope(purpose, frozenset({modality}))
+
+
+def grant_media_consent(
+    patient_id: int,
+    purpose: str,
+    modality: str,
+) -> AIMediaConsentGrant:
+    """Create or reactivate one explicit purpose/modality media grant."""
+    if not isinstance(patient_id, int) or patient_id <= 0:
+        raise AIEgressDenied("A valid patient id is required for media consent")
+    _validate_raw_media_grant(purpose, modality)
+    now = timezone.now()
+    grant, _ = AIMediaConsentGrant.objects.update_or_create(
+        patient_id=patient_id,
+        purpose=purpose,
+        modality=modality,
+        defaults={"granted_at": now, "revoked_at": None},
+    )
+    return grant
+
+
+def revoke_media_consent(patient_id: int, purpose: str, modality: str) -> bool:
+    """Revoke one grant; return False when no active grant existed."""
+    if not isinstance(patient_id, int) or patient_id <= 0:
+        raise AIEgressDenied("A valid patient id is required for media consent")
+    _validate_raw_media_grant(purpose, modality)
+    updated = AIMediaConsentGrant.objects.filter(
+        patient_id=patient_id,
+        purpose=purpose,
+        modality=modality,
+        revoked_at__isnull=True,
+    ).update(revoked_at=timezone.now())
+    return updated == 1
+
+
 @contextmanager
 def ai_egress_scope(
     patient_id: int,
     purpose: str,
     *modalities: str,
 ) -> Iterator[AIEgressContext]:
-    """Declare the patient/purpose context for a possible external model call.
-
-    No consent check happens here. That check is intentionally deferred to
-    :func:`assert_ai_egress_allowed`, immediately before provider/network egress.
-    """
+    """Declare the patient/purpose context for a possible external call."""
     if not isinstance(patient_id, int) or patient_id <= 0:
         raise AIEgressDenied("A valid patient id is required for AI egress")
 
@@ -218,6 +242,19 @@ def assert_ai_egress_allowed(modality: str) -> AIEgressContext:
     if profile.ai_consent_given_at is None:
         raise AIConsentRequired("Explicit patient AI consent is required")
 
+    if modality in _RAW_MEDIA_MODALITIES:
+        has_grant = AIMediaConsentGrant.objects.filter(
+            patient_id=context.patient_id,
+            purpose=context.purpose,
+            modality=modality,
+            revoked_at__isnull=True,
+        ).exists()
+        if not has_grant:
+            raise AIConsentRequired(
+                "Explicit media consent is required for "
+                f"purpose={context.purpose} modality={modality}"
+            )
+
     logger.debug(
         "ai_egress authorized patient_id=%s purpose=%s modality=%s",
         context.patient_id,
@@ -228,7 +265,6 @@ def assert_ai_egress_allowed(modality: str) -> AIEgressContext:
 
 
 def _normalise_for_dlp(value: str) -> str:
-    """Normalize Unicode and invisible spacing before semantic inspection."""
     normalized = unicodedata.normalize("NFKC", value)
     return "".join(
         " " if unicodedata.category(char) in {"Zl", "Zp", "Zs"} else char
@@ -245,7 +281,6 @@ def _mask_allowed_placeholders(value: str) -> str:
 
 
 def _detect_sensitive_text(value: str) -> frozenset[str]:
-    """Return deterministic DLP finding kinds without logging payload content."""
     inspected = _mask_allowed_placeholders(_normalise_for_dlp(value))
     findings = {
         finding_name
@@ -258,13 +293,7 @@ def _detect_sensitive_text(value: str) -> frozenset[str]:
 
 
 def authorize_text_payload(payload: Mapping[str, object]) -> AuthorizedTextPayload:
-    """Validate and freeze the exact text payload immediately before provider egress.
-
-    The contract is fail-closed: the current purpose must declare a text policy,
-    both prompt fields are required, unknown fields are rejected, values must be
-    strings, each field must remain below its purpose-specific ceiling, and no
-    prohibited identifier may be embedded in free text.
-    """
+    """Validate and freeze the exact text payload immediately before egress."""
     context = assert_ai_egress_allowed(TEXT)
     limits = _TEXT_PAYLOAD_LIMITS.get(context.purpose)
     if limits is None:
@@ -323,19 +352,10 @@ def authorize_text_payload(payload: Mapping[str, object]) -> AuthorizedTextPaylo
 
 
 def _resolved_signature(func: Callable) -> inspect.Signature:
-    """Return a signature with forward annotations resolved in the endpoint module.
-
-    Decorators live in ``core.ai_egress`` while Ninja endpoints may annotate
-    parameters with module-local types such as ``UploadedFile``. Without resolving
-    those annotations before wrapping, Django Ninja later tries to resolve them in
-    this module's globals and OpenAPI generation fails.
-    """
     signature = inspect.signature(func)
     try:
         hints = get_type_hints(func, include_extras=True)
     except (NameError, TypeError):
-        # A non-Ninja helper may contain an intentionally unresolved annotation.
-        # Keep its original signature rather than breaking runtime decoration.
         return signature
 
     parameters = [
@@ -366,8 +386,6 @@ def patient_ai_egress_scope(
             with ai_egress_scope(patient_id, purpose, *modalities):
                 return func(request, *args, **kwargs)
 
-        # Django Ninja introspects the decorated callable. Preserve a signature whose
-        # annotations are concrete objects, not forward-ref strings tied to func globals.
         wrapped.__signature__ = resolved_signature
         wrapped.__annotations__ = {
             name: parameter.annotation
