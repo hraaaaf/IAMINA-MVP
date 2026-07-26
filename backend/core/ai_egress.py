@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import inspect
 import logging
+import re
+import unicodedata
 from collections.abc import Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -55,6 +57,67 @@ _TEXT_PAYLOAD_LIMITS: dict[str, dict[str, int]] = {
     "document_ingest": {"system_prompt": 12_000, "user_prompt": 48_000},
 }
 
+# DLP is intentionally deterministic and deny-by-default. These rules target
+# identifiers that must not leave IAmina in free text. They do not attempt to
+# infer diagnoses or replace clinical safety logic.
+_DLP_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "email",
+        re.compile(r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+(?![\w.-])", re.IGNORECASE),
+    ),
+    (
+        "phone",
+        re.compile(r"(?<!\w)(?:\+?\d[\s.()\-/]*){8,15}(?!\w)"),
+    ),
+    (
+        "moroccan_national_id",
+        re.compile(r"(?<!\w)[A-Z]{1,2}[\s-]?\d{5,8}(?!\w)", re.IGNORECASE),
+    ),
+    (
+        "uuid",
+        re.compile(
+            r"(?<![0-9a-f])[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![0-9a-f])",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "firebase_uid",
+        re.compile(r"(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{24,128}(?![A-Za-z0-9_-])"),
+    ),
+    (
+        "date_of_birth",
+        re.compile(
+            r"(?<!\d)(?:0?[1-9]|[12]\d|3[01])[\s./-](?:0?[1-9]|1[0-2])[\s./-](?:19|20)\d{2}(?!\d)"
+        ),
+    ),
+)
+
+# Explicit identity labels catch free-text disclosures that pattern-only DLP
+# cannot safely infer, including French, English and Arabic labels.
+_IDENTITY_LABEL_PATTERN = re.compile(
+    r"(?:\b(?:nom(?:\s+complet)?|prenom|prénom|name|full\s+name|"
+    r"telephone|téléphone|phone|mobile|email|e-mail|courriel|adresse|address|"
+    r"cin|cni|passeport|passport|firebase\s*uid|django\s*id|patient\s*id|"
+    r"date\s+de\s+naissance|date\s+of\s+birth|dob)\b|"
+    r"(?:الاسم|الهاتف|البريد\s+الإلكتروني|العنوان|رقم\s+البطاقة|تاريخ\s+الميلاد))"
+    r"\s*[:=\-–—]\s*\S+",
+    re.IGNORECASE,
+)
+
+# Only documented placeholders may survive after upstream pseudonymisation.
+_ALLOWED_DLP_PLACEHOLDERS = frozenset(
+    {
+        "[PATIENT_NAME]",
+        "[EMAIL]",
+        "[PHONE]",
+        "[ADDRESS]",
+        "[NATIONAL_ID]",
+        "[PATIENT_ID]",
+        "[FIREBASE_UID]",
+        "[DATE_OF_BIRTH]",
+    }
+)
+
 
 class AIEgressDenied(PermissionError):
     """Raised when an external model operation is not policy-authorized."""
@@ -77,7 +140,7 @@ class AIEgressContext:
 
 @dataclass(frozen=True)
 class AuthorizedTextPayload:
-    """Immutable text payload that passed consent, allowlist and size checks."""
+    """Immutable text payload that passed consent, allowlist, size and DLP checks."""
 
     purpose: str
     fields: Mapping[str, str]
@@ -164,12 +227,43 @@ def assert_ai_egress_allowed(modality: str) -> AIEgressContext:
     return context
 
 
+def _normalise_for_dlp(value: str) -> str:
+    """Normalize Unicode and invisible spacing before semantic inspection."""
+    normalized = unicodedata.normalize("NFKC", value)
+    return "".join(
+        " " if unicodedata.category(char) in {"Zl", "Zp", "Zs"} else char
+        for char in normalized
+        if unicodedata.category(char) not in {"Cf"}
+    )
+
+
+def _mask_allowed_placeholders(value: str) -> str:
+    masked = value
+    for placeholder in _ALLOWED_DLP_PLACEHOLDERS:
+        masked = masked.replace(placeholder, " ")
+    return masked
+
+
+def _detect_sensitive_text(value: str) -> frozenset[str]:
+    """Return deterministic DLP finding kinds without logging payload content."""
+    inspected = _mask_allowed_placeholders(_normalise_for_dlp(value))
+    findings = {
+        finding_name
+        for finding_name, pattern in _DLP_PATTERNS
+        if pattern.search(inspected)
+    }
+    if _IDENTITY_LABEL_PATTERN.search(inspected):
+        findings.add("explicit_identity_label")
+    return frozenset(findings)
+
+
 def authorize_text_payload(payload: Mapping[str, object]) -> AuthorizedTextPayload:
     """Validate and freeze the exact text payload immediately before provider egress.
 
     The contract is fail-closed: the current purpose must declare a text policy,
     both prompt fields are required, unknown fields are rejected, values must be
-    strings, and each field must remain below its purpose-specific ceiling.
+    strings, each field must remain below its purpose-specific ceiling, and no
+    prohibited identifier may be embedded in free text.
     """
     context = assert_ai_egress_allowed(TEXT)
     limits = _TEXT_PAYLOAD_LIMITS.get(context.purpose)
@@ -199,6 +293,19 @@ def authorize_text_payload(payload: Mapping[str, object]) -> AuthorizedTextPaylo
             raise AIPayloadDenied(
                 f"Text payload field {field_name} exceeds the {limits[field_name]} character limit "
                 f"for purpose {context.purpose}"
+            )
+        findings = _detect_sensitive_text(value)
+        if findings:
+            logger.warning(
+                "ai_text_payload denied patient_id=%s purpose=%s field=%s findings=%s",
+                context.patient_id,
+                context.purpose,
+                field_name,
+                sorted(findings),
+            )
+            raise AIPayloadDenied(
+                f"Text payload field {field_name} contains prohibited identifiers: "
+                f"{sorted(findings)}"
             )
         authorized[field_name] = value
 
