@@ -1,22 +1,25 @@
 """Central authorization boundary for patient data leaving IAmina.
 
 The boundary is deliberately provider-agnostic. It does not choose Gemini,
-Claude, Kimi, or any future provider; it only decides whether an external model
-operation is authorized for the current patient, purpose, and modality.
+Claude, Kimi, or any future provider; it decides whether an external model
+operation is authorized and whether its payload matches the declared purpose.
 
-Authorization is lazy: entering a scope does not require AI consent. The consent
-check happens only when an actual external egress is attempted. This preserves
-fully deterministic emergency/safety responses for patients who declined AI.
+Authorization is lazy: entering a scope does not require AI consent. Consent
+and payload checks happen only when an actual external egress is attempted.
+This preserves fully deterministic emergency/safety responses for patients who
+declined AI.
 """
 
 from __future__ import annotations
 
 import inspect
 import logging
+from collections.abc import Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from functools import wraps
+from types import MappingProxyType
 from typing import Callable, Iterator, get_type_hints
 
 from core.models import BasePatientProfile
@@ -40,6 +43,18 @@ _PURPOSE_MODALITIES: dict[str, frozenset[str]] = {
     "document_ingest": frozenset({DOCUMENT, IMAGE, TEXT}),
 }
 
+# Text providers receive exactly two flattened prompt fields. The purpose-specific
+# character ceilings are deliberately conservative and form an enforceable
+# minimisation boundary, not a provider token-limit approximation.
+_TEXT_PAYLOAD_FIELDS = frozenset({"system_prompt", "user_prompt"})
+_TEXT_PAYLOAD_LIMITS: dict[str, dict[str, int]] = {
+    "clinical_summary": {"system_prompt": 12_000, "user_prompt": 24_000},
+    "doctor_brief": {"system_prompt": 12_000, "user_prompt": 16_000},
+    "companion_chat": {"system_prompt": 20_000, "user_prompt": 24_000},
+    "voice_chat": {"system_prompt": 20_000, "user_prompt": 24_000},
+    "document_ingest": {"system_prompt": 12_000, "user_prompt": 48_000},
+}
+
 
 class AIEgressDenied(PermissionError):
     """Raised when an external model operation is not policy-authorized."""
@@ -49,11 +64,31 @@ class AIConsentRequired(AIEgressDenied):
     """Raised when a patient has not explicitly consented to AI processing."""
 
 
+class AIPayloadDenied(AIEgressDenied):
+    """Raised when an external AI payload violates its purpose contract."""
+
+
 @dataclass(frozen=True)
 class AIEgressContext:
     patient_id: int
     purpose: str
     modalities: frozenset[str]
+
+
+@dataclass(frozen=True)
+class AuthorizedTextPayload:
+    """Immutable text payload that passed consent, allowlist and size checks."""
+
+    purpose: str
+    fields: Mapping[str, str]
+
+    @property
+    def system_prompt(self) -> str:
+        return self.fields["system_prompt"]
+
+    @property
+    def user_prompt(self) -> str:
+        return self.fields["user_prompt"]
 
 
 _CURRENT_EGRESS: ContextVar[AIEgressContext | None] = ContextVar(
@@ -127,6 +162,57 @@ def assert_ai_egress_allowed(modality: str) -> AIEgressContext:
         modality,
     )
     return context
+
+
+def authorize_text_payload(payload: Mapping[str, object]) -> AuthorizedTextPayload:
+    """Validate and freeze the exact text payload immediately before provider egress.
+
+    The contract is fail-closed: the current purpose must declare a text policy,
+    both prompt fields are required, unknown fields are rejected, values must be
+    strings, and each field must remain below its purpose-specific ceiling.
+    """
+    context = assert_ai_egress_allowed(TEXT)
+    limits = _TEXT_PAYLOAD_LIMITS.get(context.purpose)
+    if limits is None:
+        raise AIPayloadDenied(
+            f"Purpose {context.purpose} has no registered text payload contract"
+        )
+    if not isinstance(payload, Mapping):
+        raise AIPayloadDenied("Text payload must be a mapping")
+
+    fields = frozenset(payload.keys())
+    unknown = fields - _TEXT_PAYLOAD_FIELDS
+    missing = _TEXT_PAYLOAD_FIELDS - fields
+    if unknown:
+        raise AIPayloadDenied(f"Unknown text payload fields: {sorted(unknown)}")
+    if missing:
+        raise AIPayloadDenied(f"Missing text payload fields: {sorted(missing)}")
+
+    authorized: dict[str, str] = {}
+    for field_name in sorted(_TEXT_PAYLOAD_FIELDS):
+        value = payload[field_name]
+        if not isinstance(value, str):
+            raise AIPayloadDenied(f"Text payload field {field_name} must be a string")
+        if "\x00" in value:
+            raise AIPayloadDenied(f"Text payload field {field_name} contains a NUL byte")
+        if len(value) > limits[field_name]:
+            raise AIPayloadDenied(
+                f"Text payload field {field_name} exceeds the {limits[field_name]} character limit "
+                f"for purpose {context.purpose}"
+            )
+        authorized[field_name] = value
+
+    logger.debug(
+        "ai_text_payload authorized patient_id=%s purpose=%s system_chars=%s user_chars=%s",
+        context.patient_id,
+        context.purpose,
+        len(authorized["system_prompt"]),
+        len(authorized["user_prompt"]),
+    )
+    return AuthorizedTextPayload(
+        purpose=context.purpose,
+        fields=MappingProxyType(authorized),
+    )
 
 
 def _resolved_signature(func: Callable) -> inspect.Signature:

@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-07-23 — P0-A/P0-B closeout after the MENA sovereignty reset.
+> **Last updated:** 2026-07-26 — P0-MENA-1A text payload contract closeout; P0-C and migration-drift ledger reconciled with `main`.
 >
 > **Authority:** this file is the **single forward tracker**. Historical phase numbers, completed chassis work, old provider plans, and prior strategy belong in git history, ADRs, assessments, or `docs/architecture/ARCHITECTURE-TIMELINE.md` — not in the active backlog.
 
@@ -50,7 +50,35 @@ Implemented foundation:
 - CI anti-bypass rule preventing new direct external AI callsites from omitting the authorization assertion;
 - deterministic emergency/safety behavior remains usable without AI consent unless a real external call is attempted.
 
-**Still open inside P0-MENA-1:** payload-level allowlists/minimization are not yet uniformly expressed as one structured contract; raw-media consent is still global rather than modality/purpose-granular; processor/subprocessor, retention/training, timeout/failure and residency metadata are not yet fully enforced per call.
+## ✅ P0-MENA-1A — Text payload allowlist and minimisation contract — READY TO MERGE
+
+Closed in PR #10 after green SQLite, PostgreSQL, OpenAPI, security, Flutter and migration-drift gates.
+
+- external text providers resolved by `llm.factory` are policy-decorated before network-capable `complete`, `stream`, or `think` operations;
+- text egress accepts exactly `system_prompt` and `user_prompt` fields;
+- missing/unknown fields, non-string values, NUL bytes, missing consent and oversized purpose-specific payloads fail closed;
+- authorized payloads are immutable after validation;
+- tests prove a rejected consent or payload cannot invoke the underlying provider;
+- concrete provider types, rate guards and provider-name reporting remain unchanged.
+
+**Still open inside P0-MENA-1:** raw-media consent is still global rather than modality/purpose-granular; processor/subprocessor, retention/training, timeout/failure and residency metadata are not yet fully enforced per call. Semantic redaction remains layered through existing pseudonymization/PHI stripping and must be strengthened separately without pretending character ceilings alone detect every identifier.
+
+## ✅ P0-C — Clinical analytics correctness + PostgreSQL parity — MERGED
+
+Closed on 2026-07-23 in PR #4.
+
+- GRI corrected against the normative disjoint-zone formula;
+- patient-facing GRI fails closed until valid CGM coverage can be proven;
+- SQLite/PostgreSQL daily analytics parity corrected;
+- PostgreSQL 16 full-suite CI established as source of truth;
+- normative regression fixtures added.
+
+## ✅ P0 Migration Drift — MERGED
+
+Closed on 2026-07-26 in PR #9.
+
+- `DiabetesProfile` migration state reconciled with `SeparateDatabaseAndState` and no unnecessary database ALTER;
+- permanent `python manage.py makemigrations --check --dry-run` workflow gate installed.
 
 ---
 
@@ -69,11 +97,12 @@ Work top-down. Do not pull SOON/GATED work forward unless it becomes a direct bl
 - [x] Enforce server-side AI consent immediately before external egress.
 - [x] Add CI enforcement against new unauthorized direct provider callsites.
 - [x] Default-deny missing scope, missing consent, unknown purpose, and undeclared modality.
+- [x] Enforce a structured text-provider field allowlist at the central factory boundary.
+- [x] Enforce and test purpose-specific text payload size ceilings before provider invocation.
 
 ### Remaining P0-MENA-1 work
 
-- [ ] Define explicit payload/field allowlists per purpose and modality.
-- [ ] Make minimization/redaction rules enforceable and testable at the boundary rather than relying on uneven callsite behavior.
+- [ ] Strengthen semantic redaction/DLP rules for names, contact details and identifiers beyond current pseudonymization/PHI stripping.
 - [ ] Introduce purpose/modality-granular media consent for raw audio/images/documents where required.
 - [ ] Attach approved processor/subprocessor, residency, retention/no-training, and legal-basis metadata to each egress policy.
 - [ ] Remove or deliberately isolate remaining provider-specific/direct runtime seams so provider choice is downstream of policy.
@@ -172,20 +201,6 @@ All items below are hard blockers unless the founder records an explicit defer d
 
 ---
 
-## P0-C — Clinical analytics correctness + PostgreSQL parity
-
-**Status:** IN PROGRESS on a dedicated draft PR. Do not mark complete until normative formulas and PostgreSQL source-of-truth tests are green.
-
-Targets:
-
-- [ ] Revalidate GRI against the original normative definition and use disjoint glycemic zones correctly.
-- [ ] Do not expose a GRI when valid CGM coverage/eligibility cannot be proven.
-- [ ] Fix SQLite/PostgreSQL SQL divergence in daily analytics.
-- [ ] Add PostgreSQL CI coverage for raw SQL that is production-authoritative.
-- [ ] Add normative regression fixtures.
-
----
-
 ## Deployment + pilot
 
 - [ ] Reproducible development path validated on supported developer environments.
@@ -249,12 +264,13 @@ If the gate fails, diagnose retention/business-model causes before adding condit
 - API CSRF/session safety hardening and fail-closed unit normalization across legacy + namespaced module routes.
 - Shared-core deterministic triage authority without `core → diabetes` reverse dependency.
 - Server-side AI egress authorization boundary with patient/purpose/modality/consent enforcement and CI anti-bypass.
-- SQL-first diabetes KPI analytics foundation.
+- Enforceable text-provider payload field allowlist, immutable authorization result and purpose-specific minimisation ceilings.
+- SQL-first diabetes KPI analytics foundation certified across SQLite/PostgreSQL.
 - Diabetes clinical/pattern engine and structured context contracts.
 - Platform/chassis seams from ADR-0008, while diabetes remains the only live condition.
 - Observability and retention instrumentation foundations.
 - Docker backend/PostgreSQL/Redis development infrastructure.
-- CI/testing/security tooling foundations.
+- CI/testing/security tooling foundations, including permanent migration-drift enforcement.
 
 ---
 
