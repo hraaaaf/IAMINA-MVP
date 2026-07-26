@@ -459,6 +459,139 @@
         ]
       }
     },
+    "/api/v1/profile/ai-media-consents": {
+      "get": {
+        "operationId": "diabetes_api_v1_profile_list_ai_media_consents",
+        "summary": "List Ai Media Consents",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MediaConsentStateSchema"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return every supported raw-media consent option for the authenticated patient.",
+        "tags": [
+          "profile"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile/ai-media-consents/{purpose}/{modality}": {
+      "put": {
+        "operationId": "diabetes_api_v1_profile_grant_ai_media_consent",
+        "summary": "Grant Ai Media Consent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purpose",
+            "schema": {
+              "title": "Purpose",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "modality",
+            "schema": {
+              "title": "Modality",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaConsentStateSchema"
+                }
+              }
+            }
+          }
+        },
+        "description": "Grant or reactivate one exact raw-media purpose/modality permission.",
+        "tags": [
+          "profile"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "diabetes_api_v1_profile_revoke_ai_media_consent",
+        "summary": "Revoke Ai Media Consent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purpose",
+            "schema": {
+              "title": "Purpose",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "modality",
+            "schema": {
+              "title": "Modality",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaConsentStateSchema"
+                }
+              }
+            }
+          }
+        },
+        "description": "Revoke one exact raw-media permission; repeated revocation is idempotent.",
+        "tags": [
+          "profile"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/kpis/": {
       "get": {
         "operationId": "diabetes_api_v1_kpis_get_kpis",
@@ -2052,6 +2185,53 @@
           }
         },
         "title": "ProfilePatchSchema",
+        "type": "object"
+      },
+      "MediaConsentStateSchema": {
+        "properties": {
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "modality": {
+            "title": "Modality",
+            "type": "string"
+          },
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "granted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Granted At"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          }
+        },
+        "required": [
+          "purpose",
+          "modality",
+          "active"
+        ],
+        "title": "MediaConsentStateSchema",
         "type": "object"
       },
       "KPIsOut": {
