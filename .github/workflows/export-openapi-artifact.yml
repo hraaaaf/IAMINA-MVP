@@ -3,6 +3,8 @@ name: Export OpenAPI artifact
 on:
   push:
     branches: [feat/p0-mena-media-consent-api]
+  pull_request:
+    branches: [main]
 
 jobs:
   export:
