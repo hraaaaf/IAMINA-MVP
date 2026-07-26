@@ -10,13 +10,16 @@ from django.utils import timezone
 
 from core.ai_egress import (
     AUDIO,
+    DOCUMENT,
     IMAGE,
     TEXT,
     AIConsentRequired,
     AIEgressDenied,
     ai_egress_scope,
     assert_ai_egress_allowed,
+    grant_media_consent,
     patient_ai_egress_scope,
+    revoke_media_consent,
 )
 from core.models import BasePatientProfile
 
@@ -31,14 +34,18 @@ def patient(db):
     return user
 
 
+def _grant_global_consent(patient):
+    profile = patient.base_profile
+    profile.ai_consent_given_at = timezone.now()
+    profile.save(update_fields=["ai_consent_given_at"])
+
+
 def test_no_scope_is_default_deny(db):
     with pytest.raises(AIEgressDenied, match="outside an authorized egress scope"):
         assert_ai_egress_allowed(TEXT)
 
 
 def test_scope_is_lazy_and_does_not_block_deterministic_paths(patient):
-    # Merely declaring that a route *may* use AI must not require consent. This
-    # lets deterministic emergency/no-prescription paths return without egress.
     with ai_egress_scope(patient.id, "companion_chat", TEXT):
         pass
 
@@ -49,10 +56,8 @@ def test_real_egress_requires_server_side_consent(patient):
             assert_ai_egress_allowed(TEXT)
 
 
-def test_real_egress_allowed_after_explicit_consent(patient):
-    profile = patient.base_profile
-    profile.ai_consent_given_at = timezone.now()
-    profile.save(update_fields=["ai_consent_given_at"])
+def test_text_egress_allowed_after_global_consent(patient):
+    _grant_global_consent(patient)
 
     with ai_egress_scope(patient.id, "companion_chat", TEXT):
         context = assert_ai_egress_allowed(TEXT)
@@ -61,10 +66,73 @@ def test_real_egress_allowed_after_explicit_consent(patient):
     assert context.purpose == "companion_chat"
 
 
+@pytest.mark.parametrize(
+    ("purpose", "modality"),
+    [
+        ("voice_transcription", AUDIO),
+        ("meal_vision", IMAGE),
+        ("document_ingest", DOCUMENT),
+    ],
+)
+def test_raw_media_requires_additional_granular_consent(patient, purpose, modality):
+    _grant_global_consent(patient)
+
+    with ai_egress_scope(patient.id, purpose, modality):
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            assert_ai_egress_allowed(modality)
+
+
+def test_exact_purpose_and_modality_grant_allows_media_egress(patient):
+    _grant_global_consent(patient)
+    grant = grant_media_consent(patient.id, "meal_vision", IMAGE)
+
+    with ai_egress_scope(patient.id, "meal_vision", IMAGE):
+        context = assert_ai_egress_allowed(IMAGE)
+
+    assert grant.patient_id == patient.id
+    assert grant.purpose == "meal_vision"
+    assert grant.modality == IMAGE
+    assert context.purpose == "meal_vision"
+
+
+def test_grant_does_not_authorize_another_purpose(patient):
+    _grant_global_consent(patient)
+    grant_media_consent(patient.id, "meal_vision", IMAGE)
+
+    with ai_egress_scope(patient.id, "glucometer_ocr", IMAGE):
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            assert_ai_egress_allowed(IMAGE)
+
+
+def test_grant_does_not_authorize_another_modality(patient):
+    _grant_global_consent(patient)
+    grant_media_consent(patient.id, "document_ingest", DOCUMENT)
+
+    with ai_egress_scope(patient.id, "document_ingest", IMAGE):
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            assert_ai_egress_allowed(IMAGE)
+
+
+def test_revocation_takes_effect_before_next_egress(patient):
+    _grant_global_consent(patient)
+    grant_media_consent(patient.id, "voice_transcription", AUDIO)
+    assert revoke_media_consent(patient.id, "voice_transcription", AUDIO) is True
+    assert revoke_media_consent(patient.id, "voice_transcription", AUDIO) is False
+
+    with ai_egress_scope(patient.id, "voice_transcription", AUDIO):
+        with pytest.raises(AIConsentRequired, match="Explicit media consent"):
+            assert_ai_egress_allowed(AUDIO)
+
+
+def test_invalid_grant_pair_is_denied(patient):
+    with pytest.raises(AIEgressDenied, match="not authorized"):
+        grant_media_consent(patient.id, "companion_chat", IMAGE)
+    with pytest.raises(AIEgressDenied, match="not a raw-media"):
+        grant_media_consent(patient.id, "companion_chat", TEXT)
+
+
 def test_modality_cannot_escape_declared_purpose(patient):
-    profile = patient.base_profile
-    profile.ai_consent_given_at = timezone.now()
-    profile.save(update_fields=["ai_consent_given_at"])
+    _grant_global_consent(patient)
 
     with ai_egress_scope(patient.id, "companion_chat", TEXT):
         with pytest.raises(AIEgressDenied, match="not authorized"):
@@ -94,7 +162,6 @@ def test_endpoint_decorator_only_declares_scope_until_egress(patient):
 
     @patient_ai_egress_scope("voice_chat", AUDIO, TEXT)
     def endpoint(req):
-        # No assertion = no external model operation = no consent needed.
         return req.user.id
 
     assert endpoint(request) == patient.id
