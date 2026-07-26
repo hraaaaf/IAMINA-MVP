@@ -3,11 +3,13 @@ name: Export OpenAPI artifact
 on:
   push:
     branches: [feat/p0-mena-media-consent-api]
-  pull_request:
-    branches: [main]
+
+permissions:
+  contents: write
 
 jobs:
   export:
+    if: ${{ !contains(github.event.head_commit.message, 'docs(api): regenerate OpenAPI') }}
     runs-on: ubuntu-latest
     env:
       DJANGO_SETTINGS_MODULE: amina.settings
@@ -18,22 +20,27 @@ jobs:
       DATABASE_URL: sqlite:///ci-openapi.db
       FIREBASE_CREDENTIALS_PATH: ""
       GEMINI_API_KEY: ""
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: feat/p0-mena-media-consent-api
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - name: Install dependencies
+        working-directory: backend
         run: pip install -r requirements.txt
       - name: Export OpenAPI
-        run: python manage.py export_openapi > /tmp/openapi.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: generated-openapi
-          path: /tmp/openapi.json
-          if-no-files-found: error
+        run: python backend/manage.py export_openapi > docs/api/openapi.json
+      - name: Commit generated schema
+        run: |
+          if git diff --quiet -- docs/api/openapi.json; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/api/openapi.json
+          git commit -m "docs(api): regenerate OpenAPI"
+          git push origin HEAD:feat/p0-mena-media-consent-api
