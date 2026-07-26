@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-07-26 — P0-MENA-1B semantic DLP implementation prepared for CI validation; P0-C and migration-drift ledger reconciled with `main`.
+> **Last updated:** 2026-07-26 — P0-MENA-1B semantic DLP merged; P0-MENA-1C granular raw-media consent in final validation.
 >
 > **Authority:** this file is the **single forward tracker**. Historical phase numbers, completed chassis work, old provider plans, and prior strategy belong in git history, ADRs, assessments, or `docs/architecture/ARCHITECTURE-TIMELINE.md` — not in the active backlog.
 
@@ -61,22 +61,34 @@ Closed in PR #10 after green SQLite, PostgreSQL, OpenAPI, security, Flutter and 
 - tests prove a rejected consent or payload cannot invoke the underlying provider;
 - concrete provider types, rate guards and provider-name reporting remain unchanged.
 
-## 🟡 P0-MENA-1B — Semantic redaction / DLP contract — IN VALIDATION
+## ✅ P0-MENA-1B — Semantic redaction / DLP contract — MERGED
 
-Implementation branch: `fix/p0-mena-semantic-dlp-contract`.
+Closed in PR #11 after green SQLite, PostgreSQL, OpenAPI, security, Flutter and migration-drift gates.
 
-- deterministic, provider-agnostic inspection added at the existing `authorize_text_payload` egress boundary;
+- deterministic, provider-agnostic inspection runs at the existing `authorize_text_payload` egress boundary;
 - email, phone, Moroccan national identifiers, UUIDs, Firebase-style UIDs and dates of birth are rejected before provider invocation;
 - explicit identity labels in French, English and Arabic are rejected;
 - Unicode NFKC normalization and invisible-format removal prevent trivial obfuscation bypasses;
 - only documented pseudonymization placeholders survive the DLP contract;
 - logs record finding categories only and never the rejected payload value;
-- regression coverage proves `complete`, `stream` and `think` cannot invoke the underlying provider after DLP denial;
-- clinical numbers such as glucose, HbA1c, weight and insulin units remain valid.
+- `complete`, `stream` and `think` cannot invoke the provider after DLP denial;
+- the contract does not claim perfect inference of unlabelled natural-language names or postal addresses.
 
-**Status rule:** this LOT is not complete until repository CI is green and the PR is merged.
+## 🟡 P0-MENA-1C — Granular raw-media consent — IN VALIDATION
 
-**Still open inside P0-MENA-1:** raw-media consent is still global rather than modality/purpose-granular; processor/subprocessor, retention/training, timeout/failure and residency metadata are not yet fully enforced per call. The deterministic DLP contract reduces free-text identifier leakage but does not claim perfect natural-language name or postal-address inference without explicit labels.
+Implementation PR: #12, branch `fix/p0-mena-granular-media-consent`.
+
+- global AI consent remains a mandatory baseline;
+- raw audio, image and document egress additionally require an active exact patient + purpose + modality grant;
+- historical global consent is deliberately not converted into media authorization;
+- grants are unique, revocable and checked immediately before real egress;
+- one purpose cannot authorize another purpose and one modality cannot authorize another modality;
+- tests prove fail-closed behavior, purpose isolation, modality isolation and immediate revocation;
+- migration drift and the first complete SQLite/PostgreSQL CI run are green.
+
+**Status rule:** this LOT is not complete until the final documentation commit passes repository CI and PR #12 is merged.
+
+**Operational boundary:** backend enforcement is implemented. A patient-facing grant/revoke workflow remains required before raw-media features can be enabled for real patients.
 
 ## ✅ P0-C — Clinical analytics correctness + PostgreSQL parity — MERGED
 
@@ -114,11 +126,12 @@ Work top-down. Do not pull SOON/GATED work forward unless it becomes a direct bl
 - [x] Default-deny missing scope, missing consent, unknown purpose, and undeclared modality.
 - [x] Enforce a structured text-provider field allowlist at the central factory boundary.
 - [x] Enforce and test purpose-specific text payload size ceilings before provider invocation.
-- [ ] Strengthen semantic redaction/DLP rules for names, contact details and identifiers beyond current pseudonymization/PHI stripping. **Implementation complete; awaiting CI + merge.**
+- [x] Strengthen deterministic DLP rules for contact details and high-confidence identifiers.
+- [ ] Introduce purpose/modality-granular media consent for raw audio/images/documents. **Implementation and first CI complete; awaiting final CI + merge.**
 
 ### Remaining P0-MENA-1 work
 
-- [ ] Introduce purpose/modality-granular media consent for raw audio/images/documents where required.
+- [ ] Expose an authenticated patient-facing grant/revoke workflow before enabling raw-media features for real patients.
 - [ ] Attach approved processor/subprocessor, residency, retention/no-training, and legal-basis metadata to each egress policy.
 - [ ] Remove or deliberately isolate remaining provider-specific/direct runtime seams so provider choice is downstream of policy.
 - [ ] Add provider timeouts, streaming timeouts, typed failure handling, and safe frontend error UX.
@@ -205,7 +218,8 @@ All items below are hard blockers unless the founder records an explicit defer d
 - [ ] Doctor-facing/summary outputs proven to pass the same no-prescription policy.
 - [ ] Emergency events route to a **monitored human channel** or the product explicitly adopts a documented self-care-only operating mode.
 - [ ] Darija orthographic high-severity safety gap closed.
-- [x] Base AI/model consent enforced server-side at the outbound boundary. **Granular raw-media consent remains open under P0-MENA-1.**
+- [x] Base AI/model consent enforced server-side at the outbound boundary.
+- [ ] Granular raw-media consent workflow exposed to patients; backend enforcement is in PR #12.
 - [ ] Consent matrix + processor/subprocessor register documented.
 - [ ] Cross-border/data-residency assumptions documented for the pilot country.
 - [ ] Data export implemented or an operationally valid export process documented for the closed pilot.
