@@ -12,7 +12,6 @@ central text payload contract before it can perform egress.
 """
 import logging
 from collections.abc import Iterator
-from typing import Any
 
 from django.conf import settings
 
@@ -53,7 +52,7 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
     provider-name reporting and existing interface tests. Authorization happens
     before the original complete/stream/think method can touch the network.
     """
-    if getattr(provider, "_iamina_text_payload_policy", False):
+    if getattr(provider, "_iamina_text_payload_policy", False) is True:
         return provider
 
     original_complete = provider.complete
