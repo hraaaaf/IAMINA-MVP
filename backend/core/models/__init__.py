@@ -7,6 +7,7 @@ Exports all models discovered by Django's migration framework for the `core` app
 from django.contrib.auth.models import User
 from django.db import models as _models
 
+from core.models.ai_media_consent import AIMediaConsentGrant  # noqa: F401
 from core.models.erasure_record import ErasureRecord  # noqa: F401
 from core.models.patient import BasePatientProfile  # noqa: F401
 from core.models.patient_module import PatientModule  # noqa: F401
