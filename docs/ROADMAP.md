@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-07-26 — P0-MENA-1A text payload contract closeout; P0-C and migration-drift ledger reconciled with `main`.
+> **Last updated:** 2026-07-26 — P0-MENA-1B semantic DLP implementation prepared for CI validation; P0-C and migration-drift ledger reconciled with `main`.
 >
 > **Authority:** this file is the **single forward tracker**. Historical phase numbers, completed chassis work, old provider plans, and prior strategy belong in git history, ADRs, assessments, or `docs/architecture/ARCHITECTURE-TIMELINE.md` — not in the active backlog.
 
@@ -50,7 +50,7 @@ Implemented foundation:
 - CI anti-bypass rule preventing new direct external AI callsites from omitting the authorization assertion;
 - deterministic emergency/safety behavior remains usable without AI consent unless a real external call is attempted.
 
-## ✅ P0-MENA-1A — Text payload allowlist and minimisation contract — READY TO MERGE
+## ✅ P0-MENA-1A — Text payload allowlist and minimisation contract — MERGED
 
 Closed in PR #10 after green SQLite, PostgreSQL, OpenAPI, security, Flutter and migration-drift gates.
 
@@ -61,7 +61,22 @@ Closed in PR #10 after green SQLite, PostgreSQL, OpenAPI, security, Flutter and 
 - tests prove a rejected consent or payload cannot invoke the underlying provider;
 - concrete provider types, rate guards and provider-name reporting remain unchanged.
 
-**Still open inside P0-MENA-1:** raw-media consent is still global rather than modality/purpose-granular; processor/subprocessor, retention/training, timeout/failure and residency metadata are not yet fully enforced per call. Semantic redaction remains layered through existing pseudonymization/PHI stripping and must be strengthened separately without pretending character ceilings alone detect every identifier.
+## 🟡 P0-MENA-1B — Semantic redaction / DLP contract — IN VALIDATION
+
+Implementation branch: `fix/p0-mena-semantic-dlp-contract`.
+
+- deterministic, provider-agnostic inspection added at the existing `authorize_text_payload` egress boundary;
+- email, phone, Moroccan national identifiers, UUIDs, Firebase-style UIDs and dates of birth are rejected before provider invocation;
+- explicit identity labels in French, English and Arabic are rejected;
+- Unicode NFKC normalization and invisible-format removal prevent trivial obfuscation bypasses;
+- only documented pseudonymization placeholders survive the DLP contract;
+- logs record finding categories only and never the rejected payload value;
+- regression coverage proves `complete`, `stream` and `think` cannot invoke the underlying provider after DLP denial;
+- clinical numbers such as glucose, HbA1c, weight and insulin units remain valid.
+
+**Status rule:** this LOT is not complete until repository CI is green and the PR is merged.
+
+**Still open inside P0-MENA-1:** raw-media consent is still global rather than modality/purpose-granular; processor/subprocessor, retention/training, timeout/failure and residency metadata are not yet fully enforced per call. The deterministic DLP contract reduces free-text identifier leakage but does not claim perfect natural-language name or postal-address inference without explicit labels.
 
 ## ✅ P0-C — Clinical analytics correctness + PostgreSQL parity — MERGED
 
@@ -99,10 +114,10 @@ Work top-down. Do not pull SOON/GATED work forward unless it becomes a direct bl
 - [x] Default-deny missing scope, missing consent, unknown purpose, and undeclared modality.
 - [x] Enforce a structured text-provider field allowlist at the central factory boundary.
 - [x] Enforce and test purpose-specific text payload size ceilings before provider invocation.
+- [ ] Strengthen semantic redaction/DLP rules for names, contact details and identifiers beyond current pseudonymization/PHI stripping. **Implementation complete; awaiting CI + merge.**
 
 ### Remaining P0-MENA-1 work
 
-- [ ] Strengthen semantic redaction/DLP rules for names, contact details and identifiers beyond current pseudonymization/PHI stripping.
 - [ ] Introduce purpose/modality-granular media consent for raw audio/images/documents where required.
 - [ ] Attach approved processor/subprocessor, residency, retention/no-training, and legal-basis metadata to each egress policy.
 - [ ] Remove or deliberately isolate remaining provider-specific/direct runtime seams so provider choice is downstream of policy.
@@ -258,27 +273,4 @@ If the gate fails, diagnose retention/business-model causes before adding condit
 
 # Completed foundations — summary only
 
-- Flutter-only frontend and versioned Django Ninja API.
-- Offline-first Drift synchronization patterns.
-- Deterministic emergency safety gate.
-- API CSRF/session safety hardening and fail-closed unit normalization across legacy + namespaced module routes.
-- Shared-core deterministic triage authority without `core → diabetes` reverse dependency.
-- Server-side AI egress authorization boundary with patient/purpose/modality/consent enforcement and CI anti-bypass.
-- Enforceable text-provider payload field allowlist, immutable authorization result and purpose-specific minimisation ceilings.
-- SQL-first diabetes KPI analytics foundation certified across SQLite/PostgreSQL.
-- Diabetes clinical/pattern engine and structured context contracts.
-- Platform/chassis seams from ADR-0008, while diabetes remains the only live condition.
-- Observability and retention instrumentation foundations.
-- Docker backend/PostgreSQL/Redis development infrastructure.
-- CI/testing/security tooling foundations, including permanent migration-drift enforcement.
-
----
-
-## Roadmap maintenance rules
-
-1. This file contains **only current forward work, gates, and concise recently completed foundations**.
-2. Do not append session diaries, raw test logs, provider shopping notes, or obsolete phase narratives.
-3. **Every completed task/phase requires a documentation closeout before the next task starts:** update this roadmap, then architecture/specs/technical debt/domain docs only where the actual merged truth changed.
-4. A task is not “closed” merely because code merged; its canonical documentation must match the merged state.
-5. ADRs are immutable decisions; historical strategy belongs in architecture timeline/assessments/git history.
-6. Any new MENA country/dialect must pass the same locale, safety, privacy, and emergency-resource gates as the first pilot.
+See git history and `docs/architecture/ARCHITECTURE-TIMELINE.md` for the detailed chronology. The completed platform chassis includes modular registry/routing, first-party diabetes extraction, legacy compatibility, unified patient data, analytics foundations, security/compliance foundations, testing infrastructure, schema governance, migration drift enforcement, and the initial MENA outbound-AI authorization and text-payload contracts.
