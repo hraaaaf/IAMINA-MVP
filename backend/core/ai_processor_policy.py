@@ -56,7 +56,9 @@ class AIProcessorPolicy:
                 "training_use": self.training_use,
                 "legal_basis": self.legal_basis,
             }
-            missing = sorted(name for name, value in required_text.items() if not value.strip())
+            missing = sorted(
+                name for name, value in required_text.items() if not value.strip()
+            )
             if missing:
                 raise AIProcessorPolicyDenied(
                     f"Provider {self.provider} is missing governance metadata: {missing}"
