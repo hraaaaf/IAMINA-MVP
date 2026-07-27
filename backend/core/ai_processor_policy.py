@@ -7,9 +7,9 @@ egress.
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Mapping
 
 APPROVED = "approved"
 PENDING = "pending"
@@ -167,7 +167,6 @@ def get_processor_policy(provider: str) -> AIProcessorPolicy:
     policy = _POLICIES.get(provider)
     if policy is None:
         raise AIProcessorPolicyDenied(f"Unknown AI processor policy: {provider}")
-    policy.validate()
     return policy
 
 
@@ -181,6 +180,7 @@ def authorize_processor_policy(
         raise AIProcessorPolicyDenied(
             f"Provider {provider} is not approved for patient-data egress"
         )
+    policy.validate()
     if purpose not in policy.allowed_purposes:
         raise AIProcessorPolicyDenied(
             f"Provider {provider} is not approved for purpose {purpose}"
