@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -81,15 +79,7 @@ def test_incomplete_external_policy_fails_validation():
 
 @pytest.mark.django_db
 def test_processor_denial_prevents_provider_invocation(consented_user, monkeypatch):
-    provider = RecordingProvider()
-    guarded = _enforce_text_payload_policy(provider)
-
-    monkeypatch.setattr(
-        "llm.factory._provider_policy_name",
-        lambda _: "gemini",
-    )
-
-    # Re-wrap after provider-name monkeypatch so the captured name is Gemini.
+    monkeypatch.setattr("llm.factory._provider_policy_name", lambda _: "gemini")
     provider = RecordingProvider()
     guarded = _enforce_text_payload_policy(provider)
 
@@ -102,11 +92,8 @@ def test_processor_denial_prevents_provider_invocation(consented_user, monkeypat
 
 @pytest.mark.django_db
 def test_approved_local_provider_can_execute(consented_user, monkeypatch):
+    monkeypatch.setattr("llm.factory._provider_policy_name", lambda _: "fallback")
     provider = RecordingProvider()
-    monkeypatch.setattr(
-        "llm.factory._provider_policy_name",
-        lambda _: "fallback",
-    )
     guarded = _enforce_text_payload_policy(provider)
 
     with ai_egress_scope(consented_user.id, "companion_chat", "text"):
