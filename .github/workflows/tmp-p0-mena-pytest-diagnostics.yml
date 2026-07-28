@@ -1,0 +1,46 @@
+name: Temporary P0 MENA Pytest Diagnostics
+
+on:
+  push:
+    branches: [feat/p0-mena-processor-policy-registry]
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-secret-key-not-for-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      DATABASE_URL: sqlite:///ci-test.db
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p0-mena-processor-policy-registry
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+      - name: Capture failing tests
+        working-directory: backend
+        run: |
+          set +e
+          pytest --tb=short -q > ../P0_MENA_PYTEST_DIAGNOSTICS.txt 2>&1
+          STATUS=$?
+          echo "pytest_exit_code=$STATUS" >> ../P0_MENA_PYTEST_DIAGNOSTICS.txt
+          exit 0
+      - name: Commit diagnostics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add P0_MENA_PYTEST_DIAGNOSTICS.txt
+          git commit -m "ci: capture P0 MENA pytest diagnostics"
+          git push
