@@ -1,3 +1,4 @@
+from datetime import date
 from unittest.mock import MagicMock
 
 import pytest
@@ -30,7 +31,10 @@ def consenting_patient(db):
     user = User.objects.create_user(username="provider-failure-patient")
     BasePatientProfile.objects.update_or_create(
         patient=user,
-        defaults={"ai_consent_given_at": timezone.now()},
+        defaults={
+            "date_of_birth": date(1990, 1, 1),
+            "ai_consent_given_at": timezone.now(),
+        },
     )
     return user
 
