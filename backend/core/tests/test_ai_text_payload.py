@@ -227,7 +227,8 @@ def test_provider_think_is_not_called_when_dlp_denies_payload(consenting_patient
     original_think.assert_not_called()
 
 
-def test_valid_payload_reaches_provider_unchanged(consenting_patient):
+def test_valid_payload_reaches_provider_unchanged(consenting_patient, monkeypatch):
+    monkeypatch.setattr("llm.factory._provider_policy_name", lambda _: "fallback")
     provider = MagicMock()
     original_complete = MagicMock(return_value="ok")
     provider.complete = original_complete
