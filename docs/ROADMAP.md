@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-07-27 — P0-MENA-1D patient media-consent management merged; P0-MENA-1E processor policy registry in implementation.
+> **Last updated:** 2026-07-28 — P0-MENA-1E executable processor policy registry merged in PR #14.
 >
 > **Authority:** this file is the single forward tracker. Historical implementation detail belongs in git history, ADRs and architecture timelines.
 
@@ -18,6 +18,23 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 - IAmina is a companion, not a diagnostic or prescribing system.
 - Deterministic clinical and safety logic decides; external models receive only approved minimized data.
 - No second disease module before the retention gate passes.
+
+---
+
+# Progress dashboard
+
+| Workstream | Progress | Status | Evidence |
+|---|---:|---|---|
+| P0 historical foundations | 100% | ✅ Complete | P0-A, P0-B, P0-C and migration drift merged |
+| P0-MENA-1 — outbound AI/data-egress contract | 70% | 🟡 In progress | 7 of 10 explicit controls complete |
+| P0-MENA-2 — locale + safety contract | 0% | ⚪ Not started | No roadmap task closed |
+| P0-MENA-3 — sovereign authentication migration | 0% | ⚪ Not started | Design and migration work pending |
+| P0-MENA-4 — multimodal provider benchmark | 0% | ⚪ Not started | Evaluation set and benchmark pending |
+| Pilot safety/compliance gate | 15% | 🔴 Incomplete | 2 of 13 explicit gates complete |
+
+**MENA critical-path completion:** 9 of 41 explicit roadmap tasks closed, approximately **22%**.
+
+This percentage measures the new MENA safety, sovereignty and pilot-readiness path. It is not a percentage of the complete product codebase.
 
 ---
 
@@ -86,18 +103,17 @@ Closed in PR #13 after green SQLite, PostgreSQL, OpenAPI, security, Flutter and 
 - Grant and revocation are idempotent.
 - Unsupported purpose/modality pairs fail closed.
 
-## 🟡 P0-MENA-1E — Executable processor policy registry — IN IMPLEMENTATION
+## ✅ P0-MENA-1E — Executable processor policy registry — MERGED
 
-Implementation branch: `feat/p0-mena-processor-policy-registry`.
+Closed in PR #14 on 2026-07-28. Merge commit: `8883acad2191f22a23ebe0617e109d4c0e92d4ec`.
 
-- Every provider must resolve to an immutable processor policy before invocation.
+- Every provider resolves to an immutable processor policy before invocation.
 - The policy records processor, subprocessors, regions, residence, retention, maximum retention, training use, legal basis, purposes and modalities.
 - Unknown, forbidden, pending or incomplete external policies fail closed.
 - Network providers remain pending until contractual and deployment-specific facts are explicitly approved; configuration alone cannot authorize patient-data egress.
 - Local/static fallbacks are separately registered as no-external-egress policies.
 - Regression tests prove processor denial prevents provider invocation.
-
-**Status rule:** this lot is complete only after the final SHA passes all repository gates and its PR is merged.
+- Final SQLite, PostgreSQL, migration drift, Ruff, import-linter, anti-bypass, Bandit, OpenAPI, Flutter and secret-hygiene gates passed before merge.
 
 ## ✅ P0-C — Clinical analytics correctness + PostgreSQL parity — MERGED
 
@@ -131,13 +147,26 @@ Closed in PR #9.
 - [x] Enforce text payload allowlists, size ceilings and deterministic DLP.
 - [x] Enforce purpose/modality-granular raw-media consent.
 - [x] Expose authenticated patient grant/revoke management.
+- [x] Attach processor/subprocessor, residency, retention/no-training, legal-basis and approval metadata to every provider policy.
 
 ### Remaining work
 
-- [ ] Attach approved processor/subprocessor, residency, retention/no-training and legal-basis metadata to every egress policy. **Registry implementation in progress; external approvals remain pending by design.**
 - [ ] Remove or deliberately isolate provider-specific runtime seams.
-- [ ] Add provider and streaming timeouts, typed failures and safe frontend error UX.
+- [ ] Add provider and streaming timeouts, typed failures and safe frontend error UX. **Next lot: P0-MENA-1F.**
 - [ ] Prove fallback paths cannot bypass the same policy.
+
+### P0-MENA-1F — Provider runtime resilience — NEXT
+
+**Goal:** an approved provider must fail safely, predictably and without bypassing consent, DLP or processor policy.
+
+- [ ] Inventory every synchronous, streaming and multimodal provider execution path.
+- [ ] Define one typed provider-failure taxonomy for timeout, unavailable, quota, malformed response, policy denial and internal failure.
+- [ ] Enforce explicit bounded timeouts at the provider boundary.
+- [ ] Ensure streaming cancellation and partial failures close safely.
+- [ ] Map backend failures to stable non-sensitive API errors.
+- [ ] Add deterministic Flutter UX for retryable and non-retryable failures.
+- [ ] Prove timeout, error and fallback paths cannot bypass egress scope, consent, DLP or processor policy.
+- [ ] Pass SQLite, PostgreSQL, OpenAPI, security, Flutter and migration-drift gates before merge.
 
 ### Acceptance gate
 
