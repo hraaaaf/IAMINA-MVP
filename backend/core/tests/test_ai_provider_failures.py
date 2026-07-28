@@ -28,9 +28,9 @@ class RaisingProvider(BaseLLMProvider):
 @pytest.fixture
 def consenting_patient(db):
     user = User.objects.create_user(username="provider-failure-patient")
-    BasePatientProfile.objects.create(
+    BasePatientProfile.objects.update_or_create(
         patient=user,
-        ai_consent_given_at=timezone.now(),
+        defaults={"ai_consent_given_at": timezone.now()},
     )
     return user
 
