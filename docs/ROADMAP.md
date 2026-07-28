@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-07-28 — P0-MENA-1F tranche 1 typed provider-failure boundary implemented in draft PR #15.
+> **Last updated:** 2026-07-28 — P0-MENA-1F tranches 1–2 implemented and validated in draft PR #15.
 >
 > **Authority:** this file is the single forward tracker. Historical implementation detail belongs in git history, ADRs and architecture timelines.
 
@@ -26,7 +26,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | Workstream | Progress | Status | Evidence |
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Complete | P0-A, P0-B, P0-C and migration drift merged |
-| P0-MENA-1 — outbound AI/data-egress contract | 70% | 🟡 In progress | 7 of 10 explicit controls complete; P0-MENA-1F tranche 1 implemented in draft PR #15 |
+| P0-MENA-1 — outbound AI/data-egress contract | 70% | 🟡 In progress | 7 of 10 explicit controls complete; P0-MENA-1F typed failures and bounded provider timeouts validated in draft PR #15 |
 | P0-MENA-2 — locale + safety contract | 0% | ⚪ Not started | No roadmap task closed |
 | P0-MENA-3 — sovereign authentication migration | 0% | ⚪ Not started | Design and migration work pending |
 | P0-MENA-4 — multimodal provider benchmark | 0% | ⚪ Not started | Evaluation set and benchmark pending |
@@ -160,8 +160,8 @@ Closed in PR #9.
 **Goal:** an approved provider must fail safely, predictably and without bypassing consent, DLP or processor policy.
 
 - [ ] Inventory every synchronous, streaming and multimodal provider execution path.
-- [x] Define one typed provider-failure taxonomy for timeout, unavailable, quota, malformed response, policy denial and internal failure. **Implemented in PR #15; final completion remains gated by full-lot CI and merge.**
-- [ ] Enforce explicit bounded timeouts at the provider boundary.
+- [x] Define one typed provider-failure taxonomy for timeout, unavailable, quota, malformed response, policy denial and internal failure. **Implemented and validated in PR #15; final completion remains gated by full-lot merge.**
+- [x] Enforce explicit bounded timeouts at the provider boundary. **Gemini complete/stream/think and Kimi complete/stream are bounded; retries are disabled for Kimi. SQLite and PostgreSQL full suites passed on 2026-07-28.**
 - [ ] Ensure streaming cancellation and partial failures close safely.
 - [ ] Map backend failures to stable non-sensitive API errors.
 - [ ] Add deterministic Flutter UX for retryable and non-retryable failures.
@@ -170,7 +170,8 @@ Closed in PR #9.
 
 #### Checkpoints
 
-- **Tranche 1 — typed provider failures:** implemented on 2026-07-28. Raw vendor exception messages are normalized at the authorized provider boundary; processor-policy denial still prevents invocation. Roadmap updated in the same branch before tranche 2.
+- **Tranche 1 — typed provider failures:** implemented on 2026-07-28. Raw vendor exception messages are normalized at the authorized provider boundary; processor-policy denial still prevents invocation.
+- **Tranche 2 — bounded provider timeouts:** implemented and validated on 2026-07-28. Gemini complete/stream/think and Kimi complete/stream are bounded; the full SQLite and PostgreSQL suites, migration drift, OpenAPI, security and Flutter gates passed before this checkpoint was closed.
 
 ### Acceptance gate
 
