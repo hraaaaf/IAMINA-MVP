@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-07-26 — P0-MENA-1C granular raw-media consent merged; P0-MENA-1D patient consent-management API in final validation.
+> **Last updated:** 2026-07-27 — P0-MENA-1D patient media-consent management merged; P0-MENA-1E processor policy registry in implementation.
 >
 > **Authority:** this file is the single forward tracker. Historical implementation detail belongs in git history, ADRs and architecture timelines.
 
@@ -75,9 +75,9 @@ Closed in PR #12 after green SQLite, PostgreSQL, OpenAPI, security, Flutter and 
 - Grants are unique, revocable and checked immediately before egress.
 - Purpose and modality isolation are regression-tested.
 
-## 🟡 P0-MENA-1D — Patient media-consent management API — IN VALIDATION
+## ✅ P0-MENA-1D — Patient media-consent management API — MERGED
 
-Implementation PR: #13, branch `feat/p0-mena-media-consent-api`.
+Closed in PR #13 after green SQLite, PostgreSQL, OpenAPI, security, Flutter and migration-drift gates.
 
 - Authenticated patients can list every supported media-consent option and its active or revoked state.
 - Grant and revoke operations derive ownership exclusively from `request.user`.
@@ -85,9 +85,19 @@ Implementation PR: #13, branch `feat/p0-mena-media-consent-api`.
 - Grant requires active global AI consent.
 - Grant and revocation are idempotent.
 - Unsupported purpose/modality pairs fail closed.
-- Generated OpenAPI and ownership/isolation tests are included.
 
-**Status rule:** this lot is complete only after the final SHA passes all repository gates and PR #13 is merged.
+## 🟡 P0-MENA-1E — Executable processor policy registry — IN IMPLEMENTATION
+
+Implementation branch: `feat/p0-mena-processor-policy-registry`.
+
+- Every provider must resolve to an immutable processor policy before invocation.
+- The policy records processor, subprocessors, regions, residence, retention, maximum retention, training use, legal basis, purposes and modalities.
+- Unknown, forbidden, pending or incomplete external policies fail closed.
+- Network providers remain pending until contractual and deployment-specific facts are explicitly approved; configuration alone cannot authorize patient-data egress.
+- Local/static fallbacks are separately registered as no-external-egress policies.
+- Regression tests prove processor denial prevents provider invocation.
+
+**Status rule:** this lot is complete only after the final SHA passes all repository gates and its PR is merged.
 
 ## ✅ P0-C — Clinical analytics correctness + PostgreSQL parity — MERGED
 
@@ -120,11 +130,11 @@ Closed in PR #9.
 - [x] Enforce global AI consent immediately before egress.
 - [x] Enforce text payload allowlists, size ceilings and deterministic DLP.
 - [x] Enforce purpose/modality-granular raw-media consent.
-- [ ] Expose authenticated patient grant/revoke management. **API implemented in PR #13; awaiting final CI + merge.**
+- [x] Expose authenticated patient grant/revoke management.
 
 ### Remaining work
 
-- [ ] Attach approved processor/subprocessor, residency, retention/no-training and legal-basis metadata to every egress policy.
+- [ ] Attach approved processor/subprocessor, residency, retention/no-training and legal-basis metadata to every egress policy. **Registry implementation in progress; external approvals remain pending by design.**
 - [ ] Remove or deliberately isolate provider-specific runtime seams.
 - [ ] Add provider and streaming timeouts, typed failures and safe frontend error UX.
 - [ ] Prove fallback paths cannot bypass the same policy.
@@ -178,59 +188,14 @@ Benchmark text, STT and vision independently on privacy, residency, no-training/
 
 - [ ] Deterministic insulin-dose/treatment refusal proven not to call an LLM.
 - [ ] Doctor-facing and summary outputs proven to pass the same no-prescription policy.
-- [ ] Emergency events route to a monitored human channel or an explicit self-care-only mode.
-- [ ] Darija high-severity safety gap closed.
+- [ ] Emergency events route to a monitored human channel or the product explicitly adopts a documented self-care-only mode.
+- [ ] Darija high-severity orthographic gap closed.
 - [x] Base AI/model consent enforced server-side.
-- [ ] Patient media-consent workflow available; backend enforcement is merged and API is in PR #13.
-- [ ] Processor/subprocessor register and consent matrix documented.
-- [ ] Cross-border and residency assumptions documented for the pilot country.
-- [ ] Export process documented or implemented.
+- [x] Granular raw-media consent management exposed through the authenticated patient API.
+- [ ] Consent matrix and processor/subprocessor register approved for the pilot deployment.
+- [ ] Cross-border/data-residency assumptions documented for the pilot country.
+- [ ] Data export implemented or an operationally valid export process documented.
 - [ ] Retention/deletion schedule defined.
 - [ ] Incident response and escalation procedure defined.
-- [ ] Pilot onboarding, monitoring and exit checklist approved.
-- [ ] Historical exposed secrets rotated and unreachable.
-
----
-
-# Deployment + pilot
-
-- [ ] Validate a reproducible development path.
-- [ ] Deploy staging with PostgreSQL, Redis, TLS, backups, logging and smoke tests.
-- [ ] Select the first pilot country and cohort.
-- [ ] Pass the first locale safety gate.
-- [ ] Recruit approximately 30 controlled pilot patients.
-- [ ] Enable retention instrumentation.
-- [ ] Set the D90 go/stop threshold before reading outcomes.
-
-# RETENTION GATE
-
-Do not build condition #2 or broad platform scope until both are true:
-
-1. D90 retention meets the founder-set threshold.
-2. One credible payer or distribution signal exists.
-
-# SOON
-
-- [ ] Frontend integration tests for pilot-critical flows.
-- [ ] Accessibility baseline.
-- [ ] Dependency/security scanning and measured coverage thresholds.
-- [ ] Production-grade load and failure testing.
-- [ ] MFA/strong auth for staff.
-- [ ] Complete observability retention policy.
-- [ ] Retire legacy development scripts after Docker-first workflow is proven.
-- [ ] Remove dead provider/Firebase code only after migration and rollback windows close.
-
-# BUSINESS VALIDATION — founder-owned, parallel
-
-- [ ] One-page monetization memo.
-- [ ] Competitive landscape for selected MENA cohorts.
-- [ ] At least five structured market conversations.
-- [ ] Re-source market claims before external use.
-
-# GATED — explicitly not now
-
-- Second disease module, including hypertension.
-- Third-party plugin marketplace.
-- Worldwide language coverage.
-- Multi-tenant enterprise machinery without validated demand.
-- Any expansion into diagnosis, prescribing or treatment optimization without a separate regulatory/product decision.
+- [ ] Pilot onboarding, monitoring, escalation and exit checklist approved.
+- [ ] No committed/reachable secrets remain; exposed keys are rotated.
