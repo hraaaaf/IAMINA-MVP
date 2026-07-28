@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-07-28 — P0-MENA-1E executable processor policy registry merged in PR #14.
+> **Last updated:** 2026-07-28 — P0-MENA-1F tranche 1 typed provider-failure boundary implemented in draft PR #15.
 >
 > **Authority:** this file is the single forward tracker. Historical implementation detail belongs in git history, ADRs and architecture timelines.
 
@@ -26,7 +26,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | Workstream | Progress | Status | Evidence |
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Complete | P0-A, P0-B, P0-C and migration drift merged |
-| P0-MENA-1 — outbound AI/data-egress contract | 70% | 🟡 In progress | 7 of 10 explicit controls complete |
+| P0-MENA-1 — outbound AI/data-egress contract | 70% | 🟡 In progress | 7 of 10 explicit controls complete; P0-MENA-1F tranche 1 implemented in draft PR #15 |
 | P0-MENA-2 — locale + safety contract | 0% | ⚪ Not started | No roadmap task closed |
 | P0-MENA-3 — sovereign authentication migration | 0% | ⚪ Not started | Design and migration work pending |
 | P0-MENA-4 — multimodal provider benchmark | 0% | ⚪ Not started | Evaluation set and benchmark pending |
@@ -152,21 +152,25 @@ Closed in PR #9.
 ### Remaining work
 
 - [ ] Remove or deliberately isolate provider-specific runtime seams.
-- [ ] Add provider and streaming timeouts, typed failures and safe frontend error UX. **Next lot: P0-MENA-1F.**
+- [ ] Add provider and streaming timeouts, typed failures and safe frontend error UX. **Current lot: P0-MENA-1F.**
 - [ ] Prove fallback paths cannot bypass the same policy.
 
-### P0-MENA-1F — Provider runtime resilience — NEXT
+### P0-MENA-1F — Provider runtime resilience — IN IMPLEMENTATION
 
 **Goal:** an approved provider must fail safely, predictably and without bypassing consent, DLP or processor policy.
 
 - [ ] Inventory every synchronous, streaming and multimodal provider execution path.
-- [ ] Define one typed provider-failure taxonomy for timeout, unavailable, quota, malformed response, policy denial and internal failure.
+- [x] Define one typed provider-failure taxonomy for timeout, unavailable, quota, malformed response, policy denial and internal failure. **Implemented in PR #15; final completion remains gated by full-lot CI and merge.**
 - [ ] Enforce explicit bounded timeouts at the provider boundary.
 - [ ] Ensure streaming cancellation and partial failures close safely.
 - [ ] Map backend failures to stable non-sensitive API errors.
 - [ ] Add deterministic Flutter UX for retryable and non-retryable failures.
 - [ ] Prove timeout, error and fallback paths cannot bypass egress scope, consent, DLP or processor policy.
 - [ ] Pass SQLite, PostgreSQL, OpenAPI, security, Flutter and migration-drift gates before merge.
+
+#### Checkpoints
+
+- **Tranche 1 — typed provider failures:** implemented on 2026-07-28. Raw vendor exception messages are normalized at the authorized provider boundary; processor-policy denial still prevents invocation. Roadmap updated in the same branch before tranche 2.
 
 ### Acceptance gate
 
