@@ -94,7 +94,10 @@ def test_unknown_provider_exception_becomes_non_retryable_internal_failure(
 def test_policy_denial_still_prevents_provider_invocation(consenting_patient, monkeypatch):
     monkeypatch.setattr("llm.factory._provider_policy_name", lambda _: "gemini")
     provider = MagicMock(spec=BaseLLMProvider)
-    provider.complete = MagicMock(return_value=LLMResponse(content="unsafe", provider="mock"))
+    original_complete = MagicMock(
+        return_value=LLMResponse(content="unsafe", provider="mock")
+    )
+    provider.complete = original_complete
     provider.stream = MagicMock()
     provider.think = MagicMock()
     guarded = _enforce_text_payload_policy(provider)
@@ -104,4 +107,4 @@ def test_policy_denial_still_prevents_provider_invocation(consenting_patient, mo
             guarded.complete("system", "bonjour")
 
     assert type(caught.value).__name__ == "AIProcessorPolicyDenied"
-    provider.complete.assert_not_called()
+    original_complete.assert_not_called()
