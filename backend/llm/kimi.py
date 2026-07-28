@@ -7,6 +7,8 @@ from .base import BaseLLMProvider, LLMResponse
 
 logger = logging.getLogger(__name__)
 
+_KIMI_TIMEOUT_SECONDS = 15.0
+
 try:
     from openai import OpenAI
 except ImportError:
@@ -28,6 +30,8 @@ class KimiProvider(BaseLLMProvider):
             self.client = OpenAI(
                 base_url=getattr(settings, "KIMI_BASE_URL", ""),
                 api_key=getattr(settings, "KIMI_API_KEY", "dummy"),
+                timeout=_KIMI_TIMEOUT_SECONDS,
+                max_retries=0,
             )
         self.model = model
 
@@ -47,6 +51,7 @@ class KimiProvider(BaseLLMProvider):
         response = self.client.chat.completions.create(
             model=self.model,
             messages=self._messages(system, user),
+            timeout=_KIMI_TIMEOUT_SECONDS,
         )
         return LLMResponse(
             content=response.choices[0].message.content or "",
@@ -54,12 +59,13 @@ class KimiProvider(BaseLLMProvider):
         )
 
     def stream(self, system: str, user: str) -> Iterator[str]:
-        """Native streaming via OpenAI client stream=True."""
+        """Stream through an OpenAI-compatible client with a bounded timeout."""
         if not self.client:
             raise RuntimeError("KimiProvider: client not initialized.")
         with self.client.chat.completions.stream(
             model=self.model,
             messages=self._messages(system, user),
+            timeout=_KIMI_TIMEOUT_SECONDS,
         ) as stream:
             for text in stream.text_stream:
                 if text:
