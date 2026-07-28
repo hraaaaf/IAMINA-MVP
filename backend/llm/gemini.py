@@ -25,10 +25,14 @@ class GeminiProvider(BaseLLMProvider):
         api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
         if not api_key:
             logger.warning("GeminiProvider: No API key found. Calls will fail.")
-        self._client = genai.Client(
-            api_key=api_key,
-            http_options={"api_version": "v1alpha"},
-        ) if api_key else None
+        self._client = (
+            genai.Client(
+                api_key=api_key,
+                http_options={"api_version": "v1alpha"},
+            )
+            if api_key
+            else None
+        )
         self._executor = ThreadPoolExecutor(max_workers=1)
 
     @property
@@ -41,7 +45,7 @@ class GeminiProvider(BaseLLMProvider):
             return future.result(timeout=_LLM_TIMEOUT)
         except FuturesTimeoutError:
             future.cancel()
-            raise TimeoutError(f"Gemini API call timed out after {_LLM_TIMEOUT}s")
+            raise TimeoutError(f"Gemini API call timed out after {_LLM_TIMEOUT}s") from None
 
     def complete(self, system: str, user: str) -> LLMResponse:
         if not self._client:
@@ -64,23 +68,21 @@ class GeminiProvider(BaseLLMProvider):
         )
 
     def stream(self, system: str, user: str) -> Iterator[str]:
-        """
-        Native Gemini streaming via generate_content_stream.
-        Yields text chunks as they arrive — real latency reduction vs complete().
-        Falls back to complete() if the client is unavailable.
-        """
+        """Yield Gemini chunks after one bounded provider operation."""
         if not self._client:
             raise RuntimeError("GeminiProvider: client not initialized (missing API key).")
 
         def _do_stream():
-            return list(self._client.models.generate_content_stream(
-                model=self.model,
-                contents=user,
-                config={
-                    "system_instruction": system,
-                    "temperature": 0.1,
-                },
-            ))
+            return list(
+                self._client.models.generate_content_stream(
+                    model=self.model,
+                    contents=user,
+                    config={
+                        "system_instruction": system,
+                        "temperature": 0.1,
+                    },
+                )
+            )
 
         chunks = self._call_with_timeout(_do_stream)
         for chunk in chunks:
@@ -88,24 +90,23 @@ class GeminiProvider(BaseLLMProvider):
                 yield chunk.text
 
     def think(self, system: str, user: str) -> tuple[str, str]:
-        """
-        Gemini 2.5 Flash native thinking via thinking_config.
-        Budget: 2048 tokens de réflexion.
-        Returns (thinking, response) — thinking is internal, never shown to patient.
-        """
+        """Run Gemini thinking through the same bounded execution path."""
         if not self._client:
             return "", ""
 
-        try:
-            response = self._client.models.generate_content(
+        def _do_think():
+            return self._client.models.generate_content(
                 model=self.model,
                 contents=user,
                 config={
                     "system_instruction": system,
                     "thinking_config": {"thinking_budget": 2048},
-                    "temperature": 1.0,  # requis pour thinking
+                    "temperature": 1.0,
                 },
             )
+
+        try:
+            response = self._call_with_timeout(_do_think)
             thinking = ""
             text = ""
             for part in response.candidates[0].content.parts:
@@ -113,9 +114,16 @@ class GeminiProvider(BaseLLMProvider):
                     thinking += part.text
                 else:
                     text += part.text
-            logger.debug("GeminiProvider.think: thinking_tokens=%d", len(thinking.split()))
+            logger.debug(
+                "GeminiProvider.think: thinking_tokens=%d",
+                len(thinking.split()),
+            )
             return thinking.strip(), text.strip()
+        except TimeoutError:
+            raise
         except Exception:
-            logger.debug("GeminiProvider.think: thinking not available, falling back to complete()")
+            logger.debug(
+                "GeminiProvider.think: thinking unavailable, falling back to complete()"
+            )
             result = self.complete(system, user)
             return "", result.content
