@@ -8,6 +8,65 @@ import 'auth_service.dart';
 import '../data/models/ai_models.dart';
 import '../data/models/document_models.dart';
 
+class ProviderApiException implements Exception {
+  final String code;
+  final String message;
+  final bool retryable;
+  final int statusCode;
+
+  const ProviderApiException({
+    required this.code,
+    required this.message,
+    required this.retryable,
+    required this.statusCode,
+  });
+
+  factory ProviderApiException.fromJson(
+    Map<String, dynamic> payload, {
+    required int statusCode,
+  }) {
+    final error = payload['error'];
+    if (error is! Map<String, dynamic>) {
+      return ProviderApiException.unknown(statusCode: statusCode);
+    }
+    return ProviderApiException(
+      code: error['code'] as String? ?? 'provider_unknown_failure',
+      message: error['message'] as String? ?? 'The AI request could not be completed safely.',
+      retryable: error['retryable'] as bool? ?? false,
+      statusCode: statusCode,
+    );
+  }
+
+  factory ProviderApiException.unknown({required int statusCode}) {
+    return ProviderApiException(
+      code: 'provider_unknown_failure',
+      message: 'The AI request could not be completed safely.',
+      retryable: false,
+      statusCode: statusCode,
+    );
+  }
+
+  String get userMessage {
+    switch (code) {
+      case 'provider_timeout':
+      case 'provider_unavailable':
+        return 'Le service IA est temporairement indisponible. Réessaie dans quelques instants.';
+      case 'provider_quota_exceeded':
+        return 'Le service IA est temporairement saturé. Réessaie plus tard.';
+      case 'provider_malformed_response':
+      case 'provider_internal_failure':
+        return 'La réponse IA n’a pas pu être traitée en toute sécurité.';
+      default:
+        return retryable
+            ? 'Le service IA est momentanément indisponible. Réessaie dans quelques instants.'
+            : 'La demande IA n’a pas pu être traitée en toute sécurité.';
+    }
+  }
+
+  @override
+  String toString() => 'ProviderApiException(code: $code, retryable: $retryable)';
+}
+
 class AuthInterceptor implements Interceptor {
   final AuthService authService;
   AuthInterceptor(this.authService);
@@ -175,9 +234,26 @@ class ApiClient {
       request.headers['Authorization'] = 'Bearer $token';
     }
 
+    final client = http.Client();
     try {
-      final client = http.Client();
-      final streamed = await client.send(request);
+      final streamed = await client
+          .send(request)
+          .timeout(TimeoutInterceptor._kTimeout);
+
+      if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+        final body = await streamed.stream.bytesToString();
+        try {
+          final payload = jsonDecode(body) as Map<String, dynamic>;
+          throw ProviderApiException.fromJson(
+            payload,
+            statusCode: streamed.statusCode,
+          );
+        } on ProviderApiException {
+          rethrow;
+        } catch (_) {
+          throw ProviderApiException.unknown(statusCode: streamed.statusCode);
+        }
+      }
 
       String buffer = '';
       await for (final chunk in streamed.stream.transform(utf8.decoder)) {
@@ -187,10 +263,7 @@ class ApiClient {
         for (final line in lines) {
           if (line.startsWith('data: ')) {
             final payload = line.substring(6).trim();
-            if (payload == '[DONE]') {
-              client.close();
-              return;
-            }
+            if (payload == '[DONE]') return;
             try {
               final json = jsonDecode(payload) as Map<String, dynamic>;
               final tok = json['token'] as String?;
@@ -199,9 +272,24 @@ class ApiClient {
           }
         }
       }
-      client.close();
+    } on TimeoutException {
+      throw const ProviderApiException(
+        code: 'provider_timeout',
+        message: 'The AI service did not respond in time.',
+        retryable: true,
+        statusCode: 503,
+      );
+    } on ProviderApiException {
+      rethrow;
     } catch (_) {
-      yield 'Une erreur est survenue.';
+      throw const ProviderApiException(
+        code: 'provider_unavailable',
+        message: 'The AI service is temporarily unavailable.',
+        retryable: true,
+        statusCode: 503,
+      );
+    } finally {
+      client.close();
     }
   }
 
