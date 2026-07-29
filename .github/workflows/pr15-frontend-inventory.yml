@@ -10,7 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/upload-artifact@v4
+      - name: Upload Flutter source inventory
+        uses: actions/upload-artifact@v4
         with:
           name: pr15-frontend-inventory
           path: |
