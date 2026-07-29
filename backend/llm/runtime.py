@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from concurrent.futures import (
+    ThreadPoolExecutor,
+    TimeoutError as FuturesTimeoutError,
+)
 from typing import TypeVar
 
 from core.ai_egress import assert_ai_egress_allowed
 from core.ai_processor_policy import authorize_processor_policy
-from llm.errors import LLMProviderError, LLMProviderTimeout, normalize_provider_exception
+from llm.errors import (
+    LLMProviderError,
+    LLMProviderTimeout,
+    normalize_provider_exception,
+)
 
 logger = logging.getLogger(__name__)
 _T = TypeVar("_T")
