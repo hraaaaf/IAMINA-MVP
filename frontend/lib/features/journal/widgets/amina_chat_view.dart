@@ -232,10 +232,18 @@ class _AminaChatViewState extends State<AminaChatView> {
           ),
         );
       },
-      onError: (_) {
+      onError: (error) {
         if (!mounted) return;
+        final message = error is ProviderApiException
+            ? error.userMessage
+            : 'La demande n’a pas pu être traitée en toute sécurité.';
         setState(() {
-          _messages[aiMsgIndex] = {'isAi': true, 'text': 'Une erreur est survenue. Veuillez réessayer.', 'isEmergency': false};
+          _messages[aiMsgIndex] = {
+            'isAi': true,
+            'text': message,
+            'isEmergency': false,
+            'retryable': error is ProviderApiException && error.retryable,
+          };
           _isTyping = false;
         });
       },
