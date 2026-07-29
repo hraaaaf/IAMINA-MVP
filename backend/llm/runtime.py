@@ -12,7 +12,8 @@ from typing import TypeVar
 
 from core.ai_egress import assert_ai_egress_allowed
 from core.ai_processor_policy import authorize_processor_policy
-from llm.errors import (
+
+from .errors import (
     LLMProviderError,
     LLMProviderTimeout,
     normalize_provider_exception,
