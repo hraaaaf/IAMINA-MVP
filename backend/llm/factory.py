@@ -94,6 +94,8 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
     touch the network. The processor policy is evaluated against the exact
     patient purpose held by the central egress context. Once authorized, vendor
     exceptions are normalized into a stable non-sensitive failure taxonomy.
+    Stream iterators are always closed when the consumer cancels or when a
+    partial stream fails, so provider resources cannot remain live after exit.
     """
     if getattr(provider, "_iamina_text_payload_policy", False) is True:
         return provider
@@ -120,8 +122,11 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
 
     def guarded_stream(system: str, user: str) -> Iterator[str]:
         payload = _authorize(system, user)
+        stream = original_stream(payload.system_prompt, payload.user_prompt)
         try:
-            yield from original_stream(payload.system_prompt, payload.user_prompt)
+            yield from stream
+        except GeneratorExit:
+            raise
         except LLMProviderError:
             raise
         except Exception as exc:
@@ -133,6 +138,10 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
                 normalized.retryable,
             )
             raise normalized from None
+        finally:
+            close = getattr(stream, "close", None)
+            if callable(close):
+                close()
 
     def guarded_think(system: str, user: str) -> tuple[str, str]:
         payload = _authorize(system, user)
