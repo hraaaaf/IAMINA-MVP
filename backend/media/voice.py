@@ -21,7 +21,10 @@ import base64
 import logging
 import os
 
-from core.ai_egress import AUDIO, assert_ai_egress_allowed
+from core.ai_egress import AUDIO, AIEgressDenied
+from core.ai_processor_policy import AIProcessorPolicyDenied
+from llm.errors import LLMProviderError
+from llm.runtime import execute_external_provider_call
 
 logger = logging.getLogger(__name__)
 
@@ -115,32 +118,36 @@ def transcribe(
     audio_b64     = base64.b64encode(audio_bytes).decode("utf-8")
 
     try:
-        assert_ai_egress_allowed(AUDIO)
         from google import genai
 
         client = genai.Client(
             api_key=api_key,
             http_options={"api_version": "v1alpha"},
         )
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[
-                {
-                    "parts": [
-                        {
-                            "inline_data": {
-                                "mime_type": mime_type,
-                                "data": audio_b64,
-                            }
-                        },
-                        {"text": user_prompt},
-                    ]
-                }
-            ],
-            config={
-                "system_instruction": _STT_SYSTEM,
-                "temperature": 0.0,   # deterministic transcription
-            },
+        response = execute_external_provider_call(
+            "gemini",
+            AUDIO,
+            "transcribe",
+            lambda: client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[
+                    {
+                        "parts": [
+                            {
+                                "inline_data": {
+                                    "mime_type": mime_type,
+                                    "data": audio_b64,
+                                }
+                            },
+                            {"text": user_prompt},
+                        ]
+                    }
+                ],
+                config={
+                    "system_instruction": _STT_SYSTEM,
+                    "temperature": 0.0,
+                },
+            ),
         )
 
         transcript = (response.text or "").strip()
@@ -150,6 +157,8 @@ def transcribe(
         )
         return transcript
 
-    except Exception as exc:
-        logger.exception("STT: Gemini transcription failed (lang=%s)", language)
-        raise TranscriptionError(f"Gemini STT error: {exc}") from exc
+    except (AIEgressDenied, AIProcessorPolicyDenied, LLMProviderError):
+        raise
+    except Exception:
+        logger.exception("STT: transcription failed (lang=%s)", language)
+        raise TranscriptionError("STT request could not be completed safely.") from None
