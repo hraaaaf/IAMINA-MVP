@@ -5,7 +5,7 @@ import pytest
 from django.contrib.auth.models import User
 from django.utils import timezone
 
-from core.ai_egress import ai_egress_scope
+from core.ai_egress import AIEgressDenied, ai_egress_scope
 from core.models import BasePatientProfile
 from llm.base import BaseLLMProvider, LLMResponse
 from llm.errors import (
@@ -24,6 +24,26 @@ class RaisingProvider(BaseLLMProvider):
     def complete(self, system: str, user: str) -> LLMResponse:
         self.calls += 1
         raise self.exc
+
+
+class TrackingStreamProvider(BaseLLMProvider):
+    def __init__(self, *, failure: Exception | None = None):
+        self.failure = failure
+        self.stream_calls = 0
+        self.closed = False
+
+    def complete(self, system: str, user: str) -> LLMResponse:
+        return LLMResponse(content="fallback", provider="tracking")
+
+    def stream(self, system: str, user: str):
+        self.stream_calls += 1
+        try:
+            yield "first"
+            if self.failure is not None:
+                raise self.failure
+            yield "second"
+        finally:
+            self.closed = True
 
 
 @pytest.fixture
@@ -108,3 +128,71 @@ def test_policy_denial_still_prevents_provider_invocation(consenting_patient, mo
 
     assert type(caught.value).__name__ == "AIProcessorPolicyDenied"
     original_complete.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_stream_cancellation_closes_underlying_provider_iterator(
+    consenting_patient,
+    monkeypatch,
+):
+    provider = TrackingStreamProvider()
+    guarded = _approved_guard(provider, monkeypatch)
+
+    with ai_egress_scope(consenting_patient.id, "companion_chat", "text"):
+        stream = guarded.stream("system", "bonjour")
+        assert next(stream) == "first"
+        stream.close()
+
+    assert provider.stream_calls == 1
+    assert provider.closed is True
+
+
+@pytest.mark.django_db
+def test_partial_stream_failure_is_typed_and_closes_provider_iterator(
+    consenting_patient,
+    monkeypatch,
+):
+    provider = TrackingStreamProvider(
+        failure=ConnectionError("vendor stream endpoint private detail")
+    )
+    guarded = _approved_guard(provider, monkeypatch)
+
+    with ai_egress_scope(consenting_patient.id, "companion_chat", "text"):
+        stream = guarded.stream("system", "bonjour")
+        assert next(stream) == "first"
+        with pytest.raises(LLMProviderUnavailable) as caught:
+            next(stream)
+
+    assert caught.value.code == "provider_unavailable"
+    assert "private detail" not in str(caught.value)
+    assert provider.closed is True
+
+
+@pytest.mark.django_db
+def test_stream_policy_denial_occurs_before_provider_iterator_starts(
+    consenting_patient,
+    monkeypatch,
+):
+    monkeypatch.setattr("llm.factory._provider_policy_name", lambda _: "gemini")
+    provider = TrackingStreamProvider()
+    guarded = _enforce_text_payload_policy(provider)
+
+    with ai_egress_scope(consenting_patient.id, "companion_chat", "text"):
+        stream = guarded.stream("system", "bonjour")
+        with pytest.raises(Exception) as caught:
+            next(stream)
+
+    assert type(caught.value).__name__ == "AIProcessorPolicyDenied"
+    assert provider.stream_calls == 0
+    assert provider.closed is False
+
+
+def test_fallback_stream_cannot_run_outside_egress_scope(monkeypatch):
+    provider = TrackingStreamProvider()
+    guarded = _approved_guard(provider, monkeypatch)
+    stream = guarded.stream("system", "bonjour")
+
+    with pytest.raises(AIEgressDenied):
+        next(stream)
+
+    assert provider.stream_calls == 0
