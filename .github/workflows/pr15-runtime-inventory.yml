@@ -1,0 +1,33 @@
+name: PR15 runtime inventory
+
+on:
+  push:
+    branches:
+      - feat/p0-mena-provider-runtime-resilience
+
+jobs:
+  inventory:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build runtime inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pr15-inventory
+          {
+            echo '# Network/model callsites'
+            rg -n "genai\.|GenerativeModel\(|OpenAI\(|Anthropic\(|chat\.completions|generate_content|generate_content_stream|transcribe|speech_to_text|vision|ocr|get_llm\(|\.complete\(|\.stream\(|\.think\(" backend -g '*.py' || true
+            echo
+            echo '# Egress scopes and assertions'
+            rg -n "patient_ai_egress_scope|ai_egress_scope|assert_ai_egress_allowed|authorize_text_payload|authorize_processor_policy" backend -g '*.py' || true
+            echo
+            echo '# Timeout and retry controls'
+            rg -n "timeout|Timeout|retry|max_retries|ThreadPoolExecutor|future\.result" backend -g '*.py' || true
+          } > /tmp/pr15-inventory/runtime-inventory.txt
+          find backend/llm backend/media backend/ai backend/companion backend/diabetes -type f -name '*.py' | sort > /tmp/pr15-inventory/python-files.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr15-runtime-inventory
+          path: /tmp/pr15-inventory
