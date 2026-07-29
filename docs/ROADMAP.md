@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-07-29 — P0-MENA-1F tranches 1–3 implemented and validated in draft PR #15.
+> **Last updated:** 2026-07-29 — P0-MENA-1F tranches 1–4 implemented and validated in draft PR #15.
 >
 > **Authority:** this file is the single forward tracker. Historical implementation detail belongs in git history, ADRs and architecture timelines.
 
@@ -26,13 +26,13 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | Workstream | Progress | Status | Evidence |
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Complete | P0-A, P0-B, P0-C and migration drift merged |
-| P0-MENA-1 — outbound AI/data-egress contract | 80% | 🟡 In progress | 8 of 10 explicit controls complete; typed failures, bounded timeouts and stable API errors validated in draft PR #15 |
+| P0-MENA-1 — outbound AI/data-egress contract | 90% | 🟡 In progress | 9 of 10 explicit controls complete; typed failures, bounded timeouts, stable API errors and deterministic Flutter UX validated in draft PR #15 |
 | P0-MENA-2 — locale + safety contract | 0% | ⚪ Not started | No roadmap task closed |
 | P0-MENA-3 — sovereign authentication migration | 0% | ⚪ Not started | Design and migration work pending |
 | P0-MENA-4 — multimodal provider benchmark | 0% | ⚪ Not started | Evaluation set and benchmark pending |
 | Pilot safety/compliance gate | 15% | 🔴 Incomplete | 2 of 13 explicit gates complete |
 
-**MENA critical-path completion:** 10 of 41 explicit roadmap tasks closed, approximately **24%**.
+**MENA critical-path completion:** 11 of 41 explicit roadmap tasks closed, approximately **27%**.
 
 This percentage measures the new MENA safety, sovereignty and pilot-readiness path. It is not a percentage of the complete product codebase.
 
@@ -164,7 +164,7 @@ Closed in PR #9.
 - [x] Enforce explicit bounded timeouts at the provider boundary. **Gemini complete/stream/think and Kimi complete/stream are bounded; retries are disabled for Kimi.**
 - [ ] Ensure streaming cancellation and partial failures close safely.
 - [x] Map backend failures to stable non-sensitive API errors. **Timeout/unavailable→503, quota→429, malformed response→502 and internal failure→500; the response exposes only stable code, safe message and retryability.**
-- [ ] Add deterministic Flutter UX for retryable and non-retryable failures.
+- [x] Add deterministic Flutter UX for retryable and non-retryable failures. **The client parses the stable error contract, converts transport timeouts/unavailability into typed failures, closes the HTTP client in `finally`, and presents distinct safe messages without vendor details.**
 - [ ] Prove timeout, error and fallback paths cannot bypass egress scope, consent, DLP or processor policy.
 - [ ] Pass SQLite, PostgreSQL, OpenAPI, security, Flutter and migration-drift gates before merge.
 
@@ -173,6 +173,7 @@ Closed in PR #9.
 - **Tranche 1 — typed provider failures:** implemented on 2026-07-28. Raw vendor exception messages are normalized at the authorized provider boundary; processor-policy denial still prevents invocation.
 - **Tranche 2 — bounded provider timeouts:** implemented and validated on 2026-07-28. Gemini complete/stream/think and Kimi complete/stream are bounded; the full SQLite and PostgreSQL suites, migration drift, OpenAPI, security and Flutter gates passed before this checkpoint was closed.
 - **Tranche 3 — stable API provider errors:** implemented and validated on 2026-07-29. A global Ninja handler maps the typed taxonomy to deterministic HTTP statuses and a non-sensitive `{error: {code, message, retryable}}` body. SQLite, PostgreSQL, OpenAPI, security, Flutter and migration-drift gates passed before this checkpoint was closed.
+- **Tranche 4 — deterministic Flutter provider-error UX:** implemented and validated on 2026-07-29. SSE transport failures now surface as typed `ProviderApiException` values; retryable timeout/unavailability and non-retryable safe failures produce distinct patient-facing messages, malformed payloads fail closed, and the HTTP client is always closed. SQLite, PostgreSQL, OpenAPI, security, Flutter analyze and migration-drift gates passed before this checkpoint was closed.
 
 ### Acceptance gate
 
