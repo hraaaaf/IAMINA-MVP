@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-07-29 — P0-MENA-1F tranches 1–4 implemented and validated in draft PR #15.
+> **Last updated:** 2026-07-29 — P0-MENA-1F tranches 1–5 implemented and validated in draft PR #15.
 >
 > **Authority:** this file is the single forward tracker. Historical implementation detail belongs in git history, ADRs and architecture timelines.
 
@@ -162,7 +162,7 @@ Closed in PR #9.
 - [ ] Inventory every synchronous, streaming and multimodal provider execution path.
 - [x] Define one typed provider-failure taxonomy for timeout, unavailable, quota, malformed response, policy denial and internal failure. **Implemented and validated in PR #15; final completion remains gated by full-lot merge.**
 - [x] Enforce explicit bounded timeouts at the provider boundary. **Gemini complete/stream/think and Kimi complete/stream are bounded; retries are disabled for Kimi.**
-- [ ] Ensure streaming cancellation and partial failures close safely.
+- [x] Ensure streaming cancellation and partial failures close safely. **The authorized wrapper closes the underlying provider iterator on cancellation, normal completion and partial failure; vendor failures after partial output remain typed and non-sensitive.**
 - [x] Map backend failures to stable non-sensitive API errors. **Timeout/unavailable→503, quota→429, malformed response→502 and internal failure→500; the response exposes only stable code, safe message and retryability.**
 - [x] Add deterministic Flutter UX for retryable and non-retryable failures. **The client parses the stable error contract, converts transport timeouts/unavailability into typed failures, closes the HTTP client in `finally`, and presents distinct safe messages without vendor details.**
 - [ ] Prove timeout, error and fallback paths cannot bypass egress scope, consent, DLP or processor policy.
@@ -174,6 +174,8 @@ Closed in PR #9.
 - **Tranche 2 — bounded provider timeouts:** implemented and validated on 2026-07-28. Gemini complete/stream/think and Kimi complete/stream are bounded; the full SQLite and PostgreSQL suites, migration drift, OpenAPI, security and Flutter gates passed before this checkpoint was closed.
 - **Tranche 3 — stable API provider errors:** implemented and validated on 2026-07-29. A global Ninja handler maps the typed taxonomy to deterministic HTTP statuses and a non-sensitive `{error: {code, message, retryable}}` body. SQLite, PostgreSQL, OpenAPI, security, Flutter and migration-drift gates passed before this checkpoint was closed.
 - **Tranche 4 — deterministic Flutter provider-error UX:** implemented and validated on 2026-07-29. SSE transport failures now surface as typed `ProviderApiException` values; retryable timeout/unavailability and non-retryable safe failures produce distinct patient-facing messages, malformed payloads fail closed, and the HTTP client is always closed. SQLite, PostgreSQL, OpenAPI, security, Flutter analyze and migration-drift gates passed before this checkpoint was closed.
+
+- **Tranche 5 — stream cancellation, partial failure and fallback non-bypass:** implemented and validated on 2026-07-29. Provider iterators are closed deterministically on consumer cancellation and partial failure; failures are normalized without vendor leakage; processor-policy denial and missing egress scope stop streaming before the provider iterator starts. SQLite, PostgreSQL, OpenAPI, security, Flutter analyze and migration-drift gates passed before this checkpoint was closed.
 
 ### Acceptance gate
 
