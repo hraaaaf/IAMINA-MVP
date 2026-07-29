@@ -1,6 +1,9 @@
 name: PR15 runtime inventory
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - feat/p0-mena-provider-runtime-resilience
