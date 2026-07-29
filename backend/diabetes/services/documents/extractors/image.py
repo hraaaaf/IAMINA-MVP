@@ -13,7 +13,9 @@ from __future__ import annotations
 import base64
 import logging
 
-from core.ai_egress import IMAGE, assert_ai_egress_allowed
+from core.ai_egress import IMAGE, AIEgressDenied
+from core.ai_processor_policy import AIProcessorPolicyDenied
+from llm.runtime import execute_external_provider_call
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +40,6 @@ def extract_image(file_bytes: bytes, mime_type: str) -> str:
     b64 = base64.b64encode(file_bytes).decode('ascii')
 
     try:
-        assert_ai_egress_allowed(IMAGE)
         import os
 
         import google.generativeai as genai
@@ -46,30 +47,38 @@ def extract_image(file_bytes: bytes, mime_type: str) -> str:
         genai.configure(api_key=os.environ['GEMINI_API_KEY'])
         model = genai.GenerativeModel('gemini-2.0-flash')
 
-        response = model.generate_content(
-            contents=[
-                {
-                    "parts": [
-                        {
-                            "inline_data": {
-                                "mime_type": mime_type,
-                                "data": b64,
-                            }
-                        },
-                        {
-                            "text": (
-                                "Transcribe ALL visible text from this image exactly as written. "
-                                "Include numbers, dates, units, labels, and table content. "
-                                "Preserve the structure with newlines. "
-                                "Do NOT interpret or summarise — only transcribe. "
-                                "Return plain text only."
-                            )
-                        },
-                    ]
-                }
-            ]
+        response = execute_external_provider_call(
+            "gemini",
+            IMAGE,
+            "document_image_ocr",
+            lambda: model.generate_content(
+                contents=[
+                    {
+                        "parts": [
+                            {
+                                "inline_data": {
+                                    "mime_type": mime_type,
+                                    "data": b64,
+                                }
+                            },
+                            {
+                                "text": (
+                                    "Transcribe ALL visible text from this image exactly as written. "
+                                    "Include numbers, dates, units, labels, and table content. "
+                                    "Preserve the structure with newlines. "
+                                    "Do NOT interpret or summarise — only transcribe. "
+                                    "Return plain text only."
+                                )
+                            },
+                        ]
+                    }
+                ]
+            ),
         )
         return response.text or ''
+
+    except (AIEgressDenied, AIProcessorPolicyDenied):
+        raise
 
     except KeyError:
         logger.error("image_extractor: GEMINI_API_KEY not set.")

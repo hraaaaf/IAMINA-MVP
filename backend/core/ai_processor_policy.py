@@ -97,8 +97,9 @@ _POLICIES: Mapping[str, AIProcessorPolicy] = MappingProxyType(
             max_retention_days=0,
             training_use="",
             legal_basis="",
-            allowed_modalities=frozenset({"text"}),
-            allowed_purposes=_ALL_TEXT_PURPOSES,
+            allowed_modalities=frozenset({"text", "audio", "image"}),
+            allowed_purposes=_ALL_TEXT_PURPOSES
+            | frozenset({"voice_transcription", "meal_vision", "glucometer_ocr"}),
             status=PENDING,
         ),
         "kimi": AIProcessorPolicy(
