@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-07-29 — P0-MENA-1F tranches 1–5 implemented and validated in draft PR #15.
+> **Last updated:** 2026-07-29 — P0-MENA-1F complete and validated in PR #15; ready for review.
 >
 > **Authority:** this file is the single forward tracker. Historical implementation detail belongs in git history, ADRs and architecture timelines.
 
@@ -26,13 +26,13 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | Workstream | Progress | Status | Evidence |
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Complete | P0-A, P0-B, P0-C and migration drift merged |
-| P0-MENA-1 — outbound AI/data-egress contract | 90% | 🟡 In progress | 9 of 10 explicit controls complete; typed failures, bounded timeouts, stable API errors and deterministic Flutter UX validated in draft PR #15 |
+| P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Complete in PR | 10 of 10 explicit controls complete; final merge remains pending review of PR #15 |
 | P0-MENA-2 — locale + safety contract | 0% | ⚪ Not started | No roadmap task closed |
 | P0-MENA-3 — sovereign authentication migration | 0% | ⚪ Not started | Design and migration work pending |
 | P0-MENA-4 — multimodal provider benchmark | 0% | ⚪ Not started | Evaluation set and benchmark pending |
 | Pilot safety/compliance gate | 15% | 🔴 Incomplete | 2 of 13 explicit gates complete |
 
-**MENA critical-path completion:** 11 of 41 explicit roadmap tasks closed, approximately **27%**.
+**MENA critical-path completion:** 12 of 41 explicit roadmap tasks closed, approximately **29%**.
 
 This percentage measures the new MENA safety, sovereignty and pilot-readiness path. It is not a percentage of the complete product codebase.
 
@@ -151,22 +151,22 @@ Closed in PR #9.
 
 ### Remaining work
 
-- [ ] Remove or deliberately isolate provider-specific runtime seams.
-- [ ] Add provider and streaming timeouts, typed failures and safe frontend error UX. **Current lot: P0-MENA-1F.**
-- [ ] Prove fallback paths cannot bypass the same policy.
+- [x] Remove or deliberately isolate provider-specific runtime seams.
+- [x] Add provider and streaming timeouts, typed failures and safe frontend error UX.
+- [x] Prove fallback paths cannot bypass the same policy.
 
-### P0-MENA-1F — Provider runtime resilience — IN IMPLEMENTATION
+### P0-MENA-1F — Provider runtime resilience — COMPLETE IN PR #15
 
 **Goal:** an approved provider must fail safely, predictably and without bypassing consent, DLP or processor policy.
 
-- [ ] Inventory every synchronous, streaming and multimodal provider execution path.
+- [x] Inventory every synchronous, streaming and multimodal provider execution path. **Text complete/stream/think, STT audio, meal vision, glucometer OCR and document-image OCR are covered by executable inventory tests.**
 - [x] Define one typed provider-failure taxonomy for timeout, unavailable, quota, malformed response, policy denial and internal failure. **Implemented and validated in PR #15; final completion remains gated by full-lot merge.**
 - [x] Enforce explicit bounded timeouts at the provider boundary. **Gemini complete/stream/think and Kimi complete/stream are bounded; retries are disabled for Kimi.**
 - [x] Ensure streaming cancellation and partial failures close safely. **The authorized wrapper closes the underlying provider iterator on cancellation, normal completion and partial failure; vendor failures after partial output remain typed and non-sensitive.**
 - [x] Map backend failures to stable non-sensitive API errors. **Timeout/unavailable→503, quota→429, malformed response→502 and internal failure→500; the response exposes only stable code, safe message and retryability.**
 - [x] Add deterministic Flutter UX for retryable and non-retryable failures. **The client parses the stable error contract, converts transport timeouts/unavailability into typed failures, closes the HTTP client in `finally`, and presents distinct safe messages without vendor details.**
-- [ ] Prove timeout, error and fallback paths cannot bypass egress scope, consent, DLP or processor policy.
-- [ ] Pass SQLite, PostgreSQL, OpenAPI, security, Flutter and migration-drift gates before merge.
+- [x] Prove timeout, error and fallback paths cannot bypass egress scope, consent, DLP or processor policy. **Permanent tests prove authorization and processor policy run before provider invocation, multimodal calls are bounded, errors are normalized and local fallbacks cannot bypass scope.**
+- [x] Pass SQLite, PostgreSQL, OpenAPI, security, Flutter and migration-drift gates before merge. **All permanent gates passed on the clean tranche-6 SHA before this checkpoint was closed.**
 
 #### Checkpoints
 
@@ -176,6 +176,8 @@ Closed in PR #9.
 - **Tranche 4 — deterministic Flutter provider-error UX:** implemented and validated on 2026-07-29. SSE transport failures now surface as typed `ProviderApiException` values; retryable timeout/unavailability and non-retryable safe failures produce distinct patient-facing messages, malformed payloads fail closed, and the HTTP client is always closed. SQLite, PostgreSQL, OpenAPI, security, Flutter analyze and migration-drift gates passed before this checkpoint was closed.
 
 - **Tranche 5 — stream cancellation, partial failure and fallback non-bypass:** implemented and validated on 2026-07-29. Provider iterators are closed deterministically on consumer cancellation and partial failure; failures are normalized without vendor leakage; processor-policy denial and missing egress scope stop streaming before the provider iterator starts. SQLite, PostgreSQL, OpenAPI, security, Flutter analyze and migration-drift gates passed before this checkpoint was closed.
+
+- **Tranche 6 — exhaustive runtime inventory and multimodal boundary:** implemented and validated on 2026-07-30. STT audio, meal vision, glucometer OCR and document-image OCR now execute through one bounded runtime that checks patient scope/consent and processor policy before SDK invocation, normalizes vendor failures and fails closed while network-provider policies remain pending. Executable inventory tests prevent future direct multimodal SDK bypass. SQLite, PostgreSQL, Ruff, import-linter, anti-bypass, Bandit, OpenAPI, Flutter analyze, secret hygiene and migration drift passed before P0-MENA-1F was closed.
 
 ### Acceptance gate
 
