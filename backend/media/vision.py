@@ -21,7 +21,9 @@ import logging
 import os
 from typing import Optional
 
-from core.ai_egress import IMAGE, assert_ai_egress_allowed
+from core.ai_egress import IMAGE, AIEgressDenied
+from core.ai_processor_policy import AIProcessorPolicyDenied
+from llm.runtime import execute_external_provider_call
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +120,6 @@ def analyze_meal_image(image_b64: str, mime_type: str) -> dict:
         return _fallback()
 
     try:
-        assert_ai_egress_allowed(IMAGE)
         from google import genai
         from google.genai import types as genai_types
 
@@ -135,12 +136,17 @@ def analyze_meal_image(image_b64: str, mime_type: str) -> dict:
             genai_types.Part.from_text(text=_MEAL_USER),
         ]
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=contents,
-            config=genai_types.GenerateContentConfig(
-                system_instruction=_MEAL_SYSTEM,
-                temperature=0.1,
+        response = execute_external_provider_call(
+            "gemini",
+            IMAGE,
+            "meal_vision",
+            lambda: client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=contents,
+                config=genai_types.GenerateContentConfig(
+                    system_instruction=_MEAL_SYSTEM,
+                    temperature=0.1,
+                ),
             ),
         )
 
@@ -165,6 +171,9 @@ def analyze_meal_image(image_b64: str, mime_type: str) -> dict:
             "low"
         )
         return {"foods": foods, "confidence": confidence, "fallback": False}
+
+    except (AIEgressDenied, AIProcessorPolicyDenied):
+        raise
 
     except json.JSONDecodeError:
         logger.warning("meal_vision: LLM returned non-JSON — raw: %s", raw_text[:300])
@@ -214,7 +223,6 @@ def analyze_glucometer_image(image_b64: str, mime_type: str) -> dict:
         return _gluco_fallback()
 
     try:
-        assert_ai_egress_allowed(IMAGE)
         from google import genai
         from google.genai import types as genai_types
 
@@ -227,12 +235,17 @@ def analyze_glucometer_image(image_b64: str, mime_type: str) -> dict:
             genai_types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
             genai_types.Part.from_text(text=_GLUCO_USER),
         ]
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=contents,
-            config=genai_types.GenerateContentConfig(
-                system_instruction=_GLUCO_SYSTEM,
-                temperature=0.0,
+        response = execute_external_provider_call(
+            "gemini",
+            IMAGE,
+            "glucometer_ocr",
+            lambda: client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=contents,
+                config=genai_types.GenerateContentConfig(
+                    system_instruction=_GLUCO_SYSTEM,
+                    temperature=0.0,
+                ),
             ),
         )
         raw = response.text.strip() if response.text else ""
@@ -252,6 +265,9 @@ def analyze_glucometer_image(image_b64: str, mime_type: str) -> dict:
             confidence = "low"
 
         return {"value": value, "unit": unit, "confidence": confidence, "fallback": value is None}
+
+    except (AIEgressDenied, AIProcessorPolicyDenied):
+        raise
 
     except (json.JSONDecodeError, KeyError, ValueError):
         logger.warning("glucometer_vision: non-JSON or bad structure from LLM")

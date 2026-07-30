@@ -107,9 +107,12 @@ class STTGeminiCallTests(SimpleTestCase):
 
     def setUp(self):
         super().setUp()
-        self._egress_patcher = patch("media.voice.assert_ai_egress_allowed")
-        self._egress_patcher.start()
-        self.addCleanup(self._egress_patcher.stop)
+        self._runtime_patcher = patch(
+            "media.voice.execute_external_provider_call",
+            side_effect=lambda provider, modality, operation, call: call(),
+        )
+        self._runtime_patcher.start()
+        self.addCleanup(self._runtime_patcher.stop)
 
     def test_returns_stripped_transcript(self):
         from media.voice import transcribe

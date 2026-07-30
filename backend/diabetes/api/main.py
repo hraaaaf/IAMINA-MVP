@@ -5,6 +5,8 @@ Diabetes Log API entry point.
 from ninja import NinjaAPI
 from ninja.security import django_auth
 
+from llm.errors import LLMProviderError
+
 from .v1.security import firebase_auth_backend
 
 # Accept Firebase Bearer (mobile/Flutter) OR Django session (web/PWA)
@@ -34,6 +36,32 @@ api = NinjaAPI(
     version="1.0.0",
     description="Diabetes companion API — Flutter web/iOS/Android + 3rd party integrations",
 )
+
+_PROVIDER_ERROR_STATUS = {
+    "provider_timeout": 503,
+    "provider_unavailable": 503,
+    "provider_quota_exceeded": 429,
+    "provider_malformed_response": 502,
+    "provider_internal_failure": 500,
+}
+
+
+@api.exception_handler(LLMProviderError)
+def provider_error_handler(request, exc: LLMProviderError):
+    """Expose one stable, non-sensitive provider failure contract."""
+    status = _PROVIDER_ERROR_STATUS.get(exc.code, 500)
+    return api.create_response(
+        request,
+        {
+            "error": {
+                "code": exc.code,
+                "message": exc.safe_message,
+                "retryable": exc.retryable,
+            }
+        },
+        status=status,
+    )
+
 
 # v1 Public routers (no auth required)
 api.add_router("/v1", auth_router)
