@@ -592,6 +592,116 @@
         ]
       }
     },
+    "/api/v1/profile/locale": {
+      "get": {
+        "operationId": "core_api_v1_locale_get_locale_preferences",
+        "summary": "Get Locale Preferences",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocaleStateSchema"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "locale"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "core_api_v1_locale_confirm_locale_preferences",
+        "summary": "Confirm Locale Preferences",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocaleStateSchema"
+                }
+              }
+            }
+          }
+        },
+        "description": "Confirm only explicitly supplied dimensions for the authenticated patient.",
+        "tags": [
+          "locale"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalePatchSchema"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/profile/locale/{dimension}": {
+      "delete": {
+        "operationId": "core_api_v1_locale_revoke_locale_preference",
+        "summary": "Revoke Locale Preference",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dimension",
+            "schema": {
+              "title": "Dimension",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocaleStateSchema"
+                }
+              }
+            }
+          }
+        },
+        "description": "Revoke one dimension without changing any other patient preference.",
+        "tags": [
+          "locale"
+        ],
+        "security": [
+          {
+            "FirebaseAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/kpis/": {
       "get": {
         "operationId": "diabetes_api_v1_kpis_get_kpis",
@@ -2232,6 +2342,121 @@
           "active"
         ],
         "title": "MediaConsentStateSchema",
+        "type": "object"
+      },
+      "LocaleStateSchema": {
+        "properties": {
+          "stored": {
+            "additionalProperties": true,
+            "title": "Stored",
+            "type": "object"
+          },
+          "resolved": {
+            "additionalProperties": true,
+            "title": "Resolved",
+            "type": "object"
+          }
+        },
+        "required": [
+          "stored",
+          "resolved"
+        ],
+        "title": "LocaleStateSchema",
+        "type": "object"
+      },
+      "LocalePatchSchema": {
+        "description": "Supplied values are explicit authenticated-patient confirmations.",
+        "properties": {
+          "country_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Code"
+          },
+          "ui_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ui Language"
+          },
+          "response_language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Language"
+          },
+          "script_preference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Script Preference"
+          },
+          "transliteration_preference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transliteration Preference"
+          },
+          "dialect": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dialect"
+          },
+          "glucose_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glucose Unit"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          }
+        },
+        "title": "LocalePatchSchema",
         "type": "object"
       },
       "KPIsOut": {
