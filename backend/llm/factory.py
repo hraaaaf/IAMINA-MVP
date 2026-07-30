@@ -11,7 +11,8 @@ Every network-capable provider returned by this module is decorated with the
 central text payload contract and processor policy before it can perform egress.
 """
 import logging
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from typing import TypeVar
 
 from django.conf import settings
 
@@ -19,8 +20,10 @@ from core.ai_egress import authorize_text_payload
 from core.ai_processor_policy import authorize_processor_policy
 
 from .base import BaseLLMProvider
+from .errors import LLMProviderError, normalize_provider_exception
 
 logger = logging.getLogger(__name__)
+_T = TypeVar("_T")
 
 
 def _get_fallback() -> BaseLLMProvider:
@@ -62,12 +65,37 @@ def _provider_policy_name(provider: BaseLLMProvider) -> str:
     return mapping.get(cls, cls.lower())
 
 
+def _execute_provider_call(
+    provider_name: str,
+    operation: str,
+    call: Callable[[], _T],
+) -> _T:
+    """Execute one authorized provider call and expose only typed safe errors."""
+    try:
+        return call()
+    except LLMProviderError:
+        raise
+    except Exception as exc:
+        normalized = normalize_provider_exception(exc, provider_name)
+        logger.warning(
+            "AI provider operation failed: provider=%s operation=%s code=%s retryable=%s",
+            provider_name,
+            operation,
+            normalized.code,
+            normalized.retryable,
+        )
+        raise normalized from None
+
+
 def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
     """Decorate one provider instance without changing its concrete type.
 
     Authorization happens before the original complete/stream/think method can
     touch the network. The processor policy is evaluated against the exact
-    patient purpose held by the central egress context.
+    patient purpose held by the central egress context. Once authorized, vendor
+    exceptions are normalized into a stable non-sensitive failure taxonomy.
+    Stream iterators are always closed when the consumer cancels or when a
+    partial stream fails, so provider resources cannot remain live after exit.
     """
     if getattr(provider, "_iamina_text_payload_policy", False) is True:
         return provider
@@ -86,15 +114,42 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
 
     def guarded_complete(system: str, user: str):
         payload = _authorize(system, user)
-        return original_complete(payload.system_prompt, payload.user_prompt)
+        return _execute_provider_call(
+            provider_name,
+            "complete",
+            lambda: original_complete(payload.system_prompt, payload.user_prompt),
+        )
 
     def guarded_stream(system: str, user: str) -> Iterator[str]:
         payload = _authorize(system, user)
-        yield from original_stream(payload.system_prompt, payload.user_prompt)
+        stream = original_stream(payload.system_prompt, payload.user_prompt)
+        try:
+            yield from stream
+        except GeneratorExit:
+            raise
+        except LLMProviderError:
+            raise
+        except Exception as exc:
+            normalized = normalize_provider_exception(exc, provider_name)
+            logger.warning(
+                "AI provider operation failed: provider=%s operation=stream code=%s retryable=%s",
+                provider_name,
+                normalized.code,
+                normalized.retryable,
+            )
+            raise normalized from None
+        finally:
+            close = getattr(stream, "close", None)
+            if callable(close):
+                close()
 
     def guarded_think(system: str, user: str) -> tuple[str, str]:
         payload = _authorize(system, user)
-        return original_think(payload.system_prompt, payload.user_prompt)
+        return _execute_provider_call(
+            provider_name,
+            "think",
+            lambda: original_think(payload.system_prompt, payload.user_prompt),
+        )
 
     provider.complete = guarded_complete  # type: ignore[method-assign]
     provider.stream = guarded_stream  # type: ignore[method-assign]
