@@ -32,10 +32,10 @@ from ninja import Router
 from pydantic import BaseModel
 
 from core.ai_egress import IMAGE, TEXT, assert_ai_egress_allowed, patient_ai_egress_scope
-from core.locale import resolve_patient_locale
 from core.llm_gateway import (
     narrate,  # noqa: F401 — P1.4: imported, full wiring pending (see TODO below)
 )
+from core.locale import resolve_patient_locale
 from core.models import BasePatientProfile
 from core.observability import EVT_CHAT_MESSAGE, EVT_SUMMARY_VIEWED, track
 from diabetes.models import LogEntry
