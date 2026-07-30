@@ -1,0 +1,56 @@
+name: PR16 locale inventory
+
+on:
+  push:
+    branches:
+      - feat/p0-mena-locale-safety-contract
+
+permissions:
+  contents: write
+
+jobs:
+  inventory:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p0-mena-locale-safety-contract
+      - name: Build executable inventory
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          roots = [Path('backend'), Path('frontend')]
+          terms = re.compile(r'country|locale|language|timezone|time_zone|glucose_unit|mg/dL|mmol/L|dialect|transliter|rtl|Directionality', re.I)
+          lines = ['# Locale/state inventory', '', 'Generated from repository source.', '']
+          hits = 0
+          for root in roots:
+              if not root.exists():
+                  continue
+              for path in sorted(root.rglob('*')):
+                  if not path.is_file() or path.suffix.lower() not in {'.py', '.dart', '.json', '.yaml', '.yml', '.md'}:
+                      continue
+                  try:
+                      text = path.read_text(errors='ignore')
+                  except Exception:
+                      continue
+                  matched = []
+                  for no, line in enumerate(text.splitlines(), 1):
+                      if terms.search(line):
+                          matched.append(f'- L{no}: `{line.strip()[:240]}`')
+                  if matched:
+                      hits += len(matched)
+                      lines += [f'## `{path}`', *matched, '']
+          if hits == 0:
+              raise SystemExit('locale inventory unexpectedly empty')
+          Path('docs/architecture/P0_MENA_2_EXISTING_STATE_INVENTORY.md').write_text('\n'.join(lines) + '\n')
+          PY
+      - name: Commit inventory
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/architecture/P0_MENA_2_EXISTING_STATE_INVENTORY.md
+          git commit -m "docs(locale): inventory existing state and consumers"
+          git push origin HEAD:feat/p0-mena-locale-safety-contract
