@@ -1,0 +1,332 @@
+name: PR16 apply locale model
+
+on:
+  push:
+    branches:
+      - feat/p0-mena-locale-safety-contract
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p0-mena-locale-safety-contract
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Write canonical model, resolver and tests
+        run: |
+          cat > backend/core/models/locale.py <<'PY'
+          """Canonical patient locale preferences with per-dimension provenance."""
+
+          from __future__ import annotations
+
+          from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+          from django.core.exceptions import ValidationError
+          from django.db import models
+
+          from core.models.patient import BasePatientProfile
+
+
+          class PatientLocalePreference(models.Model):
+              """One authoritative cross-cutting locale record per patient profile."""
+
+              PROVENANCE_CHOICES = [
+                  ("user_confirmed", "User confirmed"),
+                  ("suggested", "Suggested"),
+                  ("defaulted", "Defaulted"),
+              ]
+              LANGUAGE_CHOICES = [("fr", "French"), ("ar", "Modern Standard Arabic"), ("en", "English")]
+              SCRIPT_CHOICES = [("latin", "Latin"), ("arabic", "Arabic")]
+              TRANSLITERATION_CHOICES = [("none", "None"), ("latin_arabic", "Arabic in Latin script")]
+              DIALECT_CHOICES = [("ar-MA", "Moroccan Darija")]
+              GLUCOSE_UNIT_CHOICES = [("mg/dL", "mg/dL"), ("mmol/L", "mmol/L")]
+
+              profile = models.OneToOneField(
+                  BasePatientProfile,
+                  on_delete=models.CASCADE,
+                  related_name="locale_preference",
+              )
+
+              country_code = models.CharField(max_length=2, null=True, blank=True)
+              country_provenance = models.CharField(max_length=16, choices=PROVENANCE_CHOICES, default="defaulted")
+
+              ui_language = models.CharField(max_length=8, choices=LANGUAGE_CHOICES, default="fr")
+              ui_language_provenance = models.CharField(max_length=16, choices=PROVENANCE_CHOICES, default="defaulted")
+
+              response_language = models.CharField(max_length=8, choices=LANGUAGE_CHOICES, null=True, blank=True)
+              response_language_provenance = models.CharField(max_length=16, choices=PROVENANCE_CHOICES, default="defaulted")
+
+              script_preference = models.CharField(max_length=8, choices=SCRIPT_CHOICES, null=True, blank=True)
+              script_provenance = models.CharField(max_length=16, choices=PROVENANCE_CHOICES, default="defaulted")
+
+              transliteration_preference = models.CharField(
+                  max_length=16,
+                  choices=TRANSLITERATION_CHOICES,
+                  default="none",
+              )
+              transliteration_provenance = models.CharField(
+                  max_length=16,
+                  choices=PROVENANCE_CHOICES,
+                  default="defaulted",
+              )
+
+              dialect = models.CharField(max_length=8, choices=DIALECT_CHOICES, null=True, blank=True)
+              dialect_provenance = models.CharField(max_length=16, choices=PROVENANCE_CHOICES, default="defaulted")
+
+              glucose_unit = models.CharField(max_length=8, choices=GLUCOSE_UNIT_CHOICES, default="mg/dL")
+              glucose_unit_provenance = models.CharField(max_length=16, choices=PROVENANCE_CHOICES, default="defaulted")
+
+              timezone = models.CharField(max_length=64, null=True, blank=True)
+              timezone_provenance = models.CharField(max_length=16, choices=PROVENANCE_CHOICES, default="defaulted")
+
+              created_at = models.DateTimeField(auto_now_add=True)
+              updated_at = models.DateTimeField(auto_now=True)
+
+              class Meta:
+                  app_label = "core"
+                  verbose_name = "Patient Locale Preference"
+                  verbose_name_plural = "Patient Locale Preferences"
+
+              def clean(self) -> None:
+                  errors: dict[str, str] = {}
+                  if self.country_code:
+                      normalized = self.country_code.upper()
+                      if len(normalized) != 2 or not normalized.isalpha():
+                          errors["country_code"] = "Use an ISO 3166-1 alpha-2 country code."
+                      self.country_code = normalized
+                  if self.timezone:
+                      try:
+                          ZoneInfo(self.timezone)
+                      except ZoneInfoNotFoundError:
+                          errors["timezone"] = "Use a valid IANA timezone identifier."
+                  if errors:
+                      raise ValidationError(errors)
+
+              def save(self, *args, **kwargs):
+                  self.full_clean()
+                  return super().save(*args, **kwargs)
+          PY
+
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('backend/core/models/__init__.py')
+          text = path.read_text()
+          anchor = 'from core.models.patient import BasePatientProfile  # noqa: F401\n'
+          addition = 'from core.models.locale import PatientLocalePreference  # noqa: F401\n'
+          if addition not in text:
+              if anchor not in text:
+                  raise SystemExit('model import anchor missing')
+              text = text.replace(anchor, addition + anchor)
+          path.write_text(text)
+          PY
+
+          cat > backend/core/locale.py <<'PY'
+          """Deterministic server-side resolver for patient locale preferences."""
+
+          from __future__ import annotations
+
+          from dataclasses import dataclass
+
+          from core.models.locale import PatientLocalePreference
+          from core.models.patient import BasePatientProfile
+
+          USER_CONFIRMED = "user_confirmed"
+
+
+          @dataclass(frozen=True)
+          class ResolvedLocale:
+              country_code: str | None
+              ui_language: str
+              response_language: str
+              script_preference: str
+              transliteration_preference: str
+              dialect: str | None
+              glucose_unit: str
+              timezone: str | None
+              country_confirmed: bool
+              timezone_confirmed: bool
+
+
+          def _confirmed(value: str | None, provenance: str) -> str | None:
+              return value if value and provenance == USER_CONFIRMED else None
+
+
+          def resolve_patient_locale(profile: BasePatientProfile) -> ResolvedLocale:
+              """Resolve only confirmed settings; unconfirmed values cannot control behaviour."""
+              try:
+                  preference = profile.locale_preference
+              except PatientLocalePreference.DoesNotExist:
+                  preference = None
+
+              if preference is None:
+                  return ResolvedLocale(
+                      country_code=None,
+                      ui_language="fr",
+                      response_language="fr",
+                      script_preference="latin",
+                      transliteration_preference="none",
+                      dialect=None,
+                      glucose_unit="mg/dL",
+                      timezone=None,
+                      country_confirmed=False,
+                      timezone_confirmed=False,
+                  )
+
+              confirmed_ui = _confirmed(preference.ui_language, preference.ui_language_provenance)
+              confirmed_response = _confirmed(
+                  preference.response_language,
+                  preference.response_language_provenance,
+              )
+              confirmed_script = _confirmed(preference.script_preference, preference.script_provenance)
+              confirmed_transliteration = _confirmed(
+                  preference.transliteration_preference,
+                  preference.transliteration_provenance,
+              )
+              confirmed_dialect = _confirmed(preference.dialect, preference.dialect_provenance)
+              confirmed_unit = _confirmed(preference.glucose_unit, preference.glucose_unit_provenance)
+              confirmed_country = _confirmed(preference.country_code, preference.country_provenance)
+              confirmed_timezone = _confirmed(preference.timezone, preference.timezone_provenance)
+
+              if confirmed_response:
+                  response_language = confirmed_response
+              elif confirmed_script == "arabic":
+                  response_language = "ar"
+              elif confirmed_ui == "en":
+                  response_language = "en"
+              else:
+                  response_language = "fr"
+
+              return ResolvedLocale(
+                  country_code=confirmed_country,
+                  ui_language=confirmed_ui or "fr",
+                  response_language=response_language,
+                  script_preference=confirmed_script or "latin",
+                  transliteration_preference=confirmed_transliteration or "none",
+                  dialect=confirmed_dialect,
+                  glucose_unit=confirmed_unit or "mg/dL",
+                  timezone=confirmed_timezone,
+                  country_confirmed=confirmed_country is not None,
+                  timezone_confirmed=confirmed_timezone is not None,
+              )
+          PY
+
+          cat > backend/core/tests/test_locale_preferences.py <<'PY'
+          import pytest
+          from django.contrib.auth.models import User
+          from django.core.exceptions import ValidationError
+
+          from core.locale import resolve_patient_locale
+          from core.models.locale import PatientLocalePreference
+          from core.models.patient import BasePatientProfile
+
+
+          @pytest.fixture
+          def profile(db):
+              user = User.objects.create_user(username="locale-patient")
+              return BasePatientProfile.objects.create(patient=user)
+
+
+          def test_missing_record_uses_safe_deterministic_defaults(profile):
+              resolved = resolve_patient_locale(profile)
+              assert resolved.country_code is None
+              assert resolved.ui_language == "fr"
+              assert resolved.response_language == "fr"
+              assert resolved.dialect is None
+              assert resolved.glucose_unit == "mg/dL"
+              assert resolved.timezone is None
+
+
+          def test_suggestions_cannot_control_runtime(profile):
+              PatientLocalePreference.objects.create(
+                  profile=profile,
+                  country_code="MA",
+                  country_provenance="suggested",
+                  ui_language="ar",
+                  ui_language_provenance="suggested",
+                  response_language="ar",
+                  response_language_provenance="suggested",
+                  script_preference="arabic",
+                  script_provenance="suggested",
+                  dialect="ar-MA",
+                  dialect_provenance="suggested",
+                  glucose_unit="mmol/L",
+                  glucose_unit_provenance="suggested",
+                  timezone="Africa/Casablanca",
+                  timezone_provenance="suggested",
+              )
+              resolved = resolve_patient_locale(profile)
+              assert resolved.country_code is None
+              assert resolved.ui_language == "fr"
+              assert resolved.response_language == "fr"
+              assert resolved.script_preference == "latin"
+              assert resolved.dialect is None
+              assert resolved.glucose_unit == "mg/dL"
+              assert resolved.timezone is None
+
+
+          def test_confirmed_dimensions_remain_independent(profile):
+              PatientLocalePreference.objects.create(
+                  profile=profile,
+                  country_code="MA",
+                  country_provenance="user_confirmed",
+                  ui_language="fr",
+                  ui_language_provenance="user_confirmed",
+                  response_language="en",
+                  response_language_provenance="user_confirmed",
+                  script_preference="latin",
+                  script_provenance="user_confirmed",
+                  glucose_unit="mmol/L",
+                  glucose_unit_provenance="user_confirmed",
+                  timezone="Africa/Casablanca",
+                  timezone_provenance="user_confirmed",
+              )
+              resolved = resolve_patient_locale(profile)
+              assert resolved.country_code == "MA"
+              assert resolved.ui_language == "fr"
+              assert resolved.response_language == "en"
+              assert resolved.glucose_unit == "mmol/L"
+              assert resolved.timezone == "Africa/Casablanca"
+
+
+          def test_confirmed_arabic_script_uses_msa_fallback(profile):
+              PatientLocalePreference.objects.create(
+                  profile=profile,
+                  script_preference="arabic",
+                  script_provenance="user_confirmed",
+              )
+              assert resolve_patient_locale(profile).response_language == "ar"
+
+
+          def test_country_is_normalized_and_timezone_is_validated(profile):
+              preference = PatientLocalePreference(profile=profile, country_code="ma", timezone="Not/AZone")
+              with pytest.raises(ValidationError):
+                  preference.save()
+              preference.timezone = "Africa/Casablanca"
+              preference.save()
+              assert preference.country_code == "MA"
+          PY
+
+      - name: Generate migration
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: amina.settings
+          SECRET_KEY: locale-model-ci
+          DEBUG: 'True'
+          DATABASE_URL: sqlite:///locale-model.db
+        run: |
+          pip install -r requirements.txt
+          python manage.py makemigrations core --name patient_locale_preference
+      - name: Commit implementation
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/core/models/locale.py backend/core/models/__init__.py backend/core/locale.py backend/core/tests/test_locale_preferences.py backend/core/migrations
+          git commit -m "feat(locale): add canonical patient preference model"
+          git push origin HEAD:feat/p0-mena-locale-safety-contract
