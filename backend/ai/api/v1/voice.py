@@ -33,6 +33,7 @@ from ninja.files import UploadedFile
 from pydantic import BaseModel
 
 from core.ai_egress import AUDIO, TEXT, patient_ai_egress_scope
+from core.locale import resolve_patient_locale
 from core.models import BasePatientProfile
 from diabetes.config.stt_vocabulary import AR_MA_STT_HINTS
 from media.voice import (
@@ -225,9 +226,11 @@ def transcribe_audio(
 
 def _get_language(user) -> str:
     try:
-        return BasePatientProfile.objects.get(patient=user).preferred_language or "ar-MA"
+        base = BasePatientProfile.objects.get(patient=user)
     except BasePatientProfile.DoesNotExist:
-        return "ar-MA"
+        return "fr"
+    resolved = resolve_patient_locale(base)
+    return resolved.dialect or resolved.response_language
 
 
 def _error(user, code: str) -> dict:

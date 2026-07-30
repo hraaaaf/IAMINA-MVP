@@ -32,6 +32,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from core.ai_egress import IMAGE, TEXT, assert_ai_egress_allowed, patient_ai_egress_scope
+from core.locale import resolve_patient_locale
 from core.llm_gateway import (
     narrate,  # noqa: F401 — P1.4: imported, full wiring pending (see TODO below)
 )
@@ -591,9 +592,10 @@ def _call_llm_for_summary(pivot_text: str, patterns) -> list[dict]:
 def _get_patient_language(user) -> str:
     try:
         base = BasePatientProfile.objects.get(patient=user)
-        return base.preferred_language or "ar-MA"
     except BasePatientProfile.DoesNotExist:
         return "fr"
+    resolved = resolve_patient_locale(base)
+    return resolved.dialect or resolved.response_language
 
 
 def _get_patient_name(user) -> str:
