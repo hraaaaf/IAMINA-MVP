@@ -1,0 +1,33 @@
+name: PR16 Ruff fix
+
+on:
+  push:
+    branches:
+      - feat/p0-mena-locale-safety-contract
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p0-mena-locale-safety-contract
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Apply Ruff import fix
+        working-directory: backend
+        run: |
+          pip install ruff==0.15.17
+          ruff check ai/api/v1/ai.py --fix
+      - name: Commit formatting
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/ai/api/v1/ai.py
+          git commit -m "style(locale): apply Ruff import ordering"
+          git push origin HEAD:feat/p0-mena-locale-safety-contract
