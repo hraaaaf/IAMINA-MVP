@@ -81,8 +81,6 @@ class AuthService extends ChangeNotifier {
       return;
     }
 
-    // Migration fallback only: authenticate the historical Firebase account,
-    // exchange its credential once, then use IAMINA bearer auth afterwards.
     if (nativeResponse.statusCode == 401 && _firebaseAuth != null) {
       final credential = await _firebaseAuth.signInWithEmailAndPassword(
         email: normalized,
@@ -123,10 +121,7 @@ class AuthService extends ChangeNotifier {
           Uri.parse('$kAuthBaseUrl/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
-      } catch (_) {
-        // Local revocation still clears the credential; the server token expires
-        // and can be centrally revoked on the next authenticated operation.
-      }
+      } catch (_) {}
     }
     _nativeToken = null;
     await _storage.delete(key: _tokenKey);
@@ -141,9 +136,13 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
-    // Temporary migration fallback until the native recovery mail flow is cut over.
-    if (_firebaseAuth == null) throw StateError('Firebase non initialisé');
-    await _firebaseAuth.sendPasswordResetEmail(email: email.trim());
+    final response = await _postJson(
+      '/api/v1/auth/password/reset/request',
+      {'email': email.trim().toLowerCase()},
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Password recovery request failed');
+    }
   }
 
   Future<bool> _validateNativeToken(String token) async {
