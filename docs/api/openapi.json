@@ -152,7 +152,7 @@
             }
           }
         },
-        "description": "Migrate or resolve one verified Firebase identity, then open a session.",
+        "description": "Migrate or resolve one verified Firebase identity, then issue IAMINA auth.",
         "tags": [
           "auth"
         ],
@@ -1738,11 +1738,21 @@
           "message": {
             "title": "Message",
             "type": "string"
+          },
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "token_type": {
+            "default": "Bearer",
+            "title": "Token Type",
+            "type": "string"
           }
         },
         "required": [
           "user",
-          "message"
+          "message",
+          "access_token"
         ],
         "title": "AuthResponse",
         "type": "object"
