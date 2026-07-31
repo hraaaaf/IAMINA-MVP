@@ -21,6 +21,7 @@ from core.auth_migration import (
     verify_firebase_token,
 )
 from core.models import BasePatientProfile
+from core.native_auth import issue_native_token, revoke_native_tokens
 from core.observability import EVT_SESSION_START, track
 
 router = Router(tags=["auth"])
@@ -73,6 +74,8 @@ class UserResponse(BaseModel):
 class AuthResponse(BaseModel):
     user: UserResponse
     message: str
+    access_token: str
+    token_type: str = "Bearer"
 
 
 def _serialize_user(user: User) -> dict:
@@ -82,6 +85,15 @@ def _serialize_user(user: User) -> dict:
         "first_name": user.first_name,
         "last_name": user.last_name,
         "created_at": user.date_joined.isoformat(),
+    }
+
+
+def _auth_response(user: User, message: str) -> dict:
+    return {
+        "user": _serialize_user(user),
+        "message": message,
+        "access_token": issue_native_token(user),
+        "token_type": "Bearer",
     }
 
 
@@ -118,7 +130,7 @@ def register_native(request, data: NativeRegisterRequest):
     )
     BasePatientProfile.objects.create(patient=user)
     _open_session(request, user, method="django_password_register")
-    return {"user": _serialize_user(user), "message": "Account created"}
+    return _auth_response(user, "Account created")
 
 
 @router.post("/auth/login", response=AuthResponse)
@@ -135,7 +147,7 @@ def login_native(request, data: NativeLoginRequest):
         raise HttpError(401, "Invalid authentication credential")
 
     _open_session(request, user, method="django_password")
-    return {"user": _serialize_user(user), "message": "Authenticated"}
+    return _auth_response(user, "Authenticated")
 
 
 @router.get("/auth/me", response=UserResponse)
@@ -145,6 +157,9 @@ def current_identity(request):
 
 @router.post("/auth/logout")
 def logout_native(request):
+    user = request.user if request.user.is_authenticated else None
+    if user is not None:
+        revoke_native_tokens(user)
     logout(request)
     return {"detail": "Signed out"}
 
@@ -165,13 +180,18 @@ def set_native_password(request, data: SetPasswordRequest):
 
     user.set_password(data.new_password)
     user.save(update_fields=["password"])
+    revoke_native_tokens(user)
     update_session_auth_hash(request, user)
-    return {"detail": "Django password established"}
+    return {
+        "detail": "Django password established",
+        "access_token": issue_native_token(user),
+        "token_type": "Bearer",
+    }
 
 
 @router.post("/auth/firebase", response=AuthResponse)
 def firebase_auth(request, data: FirebaseAuthRequest):
-    """Migrate or resolve one verified Firebase identity, then open a session."""
+    """Migrate or resolve one verified Firebase identity, then issue IAMINA auth."""
     try:
         identity = verify_firebase_token(data.id_token)
         user = migrate_new_firebase_identity(identity)
@@ -181,10 +201,7 @@ def firebase_auth(request, data: FirebaseAuthRequest):
         raise HttpError(401, "Invalid authentication credential") from exc
 
     _open_session(request, user, method="firebase_migration")
-    return {
-        "user": _serialize_user(user),
-        "message": "Authenticated through migration bridge",
-    }
+    return _auth_response(user, "Authenticated through migration bridge")
 
 
 @router.post("/auth/firebase/link")
