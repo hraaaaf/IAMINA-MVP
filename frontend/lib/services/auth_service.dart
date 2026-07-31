@@ -45,7 +45,9 @@ class AuthService extends ChangeNotifier {
   Future<void> initialize() async {
     try {
       final stored = await _storage.read(key: _tokenKey);
-      if (stored != null && stored.isNotEmpty && await _validateNativeToken(stored)) {
+      if (stored != null &&
+          stored.isNotEmpty &&
+          await _validateNativeToken(stored)) {
         _nativeToken = stored;
       } else if (stored != null) {
         await _storage.delete(key: _tokenKey);
@@ -142,6 +144,24 @@ class AuthService extends ChangeNotifier {
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('Password recovery request failed');
+    }
+  }
+
+  Future<void> confirmPasswordReset({
+    required String uid,
+    required String token,
+    required String newPassword,
+  }) async {
+    final response = await _postJson(
+      '/api/v1/auth/password/reset/confirm',
+      {
+        'uid': uid,
+        'token': token,
+        'new_password': newPassword,
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Password recovery confirmation failed');
     }
   }
 
