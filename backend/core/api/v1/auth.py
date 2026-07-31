@@ -80,6 +80,12 @@ def _serialize_user(user: User) -> dict:
     }
 
 
+def _require_authenticated(request) -> User:
+    if not request.user.is_authenticated:
+        raise HttpError(401, "Authentication required")
+    return request.user
+
+
 def _open_session(request, user: User, *, method: str) -> None:
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     track(EVT_SESSION_START, patient_id=user.id, props={"method": method})
@@ -113,7 +119,9 @@ def register_native(request, data: NativeRegisterRequest):
 @router.post("/auth/login", response=AuthResponse)
 def login_native(request, data: NativeLoginRequest):
     """Authenticate one Django account using a normalized email identifier."""
-    matches = list(User.objects.filter(email__iexact=data.email).values_list("username", flat=True)[:2])
+    matches = list(
+        User.objects.filter(email__iexact=data.email).values_list("username", flat=True)[:2]
+    )
     if len(matches) != 1:
         raise HttpError(401, "Invalid authentication credential")
 
@@ -127,9 +135,7 @@ def login_native(request, data: NativeLoginRequest):
 
 @router.get("/auth/me", response=UserResponse)
 def current_identity(request):
-    if not request.user.is_authenticated:
-        raise HttpError(401, "Authentication required")
-    return _serialize_user(request.user)
+    return _serialize_user(_require_authenticated(request))
 
 
 @router.post("/auth/logout")
@@ -154,3 +160,54 @@ def firebase_auth(request, data: FirebaseAuthRequest):
         "user": _serialize_user(user),
         "message": "Authenticated through migration bridge",
     }
+
+
+@router.post("/auth/firebase/link")
+@transaction.atomic
+def link_firebase_identity(request, data: FirebaseAuthRequest):
+    """Explicitly attach a verified Firebase UID to the current Django account."""
+    user = _require_authenticated(request)
+    try:
+        identity = verify_firebase_token(data.id_token)
+    except FirebaseMigrationError as exc:
+        raise HttpError(401, "Invalid authentication credential") from exc
+
+    other_link = BasePatientProfile.objects.select_related("patient").filter(
+        firebase_uid=identity.uid
+    ).first()
+    if other_link is not None and other_link.patient_id != user.id:
+        raise HttpError(409, "Firebase identity is already linked")
+
+    profile, _ = BasePatientProfile.objects.get_or_create(patient=user)
+    if profile.firebase_uid and profile.firebase_uid != identity.uid:
+        raise HttpError(409, "A different Firebase identity is already linked")
+
+    normalized_email = user.email.strip().lower() if user.email else ""
+    if identity.email:
+        if not identity.email_verified:
+            raise HttpError(409, "Verified Firebase email required for linking")
+        if normalized_email and identity.email != normalized_email:
+            raise HttpError(409, "Firebase email does not match the Django account")
+
+    profile.firebase_uid = identity.uid
+    profile.save(update_fields=["firebase_uid"])
+    return {"detail": "Firebase identity linked"}
+
+
+@router.delete("/auth/firebase/link")
+@transaction.atomic
+def unlink_firebase_identity(request):
+    """Remove the migration credential only when native recovery is available."""
+    user = _require_authenticated(request)
+    if not user.has_usable_password():
+        raise HttpError(409, "Set a Django password before removing Firebase access")
+
+    try:
+        profile = BasePatientProfile.objects.get(patient=user)
+    except BasePatientProfile.DoesNotExist:
+        return {"detail": "Firebase identity already unlinked"}
+
+    if profile.firebase_uid:
+        profile.firebase_uid = None
+        profile.save(update_fields=["firebase_uid"])
+    return {"detail": "Firebase identity unlinked"}
