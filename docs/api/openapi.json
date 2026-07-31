@@ -109,6 +109,32 @@
         ]
       }
     },
+    "/api/v1/auth/password": {
+      "post": {
+        "operationId": "core_api_v1_auth_set_native_password",
+        "summary": "Set Native Password",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Establish or rotate the native credential without weakening ownership.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/v1/auth/firebase": {
       "post": {
         "operationId": "core_api_v1_auth_firebase_auth",
@@ -140,6 +166,46 @@
           },
           "required": true
         }
+      }
+    },
+    "/api/v1/auth/firebase/link": {
+      "post": {
+        "operationId": "core_api_v1_auth_link_firebase_identity",
+        "summary": "Link Firebase Identity",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Explicitly attach a verified Firebase UID to the current Django account.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirebaseAuthRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      },
+      "delete": {
+        "operationId": "core_api_v1_auth_unlink_firebase_identity",
+        "summary": "Unlink Firebase Identity",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Remove the migration credential only when native recovery is available.",
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/demo/scenarios": {
@@ -1758,6 +1824,30 @@
           "password"
         ],
         "title": "NativeLoginRequest",
+        "type": "object"
+      },
+      "SetPasswordRequest": {
+        "properties": {
+          "new_password": {
+            "title": "New Password",
+            "type": "string"
+          },
+          "current_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Password"
+          }
+        },
+        "required": [
+          "new_password"
+        ],
+        "title": "SetPasswordRequest",
         "type": "object"
       },
       "FirebaseAuthRequest": {
