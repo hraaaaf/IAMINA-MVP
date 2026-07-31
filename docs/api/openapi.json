@@ -6,6 +6,109 @@
     "description": "Diabetes companion API \u2014 Flutter web/iOS/Android + 3rd party integrations"
   },
   "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "core_api_v1_auth_register_native",
+        "summary": "Register Native",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a sovereign Django identity without fabricating patient facts.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NativeRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "core_api_v1_auth_login_native",
+        "summary": "Login Native",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Authenticate one Django account using a normalized email identifier.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NativeLoginRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "core_api_v1_auth_current_identity",
+        "summary": "Current Identity",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "core_api_v1_auth_logout_native",
+        "summary": "Logout Native",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/firebase": {
       "post": {
         "operationId": "core_api_v1_auth_firebase_auth",
@@ -23,7 +126,7 @@
             }
           }
         },
-        "description": "Verify Firebase JWT and link/create Django User.\n\nFlow:\n  1. Verify id_token with Firebase Admin SDK \u2192 raises 401 on failure.\n  2. Extract uid (stable) + email from decoded payload.\n  3. Look up Django User by firebase_uid on BasePatientProfile (stable key).\n     Fall back to username/email for legacy identities.\n  4. Create identity + empty profile shells if brand new.\n  5. Sync firebase_uid + email on every login.\n  6. Establish Django session for web/PWA clients.\n\nClinical/demographic fields remain NULL until explicitly declared.",
+        "description": "Migrate or resolve one verified Firebase identity, then open a session.",
         "tags": [
           "auth"
         ],
@@ -809,7 +912,7 @@
             }
           }
         },
-        "description": "Record explicit AI processing consent (RGPD Art. 7).",
+        "description": "Record explicit AI processing consent without inventing patient facts.",
         "tags": [
           "account"
         ],
@@ -838,7 +941,7 @@
             }
           }
         },
-        "description": "Withdraw AI processing consent. AI features are suspended until re-consent.",
+        "description": "Withdraw AI processing consent. AI features remain suspended until re-consent.",
         "tags": [
           "account"
         ],
@@ -862,7 +965,7 @@
             "description": "OK"
           }
         },
-        "description": "Full RGPD erasure. Cascade-deletes all patient data.\nRequires explicit confirmation string to prevent accidental calls.\n\nPreserved (immutable audit trail):\n  - AuditLog rows (patient FK \u2192 NULL)",
+        "description": "Delete the authenticated patient's account and associated patient data.",
         "tags": [
           "account"
         ],
@@ -1611,22 +1714,57 @@
         "title": "UserResponse",
         "type": "object"
       },
+      "NativeRegisterRequest": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
+          "first_name": {
+            "default": "",
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "default": "",
+            "title": "Last Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "NativeRegisterRequest",
+        "type": "object"
+      },
+      "NativeLoginRequest": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "NativeLoginRequest",
+        "type": "object"
+      },
       "FirebaseAuthRequest": {
         "properties": {
           "id_token": {
             "title": "Id Token",
             "type": "string"
-          },
-          "email": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email"
           }
         },
         "required": [
