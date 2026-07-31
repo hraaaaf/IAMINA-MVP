@@ -5,11 +5,16 @@ temporary migration credential. Native registration and login do not depend on
 Firebase and never synthesize clinical or demographic facts.
 """
 
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError
+from django.core.mail import send_mail
 from django.db import transaction
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from ninja import Router
 from ninja.errors import HttpError
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -59,6 +64,21 @@ class NativeLoginRequest(BaseModel):
 class SetPasswordRequest(BaseModel):
     new_password: str
     current_password: str | None = None
+
+
+class PasswordResetRequest(BaseModel):
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().lower()
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    uid: str
+    token: str
+    new_password: str
 
 
 class UserResponse(BaseModel):
@@ -187,6 +207,61 @@ def set_native_password(request, data: SetPasswordRequest):
         "access_token": issue_native_token(user),
         "token_type": "Bearer",
     }
+
+
+@router.post("/auth/password/reset/request")
+def request_password_reset(request, data: PasswordResetRequest):
+    """Send a native recovery link without disclosing account existence."""
+    users = list(User.objects.filter(email__iexact=data.email, is_active=True)[:2])
+    if len(users) == 1 and users[0].has_usable_password():
+        user = users[0]
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        base_url = getattr(
+            settings,
+            "PASSWORD_RESET_FRONTEND_URL",
+            "iamina://reset-password",
+        )
+        separator = "&" if "?" in base_url else "?"
+        reset_url = f"{base_url}{separator}uid={uid}&token={token}"
+        send_mail(
+            subject="Réinitialisation du mot de passe IAMINA",
+            message=(
+                "Utilisez ce lien pour définir un nouveau mot de passe : "
+                f"{reset_url}"
+            ),
+            from_email=getattr(
+                settings,
+                "DEFAULT_FROM_EMAIL",
+                "noreply@iamina.health",
+            ),
+            recipient_list=[user.email],
+            fail_silently=True,
+        )
+    return {"detail": "If the account exists, recovery instructions were sent"}
+
+
+@router.post("/auth/password/reset/confirm")
+@transaction.atomic
+def confirm_password_reset(request, data: PasswordResetConfirmRequest):
+    """Consume a one-time Django recovery token and revoke prior IAMINA tokens."""
+    try:
+        user_id = force_str(urlsafe_base64_decode(data.uid))
+        user = User.objects.get(pk=user_id, is_active=True)
+    except (ValueError, TypeError, OverflowError, User.DoesNotExist) as exc:
+        raise HttpError(400, "Invalid or expired recovery credential") from exc
+
+    if not default_token_generator.check_token(user, data.token):
+        raise HttpError(400, "Invalid or expired recovery credential")
+    try:
+        validate_password(data.new_password, user=user)
+    except ValidationError as exc:
+        raise HttpError(400, "Password does not meet security requirements") from exc
+
+    user.set_password(data.new_password)
+    user.save(update_fields=["password"])
+    revoke_native_tokens(user)
+    return {"detail": "Password reset completed"}
 
 
 @router.post("/auth/firebase", response=AuthResponse)
