@@ -16,7 +16,7 @@ import 'services/locale_preference_service.dart';
 import 'services/modules_provider.dart';
 import 'services/sync_service.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
@@ -28,8 +28,6 @@ void main() async {
   }
 
   final db = AppDatabase.defaults();
-
-  // ── Consent service — seed synchronously to prevent redirect flicker ──────
   final initialProfile =
       await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull();
   final consentService = ConsentService()
@@ -37,18 +35,22 @@ void main() async {
     ..attachStream(db.watchProfile());
 
   final authService = AuthService();
+  await authService.initialize();
+
   final apiClient = ApiClient(authService: authService);
   final syncService = SyncService(db, apiClient)..init();
   final localePreferenceService = LocalePreferenceService(apiClient)..refresh();
 
-  // Build the router once with ConsentService so redirects fire correctly.
-  final routerHolder = createAppRouterHolder(consentService: consentService);
+  final routerHolder = createAppRouterHolder(
+    authService: authService,
+    consentService: consentService,
+  );
 
   runApp(
     MultiProvider(
       providers: [
         Provider<AppDatabase>.value(value: db),
-        Provider<AuthService>.value(value: authService),
+        ChangeNotifierProvider<AuthService>.value(value: authService),
         Provider<ApiClient>.value(value: apiClient),
         Provider<SyncService>.value(value: syncService),
         ChangeNotifierProvider<ConsentService>.value(value: consentService),
@@ -72,8 +74,6 @@ void main() async {
 }
 
 class AminaApp extends StatefulWidget {
-  /// The router is created once in main() and passed here so that
-  /// ConsentService is wired before the first frame.
   final GoRouter router;
   const AminaApp({super.key, required this.router});
 
@@ -94,8 +94,6 @@ class _AminaAppState extends State<AminaApp> {
       themeMode: tweaks.isDark ? ThemeMode.dark : ThemeMode.light,
       routerConfig: widget.router,
       locale: localePreference.locale,
-
-      // Global Error Catcher pour éviter les pages blanches silencieuses
       builder: (context, child) {
         ErrorWidget.builder = (FlutterErrorDetails details) {
           return Scaffold(
@@ -143,7 +141,6 @@ class _AminaAppState extends State<AminaApp> {
         };
         return child!;
       },
-
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
