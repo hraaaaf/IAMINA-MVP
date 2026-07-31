@@ -13,7 +13,7 @@ from core.api.v1.auth import (
     confirm_password_reset,
     request_password_reset,
 )
-from core.native_auth import issue_native_token, resolve_native_token
+from core.native_auth import NativeTokenError, issue_native_token, verify_native_token
 
 
 @pytest.mark.django_db
@@ -65,7 +65,8 @@ def test_reset_confirmation_changes_password_and_revokes_old_token():
     user.refresh_from_db()
     assert result == {"detail": "Password reset completed"}
     assert user.check_password("Replacement-passphrase-2026!")
-    assert resolve_native_token(old_token) is None
+    with pytest.raises(NativeTokenError):
+        verify_native_token(old_token)
 
 
 @pytest.mark.django_db
