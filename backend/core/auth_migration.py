@@ -77,11 +77,11 @@ def resolve_linked_firebase_user(identity: VerifiedFirebaseIdentity) -> User:
 def migrate_new_firebase_identity(identity: VerifiedFirebaseIdentity) -> User:
     """Create or migrate one identity for a verified Firebase UID.
 
-    An active Django password account is never merged by email. The only legacy
-    email migration allowed is an identity shell with an unusable password and
-    an existing empty BasePatientProfile, which is the historical shape created
-    by the old Firebase bridge. This preserves legacy users without turning
-    email into a general account-linking key.
+    An active Django password account is never merged by email. A legacy shell
+    is eligible only when the email resolves to exactly one user with an
+    unusable Django password. The shell may predate BasePatientProfile creation;
+    the migration bridge creates the missing empty profile without inventing
+    patient facts.
     """
     existing = BasePatientProfile.objects.select_related("patient").filter(
         firebase_uid=identity.uid
@@ -92,10 +92,14 @@ def migrate_new_firebase_identity(identity: VerifiedFirebaseIdentity) -> User:
 
     legacy_shell = _resolve_legacy_firebase_shell(identity)
     if legacy_shell is not None:
-        legacy_shell.firebase_uid = identity.uid
-        legacy_shell.save(update_fields=["firebase_uid"])
-        DiabetesProfile.objects.get_or_create(base_profile=legacy_shell)
-        return legacy_shell.patient
+        profile, _ = BasePatientProfile.objects.get_or_create(patient=legacy_shell)
+        if profile.firebase_uid and profile.firebase_uid != identity.uid:
+            raise FirebaseIdentityConflict("legacy_identity_already_linked")
+        profile.firebase_uid = identity.uid
+        profile.save(update_fields=["firebase_uid"])
+        DiabetesProfile.objects.get_or_create(base_profile=profile)
+        _sync_firebase_email(legacy_shell, identity)
+        return legacy_shell
 
     if identity.email and User.objects.filter(email__iexact=identity.email).exists():
         raise FirebaseIdentityConflict("existing_django_account_requires_explicit_link")
@@ -110,23 +114,23 @@ def migrate_new_firebase_identity(identity: VerifiedFirebaseIdentity) -> User:
     return user
 
 
-def _resolve_legacy_firebase_shell(
-    identity: VerifiedFirebaseIdentity,
-) -> BasePatientProfile | None:
+def _resolve_legacy_firebase_shell(identity: VerifiedFirebaseIdentity) -> User | None:
     """Find the unique historical Firebase-only shell eligible for UID linking."""
     if not identity.email:
         return None
 
     candidates = list(
-        BasePatientProfile.objects.select_related("patient")
-        .filter(firebase_uid__isnull=True, patient__email__iexact=identity.email)
-        .order_by("patient_id")[:2]
+        User.objects.filter(email__iexact=identity.email).order_by("id")[:2]
     )
     if len(candidates) != 1:
         return None
 
     candidate = candidates[0]
-    if candidate.patient.has_usable_password():
+    if candidate.has_usable_password():
+        return None
+    if BasePatientProfile.objects.filter(patient=candidate).exclude(
+        firebase_uid__isnull=True
+    ).exclude(firebase_uid="").exists():
         return None
     return candidate
 
