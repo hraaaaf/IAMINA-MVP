@@ -1,9 +1,31 @@
+import 'dart:convert';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 
-class AuthService {
-  final FirebaseAuth? _auth;
+const String kAuthBaseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'http://localhost:8000',
+);
 
-  AuthService({FirebaseAuth? auth}) : _auth = _getAuthInstance(auth);
+class AuthService extends ChangeNotifier {
+  static const _tokenKey = 'iamina_native_access_token';
+
+  final FirebaseAuth? _firebaseAuth;
+  final FlutterSecureStorage _storage;
+  final http.Client _httpClient;
+  String? _nativeToken;
+  bool _initialized = false;
+
+  AuthService({
+    FirebaseAuth? auth,
+    FlutterSecureStorage? storage,
+    http.Client? httpClient,
+  })  : _firebaseAuth = _getAuthInstance(auth),
+        _storage = storage ?? const FlutterSecureStorage(),
+        _httpClient = httpClient ?? http.Client();
 
   static FirebaseAuth? _getAuthInstance(FirebaseAuth? provided) {
     try {
@@ -13,41 +35,154 @@ class AuthService {
     }
   }
 
-  Stream<User?> get authStateChanges => _auth?.authStateChanges() ?? const Stream.empty();
+  bool get isInitialized => _initialized;
+  bool get isAuthenticated =>
+      (_nativeToken?.isNotEmpty ?? false) || _firebaseAuth?.currentUser != null;
+  bool get isAnonymous =>
+      _nativeToken == null && (_firebaseAuth?.currentUser?.isAnonymous ?? false);
+  User? get firebaseUser => _firebaseAuth?.currentUser;
+
+  Future<void> initialize() async {
+    try {
+      final stored = await _storage.read(key: _tokenKey);
+      if (stored != null && stored.isNotEmpty && await _validateNativeToken(stored)) {
+        _nativeToken = stored;
+      } else if (stored != null) {
+        await _storage.delete(key: _tokenKey);
+      }
+    } catch (_) {
+      _nativeToken = null;
+    } finally {
+      _initialized = true;
+      notifyListeners();
+    }
+  }
 
   Future<String?> getIdToken() async {
-    return await _auth?.currentUser?.getIdToken();
+    final native = _nativeToken;
+    if (native != null && native.isNotEmpty) return native;
+    return _firebaseAuth?.currentUser?.getIdToken();
   }
 
   Future<String?> refreshToken() async {
-    return await _auth?.currentUser?.getIdToken(true);
+    final native = _nativeToken;
+    if (native != null && native.isNotEmpty) return native;
+    return _firebaseAuth?.currentUser?.getIdToken(true);
   }
 
-  Future<UserCredential> signInWithEmail(String email, String password) async {
-    if (_auth == null) throw Exception('Firebase non initialisé');
-    return await _auth.signInWithEmailAndPassword(email: email, password: password);
+  Future<void> signInWithEmail(String email, String password) async {
+    final normalized = email.trim().toLowerCase();
+    final nativeResponse = await _postJson(
+      '/api/v1/auth/login',
+      {'email': normalized, 'password': password},
+    );
+    if (nativeResponse.statusCode >= 200 && nativeResponse.statusCode < 300) {
+      await _acceptAuthResponse(nativeResponse);
+      return;
+    }
+
+    // Migration fallback only: authenticate the historical Firebase account,
+    // exchange its credential once, then use IAMINA bearer auth afterwards.
+    if (nativeResponse.statusCode == 401 && _firebaseAuth != null) {
+      final credential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: normalized,
+        password: password,
+      );
+      final firebaseToken = await credential.user?.getIdToken(true);
+      if (firebaseToken == null || firebaseToken.isEmpty) {
+        throw StateError('Firebase migration credential unavailable');
+      }
+      final exchange = await _postJson(
+        '/api/v1/auth/firebase',
+        {'id_token': firebaseToken},
+      );
+      if (exchange.statusCode >= 200 && exchange.statusCode < 300) {
+        await _acceptAuthResponse(exchange);
+        return;
+      }
+    }
+    throw StateError('Authentication failed');
   }
 
-  Future<UserCredential> registerWithEmail(String email, String password) async {
-    if (_auth == null) throw Exception('Firebase non initialisé');
-    return await _auth.createUserWithEmailAndPassword(email: email, password: password);
+  Future<void> registerWithEmail(String email, String password) async {
+    final response = await _postJson(
+      '/api/v1/auth/register',
+      {'email': email.trim().toLowerCase(), 'password': password},
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Registration failed');
+    }
+    await _acceptAuthResponse(response);
   }
 
   Future<void> signOut() async {
-    await _auth?.signOut();
+    final token = _nativeToken;
+    if (token != null) {
+      try {
+        await _httpClient.post(
+          Uri.parse('$kAuthBaseUrl/api/v1/auth/logout'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+      } catch (_) {
+        // Local revocation still clears the credential; the server token expires
+        // and can be centrally revoked on the next authenticated operation.
+      }
+    }
+    _nativeToken = null;
+    await _storage.delete(key: _tokenKey);
+    await _firebaseAuth?.signOut();
+    notifyListeners();
   }
 
-  Future<UserCredential> signInAnonymously() async {
-    if (_auth == null) throw Exception('Firebase non initialisé');
-    return await _auth.signInAnonymously();
+  Future<void> signInAnonymously() async {
+    if (_firebaseAuth == null) throw StateError('Firebase non initialisé');
+    await _firebaseAuth.signInAnonymously();
+    notifyListeners();
   }
 
-  User? get currentUser => _auth?.currentUser;
-
-  /// Envoie un email de réinitialisation de mot de passe.
-  /// Lève une exception si Firebase n'est pas initialisé ou si l'email est invalide.
   Future<void> sendPasswordResetEmail(String email) async {
-    if (_auth == null) throw Exception('Firebase non initialisé');
-    await _auth.sendPasswordResetEmail(email: email.trim());
+    // Temporary migration fallback until the native recovery mail flow is cut over.
+    if (_firebaseAuth == null) throw StateError('Firebase non initialisé');
+    await _firebaseAuth.sendPasswordResetEmail(email: email.trim());
+  }
+
+  Future<bool> _validateNativeToken(String token) async {
+    try {
+      final response = await _httpClient.get(
+        Uri.parse('$kAuthBaseUrl/api/v1/auth/me'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<http.Response> _postJson(String path, Map<String, dynamic> body) {
+    return _httpClient.post(
+      Uri.parse('$kAuthBaseUrl$path'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+  }
+
+  Future<void> _acceptAuthResponse(http.Response response) async {
+    final payload = jsonDecode(response.body);
+    if (payload is! Map<String, dynamic>) {
+      throw StateError('Malformed authentication response');
+    }
+    final token = payload['access_token'];
+    if (token is! String || !token.startsWith('iamina.')) {
+      throw StateError('Missing IAMINA access token');
+    }
+    _nativeToken = token;
+    await _storage.write(key: _tokenKey, value: token);
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _httpClient.close();
+    super.dispose();
   }
 }
