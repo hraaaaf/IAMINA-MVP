@@ -74,10 +74,11 @@ def test_controlled_bridge_creates_one_identity_and_module_shell():
 
 
 @pytest.mark.django_db
-def test_existing_email_is_not_silently_merged():
+def test_active_django_email_is_not_silently_merged():
     existing = User.objects.create_user(
         username="existing",
         email="patient@example.com",
+        password="A-strong-passphrase-2026!",
     )
     BasePatientProfile.objects.create(patient=existing)
 
@@ -87,6 +88,22 @@ def test_existing_email_is_not_silently_merged():
     assert User.objects.count() == 1
     existing.base_profile.refresh_from_db()
     assert existing.base_profile.firebase_uid is None
+
+
+@pytest.mark.django_db
+def test_unique_unusable_password_legacy_shell_can_receive_verified_uid():
+    legacy = User.objects.create_user(
+        username="legacy-firebase-shell",
+        email="patient@example.com",
+    )
+    profile = BasePatientProfile.objects.create(patient=legacy)
+
+    migrated = migrate_new_firebase_identity(_identity())
+
+    assert migrated.pk == legacy.pk
+    profile.refresh_from_db()
+    assert profile.firebase_uid == "firebase-uid"
+    assert DiabetesProfile.objects.filter(base_profile=profile).count() == 1
 
 
 @pytest.mark.django_db
