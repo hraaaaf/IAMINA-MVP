@@ -69,7 +69,7 @@ def resolve_linked_firebase_user(identity: VerifiedFirebaseIdentity) -> User:
         raise FirebaseIdentityNotLinked("firebase_identity_not_linked") from exc
 
     user = profile.patient
-    _sync_verified_email(user, identity)
+    _sync_firebase_email(user, identity)
     return user
 
 
@@ -87,7 +87,7 @@ def migrate_new_firebase_identity(identity: VerifiedFirebaseIdentity) -> User:
         firebase_uid=identity.uid
     ).first()
     if existing is not None:
-        _sync_verified_email(existing.patient, identity)
+        _sync_firebase_email(existing.patient, identity)
         return existing.patient
 
     legacy_shell = _resolve_legacy_firebase_shell(identity)
@@ -131,9 +131,17 @@ def _resolve_legacy_firebase_shell(
     return candidate
 
 
-def _sync_verified_email(user: User, identity: VerifiedFirebaseIdentity) -> None:
-    """Synchronize only a provider-verified email on an already-linked account."""
-    if identity.email_verified and identity.email and user.email != identity.email:
+def _sync_firebase_email(user: User, identity: VerifiedFirebaseIdentity) -> None:
+    """Synchronize Firebase email without weakening native-account ownership.
+
+    Active Django password accounts require an explicitly verified provider
+    email. Historical Firebase-only shells have no usable Django password, so
+    the verified UID remains their sole authentication key during migration;
+    their provider email may be refreshed even when an old token omits the
+    ``email_verified`` claim. Email collisions always fail closed.
+    """
+    can_sync = identity.email_verified or not user.has_usable_password()
+    if can_sync and identity.email and user.email != identity.email:
         if User.objects.exclude(pk=user.pk).filter(email__iexact=identity.email).exists():
             raise FirebaseIdentityConflict("verified_email_conflicts_with_django_account")
         user.email = identity.email
