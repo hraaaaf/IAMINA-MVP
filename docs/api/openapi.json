@@ -257,7 +257,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           }
         ]
       }
@@ -339,7 +339,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -377,7 +377,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -421,7 +421,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -461,7 +461,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -510,7 +510,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -551,7 +551,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -581,7 +581,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -620,7 +620,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -655,7 +655,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -705,7 +705,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -753,7 +753,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -783,7 +783,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -822,7 +822,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -863,7 +863,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -925,7 +925,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -955,7 +955,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -984,7 +984,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1013,7 +1013,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1047,7 +1047,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1081,7 +1081,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1105,7 +1105,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1157,7 +1157,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1232,7 +1232,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1273,7 +1273,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1319,7 +1319,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1360,7 +1360,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1402,7 +1402,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1443,7 +1443,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1484,7 +1484,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1525,7 +1525,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1569,7 +1569,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1632,7 +1632,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1684,7 +1684,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1719,7 +1719,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -3870,7 +3870,7 @@
       }
     },
     "securitySchemes": {
-      "FirebaseAuth": {
+      "HybridBearerAuth": {
         "type": "http",
         "scheme": "bearer"
       },
