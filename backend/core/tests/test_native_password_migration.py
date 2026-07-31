@@ -8,6 +8,7 @@ from ninja.errors import HttpError
 
 from core.api.v1.auth import SetPasswordRequest, set_native_password
 from core.models import BasePatientProfile
+from core.native_auth import verify_native_token
 
 
 def _request(user):
@@ -38,7 +39,9 @@ def test_firebase_only_user_can_establish_native_password(monkeypatch):
     )
 
     user.refresh_from_db()
-    assert result == {"detail": "Django password established"}
+    assert result["detail"] == "Django password established"
+    assert result["token_type"] == "Bearer"
+    assert verify_native_token(result["access_token"]).pk == user.pk
     assert user.check_password("A-strong-passphrase-2026!")
     assert user.base_profile.firebase_uid == "firebase-uid"
 
@@ -49,6 +52,7 @@ def test_native_password_rotation_requires_current_password(monkeypatch):
         username="native",
         password="Current-passphrase-2026!",
     )
+    BasePatientProfile.objects.create(patient=user)
     monkeypatch.setattr(
         "core.api.v1.auth.update_session_auth_hash",
         lambda request, value: None,
@@ -79,7 +83,8 @@ def test_native_password_rotation_requires_current_password(monkeypatch):
         ),
     )
     user.refresh_from_db()
-    assert result == {"detail": "Django password established"}
+    assert result["detail"] == "Django password established"
+    assert verify_native_token(result["access_token"]).pk == user.pk
     assert user.check_password("Replacement-passphrase-2026!")
 
 
