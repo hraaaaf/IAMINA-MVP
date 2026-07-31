@@ -36,22 +36,15 @@ class Command(BaseCommand):
             email for email, count in Counter(normalized_emails).items() if count > 1
         )
 
-        duplicate_uids = list(
-            BasePatientProfile.objects.exclude(firebase_uid__isnull=True)
-            .exclude(firebase_uid="")
-            .values("firebase_uid")
-            .annotate_count()
-        ) if False else []
-        # ``firebase_uid`` is database-unique; the explicit empty list documents
-        # that duplicate UID detection is structurally enforced by the schema.
-
         findings = {
             "users": User.objects.count(),
             "profiles": len(profiles),
             "firebase_links": len(linked),
             "users_without_profile": missing_profiles,
             "duplicate_normalized_emails": duplicate_emails,
-            "duplicate_firebase_uids": duplicate_uids,
+            # Duplicate Firebase UIDs are structurally prevented by the unique
+            # database constraint on BasePatientProfile.firebase_uid.
+            "duplicate_firebase_uids": [],
         }
         self.stdout.write(str(findings))
 
