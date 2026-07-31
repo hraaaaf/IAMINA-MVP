@@ -1,19 +1,20 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
-import 'routes/app_router.dart';
 import 'core/theme/app_theme.dart';
-import 'l10n/app_localizations.dart';
 import 'data/drift/database.dart';
-import 'services/auth_service.dart';
-import 'services/api_client.dart';
-import 'services/sync_service.dart';
-import 'services/consent_service.dart';
-import 'services/modules_provider.dart';
 import 'firebase_options.dart';
+import 'l10n/app_localizations.dart';
+import 'routes/app_router.dart';
+import 'services/api_client.dart';
+import 'services/auth_service.dart';
+import 'services/consent_service.dart';
+import 'services/locale_preference_service.dart';
+import 'services/modules_provider.dart';
+import 'services/sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,7 +26,7 @@ void main() async {
   } catch (e) {
     debugPrint('Firebase init failed: $e');
   }
-  
+
   final db = AppDatabase.defaults();
 
   // ── Consent service — seed synchronously to prevent redirect flicker ──────
@@ -38,6 +39,7 @@ void main() async {
   final authService = AuthService();
   final apiClient = ApiClient(authService: authService);
   final syncService = SyncService(db, apiClient)..init();
+  final localePreferenceService = LocalePreferenceService(apiClient)..refresh();
 
   // Build the router once with ConsentService so redirects fire correctly.
   final routerHolder = createAppRouterHolder(consentService: consentService);
@@ -50,6 +52,9 @@ void main() async {
         Provider<ApiClient>.value(value: apiClient),
         Provider<SyncService>.value(value: syncService),
         ChangeNotifierProvider<ConsentService>.value(value: consentService),
+        ChangeNotifierProvider<LocalePreferenceService>.value(
+          value: localePreferenceService,
+        ),
         ChangeNotifierProvider<ModulesProvider>(
           create: (_) => ModulesProvider(apiClient)..refresh(),
         ),
@@ -80,6 +85,7 @@ class _AminaAppState extends State<AminaApp> {
   @override
   Widget build(BuildContext context) {
     final tweaks = context.watch<TweaksNotifier>();
+    final localePreference = context.watch<LocalePreferenceService>();
 
     return MaterialApp.router(
       title: 'IAmina',
@@ -87,26 +93,35 @@ class _AminaAppState extends State<AminaApp> {
       darkTheme: AminaTheme.dark,
       themeMode: tweaks.isDark ? ThemeMode.dark : ThemeMode.light,
       routerConfig: widget.router,
-      
+      locale: localePreference.locale,
+
       // Global Error Catcher pour éviter les pages blanches silencieuses
       builder: (context, child) {
         ErrorWidget.builder = (FlutterErrorDetails details) {
           return Scaffold(
             body: Container(
               padding: const EdgeInsets.all(20),
-              color: tweaks.isDark ? AminaTheme.darkPaper : AminaTheme.surfaceMuted,
+              color: tweaks.isDark
+                  ? AminaTheme.darkPaper
+                  : AminaTheme.surfaceMuted,
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline, color: AminaTheme.dangerRed, size: 48),
+                    const Icon(
+                      Icons.error_outline,
+                      color: AminaTheme.dangerRed,
+                      size: 48,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       'Une erreur de rendu est survenue',
                       style: TextStyle(
-                        fontWeight: FontWeight.w900, 
+                        fontWeight: FontWeight.w900,
                         fontSize: 18,
-                        color: tweaks.isDark ? AminaTheme.dark100 : AminaTheme.ink900,
+                        color: tweaks.isDark
+                            ? AminaTheme.dark100
+                            : AminaTheme.ink900,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -114,7 +129,9 @@ class _AminaAppState extends State<AminaApp> {
                       details.exception.toString(),
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: tweaks.isDark ? AminaTheme.dark400 : AminaTheme.textMuted, 
+                        color: tweaks.isDark
+                            ? AminaTheme.dark400
+                            : AminaTheme.textMuted,
                         fontSize: 12,
                       ),
                     ),
@@ -133,10 +150,7 @@ class _AminaAppState extends State<AminaApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('fr'),
-        Locale('ar', 'MA'),
-      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       debugShowCheckedModeBanner: false,
     );
   }

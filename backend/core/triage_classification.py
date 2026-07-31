@@ -59,20 +59,33 @@ _GLYCEMIC_DARIJA = frozenset(
     {
         "ghadi ntih",
         "ghadi ntah",
+        "ghadi nti7",
+        "ghadi nte7",
         "kantih",
         "fqad l3ql",
         "fqdt l3ql",
+        "fqedt l3a9l",
+        "f9edt l3a9l",
+        "f9dt l3ql",
         "tahwid",
         "kayrjraj",
         "kanrjef",
+        "kanrjaf",
+        "kanr3ed",
+        "kanr3ad",
         "rj fou",
         "rajef",
         "ma kan7ml",
         "ma kan7mlch",
         "dwakht",
         "dayakht",
+        "dwekh",
+        "dawkhani",
         "ma kanchoufch",
+        "ma kanchofch",
+        "ma kanchufch",
         "ma kanchouf walou",
+        "ma kanchouf walo",
     }
 )
 
@@ -88,7 +101,12 @@ _GLYCEMIC_ARABIC = frozenset(
         "دوخة",
         "فقدت الوعي",
         "ما كنشوفش",
+        "ما كنشوف والو",
         "غادي نطيح",
+        "غادي نغمى عليا",
+        "غادي يغمى عليا",
+        "كنترعد",
+        "كنرجف",
     }
 )
 

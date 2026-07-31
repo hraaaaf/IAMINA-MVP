@@ -21,6 +21,7 @@ from ai.api.v1.voice import router as voice_router  # noqa: E402
 from core.api.v1.account import router as account_router  # noqa: E402
 from core.api.v1.auth import router as auth_router  # noqa: E402
 from core.api.v1.health import router as health_router  # noqa: E402
+from core.api.v1.locale import router as locale_router  # noqa: E402
 from core.api.v1.modules import router as modules_router  # noqa: E402
 from diabetes.api.v1.analytics import router as analytics_router  # noqa: E402
 from diabetes.api.v1.demo import router as demo_router  # noqa: E402
@@ -71,6 +72,7 @@ api.add_router("/v1", health_router)
 # v1 Protected routers — Bearer (mobile) OR session cookie (web/PWA)
 api.add_router("/v1", logs_router,      auth=_auth)
 api.add_router("/v1", profile_router,   auth=_auth)
+api.add_router("/v1", locale_router,    auth=_auth)
 api.add_router("/v1", kpis_router,      auth=_auth)
 api.add_router("/v1", account_router,   auth=_auth)
 api.add_router("/v1", modules_router,   auth=_auth)

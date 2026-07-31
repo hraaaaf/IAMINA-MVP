@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-07-29 — P0-MENA-1F complete and validated in PR #15; ready for review.
+> **Last updated:** 2026-07-30 — P0-MENA-2 automated scope implemented and validated through emergency registry and safety-corpus gates in draft PR #16.
 >
 > **Authority:** this file is the single forward tracker. Historical implementation detail belongs in git history, ADRs and architecture timelines.
 
@@ -26,13 +26,13 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | Workstream | Progress | Status | Evidence |
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Complete | P0-A, P0-B, P0-C and migration drift merged |
-| P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Complete in PR | 10 of 10 explicit controls complete; final merge remains pending review of PR #15 |
-| P0-MENA-2 — locale + safety contract | 0% | ⚪ Not started | No roadmap task closed |
+| P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | 10 of 10 explicit controls merged through PR #15 |
+| P0-MENA-2 — locale + safety contract | 50% | 🟡 Human review blocked | 4 of 8 tasks closed; native-speaker corpus approval and full RTL screen audit remain open |
 | P0-MENA-3 — sovereign authentication migration | 0% | ⚪ Not started | Design and migration work pending |
 | P0-MENA-4 — multimodal provider benchmark | 0% | ⚪ Not started | Evaluation set and benchmark pending |
 | Pilot safety/compliance gate | 15% | 🔴 Incomplete | 2 of 13 explicit gates complete |
 
-**MENA critical-path completion:** 12 of 41 explicit roadmap tasks closed, approximately **29%**.
+**MENA critical-path completion:** 16 of 41 explicit roadmap tasks closed, approximately **39%**.
 
 This percentage measures the new MENA safety, sovereignty and pilot-readiness path. It is not a percentage of the complete product codebase.
 
@@ -195,14 +195,23 @@ No provider receives by default:
 
 ## P0-MENA-2 — Locale + safety contract
 
-- [ ] Model country, UI language, response language, script/transliteration, dialect, units and timezone separately.
-- [ ] Require user confirmation; location may only suggest.
-- [ ] Define deterministic fallback to MSA, English or French.
+- [x] Model country, UI language, response language, script/transliteration, dialect, units and timezone separately.
+- [x] Require user confirmation; location may only suggest.
+- [x] Define deterministic fallback to MSA, English or French.
 - [ ] Complete RTL coverage.
-- [ ] Configure country-specific emergency resources with source/date ownership.
+- [x] Configure country-specific emergency resources with source/date ownership. **Morocco registry is versioned, confirmed-country-only and fails closed when absent or stale.**
 - [ ] Build native-speaker safety corpora for every enabled locale.
 - [ ] Close the Darija high-severity orthographic-variant gap.
 - [ ] Prove safety parity across text, voice transcript, mixed language and transliteration.
+
+### P0-MENA-2 checkpoints
+
+- **2A — canonical model:** one authoritative per-patient record separates country, UI language, response language, script, transliteration, dialect, glucose units and IANA timezone with independent provenance. Suggested/defaulted values cannot control runtime.
+- **2B — authenticated confirmation API:** GET/PATCH/DELETE operations derive ownership from `request.user`; explicit confirmation is dimension-scoped, revocation is isolated, invalid values fail closed, and no patient identifier is accepted.
+- **2C — runtime fallback wiring:** text and voice resolve only confirmed settings; historical silent Darija defaults are removed. RTL/rendering completion remains active.
+- **2C — Flutter locale/RTL foundation:** the application locale comes only from the confirmed server-resolved UI language, supports French/English/Arabic, defaults deterministically to French, and proves Arabic RTL directionality. Full screen-by-screen RTL coverage remains open.
+- **2D — emergency-resource registry:** Morocco contacts are stored with source ownership, verification/review dates and confirmed-country-only selection; absent, unknown or stale configuration fails closed.
+- **2E — automated corpus groundwork:** executable high-severity glycemic cases cover baseline languages, Darija Arabic script, Latin transliteration, mixed-language text and voice transcripts. Automated parity is green, but every locale remains `pending_native_review`; no native approval is claimed.
 
 ## P0-MENA-3 — Sovereignty-critical authentication migration
 
