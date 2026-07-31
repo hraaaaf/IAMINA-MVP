@@ -75,11 +75,13 @@ def resolve_linked_firebase_user(identity: VerifiedFirebaseIdentity) -> User:
 
 @transaction.atomic
 def migrate_new_firebase_identity(identity: VerifiedFirebaseIdentity) -> User:
-    """Create one Django identity for a previously unseen verified Firebase UID.
+    """Create or migrate one identity for a verified Firebase UID.
 
-    Existing email matches are deliberately not merged. A user who already has
-    a Django account must authenticate through that account before an explicit
-    link flow can be introduced.
+    An active Django password account is never merged by email. The only legacy
+    email migration allowed is an identity shell with an unusable password and
+    an existing empty BasePatientProfile, which is the historical shape created
+    by the old Firebase bridge. This preserves legacy users without turning
+    email into a general account-linking key.
     """
     existing = BasePatientProfile.objects.select_related("patient").filter(
         firebase_uid=identity.uid
@@ -87,6 +89,13 @@ def migrate_new_firebase_identity(identity: VerifiedFirebaseIdentity) -> User:
     if existing is not None:
         _sync_verified_email(existing.patient, identity)
         return existing.patient
+
+    legacy_shell = _resolve_legacy_firebase_shell(identity)
+    if legacy_shell is not None:
+        legacy_shell.firebase_uid = identity.uid
+        legacy_shell.save(update_fields=["firebase_uid"])
+        DiabetesProfile.objects.get_or_create(base_profile=legacy_shell)
+        return legacy_shell.patient
 
     if identity.email and User.objects.filter(email__iexact=identity.email).exists():
         raise FirebaseIdentityConflict("existing_django_account_requires_explicit_link")
@@ -99,6 +108,27 @@ def migrate_new_firebase_identity(identity: VerifiedFirebaseIdentity) -> User:
     )
     DiabetesProfile.objects.create(base_profile=base)
     return user
+
+
+def _resolve_legacy_firebase_shell(
+    identity: VerifiedFirebaseIdentity,
+) -> BasePatientProfile | None:
+    """Find the unique historical Firebase-only shell eligible for UID linking."""
+    if not identity.email:
+        return None
+
+    candidates = list(
+        BasePatientProfile.objects.select_related("patient")
+        .filter(firebase_uid__isnull=True, patient__email__iexact=identity.email)
+        .order_by("patient_id")[:2]
+    )
+    if len(candidates) != 1:
+        return None
+
+    candidate = candidates[0]
+    if candidate.patient.has_usable_password():
+        return None
+    return candidate
 
 
 def _sync_verified_email(user: User, identity: VerifiedFirebaseIdentity) -> None:
