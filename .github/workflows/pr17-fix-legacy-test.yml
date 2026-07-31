@@ -1,0 +1,63 @@
+name: PR17 fix remaining legacy auth test
+
+on:
+  push:
+    branches: [feat/p0-mena-sovereign-auth-migration]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p0-mena-sovereign-auth-migration
+      - name: Patch stale email-merge expectation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('backend/diabetes/tests/test_ninja_crud.py')
+          text = path.read_text()
+          old = '''    def test_existing_user_is_returned(self):
+        User.objects.create_user(username="existingninja", email="existing@ninja.com")
+        with patch("firebase_admin.auth.verify_id_token",
+                   return_value={"uid": "uid-ninja-existing", "email": "existing@ninja.com"}):
+            resp = self.client.post(
+                "/api/v1/auth/firebase",
+                data={"id_token": "valid-jwt"},
+                content_type="application/json",
+            )
+        self.assertEqual(resp.status_code, 200)
+        # Must not duplicate the user
+        self.assertEqual(User.objects.filter(email="existing@ninja.com").count(), 1)
+'''
+          new = '''    def test_existing_email_requires_explicit_link(self):
+        User.objects.create_user(username="existingninja", email="existing@ninja.com")
+        with patch("firebase_admin.auth.verify_id_token",
+                   return_value={"uid": "uid-ninja-existing", "email": "existing@ninja.com", "email_verified": True}):
+            resp = self.client.post(
+                "/api/v1/auth/firebase",
+                data={"id_token": "valid-jwt"},
+                content_type="application/json",
+            )
+        self.assertEqual(resp.status_code, 409)
+        self.assertEqual(User.objects.filter(email="existing@ninja.com").count(), 1)
+        self.assertFalse(
+            BasePatientProfile.objects.filter(firebase_uid="uid-ninja-existing").exists()
+        )
+'''
+          if old not in text:
+              raise SystemExit('stale test block not found')
+          path.write_text(text.replace(old, new))
+          PY
+      - name: Commit and remove helper
+        run: |
+          rm .github/workflows/pr17-fix-legacy-test.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "test(auth): require explicit link for existing email"
+          git push origin HEAD:feat/p0-mena-sovereign-auth-migration
