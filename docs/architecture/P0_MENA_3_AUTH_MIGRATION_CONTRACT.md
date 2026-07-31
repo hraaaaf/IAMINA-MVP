@@ -125,3 +125,15 @@ P0-MENA-3 is complete only when:
 - Firebase bearer authentication is removed from protected routes;
 - staff/professional controls are enforced;
 - SQLite, PostgreSQL, migration drift, Ruff, import-linter, security checks, OpenAPI, Flutter analysis and secret hygiene pass on the final clean SHA.
+
+## Completion checkpoint — 31 July 2026
+
+- Django registration, login, logout, password establishment and native recovery are implemented.
+- IAMINA bearer tokens are signed, expiring and globally revocable per patient.
+- Flutter initializes native authentication before routing and stores IAMINA credentials securely.
+- Native authentication is primary; Firebase remains only a temporary migration bridge and demo dependency.
+- Firebase link and unlink are explicit; email is never a silent merge key for an active Django account.
+- Historical Firebase shells are migrated only when uniquely identifiable and without synthesized patient facts.
+- SQLite and PostgreSQL both apply migration `0011_basepatientprofile_auth_token_version`.
+- Readiness audit: `python manage.py audit_auth_migration`.
+- Final Firebase-removal gate: `python manage.py audit_auth_migration --require-zero-firebase`.
