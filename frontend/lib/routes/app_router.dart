@@ -1,78 +1,58 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
+import '../features/auth/consent_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/onboarding_chat_screen.dart';
-import '../features/auth/consent_screen.dart';
-import '../features/profile/profile_screen.dart';
 import '../features/navigation/main_shell.dart';
+import '../features/profile/profile_screen.dart';
 import '../modules/module_registry.dart';
+import '../services/auth_service.dart';
 import '../services/consent_service.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
 
-class _AuthNotifier extends ChangeNotifier {
-  late final StreamSubscription<User?> _sub;
-
-  _AuthNotifier() {
-    _sub = FirebaseAuth.instance.authStateChanges().listen((_) => notifyListeners());
-  }
-
-  @override
-  void dispose() {
-    _sub.cancel();
-    super.dispose();
-  }
-}
-
-// Holds the notifier alongside the router so both can be disposed together.
 class AppRouterHolder {
   final GoRouter router;
-  final _AuthNotifier _notifier;
 
-  AppRouterHolder._(this.router, this._notifier);
+  AppRouterHolder._(this.router);
 
-  void dispose() {
-    _notifier.dispose();
-    router.dispose();
-  }
+  void dispose() => router.dispose();
 }
 
-AppRouterHolder createAppRouterHolder({ConsentService? consentService}) {
-  final authNotifier = _AuthNotifier();
+AppRouterHolder createAppRouterHolder({
+  required AuthService authService,
+  ConsentService? consentService,
+}) {
   final consent = consentService;
 
   final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: _homeRoute(),
     refreshListenable: consent != null
-        ? Listenable.merge([authNotifier, consent])
-        : authNotifier,
+        ? Listenable.merge([authService, consent])
+        : authService,
     redirect: (context, state) {
-      final user = FirebaseAuth.instance.currentUser;
-      final isLoggedIn = user != null;
-      final isAnonymous = user?.isAnonymous ?? false;
+      final isLoggedIn = authService.isAuthenticated;
+      final isAnonymous = authService.isAnonymous;
       final path = state.uri.path;
       final isLoginPage = path == '/login';
       final isConsentPage = path == '/consent';
+
+      if (!authService.isInitialized) return null;
 
       // ── Auth gate ──────────────────────────────────────────────────────────
       if (!isLoggedIn && !isLoginPage) return '/login';
       if (isLoggedIn && isLoginPage) return _homeRoute();
 
       // ── Consent gate (RGPD Art. 7) ────────────────────────────────────────
-      // Skip for anonymous (demo) users — they never gave a real identity.
-      // Skip if ConsentService not yet wired (fallback path).
+      // Skip for anonymous demo users and when ConsentService is not wired.
       if (isLoggedIn && !isAnonymous && consent != null) {
-        final hasConsent  = consent.hasConsent;
+        final hasConsent = consent.hasConsent;
         final hasDeclined = consent.hasDeclinedLocally;
 
-        // If user has not consented AND hasn't declined this session → gate
         if (!hasConsent && !hasDeclined && !isConsentPage) return '/consent';
-
-        // If user now has consent but landed on consent page → move on
         if (hasConsent && isConsentPage) return _homeRoute();
       }
 
@@ -113,8 +93,6 @@ AppRouterHolder createAppRouterHolder({ConsentService? consentService}) {
         ),
       ),
 
-      // ── Full-screen routes (above shell — no bottom nav) ──────────────────
-      // Generated from each registered module's full-screen routes (P6).
       for (final m in ModuleRegistry.all())
         for (final r in m.fullScreenRoutes)
           GoRoute(
@@ -127,12 +105,11 @@ AppRouterHolder createAppRouterHolder({ConsentService? consentService}) {
         navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) => MainShell(child: child),
         routes: [
-          // Chassis shell route (always present, condition-agnostic).
           GoRoute(
             path: '/profile',
-            pageBuilder: (context, state) => _createPage(state, const ProfileScreen()),
+            pageBuilder: (context, state) =>
+                _createPage(state, const ProfileScreen()),
           ),
-          // Module shell routes, generated from the registry (P6).
           for (final m in ModuleRegistry.all())
             for (final r in m.shellRoutes)
               GoRoute(
@@ -149,11 +126,9 @@ AppRouterHolder createAppRouterHolder({ConsentService? consentService}) {
     ],
   );
 
-  return AppRouterHolder._(router, authNotifier);
+  return AppRouterHolder._(router);
 }
 
-/// The default landing route — the first nav destination of the first module.
-/// Falls back to '/dashboard' if no module declares one.
 String _homeRoute() {
   final mods = ModuleRegistry.all();
   if (mods.isNotEmpty && mods.first.navDestinations.isNotEmpty) {
@@ -162,8 +137,10 @@ String _homeRoute() {
   return '/dashboard';
 }
 
-// Kept for backward compat — returns just the GoRouter.
-GoRouter createAppRouter([dynamic auth]) => createAppRouterHolder().router;
+GoRouter createAppRouter([dynamic auth]) {
+  final service = auth is AuthService ? auth : AuthService();
+  return createAppRouterHolder(authService: service).router;
+}
 
 CustomTransitionPage _createPage(GoRouterState state, Widget child) {
   return CustomTransitionPage(
