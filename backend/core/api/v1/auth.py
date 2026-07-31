@@ -5,7 +5,7 @@ temporary migration credential. Native registration and login do not depend on
 Firebase and never synthesize clinical or demographic facts.
 """
 
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -53,6 +53,11 @@ class NativeLoginRequest(BaseModel):
     @classmethod
     def normalize_email(cls, value: str) -> str:
         return value.strip().lower()
+
+
+class SetPasswordRequest(BaseModel):
+    new_password: str
+    current_password: str | None = None
 
 
 class UserResponse(BaseModel):
@@ -142,6 +147,26 @@ def current_identity(request):
 def logout_native(request):
     logout(request)
     return {"detail": "Signed out"}
+
+
+@router.post("/auth/password")
+@transaction.atomic
+def set_native_password(request, data: SetPasswordRequest):
+    """Establish or rotate the native credential without weakening ownership."""
+    user = _require_authenticated(request)
+    if user.has_usable_password():
+        if not data.current_password or not user.check_password(data.current_password):
+            raise HttpError(401, "Current password is invalid")
+
+    try:
+        validate_password(data.new_password, user=user)
+    except ValidationError as exc:
+        raise HttpError(400, "Password does not meet security requirements") from exc
+
+    user.set_password(data.new_password)
+    user.save(update_fields=["password"])
+    update_session_auth_hash(request, user)
+    return {"detail": "Django password established"}
 
 
 @router.post("/auth/firebase", response=AuthResponse)
