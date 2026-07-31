@@ -135,6 +135,58 @@
         }
       }
     },
+    "/api/v1/auth/password/reset/request": {
+      "post": {
+        "operationId": "core_api_v1_auth_request_password_reset",
+        "summary": "Request Password Reset",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Send a native recovery link without disclosing account existence.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/v1/auth/password/reset/confirm": {
+      "post": {
+        "operationId": "core_api_v1_auth_confirm_password_reset",
+        "summary": "Confirm Password Reset",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Consume a one-time Django recovery token and revoke prior IAMINA tokens.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/v1/auth/firebase": {
       "post": {
         "operationId": "core_api_v1_auth_firebase_auth",
@@ -1858,6 +1910,42 @@
           "new_password"
         ],
         "title": "SetPasswordRequest",
+        "type": "object"
+      },
+      "PasswordResetRequest": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PasswordResetRequest",
+        "type": "object"
+      },
+      "PasswordResetConfirmRequest": {
+        "properties": {
+          "uid": {
+            "title": "Uid",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "new_password": {
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uid",
+          "token",
+          "new_password"
+        ],
+        "title": "PasswordResetConfirmRequest",
         "type": "object"
       },
       "FirebaseAuthRequest": {
