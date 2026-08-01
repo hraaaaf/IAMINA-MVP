@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from time import perf_counter
 from typing import Protocol
 
-from evaluation.contracts import EvaluationCase
+from .contracts import EvaluationCase
 
 
 class EvaluationAdapter(Protocol):
