@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-01 — P0-MENA-3 sovereign authentication migration merged through PR #17.
+> **Last updated:** 2026-08-01 — P0-MENA-4 automated benchmark framework validated in PR #18; live provider runs remain evidence-gated.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,10 +29,10 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 50% | 🟡 Human review blocked | PR #16; native review and full RTL audit remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
-| P0-MENA-4 — multimodal provider benchmark | 0% | ⚪ Next major lot | Evaluation set and benchmark pending |
+| P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Framework green; live runs blocked | 2 of 7 tasks closed in PR #18; live text/STT/vision runs require approved evidence and credentials |
 | Pilot safety/compliance gate | 15% | 🔴 Incomplete | 2 of 13 explicit gates complete |
 
-**MENA critical-path completion:** 22 of 41 explicit roadmap tasks closed, approximately **54%**.
+**MENA critical-path completion:** 24 of 41 explicit roadmap tasks closed, approximately **59%**.
 
 This percentage measures the MENA safety, sovereignty and pilot-readiness path, not the complete product codebase.
 
@@ -142,13 +142,21 @@ The first command measures migration readiness. The second is the final gate bef
 
 **Goal:** select text, STT and vision providers using evidence rather than configuration convenience.
 
-- [ ] Build representative minimized and synthetic evaluation sets.
-- [ ] Define scoring for privacy, residency, no-training/no-retention terms, MENA quality, safety, latency, availability and cost.
+- [x] Build representative minimized and synthetic evaluation sets. **Strict contracts, stable fingerprints, modality/locale coverage and identity-data rejection are green in PR #18.**
+- [x] Define scoring for privacy, residency, no-training/no-retention terms, MENA quality, safety, latency, availability and cost. **Safety/privacy hard floors, evidence expiry, deterministic judges, versioned reports and fail-closed cutover are green in PR #18.**
 - [ ] Benchmark text providers independently.
 - [ ] Benchmark STT providers independently.
 - [ ] Benchmark vision/OCR providers independently.
 - [ ] Document the decision matrix and rejected alternatives.
 - [ ] Approve provider cutover only after privacy and quality gates pass.
+
+## P0-MENA-4 checkpoint — PR #18
+
+- **4A complete:** canonical synthetic/minimized corpus for text, STT, document OCR, glucometer OCR and meal vision.
+- **4B complete:** provider-neutral runner, deterministic judges and weighted scoring.
+- **4C infrastructure complete:** explicit provider evidence contract, expiry and disqualification rules, candidate registry and provenance-preserving reports.
+- **4D infrastructure complete:** modality-specific ranking, rejected-alternative ledger and production cutover gate.
+- **Live benchmark blocked:** no provider may be scored from fabricated values. Network runs require current legal/processor evidence, approved synthetic-only credentials and an authorized benchmark environment.
 
 One evaluation unit must remain one PR and one ROADMAP responsibility.
 
@@ -174,9 +182,8 @@ One evaluation unit must remain one PR and one ROADMAP responsibility.
 
 # Next sequence
 
-1. **P0-MENA-4A:** evaluation-set and scoring contract.
-2. **P0-MENA-4B:** text-provider benchmark.
-3. **P0-MENA-4C:** STT benchmark.
-4. **P0-MENA-4D:** vision/OCR benchmark.
-5. **P0-MENA-4E:** final decision matrix and cutover gate.
-6. Return to the remaining P0-MENA-2 human/RTL gates and the Pilot Safety Gate.
+1. **P0-MENA-4B live:** text-provider benchmark after evidence/credentials approval.
+2. **P0-MENA-4C live:** STT benchmark after evidence/credentials approval.
+3. **P0-MENA-4D live:** vision/OCR benchmark after evidence/credentials approval.
+4. **P0-MENA-4E:** final evidence-backed decision matrix and cutover gate.
+5. Return to the remaining P0-MENA-2 human/RTL gates and the Pilot Safety Gate.
