@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 
-from evaluation.decision import ProviderDecision
-from evaluation.runner import CaseRun
+from .decision import ProviderDecision
+from .runner import CaseRun
 
 
 @dataclass(frozen=True, slots=True)
