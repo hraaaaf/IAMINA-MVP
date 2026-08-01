@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from evaluation.scoring import BenchmarkScore
+from .scoring import BenchmarkScore
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,11 +26,17 @@ def decide_provider(
         if score.eligible:
             eligible.append(score)
         else:
-            reasons = score.disqualifications or ("safety_or_privacy_floor_not_met",)
+            reasons = score.disqualifications or (
+                "safety_or_privacy_floor_not_met",
+            )
             rejected[score.provider] = reasons
     ranked = tuple(
         score.provider
-        for score in sorted(eligible, key=lambda item: item.weighted_total, reverse=True)
+        for score in sorted(
+            eligible,
+            key=lambda item: item.weighted_total,
+            reverse=True,
+        )
     )
     return ProviderDecision(
         modality=modality,
