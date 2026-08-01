@@ -15,8 +15,8 @@ class BasePatientProfile(models.Model):
     Platform chassis identity anchor.
 
     Owns all cross-cutting patient identity fields:
-    auth bridge (firebase_uid), language, RGPD consent, monetisation,
-    and optional patient-declared biometrics/demographics.
+    auth bridge (firebase_uid), native bearer revocation, language, RGPD consent,
+    monetisation, and optional patient-declared biometrics/demographics.
 
     Authentication must never invent clinical or demographic facts. Fields such
     as gender and date of birth therefore remain NULL until explicitly declared
@@ -49,7 +49,12 @@ class BasePatientProfile(models.Model):
         null=True,
         blank=True,
         db_index=True,
-        help_text="Firebase Auth UID — chassis-level auth bridge.",
+        help_text="Firebase Auth UID — temporary migration bridge.",
+    )
+
+    auth_token_version = models.PositiveIntegerField(
+        default=0,
+        help_text="Incrementing revocation version for sovereign IAMINA bearer tokens.",
     )
 
     preferred_language = models.CharField(

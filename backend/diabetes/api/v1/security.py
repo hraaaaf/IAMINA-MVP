@@ -1,45 +1,63 @@
+"""Hybrid bearer authentication during sovereign-auth migration.
+
+IAMINA native tokens are resolved first. Firebase remains a temporary fallback
+and may resolve only an already-linked UID. Neither path may create, merge or
+repair Django identities.
+"""
+
 import logging
 import os
 
 import firebase_admin
-from django.contrib.auth import get_user_model
-from firebase_admin import auth as firebase_auth
 from firebase_admin import credentials
 from ninja.security import HttpBearer
 
+from core.auth_migration import (
+    FirebaseIdentityNotLinked,
+    FirebaseMigrationError,
+    resolve_linked_firebase_user,
+    verify_firebase_token,
+)
+from core.native_auth import NativeTokenError, verify_native_token
+
 logger = logging.getLogger(__name__)
 
-# Initialiser Firebase Admin une seule fois
 if not firebase_admin._apps:
-    cred_path = os.environ.get('FIREBASE_CREDENTIALS_PATH')
-    if cred_path and os.path.exists(cred_path):
-        cred = credentials.Certificate(cred_path)
+    credential_path = os.environ.get("FIREBASE_CREDENTIALS_PATH")
+    if credential_path and os.path.exists(credential_path):
+        credential = credentials.Certificate(credential_path)
     else:
-        # Fallback to default or warning
-        cred = credentials.ApplicationDefault()
-    firebase_admin.initialize_app(cred)
+        credential = credentials.ApplicationDefault()
+    firebase_admin.initialize_app(credential)
 
-User = get_user_model()
 
-class FirebaseAuth(HttpBearer):
-    """
-    Real Firebase JWT Authenticator using Firebase Admin SDK.
-    """
+class HybridBearerAuth(HttpBearer):
+    """Resolve sovereign IAMINA tokens, then temporary linked Firebase tokens."""
+
     def authenticate(self, request, token: str):
-        try:
-            decoded = firebase_auth.verify_id_token(token)
-            uid   = decoded['uid']
-            email = decoded.get('email', '')
-
-            # Link to Django User
-            user, _ = User.objects.get_or_create(
-                username=uid,
-                defaults={'email': email}
-            )
+        if token.startswith("iamina."):
+            try:
+                user = verify_native_token(token)
+            except NativeTokenError:
+                logger.warning("IAMINA bearer rejected: invalid or revoked credential")
+                return None
             request.user = user
             return user
-        except Exception as e:
-            logger.error(f"FirebaseAuth: Token verification failed: {e}")
+
+        try:
+            identity = verify_firebase_token(token)
+            user = resolve_linked_firebase_user(identity)
+        except FirebaseIdentityNotLinked:
+            logger.warning("Firebase bearer rejected: identity is not linked")
+            return None
+        except FirebaseMigrationError:
+            logger.warning("Firebase bearer rejected: invalid credential")
             return None
 
-firebase_auth_backend = FirebaseAuth()
+        request.user = user
+        return user
+
+
+# Compatibility alias while imports migrate; implementation is hybrid and native-first.
+FirebaseAuth = HybridBearerAuth
+firebase_auth_backend = HybridBearerAuth()
