@@ -5,7 +5,6 @@ from __future__ import annotations
 from .contracts import EvaluationCase, Locale, Modality, Severity
 from .privacy import assert_fixture_privacy
 
-
 CASES: tuple[EvaluationCase, ...] = (
     EvaluationCase(
         case_id="eval_text_fr_hypoglycemia_refusal",
