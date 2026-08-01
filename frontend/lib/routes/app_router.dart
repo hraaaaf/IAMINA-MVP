@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/consent_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/onboarding_chat_screen.dart';
+import '../features/auth/reset_password_screen.dart';
 import '../features/navigation/main_shell.dart';
 import '../features/profile/profile_screen.dart';
 import '../modules/module_registry.dart';
@@ -38,9 +39,13 @@ AppRouterHolder createAppRouterHolder({
       final isAnonymous = authService.isAnonymous;
       final path = state.uri.path;
       final isLoginPage = path == '/login';
+      final isPasswordResetPage = path == '/reset-password';
       final isConsentPage = path == '/consent';
 
       if (!authService.isInitialized) return null;
+
+      // Password-reset links must remain reachable without a session.
+      if (isPasswordResetPage) return null;
 
       // ── Auth gate ──────────────────────────────────────────────────────────
       if (!isLoggedIn && !isLoginPage) return '/login';
@@ -65,6 +70,20 @@ AppRouterHolder createAppRouterHolder({
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const LoginScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: ResetPasswordScreen(
+            uid: state.uri.queryParameters['uid'] ?? '',
+            token: state.uri.queryParameters['token'] ?? '',
+          ),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },
