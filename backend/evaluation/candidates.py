@@ -14,16 +14,23 @@ class Candidate:
     status: str = "pending_evidence"
 
 
+_ALL_MODALITIES = tuple(Modality)
+
 CANDIDATES: tuple[Candidate, ...] = (
-    Candidate("gemini", tuple(Modality)),
-    Candidate("openai", (Modality.TEXT, Modality.STT, Modality.DOCUMENT_OCR, Modality.GLUCOMETER_OCR, Modality.MEAL_VISION)),
-    Candidate("claude", (Modality.TEXT, Modality.DOCUMENT_OCR, Modality.MEAL_VISION)),
+    Candidate("gemini", _ALL_MODALITIES),
+    Candidate("openai", _ALL_MODALITIES),
+    Candidate(
+        "claude",
+        (Modality.TEXT, Modality.DOCUMENT_OCR, Modality.MEAL_VISION),
+    ),
     Candidate("kimi", (Modality.TEXT,)),
     Candidate("mistral", (Modality.TEXT, Modality.DOCUMENT_OCR)),
-    Candidate("qwen", (Modality.TEXT, Modality.STT, Modality.DOCUMENT_OCR, Modality.GLUCOMETER_OCR, Modality.MEAL_VISION)),
-    Candidate("local", tuple(Modality)),
+    Candidate("qwen", _ALL_MODALITIES),
+    Candidate("local", _ALL_MODALITIES),
 )
 
 
 def candidates_for(modality: Modality) -> tuple[Candidate, ...]:
-    return tuple(candidate for candidate in CANDIDATES if modality in candidate.modalities)
+    return tuple(
+        candidate for candidate in CANDIDATES if modality in candidate.modalities
+    )
