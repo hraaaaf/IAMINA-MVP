@@ -5,13 +5,19 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
-from evaluation.contracts import EvaluationCase
+from .contracts import EvaluationCase
 
 
 _FORBIDDEN_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("email", re.compile(r"\b[^\s@]+@[^\s@]+\.[^\s@]+\b", re.IGNORECASE)),
     ("phone", re.compile(r"(?<!\d)(?:\+?212|0)[5-7]\d{8}(?!\d)")),
-    ("uuid", re.compile(r"\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b", re.IGNORECASE)),
+    (
+        "uuid",
+        re.compile(
+            r"\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b",
+            re.IGNORECASE,
+        ),
+    ),
     ("moroccan_id", re.compile(r"\b[A-Z]{1,2}\d{5,8}\b")),
 )
 
