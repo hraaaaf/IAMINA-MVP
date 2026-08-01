@@ -2,7 +2,8 @@ name: PR17 finalize roadmap
 
 on:
   push:
-    branches: [feat/p0-mena-sovereign-auth-migration]
+    branches:
+      - feat/p0-mena-sovereign-auth-migration
 
 permissions:
   contents: write
