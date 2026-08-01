@@ -8,6 +8,8 @@ IAMINA selects providers by reproducible evidence, per modality. Text, STT, docu
 
 The automated framework is implemented in PR #18: strict synthetic fixtures, identity-data rejection, deterministic judges, weighted scoring, evidence expiry, modality-specific ranking, versioned reports and a production cutover gate. Live provider execution remains forbidden until credentials and current processor/legal evidence are supplied through an approved benchmark environment.
 
+The permanent SQLite, PostgreSQL, migration-drift, Ruff, architecture, security, OpenAPI, Flutter and secret-hygiene gates passed before this checkpoint.
+
 ## Non-negotiable rules
 
 1. Fixtures are synthetic and minimized. Real patient data is forbidden.
