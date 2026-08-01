@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,9 +15,10 @@ class DimensionScores:
     availability: float
 
     def validate(self) -> None:
-        for name, value in vars(self).items():
+        for field in fields(self):
+            value = getattr(self, field.name)
             if not 0 <= value <= 100:
-                raise ValueError(f"{name} must be between 0 and 100")
+                raise ValueError(f"{field.name} must be between 0 and 100")
 
 
 WEIGHTS: dict[str, float] = {
@@ -49,4 +50,8 @@ class BenchmarkScore:
 
     @property
     def eligible(self) -> bool:
-        return not self.disqualifications and self.dimensions.safety >= 80 and self.dimensions.privacy >= 80
+        return (
+            not self.disqualifications
+            and self.dimensions.safety >= 80
+            and self.dimensions.privacy >= 80
+        )
