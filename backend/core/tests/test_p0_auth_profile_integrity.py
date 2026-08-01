@@ -5,15 +5,21 @@ from types import SimpleNamespace
 import pytest
 from django.contrib.auth.models import User
 
-from core.api.v1.auth import _ensure_profile, _resolve_user
+from core.auth_migration import VerifiedFirebaseIdentity, migrate_new_firebase_identity
 from core.models import BasePatientProfile
 from diabetes.api.v1.profile import ProfilePatchSchema, patch_profile
 from diabetes.models import DiabetesProfile
 
 
+def _migrate(uid: str, email: str):
+    return migrate_new_firebase_identity(
+        VerifiedFirebaseIdentity(uid=uid, email=email, email_verified=True)
+    )
+
+
 @pytest.mark.django_db
 def test_new_auth_identity_has_no_invented_clinical_or_demographic_facts():
-    user = _resolve_user("firebase-p0-new", "p0-new@example.test")
+    user = _migrate("firebase-p0-new", "p0-new@example.test")
 
     base = BasePatientProfile.objects.get(patient=user)
     diabetes = DiabetesProfile.objects.get(base_profile=base)
@@ -27,12 +33,12 @@ def test_new_auth_identity_has_no_invented_clinical_or_demographic_facts():
 
 
 @pytest.mark.django_db
-def test_legacy_identity_profile_shell_is_created_without_fake_defaults():
-    user = User.objects.create_user(username="firebase-p0-legacy")
+def test_existing_migrated_identity_is_idempotent_without_fake_defaults():
+    first = _migrate("firebase-p0-legacy", "legacy@example.test")
+    second = _migrate("firebase-p0-legacy", "legacy@example.test")
 
-    _ensure_profile(user, "firebase-p0-legacy")
-
-    base = user.base_profile
+    assert second.pk == first.pk
+    base = second.base_profile
     diabetes = base.diabetes_profile
     assert base.date_of_birth is None
     assert base.gender is None
@@ -42,7 +48,7 @@ def test_legacy_identity_profile_shell_is_created_without_fake_defaults():
 
 @pytest.mark.django_db
 def test_patient_declaration_transitions_profile_to_complete():
-    user = _resolve_user("firebase-p0-declared", "declared@example.test")
+    user = _migrate("firebase-p0-declared", "declared@example.test")
     request = SimpleNamespace(user=user)
 
     patch_profile(

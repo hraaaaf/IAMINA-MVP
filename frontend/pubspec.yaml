@@ -17,9 +17,12 @@ dependencies:
   # Routing
   go_router: ^14.1.0
 
-  # Firebase
+  # Firebase — temporary migration credential only
   firebase_auth: ^5.1.0
   firebase_core: ^3.3.0
+
+  # Sovereign IAMINA bearer storage
+  flutter_secure_storage: ^10.3.1
 
   # Offline-first database
   drift: ^2.20.0

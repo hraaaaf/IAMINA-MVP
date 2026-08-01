@@ -6,6 +6,187 @@
     "description": "Diabetes companion API \u2014 Flutter web/iOS/Android + 3rd party integrations"
   },
   "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "core_api_v1_auth_register_native",
+        "summary": "Register Native",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a sovereign Django identity without fabricating patient facts.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NativeRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "core_api_v1_auth_login_native",
+        "summary": "Login Native",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Authenticate one Django account using a normalized email identifier.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NativeLoginRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "core_api_v1_auth_current_identity",
+        "summary": "Current Identity",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "core_api_v1_auth_logout_native",
+        "summary": "Logout Native",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/password": {
+      "post": {
+        "operationId": "core_api_v1_auth_set_native_password",
+        "summary": "Set Native Password",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Establish or rotate the native credential without weakening ownership.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/v1/auth/password/reset/request": {
+      "post": {
+        "operationId": "core_api_v1_auth_request_password_reset",
+        "summary": "Request Password Reset",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Send a native recovery link without disclosing account existence.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/v1/auth/password/reset/confirm": {
+      "post": {
+        "operationId": "core_api_v1_auth_confirm_password_reset",
+        "summary": "Confirm Password Reset",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Consume a one-time Django recovery token and revoke prior IAMINA tokens.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/v1/auth/firebase": {
       "post": {
         "operationId": "core_api_v1_auth_firebase_auth",
@@ -23,7 +204,7 @@
             }
           }
         },
-        "description": "Verify Firebase JWT and link/create Django User.\n\nFlow:\n  1. Verify id_token with Firebase Admin SDK \u2192 raises 401 on failure.\n  2. Extract uid (stable) + email from decoded payload.\n  3. Look up Django User by firebase_uid on BasePatientProfile (stable key).\n     Fall back to username/email for legacy identities.\n  4. Create identity + empty profile shells if brand new.\n  5. Sync firebase_uid + email on every login.\n  6. Establish Django session for web/PWA clients.\n\nClinical/demographic fields remain NULL until explicitly declared.",
+        "description": "Migrate or resolve one verified Firebase identity, then issue IAMINA auth.",
         "tags": [
           "auth"
         ],
@@ -37,6 +218,46 @@
           },
           "required": true
         }
+      }
+    },
+    "/api/v1/auth/firebase/link": {
+      "post": {
+        "operationId": "core_api_v1_auth_link_firebase_identity",
+        "summary": "Link Firebase Identity",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Explicitly attach a verified Firebase UID to the current Django account.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirebaseAuthRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      },
+      "delete": {
+        "operationId": "core_api_v1_auth_unlink_firebase_identity",
+        "summary": "Unlink Firebase Identity",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "description": "Remove the migration credential only when native recovery is available.",
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/demo/scenarios": {
@@ -88,7 +309,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           }
         ]
       }
@@ -170,7 +391,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -208,7 +429,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -252,7 +473,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -292,7 +513,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -341,7 +562,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -382,7 +603,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -412,7 +633,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -451,7 +672,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -486,7 +707,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -536,7 +757,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -584,7 +805,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -614,7 +835,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -653,7 +874,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -694,7 +915,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -756,7 +977,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -786,7 +1007,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -809,13 +1030,13 @@
             }
           }
         },
-        "description": "Record explicit AI processing consent (RGPD Art. 7).",
+        "description": "Record explicit AI processing consent without inventing patient facts.",
         "tags": [
           "account"
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -838,13 +1059,13 @@
             }
           }
         },
-        "description": "Withdraw AI processing consent. AI features are suspended until re-consent.",
+        "description": "Withdraw AI processing consent. AI features remain suspended until re-consent.",
         "tags": [
           "account"
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -862,7 +1083,7 @@
             "description": "OK"
           }
         },
-        "description": "Full RGPD erasure. Cascade-deletes all patient data.\nRequires explicit confirmation string to prevent accidental calls.\n\nPreserved (immutable audit trail):\n  - AuditLog rows (patient FK \u2192 NULL)",
+        "description": "Delete the authenticated patient's account and associated patient data.",
         "tags": [
           "account"
         ],
@@ -878,7 +1099,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -912,7 +1133,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -936,7 +1157,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -988,7 +1209,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1063,7 +1284,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1104,7 +1325,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1150,7 +1371,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1191,7 +1412,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1233,7 +1454,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1274,7 +1495,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1315,7 +1536,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1356,7 +1577,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1400,7 +1621,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1463,7 +1684,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1515,7 +1736,7 @@
         },
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1550,7 +1771,7 @@
         ],
         "security": [
           {
-            "FirebaseAuth": []
+            "HybridBearerAuth": []
           },
           {
             "SessionAuth": []
@@ -1569,11 +1790,21 @@
           "message": {
             "title": "Message",
             "type": "string"
+          },
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "token_type": {
+            "default": "Bearer",
+            "title": "Token Type",
+            "type": "string"
           }
         },
         "required": [
           "user",
-          "message"
+          "message",
+          "access_token"
         ],
         "title": "AuthResponse",
         "type": "object"
@@ -1611,13 +1842,59 @@
         "title": "UserResponse",
         "type": "object"
       },
-      "FirebaseAuthRequest": {
+      "NativeRegisterRequest": {
         "properties": {
-          "id_token": {
-            "title": "Id Token",
+          "email": {
+            "title": "Email",
             "type": "string"
           },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
+          "first_name": {
+            "default": "",
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "default": "",
+            "title": "Last Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "NativeRegisterRequest",
+        "type": "object"
+      },
+      "NativeLoginRequest": {
+        "properties": {
           "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "NativeLoginRequest",
+        "type": "object"
+      },
+      "SetPasswordRequest": {
+        "properties": {
+          "new_password": {
+            "title": "New Password",
+            "type": "string"
+          },
+          "current_password": {
             "anyOf": [
               {
                 "type": "string"
@@ -1626,7 +1903,56 @@
                 "type": "null"
               }
             ],
-            "title": "Email"
+            "title": "Current Password"
+          }
+        },
+        "required": [
+          "new_password"
+        ],
+        "title": "SetPasswordRequest",
+        "type": "object"
+      },
+      "PasswordResetRequest": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PasswordResetRequest",
+        "type": "object"
+      },
+      "PasswordResetConfirmRequest": {
+        "properties": {
+          "uid": {
+            "title": "Uid",
+            "type": "string"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "new_password": {
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uid",
+          "token",
+          "new_password"
+        ],
+        "title": "PasswordResetConfirmRequest",
+        "type": "object"
+      },
+      "FirebaseAuthRequest": {
+        "properties": {
+          "id_token": {
+            "title": "Id Token",
+            "type": "string"
           }
         },
         "required": [
@@ -3642,7 +3968,7 @@
       }
     },
     "securitySchemes": {
-      "FirebaseAuth": {
+      "HybridBearerAuth": {
         "type": "http",
         "scheme": "bearer"
       },
