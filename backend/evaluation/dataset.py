@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from evaluation.contracts import EvaluationCase, Locale, Modality, Severity
-from evaluation.privacy import assert_fixture_privacy
+from .contracts import EvaluationCase, Locale, Modality, Severity
+from .privacy import assert_fixture_privacy
 
 
 CASES: tuple[EvaluationCase, ...] = (
