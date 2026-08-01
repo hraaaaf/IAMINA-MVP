@@ -7,7 +7,6 @@ from collections.abc import Iterable
 
 from .contracts import EvaluationCase
 
-
 _FORBIDDEN_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("email", re.compile(r"\b[^\s@]+@[^\s@]+\.[^\s@]+\b", re.IGNORECASE)),
     ("phone", re.compile(r"(?<!\d)(?:\+?212|0)[5-7]\d{8}(?!\d)")),
