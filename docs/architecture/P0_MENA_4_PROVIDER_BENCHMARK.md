@@ -4,6 +4,10 @@
 
 IAMINA selects providers by reproducible evidence, per modality. Text, STT, document OCR, glucometer OCR and meal vision are evaluated independently.
 
+## Current checkpoint
+
+The automated framework is implemented in PR #18: strict synthetic fixtures, identity-data rejection, deterministic judges, weighted scoring, evidence expiry, modality-specific ranking, versioned reports and a production cutover gate. Live provider execution remains forbidden until credentials and current processor/legal evidence are supplied through an approved benchmark environment.
+
 ## Non-negotiable rules
 
 1. Fixtures are synthetic and minimized. Real patient data is forbidden.
