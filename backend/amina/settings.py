@@ -64,6 +64,8 @@ MIDDLEWARE = [
     # ── Diabetes Clinical Shield ──────────────────────────────
     # UnitGuard: normalises glucose units (mg/dL ↔ g/L ↔ mmol/L) on all API writes.
     'diabetes.middleware.unit_guard.UnitGuardMiddleware',
+    # Emergency operating mode: truthfully decorates every emergency response.
+    'core.middleware.emergency_operating_mode.EmergencyOperatingModeMiddleware',
     # TriageVital: detects medical emergencies in chat; bypasses LLM if triggered.
     'core.middleware.triage_vital.TriageVitalMiddleware',
 ]
@@ -188,4 +190,3 @@ CACHES = {
         "TIMEOUT": 300,  # 5 min default TTL
     }
 }
-
