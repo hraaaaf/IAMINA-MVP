@@ -42,9 +42,15 @@ def test_educational_questions_remain_allowed(message):
     assert evaluate_input_safety(message).action == ALLOW
 
 
+def _restore_real_conversation_gate(monkeypatch, conversation):
+    """Neutralize direct global substitutions left by older regression tests."""
+    monkeypatch.setattr(conversation, "evaluate_input_safety", evaluate_input_safety)
+
+
 def test_sync_conversation_block_never_initializes_gateway(monkeypatch):
     from companion import conversation
 
+    _restore_real_conversation_gate(monkeypatch, conversation)
     monkeypatch.setattr(
         conversation,
         "get_gateway_llm",
@@ -63,6 +69,7 @@ def test_sync_conversation_block_never_initializes_gateway(monkeypatch):
 def test_stream_conversation_block_never_initializes_gateway(monkeypatch):
     from companion import conversation
 
+    _restore_real_conversation_gate(monkeypatch, conversation)
     monkeypatch.setattr(
         conversation,
         "get_gateway_llm",
