@@ -23,6 +23,7 @@ Cost per 10-sec voice message (Gemini Audio):
   ─────────────────────────────────────────────
   Total: ~$0.000137 / message
 """
+
 from __future__ import annotations
 
 import logging
@@ -49,9 +50,10 @@ router = Router(tags=["voice"])
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
+
 class VoiceChatResponse(BaseModel):
-    transcript: str          # what IAmina heard (shown in Flutter as subtitle)
-    reply: str               # IAmina text reply (Flutter reads it via TTS)
+    transcript: str  # what IAmina heard (shown in Flutter as subtitle)
+    reply: str  # IAmina text reply (Flutter reads it via TTS)
     conversation_id: str
     timestamp: str
     is_emergency: bool = False
@@ -59,7 +61,7 @@ class VoiceChatResponse(BaseModel):
 
 
 class TranscribeResponse(BaseModel):
-    transcript: str          # verbatim STT result — no IAmina pipeline
+    transcript: str  # verbatim STT result — no IAmina pipeline
     confidence: str = "medium"  # "high" | "medium" | "low"
 
 
@@ -67,37 +69,33 @@ class TranscribeResponse(BaseModel):
 # Browsers and mobile OS report non-canonical types — map them to canonical ones.
 
 _MIME_ALIASES: dict[str, str] = {
-    "audio/m4a":              "audio/mp4",
-    "audio/x-m4a":            "audio/mp4",
-    "audio/mp3":              "audio/mpeg",
-    "audio/x-wav":            "audio/wav",
-    "audio/x-ogg":            "audio/ogg",
+    "audio/m4a": "audio/mp4",
+    "audio/x-m4a": "audio/mp4",
+    "audio/mp3": "audio/mpeg",
+    "audio/x-wav": "audio/wav",
+    "audio/x-ogg": "audio/ogg",
     "audio/webm;codecs=opus": "audio/webm",
-    "audio/webm;codecs=pcm":  "audio/webm",
+    "audio/webm;codecs=pcm": "audio/webm",
 }
 
 # Error messages — friendly, actionable, in French (will be TTS-read)
 _ERROR_REPLIES: dict[str, str] = {
-    "audio_too_large":      (
-        "Le fichier audio est trop grand (10 Mo max). "
-        "Envoie un message plus court, stp."
+    "audio_too_large": (
+        "Le fichier audio est trop grand (10 Mo max). Envoie un message plus court, stp."
     ),
-    "unsupported_format":   (
-        "Ce format audio n'est pas pris en charge. "
-        "Utilise mp4, m4a, webm ou wav."
+    "unsupported_format": (
+        "Ce format audio n'est pas pris en charge. Utilise mp4, m4a, webm ou wav."
     ),
     "transcription_failed": (
         "Je n'ai pas réussi à comprendre le message vocal. "
         "Peux-tu réessayer ou écrire ta question ?"
     ),
-    "empty_transcript":     (
-        "Je n'ai rien entendu. "
-        "Vérifie ton micro et réessaie."
-    ),
+    "empty_transcript": ("Je n'ai rien entendu. Vérifie ton micro et réessaie."),
 }
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
+
 
 @router.post("/ai/voice", response=VoiceChatResponse)
 @patient_ai_egress_scope("voice_chat", AUDIO, TEXT)
@@ -122,7 +120,7 @@ def voice_chat(
     user = request.user
 
     # ① Validate MIME type
-    raw_mime  = (audio.content_type or "audio/mp4").split(";")[0].strip()
+    raw_mime = (audio.content_type or "audio/mp4").split(";")[0].strip()
     mime_type = _MIME_ALIASES.get(audio.content_type or "", raw_mime)
     if mime_type not in SUPPORTED_MIME_TYPES:
         return _error(user, "unsupported_format")
@@ -145,10 +143,19 @@ def voice_chat(
     if not transcript:
         return _error(user, "empty_transcript")
 
-    # ⑤ Triage on transcript (TriageVitalMiddleware can't see multipart bodies)
-    from core.middleware.triage_vital import _pick_emergency_response, detect_vital_distress
+    # ⑤ Transcript safety. STT is required before intent is known, but blocked
+    # content must not initialize any downstream generative chat LLM.
+    from core.input_safety import (
+        INSULIN_BLOCK,
+        PRESCRIPTION_BLOCK,
+        URGENT,
+        evaluate_input_safety,
+    )
+    from core.medical_safety import no_prescription_message
+    from core.middleware.triage_vital import _pick_emergency_response
 
-    if detect_vital_distress(transcript):
+    decision = evaluate_input_safety(transcript, language)
+    if decision.action == URGENT:
         logger.critical(
             "TriageVital(voice): EMERGENCY — user_id=%s | snippet='%s'",
             user.id,
@@ -159,31 +166,44 @@ def voice_chat(
             "transcript": transcript,
             "timestamp": timezone.now().isoformat(),
         }
+    if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
+        return {
+            "transcript": transcript,
+            "reply": no_prescription_message(language),
+            "conversation_id": f"conv-{user.id}",
+            "timestamp": timezone.now().isoformat(),
+            "is_emergency": False,
+            "reply_language": language,
+        }
 
     # ⑥ IAmina chat pipeline — identical to text chat
     from companion.conversation import detect_language
     from companion.core import IAmina
 
     iamina = IAmina(user, language)
-    reply  = iamina.chat(transcript, context_days=context_days)
+    reply = iamina.chat(transcript, context_days=context_days)
     reply_language = detect_language(transcript, language)
 
     logger.info(
         "voice_chat: user=%s lang=%s transcript=%d chars reply=%d chars",
-        user.id, language, len(transcript), len(reply),
+        user.id,
+        language,
+        len(transcript),
+        len(reply),
     )
 
     return {
-        "transcript":       transcript,
-        "reply":            reply,
-        "conversation_id":  f"conv-{user.id}",
-        "timestamp":        timezone.now().isoformat(),
-        "is_emergency":     False,
-        "reply_language":   reply_language,
+        "transcript": transcript,
+        "reply": reply,
+        "conversation_id": f"conv-{user.id}",
+        "timestamp": timezone.now().isoformat(),
+        "is_emergency": False,
+        "reply_language": reply_language,
     }
 
 
 # ── Transcribe-only endpoint (no IAmina pipeline) ────────────────────────────
+
 
 @router.post("/ai/transcribe", response=TranscribeResponse)
 @patient_ai_egress_scope("voice_transcription", AUDIO)
@@ -202,7 +222,7 @@ def transcribe_audio(
       transcript — verbatim transcription of the audio clip
       confidence — "high" | "medium" | "low" (length heuristic)
     """
-    raw_mime  = (audio.content_type or "audio/mp4").split(";")[0].strip()
+    raw_mime = (audio.content_type or "audio/mp4").split(";")[0].strip()
     mime_type = _MIME_ALIASES.get(audio.content_type or "", raw_mime)
     if mime_type not in SUPPORTED_MIME_TYPES:
         return {"transcript": "", "confidence": "low"}
@@ -224,6 +244,7 @@ def transcribe_audio(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _get_language(user) -> str:
     try:
         base = BasePatientProfile.objects.get(patient=user)
@@ -236,9 +257,9 @@ def _get_language(user) -> str:
 def _error(user, code: str) -> dict:
     """Graceful degradation — returns an IAmina reply the Flutter TTS can read."""
     return {
-        "transcript":      "",
-        "reply":           _ERROR_REPLIES.get(code, "Une erreur est survenue. Réessaie."),
+        "transcript": "",
+        "reply": _ERROR_REPLIES.get(code, "Une erreur est survenue. Réessaie."),
         "conversation_id": f"conv-{user.id}",
-        "timestamp":       timezone.now().isoformat(),
-        "is_emergency":    False,
+        "timestamp": timezone.now().isoformat(),
+        "is_emergency": False,
     }
