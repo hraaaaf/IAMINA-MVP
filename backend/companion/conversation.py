@@ -263,7 +263,7 @@ def chat(
 ) -> str:
     """Mode 4: Free chat with session-cached clinical context + deep memory + state."""
     # 0. Deterministic safety guards — must run BEFORE any LLM initialization
-    decision = evaluate_input_safety(message, language)
+    decision = evaluate_input_safety(message)
     if decision.action == URGENT:
         _append_turn(patient, "user", message)
         reply = _CHAT_EMERGENCY_AR if language == "ar-MA" else _CHAT_EMERGENCY_FR
@@ -443,7 +443,7 @@ def stream_chat(
     Memory + DB persistence happen after the stream completes.
     """
     # 0. Deterministic safety guards — must run BEFORE any LLM initialization
-    decision = evaluate_input_safety(message, language)
+    decision = evaluate_input_safety(message)
     if decision.action == URGENT:
         _append_turn(patient, "user", message)
         reply = _CHAT_EMERGENCY_AR if language == "ar-MA" else _CHAT_EMERGENCY_FR
