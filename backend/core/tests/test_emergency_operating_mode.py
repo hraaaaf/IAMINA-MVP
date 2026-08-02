@@ -3,10 +3,10 @@ from datetime import date
 import pytest
 
 from core.emergency_operating_mode import (
-    MONITORED_HUMAN,
-    SELF_CARE_ONLY,
     EmergencyOperatingPolicy,
+    MONITORED_HUMAN,
     PILOT_EMERGENCY_POLICY,
+    SELF_CARE_ONLY,
     append_emergency_disclosure,
     decorate_emergency_payload,
     emergency_disclosure,
