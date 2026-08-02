@@ -1,0 +1,235 @@
+name: Apply pilot emergency operating mode
+
+on:
+  push:
+    branches: [feat/pilot-emergency-operating-mode]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/pilot-emergency-operating-mode
+      - name: Wire emergency disclosures and metadata
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file_path = Path(path)
+              text = file_path.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one match, found {count}: {old[:100]!r}')
+              file_path.write_text(text.replace(old, new, 1))
+
+          # Triage middleware: structured payloads always expose the truthful mode.
+          replace_once(
+              'backend/core/middleware/triage_vital.py',
+              'from django.utils import timezone\n',
+              'from django.utils import timezone\n\nfrom core.emergency_operating_mode import decorate_emergency_payload\n',
+          )
+          replace_once(
+              'backend/core/middleware/triage_vital.py',
+              '''    for token in _DARIJA_INDICATORS:
+        if re.search(r"\\b" + re.escape(token) + r"\\b", lowered):
+            return _EMERGENCY_RESPONSE_DARIJA
+    return _EMERGENCY_RESPONSE_FR
+''',
+              '''    for token in _DARIJA_INDICATORS:
+        if re.search(r"\\b" + re.escape(token) + r"\\b", lowered):
+            return decorate_emergency_payload(
+                _EMERGENCY_RESPONSE_DARIJA,
+                language="ar-MA",
+            )
+    return decorate_emergency_payload(_EMERGENCY_RESPONSE_FR, language="fr")
+''',
+          )
+          replace_once(
+              'backend/core/middleware/triage_vital.py',
+              '''                response_payload = {
+                    "reply": crisis_support_response(region=region, lang=lang),
+                    "conversation_id": "TRIAGE_CRISIS",
+                    "is_emergency": True,
+                    "timestamp": timezone.now().isoformat(),
+                }
+                return JsonResponse(response_payload, status=200)
+''',
+              '''                response_payload = decorate_emergency_payload(
+                    {
+                        "reply": crisis_support_response(region=region, lang=lang),
+                        "conversation_id": "TRIAGE_CRISIS",
+                        "is_emergency": True,
+                        "timestamp": timezone.now().isoformat(),
+                    },
+                    language=lang,
+                )
+                return JsonResponse(response_payload, status=200)
+''',
+          )
+
+          # Direct companion use: no middleware assumption and no false monitoring claim.
+          replace_once(
+              'backend/companion/conversation.py',
+              'from core.contracts.domain_context import DomainContext\n',
+              'from core.contracts.domain_context import DomainContext\nfrom core.emergency_operating_mode import append_emergency_disclosure\n',
+          )
+          old_sync = '''        reply = _CHAT_EMERGENCY_AR if language == "ar-MA" else _CHAT_EMERGENCY_FR
+        _append_turn(patient, "assistant", reply)
+        return reply
+'''
+          new_sync = '''        reply = _CHAT_EMERGENCY_AR if language == "ar-MA" else _CHAT_EMERGENCY_FR
+        reply = append_emergency_disclosure(reply, language)
+        _append_turn(patient, "assistant", reply)
+        return reply
+'''
+          count = Path('backend/companion/conversation.py').read_text().count(old_sync)
+          if count != 1:
+              raise SystemExit(f'conversation sync emergency block count={count}')
+          replace_once('backend/companion/conversation.py', old_sync, new_sync)
+
+          old_stream = '''        reply = _CHAT_EMERGENCY_AR if language == "ar-MA" else _CHAT_EMERGENCY_FR
+        _append_turn(patient, "assistant", reply)
+        yield reply
+        return
+'''
+          new_stream = '''        reply = _CHAT_EMERGENCY_AR if language == "ar-MA" else _CHAT_EMERGENCY_FR
+        reply = append_emergency_disclosure(reply, language)
+        _append_turn(patient, "assistant", reply)
+        yield reply
+        return
+'''
+          replace_once('backend/companion/conversation.py', old_stream, new_stream)
+
+          # SSE urgent fast path: mandatory disclosure in the streamed token.
+          replace_once(
+              'backend/ai/api/v1/ai.py',
+              '''            emergency_msg = (
+                "⚠️ Alerte : Votre glycémie semble être dans une zone critique. "
+                "Veuillez suivre les protocoles d'urgence ou contacter votre médecin."
+            )
+            yield f"data: {json.dumps({'token': emergency_msg})}\\n\\n"
+''',
+              '''            from core.emergency_operating_mode import append_emergency_disclosure
+
+            emergency_msg = append_emergency_disclosure(
+                (
+                    "⚠️ Alerte : Votre glycémie semble être dans une zone critique. "
+                    "Veuillez contacter immédiatement les services d'urgence ou une "
+                    "personne de confiance."
+                ),
+                language,
+            )
+            yield f"data: {json.dumps({'token': emergency_msg})}\\n\\n"
+''',
+          )
+
+          # Integration tests.
+          test_path = Path('backend/core/tests/test_emergency_operating_mode_paths.py')
+          test_path.write_text(r'''import json
+from types import SimpleNamespace
+
+from django.test import RequestFactory
+
+from core.emergency_operating_mode import SELF_CARE_ONLY, emergency_disclosure
+from core.middleware.triage_vital import _pick_emergency_response
+
+
+def test_triage_payload_carries_mode_and_truthful_disclosure():
+    payload = _pick_emergency_response("glycémie très basse")
+    assert payload["emergency_operating_mode"] == SELF_CARE_ONLY
+    assert payload["human_monitoring"] is False
+    assert emergency_disclosure("fr") in payload["reply"]
+
+
+def test_direct_companion_emergency_never_initializes_gateway(monkeypatch):
+    from companion import conversation
+
+    monkeypatch.setattr(
+        conversation,
+        "get_gateway_llm",
+        lambda: (_ for _ in ()).throw(AssertionError("gateway initialized")),
+    )
+    reply = conversation.chat(
+        "glycémie 35",
+        memory=None,
+        deep=None,
+        patient=None,
+        language="fr",
+    )
+    assert emergency_disclosure("fr") in reply
+
+
+def test_sse_emergency_discloses_self_care_only_mode(monkeypatch):
+    from ai.api.v1 import ai
+
+    request = RequestFactory().get('/api/v1/ai/chat/stream')
+    request.user = SimpleNamespace(id=11)
+    monkeypatch.setattr(ai, '_get_patient_language', lambda user: 'en')
+    monkeypatch.setattr(ai, 'track', lambda *args, **kwargs: None)
+    response = ai.chat_stream(request, message='blood sugar 35', context_days=14)
+    body = b''.join(response.streaming_content).decode()
+    first_event = next(line for line in body.splitlines() if line.startswith('data: {'))
+    payload = json.loads(first_event.removeprefix('data: '))
+    assert emergency_disclosure('en') in payload['token']
+''')
+
+          Path('docs/operations/PILOT_EMERGENCY_OPERATING_MODE.md').parent.mkdir(parents=True, exist_ok=True)
+          Path('docs/operations/PILOT_EMERGENCY_OPERATING_MODE.md').write_text('''# Pilot Emergency Operating Mode
+
+## Adopted mode
+
+`SELF_CARE_ONLY`
+
+IAmina does not operate a monitored clinical response center. Emergency detections
+produce deterministic guidance and direct the user to local emergency services or
+a trusted person. No professional is automatically notified, and no response may
+imply otherwise.
+
+## Runtime requirements
+
+- Every emergency reply includes the no-monitoring disclosure.
+- Structured replies expose `emergency_operating_mode=SELF_CARE_ONLY` and
+  `human_monitoring=false`.
+- Emergency detection bypasses generative conversation.
+- Country-specific contact details are used only when the country is explicitly
+  confirmed and the resource registry is current.
+- Missing or stale country resources fall back to generic emergency guidance.
+
+## Enabling monitored mode
+
+`MONITORED_HUMAN` remains invalid unless all of the following exist and are current:
+
+- a real monitored channel;
+- a named escalation owner;
+- documented staffed hours;
+- a completed operational drill;
+- approved incident, privacy and clinical procedures.
+
+An environment variable or configured credential alone cannot enable monitored mode.
+
+## Review
+
+Policy owner: IAmina Safety & Compliance  
+Effective: 2026-08-02  
+Review due: 2026-11-02
+''')
+          PY
+          pip install ruff==0.15.17
+          cd backend
+          ruff check --fix core/middleware/triage_vital.py companion/conversation.py ai/api/v1/ai.py core/tests/test_emergency_operating_mode_paths.py
+          ruff format core/middleware/triage_vital.py companion/conversation.py ai/api/v1/ai.py core/tests/test_emergency_operating_mode_paths.py
+          cd ..
+          rm .github/workflows/pilot-emergency-mode-apply.yml
+      - name: Commit integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat(pilot-safety): enforce self-care-only emergency disclosure"
+          git push origin HEAD:feat/pilot-emergency-operating-mode
