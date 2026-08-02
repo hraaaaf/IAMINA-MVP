@@ -32,6 +32,24 @@ AI egress.
 7. SQLite, PostgreSQL, migration drift, Ruff, import-linter, anti-bypass, Bandit,
    OpenAPI, Flutter analyze and secret hygiene are green.
 
+## Automated certification outcome
+
+The implementation passed the complete repository gate on commit
+`cd5d57602c6a7f46d62e016a5dbe4c8617b25e3a` before the Roadmap checkpoint:
+
+- SQLite full suite: pass;
+- PostgreSQL 16 full suite: pass;
+- 1,019 tests passed with 3 expected failures and no unexpected failure;
+- migration drift: pass;
+- Ruff and import boundaries: pass;
+- LLM and AI-egress anti-bypass checks: pass;
+- Bandit: pass;
+- OpenAPI: current;
+- Flutter analyze: pass;
+- tracked-secret hygiene: pass.
+
+The final documentation commit must pass the same permanent gates before merge.
+
 ## Non-claims
 
 Automated tests do not replace native-speaker review, clinical approval, emergency
