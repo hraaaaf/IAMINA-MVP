@@ -6,8 +6,8 @@ from core.medical_safety import (
     is_insulin_prescription_request,
     is_treatment_prescription_request,
 )
-from core.middleware.triage_vital import detect_vital_distress
 from core.triage_classification import TriageClass, classify
+from core.vital_distress import detect_vital_distress
 
 
 @dataclass(frozen=True)
@@ -33,7 +33,7 @@ def evaluate_input_safety(
         return InputSafetyDecision(URGENT, "suicidal_ideation")
     if classification is TriageClass.GLYCEMIC_EMERGENCY:
         return InputSafetyDecision(URGENT, "glycemic_emergency")
-    if detect_vital_distress(message or ""):
+    if detect_vital_distress(message):
         return InputSafetyDecision(URGENT, "vital_distress")
     if is_insulin_prescription_request(message):
         return InputSafetyDecision(INSULIN_BLOCK, "insulin_prescription")
