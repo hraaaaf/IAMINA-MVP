@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-01 — P0-MENA-4 execution infrastructure prepared through PRs #18–#21; live provider runs remain evidence-gated.
+> **Last updated:** 2026-08-02 — deterministic therapeutic-refusal and visible-output safety gates validated in PR #23.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -30,9 +30,9 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0-MENA-2 — locale + safety contract | 50% | 🟡 Human review blocked | PR #16; native review and full RTL audit remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 All execution paths prepared; live runs blocked | Framework PR #18; evidence-gated text/STT/vision preparation PRs #19–#21 |
-| Pilot safety/compliance gate | 15% | 🔴 Incomplete | 2 of 13 explicit gates complete |
+| Pilot safety/compliance gate | 31% | 🟡 Technical certification advancing | 4 of 13 explicit gates complete; PR #23 closes deterministic refusal and visible-output parity |
 
-**MENA critical-path completion:** 24 of 41 explicit roadmap tasks closed, approximately **59%**.
+**MENA critical-path completion:** 26 of 41 explicit roadmap tasks closed, approximately **63%**.
 
 Preparation work does not close a live benchmark task and does not increase the critical-path numerator.
 
@@ -165,8 +165,8 @@ No provider score, decision or production approval may be inferred from preparat
 
 # Pilot safety/compliance gate — before one real patient
 
-- [ ] Prove insulin-dose and treatment requests are refused deterministically without an LLM call.
-- [ ] Prove doctor-facing and summary outputs pass the same no-prescription policy.
+- [x] Prove insulin-dose and treatment requests are refused deterministically without a generative chat LLM call. **PR #23 covers sync chat, SSE and post-STT voice paths across FR/EN/AR/Darija.**
+- [x] Prove doctor-facing and summary outputs pass the same no-prescription policy. **PR #23 recursively sanitizes generated and fallback structures and verifies observation-only OCR schemas.**
 - [ ] Route emergencies to a monitored human channel or formally adopt a documented self-care-only mode.
 - [ ] Close Darija high-severity review.
 - [x] Enforce base AI/model consent server-side.
@@ -185,5 +185,5 @@ No provider score, decision or production approval may be inferred from preparat
 
 1. Merge the P0-MENA-4E readiness/runbook package after full CI.
 2. Defer live text, STT and vision/OCR runs until evidence and credentials are approved.
-3. Execute all remaining automatable Pilot Safety Gate work.
+3. Continue with emergency operating mode, export, retention/deletion, incident response and secret certification.
 4. Return to native-review and RTL gates when qualified reviewers are available.

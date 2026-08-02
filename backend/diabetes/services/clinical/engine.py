@@ -5,6 +5,7 @@ Step 1: Pure Python rules detect clinical patterns mathematically.
 Step 2: Gemini Flash reformulates patterns into empathetic French insights.
 Step 3: Fallback to template messages if no API key is available.
 """
+
 import json
 import logging
 from collections import defaultdict
@@ -13,6 +14,7 @@ from statistics import mean, stdev
 from typing import TYPE_CHECKING
 
 from core.ai_egress import TEXT, assert_ai_egress_allowed
+from core.medical_safety import sanitize_patient_visible
 from llm.factory import get_llm
 
 from .sql_analytics import AnalyticalKPIs
@@ -28,16 +30,18 @@ logger = logging.getLogger(__name__)
 # 1. DATA STRUCTURES
 # ─────────────────────────────────────────────
 
+
 @dataclass
 class ClinicalPattern:
     """A detected clinical pattern with context data for LLM formatting."""
-    code: str               # Internal code, e.g. "DAWN_PHENOMENON"
-    priority: int           # 1 = critical, 2 = important, 3 = informational
-    icon: str               # Bootstrap icon name
-    title: str              # Short 1-line title (French)
-    evidence: str           # Raw numbers / evidence (shown to LLM — always French/English)
-    fallback_content: str   # French text used if no API key
-    fallback_action: str    # French recommendation text
+
+    code: str  # Internal code, e.g. "DAWN_PHENOMENON"
+    priority: int  # 1 = critical, 2 = important, 3 = informational
+    icon: str  # Bootstrap icon name
+    title: str  # Short 1-line title (French)
+    evidence: str  # Raw numbers / evidence (shown to LLM — always French/English)
+    fallback_content: str  # French text used if no API key
+    fallback_action: str  # French recommendation text
     # ── Darija (ar-MA) overrides — used when patient preferred_language == "ar-MA" ──
     title_darija: str = ""
     fallback_content_darija: str = ""
@@ -47,14 +51,16 @@ class ClinicalPattern:
 @dataclass
 class ClinicalReport:
     """Full clinical analysis report returned by the engine."""
-    kpis: AnalyticalKPIs            # All KPIs computed by SQL
+
+    kpis: AnalyticalKPIs  # All KPIs computed by SQL
     patterns: list[ClinicalPattern] = field(default_factory=list)
-    insights: list[dict] = field(default_factory=list)   # Final formatted insights
+    insights: list[dict] = field(default_factory=list)  # Final formatted insights
 
 
 # ─────────────────────────────────────────────
 # 3. PATTERN DETECTION RULES ENGINE
 # ─────────────────────────────────────────────
+
 
 def _morning_entries(entries):
     """Returns entries logged between 5 AM and 10 AM."""
@@ -115,7 +121,7 @@ def detect_post_exercise_hypo(entries) -> ClinicalPattern | None:
     """
     exercise_days = set()
     for e in entries:
-        if e.exercised == 'yes':
+        if e.exercised == "yes":
             exercise_days.add(e.effective_time.date())
 
     hypo_after_exercise = []
@@ -156,8 +162,8 @@ def detect_stress_correlation(entries) -> ClinicalPattern | None:
     """
     Stress hyperglycemia: Stressed days have significantly higher glucose.
     """
-    stressed = [e for e in entries if e.stressed == 'yes']
-    calm = [e for e in entries if e.stressed == 'no']
+    stressed = [e for e in entries if e.stressed == "yes"]
+    calm = [e for e in entries if e.stressed == "no"]
 
     if len(stressed) < 2 or len(calm) < 2:
         return None
@@ -215,7 +221,7 @@ def detect_sleep_impact(entries) -> ClinicalPattern | None:
             continue
 
         morning_avg = mean(float(e.blood_sugar) for e in curr_morning)
-        had_bad_sleep = any(e.sleep_quality == 'bad' for e in prev_entries)
+        had_bad_sleep = any(e.sleep_quality == "bad" for e in prev_entries)
 
         if had_bad_sleep:
             bad_sleep_mornings.append(morning_avg)
@@ -310,12 +316,31 @@ def detect_food_sensitivity(entries) -> ClinicalPattern | None:
     """
     targets = [
         # Universal
-        'pizza', 'pasta', 'pâtes', 'riz', 'burger', 'fast food', 'baguette', 'pain blanc',
+        "pizza",
+        "pasta",
+        "pâtes",
+        "riz",
+        "burger",
+        "fast food",
+        "baguette",
+        "pain blanc",
         # Moroccan — high glycemic index
-        'couscous', 'harira', 'msemen', 'batbout', 'seffa', 'chebakia', 'rfissa',
-        'pastilla', 'briouats', 'ktefa', 'sellou', 'kaab ghzal',
+        "couscous",
+        "harira",
+        "msemen",
+        "batbout",
+        "seffa",
+        "chebakia",
+        "rfissa",
+        "pastilla",
+        "briouats",
+        "ktefa",
+        "sellou",
+        "kaab ghzal",
         # Moroccan sweets / drinks
-        'atay', 'jus d\'orange', 'cornes de gazelle',
+        "atay",
+        "jus d'orange",
+        "cornes de gazelle",
     ]
     sensitivity_logs = []
 
@@ -327,6 +352,7 @@ def detect_food_sensitivity(entries) -> ClinicalPattern | None:
     if len(sensitivity_logs) >= 2:
         # Most frequent offending meal (not simply the first chronological entry)
         from collections import Counter
+
         meal_counts = Counter(
             (e.meal_description or "repas riche en glucides").strip().lower()
             for e in sensitivity_logs
@@ -378,10 +404,12 @@ def detect_somogyi_rebound(entries) -> ClinicalPattern | None:
 
     for i in range(len(sorted_logs) - 1):
         curr = sorted_logs[i]
-        nxt = sorted_logs[i+1]
+        nxt = sorted_logs[i + 1]
 
         # Hypo at night
-        is_night_hypo = (curr.effective_time.hour >= 22 or curr.effective_time.hour <= 4) and float(curr.blood_sugar) < 72
+        is_night_hypo = (curr.effective_time.hour >= 22 or curr.effective_time.hour <= 4) and float(
+            curr.blood_sugar
+        ) < 72
         # Hyper in the morning (within 10 hours)
         is_morning_hyper = (5 <= nxt.effective_time.hour <= 11) and float(nxt.blood_sugar) > 165
 
@@ -409,8 +437,7 @@ def detect_somogyi_rebound(entries) -> ClinicalPattern | None:
                 "هاد هو 'effet Somogyi' — الكبد كيحل غلوكوز كيفما السكّر هبط فاللّيل."
             ),
             fallback_action_darija=(
-                "ماتصرّرش السكّر فالصباح بشورة. "
-                "هضر مع طبيب ديالك على هاد النمط دالليل."
+                "ماتصرّرش السكّر فالصباح بشورة. هضر مع طبيب ديالك على هاد النمط دالليل."
             ),
         )
     return None
@@ -423,13 +450,13 @@ def detect_fatigue_correlation(entries) -> ClinicalPattern | None:
     Requires at least 2 fatigue days and 2 non-fatigue days.
     """
     fatigue_days = [e for e in entries if getattr(e, "fatigue_level", "ok") != "ok"]
-    normal_days  = [e for e in entries if getattr(e, "fatigue_level", "ok") == "ok"]
+    normal_days = [e for e in entries if getattr(e, "fatigue_level", "ok") == "ok"]
 
     if len(fatigue_days) < 2 or len(normal_days) < 2:
         return None
 
     avg_fatigue = mean(float(e.blood_sugar) for e in fatigue_days)
-    avg_normal  = mean(float(e.blood_sugar) for e in normal_days)
+    avg_normal = mean(float(e.blood_sugar) for e in normal_days)
     delta = avg_fatigue - avg_normal
 
     if delta > 20:
@@ -474,13 +501,13 @@ def detect_illness_impact(entries) -> ClinicalPattern | None:
     Escalated to priority=1 when delta > 80 mg/dL (severe hyperglycemia risk).
     Requires at least 2 sick days and 2 healthy days.
     """
-    sick_entries    = [e for e in entries if getattr(e, "is_sick", "no") == "yes"]
+    sick_entries = [e for e in entries if getattr(e, "is_sick", "no") == "yes"]
     healthy_entries = [e for e in entries if getattr(e, "is_sick", "no") == "no"]
 
     if len(sick_entries) < 2 or len(healthy_entries) < 2:
         return None
 
-    avg_sick    = mean(float(e.blood_sugar) for e in sick_entries)
+    avg_sick = mean(float(e.blood_sugar) for e in sick_entries)
     avg_healthy = mean(float(e.blood_sugar) for e in healthy_entries)
     delta = avg_sick - avg_healthy
 
@@ -517,8 +544,7 @@ def detect_illness_impact(entries) -> ClinicalPattern | None:
             "المرض كيزيد مقاومة الأنسولين — هاد هو قاعدة ADA Sick Day."
         ),
         fallback_action_darija=(
-            "قيس السكّر كل 2-4 ساعات وأنتي مريضة. "
-            "إلا السكّر فاق 300 mg/dL، هضري فوراً مع طبيب ديالك."
+            "قيس السكّر كل 2-4 ساعات وأنتي مريضة. إلا السكّر فاق 300 mg/dL، هضري فوراً مع طبيب ديالك."
         ),
     )
 
@@ -532,8 +558,7 @@ def detect_postmeal_spike(entries) -> ClinicalPattern | None:
     from datetime import timedelta
 
     meal_entries = [
-        e for e in entries
-        if getattr(e, "meal_type", None) and float(e.blood_sugar) > 0
+        e for e in entries if getattr(e, "meal_type", None) and float(e.blood_sugar) > 0
     ]
     if len(meal_entries) < 2:
         return None
@@ -551,7 +576,7 @@ def detect_postmeal_spike(entries) -> ClinicalPattern | None:
             if not getattr(base, "meal_type", None):
                 continue
             base_val = float(base.blood_sugar)
-            for later in day_entries[i + 1:]:
+            for later in day_entries[i + 1 :]:
                 delta_h = (later.effective_time - base.effective_time).total_seconds() / 3600
                 if delta_h > 2:
                     break
@@ -600,6 +625,7 @@ def detect_postmeal_spike(entries) -> ClinicalPattern | None:
 # 4. LLM REFORMULATOR (JSON contract)
 # ─────────────────────────────────────────────
 
+
 def _build_patterns_data(patterns: list[ClinicalPattern]) -> str:
     """Compact evidence block injected into FORMAT_USER."""
     lines = []
@@ -608,7 +634,9 @@ def _build_patterns_data(patterns: list[ClinicalPattern]) -> str:
     return "\n".join(lines)
 
 
-def _parse_insights_json(text: str, patterns: list[ClinicalPattern], language: str = "fr") -> list[dict]:
+def _parse_insights_json(
+    text: str, patterns: list[ClinicalPattern], language: str = "fr"
+) -> list[dict]:
     """Parse JSON array from LLM formatter. Fallback if malformed."""
     clean = text.strip().removeprefix("```json").removesuffix("```").strip()
     pattern_map = {p.code: p for p in patterns}
@@ -628,18 +656,29 @@ def _parse_insights_json(text: str, patterns: list[ClinicalPattern], language: s
         if pattern and item.get("content"):
             # Title: use LLM output if provided, else pick by language
             use_darija = language == "ar-MA"
-            title = item.get("title") or ((pattern.title_darija or pattern.title) if use_darija else pattern.title)
-            fallback_action = (pattern.fallback_action_darija or pattern.fallback_action) if use_darija else pattern.fallback_action
-            result.append({
-                "code":     code,
-                "priority": pattern.priority,
-                "icon":     pattern.icon,
-                "title":    title,
-                "content":  item["content"],
-                "action":   item.get("action", fallback_action),
-            })
+            title = item.get("title") or (
+                (pattern.title_darija or pattern.title) if use_darija else pattern.title
+            )
+            fallback_action = (
+                (pattern.fallback_action_darija or pattern.fallback_action)
+                if use_darija
+                else pattern.fallback_action
+            )
+            result.append(
+                {
+                    "code": code,
+                    "priority": pattern.priority,
+                    "icon": pattern.icon,
+                    "title": title,
+                    "content": item["content"],
+                    "action": item.get("action", fallback_action),
+                }
+            )
 
-    return result if result else _format_fallback(patterns, language)
+    return sanitize_patient_visible(
+        result if result else _format_fallback(patterns, language),
+        language,
+    )
 
 
 def _format_with_llm(patterns: list[ClinicalPattern], language: str = "fr") -> list[dict]:
@@ -676,20 +715,27 @@ def _format_fallback(patterns: list[ClinicalPattern], language: str = "fr") -> l
     use_darija = language == "ar-MA"
     result = []
     for p in patterns:
-        result.append({
-            "code":     p.code,
-            "priority": p.priority,
-            "icon":     p.icon,
-            "title":    (p.title_darija or p.title) if use_darija else p.title,
-            "content":  (p.fallback_content_darija or p.fallback_content) if use_darija else p.fallback_content,
-            "action":   (p.fallback_action_darija or p.fallback_action) if use_darija else p.fallback_action,
-        })
-    return result
+        result.append(
+            {
+                "code": p.code,
+                "priority": p.priority,
+                "icon": p.icon,
+                "title": (p.title_darija or p.title) if use_darija else p.title,
+                "content": (p.fallback_content_darija or p.fallback_content)
+                if use_darija
+                else p.fallback_content,
+                "action": (p.fallback_action_darija or p.fallback_action)
+                if use_darija
+                else p.fallback_action,
+            }
+        )
+    return sanitize_patient_visible(result, language)
 
 
 # ─────────────────────────────────────────────
 # 5. MAIN ENGINE ENTRYPOINT
 # ─────────────────────────────────────────────
+
 
 def run_clinical_analysis(entries, kpis: AnalyticalKPIs, language: str = "fr") -> ClinicalReport:
     """

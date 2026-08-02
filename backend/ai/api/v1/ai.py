@@ -18,6 +18,7 @@ Architecture (Analytical-First):
   5. TriageVitalMiddleware (upstream) has already intercepted any emergency messages.
   6. UnitGuardMiddleware (upstream) has already normalised all glucose values.
 """
+
 from __future__ import annotations
 
 import json
@@ -32,6 +33,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from core.ai_egress import IMAGE, TEXT, assert_ai_egress_allowed, patient_ai_egress_scope
+from core.input_safety import INSULIN_BLOCK, PRESCRIPTION_BLOCK, evaluate_input_safety
 from core.llm_gateway import (
     narrate,  # noqa: F401 — P1.4: imported, full wiring pending (see TODO below)
 )
@@ -55,6 +57,7 @@ router = Router(tags=["ai"])
 # ──────────────────────────────────────────────────────────────
 # 1. SCHEMAS
 # ──────────────────────────────────────────────────────────────
+
 
 class SummaryRequest(BaseModel):
     days: int = 21
@@ -81,8 +84,8 @@ class KPISchema(BaseModel):
     gmi: Optional[float]
     log_count: int
     days_with_data: int
-    gmi_confidence: Optional[str] = None   # "high" | "medium" | "low" | null
-    gmi_basis: str = ""                    # e.g. "47 mesures · 15j"
+    gmi_confidence: Optional[str] = None  # "high" | "medium" | "low" | null
+    gmi_basis: str = ""  # e.g. "47 mesures · 15j"
 
 
 class InsightSchema(BaseModel):
@@ -107,7 +110,7 @@ class SummaryResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    context_days: int = 14    # Look-back window for clinical context
+    context_days: int = 14  # Look-back window for clinical context
 
 
 class ChatResponse(BaseModel):
@@ -120,6 +123,7 @@ class ChatResponse(BaseModel):
 
 class MealImageRequest(BaseModel):
     """Phase 11-C: meal photo sent as base64-encoded image."""
+
     image_base64: str
     mime_type: str = "image/jpeg"
 
@@ -129,22 +133,25 @@ class MealImageResponse(BaseModel):
     Phase 11-C: list of identified French food names + confidence level.
     fallback=True means the LLM could not identify foods — UI shows a manual fallback.
     """
+
     foods: List[str]
-    confidence: str      # "high" | "medium" | "low"
+    confidence: str  # "high" | "medium" | "low"
     fallback: bool
 
 
 class GlucometerOcrResponse(BaseModel):
     """Phase 11-D: glucose value extracted from a glucometer photo (web OCR fallback)."""
-    value: Optional[float]   # glucose reading; None if not detected
-    unit: str                # "mg/dL" | "mmol/L"
-    confidence: str          # "high" | "medium" | "low"
-    fallback: bool           # True when value could not be extracted
+
+    value: Optional[float]  # glucose reading; None if not detected
+    unit: str  # "mg/dL" | "mmol/L"
+    confidence: str  # "high" | "medium" | "low"
+    fallback: bool  # True when value could not be extracted
 
 
 # ──────────────────────────────────────────────────────────────
 # 2. SUMMARY ENDPOINT
 # ──────────────────────────────────────────────────────────────
+
 
 @router.post("/ai/summary", response=SummaryResponse)
 @patient_ai_egress_scope("clinical_summary", TEXT)
@@ -184,27 +191,32 @@ def get_summary(request, data: SummaryRequest):
     compressed = compress(kpis, report.patterns, patient_language)
 
     # ── Step 4: LLM formatting (Gemini interprets, does not calculate) ──
-    insights = _call_llm_for_summary(compressed.full_pivot_text, report.patterns)
+    from core.medical_safety import sanitize_patient_visible
+
+    insights = sanitize_patient_visible(
+        _call_llm_for_summary(compressed.full_pivot_text, report.patterns, patient_language),
+        patient_language,
+    )
 
     # ── Step 5: AGP 24h profile + daily averages for Flutter chart ──
     agp_profile = compute_agp_profile(user.id, data.days)
-    daily_avgs  = compute_daily_averages(user.id, data.days)
+    daily_avgs = compute_daily_averages(user.id, data.days)
 
     track(EVT_SUMMARY_VIEWED, patient_id=user.id, props={"days": data.days})
 
     return {
         "kpis": {
-            "avg_glucose":    kpis.avg_glucose,
-            "std_dev":        kpis.std_dev,
-            "cv_pct":         kpis.cv_pct,
-            "tir_pct":        kpis.tir_pct,
-            "tar_pct":        kpis.tar_pct,
-            "tbr_pct":        kpis.tbr_pct,
-            "gmi":            kpis.gmi,
-            "log_count":      kpis.log_count,
+            "avg_glucose": kpis.avg_glucose,
+            "std_dev": kpis.std_dev,
+            "cv_pct": kpis.cv_pct,
+            "tir_pct": kpis.tir_pct,
+            "tar_pct": kpis.tar_pct,
+            "tbr_pct": kpis.tbr_pct,
+            "gmi": kpis.gmi,
+            "log_count": kpis.log_count,
             "days_with_data": kpis.days_with_data,
             "gmi_confidence": kpis.gmi_confidence,
-            "gmi_basis":      kpis.gmi_basis,
+            "gmi_basis": kpis.gmi_basis,
         },
         "insights": insights,
         "daily_averages": daily_avgs,
@@ -218,6 +230,7 @@ def get_summary(request, data: SummaryRequest):
 # ──────────────────────────────────────────────────────────────
 # 2b. DOCTOR BRIEF ENDPOINT
 # ──────────────────────────────────────────────────────────────
+
 
 @router.get("/ai/doctor-brief", response=DoctorBriefResponse)
 @patient_ai_egress_scope("doctor_brief", TEXT)
@@ -335,6 +348,7 @@ def get_doctor_brief(request, days: int = 14):
 # 3. CHAT ENDPOINT
 # ──────────────────────────────────────────────────────────────
 
+
 @router.post("/ai/chat", response=ChatResponse)
 @patient_ai_egress_scope("companion_chat", TEXT)
 def chat_with_amina(request, data: ChatRequest):
@@ -354,7 +368,27 @@ def chat_with_amina(request, data: ChatRequest):
     language = _get_patient_language(user)
 
     from companion.conversation import detect_language
+
+    decision = evaluate_input_safety(data.message, language)
+    if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
+        from core.medical_safety import no_prescription_message
+
+        reply_language = detect_language(data.message, language)
+        track(
+            EVT_CHAT_MESSAGE,
+            patient_id=user.id,
+            props={"context_days": data.context_days, "blocked": decision.reason},
+        )
+        return {
+            "reply": no_prescription_message(reply_language),
+            "conversation_id": f"conv-{user.id}",
+            "timestamp": timezone.now().isoformat(),
+            "is_emergency": False,
+            "reply_language": reply_language,
+        }
+
     from companion.core import IAmina
+
     try:
         iamina = IAmina(user, language)
         reply = iamina.chat(data.message, context_days=data.context_days)
@@ -376,6 +410,7 @@ def chat_with_amina(request, data: ChatRequest):
 # ──────────────────────────────────────────────────────────────
 # 3b. MEAL PHOTO RECOGNITION (Phase 11-C)
 # ──────────────────────────────────────────────────────────────
+
 
 @router.post("/ai/analyze-glucometer-image", response=GlucometerOcrResponse)
 @patient_ai_egress_scope("glucometer_ocr", IMAGE)
@@ -436,6 +471,7 @@ def analyze_meal_image(request, data: MealImageRequest):
 # 3c. STREAMING CHAT ENDPOINT (SSE)
 # ──────────────────────────────────────────────────────────────
 
+
 @router.get("/ai/chat/stream")
 @patient_ai_egress_scope("companion_chat", TEXT)
 def chat_stream(request, message: str, context_days: int = 14):
@@ -444,14 +480,22 @@ def chat_stream(request, message: str, context_days: int = 14):
     Returns Server-Sent Events — one `data:` line per token chunk.
     Terminal event: `data: [DONE]`
     """
-    from core.input_safety import INSULIN_BLOCK, URGENT, evaluate_input_safety
+    from core.input_safety import (
+        INSULIN_BLOCK,
+        PRESCRIPTION_BLOCK,
+        URGENT,
+        evaluate_input_safety,
+    )
 
     decision = evaluate_input_safety(message)
     user = request.user
     language = _get_patient_language(user)
-    track(EVT_CHAT_MESSAGE, patient_id=user.id, props={"stream": True, "context_days": context_days})
+    track(
+        EVT_CHAT_MESSAGE, patient_id=user.id, props={"stream": True, "context_days": context_days}
+    )
 
     if decision.action == URGENT:
+
         def _urgent_event_generator():
             emergency_msg = (
                 "⚠️ Alerte : Votre glycémie semble être dans une zone critique. "
@@ -462,7 +506,8 @@ def chat_stream(request, message: str, context_days: int = 14):
 
         return StreamingHttpResponse(_urgent_event_generator(), content_type="text/event-stream")
 
-    if decision.action == INSULIN_BLOCK:
+    if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
+
         def _insulin_event_generator():
             from core.medical_safety import no_prescription_message
 
@@ -496,7 +541,7 @@ def chat_stream(request, message: str, context_days: int = 14):
 
             from companion.advice_filter import contains_medical_advice
 
-            _SENT_BOUNDARY = _re.compile(r'(?<=[.!?؟])\s+')
+            _SENT_BOUNDARY = _re.compile(r"(?<=[.!?؟])\s+")
 
             sentence_buf = ""
 
@@ -552,6 +597,7 @@ def chat_stream(request, message: str, context_days: int = 14):
 # 4. LLM HELPERS
 # ──────────────────────────────────────────────────────────────
 
+
 def _build_iamina_system_prompt(user, kpis, report, language: str) -> str:
     """System prompt for SSE streaming using new IAmina prompt architecture."""
     from companion.memory import IAminaMemory
@@ -564,10 +610,7 @@ def _build_iamina_system_prompt(user, kpis, report, language: str) -> str:
     tone_instruction = get_tone_instruction(tone_ctx)
 
     history_qs = AIChatMessage.objects.filter(patient=user).order_by("-created_at")[:6]
-    history_text = (
-        "\n".join(f"{m.role}: {m.message}" for m in reversed(list(history_qs)))
-        or ""
-    )
+    history_text = "\n".join(f"{m.role}: {m.message}" for m in reversed(list(history_qs))) or ""
     pivot = build_chat_context(kpis, report.patterns)
 
     system = SYSTEM_BASE.format(language=get_language_label(language), tone=tone_ctx.mode.value)
@@ -579,15 +622,17 @@ def _build_iamina_system_prompt(user, kpis, report, language: str) -> str:
     return system
 
 
-def _call_llm_for_summary(pivot_text: str, patterns) -> list[dict]:
+def _call_llm_for_summary(pivot_text: str, patterns, language: str = "fr") -> list[dict]:
     """Delegates pattern formatting to the single source of truth in engine.py."""
     from diabetes.services.clinical.engine import _format_with_llm
-    return _format_with_llm(patterns)
+
+    return _format_with_llm(patterns, language)
 
 
 # ──────────────────────────────────────────────────────────────
 # 5. UTILITY HELPERS
 # ──────────────────────────────────────────────────────────────
+
 
 def _get_patient_language(user) -> str:
     try:
