@@ -2,7 +2,10 @@
 
 from dataclasses import dataclass
 
-from core.medical_safety import is_insulin_prescription_request
+from core.medical_safety import (
+    is_insulin_prescription_request,
+    is_treatment_prescription_request,
+)
 from core.middleware.triage_vital import detect_vital_distress
 from core.triage_classification import TriageClass, classify
 
@@ -16,6 +19,7 @@ class InputSafetyDecision:
 ALLOW = "ALLOW"
 URGENT = "URGENT"
 INSULIN_BLOCK = "INSULIN_BLOCK"
+PRESCRIPTION_BLOCK = "PRESCRIPTION_BLOCK"
 
 
 def evaluate_input_safety(
@@ -33,4 +37,6 @@ def evaluate_input_safety(
         return InputSafetyDecision(URGENT, "vital_distress")
     if is_insulin_prescription_request(message):
         return InputSafetyDecision(INSULIN_BLOCK, "insulin_prescription")
+    if is_treatment_prescription_request(message):
+        return InputSafetyDecision(PRESCRIPTION_BLOCK, "treatment_prescription")
     return InputSafetyDecision(ALLOW)

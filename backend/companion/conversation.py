@@ -10,10 +10,15 @@ from companion.tone import ToneContext, ToneMode, get_tone_instruction, select_t
 from core.companion.clinical import get_domain_context
 from core.companion.ports import get_conversation_store
 from core.contracts.domain_context import DomainContext
+from core.input_safety import (
+    INSULIN_BLOCK,
+    PRESCRIPTION_BLOCK,
+    URGENT,
+    evaluate_input_safety,
+)
 from core.llm_gateway import get_gateway_llm
 from core.medical_safety import (
     apply_no_prescription_policy,
-    is_insulin_prescription_request,
     medical_streaming_enabled,
     no_prescription_message,
 )
@@ -25,6 +30,7 @@ logger = logging.getLogger(__name__)
 # ── Conversation history (resolved via the chassis ConversationStore port) ──────
 # The companion never touches a module's chat model directly; it goes through the
 # adapter the active module registered at startup. Degrades gracefully if none.
+
 
 def _append_turn(patient, role: str, message: str) -> None:
     store = get_conversation_store()
@@ -73,13 +79,19 @@ _CHAT_EMERGENCY_FR = (
     "Ce n'est pas le moment de chatter — prends soin de toi d'abord."
 )
 _CHAT_EMERGENCY_AR = (
-    "⚠️ إلا كانعندك شي مشكل دابا، كول شي حلو وتسنّت للطبيب. "
-    "ماتاخدش وقتك هنا — سيراك أولى."
+    "⚠️ إلا كانعندك شي مشكل دابا، كول شي حلو وتسنّت للطبيب. ماتاخدش وقتك هنا — سيراك أولى."
 )
 _EMERGENCY_KEYWORDS = (
-    "je me sens mal", "je fais une hypo", "j'ai le vertige", "je tremble",
-    "je vais m'évanouir", "j'ai perdu connaissance", "je suis très mal",
-    "sokkar hbt", "dawar", "machi mzyan",
+    "je me sens mal",
+    "je fais une hypo",
+    "j'ai le vertige",
+    "je tremble",
+    "je vais m'évanouir",
+    "j'ai perdu connaissance",
+    "je suis très mal",
+    "sokkar hbt",
+    "dawar",
+    "machi mzyan",
 )
 
 # Emotional frustration / fatigue signals — bypasses clinical context injection
@@ -138,8 +150,8 @@ def _trim_history(history_turns, char_budget: int, patient=None) -> str:
     ConversationStore port.
     """
     messages = list(reversed(list(history_turns)))  # oldest first
-    summary_budget = char_budget // 5             # 20% for summary prefix
-    window_budget  = char_budget - summary_budget
+    summary_budget = char_budget // 5  # 20% for summary prefix
+    window_budget = char_budget - summary_budget
 
     result, used = [], 0
     for m in reversed(messages):
@@ -159,9 +171,7 @@ def _trim_history(history_turns, char_budget: int, patient=None) -> str:
             # Compact summary of skipped messages — extract last concern + emotional signals
             older_turns = _recent_turns(patient, 10, offset=shown)
             older_snippets = " / ".join(
-                m.message[:40].replace("\n", " ")
-                for m in reversed(older_turns)
-                if m.role == "user"
+                m.message[:40].replace("\n", " ") for m in reversed(older_turns) if m.role == "user"
             )
             summary = f"[{total} messages au total — {skipped} non affichés — thèmes: {older_snippets[:200]}]"
             history_text = summary + "\n" + history_text if history_text else summary
@@ -210,30 +220,32 @@ def _fallback_reply(ctx: DomainContext, language: str) -> str:
         return f"TIR ديالك {tir:.0f}% — كاين مكان باش نزيدو. عاود جرّب من بعد."
     if is_ar:
         return f"نسبتك في النطاق المستهدف {tir:.0f}% — هناك مجال للتحسن. حاول مجدداً."
-    return f"Ton TIR est à {tir:.0f} % — il y a de la marge pour progresser. Réessaie dans un instant."
+    return (
+        f"Ton TIR est à {tir:.0f} % — il y a de la marge pour progresser. Réessaie dans un instant."
+    )
 
 
 _PROACTIVE_TEMPLATES = {
     "discouragement": {
         "ar-MA": "سلام! المرة اللي فاتت بدوت شوية متعب/ة — واش مزيان دابا؟",
-        "ar":    "مرحباً! في المرة الأخيرة بدوت محبطاً قليلاً — كيف حالك اليوم؟",
-        "fr":    "Bonjour ! La dernière fois tu semblais un peu découragé·e — comment tu vas aujourd'hui ?",
+        "ar": "مرحباً! في المرة الأخيرة بدوت محبطاً قليلاً — كيف حالك اليوم؟",
+        "fr": "Bonjour ! La dernière fois tu semblais un peu découragé·e — comment tu vas aujourd'hui ?",
     },
     "fatigue": {
         "ar-MA": "سلام! كنتي عيّان/ة المرة اللي فاتت — واش ارتحتي شوية؟",
-        "ar":    "مرحباً! بدوت متعباً في المرة الأخيرة — أتمنى أنك أخذت قسطاً من الراحة.",
-        "fr":    "Bonjour ! La dernière fois tu étais fatigué·e — j'espère que tu as pu te reposer.",
+        "ar": "مرحباً! بدوت متعباً في المرة الأخيرة — أتمنى أنك أخذت قسطاً من الراحة.",
+        "fr": "Bonjour ! La dernière fois tu étais fatigué·e — j'espère que tu as pu te reposer.",
     },
     "fear": {
         "ar-MA": "سلام! كنتي خايف/ة شوية المرة اللي فاتت — واش كلشي مزيان دابا؟",
-        "ar":    "مرحباً! يبدو أنك كنت قلقاً في المرة الأخيرة — هل أنت بخير اليوم؟",
-        "fr":    "Bonjour ! Tu avais l'air inquiet·e la dernière fois — est-ce que tout va bien ?",
+        "ar": "مرحباً! يبدو أنك كنت قلقاً في المرة الأخيرة — هل أنت بخير اليوم؟",
+        "fr": "Bonjour ! Tu avais l'air inquiet·e la dernière fois — est-ce que tout va bien ?",
     },
 }
 _PROACTIVE_DEFAULT = {
     "ar-MA": "سلام! واش مزيان اليوم؟",
-    "ar":    "مرحباً! كيف حالك اليوم؟",
-    "fr":    "Bonjour ! Comment tu vas aujourd'hui ?",
+    "ar": "مرحباً! كيف حالك اليوم؟",
+    "fr": "Bonjour ! Comment tu vas aujourd'hui ?",
 }
 
 
@@ -246,16 +258,19 @@ def _inject_proactive_followup(memory, language: str, patient, signal: str) -> N
         _append_turn(patient, "assistant", text)
 
 
-def chat(message: str, memory, deep, llm=None, language: str = "fr", patient=None, context_days: int = 14) -> str:
+def chat(
+    message: str, memory, deep, llm=None, language: str = "fr", patient=None, context_days: int = 14
+) -> str:
     """Mode 4: Free chat with session-cached clinical context + deep memory + state."""
     # 0. Deterministic safety guards — must run BEFORE any LLM initialization
-    if _is_chat_emergency(message):
+    decision = evaluate_input_safety(message, language)
+    if decision.action == URGENT:
         _append_turn(patient, "user", message)
         reply = _CHAT_EMERGENCY_AR if language == "ar-MA" else _CHAT_EMERGENCY_FR
         _append_turn(patient, "assistant", reply)
         return reply
 
-    if is_insulin_prescription_request(message):
+    if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
         _append_turn(patient, "user", message)
         reply = no_prescription_message(language)
         _append_turn(patient, "assistant", reply)
@@ -272,8 +287,7 @@ def chat(message: str, memory, deep, llm=None, language: str = "fr", patient=Non
     pseudonymizer = PHIPseudonymizer()
     first_name = patient.first_name or ""
     safe_message = (
-        pseudonymizer.mask_patient_identity(first_name, message)[1]
-        if first_name else message
+        pseudonymizer.mask_patient_identity(first_name, message)[1] if first_name else message
     )
 
     # 2. Token-budgeted conversation history (with long-conversation preamble)
@@ -302,9 +316,11 @@ def chat(message: str, memory, deep, llm=None, language: str = "fr", patient=Non
     # Emotional messages always get a "gentle" tone regardless of TIR/CV
     emotional = _is_emotional(message)
     tone_ctx = (
-        select_tone(tir_pct=100.0, cv_pct=0.0)   # forces ToneMode.gentle
+        select_tone(tir_pct=100.0, cv_pct=0.0)  # forces ToneMode.gentle
         if emotional
-        else select_tone(tir_pct=ctx.tone_signals.get("primary"), cv_pct=ctx.tone_signals.get("stability"))
+        else select_tone(
+            tir_pct=ctx.tone_signals.get("primary"), cv_pct=ctx.tone_signals.get("stability")
+        )
     )
     tone_instruction = get_tone_instruction(tone_ctx)
 
@@ -346,7 +362,11 @@ def chat(message: str, memory, deep, llm=None, language: str = "fr", patient=Non
             variety_hint = f"\n[STYLE: L'accroche précédente était '{opener.strip()}' — utilise une formule différente cette fois]"
 
     # Fix 4 + emotional hint
-    intent_hint = "\n[INTENT: EMOTIONAL — réponds avec empathie uniquement, sans données chiffrées]" if emotional else ""
+    intent_hint = (
+        "\n[INTENT: EMOTIONAL — réponds avec empathie uniquement, sans données chiffrées]"
+        if emotional
+        else ""
+    )
 
     # 7b. PII pseudonymisation — mask patient first_name in message + history
     #     before they leave the process boundary to an external LLM API.
@@ -354,18 +374,24 @@ def chat(message: str, memory, deep, llm=None, language: str = "fr", patient=Non
     #     Mask memory_summary and history with the same instance.
     memory_summary_safe = (
         pseudonymizer.mask_patient_identity(first_name, memory_summary)[1]
-        if first_name else memory_summary
+        if first_name
+        else memory_summary
     )
     safe_history = (
         pseudonymizer.mask_patient_identity(first_name, history_text)[1]
-        if first_name else history_text
+        if first_name
+        else history_text
     )
 
-    user_prompt = CHAT_USER.format(
-        memory=memory_summary_safe,
-        history=safe_history,
-        message=safe_message,
-    ) + intent_hint + variety_hint
+    user_prompt = (
+        CHAT_USER.format(
+            memory=memory_summary_safe,
+            history=safe_history,
+            message=safe_message,
+        )
+        + intent_hint
+        + variety_hint
+    )
 
     # 8. Persist user message before LLM call (original — not pseudonymised)
     _append_turn(patient, "user", message)
@@ -407,7 +433,9 @@ _STREAM_SUFFIX = (
 )
 
 
-def stream_chat(message: str, memory, deep, llm=None, language: str = "fr", patient=None, context_days: int = 14):
+def stream_chat(
+    message: str, memory, deep, llm=None, language: str = "fr", patient=None, context_days: int = 14
+):
     """
     Streaming variant of chat() for the SSE endpoint.
     Yields raw text chunks from the LLM as they arrive when streaming is enabled.
@@ -415,14 +443,15 @@ def stream_chat(message: str, memory, deep, llm=None, language: str = "fr", pati
     Memory + DB persistence happen after the stream completes.
     """
     # 0. Deterministic safety guards — must run BEFORE any LLM initialization
-    if _is_chat_emergency(message):
+    decision = evaluate_input_safety(message, language)
+    if decision.action == URGENT:
         _append_turn(patient, "user", message)
         reply = _CHAT_EMERGENCY_AR if language == "ar-MA" else _CHAT_EMERGENCY_FR
         _append_turn(patient, "assistant", reply)
         yield reply
         return
 
-    if is_insulin_prescription_request(message):
+    if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
         _append_turn(patient, "user", message)
         reply = no_prescription_message(language)
         _append_turn(patient, "assistant", reply)
@@ -439,8 +468,7 @@ def stream_chat(message: str, memory, deep, llm=None, language: str = "fr", pati
     pseudonymizer = PHIPseudonymizer()
     first_name = patient.first_name or ""
     safe_message = (
-        pseudonymizer.mask_patient_identity(first_name, message)[1]
-        if first_name else message
+        pseudonymizer.mask_patient_identity(first_name, message)[1] if first_name else message
     )
 
     history_turns = _recent_turns(patient, 10)
@@ -455,7 +483,9 @@ def stream_chat(message: str, memory, deep, llm=None, language: str = "fr", pati
     tone_ctx = (
         select_tone(tir_pct=100.0, cv_pct=0.0)
         if emotional
-        else select_tone(tir_pct=ctx.tone_signals.get("primary"), cv_pct=ctx.tone_signals.get("stability"))
+        else select_tone(
+            tir_pct=ctx.tone_signals.get("primary"), cv_pct=ctx.tone_signals.get("stability")
+        )
     )
     tone_instruction = get_tone_instruction(tone_ctx)
 
@@ -491,11 +521,13 @@ def stream_chat(message: str, memory, deep, llm=None, language: str = "fr", pati
     # pseudonymizer + safe_message already set above; mask remaining fields
     memory_summary_safe = (
         pseudonymizer.mask_patient_identity(first_name, memory_summary)[1]
-        if first_name else memory_summary
+        if first_name
+        else memory_summary
     )
     safe_history = (
         pseudonymizer.mask_patient_identity(first_name, history_text)[1]
-        if first_name else history_text
+        if first_name
+        else history_text
     )
 
     # Stream path: strip the JSON format instruction from CHAT_USER.
@@ -508,7 +540,7 @@ def stream_chat(message: str, memory, deep, llm=None, language: str = "fr", pati
     )
     json_tag = "\nRéponds UNIQUEMENT en JSON:"
     if json_tag in base_prompt:
-        base_prompt = base_prompt[:base_prompt.index(json_tag)].rstrip()
+        base_prompt = base_prompt[: base_prompt.index(json_tag)].rstrip()
         base_prompt += "\n\nContrainte: MAX 2 phrases, 40 mots. Texte simple, sans JSON."
     user_prompt = base_prompt + intent_hint
 
@@ -519,7 +551,9 @@ def stream_chat(message: str, memory, deep, llm=None, language: str = "fr", pati
             result = llm.complete(system, user_prompt)
             full_reply = result.content
         except Exception:
-            logger.exception("IAmina stream_chat buffered fallback failed for patient=%s", patient.id)
+            logger.exception(
+                "IAmina stream_chat buffered fallback failed for patient=%s", patient.id
+            )
             full_reply = _fallback_reply(ctx, language)
 
         full_reply = apply_advice_throttle(full_reply, deep)
@@ -529,6 +563,7 @@ def stream_chat(message: str, memory, deep, llm=None, language: str = "fr", pati
         yield full_reply
 
         from companion.memory import _detect_emotional_signals
+
         _detect_emotional_signals(message, memory)
         memory.save()
         return
@@ -557,5 +592,6 @@ def stream_chat(message: str, memory, deep, llm=None, language: str = "fr", pati
 
     # Concern detection on assembled reply (keyword-based, no LLM cost)
     from companion.memory import _detect_emotional_signals
+
     _detect_emotional_signals(message, memory)
     memory.save()
