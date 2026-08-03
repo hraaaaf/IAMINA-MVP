@@ -39,10 +39,16 @@ def test_sse_urgent_fast_path_does_not_initialize_iamina(monkeypatch):
 
     from ai.api.v1 import ai
 
-    monkeypatch.setattr("core.input_safety.evaluate_input_safety", lambda message: type("D", (), {"action": URGENT})())
+    monkeypatch.setattr(
+        "core.input_safety.evaluate_input_safety",
+        lambda message, language=None: type("D", (), {"action": URGENT})(),
+    )
     monkeypatch.setattr(ai, "_get_patient_language", lambda user: "fr")
     monkeypatch.setattr(ai, "track", lambda *args, **kwargs: None)
-    monkeypatch.setattr("companion.core.IAmina", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("IAmina initialized")))
+    monkeypatch.setattr(
+        "companion.core.IAmina",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("IAmina initialized")),
+    )
     request = RequestFactory().get("/api/v1/ai/chat/stream")
     request.user = SimpleNamespace(id=1)
     response = ai.chat_stream(request, "urgence")
@@ -56,10 +62,16 @@ def test_sse_insulin_fast_path_does_not_initialize_iamina(monkeypatch):
 
     from ai.api.v1 import ai
 
-    monkeypatch.setattr("core.input_safety.evaluate_input_safety", lambda message: type("D", (), {"action": INSULIN_BLOCK})())
+    monkeypatch.setattr(
+        "core.input_safety.evaluate_input_safety",
+        lambda message, language=None: type("D", (), {"action": INSULIN_BLOCK})(),
+    )
     monkeypatch.setattr(ai, "_get_patient_language", lambda user: "fr")
     monkeypatch.setattr(ai, "track", lambda *args, **kwargs: None)
-    monkeypatch.setattr("companion.core.IAmina", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("IAmina initialized")))
+    monkeypatch.setattr(
+        "companion.core.IAmina",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("IAmina initialized")),
+    )
     request = RequestFactory().get("/api/v1/ai/chat/stream")
     request.user = SimpleNamespace(id=1)
     response = ai.chat_stream(request, "dose")
