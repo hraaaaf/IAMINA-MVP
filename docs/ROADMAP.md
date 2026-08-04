@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-02 — deterministic therapeutic-refusal and visible-output safety gates validated in PR #23.
+> **Last updated:** 2026-08-04 — automated Pilot Safety procedures validated through PR #28; historical credential remediation remains blocked by issue #30.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,10 +29,10 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 50% | 🟡 Human review blocked | PR #16; native review and full RTL audit remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
-| P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 All execution paths prepared; live runs blocked | Framework PR #18; evidence-gated text/STT/vision preparation PRs #19–#21 |
-| Pilot safety/compliance gate | 31% | 🟡 Technical certification advancing | 4 of 13 explicit gates complete; PR #23 closes deterministic refusal and visible-output parity |
+| P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 All execution paths prepared; live runs blocked | Framework PR #18; text/STT/vision preparation PRs #19–#22 |
+| Pilot safety/compliance gate | 69% | 🟡 Automated procedures complete; external security/human gates remain | 9 of 13 explicit gates complete through PR #28; secret-history remediation is blocked by issue #30 |
 
-**MENA critical-path completion:** 26 of 41 explicit roadmap tasks closed, approximately **63%**.
+**MENA critical-path completion:** 31 of 41 explicit roadmap tasks closed, approximately **76%**.
 
 Preparation work does not close a live benchmark task and does not increase the critical-path numerator.
 
@@ -138,7 +138,7 @@ The first command measures migration readiness. The second is the final gate bef
 
 ---
 
-# NOW — P0-MENA-4: Multimodal provider benchmark
+# P0-MENA-4 — Multimodal provider benchmark — PREPARED, LIVE RUNS DEFERRED
 
 **Goal:** select text, STT and vision providers using evidence rather than configuration convenience.
 
@@ -156,7 +156,7 @@ The first command measures migration readiness. The second is the final gate bef
 - **Text execution boundary merged:** PR #19.
 - **STT execution boundary merged:** PR #20.
 - **Vision/OCR execution boundary merged:** PR #21.
-- **Cutover package:** readiness aggregation and execution runbook prepared in the active 4E lot.
+- **Cutover package merged:** readiness aggregation and execution runbook delivered in PR #22.
 - **Live work deferred:** exact providers, models, regions, credentials, contractual evidence, budgets and human reviews remain external prerequisites.
 
 No provider score, decision or production approval may be inferred from preparation status.
@@ -167,23 +167,37 @@ No provider score, decision or production approval may be inferred from preparat
 
 - [x] Prove insulin-dose and treatment requests are refused deterministically without a generative chat LLM call. **PR #23 covers sync chat, SSE and post-STT voice paths across FR/EN/AR/Darija.**
 - [x] Prove doctor-facing and summary outputs pass the same no-prescription policy. **PR #23 recursively sanitizes generated and fallback structures and verifies observation-only OCR schemas.**
-- [ ] Route emergencies to a monitored human channel or formally adopt a documented self-care-only mode.
+- [x] Route emergencies to a monitored human channel or formally adopt a documented self-care-only mode. **PR #24 adopts truthful `SELF_CARE_ONLY` behavior and prevents false claims of automatic human monitoring.**
 - [ ] Close Darija high-severity review.
 - [x] Enforce base AI/model consent server-side.
 - [x] Expose granular raw-media consent through the authenticated patient API.
 - [ ] Approve the pilot consent matrix and processor/subprocessor register.
 - [ ] Document cross-border and data-residency assumptions for the pilot country.
-- [ ] Implement data export or document a valid operational export process.
-- [ ] Define retention and deletion schedules.
-- [ ] Approve incident-response and escalation procedures.
-- [ ] Approve pilot onboarding, monitoring, escalation and exit checklists.
-- [ ] Prove no committed or reachable secrets remain and rotate any exposed keys.
+- [x] Implement data export or document a valid operational export process. **PR #25 provides ownership-scoped, audited, mode-0600 JSON export with deterministic integrity evidence.**
+- [x] Define retention and deletion schedules. **PR #26 provides a versioned schedule, policy audit, staged-export purge and guarded transactional account deletion.**
+- [x] Approve incident-response and escalation procedures. **PR #27 provides the SEV1–SEV4 matrix, mandatory roles, minimized incident records and tabletop requirements.**
+- [x] Approve pilot onboarding, monitoring, escalation and exit checklists. **PR #28 provides a versioned registry, restricted cohort packet and fail-closed completion validator.**
+- [ ] Prove no committed or reachable secrets remain and rotate any exposed keys. **The current tree passes, but PR #29 found six historical PekPik service credentials in a deleted local settings file. Rotation must precede history rewrite; tracked in issue #30.**
+
+## Current automated Pilot Safety checkpoint
+
+Merged technical and operational units:
+
+- PR #23 — deterministic therapeutic refusal and visible-output parity;
+- PR #24 — truthful self-care-only emergency operating mode;
+- PR #25 — audited patient data portability export;
+- PR #26 — executable retention and guarded deletion schedules;
+- PR #27 — incident response and escalation procedure;
+- PR #28 — onboarding, monitoring, escalation and exit checklists.
+
+These units close procedures and executable controls. They do not imply native-language approval, country-specific legal approval, processor approval, completion of a real cohort checklist or completion of an incident drill.
 
 ---
 
-# Next sequence
+# Current blockers and next sequence
 
-1. Merge the P0-MENA-4E readiness/runbook package after full CI.
-2. Defer live text, STT and vision/OCR runs until evidence and credentials are approved.
-3. Continue with emergency operating mode, export, retention/deletion, incident response and secret certification.
-4. Return to native-review and RTL gates when qualified reviewers are available.
+1. **Security emergency:** revoke or rotate all potentially affected PekPik credentials and review provider activity under issue #30.
+2. Rewrite affected Git history only after revocation, coordinate fresh clones, obtain a passing non-shallow history scan and merge PR #29.
+3. Approve the pilot consent matrix, processor/subprocessor register and Morocco cross-border/data-residency assumptions.
+4. Complete the remaining P0-MENA-2 native-review and RTL gates with qualified reviewers.
+5. Run the deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
