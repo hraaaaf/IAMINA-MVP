@@ -8,6 +8,7 @@ result, but core safety must not depend on a condition module to make the gate.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from enum import Enum
 
 from safety.crisis import (
@@ -19,9 +20,11 @@ from safety.crisis import (
 
 __all__ = [
     "CRISIS_RESOURCES",
+    "GlycemicSafetyVariant",
     "TriageClass",
     "classify",
     "crisis_support_response",
+    "glycemic_emergency_variant_inventory",
     "select_triage_response",
 ]
 
@@ -30,6 +33,15 @@ class TriageClass(str, Enum):
     NONE = "none"
     GLYCEMIC_EMERGENCY = "glycemic_emergency"
     SUICIDAL_IDEATION = "suicidal_ideation"
+
+
+@dataclass(frozen=True, slots=True)
+class GlycemicSafetyVariant:
+    """One exact high-severity phrase that requires native review coverage."""
+
+    locale: str
+    input_form: str
+    text: str
 
 
 _GLYCEMIC_FR = frozenset(
@@ -119,6 +131,32 @@ _NUMERIC_GLUCOSE = re.compile(
     r"\b([1-4]\d|3\d{2}|4\d{2}|5\d{2})\b",
     re.IGNORECASE,
 )
+
+
+def glycemic_emergency_variant_inventory() -> tuple[GlycemicSafetyVariant, ...]:
+    """Return every exact phrase used by the deterministic high-severity gate.
+
+    The inventory is stable-sorted and deliberately excludes the numeric regex,
+    which is covered by separate representative corpus cases. Adding or removing
+    a phrase changes the safety review packet fingerprint and invalidates stale
+    human approvals.
+    """
+    variants = [
+        *(GlycemicSafetyVariant("fr", "native_script", text) for text in _GLYCEMIC_FR),
+        *(
+            GlycemicSafetyVariant("ar-MA", "latin_transliteration", text)
+            for text in _GLYCEMIC_DARIJA
+        ),
+        *(
+            GlycemicSafetyVariant(
+                "ar-MA" if "كن" in text or "غادي" in text or "ما " in text else "ar",
+                "arabic_script",
+                text,
+            )
+            for text in _GLYCEMIC_ARABIC
+        ),
+    ]
+    return tuple(sorted(variants, key=lambda item: (item.locale, item.input_form, item.text)))
 
 
 def _normalize(message: str) -> str:
