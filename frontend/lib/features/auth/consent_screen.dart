@@ -28,7 +28,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
     setState(() => _isLoading = true);
     // Capture before any async gaps (use_build_context_synchronously)
     final api = context.read<ApiClient>();
-    final db = context.read<AppDatabase>();
+    final db  = context.read<AppDatabase>();
     try {
       // Store on backend first (source of truth for audit)
       await api.giveConsent();
@@ -70,8 +70,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                   // ── Brand header ────────────────────────────────────────
                   Center(
                     child: Container(
-                      width: 72,
-                      height: 72,
+                      width: 72, height: 72,
                       decoration: BoxDecoration(
                         gradient: AminaTheme.heroGradient,
                         borderRadius: BorderRadius.circular(22),
@@ -83,11 +82,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.shield_outlined,
-                        color: Colors.white,
-                        size: 32,
-                      ),
+                      child: const Icon(Icons.shield_outlined, color: Colors.white, size: 32),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -154,19 +149,13 @@ class _ConsentScreenState extends State<ConsentScreen> {
                       backgroundColor: AminaTheme.teal500,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          AminaTheme.radiusXL,
-                        ),
+                        borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
                       ),
                     ),
                     child: _isLoading
                         ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
+                            width: 20, height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
                         : Text(
                             l10n.consentAccept,
@@ -189,10 +178,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                     ),
                     child: Text(
                       l10n.consentDeclineWithoutAI,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                     ),
                   ),
 
@@ -201,18 +187,11 @@ class _ConsentScreenState extends State<ConsentScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
-                        Icons.lock_outline,
-                        size: 12,
-                        color: AminaTheme.ink300,
-                      ),
+                      const Icon(Icons.lock_outline, size: 12, color: AminaTheme.ink300),
                       const SizedBox(width: 6),
                       Text(
                         l10n.dataPrivacyNote,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AminaTheme.ink300,
-                        ),
+                        style: const TextStyle(fontSize: 11, color: AminaTheme.ink300),
                       ),
                     ],
                   ),

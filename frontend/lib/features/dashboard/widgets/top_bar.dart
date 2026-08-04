@@ -32,20 +32,10 @@ class _TopBar extends StatelessWidget {
             Expanded(
               child: RichText(
                 text: TextSpan(
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    color: AminaTheme.textSecondary(context),
-                  ),
+                  style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: AminaTheme.textSecondary(context)),
                   children: [
                     const TextSpan(text: 'Accueil · '),
-                    TextSpan(
-                      text: 'Vue d\'ensemble',
-                      style: TextStyle(
-                        color: AminaTheme.textPrimary(context),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    TextSpan(text: 'Vue d\'ensemble', style: TextStyle(color: AminaTheme.textPrimary(context), fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -83,11 +73,7 @@ class _ParlerButton extends StatelessWidget {
           gradient: AminaTheme.heroGradient,
           borderRadius: BorderRadius.circular(99),
           boxShadow: [
-            BoxShadow(
-              color: AminaTheme.teal500.withValues(alpha: 0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
+            BoxShadow(color: AminaTheme.teal500.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
           ],
         ),
         child: const Row(
@@ -95,14 +81,7 @@ class _ParlerButton extends StatelessWidget {
           children: [
             Icon(Icons.chat_bubble_outline, color: Colors.white, size: 14),
             SizedBox(width: 8),
-            Text(
-              'Parler à IAmina',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            Text('Parler à IAmina', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
           ],
         ),
       ),
@@ -122,8 +101,7 @@ class _IconBtn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 44,
-        height: 44,
+        width: 44, height: 44,
         decoration: BoxDecoration(
           color: AminaTheme.surface(context),
           border: Border.all(color: AminaTheme.divider(context)),
@@ -158,9 +136,7 @@ class _RangeChips extends StatelessWidget {
               duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: sel
-                    ? (dark ? AminaTheme.dark500 : AminaTheme.cardBg)
-                    : Colors.transparent,
+                color: sel ? (dark ? AminaTheme.dark500 : AminaTheme.cardBg) : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
                 boxShadow: sel ? AminaTheme.shadowClinical : null,
               ),
@@ -169,9 +145,7 @@ class _RangeChips extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                  color: sel
-                      ? AminaTheme.textPrimary(context)
-                      : AminaTheme.textSecondary(context),
+                  color: sel ? AminaTheme.textPrimary(context) : AminaTheme.textSecondary(context),
                 ),
               ),
             ),
