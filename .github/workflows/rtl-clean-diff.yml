@@ -1,0 +1,38 @@
+name: Rebuild focused RTL diff
+
+on:
+  push:
+    branches: [feat/p0-mena-rtl-screen-certification]
+
+permissions:
+  contents: write
+
+jobs:
+  clean:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p0-mena-rtl-screen-certification
+          fetch-depth: 0
+      - name: Restore main and reapply scoped codemod
+        run: |
+          cp frontend/test/rtl_screen_contract_test.dart /tmp/rtl_screen_contract_test.dart
+          git fetch origin main
+          git checkout origin/main -- frontend/lib frontend/test
+          cp /tmp/rtl_screen_contract_test.dart frontend/test/rtl_screen_contract_test.dart
+          cd frontend
+          python tool/rtl_directionalize.py
+          cd ..
+      - name: Commit focused screen changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A frontend/lib frontend/test
+          if git diff --cached --quiet; then
+            echo "No focused cleanup changes required."
+            exit 0
+          fi
+          git commit -m "fix(rtl): keep directional changes scoped to certified screens"
+          git push origin HEAD:feat/p0-mena-rtl-screen-certification
