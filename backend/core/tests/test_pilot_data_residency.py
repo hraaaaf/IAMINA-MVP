@@ -215,7 +215,7 @@ def test_health_data_flow_requires_health_processing_authorization(tmp_path):
 
 def test_secret_material_is_rejected_before_manifest_use(tmp_path):
     payload = deepcopy(_manifest())
-    payload["api_key"] = "sk-this-must-never-be-in-the-manifest"
+    payload["api_key"] = "redacted-placeholder"
     path = _write_manifest(tmp_path, payload)
 
     with pytest.raises(ValueError, match="secret-like key"):
