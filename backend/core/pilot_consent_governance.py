@@ -130,6 +130,8 @@ class ProcessorEvidenceRecord:
         }
 
     def blockers(self, *, today: date) -> tuple[str, ...]:
+        if not self.external_egress:
+            return ()
         blockers: list[str] = []
         for name, item in self._evidence_fields().items():
             if item.status != APPROVED:
@@ -334,7 +336,7 @@ def consent_governance_payload(
     all_blockers: list[str] = []
     for provider in sorted(PROCESSOR_EVIDENCE):
         record = PROCESSOR_EVIDENCE[provider]
-        blockers = record.blockers(today=current) if record.external_egress else ()
+        blockers = record.blockers(today=current)
         all_blockers.extend(blockers)
         provider_rows.append(
             {
