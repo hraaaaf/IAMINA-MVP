@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-04 — automated Pilot Safety procedures validated through PR #28; historical credential remediation remains blocked by issue #30.
+> **Last updated:** 2026-08-04 — technical RTL screen coverage certified in PR #36; governance and residency release gates prepared in PRs #34–#35; external approvals remain open.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -27,14 +27,14 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
-| P0-MENA-2 — locale + safety contract | 50% | 🟡 Human review blocked | PR #16; native review and full RTL audit remain |
+| P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16 and RTL certification PR #36; three linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 All execution paths prepared; live runs blocked | Framework PR #18; text/STT/vision preparation PRs #19–#22 |
-| Pilot safety/compliance gate | 69% | 🟡 Automated procedures complete; external security/human gates remain | 9 of 13 explicit gates complete through PR #28; secret-history remediation is blocked by issue #30 |
+| Pilot safety/compliance gate | 69% | 🟡 Automated procedures complete; external security/legal/human gates remain | 9 of 13 explicit gates complete; PRs #34–#35 prepare two external approval gates; secret-history remediation is blocked by issue #30 |
 
-**MENA critical-path completion:** 31 of 41 explicit roadmap tasks closed, approximately **76%**.
+**MENA critical-path completion:** 32 of 41 explicit roadmap tasks closed, approximately **78%**.
 
-Preparation work does not close a live benchmark task and does not increase the critical-path numerator.
+Preparation work does not close a live benchmark, legal/privacy approval or native-review task and does not increase the critical-path numerator.
 
 ---
 
@@ -94,15 +94,15 @@ Preparation work does not close a live benchmark task and does not increase the 
 - [x] Require explicit user confirmation; location only suggests.
 - [x] Deterministic fallback to MSA, English or French.
 - [x] Versioned Morocco emergency-resource registry with confirmed-country-only selection.
+- [x] Complete technical RTL coverage screen by screen. **PR #36 registers every routed screen and shell, replaces physical left/right primitives with directional equivalents, proves Arabic `TextDirection.rtl`, and makes Flutter tests a permanent CI gate.**
 
-## Remaining human/UX gates
+## Remaining human-language gates
 
-- [ ] Complete RTL coverage screen by screen.
 - [ ] Obtain native-speaker approval for every enabled safety corpus.
 - [ ] Close remaining Darija high-severity orthographic variants through native review.
 - [ ] Approve safety parity across text, voice transcript, mixed language and transliteration.
 
-Automated corpus and parity groundwork is green, but no native or clinical approval is inferred from automated tests.
+Automated corpus, route coverage and directionality groundwork is green, but no native or clinical approval is inferred from automated tests.
 
 ---
 
@@ -171,8 +171,8 @@ No provider score, decision or production approval may be inferred from preparat
 - [ ] Close Darija high-severity review.
 - [x] Enforce base AI/model consent server-side.
 - [x] Expose granular raw-media consent through the authenticated patient API.
-- [ ] Approve the pilot consent matrix and processor/subprocessor register.
-- [ ] Document cross-border and data-residency assumptions for the pilot country.
+- [ ] Approve the pilot consent matrix and processor/subprocessor register. **PR #34 provides the complete executable matrix, processor evidence registry and fail-closed `--require-approved` command; restricted CNDP, contract, privacy and security approvals remain external.**
+- [ ] Document and approve cross-border and data-residency assumptions for the pilot country. **PR #35 provides the exact-flow deployment manifest schema and fail-closed release command; the restricted manifest for the actual deployed SHA remains external.**
 - [x] Implement data export or document a valid operational export process. **PR #25 provides ownership-scoped, audited, mode-0600 JSON export with deterministic integrity evidence.**
 - [x] Define retention and deletion schedules. **PR #26 provides a versioned schedule, policy audit, staged-export purge and guarded transactional account deletion.**
 - [x] Approve incident-response and escalation procedures. **PR #27 provides the SEV1–SEV4 matrix, mandatory roles, minimized incident records and tabletop requirements.**
@@ -188,9 +188,11 @@ Merged technical and operational units:
 - PR #25 — audited patient data portability export;
 - PR #26 — executable retention and guarded deletion schedules;
 - PR #27 — incident response and escalation procedure;
-- PR #28 — onboarding, monitoring, escalation and exit checklists.
+- PR #28 — onboarding, monitoring, escalation and exit checklists;
+- PR #34 — consent and processor-approval readiness gate;
+- PR #35 — Morocco residency and foreign-transfer deployment gate.
 
-These units close procedures and executable controls. They do not imply native-language approval, country-specific legal approval, processor approval, completion of a real cohort checklist or completion of an incident drill.
+These units close procedures and executable controls. They do not imply native-language approval, country-specific legal approval, processor approval, completion of a real cohort checklist, completion of an incident drill or approval of the actual production deployment manifest.
 
 ---
 
@@ -198,6 +200,6 @@ These units close procedures and executable controls. They do not imply native-l
 
 1. **Security emergency:** revoke or rotate all potentially affected PekPik credentials and review provider activity under issue #30.
 2. Rewrite affected Git history only after revocation, coordinate fresh clones, obtain a passing non-shallow history scan and merge PR #29.
-3. Approve the pilot consent matrix, processor/subprocessor register and Morocco cross-border/data-residency assumptions.
-4. Complete the remaining P0-MENA-2 native-review and RTL gates with qualified reviewers.
+3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals, then run the PR #34 and PR #35 `--require-approved` gates.
+4. Complete the remaining P0-MENA-2 native-language and Darija parity gates with qualified reviewers.
 5. Run the deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.

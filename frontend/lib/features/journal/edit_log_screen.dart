@@ -103,7 +103,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
   Widget _buildHeader(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 16, 24, 8),
+        padding: const EdgeInsetsDirectional.fromSTEB(12, 16, 24, 8),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -170,7 +170,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
         children: _mealTypes.map((type) {
           final isSelected = _mealType == type;
           return Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsetsDirectional.only(end: 12),
             child: InkWell(
               onTap: () => setState(() => _mealType = type),
               borderRadius: BorderRadius.circular(100),

@@ -188,7 +188,7 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
       controller: _scrollController,
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 120),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
               _GreetingHeader(periodDays: _periodDays),
@@ -209,7 +209,7 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
   // ── Desktop layout ─────────────────────────────────────────────────────────
   Widget _buildWideLayout(SummaryResponse summary, List<InsightCard> cards, KpisResponse? kpis) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -308,7 +308,7 @@ class _SummaryTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 10, 16, 0),
+      padding: EdgeInsetsDirectional.fromSTEB(16, MediaQuery.of(context).padding.top + 10, 16, 0),
       decoration: BoxDecoration(
         color: AminaTheme.surface(context),
         border: Border(bottom: BorderSide(color: AminaTheme.divider(context))),
@@ -626,7 +626,7 @@ class _KpiCard extends StatelessWidget {
     final trendColor = trend > 0 ? AminaTheme.teal500 : AminaTheme.dangerFg;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 24, 20, 20),
       decoration: BoxDecoration(
         color: AminaTheme.surface(context),
         borderRadius: BorderRadius.circular(24),
@@ -698,7 +698,7 @@ class _AgpCard extends StatelessWidget {
       backgroundColor: AminaTheme.surface(context),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 16, 0),
           child: Row(children: [
             const Icon(Icons.show_chart, size: 16, color: AminaTheme.teal500),
             const SizedBox(width: 8),
@@ -740,7 +740,7 @@ class _AgpCard extends StatelessWidget {
           ),
         if (!hasData)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 16),
             child: Center(child: Text('Données insuffisantes.', style: TextStyle(color: AminaTheme.textSecondary(context), fontSize: 12))),
           )
         else
@@ -768,7 +768,7 @@ class _AgpCard extends StatelessWidget {
             return SizedBox(
               height: 180,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 0, 12, 0),
+                padding: const EdgeInsetsDirectional.fromSTEB(4, 0, 12, 0),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -804,7 +804,7 @@ class _AgpCard extends StatelessWidget {
             );
           }),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 12),
           child: Row(children: [
             const _LegendDot(color: AminaTheme.teal700,                            label: 'Médiane'),
             const SizedBox(width: 10),
@@ -914,7 +914,7 @@ class _ActionPlan extends StatelessWidget {
         ...plans.map((p) => Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Container(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 14, 12),
             decoration: BoxDecoration(
               color: p.bg,
               borderRadius: BorderRadius.circular(12),
@@ -924,7 +924,7 @@ class _ActionPlan extends StatelessWidget {
               // Day badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                margin: const EdgeInsets.only(right: 12),
+                margin: const EdgeInsetsDirectional.only(end: 12),
                 decoration: BoxDecoration(
                   color: p.dot.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
@@ -1009,10 +1009,10 @@ class _InsightCardWidgetState extends State<_InsightCardWidget> {
           onTap: () => setState(() => _expanded = !_expanded),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(AminaTheme.radius2XL)),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 12, 14),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(
-                width: 34, height: 34, margin: const EdgeInsets.only(right: 12, top: 1),
+                width: 34, height: 34, margin: const EdgeInsetsDirectional.only(end: 12, top: 1),
                 decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
                 child: Icon(severityIcon, size: 17, color: barColor),
               ),
@@ -1042,7 +1042,7 @@ class _InsightCardWidgetState extends State<_InsightCardWidget> {
           crossFadeState: _expanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
           firstChild: Container(
             decoration: BoxDecoration(border: Border(top: BorderSide(color: AminaTheme.divider(context)))),
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 16, 14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(card.body, style: TextStyle(fontSize: 13, color: AminaTheme.textSecondary(context), height: 1.55)),
               if (card.action.isNotEmpty) ...[

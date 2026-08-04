@@ -376,7 +376,7 @@ class _LoginCard extends StatelessWidget {
 
           const SizedBox(height: 8),
           Align(
-            alignment: Alignment.centerRight,
+            alignment: AlignmentDirectional.centerEnd,
             child: TextButton(
               onPressed: onForgotPassword,
               style: TextButton.styleFrom(

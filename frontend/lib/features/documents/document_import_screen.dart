@@ -713,7 +713,7 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(right: 6),
+    margin: const EdgeInsetsDirectional.only(end: 6),
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
       color: AminaTheme.teal500.withValues(alpha: 0.12),
