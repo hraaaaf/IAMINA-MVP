@@ -6,31 +6,46 @@ class _PageHead extends StatelessWidget {
   final int logCount;
   final int range;
   final bool isDesktop;
-  const _PageHead({required this.logCount, required this.range, this.isDesktop = false});
+  const _PageHead({
+    required this.logCount,
+    required this.range,
+    this.isDesktop = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final greeting = now.hour < 12 ? 'Bonjour' : now.hour < 18 ? 'Bon après-midi' : 'Bonsoir';
+    final greeting = now.hour < 12
+        ? 'Bonjour'
+        : now.hour < 18
+        ? 'Bon après-midi'
+        : 'Bonsoir';
     return Padding(
-      padding: EdgeInsets.only(top: isDesktop ? 32 : 16, bottom: isDesktop ? 4 : 0),
+      padding: EdgeInsets.only(
+        top: isDesktop ? 32 : 16,
+        bottom: isDesktop ? 4 : 0,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Builder(builder: (ctx) {
-            final firstName = _HeroInsight._firstName();
-            final salut = firstName.isNotEmpty ? '$greeting, $firstName.' : '$greeting !';
-            return Text(
-              salut,
-              style: TextStyle(
-                fontSize: isDesktop ? 44 : 30,
-                fontWeight: FontWeight.w700,
-                color: AminaTheme.textPrimary(context),
-                letterSpacing: -1.0,
-                height: 1.05,
-              ),
-            );
-          }),
+          Builder(
+            builder: (ctx) {
+              final firstName = _HeroInsight._firstName();
+              final salut = firstName.isNotEmpty
+                  ? '$greeting, $firstName.'
+                  : '$greeting !';
+              return Text(
+                salut,
+                style: TextStyle(
+                  fontSize: isDesktop ? 44 : 30,
+                  fontWeight: FontWeight.w700,
+                  color: AminaTheme.textPrimary(context),
+                  letterSpacing: -1.0,
+                  height: 1.05,
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 8),
           Text(
             logCount > 0
@@ -70,7 +85,9 @@ class _HeroContextual extends StatelessWidget {
     final now = DateTime.now();
     if (logs.isEmpty) return _HeroMode.insight;
     final latest = logs.first;
-    final minutesSince = now.difference(latest.loggedAt ?? latest.createdAt).inMinutes;
+    final minutesSince = now
+        .difference(latest.loggedAt ?? latest.createdAt)
+        .inMinutes;
     if (minutesSince < 90) return _HeroMode.live;
     if (now.hour >= 11 && now.hour < 15) return _HeroMode.tir;
     return _HeroMode.insight;
@@ -80,8 +97,8 @@ class _HeroContextual extends StatelessWidget {
   Widget build(BuildContext context) {
     final mode = _resolveMode();
     return switch (mode) {
-      _HeroMode.live    => _HeroLive(logs: logs, unit: unit, range: range),
-      _HeroMode.tir     => _HeroTIR(logs: logs, low: low, high: high, range: range),
+      _HeroMode.live => _HeroLive(logs: logs, unit: unit, range: range),
+      _HeroMode.tir => _HeroTIR(logs: logs, low: low, high: high, range: range),
       _HeroMode.insight => _HeroInsight(logs: logs, range: range),
     };
   }
