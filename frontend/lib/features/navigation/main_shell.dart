@@ -219,8 +219,8 @@ class _AddButton extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [AminaTheme.teal500, AminaTheme.teal700],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              begin: AlignmentDirectional.topStart,
+              end: AlignmentDirectional.bottomEnd,
             ),
             borderRadius: BorderRadius.circular(10),
             boxShadow: AminaTheme.shadowFab,
@@ -255,7 +255,7 @@ class _BrandHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 24, 16, 8),
       child: Row(
         children: [
           // ECG mark container
@@ -264,8 +264,8 @@ class _BrandHeader extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [AminaTheme.teal500, AminaTheme.teal800],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                begin: AlignmentDirectional.topStart,
+                end: AlignmentDirectional.bottomEnd,
               ),
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
@@ -326,7 +326,7 @@ class _NavLabel extends StatelessWidget {
   @override
   Widget build(BuildContext ctx) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 12, 6),
       child: Text(
         label.toUpperCase(),
         style: TextStyle(
@@ -381,8 +381,8 @@ class _NavItem extends StatelessWidget {
             children: [
               // Active left bar
               if (selected)
-                Positioned(
-                  left: isWide ? -8 : -8,
+                PositionedDirectional(
+                  start: isWide ? -8 : -8,
                   top: 8, bottom: 8,
                   child: Container(
                     width: 2.5,

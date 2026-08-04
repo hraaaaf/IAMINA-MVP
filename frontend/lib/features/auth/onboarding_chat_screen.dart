@@ -243,17 +243,17 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     final isBot = msg['isBot'] as bool;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      alignment: isBot ? Alignment.centerLeft : Alignment.centerRight,
+      alignment: isBot ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd,
       child: Container(
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
           color: isBot ? const Color(0xFFF3F4F6) : AminaTheme.primaryTeal,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(isBot ? 4 : 18),
-            bottomRight: Radius.circular(isBot ? 18 : 4),
+          borderRadius: BorderRadiusDirectional.only(
+            topStart: const Radius.circular(18),
+            topEnd: const Radius.circular(18),
+            bottomStart: Radius.circular(isBot ? 4 : 18),
+            bottomEnd: Radius.circular(isBot ? 18 : 4),
           ),
         ),
         child: Text(
@@ -307,16 +307,16 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   Widget _buildTypingIndicator() {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(18),
-            topRight: Radius.circular(18),
-            bottomLeft: Radius.circular(4),
-            bottomRight: Radius.circular(18),
+          borderRadius: const BorderRadiusDirectional.only(
+            topStart: Radius.circular(18),
+            topEnd: Radius.circular(18),
+            bottomStart: Radius.circular(4),
+            bottomEnd: Radius.circular(18),
           ),
         ),
         child: Row(

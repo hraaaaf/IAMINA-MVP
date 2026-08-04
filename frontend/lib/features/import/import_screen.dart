@@ -172,7 +172,7 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 12, 16, 12),
+      padding: EdgeInsetsDirectional.fromSTEB(16, MediaQuery.of(context).padding.top + 12, 16, 12),
       decoration: const BoxDecoration(
         color: AminaTheme.cardBg,
         border: Border(bottom: BorderSide(color: AminaTheme.ink100)),

@@ -292,7 +292,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => Container(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+        padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 24, 40),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -369,7 +369,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: Theme.of(context).scaffoldBackgroundColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
+        padding: const EdgeInsetsDirectional.fromSTEB(24, 16, 24, 36),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

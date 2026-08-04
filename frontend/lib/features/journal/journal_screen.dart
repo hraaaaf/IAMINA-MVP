@@ -39,7 +39,7 @@ class _JournalScreenState extends State<JournalScreen> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SliverPadding(
-                  padding: EdgeInsets.fromLTRB(20, 16, 20, 20),
+                  padding: EdgeInsetsDirectional.fromSTEB(20, 16, 20, 20),
                   sliver: _JournalSkeletonSliver(),
                 );
               }
@@ -96,7 +96,7 @@ class _JournalScreenState extends State<JournalScreen> {
               final sortedDays = groupedLogs.keys.toList()..sort((a, b) => b.compareTo(a));
 
               return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 100),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
@@ -133,12 +133,12 @@ class _JournalScreenState extends State<JournalScreen> {
         background: Container(
           decoration: BoxDecoration(
             gradient: AminaTheme.heroGradient,
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(32),
-              bottomRight: Radius.circular(32),
+            borderRadius: const BorderRadiusDirectional.only(
+              bottomStart: Radius.circular(32),
+              bottomEnd: Radius.circular(32),
             ),
           ),
-          padding: EdgeInsets.fromLTRB(24, topPad, 24, 0),
+          padding: EdgeInsetsDirectional.fromSTEB(24, topPad, 24, 0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -197,7 +197,7 @@ class _JournalScreenState extends State<JournalScreen> {
     final label = isToday ? l10n.today : DateFormat('EEEE d MMMM', 'fr_FR').format(date).toUpperCase();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 32, 4, 12),
+      padding: const EdgeInsetsDirectional.fromSTEB(4, 32, 4, 12),
       child: Row(
         children: [
           Icon(Icons.calendar_today_outlined, size: 14, color: AminaTheme.primaryTeal.withValues(alpha: 0.5)),
@@ -230,8 +230,8 @@ class _JournalScreenState extends State<JournalScreen> {
       direction: DismissDirection.endToStart,
       background: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
+        alignment: AlignmentDirectional.centerEnd,
+        padding: const EdgeInsetsDirectional.only(end: 20),
         decoration: BoxDecoration(
           color: AminaTheme.dangerRed,
           borderRadius: BorderRadius.circular(16),
@@ -357,7 +357,7 @@ class _JournalScreenState extends State<JournalScreen> {
                   children: [
                     if (log.insulinUnits != null && log.insulinUnits! > 0) ...[
                       Container(
-                        margin: const EdgeInsets.only(right: 8),
+                        margin: const EdgeInsetsDirectional.only(end: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: AminaTheme.primaryTeal.withValues(alpha: 0.05),
@@ -430,7 +430,7 @@ class _LifeIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4),
+      padding: const EdgeInsetsDirectional.only(start: 4),
       child: Text(icon, style: const TextStyle(fontSize: 12)),
     );
   }
@@ -460,7 +460,7 @@ class _SkeletonGroup extends StatelessWidget {
       children: [
         // Day header
         Padding(
-          padding: EdgeInsets.fromLTRB(0, 20, 0, 10),
+          padding: EdgeInsetsDirectional.fromSTEB(0, 20, 0, 10),
           child: _SkeletonBox(width: 100, height: 13, radius: 6),
         ),
         // 2-3 entry capsules

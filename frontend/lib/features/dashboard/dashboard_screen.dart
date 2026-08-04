@@ -209,7 +209,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         ),
                       ),
                       SliverPadding(
-                        padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 120),
+                        padding: EdgeInsetsDirectional.fromSTEB(hPad, 0, hPad, 120),
                         sliver: SliverList(
                           delegate: SliverChildListDelegate([
                             if (logs.isEmpty) ...[
