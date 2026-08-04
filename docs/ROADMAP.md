@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-04 — technical RTL certified in PR #36; fingerprinted native/clinical safety-review gate prepared in PR #37; human approvals remain open.
+> **Last updated:** 2026-08-04 — native/clinical review gate prepared in PR #37; secret-history remediation preflight prepared in PR #38; external rotation and approvals remain open.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -30,11 +30,11 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 All execution paths prepared; live runs blocked | Framework PR #18; text/STT/vision preparation PRs #19–#22 |
-| Pilot safety/compliance gate | 69% | 🟡 Automated procedures complete; external security/legal/human gates remain | 9 of 13 explicit gates complete; PRs #34–#35 prepare two external approval gates; secret-history remediation is blocked by issue #30 |
+| Pilot safety/compliance gate | 69% | 🟡 Automated procedures complete; external security/legal/human gates remain | 9 of 13 explicit gates complete; PRs #34–#35 prepare approval gates; PR #38 prepares secret-history remediation; issue #30 remains blocking |
 
 **MENA critical-path completion:** 32 of 41 explicit roadmap tasks closed, approximately **78%**.
 
-Preparation work does not close a live benchmark, legal/privacy approval or native-review task and does not increase the critical-path numerator.
+Preparation work does not close a live benchmark, legal/privacy approval, native-review task or external credential-remediation task and does not increase the critical-path numerator.
 
 ---
 
@@ -177,7 +177,7 @@ No provider score, decision or production approval may be inferred from preparat
 - [x] Define retention and deletion schedules. **PR #26 provides a versioned schedule, policy audit, staged-export purge and guarded transactional account deletion.**
 - [x] Approve incident-response and escalation procedures. **PR #27 provides the SEV1–SEV4 matrix, mandatory roles, minimized incident records and tabletop requirements.**
 - [x] Approve pilot onboarding, monitoring, escalation and exit checklists. **PR #28 provides a versioned registry, restricted cohort packet and fail-closed completion validator.**
-- [ ] Prove no committed or reachable secrets remain and rotate any exposed keys. **The current tree passes, but PR #29 found six historical PekPik service credentials in a deleted local settings file. Rotation must precede history rewrite; tracked in issue #30.**
+- [ ] Prove no committed or reachable secrets remain and rotate any exposed keys. **PR #38 provides the full-history scanner, synthetic tests, weekly/manual preflight and rotation/rewrite runbook. The current tree passes, but reachable history still contains one forbidden blob with six PekPik service-token findings; rotation and history rewrite remain blocked by issue #30.**
 
 ## Current automated Pilot Safety checkpoint
 
@@ -191,16 +191,17 @@ Merged technical and operational units:
 - PR #28 — onboarding, monitoring, escalation and exit checklists;
 - PR #34 — consent and processor-approval readiness gate;
 - PR #35 — Morocco residency and foreign-transfer deployment gate;
-- PR #37 — fingerprinted native, clinical and multilingual parity review package.
+- PR #37 — fingerprinted native, clinical and multilingual parity review package;
+- PR #38 — secret-history remediation preflight and safe rewrite procedure.
 
-These units close procedures and executable controls. They do not imply native-language approval, country-specific legal approval, processor approval, completion of a real cohort checklist, completion of an incident drill or approval of the actual production deployment manifest.
+These units close procedures and executable controls. They do not imply native-language approval, country-specific legal approval, processor approval, credential rotation, history remediation, completion of a real cohort checklist, completion of an incident drill or approval of the actual production deployment manifest.
 
 ---
 
 # Current blockers and next sequence
 
 1. **Security emergency:** revoke or rotate all potentially affected PekPik credentials and review provider activity under issue #30.
-2. Rewrite affected Git history only after revocation, coordinate fresh clones, obtain a passing non-shallow history scan and merge PR #29.
+2. After rotation confirmation, rewrite all affected refs, require fresh clones, obtain a passing non-shallow PR #38 scan and activate the blocking push/pull-request history gate. The older draft PR #29 is superseded.
 3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals, then run the PR #34 and PR #35 `--require-approved` gates.
 4. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
 5. Run the deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
