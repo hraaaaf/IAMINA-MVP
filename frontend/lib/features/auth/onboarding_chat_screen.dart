@@ -34,8 +34,12 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   }
 
   void _startConversation() async {
-    await _addBotMessage("Bonjour ! Je suis IAmina, ton compagnon pour une vie équilibrée avec le diabète. 😊");
-    await _addBotMessage("Pour commencer, quel type de diabète gères-tu au quotidien ?");
+    await _addBotMessage(
+      "Bonjour ! Je suis IAmina, ton compagnon pour une vie équilibrée avec le diabète. 😊",
+    );
+    await _addBotMessage(
+      "Pour commencer, quel type de diabète gères-tu au quotidien ?",
+    );
     _showOptions([
       {'id': 'type1', 'label': 'Diabète Type 1'},
       {'id': 'type2', 'label': 'Diabète Type 2'},
@@ -62,7 +66,10 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     _scrollToBottom();
   }
 
-  void _showOptions(List<Map<String, String>> options, Function(String, String) onSelect) {
+  void _showOptions(
+    List<Map<String, String>> options,
+    Function(String, String) onSelect,
+  ) {
     setState(() {
       _messages.add({
         'isOptions': true,
@@ -89,8 +96,10 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     _addUserMessage(label);
     _userData['diabetes_type'] = id;
     setState(() => _progress = 0.4);
-    
-    await _addBotMessage("D'accord. Et quel est ton mode de traitement principal ?");
+
+    await _addBotMessage(
+      "D'accord. Et quel est ton mode de traitement principal ?",
+    );
     _showOptions([
       {'id': 'insulin', 'label': 'Insuline (Injection/Pompe)'},
       {'id': 'tablets', 'label': 'Comprimés'},
@@ -103,7 +112,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     _userData['treatment'] = id;
     setState(() => _progress = 0.6);
 
-    await _addBotMessage("Très bien. Quels sont tes objectifs glycémiques (en mg/dL) ? On utilise classiquement 70–180.");
+    await _addBotMessage(
+      "Très bien. Quels sont tes objectifs glycémiques (en mg/dL) ? On utilise classiquement 70–180.",
+    );
     _showOptions([
       {'id': 'standard', 'label': 'Standards (70–180)'},
       {'id': 'custom', 'label': 'Personnalisés'},
@@ -114,9 +125,11 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     _addUserMessage(label);
     setState(() => _progress = 0.75);
 
-    await _addBotMessage("Dernière question : quelle unité préfères-tu pour les mesures ?");
+    await _addBotMessage(
+      "Dernière question : quelle unité préfères-tu pour les mesures ?",
+    );
     _showOptions([
-      {'id': 'mg/dL',  'label': 'mg/dL  (standard France/Maroc)'},
+      {'id': 'mg/dL', 'label': 'mg/dL  (standard France/Maroc)'},
       {'id': 'mmol/L', 'label': 'mmol/L  (UK, Canada, international)'},
     ], _onUnitSelected);
   }
@@ -126,7 +139,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     _userData['unit'] = id;
     setState(() => _progress = 0.9);
 
-    await _addBotMessage("Parfait ! J'ai configuré ton espace personnel. Prêt à transformer ton suivi ?");
+    await _addBotMessage(
+      "Parfait ! J'ai configuré ton espace personnel. Prêt à transformer ton suivi ?",
+    );
     _showOptions([
       {'id': 'go', 'label': "C'est parti ! 🚀"},
     ], (id, label) => _finish());
@@ -136,24 +151,24 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     _addUserMessage("C'est parti ! 🚀");
     setState(() => _progress = 1.0);
     await _addBotMessage("Tout est prêt ! Redirection en cours…");
-    
+
     if (!mounted) return;
     // Save to DB — derive a stable integer ID from Firebase UID hash
-    final db       = context.read<AppDatabase>();
+    final db = context.read<AppDatabase>();
     final firebaseUser = FirebaseAuth.instance.currentUser;
-    final userId   = firebaseUser?.uid.hashCode.abs() ?? 1;
+    final userId = firebaseUser?.uid.hashCode.abs() ?? 1;
     final profile = PatientProfilesCompanion.insert(
       userId: drift.Value(userId),
       preferredLanguage: const drift.Value('fr'),
       updatedAt: DateTime.now(),
-      diabetesType:   drift.Value(_userData['diabetes_type'] as String),
-      treatment:      drift.Value(_userData['treatment']     as String),
-      unitPreference: drift.Value(_userData['unit']          as String),
-      targetRangeLow:  drift.Value(_userData['target_low']  as double),
+      diabetesType: drift.Value(_userData['diabetes_type'] as String),
+      treatment: drift.Value(_userData['treatment'] as String),
+      unitPreference: drift.Value(_userData['unit'] as String),
+      targetRangeLow: drift.Value(_userData['target_low'] as double),
       targetRangeHigh: drift.Value(_userData['target_high'] as double),
     );
     await db.into(db.patientProfiles).insertOnConflictUpdate(profile);
-    
+
     if (mounted) context.go('/dashboard');
   }
 
@@ -167,7 +182,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
             LinearProgressIndicator(
               value: _progress,
               backgroundColor: Colors.transparent,
-              valueColor: const AlwaysStoppedAnimation<Color>(AminaTheme.primaryTeal),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AminaTheme.primaryTeal,
+              ),
               minHeight: 4,
             ),
             _buildHeader(),
@@ -213,7 +230,11 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
               gradient: AminaTheme.heroGradient,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+            child: const Icon(
+              Icons.auto_awesome,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           const Column(
@@ -221,7 +242,11 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
             children: [
               Text(
                 'IAmina',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: -0.5),
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                  letterSpacing: -0.5,
+                ),
               ),
               Text(
                 'Assistant Intelligent',
@@ -243,17 +268,21 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     final isBot = msg['isBot'] as bool;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      alignment: isBot ? Alignment.centerLeft : Alignment.centerRight,
+      alignment: isBot
+          ? AlignmentDirectional.centerStart
+          : AlignmentDirectional.centerEnd,
       child: Container(
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.85,
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
           color: isBot ? const Color(0xFFF3F4F6) : AminaTheme.primaryTeal,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(isBot ? 4 : 18),
-            bottomRight: Radius.circular(isBot ? 18 : 4),
+          borderRadius: BorderRadiusDirectional.only(
+            topStart: const Radius.circular(18),
+            topEnd: const Radius.circular(18),
+            bottomStart: Radius.circular(isBot ? 4 : 18),
+            bottomEnd: Radius.circular(isBot ? 18 : 4),
           ),
         ),
         child: Text(
@@ -307,16 +336,16 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   Widget _buildTypingIndicator() {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(18),
-            topRight: Radius.circular(18),
-            bottomLeft: Radius.circular(4),
-            bottomRight: Radius.circular(18),
+          borderRadius: const BorderRadiusDirectional.only(
+            topStart: Radius.circular(18),
+            topEnd: Radius.circular(18),
+            bottomStart: Radius.circular(4),
+            bottomEnd: Radius.circular(18),
           ),
         ),
         child: Row(
@@ -336,13 +365,17 @@ class _TypingDot extends StatefulWidget {
   State<_TypingDot> createState() => _TypingDotState();
 }
 
-class _TypingDotState extends State<_TypingDot> with SingleTickerProviderStateMixin {
+class _TypingDotState extends State<_TypingDot>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
     Future.delayed(Duration(milliseconds: (widget.delay * 1000).toInt()), () {
       if (mounted) _controller.repeat(reverse: true);
     });
@@ -362,7 +395,10 @@ class _TypingDotState extends State<_TypingDot> with SingleTickerProviderStateMi
         width: 6,
         height: 6,
         margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle),
+        decoration: const BoxDecoration(
+          color: Colors.grey,
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }

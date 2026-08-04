@@ -36,21 +36,25 @@ List<_NavEntry> _navEntries(Set<String> activeIds) {
   final entries = <_NavEntry>[];
   for (final m in ModuleRegistry.activeFrom(activeIds)) {
     for (final d in m.navDestinations) {
-      entries.add(_NavEntry(
-        route: d.route,
-        icon: d.icon,
-        selectedIcon: d.selectedIcon,
-        label: d.label,
-      ));
+      entries.add(
+        _NavEntry(
+          route: d.route,
+          icon: d.icon,
+          selectedIcon: d.selectedIcon,
+          label: d.label,
+        ),
+      );
     }
   }
-  entries.add(_NavEntry(
-    route: '/profile',
-    icon: Icons.settings_outlined,
-    selectedIcon: Icons.settings_rounded,
-    label: (l) => l.navSettings,
-    isAccount: true,
-  ));
+  entries.add(
+    _NavEntry(
+      route: '/profile',
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings_rounded,
+      label: (l) => l.navSettings,
+      isAccount: true,
+    ),
+  );
   return entries;
 }
 
@@ -66,10 +70,14 @@ int _selectedIndexFor(String path, List<_NavEntry> entries) {
 String _sensorStatusLabel(PatientProfileData? profile, AppLocalizations l10n) {
   if (profile == null) return l10n.sensorStatus;
   switch (profile.treatment) {
-    case 'insulin':    return '💉 Insuline · IAmina';
-    case 'tablets':    return '💊 Comprimés · IAmina';
-    case 'lifestyle':  return '🌿 Mode bien-être · IAmina';
-    default:           return l10n.sensorStatus;
+    case 'insulin':
+      return '💉 Insuline · IAmina';
+    case 'tablets':
+      return '💊 Comprimés · IAmina';
+    case 'lifestyle':
+      return '🌿 Mode bien-être · IAmina';
+    default:
+      return l10n.sensorStatus;
   }
 }
 
@@ -83,7 +91,10 @@ class MainShell extends StatelessWidget {
     final bg = AminaTheme.bg(context);
     final activeIds = context.watch<ModulesProvider>().activeIds;
     final entries = _navEntries(activeIds);
-    final selected = _selectedIndexFor(GoRouterState.of(context).uri.path, entries);
+    final selected = _selectedIndexFor(
+      GoRouterState.of(context).uri.path,
+      entries,
+    );
 
     return Scaffold(
       backgroundColor: bg,
@@ -93,8 +104,9 @@ class MainShell extends StatelessWidget {
           Expanded(child: child),
         ],
       ),
-      bottomNavigationBar:
-          isMedium ? null : _BottomNav(entries: entries, selectedIndex: selected),
+      bottomNavigationBar: isMedium
+          ? null
+          : _BottomNav(entries: entries, selectedIndex: selected),
     );
   }
 }
@@ -137,7 +149,13 @@ class _EcgMarkPainter extends CustomPainter {
     canvas.drawPath(path, paint);
 
     // Dot on top
-    canvas.drawCircle(Offset(w * 0.5, 0), 1.4, Paint()..color = color..style = PaintingStyle.fill);
+    canvas.drawCircle(
+      Offset(w * 0.5, 0),
+      1.4,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
   }
 
   @override
@@ -172,20 +190,39 @@ class _Sidebar extends StatelessWidget {
           _AddButton(isWide: isWide),
           const SizedBox(height: 8),
           if (isWide)
-            _NavLabel(AppLocalizations.of(context)!.navSectionMain, context: context)
+            _NavLabel(
+              AppLocalizations.of(context)!.navSectionMain,
+              context: context,
+            )
           else
             const SizedBox(height: 8),
           for (var i = 0; i < entries.length; i++)
             if (!entries[i].isAccount)
-              _NavItem(entry: entries[i], isWide: isWide, selected: selectedIndex == i),
+              _NavItem(
+                entry: entries[i],
+                isWide: isWide,
+                selected: selectedIndex == i,
+              ),
           const SizedBox(height: 8),
-          if (isWide) _NavLabel(AppLocalizations.of(context)!.navSectionAccount, context: context),
+          if (isWide)
+            _NavLabel(
+              AppLocalizations.of(context)!.navSectionAccount,
+              context: context,
+            ),
           for (var i = 0; i < entries.length; i++)
             if (entries[i].isAccount)
-              _NavItem(entry: entries[i], isWide: isWide, selected: selectedIndex == i),
+              _NavItem(
+                entry: entries[i],
+                isWide: isWide,
+                selected: selectedIndex == i,
+              ),
           _LogoutItem(isWide: isWide),
           const Spacer(),
-          _UserChip(isWide: isWide, initials: initials, name: user?.displayName ?? user?.email ?? 'Utilisateur'),
+          _UserChip(
+            isWide: isWide,
+            initials: initials,
+            name: user?.displayName ?? user?.email ?? 'Utilisateur',
+          ),
         ],
       ),
     );
@@ -193,7 +230,10 @@ class _Sidebar extends StatelessWidget {
 
   String _initials(String name) {
     if (name.isEmpty) return '??';
-    final parts = name.split(RegExp(r'[\s@.]')).where((p) => p.isNotEmpty).toList();
+    final parts = name
+        .split(RegExp(r'[\s@.]'))
+        .where((p) => p.isNotEmpty)
+        .toList();
     if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     if (name.length >= 2) return name.substring(0, 2).toUpperCase();
     return name.toUpperCase();
@@ -219,14 +259,16 @@ class _AddButton extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [AminaTheme.teal500, AminaTheme.teal700],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              begin: AlignmentDirectional.topStart,
+              end: AlignmentDirectional.bottomEnd,
             ),
             borderRadius: BorderRadius.circular(10),
             boxShadow: AminaTheme.shadowFab,
           ),
           child: Row(
-            mainAxisAlignment: isWide ? MainAxisAlignment.start : MainAxisAlignment.center,
+            mainAxisAlignment: isWide
+                ? MainAxisAlignment.start
+                : MainAxisAlignment.center,
             children: [
               const Icon(Icons.add, color: Colors.white, size: 18),
               if (isWide) ...[
@@ -255,17 +297,18 @@ class _BrandHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 24, 16, 8),
       child: Row(
         children: [
           // ECG mark container
           Container(
-            width: 34, height: 34,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [AminaTheme.teal500, AminaTheme.teal800],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                begin: AlignmentDirectional.topStart,
+                end: AlignmentDirectional.bottomEnd,
               ),
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
@@ -278,9 +321,12 @@ class _BrandHeader extends StatelessWidget {
             ),
             child: Center(
               child: SizedBox(
-                width: 18, height: 22,
+                width: 18,
+                height: 22,
                 child: CustomPaint(
-                  painter: _EcgMarkPainter(color: Colors.white.withValues(alpha: 0.92)),
+                  painter: _EcgMarkPainter(
+                    color: Colors.white.withValues(alpha: 0.92),
+                  ),
                 ),
               ),
             ),
@@ -326,7 +372,7 @@ class _NavLabel extends StatelessWidget {
   @override
   Widget build(BuildContext ctx) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 12, 6),
       child: Text(
         label.toUpperCase(),
         style: TextStyle(
@@ -381,9 +427,10 @@ class _NavItem extends StatelessWidget {
             children: [
               // Active left bar
               if (selected)
-                Positioned(
-                  left: isWide ? -8 : -8,
-                  top: 8, bottom: 8,
+                PositionedDirectional(
+                  start: isWide ? -8 : -8,
+                  top: 8,
+                  bottom: 8,
                   child: Container(
                     width: 2.5,
                     decoration: BoxDecoration(
@@ -393,7 +440,9 @@ class _NavItem extends StatelessWidget {
                   ),
                 ),
               Row(
-                mainAxisAlignment: isWide ? MainAxisAlignment.start : MainAxisAlignment.center,
+                mainAxisAlignment: isWide
+                    ? MainAxisAlignment.start
+                    : MainAxisAlignment.center,
                 children: [
                   Icon(
                     selected ? selectedIcon : icon,
@@ -407,7 +456,9 @@ class _NavItem extends StatelessWidget {
                         label,
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight: selected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
                           color: selected ? activeColor : textColor,
                         ),
                       ),
@@ -445,14 +496,24 @@ class _LogoutItem extends StatelessWidget {
           height: 38,
           padding: EdgeInsets.symmetric(horizontal: isWide ? 12 : 0),
           child: Row(
-            mainAxisAlignment: isWide ? MainAxisAlignment.start : MainAxisAlignment.center,
+            mainAxisAlignment: isWide
+                ? MainAxisAlignment.start
+                : MainAxisAlignment.center,
             children: [
-              Icon(Icons.logout_rounded, color: AminaTheme.textSecondary(context), size: 17),
+              Icon(
+                Icons.logout_rounded,
+                color: AminaTheme.textSecondary(context),
+                size: 17,
+              ),
               if (isWide) ...[
                 const SizedBox(width: 10),
                 Text(
                   AppLocalizations.of(context)!.logout,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AminaTheme.textPrimary(context)),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AminaTheme.textPrimary(context),
+                  ),
                 ),
               ],
             ],
@@ -467,7 +528,11 @@ class _UserChip extends StatelessWidget {
   final bool isWide;
   final String initials;
   final String name;
-  const _UserChip({required this.isWide, required this.initials, required this.name});
+  const _UserChip({
+    required this.isWide,
+    required this.initials,
+    required this.name,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -479,15 +544,22 @@ class _UserChip extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 32, height: 32,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFFE9D3A3), Color(0xFFC78B3A)]),
+              gradient: const LinearGradient(
+                colors: [Color(0xFFE9D3A3), Color(0xFFC78B3A)],
+              ),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
               child: Text(
                 initials,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
               ),
             ),
           ),
@@ -506,11 +578,22 @@ class _UserChip extends StatelessWidget {
                       color: AminaTheme.textPrimary(context),
                     ),
                   ),
-                  Builder(builder: (ctx) {
-                    final profile = ctx.watch<PatientProfileData?>();
-                    final status = _sensorStatusLabel(profile, AppLocalizations.of(ctx)!);
-                    return Text(status, style: TextStyle(color: AminaTheme.textSecondary(ctx), fontSize: 11));
-                  }),
+                  Builder(
+                    builder: (ctx) {
+                      final profile = ctx.watch<PatientProfileData?>();
+                      final status = _sensorStatusLabel(
+                        profile,
+                        AppLocalizations.of(ctx)!,
+                      );
+                      return Text(
+                        status,
+                        style: TextStyle(
+                          color: AminaTheme.textSecondary(ctx),
+                          fontSize: 11,
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -532,7 +615,9 @@ class _BottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = AminaTheme.isDark(context);
     final bg = dark ? AminaTheme.darkCard : AminaTheme.cardBg;
-    final indicatorColor = dark ? AminaTheme.teal700.withValues(alpha: 0.3) : AminaTheme.teal50;
+    final indicatorColor = dark
+        ? AminaTheme.teal700.withValues(alpha: 0.3)
+        : AminaTheme.teal50;
 
     return Theme(
       data: Theme.of(context).copyWith(
@@ -542,9 +627,15 @@ class _BottomNav extends StatelessWidget {
           height: 68,
           iconTheme: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
-              return IconThemeData(color: dark ? AminaTheme.teal400 : AminaTheme.teal600, size: 22);
+              return IconThemeData(
+                color: dark ? AminaTheme.teal400 : AminaTheme.teal600,
+                size: 22,
+              );
             }
-            return IconThemeData(color: dark ? AminaTheme.dark400 : AminaTheme.ink400, size: 22);
+            return IconThemeData(
+              color: dark ? AminaTheme.dark400 : AminaTheme.ink400,
+              size: 22,
+            );
           }),
           labelTextStyle: WidgetStateProperty.all(
             TextStyle(
@@ -571,4 +662,3 @@ class _BottomNav extends StatelessWidget {
     );
   }
 }
-

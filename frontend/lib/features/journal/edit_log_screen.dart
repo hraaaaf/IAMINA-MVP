@@ -24,8 +24,15 @@ class _EditLogScreenState extends State<EditLogScreen> {
   bool _isRamadanMode = false;
 
   final List<String> _mealTypes = [
-    'À jeun', 'Post-prandial', 'Avant le coucher', 'En-cas', 'Libre',
-    'Iftar', 'Suhoor', 'Nuit', 'Avant Jeûne',
+    'À jeun',
+    'Post-prandial',
+    'Avant le coucher',
+    'En-cas',
+    'Libre',
+    'Iftar',
+    'Suhoor',
+    'Nuit',
+    'Avant Jeûne',
   ];
 
   @override
@@ -42,15 +49,20 @@ class _EditLogScreenState extends State<EditLogScreen> {
   }
 
   Future<void> _loadLog() async {
-    final db      = context.read<AppDatabase>();
-    final profile = context.read<PatientProfileData?>(); // read before async gap
-    final log     = await db.getLogById(widget.logId);
+    final db = context.read<AppDatabase>();
+    final profile = context
+        .read<PatientProfileData?>(); // read before async gap
+    final log = await db.getLogById(widget.logId);
     if (log != null) {
       final unit = profile?.unitPreference ?? 'mg/dL';
-      final displayValue = unit == 'mmol/L' ? log.bloodSugar / 18.0 : log.bloodSugar;
+      final displayValue = unit == 'mmol/L'
+          ? log.bloodSugar / 18.0
+          : log.bloodSugar;
       setState(() {
         _glucoseValue = displayValue;
-        _glucoseController.text = displayValue.toStringAsFixed(unit == 'mmol/L' ? 1 : 0);
+        _glucoseController.text = displayValue.toStringAsFixed(
+          unit == 'mmol/L' ? 1 : 0,
+        );
         _insulinDose = log.insulinUnits ?? 0.0;
         _mealType = log.mealType ?? 'À jeun';
         _isRamadanMode = log.ramadanMode;
@@ -103,7 +115,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
   Widget _buildHeader(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 16, 24, 8),
+        padding: const EdgeInsetsDirectional.fromSTEB(12, 16, 24, 8),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -113,7 +125,11 @@ class _EditLogScreenState extends State<EditLogScreen> {
             ),
             const Text(
               'Modifier la mesure',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
             ),
             const SizedBox(width: 48),
           ],
@@ -136,8 +152,16 @@ class _EditLogScreenState extends State<EditLogScreen> {
                 controller: _glucoseController,
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 80, fontWeight: FontWeight.w900, height: 1.0, letterSpacing: -4),
-                decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
+                style: const TextStyle(
+                  fontSize: 80,
+                  fontWeight: FontWeight.w900,
+                  height: 1.0,
+                  letterSpacing: -4,
+                ),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                ),
                 onChanged: (val) {
                   final d = double.tryParse(val);
                   if (d != null) setState(() => _glucoseValue = d);
@@ -147,7 +171,11 @@ class _EditLogScreenState extends State<EditLogScreen> {
             const SizedBox(width: 8),
             Text(
               unit,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AminaTheme.textMuted.withValues(alpha: 0.5)),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AminaTheme.textMuted.withValues(alpha: 0.5),
+              ),
             ),
           ],
         ),
@@ -170,13 +198,16 @@ class _EditLogScreenState extends State<EditLogScreen> {
         children: _mealTypes.map((type) {
           final isSelected = _mealType == type;
           return Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsetsDirectional.only(end: 12),
             child: InkWell(
               onTap: () => setState(() => _mealType = type),
               borderRadius: BorderRadius.circular(100),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? AminaTheme.teal500 : AminaTheme.ink100,
                   borderRadius: BorderRadius.circular(100),
@@ -203,21 +234,48 @@ class _EditLogScreenState extends State<EditLogScreen> {
       children: [
         Row(
           children: [
-            Icon(Icons.colorize_outlined, size: 20, color: AminaTheme.primaryTeal.withValues(alpha: 0.7)),
+            Icon(
+              Icons.colorize_outlined,
+              size: 20,
+              color: AminaTheme.primaryTeal.withValues(alpha: 0.7),
+            ),
             const SizedBox(width: 12),
-            const Text("DOSE D'INSULINE", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+            const Text(
+              "DOSE D'INSULINE",
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _stepperBtn(Icons.remove, () { if (_insulinDose > 0) setState(() => _insulinDose--); }),
+            _stepperBtn(Icons.remove, () {
+              if (_insulinDose > 0) setState(() => _insulinDose--);
+            }),
             const SizedBox(width: 32),
             Column(
               children: [
-                Text(_insulinDose.toInt().toString(), style: const TextStyle(fontSize: 56, fontWeight: FontWeight.w900, height: 1.0)),
-                const Text('UNITÉS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AminaTheme.textMuted)),
+                Text(
+                  _insulinDose.toInt().toString(),
+                  style: const TextStyle(
+                    fontSize: 56,
+                    fontWeight: FontWeight.w900,
+                    height: 1.0,
+                  ),
+                ),
+                const Text(
+                  'UNITÉS',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AminaTheme.textMuted,
+                  ),
+                ),
               ],
             ),
             const SizedBox(width: 32),
@@ -233,8 +291,12 @@ class _EditLogScreenState extends State<EditLogScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(100),
       child: Container(
-        width: 48, height: 48,
-        decoration: const BoxDecoration(color: AminaTheme.ink100, shape: BoxShape.circle),
+        width: 48,
+        height: 48,
+        decoration: const BoxDecoration(
+          color: AminaTheme.ink100,
+          shape: BoxShape.circle,
+        ),
         child: Icon(icon, size: 24),
       ),
     );
@@ -249,20 +311,40 @@ class _EditLogScreenState extends State<EditLogScreen> {
         decoration: BoxDecoration(
           color: _isRamadanMode ? const Color(0xFF0D1A17) : AminaTheme.ink50,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: _isRamadanMode ? AminaTheme.primaryTeal.withValues(alpha: 0.3) : Colors.transparent),
+          border: Border.all(
+            color: _isRamadanMode
+                ? AminaTheme.primaryTeal.withValues(alpha: 0.3)
+                : Colors.transparent,
+          ),
         ),
         child: Row(
           children: [
-            Icon(_isRamadanMode ? Icons.nightlight_round : Icons.wb_sunny_outlined,
-                color: _isRamadanMode ? Colors.amber : AminaTheme.textMuted),
+            Icon(
+              _isRamadanMode ? Icons.nightlight_round : Icons.wb_sunny_outlined,
+              color: _isRamadanMode ? Colors.amber : AminaTheme.textMuted,
+            ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Mode Ramadan', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: _isRamadanMode ? Colors.white : AminaTheme.ink900)),
-                  Text(_isRamadanMode ? 'Activé — horaires adaptés' : 'Désactivé',
-                      style: TextStyle(fontSize: 12, color: _isRamadanMode ? Colors.white70 : AminaTheme.ink500)),
+                  Text(
+                    'Mode Ramadan',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: _isRamadanMode ? Colors.white : AminaTheme.ink900,
+                    ),
+                  ),
+                  Text(
+                    _isRamadanMode ? 'Activé — horaires adaptés' : 'Désactivé',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _isRamadanMode
+                          ? Colors.white70
+                          : AminaTheme.ink500,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -281,7 +363,9 @@ class _EditLogScreenState extends State<EditLogScreen> {
     final db = context.read<AppDatabase>();
     final profile = context.read<PatientProfileData?>();
     final unit = profile?.unitPreference ?? 'mg/dL';
-    final bloodSugarMgdl = unit == 'mmol/L' ? _glucoseValue * 18.0 : _glucoseValue;
+    final bloodSugarMgdl = unit == 'mmol/L'
+        ? _glucoseValue * 18.0
+        : _glucoseValue;
 
     await db.updateLog(
       widget.logId,

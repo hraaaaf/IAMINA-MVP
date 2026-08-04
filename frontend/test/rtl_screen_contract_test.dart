@@ -133,19 +133,22 @@ String _lineFor(String source, int offset) {
 }
 
 void main() {
-  test('every routed screen is explicitly registered for RTL certification', () {
-    final registeredRoutes = _screenRegistry
-        .where((entry) => entry.route != '@shell')
-        .map((entry) => entry.route)
-        .toSet();
+  test(
+    'every routed screen is explicitly registered for RTL certification',
+    () {
+      final registeredRoutes = _screenRegistry
+          .where((entry) => entry.route != '@shell')
+          .map((entry) => entry.route)
+          .toSet();
 
-    expect(registeredRoutes, _declaredRoutes());
-    expect(
-      _screenRegistry.map((entry) => entry.route).toSet().length,
-      _screenRegistry.length,
-      reason: 'RTL screen registry contains a duplicate route.',
-    );
-  });
+      expect(registeredRoutes, _declaredRoutes());
+      expect(
+        _screenRegistry.map((entry) => entry.route).toSet().length,
+        _screenRegistry.length,
+        reason: 'RTL screen registry contains a duplicate route.',
+      );
+    },
+  );
 
   test('every registry entry resolves to its declared widget source', () {
     final failures = <String>[];
@@ -165,21 +168,24 @@ void main() {
     expect(failures, isEmpty, reason: failures.join('\n'));
   });
 
-  test('registered screens contain no physical left/right layout primitives', () {
-    final failures = <String>[];
-    for (final entry in _screenRegistry) {
-      final source = File(entry.source).readAsStringSync();
-      for (final rule in _physicalDirectionPatterns) {
-        for (final match in rule.value.allMatches(source)) {
-          failures.add(
-            '${entry.route} ${entry.source}:${_lineFor(source, match.start)} '
-            'uses ${rule.key}',
-          );
+  test(
+    'registered screens contain no physical left/right layout primitives',
+    () {
+      final failures = <String>[];
+      for (final entry in _screenRegistry) {
+        final source = File(entry.source).readAsStringSync();
+        for (final rule in _physicalDirectionPatterns) {
+          for (final match in rule.value.allMatches(source)) {
+            failures.add(
+              '${entry.route} ${entry.source}:${_lineFor(source, match.start)} '
+              'uses ${rule.key}',
+            );
+          }
         }
       }
-    }
-    expect(failures, isEmpty, reason: failures.join('\n'));
-  });
+      expect(failures, isEmpty, reason: failures.join('\n'));
+    },
+  );
 
   testWidgets('Arabic localization resolves application direction to RTL', (
     tester,
