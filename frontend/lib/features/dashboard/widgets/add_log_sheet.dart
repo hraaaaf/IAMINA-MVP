@@ -26,16 +26,8 @@ extension _PortionExt on _Portion {
     _Portion.grand => 'grand',
   };
   int carbsFor(String glycemic) {
-    final base = switch (glycemic) {
-      'low' => 10,
-      'medium' => 25,
-      _ => 40,
-    };
-    final mult = switch (this) {
-      _Portion.petit => 0.5,
-      _Portion.moyen => 1.0,
-      _Portion.grand => 1.5,
-    };
+    final base = switch (glycemic) { 'low' => 10, 'medium' => 25, _ => 40 };
+    final mult = switch (this) { _Portion.petit => 0.5, _Portion.moyen => 1.0, _Portion.grand => 1.5 };
     return (base * mult).round();
   }
 }
@@ -56,7 +48,7 @@ class AddLogSheet extends StatefulWidget {
 
 class _AddLogSheetState extends State<AddLogSheet> {
   double _glucoseValue = 110.0;
-  double _insulinDose = 0.0;
+  double _insulinDose  = 0.0;
   static const double _insulinStep = 0.5;
   String _mealType = 'À jeun';
   DateTime _selectedTime = DateTime.now();
@@ -85,102 +77,81 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
   // Manual input
   final TextEditingController _manualController = TextEditingController();
-  bool _saving = false;
-  bool _ocrScanning = false; // true while ML Kit / Gemini OCR is processing
-  bool _mealScanning =
-      false; // true while Gemini Vision is analysing meal photo
+  bool _saving      = false;
+  bool _ocrScanning  = false; // true while ML Kit / Gemini OCR is processing
+  bool _mealScanning = false; // true while Gemini Vision is analysing meal photo
 
   // Vocal input for meal note
   final AudioRecorder _audioRecorder = AudioRecorder();
-  bool _noteRecording = false; // mic held for meal note dictation
+  bool _noteRecording    = false; // mic held for meal note dictation
   bool _noteTranscribing = false; // STT in flight
   final List<Uint8List> _noteAudioChunks = [];
 
-  final List<String> _mealTypesNormal = [
-    'À jeun',
-    'Petit-déjeuner',
-    'Déjeuner',
-    'Dîner',
-    'Collation',
-    'Sport',
-  ];
-  final List<String> _mealTypesRamadan = [
-    'Iftar',
-    'Suhoor',
-    'Nuit',
-    'Avant Jeûne',
-    'Libre',
-  ];
+  final List<String> _mealTypesNormal  = ['À jeun', 'Petit-déjeuner', 'Déjeuner', 'Dîner', 'Collation', 'Sport'];
+  final List<String> _mealTypesRamadan = ['Iftar', 'Suhoor', 'Nuit', 'Avant Jeûne', 'Libre'];
 
   // ── Color helpers ─────────────────────────────────────────────────────────────
 
   static Color _mealColor(String type) => switch (type) {
-    'Petit-déjeuner' || 'Suhoor' => const Color(0xFFD97706),
-    'Déjeuner' || 'Iftar' => const Color(0xFF059669),
-    'Dîner' || 'Nuit' => const Color(0xFF4F46E5),
-    'Collation' || 'Avant Jeûne' => const Color(0xFFEA580C),
-    'Sport' => const Color(0xFF7C3AED),
-    _ => const Color(0xFF64748B),
+    'Petit-déjeuner' || 'Suhoor'      => const Color(0xFFD97706),
+    'Déjeuner'       || 'Iftar'       => const Color(0xFF059669),
+    'Dîner'          || 'Nuit'        => const Color(0xFF4F46E5),
+    'Collation'      || 'Avant Jeûne' => const Color(0xFFEA580C),
+    'Sport'                           => const Color(0xFF7C3AED),
+    _                                 => const Color(0xFF64748B),
   };
 
   Color _glucoseColor(double val) {
-    if (val < 54) return const Color(0xFFDC2626);
-    if (val < 70) return const Color(0xFFF97316);
+    if (val < 54)   return const Color(0xFFDC2626);
+    if (val < 70)   return const Color(0xFFF97316);
     if (val <= 180) return AminaTheme.teal500;
     if (val <= 250) return const Color(0xFFF59E0B);
     return const Color(0xFFDC2626);
   }
 
   Color _glucoseBg(double val) {
-    if (val < 70) return const Color(0xFFFEF2F2);
+    if (val < 70)   return const Color(0xFFFEF2F2);
     if (val <= 180) return const Color(0xFFECFBF6);
     if (val <= 250) return const Color(0xFFFEF7E6);
     return const Color(0xFFFEE2E2);
   }
 
   String _glucoseLabel(double val) {
-    if (val < 54) return 'Hypoglycémie sévère';
-    if (val < 70) return 'Hypoglycémie';
+    if (val < 54)   return 'Hypoglycémie sévère';
+    if (val < 70)   return 'Hypoglycémie';
     if (val <= 180) return 'Dans la cible';
     if (val <= 250) return 'Hyperglycémie modérée';
     return 'Hyperglycémie sévère';
   }
 
   Color _insulinColor(double dose) {
-    if (dose == 0) return AminaTheme.textSecondary(context);
-    if (dose <= 6) return const Color(0xFF059669);
+    if (dose == 0)  return AminaTheme.textSecondary(context);
+    if (dose <= 6)  return const Color(0xFF059669);
     if (dose <= 12) return const Color(0xFFF59E0B);
     if (dose <= 20) return const Color(0xFFEA580C);
     return const Color(0xFFDC2626);
   }
 
   String _insulinRiskLabel(double dose) {
-    if (dose == 0) return 'Aucune dose';
-    if (dose <= 6) return 'Zone normale';
+    if (dose == 0)  return 'Aucune dose';
+    if (dose <= 6)  return 'Zone normale';
     if (dose <= 12) return 'Dose standard';
     if (dose <= 20) return 'Dose élevée';
     return 'Dose critique';
   }
 
   Color _giColor(String gi) => switch (gi) {
-    'low' => const Color(0xFF10B981),
+    'low'    => const Color(0xFF10B981),
     'medium' => const Color(0xFFF59E0B),
-    _ => const Color(0xFFEF4444),
+    _        => const Color(0xFFEF4444),
   };
 
   String _timeLabel() {
     final now = DateTime.now();
-    final isToday =
-        _selectedTime.year == now.year &&
-        _selectedTime.month == now.month &&
-        _selectedTime.day == now.day;
-    final isYesterday =
-        _selectedTime.year == now.year &&
-        _selectedTime.month == now.month &&
-        _selectedTime.day == now.day - 1;
-    final hhmm =
-        '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
-    if (isToday) return 'Aujourd\'hui · $hhmm';
+    final isToday     = _selectedTime.year == now.year && _selectedTime.month == now.month && _selectedTime.day == now.day;
+    final isYesterday = _selectedTime.year == now.year && _selectedTime.month == now.month && _selectedTime.day == now.day - 1;
+    final hhmm = '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}';
+    if (isToday)     return 'Aujourd\'hui · $hhmm';
     if (isYesterday) return 'Hier · $hhmm';
     return '${_selectedTime.day.toString().padLeft(2, '0')}/${_selectedTime.month.toString().padLeft(2, '0')} · $hhmm';
   }
@@ -199,9 +170,9 @@ class _AddLogSheetState extends State<AddLogSheet> {
     final db = context.read<AppDatabase>();
     final today = DateTime.now();
     final startOfDay = DateTime(today.year, today.month, today.day);
-    final rows = await (db.select(
-      db.logEntries,
-    )..where((t) => t.createdAt.isBiggerOrEqualValue(startOfDay))).get();
+    final rows = await (db.select(db.logEntries)
+      ..where((t) => t.createdAt.isBiggerOrEqualValue(startOfDay)))
+      .get();
     if (mounted) setState(() => _isFirstLogToday = rows.isEmpty);
   }
 
@@ -209,18 +180,12 @@ class _AddLogSheetState extends State<AddLogSheet> {
     if (!mounted) return;
     final db = context.read<AppDatabase>();
     final cutoff = DateTime.now().subtract(const Duration(days: 30));
-    final rows =
-        await (db.select(db.logEntries)
-              ..where((t) => t.mealType.equals(_mealType))
-              ..where((t) => t.createdAt.isBiggerOrEqualValue(cutoff))
-              ..orderBy([
-                (t) => drift.OrderingTerm(
-                  expression: t.loggedAt,
-                  mode: drift.OrderingMode.desc,
-                ),
-              ])
-              ..limit(40))
-            .get();
+    final rows = await (db.select(db.logEntries)
+      ..where((t) => t.mealType.equals(_mealType))
+      ..where((t) => t.createdAt.isBiggerOrEqualValue(cutoff))
+      ..orderBy([(t) => drift.OrderingTerm(expression: t.loggedAt, mode: drift.OrderingMode.desc)])
+      ..limit(40))
+      .get();
 
     final seen = <String>{};
     final matched = <CulinaryItem>[];
@@ -229,9 +194,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
       for (final label in row.mealDescription!.split(',')) {
         final clean = label.split('(').first.trim();
         if (clean.isEmpty || seen.contains(clean)) continue;
-        final found = universalFoods
-            .where((f) => f.label.toLowerCase() == clean.toLowerCase())
-            .firstOrNull;
+        final found = universalFoods.where((f) =>
+          f.label.toLowerCase() == clean.toLowerCase()).firstOrNull;
         if (found != null) {
           seen.add(clean);
           matched.add(found);
@@ -249,10 +213,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
     if (_noteRecording) {
       // Stop and transcribe
       await _audioRecorder.stop();
-      setState(() {
-        _noteRecording = false;
-        _noteTranscribing = true;
-      });
+      setState(() { _noteRecording = false; _noteTranscribing = true; });
 
       final totalLen = _noteAudioChunks.fold<int>(0, (s, c) => s + c.length);
       final bytes = Uint8List(totalLen);
@@ -268,9 +229,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
         final transcript = await api.transcribeAudio(bytes, mime);
         if (mounted && transcript != null && transcript.isNotEmpty) {
           setState(() {
-            _mealNoteController.text = _mealNoteController.text.isEmpty
-                ? transcript
-                : '${_mealNoteController.text} $transcript';
+            _mealNoteController.text =
+                _mealNoteController.text.isEmpty ? transcript : '${_mealNoteController.text} $transcript';
           });
         }
       }
@@ -282,23 +242,19 @@ class _AddLogSheetState extends State<AddLogSheet> {
     final hasPermission = await _audioRecorder.hasPermission();
     if (!hasPermission) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Accès au micro refusé — vérifie les permissions'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Accès au micro refusé — vérifie les permissions'),
+          behavior: SnackBarBehavior.floating,
+        ));
       }
       return;
     }
     _noteAudioChunks.clear();
-    final stream = await _audioRecorder.startStream(
-      const RecordConfig(
-        encoder: AudioEncoder.aacLc,
-        sampleRate: 16000,
-        numChannels: 1,
-      ),
-    );
+    final stream = await _audioRecorder.startStream(const RecordConfig(
+      encoder: AudioEncoder.aacLc,
+      sampleRate: 16000,
+      numChannels: 1,
+    ));
     stream.listen((chunk) => _noteAudioChunks.add(chunk));
     if (mounted) setState(() => _noteRecording = true);
   }
@@ -314,10 +270,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final db = context.read<AppDatabase>();
+    final db      = context.read<AppDatabase>();
     final profile = context.watch<PatientProfileData?>();
-    final unit = profile?.unitPreference ?? 'mg/dL';
-    final isWide = MediaQuery.of(context).size.width >= 720;
+    final unit    = profile?.unitPreference ?? 'mg/dL';
+    final isWide  = MediaQuery.of(context).size.width >= 720;
 
     return PopScope(
       canPop: false,
@@ -327,17 +283,12 @@ class _AddLogSheetState extends State<AddLogSheet> {
         // In detailed mode, any touched field counts.
         final hasData = _expressMode
             ? _manualController.text.isNotEmpty
-            : (_manualController.text.isNotEmpty ||
-                  _insulinDose != 0 ||
-                  _mealType != 'À jeun' ||
-                  _selectedFoods.isNotEmpty ||
-                  _mealNoteController.text.isNotEmpty);
+            : (_manualController.text.isNotEmpty || _insulinDose != 0 ||
+               _mealType != 'À jeun' || _selectedFoods.isNotEmpty ||
+               _mealNoteController.text.isNotEmpty);
         if (!hasData) {
-          if (widget.isPage) {
-            GoRouter.of(context).go('/dashboard');
-          } else {
-            Navigator.pop(context);
-          }
+          if (widget.isPage) { GoRouter.of(context).go('/dashboard'); }
+          else { Navigator.pop(context); }
           return;
         }
         final leave = await showDialog<bool>(
@@ -346,26 +297,17 @@ class _AddLogSheetState extends State<AddLogSheet> {
             title: const Text('Abandonner la saisie ?'),
             content: const Text('Les données non enregistrées seront perdues.'),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Continuer'),
-              ),
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Continuer')),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: Text(
-                  'Abandonner',
-                  style: TextStyle(color: Colors.red.shade700),
-                ),
+                child: Text('Abandonner', style: TextStyle(color: Colors.red.shade700)),
               ),
             ],
           ),
         );
         if (leave == true && context.mounted) {
-          if (widget.isPage) {
-            GoRouter.of(context).go('/dashboard');
-          } else {
-            Navigator.pop(context);
-          }
+          if (widget.isPage) { GoRouter.of(context).go('/dashboard'); }
+          else { Navigator.pop(context); }
         }
       },
       child: Container(
@@ -387,9 +329,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
               ),
             ),
             Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
+              left: 0, right: 0, bottom: 0,
               child: _buildSaveBar(db, context),
             ),
           ],
@@ -411,35 +351,31 @@ class _AddLogSheetState extends State<AddLogSheet> {
             // Left column: glucose + moment + time
             Expanded(
               flex: 5,
-              child: Column(
-                children: [
-                  _buildGlucoseCard(unit),
-                  const SizedBox(height: 24),
-                  _buildMealTypeSelector(),
-                  const SizedBox(height: 20),
-                  _buildTimeRow(context),
-                  const SizedBox(height: 20),
-                  _buildInsulinSection(),
-                ],
-              ),
+              child: Column(children: [
+                _buildGlucoseCard(unit),
+                const SizedBox(height: 24),
+                _buildMealTypeSelector(),
+                const SizedBox(height: 20),
+                _buildTimeRow(context),
+                const SizedBox(height: 20),
+                _buildInsulinSection(),
+              ]),
             ),
             const SizedBox(width: 28),
             // Right column: food + health
             Expanded(
               flex: 6,
-              child: Column(
-                children: [
-                  if (_mealType != 'À jeun') ...[
-                    _buildCompositionSection(),
-                    const SizedBox(height: 24),
-                  ],
-                  _buildHealthSection(),
-                  const SizedBox(height: 20),
-                  _buildRamadanToggle(),
-                  const SizedBox(height: 20),
-                  _buildIAminaTeaser(),
+              child: Column(children: [
+                if (_mealType != 'À jeun') ...[
+                  _buildCompositionSection(),
+                  const SizedBox(height: 24),
                 ],
-              ),
+                _buildHealthSection(),
+                const SizedBox(height: 20),
+                _buildRamadanToggle(),
+                const SizedBox(height: 20),
+                _buildIAminaTeaser(),
+              ]),
             ),
           ],
         ),
@@ -510,11 +446,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.expand_more_rounded,
-              size: 18,
-              color: AminaTheme.textSecondary(context),
-            ),
+            Icon(Icons.expand_more_rounded, size: 18, color: AminaTheme.textSecondary(context)),
             const SizedBox(width: 8),
             Text(
               '+ Détails : insuline, aliments, santé…',
@@ -534,58 +466,30 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 20,
-        bottom: 4,
-      ),
+      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 20, bottom: 4),
       child: Row(
         children: [
           GestureDetector(
             onTap: () {
-              if (widget.isPage) {
-                GoRouter.of(context).go('/dashboard');
-              } else {
-                Navigator.pop(context);
-              }
+              if (widget.isPage) { GoRouter.of(context).go('/dashboard'); }
+              else { Navigator.pop(context); }
             },
             child: Container(
-              width: 40,
-              height: 40,
+              width: 40, height: 40,
               decoration: BoxDecoration(
                 color: AminaTheme.subtleBg(context),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AminaTheme.divider(context)),
               ),
-              child: Icon(
-                Icons.arrow_back_ios_new,
-                size: 16,
-                color: AminaTheme.textPrimary(context),
-              ),
+              child: Icon(Icons.arrow_back_ios_new, size: 16, color: AminaTheme.textPrimary(context)),
             ),
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Nouvelle mesure',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AminaTheme.textPrimary(context),
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                Text(
-                  _timeLabel(),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AminaTheme.textSecondary(context),
-                  ),
-                ),
-              ],
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Nouvelle mesure', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AminaTheme.textPrimary(context), letterSpacing: -0.5)),
+              Text(_timeLabel(), style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context))),
+            ]),
           ),
         ],
       ),
@@ -599,8 +503,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
     final bgCol = _glucoseBg(_glucoseValue);
     final label = _glucoseLabel(_glucoseValue);
     final sliderMax = unit == 'mmol/L' ? 22.2 : 400.0;
-    final sliderMin = unit == 'mmol/L' ? 2.2 : 40.0;
-    final isDanger = _glucoseValue < 70 || _glucoseValue > 250;
+    final sliderMin = unit == 'mmol/L' ? 2.2  : 40.0;
+    final isDanger  = _glucoseValue < 70 || _glucoseValue > 250;
 
     final quickValues = unit == 'mmol/L'
         ? [3.3, 4.4, 6.1, 7.8, 10.0, 12.2, 14.4]
@@ -614,17 +518,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
       decoration: BoxDecoration(
         color: bgCol,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: color.withValues(alpha: isDanger ? 0.5 : 0.2),
-          width: isDanger ? 1.5 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: isDanger ? 0.18 : 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        border: Border.all(color: color.withValues(alpha: isDanger ? 0.5 : 0.2), width: isDanger ? 1.5 : 1),
+        boxShadow: [BoxShadow(color: color.withValues(alpha: isDanger ? 0.18 : 0.08), blurRadius: 20, offset: const Offset(0, 6))],
       ),
       child: Column(
         children: [
@@ -634,45 +529,23 @@ class _AddLogSheetState extends State<AddLogSheet> {
             child: GestureDetector(
               onTap: _ocrScanning ? null : () => _runOcr(context, unit),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
                   color: AminaTheme.teal500.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(99),
-                  border: Border.all(
-                    color: AminaTheme.teal500.withValues(alpha: 0.3),
-                  ),
+                  border: Border.all(color: AminaTheme.teal500.withValues(alpha: 0.3)),
                 ),
                 child: _ocrScanning
                     ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AminaTheme.teal500,
-                        ),
+                        width: 14, height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AminaTheme.teal500),
                       )
-                    : const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.camera_alt_outlined,
-                            size: 14,
-                            color: AminaTheme.teal600,
-                          ),
-                          SizedBox(width: 5),
-                          Text(
-                            'Lire le glucomètre',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AminaTheme.teal600,
-                            ),
-                          ),
-                        ],
-                      ),
+                    : const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.camera_alt_outlined, size: 14, color: AminaTheme.teal600),
+                        SizedBox(width: 5),
+                        Text('Lire le glucomètre',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AminaTheme.teal600)),
+                      ]),
               ),
             ),
           ),
@@ -688,32 +561,15 @@ class _AddLogSheetState extends State<AddLogSheet> {
                 borderRadius: BorderRadius.circular(99),
                 border: Border.all(color: color.withValues(alpha: 0.35)),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isDanger) ...[
-                    Icon(Icons.warning_rounded, size: 13, color: color),
-                    const SizedBox(width: 5),
-                  ],
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 7),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                    ),
-                  ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (isDanger) ...[
+                  Icon(Icons.warning_rounded, size: 13, color: color),
+                  const SizedBox(width: 5),
                 ],
-              ),
+                Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                const SizedBox(width: 7),
+                Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+              ]),
             ),
           ),
           const SizedBox(height: 12),
@@ -727,47 +583,23 @@ class _AddLogSheetState extends State<AddLogSheet> {
                 width: 180,
                 child: TextField(
                   controller: _manualController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 84,
-                    fontWeight: FontWeight.w800,
-                    height: 1.0,
-                    letterSpacing: -4,
-                    color: color,
-                  ),
+                  style: TextStyle(fontSize: 84, fontWeight: FontWeight.w800, height: 1.0, letterSpacing: -4, color: color),
                   decoration: InputDecoration(
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
                     hintText: '---',
-                    hintStyle: TextStyle(
-                      fontSize: 84,
-                      fontWeight: FontWeight.w800,
-                      height: 1.0,
-                      letterSpacing: -4,
-                      color: color.withValues(alpha: 0.25),
-                    ),
+                    hintStyle: TextStyle(fontSize: 84, fontWeight: FontWeight.w800, height: 1.0, letterSpacing: -4, color: color.withValues(alpha: 0.25)),
                   ),
                   onChanged: (val) {
                     final d = double.tryParse(val);
-                    if (d != null)
-                      setState(
-                        () => _glucoseValue = d.clamp(sliderMin, sliderMax),
-                      );
+                    if (d != null) setState(() => _glucoseValue = d.clamp(sliderMin, sliderMax));
                   },
                 ),
               ),
               const SizedBox(width: 6),
-              Text(
-                unit,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: color.withValues(alpha: 0.6),
-                ),
-              ),
+              Text(unit, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: color.withValues(alpha: 0.6))),
             ],
           ),
           const SizedBox(height: 12),
@@ -776,44 +608,24 @@ class _AddLogSheetState extends State<AddLogSheet> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: quickValues.map((v) {
-                final active =
-                    (_glucoseValue - v).abs() < (unit == 'mmol/L' ? 0.1 : 0.5);
-                final lbl = unit == 'mmol/L'
-                    ? v.toStringAsFixed(1)
-                    : v.toInt().toString();
+                final active = (_glucoseValue - v).abs() < (unit == 'mmol/L' ? 0.1 : 0.5);
+                final lbl = unit == 'mmol/L' ? v.toStringAsFixed(1) : v.toInt().toString();
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 3),
                   child: GestureDetector(
                     onTap: () {
                       HapticFeedback.selectionClick();
-                      setState(() {
-                        _glucoseValue = v;
-                        _manualController.text = lbl;
-                      });
+                      setState(() { _glucoseValue = v; _manualController.text = lbl; });
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 13,
-                        vertical: 7,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
                       decoration: BoxDecoration(
-                        color: active
-                            ? color
-                            : Colors.white.withValues(alpha: 0.65),
+                        color: active ? color : Colors.white.withValues(alpha: 0.65),
                         borderRadius: BorderRadius.circular(99),
-                        border: Border.all(
-                          color: active ? color : color.withValues(alpha: 0.2),
-                        ),
+                        border: Border.all(color: active ? color : color.withValues(alpha: 0.2)),
                       ),
-                      child: Text(
-                        lbl,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: active ? Colors.white : color,
-                        ),
-                      ),
+                      child: Text(lbl, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: active ? Colors.white : color)),
                     ),
                   ),
                 );
@@ -833,34 +645,23 @@ class _AddLogSheetState extends State<AddLogSheet> {
             ),
             child: Slider(
               value: _glucoseValue.clamp(sliderMin, sliderMax),
-              min: sliderMin,
-              max: sliderMax,
+              min: sliderMin, max: sliderMax,
               onChanged: (val) {
                 HapticFeedback.selectionClick();
-                final r = unit == 'mmol/L'
-                    ? double.parse(val.toStringAsFixed(1))
-                    : val.roundToDouble();
-                setState(() {
-                  _glucoseValue = r;
-                  _manualController.text = unit == 'mmol/L'
-                      ? r.toStringAsFixed(1)
-                      : r.toInt().toString();
-                });
+                final r = unit == 'mmol/L' ? double.parse(val.toStringAsFixed(1)) : val.roundToDouble();
+                setState(() { _glucoseValue = r; _manualController.text = unit == 'mmol/L' ? r.toStringAsFixed(1) : r.toInt().toString(); });
               },
             ),
           ),
           // Zone labels
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _SliderLabel(unit == 'mmol/L' ? '2.2' : '40', color),
-                _SliderLabel(unit == 'mmol/L' ? '3.9' : '70', color),
-                _SliderLabel(unit == 'mmol/L' ? '10' : '180', color),
-                _SliderLabel(unit == 'mmol/L' ? '22' : '400', color),
-              ],
-            ),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              _SliderLabel(unit == 'mmol/L' ? '2.2' : '40',  color),
+              _SliderLabel(unit == 'mmol/L' ? '3.9' : '70',  color),
+              _SliderLabel(unit == 'mmol/L' ? '10' : '180',  color),
+              _SliderLabel(unit == 'mmol/L' ? '22' : '400',  color),
+            ]),
           ),
         ],
       ),
@@ -880,8 +681,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
           spacing: 10,
           runSpacing: 10,
           children: types.map((type) {
-            final sel = _mealType == type;
-            final col = _mealColor(type);
+            final sel   = _mealType == type;
+            final col   = _mealColor(type);
             return GestureDetector(
               onTap: () {
                 HapticFeedback.selectionClick();
@@ -896,17 +697,11 @@ class _AddLogSheetState extends State<AddLogSheet> {
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 11,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
                 decoration: BoxDecoration(
                   color: sel ? col : Colors.transparent,
                   borderRadius: BorderRadius.circular(99),
-                  border: Border.all(
-                    color: sel ? col : col.withValues(alpha: 0.4),
-                    width: sel ? 1.5 : 1,
-                  ),
+                  border: Border.all(color: sel ? col : col.withValues(alpha: 0.4), width: sel ? 1.5 : 1),
                 ),
                 child: Text(
                   type,
@@ -935,11 +730,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
           firstDate: DateTime.now().subtract(const Duration(days: 90)),
           lastDate: DateTime.now(),
           builder: (ctx, child) => Theme(
-            data: Theme.of(ctx).copyWith(
-              colorScheme: Theme.of(
-                ctx,
-              ).colorScheme.copyWith(primary: AminaTheme.teal500),
-            ),
+            data: Theme.of(ctx).copyWith(colorScheme: Theme.of(ctx).colorScheme.copyWith(primary: AminaTheme.teal500)),
             child: child!,
           ),
         );
@@ -948,24 +739,12 @@ class _AddLogSheetState extends State<AddLogSheet> {
           context: context,
           initialTime: TimeOfDay.fromDateTime(_selectedTime),
           builder: (ctx, child) => Theme(
-            data: Theme.of(ctx).copyWith(
-              colorScheme: Theme.of(
-                ctx,
-              ).colorScheme.copyWith(primary: AminaTheme.teal500),
-            ),
+            data: Theme.of(ctx).copyWith(colorScheme: Theme.of(ctx).colorScheme.copyWith(primary: AminaTheme.teal500)),
             child: child!,
           ),
         );
         if (pickedTime == null) return;
-        setState(
-          () => _selectedTime = DateTime(
-            pickedDate.year,
-            pickedDate.month,
-            pickedDate.day,
-            pickedTime.hour,
-            pickedTime.minute,
-          ),
-        );
+        setState(() => _selectedTime = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute));
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -974,57 +753,30 @@ class _AddLogSheetState extends State<AddLogSheet> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AminaTheme.divider(context)),
         ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.schedule_outlined,
-              size: 16,
-              color: AminaTheme.textSecondary(context),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              _timeLabel(),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AminaTheme.textPrimary(context),
-              ),
-            ),
-            const Spacer(),
-            Icon(
-              Icons.edit_outlined,
-              size: 14,
-              color: AminaTheme.textSecondary(context),
-            ),
-          ],
-        ),
+        child: Row(children: [
+          Icon(Icons.schedule_outlined, size: 16, color: AminaTheme.textSecondary(context)),
+          const SizedBox(width: 10),
+          Text(_timeLabel(), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AminaTheme.textPrimary(context))),
+          const Spacer(),
+          Icon(Icons.edit_outlined, size: 14, color: AminaTheme.textSecondary(context)),
+        ]),
       ),
     );
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
-  int _giNumeric(String glycemic) => switch (glycemic) {
-    'low' => 35,
-    'medium' => 60,
-    _ => 75,
-  };
+  int _giNumeric(String glycemic) => switch (glycemic) { 'low' => 35, 'medium' => 60, _ => 75 };
 
   // ── Composition section ───────────────────────────────────────────────────────
 
   Widget _buildCompositionSection() {
     final isSearching = _foodSearch.isNotEmpty;
     final displayList = isSearching
-        ? universalFoods
-              .where(
-                (f) =>
-                    f.label.toLowerCase().contains(_foodSearch.toLowerCase()),
-              )
-              .take(25)
-              .toList()
+        ? universalFoods.where((f) => f.label.toLowerCase().contains(_foodSearch.toLowerCase())).take(25).toList()
         : foodsForMeal(_mealType).isNotEmpty
-        ? foodsForMeal(_mealType)
-        : universalFoods.take(30).toList();
+            ? foodsForMeal(_mealType)
+            : universalFoods.take(30).toList();
     final listLabel = isSearching
         ? 'RÉSULTATS POUR "${_foodSearch.toUpperCase()}"'
         : 'SUGGESTIONS POUR CE REPAS';
@@ -1033,55 +785,27 @@ class _AddLogSheetState extends State<AddLogSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // ── Header ──
-        Row(
-          children: [
-            Expanded(child: _SectionLabel('ALIMENTS', context)),
-            GestureDetector(
+        Row(children: [
+          Expanded(child: _SectionLabel('ALIMENTS', context)),
+          GestureDetector(
               onTap: _mealScanning ? null : () => _runMealAnalysis(context),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFF059669).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(99),
-                  border: Border.all(
-                    color: const Color(0xFF059669).withValues(alpha: 0.3),
-                  ),
+                  border: Border.all(color: const Color(0xFF059669).withValues(alpha: 0.3)),
                 ),
                 child: _mealScanning
-                    ? const SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Color(0xFF059669),
-                        ),
-                      )
-                    : const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.camera_alt_outlined,
-                            size: 13,
-                            color: Color(0xFF059669),
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            'Photo',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF059669),
-                            ),
-                          ),
-                        ],
-                      ),
+                    ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF059669)))
+                    : const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.camera_alt_outlined, size: 13, color: Color(0xFF059669)),
+                        SizedBox(width: 4),
+                        Text('Photo', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF059669))),
+                      ]),
               ),
             ),
-          ],
-        ),
+        ]),
         const SizedBox(height: 14),
 
         // ── Selected zone — fixed height, horizontal scroll, no reflow ──
@@ -1102,38 +826,14 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
         // ── Recents ──
         if (_foodSearch.isEmpty) ...[
-          Text(
-            'RÉCENTS',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: AminaTheme.textSecondary(context),
-              letterSpacing: 0.6,
-            ),
-          ),
+          Text('RÉCENTS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AminaTheme.textSecondary(context), letterSpacing: 0.6)),
           const SizedBox(height: 8),
           if (_recentFoods.isEmpty)
-            Row(
-              children: [
-                Icon(
-                  Icons.history,
-                  size: 14,
-                  color: AminaTheme.textSecondary(
-                    context,
-                  ).withValues(alpha: 0.4),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Vos aliments habituels apparaîtront ici',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AminaTheme.textSecondary(
-                      context,
-                    ).withValues(alpha: 0.5),
-                  ),
-                ),
-              ],
-            )
+            Row(children: [
+              Icon(Icons.history, size: 14, color: AminaTheme.textSecondary(context).withValues(alpha: 0.4)),
+              const SizedBox(width: 6),
+              Text('Vos aliments habituels apparaîtront ici', style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context).withValues(alpha: 0.5))),
+            ])
           else
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -1147,57 +847,29 @@ class _AddLogSheetState extends State<AddLogSheet> {
                       onTap: () {
                         HapticFeedback.selectionClick();
                         setState(() {
-                          if (isSel) {
-                            _selectedFoods.removeWhere(
-                              (s) => s.item.id == item.id,
-                            );
-                          } else {
-                            _selectedFoods.add(_SelectedFood(item: item));
-                          }
+                          if (isSel) { _selectedFoods.removeWhere((s) => s.item.id == item.id); }
+                          else { _selectedFoods.add(_SelectedFood(item: item)); }
                         });
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 140),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                         decoration: BoxDecoration(
-                          color: isSel
-                              ? AminaTheme.teal500.withValues(alpha: 0.08)
-                              : AminaTheme.surface(context),
+                          color: isSel ? AminaTheme.teal500.withValues(alpha: 0.08) : AminaTheme.surface(context),
                           borderRadius: BorderRadius.circular(99),
                           border: Border.all(
-                            color: isSel
-                                ? AminaTheme.teal500
-                                : AminaTheme.divider(context),
+                            color: isSel ? AminaTheme.teal500 : AminaTheme.divider(context),
                             width: isSel ? 1.5 : 1,
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: giCol,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              item.label,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: isSel
-                                    ? AminaTheme.teal700
-                                    : AminaTheme.textPrimary(context),
-                              ),
-                            ),
-                          ],
-                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Container(width: 6, height: 6, decoration: BoxDecoration(color: giCol, shape: BoxShape.circle)),
+                          const SizedBox(width: 6),
+                          Text(item.label, style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600,
+                            color: isSel ? AminaTheme.teal700 : AminaTheme.textPrimary(context),
+                          )),
+                        ]),
                       ),
                     ),
                   );
@@ -1213,43 +885,21 @@ class _AddLogSheetState extends State<AddLogSheet> {
           decoration: BoxDecoration(
             color: AminaTheme.subtleBg(context),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSearching
-                  ? AminaTheme.teal200
-                  : AminaTheme.divider(context),
-            ),
+            border: Border.all(color: isSearching ? AminaTheme.teal200 : AminaTheme.divider(context)),
           ),
           child: TextField(
             controller: _searchController,
-            style: TextStyle(
-              fontSize: 14,
-              color: AminaTheme.textPrimary(context),
-            ),
+            style: TextStyle(fontSize: 14, color: AminaTheme.textPrimary(context)),
             decoration: InputDecoration(
               hintText: 'Rechercher un aliment…',
-              hintStyle: TextStyle(
-                color: AminaTheme.textSecondary(context),
-                fontSize: 13,
-              ),
-              border: InputBorder.none,
-              isDense: true,
+              hintStyle: TextStyle(color: AminaTheme.textSecondary(context), fontSize: 13),
+              border: InputBorder.none, isDense: true,
               contentPadding: const EdgeInsets.symmetric(vertical: 11),
-              prefixIcon: Icon(
-                Icons.search,
-                size: 18,
-                color: AminaTheme.textSecondary(context),
-              ),
+              prefixIcon: Icon(Icons.search, size: 18, color: AminaTheme.textSecondary(context)),
               suffixIcon: isSearching
                   ? GestureDetector(
-                      onTap: () => setState(() {
-                        _foodSearch = '';
-                        _searchController.clear();
-                      }),
-                      child: Icon(
-                        Icons.close,
-                        size: 16,
-                        color: AminaTheme.textSecondary(context),
-                      ),
+                      onTap: () => setState(() { _foodSearch = ''; _searchController.clear(); }),
+                      child: Icon(Icons.close, size: 16, color: AminaTheme.textSecondary(context)),
                     )
                   : null,
             ),
@@ -1259,28 +909,14 @@ class _AddLogSheetState extends State<AddLogSheet> {
         const SizedBox(height: 14),
 
         // ── Section label ──
-        Text(
-          listLabel,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: AminaTheme.textSecondary(context),
-            letterSpacing: 0.6,
-          ),
-        ),
+        Text(listLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AminaTheme.textSecondary(context), letterSpacing: 0.6)),
         const SizedBox(height: 8),
 
         // ── Food list — compact rows with 4px GI band ──
         if (displayList.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Text(
-              'Aucun résultat',
-              style: TextStyle(
-                fontSize: 13,
-                color: AminaTheme.textSecondary(context),
-              ),
-            ),
+            child: Text('Aucun résultat', style: TextStyle(fontSize: 13, color: AminaTheme.textSecondary(context))),
           )
         else
           Column(children: displayList.map(_buildFoodRow).toList()),
@@ -1307,20 +943,14 @@ class _AddLogSheetState extends State<AddLogSheet> {
             child: TextField(
               controller: _mealNoteController,
               maxLines: null,
-              style: TextStyle(
-                fontSize: 13,
-                color: AminaTheme.textPrimary(context),
-              ),
+              style: TextStyle(fontSize: 13, color: AminaTheme.textPrimary(context)),
               decoration: InputDecoration(
                 hintText: _noteRecording
                     ? '🎤 Enregistrement…'
                     : _noteTranscribing
-                    ? '⏳ Transcription…'
-                    : 'Note libre (repas, ressenti…)',
-                hintStyle: TextStyle(
-                  fontSize: 12,
-                  color: AminaTheme.textSecondary(context),
-                ),
+                        ? '⏳ Transcription…'
+                        : 'Note libre (repas, ressenti…)',
+                hintStyle: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context)),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: const EdgeInsets.fromLTRB(14, 12, 0, 12),
@@ -1332,8 +962,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
             onTap: (_noteTranscribing) ? null : () => _toggleNoteRecording(api),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 40,
-              height: 40,
+              width: 40, height: 40,
               margin: const EdgeInsets.only(right: 6),
               decoration: BoxDecoration(
                 color: _noteRecording
@@ -1342,20 +971,9 @@ class _AddLogSheetState extends State<AddLogSheet> {
                 shape: BoxShape.circle,
               ),
               child: _noteTranscribing
-                  ? const Center(
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AminaTheme.teal500,
-                        ),
-                      ),
-                    )
+                  ? const Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AminaTheme.teal500)))
                   : Icon(
-                      _noteRecording
-                          ? Icons.stop_rounded
-                          : Icons.mic_none_rounded,
+                      _noteRecording ? Icons.stop_rounded : Icons.mic_none_rounded,
                       size: 20,
                       color: _noteRecording
                           ? const Color(0xFFEF4444)
@@ -1379,75 +997,35 @@ class _AddLogSheetState extends State<AddLogSheet> {
         color: AminaTheme.surface(context),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: giCol.withValues(alpha: 0.25)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: IntrinsicWidth(
-          child: Row(
-            children: [
-              // 4px GI band
-              Container(width: 4, color: giCol),
-              // Name + IG
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      sf.item.label,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AminaTheme.textPrimary(context),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'IG $giNum',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: giCol,
-                      ),
-                    ),
-                  ],
-                ),
+          child: Row(children: [
+            // 4px GI band
+            Container(width: 4, color: giCol),
+            // Name + IG
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                Text(sf.item.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AminaTheme.textPrimary(context))),
+                const SizedBox(height: 2),
+                Text('IG $giNum', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: giCol)),
+              ]),
+            ),
+            // P | M | G segmented
+            _buildPortionSegment(sf, giCol),
+            const SizedBox(width: 6),
+            // Remove
+            GestureDetector(
+              onTap: () { HapticFeedback.selectionClick(); setState(() => _selectedFoods.removeWhere((s) => s.item.id == sf.item.id)); },
+              child: Padding(
+                padding: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
+                child: Icon(Icons.close, size: 14, color: AminaTheme.textSecondary(context)),
               ),
-              // P | M | G segmented
-              _buildPortionSegment(sf, giCol),
-              const SizedBox(width: 6),
-              // Remove
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(
-                    () => _selectedFoods.removeWhere(
-                      (s) => s.item.id == sf.item.id,
-                    ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
-                  child: Icon(
-                    Icons.close,
-                    size: 14,
-                    color: AminaTheme.textSecondary(context),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ]),
         ),
       ),
     );
@@ -1466,16 +1044,9 @@ class _AddLogSheetState extends State<AddLogSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [_Portion.petit, _Portion.moyen, _Portion.grand].map((p) {
           final isActive = sf.portion == p;
-          final label = switch (p) {
-            _Portion.petit => 'P',
-            _Portion.moyen => 'M',
-            _Portion.grand => 'G',
-          };
+          final label = switch (p) { _Portion.petit => 'P', _Portion.moyen => 'M', _Portion.grand => 'G' };
           return GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              setState(() => sf.portion = p);
-            },
+            onTap: () { HapticFeedback.selectionClick(); setState(() => sf.portion = p); },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 140),
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
@@ -1483,16 +1054,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
                 color: isActive ? giCol : Colors.transparent,
                 borderRadius: BorderRadius.circular(7),
               ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: isActive
-                      ? Colors.white
-                      : giCol.withValues(alpha: 0.65),
-                ),
-              ),
+              child: Text(label, style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700,
+                color: isActive ? Colors.white : giCol.withValues(alpha: 0.65),
+              )),
             ),
           );
         }).toList(),
@@ -1512,86 +1077,57 @@ class _AddLogSheetState extends State<AddLogSheet> {
       onTap: () {
         HapticFeedback.selectionClick();
         setState(() {
-          if (isSel) {
-            _selectedFoods.removeWhere((s) => s.item.id == item.id);
-          } else {
-            _selectedFoods.add(_SelectedFood(item: item));
-          }
+          if (isSel) { _selectedFoods.removeWhere((s) => s.item.id == item.id); }
+          else { _selectedFoods.add(_SelectedFood(item: item)); }
         });
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         margin: const EdgeInsets.only(bottom: 2),
         decoration: BoxDecoration(
-          color: isSel
-              ? AminaTheme.teal500.withValues(alpha: 0.06)
-              : Colors.transparent,
+          color: isSel ? AminaTheme.teal500.withValues(alpha: 0.06) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
-          child: Row(
-            children: [
-              // 4px GI band — brighter when selected
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 4,
-                height: 52,
-                color: isSel ? giCol : giCol.withValues(alpha: 0.35),
+          child: Row(children: [
+            // 4px GI band — brighter when selected
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 4, height: 52,
+              color: isSel ? giCol : giCol.withValues(alpha: 0.35),
+            ),
+            const SizedBox(width: 12),
+            // Name + carbs info
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(item.label, style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isSel ? FontWeight.w600 : FontWeight.w500,
+                    color: AminaTheme.textPrimary(context),
+                  )),
+                  const SizedBox(height: 2),
+                  Text('~${carbs}g glucides · IG $giNum',
+                    style: TextStyle(fontSize: 11, color: isSel ? giCol : AminaTheme.textSecondary(context))),
+                ]),
               ),
-              const SizedBox(width: 12),
-              // Name + carbs info
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: isSel ? FontWeight.w600 : FontWeight.w500,
-                          color: AminaTheme.textPrimary(context),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '~${carbs}g glucides · IG $giNum',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isSel
-                              ? giCol
-                              : AminaTheme.textSecondary(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+            ),
+            // + / check action icon
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 30, height: 30,
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: isSel ? AminaTheme.teal500 : Colors.transparent,
+                shape: BoxShape.circle,
+                border: isSel ? null : Border.all(color: AminaTheme.divider(context)),
               ),
-              // + / check action icon
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 30,
-                height: 30,
-                margin: const EdgeInsets.only(right: 12),
-                decoration: BoxDecoration(
-                  color: isSel ? AminaTheme.teal500 : Colors.transparent,
-                  shape: BoxShape.circle,
-                  border: isSel
-                      ? null
-                      : Border.all(color: AminaTheme.divider(context)),
-                ),
-                child: Icon(
-                  isSel ? Icons.check : Icons.add,
-                  size: 15,
-                  color: isSel
-                      ? Colors.white
-                      : AminaTheme.textSecondary(context),
-                ),
-              ),
-            ],
-          ),
+              child: Icon(isSel ? Icons.check : Icons.add, size: 15,
+                color: isSel ? Colors.white : AminaTheme.textSecondary(context)),
+            ),
+          ]),
         ),
       ),
     );
@@ -1600,15 +1136,12 @@ class _AddLogSheetState extends State<AddLogSheet> {
   // ── Glycemic impact bar ───────────────────────────────────────────────────────
 
   Widget _buildImpactBar() {
-    final totalCarbs = _selectedFoods.fold(
-      0,
-      (sum, sf) => sum + sf.portion.carbsFor(sf.item.glycemic),
-    );
+    final totalCarbs = _selectedFoods.fold(0, (sum, sf) => sum + sf.portion.carbsFor(sf.item.glycemic));
     final (label, color) = totalCarbs < 30
         ? ('Impact faible', const Color(0xFF10B981))
         : totalCarbs < 60
-        ? ('Impact modéré', const Color(0xFFF59E0B))
-        : ('Impact élevé', const Color(0xFFEF4444));
+            ? ('Impact modéré', const Color(0xFFF59E0B))
+            : ('Impact élevé', const Color(0xFFEF4444));
     final fraction = (totalCarbs / 80).clamp(0.0, 1.0);
 
     return Container(
@@ -1618,50 +1151,32 @@ class _AddLogSheetState extends State<AddLogSheet> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '~$totalCarbs g glucides',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AminaTheme.textSecondary(context),
-                ),
-              ),
-            ],
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+          const Spacer(),
+          Text('~$totalCarbs g glucides', style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context))),
+        ]),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(99),
+          child: LinearProgressIndicator(
+            value: fraction,
+            minHeight: 5,
+            backgroundColor: color.withValues(alpha: 0.15),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
           ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(99),
-            child: LinearProgressIndicator(
-              value: fraction,
-              minHeight: 5,
-              backgroundColor: color.withValues(alpha: 0.15),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ]),
     );
   }
 
   // ── Insulin section — with risk color indicator ───────────────────────────────
 
   Widget _buildInsulinSection() {
-    final iCol = _insulinColor(_insulinDose);
+    final iCol  = _insulinColor(_insulinDose);
     final iRisk = _insulinRiskLabel(_insulinDose);
-    final dark = AminaTheme.isDark(context);
+    final dark  = AminaTheme.isDark(context);
 
     // Quick-dose suggestions per 0.5 increments — common clinical presets
     const suggestions = [0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0];
@@ -1685,7 +1200,9 @@ class _AddLogSheetState extends State<AddLogSheet> {
                 dark
                     ? iCol.withValues(alpha: _insulinDose == 0 ? 0.04 : 0.10)
                     : iCol.withValues(alpha: _insulinDose == 0 ? 0.03 : 0.07),
-                dark ? Colors.transparent : iCol.withValues(alpha: 0.02),
+                dark
+                    ? Colors.transparent
+                    : iCol.withValues(alpha: 0.02),
               ],
             ),
             borderRadius: BorderRadius.circular(20),
@@ -1694,13 +1211,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
               width: 1.2,
             ),
             boxShadow: _insulinDose > 0
-                ? [
-                    BoxShadow(
-                      color: iCol.withValues(alpha: 0.18),
-                      blurRadius: 22,
-                      offset: const Offset(0, 6),
-                    ),
-                  ]
+                ? [BoxShadow(color: iCol.withValues(alpha: 0.18), blurRadius: 22, offset: const Offset(0, 6))]
                 : null,
           ),
           child: Column(
@@ -1715,108 +1226,68 @@ class _AddLogSheetState extends State<AddLogSheet> {
                     GestureDetector(
                       onTap: () {
                         HapticFeedback.selectionClick();
-                        if (_insulinDose > 0)
-                          setState(
-                            () => _insulinDose = (_insulinDose - _insulinStep)
-                                .clamp(0.0, 100.0),
-                          );
+                        if (_insulinDose > 0) setState(() => _insulinDose = (_insulinDose - _insulinStep).clamp(0.0, 100.0));
                       },
                       child: Container(
-                        width: 40,
-                        height: 40,
+                        width: 40, height: 40,
                         decoration: BoxDecoration(
                           color: iCol.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: iCol.withValues(alpha: 0.25),
-                          ),
+                          border: Border.all(color: iCol.withValues(alpha: 0.25)),
                         ),
                         child: Icon(Icons.remove, size: 18, color: iCol),
                       ),
                     ),
 
                     // Dose value
-                    Flexible(
-                      child: Column(
-                        children: [
-                          AnimatedDefaultTextStyle(
-                            duration: const Duration(milliseconds: 200),
-                            style: TextStyle(
-                              fontSize: 58,
-                              fontWeight: FontWeight.w800,
-                              height: 1.0,
-                              letterSpacing: -2,
-                              color: _insulinDose == 0
-                                  ? AminaTheme.textSecondary(
-                                      context,
-                                    ).withValues(alpha: 0.4)
-                                  : iCol,
-                            ),
-                            child: Text(
-                              _insulinDose == _insulinDose.truncateToDouble()
-                                  ? _insulinDose.toInt().toString()
-                                  : _insulinDose.toStringAsFixed(1),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'UNITÉS',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.0,
-                              color: AminaTheme.textSecondary(context),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            child: Container(
-                              key: ValueKey(iRisk),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: iCol.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(99),
-                                border: Border.all(
-                                  color: iCol.withValues(alpha: 0.2),
-                                ),
-                              ),
-                              child: Text(
-                                iRisk,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: iCol,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                        ],
+                    Flexible(child: Column(children: [
+                      AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 200),
+                        style: TextStyle(
+                          fontSize: 58,
+                          fontWeight: FontWeight.w800,
+                          height: 1.0,
+                          letterSpacing: -2,
+                          color: _insulinDose == 0
+                              ? AminaTheme.textSecondary(context).withValues(alpha: 0.4)
+                              : iCol,
+                        ),
+                        child: Text(
+                          _insulinDose == _insulinDose.truncateToDouble()
+                              ? _insulinDose.toInt().toString()
+                              : _insulinDose.toStringAsFixed(1),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 2),
+                      Text('UNITÉS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.0, color: AminaTheme.textSecondary(context))),
+                      const SizedBox(height: 6),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: Container(
+                          key: ValueKey(iRisk),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: iCol.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(99),
+                            border: Border.all(color: iCol.withValues(alpha: 0.2)),
+                          ),
+                          child: Text(iRisk, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: iCol), overflow: TextOverflow.ellipsis),
+                        ),
+                      ),
+                    ])),
 
                     // + button
                     GestureDetector(
                       onTap: () {
                         HapticFeedback.selectionClick();
-                        setState(
-                          () => _insulinDose = (_insulinDose + _insulinStep)
-                              .clamp(0.0, 100.0),
-                        );
+                        setState(() => _insulinDose = (_insulinDose + _insulinStep).clamp(0.0, 100.0));
                       },
                       child: Container(
-                        width: 40,
-                        height: 40,
+                        width: 40, height: 40,
                         decoration: BoxDecoration(
                           color: iCol.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: iCol.withValues(alpha: 0.25),
-                          ),
+                          border: Border.all(color: iCol.withValues(alpha: 0.25)),
                         ),
                         child: Icon(Icons.add, size: 18, color: iCol),
                       ),
@@ -1847,48 +1318,30 @@ class _AddLogSheetState extends State<AddLogSheet> {
                           },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 9,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                             decoration: BoxDecoration(
                               gradient: isSelected
                                   ? LinearGradient(
-                                      colors: [
-                                        doseCol,
-                                        doseCol.withValues(alpha: 0.75),
-                                      ],
+                                      colors: [doseCol, doseCol.withValues(alpha: 0.75)],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     )
                                   : null,
-                              color: isSelected
-                                  ? null
-                                  : iCol.withValues(alpha: 0.06),
+                              color: isSelected ? null : iCol.withValues(alpha: 0.06),
                               borderRadius: BorderRadius.circular(99),
                               border: Border.all(
-                                color: isSelected
-                                    ? Colors.transparent
-                                    : iCol.withValues(alpha: 0.18),
+                                color: isSelected ? Colors.transparent : iCol.withValues(alpha: 0.18),
                                 width: 1,
                               ),
                               boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: doseCol.withValues(alpha: 0.35),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 3),
-                                      ),
-                                    ]
+                                  ? [BoxShadow(color: doseCol.withValues(alpha: 0.35), blurRadius: 8, offset: const Offset(0, 3))]
                                   : null,
                             ),
                             child: Text(
                               dose == 0 ? 'Aucune' : '${dose.toInt()} U',
                               style: TextStyle(
                                 fontSize: 13,
-                                fontWeight: isSelected
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                 color: isSelected
                                     ? Colors.white
                                     : AminaTheme.textSecondary(context),
@@ -1914,235 +1367,97 @@ class _AddLogSheetState extends State<AddLogSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(child: _SectionLabel('ÉTAT DU JOUR', context)),
-            if (!_isFirstLogToday)
-              GestureDetector(
-                onTap: () =>
-                    setState(() => _showHealthExpanded = !_showHealthExpanded),
-                child: Text(
-                  _showHealthExpanded ? 'Masquer' : 'Modifier',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AminaTheme.teal600,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+        Row(children: [
+          Expanded(child: _SectionLabel('ÉTAT DU JOUR', context)),
+          if (!_isFirstLogToday)
+            GestureDetector(
+              onTap: () => setState(() => _showHealthExpanded = !_showHealthExpanded),
+              child: Text(
+                _showHealthExpanded ? 'Masquer' : 'Modifier',
+                style: const TextStyle(fontSize: 12, color: AminaTheme.teal600, fontWeight: FontWeight.w600),
               ),
-          ],
-        ),
+            ),
+        ]),
         if (!_isFirstLogToday && !_showHealthExpanded)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               'Déjà renseigné aujourd\'hui — appuyez sur Modifier pour changer.',
-              style: TextStyle(
-                fontSize: 12,
-                color: AminaTheme.textSecondary(context),
-                fontStyle: FontStyle.italic,
-              ),
+              style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context), fontStyle: FontStyle.italic),
             ),
           )
         else ...[
           const SizedBox(height: 12),
           // Context states — text-only ghost buttons
           Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: 10, runSpacing: 10,
             children: [
-              _buildContextBtn(
-                'Malade',
-                _isSick,
-                () => setState(() => _isSick = !_isSick),
-                const Color(0xFFDC2626),
-              ),
-              _buildContextBtn(
-                'Stressé',
-                _isStressed,
-                () => setState(() => _isStressed = !_isStressed),
-                const Color(0xFFF59E0B),
-              ),
-              _buildContextBtn(
-                'Actif',
-                _isActive,
-                () => setState(() => _isActive = !_isActive),
-                const Color(0xFF059669),
-              ),
+              _buildContextBtn('Malade',  _isSick,     () => setState(() => _isSick = !_isSick),     const Color(0xFFDC2626)),
+              _buildContextBtn('Stressé', _isStressed, () => setState(() => _isStressed = !_isStressed), const Color(0xFFF59E0B)),
+              _buildContextBtn('Actif',   _isActive,   () => setState(() => _isActive = !_isActive),  const Color(0xFF059669)),
             ],
           ),
           const SizedBox(height: 20),
           // Sleep
-          Text(
-            'SOMMEIL',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: AminaTheme.textSecondary(context),
-              letterSpacing: 0.6,
-            ),
-          ),
+          Text('SOMMEIL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AminaTheme.textSecondary(context), letterSpacing: 0.6)),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _buildToggleBtn(
-                  'Reposé',
-                  _sleepQuality == 'good',
-                  () => setState(
-                    () =>
-                        _sleepQuality = _sleepQuality == 'good' ? null : 'good',
-                  ),
-                  const Color(0xFF059669),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildToggleBtn(
-                  'Mauvaise nuit',
-                  _sleepQuality == 'bad',
-                  () => setState(
-                    () => _sleepQuality = _sleepQuality == 'bad' ? null : 'bad',
-                  ),
-                  const Color(0xFFDC2626),
-                ),
-              ),
-            ],
-          ),
+          Row(children: [
+            Expanded(child: _buildToggleBtn('Reposé', _sleepQuality == 'good', () => setState(() => _sleepQuality = _sleepQuality == 'good' ? null : 'good'), const Color(0xFF059669))),
+            const SizedBox(width: 10),
+            Expanded(child: _buildToggleBtn('Mauvaise nuit', _sleepQuality == 'bad', () => setState(() => _sleepQuality = _sleepQuality == 'bad' ? null : 'bad'), const Color(0xFFDC2626))),
+          ]),
           const SizedBox(height: 20),
           // Energy
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'NIVEAU D\'ÉNERGIE',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: AminaTheme.textSecondary(context),
-                  letterSpacing: 0.6,
-                ),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('NIVEAU D\'ÉNERGIE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AminaTheme.textSecondary(context), letterSpacing: 0.6)),
+            if (_fatigueLevel != null)
+              GestureDetector(
+                onTap: () => setState(() => _fatigueLevel = null),
+                child: Text('Effacer', style: TextStyle(fontSize: 11, color: AminaTheme.textSecondary(context))),
               ),
-              if (_fatigueLevel != null)
-                GestureDetector(
-                  onTap: () => setState(() => _fatigueLevel = null),
-                  child: Text(
-                    'Effacer',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AminaTheme.textSecondary(context),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          ]),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _buildToggleBtn(
-                  'Pleine énergie',
-                  _fatigueLevel == 5,
-                  () => setState(
-                    () => _fatigueLevel = _fatigueLevel == 5 ? null : 5,
-                  ),
-                  const Color(0xFF059669),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildToggleBtn(
-                  'Correct',
-                  _fatigueLevel == 3,
-                  () => setState(
-                    () => _fatigueLevel = _fatigueLevel == 3 ? null : 3,
-                  ),
-                  const Color(0xFFF59E0B),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildToggleBtn(
-                  'Épuisé',
-                  _fatigueLevel == 1,
-                  () => setState(
-                    () => _fatigueLevel = _fatigueLevel == 1 ? null : 1,
-                  ),
-                  const Color(0xFFDC2626),
-                ),
-              ),
-            ],
-          ),
+          Row(children: [
+            Expanded(child: _buildToggleBtn('Pleine énergie', _fatigueLevel == 5, () => setState(() => _fatigueLevel = _fatigueLevel == 5 ? null : 5), const Color(0xFF059669))),
+            const SizedBox(width: 8),
+            Expanded(child: _buildToggleBtn('Correct', _fatigueLevel == 3, () => setState(() => _fatigueLevel = _fatigueLevel == 3 ? null : 3), const Color(0xFFF59E0B))),
+            const SizedBox(width: 8),
+            Expanded(child: _buildToggleBtn('Épuisé', _fatigueLevel == 1, () => setState(() => _fatigueLevel = _fatigueLevel == 1 ? null : 1), const Color(0xFFDC2626))),
+          ]),
         ],
       ],
     );
   }
 
-  Widget _buildContextBtn(
-    String label,
-    bool active,
-    VoidCallback onTap,
-    Color col,
-  ) {
+  Widget _buildContextBtn(String label, bool active, VoidCallback onTap, Color col) {
     return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
+      onTap: () { HapticFeedback.selectionClick(); onTap(); },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
         decoration: BoxDecoration(
           color: active ? col.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(
-            color: active ? col : col.withValues(alpha: 0.35),
-            width: active ? 1.5 : 1,
-          ),
+          border: Border.all(color: active ? col : col.withValues(alpha: 0.35), width: active ? 1.5 : 1),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            color: active ? col : col.withValues(alpha: 0.7),
-          ),
-        ),
+        child: Text(label, style: TextStyle(fontSize: 14, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? col : col.withValues(alpha: 0.7))),
       ),
     );
   }
 
-  Widget _buildToggleBtn(
-    String label,
-    bool active,
-    VoidCallback onTap,
-    Color col,
-  ) {
+  Widget _buildToggleBtn(String label, bool active, VoidCallback onTap, Color col) {
     return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
+      onTap: () { HapticFeedback.selectionClick(); onTap(); },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
           color: active ? col.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: active ? col : AminaTheme.divider(context),
-            width: active ? 1.5 : 1,
-          ),
+          border: Border.all(color: active ? col : AminaTheme.divider(context), width: active ? 1.5 : 1),
         ),
         child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-              color: active ? col : AminaTheme.textSecondary(context),
-            ),
-          ),
+          child: Text(label, style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? col : AminaTheme.textSecondary(context))),
         ),
       ),
     );
@@ -2153,70 +1468,24 @@ class _AddLogSheetState extends State<AddLogSheet> {
   Widget _buildRamadanToggle() {
     final dark = AminaTheme.isDark(context);
     return GestureDetector(
-      onTap: () => setState(() {
-        _isRamadanMode = !_isRamadanMode;
-        _mealType = _isRamadanMode ? 'Iftar' : 'À jeun';
-      }),
+      onTap: () => setState(() { _isRamadanMode = !_isRamadanMode; _mealType = _isRamadanMode ? 'Iftar' : 'À jeun'; }),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
-          color: _isRamadanMode
-              ? (dark ? AminaTheme.dark700 : const Color(0xFF0D1A17))
-              : AminaTheme.subtleBg(context),
+          color: _isRamadanMode ? (dark ? AminaTheme.dark700 : const Color(0xFF0D1A17)) : AminaTheme.subtleBg(context),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: _isRamadanMode
-                ? AminaTheme.teal500.withValues(alpha: 0.3)
-                : Colors.transparent,
-          ),
+          border: Border.all(color: _isRamadanMode ? AminaTheme.teal500.withValues(alpha: 0.3) : Colors.transparent),
         ),
-        child: Row(
-          children: [
-            Icon(
-              _isRamadanMode ? Icons.nightlight_round : Icons.wb_sunny_outlined,
-              color: _isRamadanMode
-                  ? Colors.amber
-                  : AminaTheme.textSecondary(context),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Mode Ramadan',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
-                      color: _isRamadanMode
-                          ? Colors.white
-                          : AminaTheme.textPrimary(context),
-                    ),
-                  ),
-                  Text(
-                    _isRamadanMode ? 'Activé — horaires adaptés' : 'Désactivé',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: _isRamadanMode
-                          ? Colors.white70
-                          : AminaTheme.textSecondary(context),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Switch(
-              value: _isRamadanMode,
-              onChanged: (v) => setState(() {
-                _isRamadanMode = v;
-                _mealType = v ? 'Iftar' : 'À jeun';
-              }),
-              activeThumbColor: AminaTheme.teal500,
-              activeTrackColor: AminaTheme.teal500.withValues(alpha: 0.5),
-            ),
-          ],
-        ),
+        child: Row(children: [
+          Icon(_isRamadanMode ? Icons.nightlight_round : Icons.wb_sunny_outlined, color: _isRamadanMode ? Colors.amber : AminaTheme.textSecondary(context)),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Mode Ramadan', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: _isRamadanMode ? Colors.white : AminaTheme.textPrimary(context))),
+            Text(_isRamadanMode ? 'Activé — horaires adaptés' : 'Désactivé', style: TextStyle(fontSize: 12, color: _isRamadanMode ? Colors.white70 : AminaTheme.textSecondary(context))),
+          ])),
+          Switch(value: _isRamadanMode, onChanged: (v) => setState(() { _isRamadanMode = v; _mealType = v ? 'Iftar' : 'À jeun'; }), activeThumbColor: AminaTheme.teal500, activeTrackColor: AminaTheme.teal500.withValues(alpha: 0.5)),
+        ]),
       ),
     );
   }
@@ -2232,65 +1501,20 @@ class _AddLogSheetState extends State<AddLogSheet> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AminaTheme.teal500.withValues(alpha: 0.18)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: AminaTheme.heroGradient,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text(
-                'I',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      'IAmina · ',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AminaTheme.teal500,
-                      ),
-                    ),
-                    Text(
-                      'Après enregistrement',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AminaTheme.teal500.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'IAmina analysera cette mesure dans le contexte de ton historique et te donnera un conseil personnalisé.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    height: 1.45,
-                    color: AminaTheme.textSecondary(context),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(width: 40, height: 40, decoration: BoxDecoration(gradient: AminaTheme.heroGradient, shape: BoxShape.circle),
+          child: const Center(child: Text('I', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)))),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Text('IAmina · ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AminaTheme.teal500)),
+            Text('Après enregistrement', style: TextStyle(fontSize: 11, color: AminaTheme.teal500.withValues(alpha: 0.7))),
+          ]),
+          const SizedBox(height: 6),
+          Text('IAmina analysera cette mesure dans le contexte de ton historique et te donnera un conseil personnalisé.',
+            style: TextStyle(fontSize: 12, height: 1.45, color: AminaTheme.textSecondary(context))),
+        ])),
+      ]),
     );
   }
 
@@ -2298,21 +1522,11 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
   Widget _buildSaveBar(AppDatabase db, BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        28,
-        14,
-        28,
-        MediaQuery.of(context).padding.bottom + 14,
-      ),
+      padding: EdgeInsets.fromLTRB(28, 14, 28, MediaQuery.of(context).padding.bottom + 14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AminaTheme.bg(context).withValues(alpha: 0.0),
-            AminaTheme.bg(context).withValues(alpha: 0.96),
-            AminaTheme.bg(context),
-          ],
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+          colors: [AminaTheme.bg(context).withValues(alpha: 0.0), AminaTheme.bg(context).withValues(alpha: 0.96), AminaTheme.bg(context)],
           stops: const [0.0, 0.3, 1.0],
         ),
       ),
@@ -2324,46 +1538,22 @@ class _AddLogSheetState extends State<AddLogSheet> {
             height: 54,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: _saving
-                    ? null
-                    : const LinearGradient(
-                        colors: [AminaTheme.teal500, AminaTheme.teal700],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                color: _saving
-                    ? AminaTheme.teal500.withValues(alpha: 0.5)
-                    : null,
+                gradient: _saving ? null : const LinearGradient(colors: [AminaTheme.teal500, AminaTheme.teal700], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                color: _saving ? AminaTheme.teal500.withValues(alpha: 0.5) : null,
                 borderRadius: BorderRadius.circular(99),
                 boxShadow: _saving ? null : AminaTheme.shadowFab,
               ),
               child: ElevatedButton.icon(
                 onPressed: _saving ? null : () => _saveLog(db, context),
                 icon: _saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.check, size: 18, color: Colors.white),
-                label: Text(
-                  _saving ? 'Enregistrement…' : 'Enregistrer la mesure',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
+                label: Text(_saving ? 'Enregistrement…' : 'Enregistrer la mesure',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
+                  backgroundColor: Colors.transparent, shadowColor: Colors.transparent,
                   disabledBackgroundColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(99),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
                 ),
               ),
             ),
@@ -2378,16 +1568,12 @@ class _AddLogSheetState extends State<AddLogSheet> {
   Future<void> _saveLog(AppDatabase db, BuildContext context) async {
     if (_manualController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez saisir une glycémie'),
-          behavior: SnackBarBehavior.floating,
-        ),
+        const SnackBar(content: Text('Veuillez saisir une glycémie'), behavior: SnackBarBehavior.floating),
       );
       return;
     }
 
-    final mgdlValue =
-        context.read<PatientProfileData?>()?.unitPreference == 'mmol/L'
+    final mgdlValue = context.read<PatientProfileData?>()?.unitPreference == 'mmol/L'
         ? _glucoseValue * 18.0
         : _glucoseValue;
 
@@ -2395,28 +1581,16 @@ class _AddLogSheetState extends State<AddLogSheet> {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          title: Text(
-            mgdlValue < 54 ? '⚠️ Hypoglycémie sévère' : '⚠️ Valeur élevée',
-          ),
-          content: Text(
-            mgdlValue < 54
-                ? 'Une glycémie de ${mgdlValue.toInt()} mg/dL est dangereuse. Prenez 15g de glucides rapides maintenant. Confirmer quand même ?'
-                : 'Une glycémie de ${mgdlValue.toInt()} mg/dL est très élevée. Confirmer l\'enregistrement ?',
-          ),
+          title: Text(mgdlValue < 54 ? '⚠️ Hypoglycémie sévère' : '⚠️ Valeur élevée'),
+          content: Text(mgdlValue < 54
+              ? 'Une glycémie de ${mgdlValue.toInt()} mg/dL est dangereuse. Prenez 15g de glucides rapides maintenant. Confirmer quand même ?'
+              : 'Une glycémie de ${mgdlValue.toInt()} mg/dL est très élevée. Confirmer l\'enregistrement ?'),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Annuler'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFDC2626),
-              ),
-              child: const Text(
-                'Confirmer',
-                style: TextStyle(color: Colors.white),
-              ),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+              child: const Text('Confirmer', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -2433,41 +1607,32 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
     setState(() => _saving = true);
 
-    final profile = context.read<PatientProfileData?>();
-    final unit = profile?.unitPreference ?? 'mg/dL';
-    final bloodSugarMgdl = unit == 'mmol/L'
-        ? _glucoseValue * 18.0
-        : _glucoseValue;
-    final foodChips = _selectedFoods
-        .map((sf) => '${sf.item.label} (${sf.portion.label})')
-        .join(', ');
-    final freeNote = _mealNoteController.text.trim();
-    final foodDesc = [
-      foodChips,
-      freeNote,
-    ].where((s) => s.isNotEmpty).join(' — ');
+    final profile   = context.read<PatientProfileData?>();
+    final unit      = profile?.unitPreference ?? 'mg/dL';
+    final bloodSugarMgdl = unit == 'mmol/L' ? _glucoseValue * 18.0 : _glucoseValue;
+    final foodChips = _selectedFoods.map((sf) => '${sf.item.label} (${sf.portion.label})').join(', ');
+    final freeNote  = _mealNoteController.text.trim();
+    final foodDesc  = [foodChips, freeNote].where((s) => s.isNotEmpty).join(' — ');
 
-    await db
-        .into(db.logEntries)
-        .insert(
-          LogEntriesCompanion.insert(
-            createdAt: DateTime.now(),
-            bloodSugar: bloodSugarMgdl,
-            insulinUnits: drift.Value(_insulinDose),
-            mealType: drift.Value(_mealType),
-            mealDescription: drift.Value(foodDesc.isNotEmpty ? foodDesc : null),
-            clientUuid: const Uuid().v4(),
-            loggedAt: drift.Value(_selectedTime),
-            ramadanMode: drift.Value(_isRamadanMode),
-            isSick: drift.Value(_isSick),
-            isStressed: drift.Value(_isStressed),
-            // isTired = true si fatigueLevel ≤ 2 (épuisé / très fatigué)
-            isTired: drift.Value(_fatigueLevel != null && _fatigueLevel! <= 2),
-            isActive: drift.Value(_isActive),
-            sleepQuality: drift.Value(_sleepQuality),
-            fatigueLevel: drift.Value(_fatigueLevel),
-          ),
-        );
+    await db.into(db.logEntries).insert(
+      LogEntriesCompanion.insert(
+        createdAt: DateTime.now(),
+        bloodSugar: bloodSugarMgdl,
+        insulinUnits: drift.Value(_insulinDose),
+        mealType: drift.Value(_mealType),
+        mealDescription: drift.Value(foodDesc.isNotEmpty ? foodDesc : null),
+        clientUuid: const Uuid().v4(),
+        loggedAt: drift.Value(_selectedTime),
+        ramadanMode: drift.Value(_isRamadanMode),
+        isSick: drift.Value(_isSick),
+        isStressed: drift.Value(_isStressed),
+        // isTired = true si fatigueLevel ≤ 2 (épuisé / très fatigué)
+        isTired: drift.Value(_fatigueLevel != null && _fatigueLevel! <= 2),
+        isActive: drift.Value(_isActive),
+        sleepQuality: drift.Value(_sleepQuality),
+        fatigueLevel: drift.Value(_fatigueLevel),
+      ),
+    );
 
     if (!mounted || !context.mounted) return;
     setState(() => _saving = false);
@@ -2479,17 +1644,11 @@ class _AddLogSheetState extends State<AddLogSheet> {
     final mealLabel = _mealType.isNotEmpty ? ' · $_mealType' : '';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(
-              Icons.check_circle_rounded,
-              color: Colors.white,
-              size: 16,
-            ),
-            const SizedBox(width: 8),
-            Text('Glycémie enregistrée · $displayVal$mealLabel'),
-          ],
-        ),
+        content: Row(children: [
+          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 16),
+          const SizedBox(width: 8),
+          Text('Glycémie enregistrée · $displayVal$mealLabel'),
+        ]),
         backgroundColor: AminaTheme.teal600,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
@@ -2511,14 +1670,11 @@ class _AddLogSheetState extends State<AddLogSheet> {
   }
 
   String _buildIAminaContextMessage(double mgdl, String unit) {
-    final val = unit == 'mmol/L'
-        ? '${(mgdl / 18.0).toStringAsFixed(1)} mmol/L'
-        : '${mgdl.toInt()} mg/dL';
+    final val = unit == 'mmol/L' ? '${(mgdl / 18.0).toStringAsFixed(1)} mmol/L' : '${mgdl.toInt()} mg/dL';
     final parts = <String>['Je viens de mesurer $val'];
     if (_mealType != 'À jeun') parts.add('après ${_mealType.toLowerCase()}');
-    if (_selectedFoods.isNotEmpty)
-      parts.add('(${_selectedFoods.map((sf) => sf.item.label).join(', ')})');
-    if (_isSick) parts.add('je suis malade');
+    if (_selectedFoods.isNotEmpty) parts.add('(${_selectedFoods.map((sf) => sf.item.label).join(', ')})');
+    if (_isSick)     parts.add('je suis malade');
     if (_isStressed) parts.add('je suis stressé');
     if (_sleepQuality == 'bad') parts.add('j\'ai mal dormi');
     if (_fatigueLevel == 1) parts.add('je suis épuisé');
@@ -2548,12 +1704,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
       );
     } catch (_) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Impossible d\'accéder à la caméra'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Impossible d\'accéder à la caméra'),
+        behavior: SnackBarBehavior.floating,
+      ));
       return;
     }
     if (file == null || !context.mounted) return;
@@ -2564,41 +1718,35 @@ class _AddLogSheetState extends State<AddLogSheet> {
     if (kIsWeb) {
       // Web path: read bytes → base64 → Gemini Vision backend
       try {
-        final bytes = await file.readAsBytes();
-        final b64 = base64Encode(bytes);
-        final mime = file.mimeType ?? 'image/jpeg';
-        final resp = await api.analyzeGlucometerImage(b64, mime);
+        final bytes   = await file.readAsBytes();
+        final b64     = base64Encode(bytes);
+        final mime    = file.mimeType ?? 'image/jpeg';
+        final resp    = await api.analyzeGlucometerImage(b64, mime);
         if (!context.mounted) return;
 
         if (resp == null || resp.fallback || resp.value == null) {
           setState(() => _ocrScanning = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Lecture impossible — veuillez saisir manuellement',
-              ),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Lecture impossible — veuillez saisir manuellement'),
+            behavior: SnackBarBehavior.floating,
+          ));
           return;
         }
         // Convert to mg/dL if needed so GlucoseOcrResult is always mg/dL
         final mgdl = resp.unit == 'mmol/L' ? resp.value! * 18.0 : resp.value!;
         result = GlucoseOcrResult(
-          value: mgdl,
-          confidence: resp.confidence == 'high' ? 0.95 : 0.70,
-          rawText: 'Gemini Vision: ${resp.value} ${resp.unit}',
+          value:       mgdl,
+          confidence:  resp.confidence == 'high' ? 0.95 : 0.70,
+          rawText:     'Gemini Vision: ${resp.value} ${resp.unit}',
           unitWasMmol: resp.unit == 'mmol/L',
         );
       } catch (_) {
         if (!context.mounted) return;
         setState(() => _ocrScanning = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Lecture impossible — veuillez saisir manuellement'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Lecture impossible — veuillez saisir manuellement'),
+          behavior: SnackBarBehavior.floating,
+        ));
         return;
       }
     } else {
@@ -2615,12 +1763,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
       } catch (_) {
         if (!context.mounted) return;
         setState(() => _ocrScanning = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Lecture impossible — veuillez saisir manuellement'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Lecture impossible — veuillez saisir manuellement'),
+          behavior: SnackBarBehavior.floating,
+        ));
         return;
       }
     }
@@ -2636,64 +1782,36 @@ class _AddLogSheetState extends State<AddLogSheet> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => Container(
-        padding: EdgeInsets.fromLTRB(
-          24,
-          16,
-          24,
-          MediaQuery.of(context).padding.bottom + 20,
-        ),
+        padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(context).padding.bottom + 20),
         decoration: BoxDecoration(
           color: AminaTheme.bg(context),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AminaTheme.divider(context),
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Lire la glycémie',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Pointez vers l\'écran de votre glucomètre',
-              style: TextStyle(
-                fontSize: 12,
-                color: AminaTheme.textSecondary(context),
-              ),
-            ),
-            const SizedBox(height: 20),
-            _OcrSourceTile(
-              icon: Icons.camera_alt_outlined,
-              label: 'Prendre une photo',
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            const SizedBox(height: 10),
-            _OcrSourceTile(
-              icon: Icons.photo_library_outlined,
-              label: 'Choisir depuis la galerie',
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-          ],
-        ),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: AminaTheme.divider(context), borderRadius: BorderRadius.circular(99))),
+          const SizedBox(height: 20),
+          const Text('Lire la glycémie', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          Text('Pointez vers l\'écran de votre glucomètre', style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context))),
+          const SizedBox(height: 20),
+          _OcrSourceTile(
+            icon: Icons.camera_alt_outlined,
+            label: 'Prendre une photo',
+            onTap: () => Navigator.pop(context, ImageSource.camera),
+          ),
+          const SizedBox(height: 10),
+          _OcrSourceTile(
+            icon: Icons.photo_library_outlined,
+            label: 'Choisir depuis la galerie',
+            onTap: () => Navigator.pop(context, ImageSource.gallery),
+          ),
+        ]),
       ),
     );
   }
 
   /// Confirmation sheet: shows what the OCR read, user accepts or corrects.
-  Future<void> _showOcrResultSheet(
-    BuildContext context,
-    GlucoseOcrResult result,
-    String unit,
-  ) async {
+  Future<void> _showOcrResultSheet(BuildContext context, GlucoseOcrResult result, String unit) async {
     final accepted = await showModalBottomSheet<double?>(
       context: context,
       isScrollControlled: true,
@@ -2705,7 +1823,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
     // Convert back to user unit if needed
     final displayValue = unit == 'mmol/L' ? accepted / 18.0 : accepted;
-    final displayStr = unit == 'mmol/L'
+    final displayStr   = unit == 'mmol/L'
         ? displayValue.toStringAsFixed(1)
         : displayValue.toInt().toString();
 
@@ -2727,7 +1845,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
     // use_build_context_synchronously — ScaffoldMessenger and ApiClient
     // must not be read after an async gap.
     final messenger = ScaffoldMessenger.of(context);
-    final api = context.read<ApiClient>();
+    final api       = context.read<ApiClient>();
 
     // Reuse the glucometer source picker (same UX)
     final source = await _showImageSourceSheet(context);
@@ -2742,58 +1860,48 @@ class _AddLogSheetState extends State<AddLogSheet> {
       );
     } catch (_) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Impossible d\'accéder à la caméra'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Impossible d\'accéder à la caméra'),
+        behavior: SnackBarBehavior.floating,
+      ));
       return;
     }
     if (file == null || !mounted) return;
 
     setState(() => _mealScanning = true);
 
-    final bytes = await file.readAsBytes();
-    final mime = _mimeFromPath(file.path);
+    final bytes  = await file.readAsBytes();
+    final mime   = _mimeFromPath(file.path);
     final result = await api.analyzeMealImage(bytes, mimeType: mime);
 
     if (!mounted) return;
     setState(() => _mealScanning = false);
 
     if (result == null) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Analyse indisponible — sélectionnez manuellement'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Analyse indisponible — sélectionnez manuellement'),
+        behavior: SnackBarBehavior.floating,
+      ));
       return;
     }
 
     if (result.fallback || result.foods.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Je n\'ai pas reconnu les aliments — sélectionnez manuellement',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Je n\'ai pas reconnu les aliments — sélectionnez manuellement'),
+        behavior: SnackBarBehavior.floating,
+      ));
       return;
     }
 
     final matched = _matchFoodsToChips(result.foods);
     if (matched.isEmpty) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            'Aliments détectés (${result.foods.join(', ')}) — '
-            'introuvables dans la liste, sélectionnez manuellement',
-          ),
-          behavior: SnackBarBehavior.floating,
+      messenger.showSnackBar(SnackBar(
+        content: Text(
+          'Aliments détectés (${result.foods.join(', ')}) — '
+          'introuvables dans la liste, sélectionnez manuellement',
         ),
-      );
+        behavior: SnackBarBehavior.floating,
+      ));
       return;
     }
 
@@ -2806,17 +1914,15 @@ class _AddLogSheetState extends State<AddLogSheet> {
     });
     HapticFeedback.mediumImpact();
 
-    final names = matched.map((f) => f.label).join(', ');
+    final names  = matched.map((f) => f.label).join(', ');
     final suffix = result.confidence == 'high' ? '' : ' (vérifiez)';
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          '${matched.length} aliment${matched.length > 1 ? 's' : ''} '
-          'ajouté${matched.length > 1 ? 's' : ''} : $names$suffix',
-        ),
-        behavior: SnackBarBehavior.floating,
+    messenger.showSnackBar(SnackBar(
+      content: Text(
+        '${matched.length} aliment${matched.length > 1 ? 's' : ''} '
+        'ajouté${matched.length > 1 ? 's' : ''} : $names$suffix',
       ),
-    );
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   /// Fuzzy-match Gemini food names to CulinaryItem chips.
@@ -2842,16 +1948,13 @@ class _AddLogSheetState extends State<AddLogSheet> {
   String _mimeFromPath(String path) {
     final ext = path.toLowerCase().split('.').last;
     return switch (ext) {
-      'png' => 'image/png',
+      'png'  => 'image/png',
       'webp' => 'image/webp',
-      _ => 'image/jpeg',
+      _      => 'image/jpeg',
     };
   }
 
-  Future<void> _showHypoAdviceSheet(
-    BuildContext context,
-    double mgdlValue,
-  ) async {
+  Future<void> _showHypoAdviceSheet(BuildContext context, double mgdlValue) async {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -2860,17 +1963,12 @@ class _AddLogSheetState extends State<AddLogSheet> {
     );
   }
 
-  Future<void> _showPostSaveSheet(
-    BuildContext context,
-    ApiClient api,
-    String message,
-  ) async {
+  Future<void> _showPostSaveSheet(BuildContext context, ApiClient api, String message) async {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) =>
-          _IaminaPostSaveSheet(apiClient: api, contextMessage: message),
+      builder: (_) => _IaminaPostSaveSheet(apiClient: api, contextMessage: message),
     );
   }
 }
@@ -2880,10 +1978,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
 class _IaminaPostSaveSheet extends StatefulWidget {
   final ApiClient apiClient;
   final String contextMessage;
-  const _IaminaPostSaveSheet({
-    required this.apiClient,
-    required this.contextMessage,
-  });
+  const _IaminaPostSaveSheet({required this.apiClient, required this.contextMessage});
 
   @override
   State<_IaminaPostSaveSheet> createState() => _IaminaPostSaveSheetState();
@@ -2895,29 +1990,16 @@ class _IaminaPostSaveSheetState extends State<_IaminaPostSaveSheet> {
   bool _isEmergency = false;
 
   @override
-  void initState() {
-    super.initState();
-    _fetchReply();
-  }
+  void initState() { super.initState(); _fetchReply(); }
 
   Future<void> _fetchReply() async {
     try {
       final resp = await widget.apiClient.chatWithAmina(widget.contextMessage);
       if (!mounted) return;
-      setState(() {
-        _reply =
-            resp?.reply ??
-            'Je n\'ai pas pu analyser cette mesure. Réessaie dans un instant.';
-        _isEmergency = resp?.isEmergency ?? false;
-        _loading = false;
-      });
+      setState(() { _reply = resp?.reply ?? 'Je n\'ai pas pu analyser cette mesure. Réessaie dans un instant.'; _isEmergency = resp?.isEmergency ?? false; _loading = false; });
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _reply =
-            'Analyse temporairement indisponible — tes données sont bien enregistrées.';
-        _loading = false;
-      });
+      setState(() { _reply = 'Analyse temporairement indisponible — tes données sont bien enregistrées.'; _loading = false; });
     }
   }
 
@@ -2925,152 +2007,60 @@ class _IaminaPostSaveSheetState extends State<_IaminaPostSaveSheet> {
   Widget build(BuildContext context) {
     const emergencyColor = Color(0xFFDC2626);
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        20,
-        24,
-        MediaQuery.of(context).padding.bottom + 24,
-      ),
-      decoration: BoxDecoration(
-        color: AminaTheme.bg(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AminaTheme.divider(context),
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: AminaTheme.heroGradient,
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Text(
-                    'I',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                    ),
+      padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(context).padding.bottom + 24),
+      decoration: BoxDecoration(color: AminaTheme.bg(context), borderRadius: const BorderRadius.vertical(top: Radius.circular(28))),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AminaTheme.divider(context), borderRadius: BorderRadius.circular(99)))),
+        const SizedBox(height: 20),
+        Row(children: [
+          Container(width: 44, height: 44, decoration: BoxDecoration(gradient: AminaTheme.heroGradient, shape: BoxShape.circle),
+            child: const Center(child: Text('I', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)))),
+          const SizedBox(width: 12),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('IAmina', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AminaTheme.textPrimary(context))),
+            Text('Analyse de ta mesure', style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context))),
+          ]),
+        ]),
+        const SizedBox(height: 20),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          child: _loading
+              ? _buildSkeleton(context)
+              : Container(
+                  key: const ValueKey('reply'),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: _isEmergency ? emergencyColor.withValues(alpha: 0.08) : AminaTheme.teal500.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _isEmergency ? emergencyColor.withValues(alpha: 0.3) : AminaTheme.teal500.withValues(alpha: 0.2)),
                   ),
+                  child: Text(_reply!, style: TextStyle(fontSize: 14, height: 1.55, color: AminaTheme.textPrimary(context))),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'IAmina',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AminaTheme.textPrimary(context),
-                    ),
-                  ),
-                  Text(
-                    'Analyse de ta mesure',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AminaTheme.textSecondary(context),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity, height: 50,
+          child: ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(backgroundColor: AminaTheme.teal500, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)), elevation: 0),
+            child: const Text('Continuer', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
           ),
-          const SizedBox(height: 20),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 350),
-            child: _loading
-                ? _buildSkeleton(context)
-                : Container(
-                    key: const ValueKey('reply'),
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: _isEmergency
-                          ? emergencyColor.withValues(alpha: 0.08)
-                          : AminaTheme.teal500.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: _isEmergency
-                            ? emergencyColor.withValues(alpha: 0.3)
-                            : AminaTheme.teal500.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child: Text(
-                      _reply!,
-                      style: TextStyle(
-                        fontSize: 14,
-                        height: 1.55,
-                        color: AminaTheme.textPrimary(context),
-                      ),
-                    ),
-                  ),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AminaTheme.teal500,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                elevation: 0,
-              ),
-              child: const Text(
-                'Continuer',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ]),
     );
   }
 
   Widget _buildSkeleton(BuildContext context) {
-    return Column(
-      key: const ValueKey('skeleton'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _SkeletonLine(width: double.infinity, height: 14),
-        const SizedBox(height: 8),
-        const _SkeletonLine(width: double.infinity, height: 14),
-        const SizedBox(height: 8),
-        const _SkeletonLine(width: 200, height: 14),
-        const SizedBox(height: 6),
-        Text(
-          'IAmina analyse ta mesure…',
-          style: TextStyle(
-            fontSize: 12,
-            color: AminaTheme.textSecondary(context),
-          ),
-        ),
-      ],
-    );
+    return Column(key: const ValueKey('skeleton'), crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const _SkeletonLine(width: double.infinity, height: 14),
+      const SizedBox(height: 8),
+      const _SkeletonLine(width: double.infinity, height: 14),
+      const SizedBox(height: 8),
+      const _SkeletonLine(width: 200, height: 14),
+      const SizedBox(height: 6),
+      Text('IAmina analyse ta mesure…', style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context))),
+    ]);
   }
 }
 
@@ -3084,175 +2074,74 @@ class _HypoAdviceSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const hypoColor = Color(0xFFF97316); // orange
-    const hypoBg = Color(0xFFFFF7ED);
+    const hypoBg    = Color(0xFFFFF7ED);
 
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        20,
-        24,
-        MediaQuery.of(context).padding.bottom + 28,
-      ),
-      decoration: BoxDecoration(
-        color: AminaTheme.bg(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AminaTheme.divider(context),
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Header
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: hypoBg,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: hypoColor.withValues(alpha: 0.35)),
-                ),
-                child: const Center(
-                  child: Text('⚡', style: TextStyle(fontSize: 22)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Hypoglycémie détectée',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: hypoColor,
-                      ),
-                    ),
-                    Text(
-                      '${mgdl.toInt()} mg/dL · Règle 15-15 ADA',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AminaTheme.textSecondary(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          // Rule 15-15 card
+      padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(context).padding.bottom + 28),
+      decoration: BoxDecoration(color: AminaTheme.bg(context), borderRadius: const BorderRadius.vertical(top: Radius.circular(28))),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AminaTheme.divider(context), borderRadius: BorderRadius.circular(99)))),
+        const SizedBox(height: 20),
+        // Header
+        Row(children: [
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: hypoBg,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: hypoColor.withValues(alpha: 0.3)),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Que faire maintenant ?',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: hypoColor,
-                  ),
-                ),
-                SizedBox(height: 10),
-                _HypoStep(
-                  '1',
-                  'Prenez 15 g de glucides rapides',
-                  '3 morceaux de sucre · 150 mL de jus · 1 sachet de gel',
-                ),
-                SizedBox(height: 10),
-                _HypoStep(
-                  '2',
-                  'Attendez 15 minutes',
-                  'Ne resucrez pas immédiatement — l\'effet prend du temps',
-                ),
-                SizedBox(height: 10),
-                _HypoStep(
-                  '3',
-                  'Remesurer',
-                  'Si toujours < 70 mg/dL, répétez le cycle',
-                ),
-                SizedBox(height: 10),
-                _HypoStep(
-                  '4',
-                  'Mangez un encas si le repas est loin',
-                  'Ex : 1 biscuit ou 1 tranche de pain',
-                ),
-              ],
-            ),
+            width: 44, height: 44,
+            decoration: BoxDecoration(color: hypoBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: hypoColor.withValues(alpha: 0.35))),
+            child: const Center(child: Text('⚡', style: TextStyle(fontSize: 22))),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AminaTheme.subtleBg(context),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.info_outline,
-                  size: 14,
-                  color: AminaTheme.ink400,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Ta mesure est bien enregistrée. IAmina sera informée de l\'hypoglycémie.',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AminaTheme.textSecondary(context),
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Hypoglycémie détectée', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: hypoColor)),
+            Text('${mgdl.toInt()} mg/dL · Règle 15-15 ADA', style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context))),
+          ])),
+        ]),
+        const SizedBox(height: 18),
+        // Rule 15-15 card
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: hypoBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: hypoColor.withValues(alpha: 0.3)),
           ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: hypoColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                elevation: 0,
-              ),
-              child: const Text(
-                'J\'ai compris',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
+          child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Que faire maintenant ?', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: hypoColor)),
+            SizedBox(height: 10),
+            _HypoStep('1', 'Prenez 15 g de glucides rapides', '3 morceaux de sucre · 150 mL de jus · 1 sachet de gel'),
+            SizedBox(height: 10),
+            _HypoStep('2', 'Attendez 15 minutes', 'Ne resucrez pas immédiatement — l\'effet prend du temps'),
+            SizedBox(height: 10),
+            _HypoStep('3', 'Remesurer', 'Si toujours < 70 mg/dL, répétez le cycle'),
+            SizedBox(height: 10),
+            _HypoStep('4', 'Mangez un encas si le repas est loin', 'Ex : 1 biscuit ou 1 tranche de pain'),
+          ]),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(color: AminaTheme.subtleBg(context), borderRadius: BorderRadius.circular(10)),
+          child: Row(children: [
+            const Icon(Icons.info_outline, size: 14, color: AminaTheme.ink400),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Ta mesure est bien enregistrée. IAmina sera informée de l\'hypoglycémie.',
+              style: TextStyle(fontSize: 11, color: AminaTheme.textSecondary(context), height: 1.4))),
+          ]),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity, height: 50,
+          child: ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: hypoColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
+              elevation: 0,
             ),
+            child: const Text('J\'ai compris', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
           ),
-        ],
-      ),
+        ),
+      ]),
     );
   }
 }
@@ -3264,53 +2153,18 @@ class _HypoStep extends StatelessWidget {
   const _HypoStep(this.number, this.title, this.sub);
 
   @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Container(
-        width: 22,
-        height: 22,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF97316),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Center(
-          child: Text(
-            number,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-      ),
-      const SizedBox(width: 10),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF7C2D12),
-              ),
-            ),
-            Text(
-              sub,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Color(0xFF9A3412),
-                height: 1.35,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ],
-  );
+  Widget build(BuildContext context) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Container(
+      width: 22, height: 22,
+      decoration: BoxDecoration(color: const Color(0xFFF97316), borderRadius: BorderRadius.circular(6)),
+      child: Center(child: Text(number, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800))),
+    ),
+    const SizedBox(width: 10),
+    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF7C2D12))),
+      Text(sub, style: const TextStyle(fontSize: 11, color: Color(0xFF9A3412), height: 1.35)),
+    ])),
+  ]);
 }
 
 // ── Reusable widgets ──────────────────────────────────────────────────────────
@@ -3320,14 +2174,8 @@ class _SliderLabel extends StatelessWidget {
   final Color color;
   const _SliderLabel(this.text, this.color);
   @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: TextStyle(
-      fontSize: 10,
-      color: color.withValues(alpha: 0.5),
-      fontWeight: FontWeight.w600,
-    ),
-  );
+  Widget build(BuildContext context) =>
+      Text(text, style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.5), fontWeight: FontWeight.w600));
 }
 
 class _SectionLabel extends StatelessWidget {
@@ -3335,16 +2183,11 @@ class _SectionLabel extends StatelessWidget {
   final BuildContext ctx;
   const _SectionLabel(this.text, this.ctx);
   @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: TextStyle(
-      fontSize: 11,
-      fontWeight: FontWeight.w700,
-      color: AminaTheme.textSecondary(ctx),
-      letterSpacing: 0.6,
-    ),
-  );
+  Widget build(BuildContext context) =>
+      Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AminaTheme.textSecondary(ctx), letterSpacing: 0.6));
 }
+
+
 
 class _SkeletonLine extends StatefulWidget {
   final double width;
@@ -3354,41 +2197,27 @@ class _SkeletonLine extends StatefulWidget {
   State<_SkeletonLine> createState() => _SkeletonLineState();
 }
 
-class _SkeletonLineState extends State<_SkeletonLine>
-    with SingleTickerProviderStateMixin {
+class _SkeletonLineState extends State<_SkeletonLine> with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _anim;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-    )..repeat(reverse: true);
-    _anim = Tween<double>(
-      begin: 0.3,
-      end: 0.7,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat(reverse: true);
+    _anim = Tween<double>(begin: 0.3, end: 0.7).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) => Container(
-        width: widget.width,
-        height: widget.height,
-        decoration: BoxDecoration(
-          color: AminaTheme.divider(context).withValues(alpha: _anim.value),
-          borderRadius: BorderRadius.circular(6),
-        ),
+        width: widget.width, height: widget.height,
+        decoration: BoxDecoration(color: AminaTheme.divider(context).withValues(alpha: _anim.value), borderRadius: BorderRadius.circular(6)),
       ),
     );
   }
@@ -3400,11 +2229,7 @@ class _OcrSourceTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  const _OcrSourceTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  const _OcrSourceTile({required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -3418,34 +2243,20 @@ class _OcrSourceTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AminaTheme.divider(context)),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AminaTheme.teal500.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, size: 20, color: AminaTheme.teal600),
+        child: Row(children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              color: AminaTheme.teal500.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: 14),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AminaTheme.textPrimary(context),
-              ),
-            ),
-            const Spacer(),
-            Icon(
-              Icons.chevron_right,
-              size: 18,
-              color: AminaTheme.textSecondary(context),
-            ),
-          ],
-        ),
+            child: Icon(icon, size: 20, color: AminaTheme.teal600),
+          ),
+          const SizedBox(width: 14),
+          Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AminaTheme.textPrimary(context))),
+          const Spacer(),
+          Icon(Icons.chevron_right, size: 18, color: AminaTheme.textSecondary(context)),
+        ]),
       ),
     );
   }
@@ -3463,8 +2274,7 @@ class _OcrSourceTile extends StatelessWidget {
 
 class _OcrResultSheet extends StatefulWidget {
   final GlucoseOcrResult result;
-  final String
-  userUnit; // 'mg/dL' or 'mmol/L' — for display only; we always return mg/dL
+  final String userUnit; // 'mg/dL' or 'mmol/L' — for display only; we always return mg/dL
   const _OcrResultSheet({required this.result, required this.userUnit});
 
   @override
@@ -3489,10 +2299,7 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
   }
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   // ── confirm handler ──────────────────────────────────────────────────────────
 
@@ -3502,14 +2309,11 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
 
     if (r.isHI || r.isLO || !r.hasValue || r.confidence < 0.80) {
       // User provided or corrected the value manually
-      final raw = _ctrl.text.trim().replaceAll(',', '.');
+      final raw    = _ctrl.text.trim().replaceAll(',', '.');
       final parsed = double.tryParse(raw);
       if (parsed == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Valeur invalide'),
-            behavior: SnackBarBehavior.floating,
-          ),
+          const SnackBar(content: Text('Valeur invalide'), behavior: SnackBarBehavior.floating),
         );
         return;
       }
@@ -3528,16 +2332,9 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
   Widget build(BuildContext context) {
     final r = widget.result;
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
-        padding: EdgeInsets.fromLTRB(
-          24,
-          20,
-          24,
-          MediaQuery.of(context).padding.bottom + 28,
-        ),
+        padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(context).padding.bottom + 28),
         decoration: BoxDecoration(
           color: AminaTheme.bg(context),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -3546,16 +2343,10 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AminaTheme.divider(context),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-            ),
+            Center(child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: AminaTheme.divider(context), borderRadius: BorderRadius.circular(99)),
+            )),
             const SizedBox(height: 20),
             _buildHeader(context, r),
             const SizedBox(height: 18),
@@ -3576,246 +2367,153 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
     final Color color;
 
     if (r.isHI) {
-      emoji = '⚠️';
-      title = 'Glucomètre saturé — HI';
-      sub = 'Valeur trop élevée pour être mesurée (> ~600 mg/dL)';
+      emoji = '⚠️'; title = 'Glucomètre saturé — HI';
+      sub   = 'Valeur trop élevée pour être mesurée (> ~600 mg/dL)';
       color = const Color(0xFFF59E0B);
     } else if (r.isLO) {
-      emoji = '⚠️';
-      title = 'Glucomètre saturé — LO';
-      sub = 'Valeur trop basse pour être mesurée (< ~20 mg/dL)';
+      emoji = '⚠️'; title = 'Glucomètre saturé — LO';
+      sub   = 'Valeur trop basse pour être mesurée (< ~20 mg/dL)';
       color = const Color(0xFFDC2626);
     } else if (!r.hasValue) {
-      emoji = '🔍';
-      title = 'Aucune valeur détectée';
-      sub = 'Saisissez la valeur manuellement';
+      emoji = '🔍'; title = 'Aucune valeur détectée';
+      sub   = 'Saisissez la valeur manuellement';
       color = const Color(0xFF64748B);
     } else if (r.confidence >= 0.80) {
-      emoji = '📷';
-      title = 'Valeur lue par la caméra';
-      sub = 'Vérifiez puis confirmez';
+      emoji = '📷'; title = 'Valeur lue par la caméra';
+      sub   = 'Vérifiez puis confirmez';
       color = AminaTheme.teal500;
     } else {
-      emoji = '🔍';
-      title = 'Lecture incertaine';
-      sub = 'Corrigez la valeur si nécessaire';
+      emoji = '🔍'; title = 'Lecture incertaine';
+      sub   = 'Corrigez la valeur si nécessaire';
       color = const Color(0xFFF59E0B);
     }
 
-    return Row(
-      children: [
-        Text(emoji, style: const TextStyle(fontSize: 28)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: color,
-                ),
-              ),
-              Text(
-                sub,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AminaTheme.textSecondary(context),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+    return Row(children: [
+      Text(emoji, style: const TextStyle(fontSize: 28)),
+      const SizedBox(width: 12),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
+        Text(sub,   style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context))),
+      ])),
+    ]);
   }
 
   // ── HI / LO content ─────────────────────────────────────────────────────────
 
   Widget _buildHiLoContent(BuildContext context, GlucoseOcrResult r) {
     final col = r.isHI ? const Color(0xFFF59E0B) : const Color(0xFFDC2626);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: col.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: col.withValues(alpha: 0.3)),
-          ),
-          child: Text(
-            r.isHI
-                ? 'Votre glucomètre affiche "HI" — glycémie supérieure à la plage mesurable. Contactez votre médecin si cela persiste.'
-                : 'Votre glucomètre affiche "LO" — glycémie inférieure à la plage mesurable. Prenez du sucre rapidement.',
-            style: TextStyle(
-              fontSize: 13,
-              height: 1.5,
-              color: AminaTheme.textPrimary(context),
-            ),
-          ),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: col.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: col.withValues(alpha: 0.3)),
         ),
-        const SizedBox(height: 16),
-        Text(
-          'Saisissez manuellement la valeur :',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AminaTheme.textPrimary(context),
-          ),
+        child: Text(
+          r.isHI
+              ? 'Votre glucomètre affiche "HI" — glycémie supérieure à la plage mesurable. Contactez votre médecin si cela persiste.'
+              : 'Votre glucomètre affiche "LO" — glycémie inférieure à la plage mesurable. Prenez du sucre rapidement.',
+          style: TextStyle(fontSize: 13, height: 1.5, color: AminaTheme.textPrimary(context)),
         ),
-        const SizedBox(height: 10),
-        _buildManualField(context),
-        const SizedBox(height: 16),
-        _buildConfirmButton(col, 'Confirmer'),
-      ],
-    );
+      ),
+      const SizedBox(height: 16),
+      Text('Saisissez manuellement la valeur :', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AminaTheme.textPrimary(context))),
+      const SizedBox(height: 10),
+      _buildManualField(context),
+      const SizedBox(height: 16),
+      _buildConfirmButton(col, 'Confirmer'),
+    ]);
   }
 
   // ── normal value content ─────────────────────────────────────────────────────
 
   Widget _buildValueContent(BuildContext context, GlucoseOcrResult r) {
     final isHighConf = r.hasValue && r.confidence >= 0.80;
-    final confColor = isHighConf ? AminaTheme.teal500 : const Color(0xFFF59E0B);
-    final confLabel = isHighConf
-        ? 'Confiance élevée'
-        : 'Confiance faible — vérifiez';
-    final btnColor = isHighConf ? AminaTheme.teal500 : const Color(0xFFF59E0B);
-    final btnLabel = isHighConf ? 'Utiliser cette valeur' : 'Confirmer';
+    final confColor  = isHighConf ? AminaTheme.teal500 : const Color(0xFFF59E0B);
+    final confLabel  = isHighConf ? 'Confiance élevée' : 'Confiance faible — vérifiez';
+    final btnColor   = isHighConf ? AminaTheme.teal500 : const Color(0xFFF59E0B);
+    final btnLabel   = isHighConf ? 'Utiliser cette valeur' : 'Confirmer';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Value display card — only when a value was actually extracted
-        if (r.hasValue) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            decoration: BoxDecoration(
-              color: AminaTheme.teal500.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AminaTheme.teal500.withValues(alpha: 0.2),
-              ),
-            ),
-            child: Column(
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+      // Value display card — only when a value was actually extracted
+      if (r.hasValue) ...[
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(
+            color: AminaTheme.teal500.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AminaTheme.teal500.withValues(alpha: 0.2)),
+          ),
+          child: Column(children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      widget.userUnit == 'mmol/L'
-                          ? (r.value! / 18.0).toStringAsFixed(1)
-                          : r.value!.toInt().toString(),
-                      style: const TextStyle(
-                        fontSize: 60,
-                        fontWeight: FontWeight.w800,
-                        height: 1.0,
-                        letterSpacing: -2,
-                        color: AminaTheme.teal500,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      widget.userUnit,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AminaTheme.teal500.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: confColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  child: Text(
-                    confLabel,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: confColor,
-                    ),
+                Text(
+                  widget.userUnit == 'mmol/L'
+                      ? (r.value! / 18.0).toStringAsFixed(1)
+                      : r.value!.toInt().toString(),
+                  style: const TextStyle(
+                    fontSize: 60, fontWeight: FontWeight.w800,
+                    height: 1.0, letterSpacing: -2, color: AminaTheme.teal500,
                   ),
                 ),
-                if (r.unitWasMmol) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Converti depuis mmol/L × 18',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: AminaTheme.textSecondary(context),
-                    ),
-                  ),
-                ],
+                const SizedBox(width: 6),
+                Text(widget.userUnit,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AminaTheme.teal500.withValues(alpha: 0.7))),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-        ],
-
-        // Raw OCR text (transparency / debug aid for the user)
-        if (r.rawText.isNotEmpty && r.rawText.length < 60)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(
-              'Texte reconnu : "${r.rawText}"',
-              style: TextStyle(
-                fontSize: 11,
-                color: AminaTheme.textSecondary(context),
-                fontStyle: FontStyle.italic,
-              ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(color: confColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(99)),
+              child: Text(confLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: confColor)),
             ),
-          ),
-
-        // Editable correction field for low-confidence or no-value
-        if (!isHighConf) ...[
-          Text(
-            'Corrigez si nécessaire :',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AminaTheme.textPrimary(context),
-            ),
-          ),
-          const SizedBox(height: 10),
-          _buildManualField(context),
-          const SizedBox(height: 16),
-        ],
-
-        // Primary action
-        _buildConfirmButton(btnColor, btnLabel),
-        const SizedBox(height: 10),
-
-        // Secondary: dismiss without applying value
-        SizedBox(
-          width: double.infinity,
-          height: 44,
-          child: TextButton(
-            onPressed: () => Navigator.pop(context, null),
-            child: Text(
-              'Saisir manuellement',
-              style: TextStyle(
-                fontSize: 14,
-                color: AminaTheme.textSecondary(context),
-              ),
-            ),
-          ),
+            if (r.unitWasMmol) ...[
+              const SizedBox(height: 6),
+              Text('Converti depuis mmol/L × 18',
+                style: TextStyle(fontSize: 10, color: AminaTheme.textSecondary(context))),
+            ],
+          ]),
         ),
+        const SizedBox(height: 12),
       ],
-    );
+
+      // Raw OCR text (transparency / debug aid for the user)
+      if (r.rawText.isNotEmpty && r.rawText.length < 60)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text('Texte reconnu : "${r.rawText}"',
+            style: TextStyle(fontSize: 11, color: AminaTheme.textSecondary(context), fontStyle: FontStyle.italic)),
+        ),
+
+      // Editable correction field for low-confidence or no-value
+      if (!isHighConf) ...[
+        Text('Corrigez si nécessaire :', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AminaTheme.textPrimary(context))),
+        const SizedBox(height: 10),
+        _buildManualField(context),
+        const SizedBox(height: 16),
+      ],
+
+      // Primary action
+      _buildConfirmButton(btnColor, btnLabel),
+      const SizedBox(height: 10),
+
+      // Secondary: dismiss without applying value
+      SizedBox(
+        width: double.infinity, height: 44,
+        child: TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: Text('Saisir manuellement',
+            style: TextStyle(fontSize: 14, color: AminaTheme.textSecondary(context))),
+        ),
+      ),
+    ]);
   }
 
   // ── shared helpers ───────────────────────────────────────────────────────────
@@ -3831,20 +2529,13 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
       child: TextField(
         controller: _ctrl,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: AminaTheme.textPrimary(context),
-        ),
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AminaTheme.textPrimary(context)),
         decoration: InputDecoration(
           border: InputBorder.none,
           hintText: widget.userUnit == 'mmol/L' ? 'Ex : 6.5' : 'Ex : 120',
           hintStyle: TextStyle(color: AminaTheme.textSecondary(context)),
           suffixText: widget.userUnit,
-          suffixStyle: TextStyle(
-            fontSize: 13,
-            color: AminaTheme.textSecondary(context),
-          ),
+          suffixStyle: TextStyle(fontSize: 13, color: AminaTheme.textSecondary(context)),
         ),
       ),
     );
@@ -3852,25 +2543,15 @@ class _OcrResultSheetState extends State<_OcrResultSheet> {
 
   Widget _buildConfirmButton(Color col, String label) {
     return SizedBox(
-      width: double.infinity,
-      height: 50,
+      width: double.infinity, height: 50,
       child: ElevatedButton(
         onPressed: _onConfirm,
         style: ElevatedButton.styleFrom(
           backgroundColor: col,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(99),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
           elevation: 0,
         ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
-        ),
+        child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
       ),
     );
   }

@@ -25,35 +25,21 @@ class DocumentImportScreen extends StatefulWidget {
 
 class _DocumentImportScreenState extends State<DocumentImportScreen> {
   _Phase _phase = _Phase.pick;
-  bool _loading = false;
+  bool   _loading = false;
   String? _error;
-  PulperPreview? _preview;
+  PulperPreview?       _preview;
   PulperConfirmResult? _result;
   String _fileName = '';
 
   // ── File pick ──────────────────────────────────────────────────────────────
   Future<void> _pickFile() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    setState(() { _loading = true; _error = null; });
 
     try {
       final picked = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: [
-          'pdf',
-          'jpg',
-          'jpeg',
-          'png',
-          'webp',
-          'heic',
-          'csv',
-          'xlsx',
-          'xls',
-          'docx',
-          'doc',
-        ],
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic',
+                            'csv', 'xlsx', 'xls', 'docx', 'doc'],
         withData: true,
       );
 
@@ -62,23 +48,18 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
         return;
       }
 
-      final pf = picked.files.first;
+      final pf   = picked.files.first;
       final bytes = pf.bytes;
       if (bytes == null) {
-        setState(() {
-          _loading = false;
-          _error = 'Impossible de lire le fichier.';
-        });
+        setState(() { _loading = false; _error = 'Impossible de lire le fichier.'; });
         return;
       }
 
       _fileName = pf.name;
       await _ingest(bytes, pf.name, _mimeFromExt(pf.extension ?? ''));
+
     } catch (e) {
-      setState(() {
-        _loading = false;
-        _error = 'Erreur: $e';
-      });
+      setState(() { _loading = false; _error = 'Erreur: $e'; });
     }
   }
 
@@ -89,11 +70,10 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
     setState(() {
       _loading = false;
       if (preview == null) {
-        _error =
-            'Le serveur n\'a pas pu analyser ce document. Veuillez réessayer.';
+        _error = 'Le serveur n\'a pas pu analyser ce document. Veuillez réessayer.';
       } else {
         _preview = preview;
-        _phase = _Phase.preview;
+        _phase   = _Phase.preview;
       }
     });
   }
@@ -101,22 +81,18 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
   // ── Confirm ────────────────────────────────────────────────────────────────
   Future<void> _confirm() async {
     if (_preview == null) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    setState(() { _loading = true; _error = null; });
 
-    final api = context.read<ApiClient>();
+    final api    = context.read<ApiClient>();
     final result = await api.confirmDocumentImport(_preview!.batchId);
 
     setState(() {
       _loading = false;
       if (result == null) {
-        _error =
-            'La confirmation a échoué. Le document n\'a pas été enregistré.';
+        _error = 'La confirmation a échoué. Le document n\'a pas été enregistré.';
       } else {
         _result = result;
-        _phase = _Phase.done;
+        _phase  = _Phase.done;
       }
     });
   }
@@ -131,8 +107,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () =>
-              context.canPop() ? context.pop() : context.go('/dashboard'),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/dashboard'),
         ),
         title: Text(
           'Importer un document',
@@ -147,9 +122,9 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
         child: _loading
             ? _buildLoading()
             : switch (_phase) {
-                _Phase.pick => _buildPick(),
+                _Phase.pick    => _buildPick(),
                 _Phase.preview => _buildPreview(),
-                _Phase.done => _buildDone(),
+                _Phase.done    => _buildDone(),
               },
       ),
     );
@@ -167,8 +142,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
           Text(
             'Pulper IAmina',
             style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
+              fontSize: 26, fontWeight: FontWeight.w800,
               color: AminaTheme.textPrimary(context),
               letterSpacing: -0.5,
             ),
@@ -178,22 +152,18 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
             'Importez n\'importe quel document médical.\nIAmina l\'analyse et extrait les données automatiquement.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 14,
-              color: AminaTheme.textSecondary(context),
-              height: 1.5,
+              fontSize: 14, color: AminaTheme.textSecondary(context), height: 1.5,
             ),
           ),
           const SizedBox(height: 32),
           // Format chips
           const Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
+            spacing: 8, runSpacing: 8, alignment: WrapAlignment.center,
             children: [
               _FormatChip(icon: Icons.picture_as_pdf, label: 'PDF'),
-              _FormatChip(icon: Icons.image, label: 'Photo'),
-              _FormatChip(icon: Icons.table_chart, label: 'Excel / CSV'),
-              _FormatChip(icon: Icons.description, label: 'Word'),
+              _FormatChip(icon: Icons.image,           label: 'Photo'),
+              _FormatChip(icon: Icons.table_chart,     label: 'Excel / CSV'),
+              _FormatChip(icon: Icons.description,     label: 'Word'),
             ],
           ),
           const SizedBox(height: 36),
@@ -207,13 +177,8 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                 backgroundColor: AminaTheme.teal600,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -235,10 +200,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          _ConfidenceBanner(
-            confidence: p.confidence,
-            needsReview: p.needsReview,
-          ),
+          _ConfidenceBanner(confidence: p.confidence, needsReview: p.needsReview),
           const SizedBox(height: 16),
           _SectionTitle(title: 'Document analysé', subtitle: _fileName),
           const SizedBox(height: 20),
@@ -303,13 +265,8 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                   backgroundColor: AminaTheme.teal600,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
                 child: const Text('✓ Confirmer l\'import'),
               ),
@@ -326,9 +283,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
               }),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
               child: const Text('Annuler'),
             ),
@@ -356,22 +311,15 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
           Text(
             r.ok ? 'Document importé !' : 'Erreur lors de l\'import',
             style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
+              fontSize: 22, fontWeight: FontWeight.w800,
               color: AminaTheme.textPrimary(context),
             ),
           ),
           const SizedBox(height: 12),
           if (r.ok) ...[
-            _StatRow(
-              label: 'Glycémies importées',
-              value: '${r.glucoseReadingsSaved}',
-            ),
+            _StatRow(label: 'Glycémies importées', value: '${r.glucoseReadingsSaved}'),
             if (r.glucoseDuplicates > 0)
-              _StatRow(
-                label: 'Doublons ignorés',
-                value: '${r.glucoseDuplicates}',
-              ),
+              _StatRow(label: 'Doublons ignorés', value: '${r.glucoseDuplicates}'),
           ],
           if (r.errors.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -386,13 +334,8 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                 backgroundColor: AminaTheme.teal600,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               child: const Text('Retour au tableau de bord'),
             ),
@@ -428,23 +371,19 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
     ),
   );
 
-  String _mimeFromExt(String ext) =>
-      const {
-        'pdf': 'application/pdf',
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'webp': 'image/webp',
-        'heic': 'image/heic',
-        'csv': 'text/csv',
-        'xlsx':
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'xls': 'application/vnd.ms-excel',
-        'docx':
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'doc': 'application/msword',
-      }[ext.toLowerCase()] ??
-      'application/octet-stream';
+  String _mimeFromExt(String ext) => const {
+    'pdf':  'application/pdf',
+    'jpg':  'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png':  'image/png',
+    'webp': 'image/webp',
+    'heic': 'image/heic',
+    'csv':  'text/csv',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'xls':  'application/vnd.ms-excel',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'doc':  'application/msword',
+  }[ext.toLowerCase()] ?? 'application/octet-stream';
 }
 
 enum _Phase { pick, preview, done }
@@ -464,40 +403,25 @@ class _FormatChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(99),
       border: Border.all(color: AminaTheme.divider(context)),
     ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: AminaTheme.teal600),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: AminaTheme.textSecondary(context),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 14, color: AminaTheme.teal600),
+      const SizedBox(width: 6),
+      Text(label, style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context), fontWeight: FontWeight.w600)),
+    ]),
   );
 }
 
 class _ConfidenceBanner extends StatelessWidget {
   final double confidence;
-  final bool needsReview;
-  const _ConfidenceBanner({
-    required this.confidence,
-    required this.needsReview,
-  });
+  final bool   needsReview;
+  const _ConfidenceBanner({required this.confidence, required this.needsReview});
 
   @override
   Widget build(BuildContext context) {
-    final pct = (confidence * 100).round();
-    final color = confidence >= 0.7
-        ? AminaTheme.teal500
-        : confidence >= 0.4
-        ? Colors.amber
-        : Colors.red;
+    final pct   = (confidence * 100).round();
+    final color = confidence >= 0.7 ? AminaTheme.teal500
+                : confidence >= 0.4 ? Colors.amber
+                : Colors.red;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -505,32 +429,16 @@ class _ConfidenceBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Row(
-        children: [
-          Icon(
-            confidence >= 0.7 ? Icons.check_circle : Icons.info_outline,
-            color: color,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Confiance: $pct%',
-                  style: TextStyle(fontWeight: FontWeight.w700, color: color),
-                ),
-                if (needsReview)
-                  const Text(
-                    'Vérifiez les données ci-dessous avant de confirmer.',
-                    style: TextStyle(fontSize: 12),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      child: Row(children: [
+        Icon(confidence >= 0.7 ? Icons.check_circle : Icons.info_outline, color: color, size: 20),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Confiance: $pct%', style: TextStyle(fontWeight: FontWeight.w700, color: color)),
+          if (needsReview)
+            const Text('Vérifiez les données ci-dessous avant de confirmer.',
+                style: TextStyle(fontSize: 12)),
+        ])),
+      ]),
     );
   }
 }
@@ -541,27 +449,11 @@ class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.title, this.subtitle});
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        title,
-        style: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w800,
-          color: AminaTheme.textPrimary(context),
-        ),
-      ),
-      if (subtitle != null)
-        Text(
-          subtitle!,
-          style: TextStyle(
-            fontSize: 13,
-            color: AminaTheme.textSecondary(context),
-          ),
-        ),
-    ],
-  );
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Text(title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AminaTheme.textPrimary(context))),
+    if (subtitle != null)
+      Text(subtitle!, style: TextStyle(fontSize: 13, color: AminaTheme.textSecondary(context))),
+  ]);
 }
 
 class _SectionHeader extends StatelessWidget {
@@ -570,36 +462,17 @@ class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.title, this.count});
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Text(
-        title,
-        style: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
-          color: AminaTheme.textPrimary(context),
-        ),
+  Widget build(BuildContext context) => Row(children: [
+    Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AminaTheme.textPrimary(context))),
+    if (count != null) ...[
+      const SizedBox(width: 8),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(color: AminaTheme.teal500.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(99)),
+        child: Text('$count', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AminaTheme.teal600)), // ignore: prefer_const_constructors
       ),
-      if (count != null) ...[
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: AminaTheme.teal500.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(99),
-          ),
-          child: Text(
-            '$count',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: AminaTheme.teal600,
-            ),
-          ), // ignore: prefer_const_constructors
-        ),
-      ],
     ],
-  );
+  ]);
 }
 
 class _PulperIcon extends StatelessWidget {
@@ -608,8 +481,7 @@ class _PulperIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 100,
-      height: 100,
+      width: 100, height: 100,
       decoration: BoxDecoration(
         gradient: AminaTheme.heroGradient,
         shape: BoxShape.circle,
@@ -634,10 +506,7 @@ class _GlucoseReadingsList extends StatelessWidget {
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               '+ ${readings.length - 5} autres mesures',
-              style: TextStyle(
-                fontSize: 12,
-                color: AminaTheme.textSecondary(context),
-              ),
+              style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context)),
             ),
           ),
       ],
@@ -658,35 +527,24 @@ class _GlucoseRow extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       border: Border.all(color: AminaTheme.divider(context)),
     ),
-    child: Row(
-      children: [
+    child: Row(children: [
+      Text(
+        '${reading.valueMgdl.toStringAsFixed(0)} mg/dL',
+        style: TextStyle(fontWeight: FontWeight.w700, color: AminaTheme.textPrimary(context)),
+      ),
+      const Spacer(),
+      if (reading.context != null)
+        _Chip(label: reading.context!),
+      if (reading.timestamp != null)
         Text(
-          '${reading.valueMgdl.toStringAsFixed(0)} mg/dL',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: AminaTheme.textPrimary(context),
-          ),
+          _shortDate(reading.timestamp!),
+          style: TextStyle(fontSize: 11, color: AminaTheme.textSecondary(context)),
         ),
-        const Spacer(),
-        if (reading.context != null) _Chip(label: reading.context!),
-        if (reading.timestamp != null)
-          Text(
-            _shortDate(reading.timestamp!),
-            style: TextStyle(
-              fontSize: 11,
-              color: AminaTheme.textSecondary(context),
-            ),
-          ),
-      ],
-    ),
+    ]),
   );
 
   String _shortDate(String ts) {
-    try {
-      return ts.substring(0, 10);
-    } catch (_) {
-      return ts;
-    }
+    try { return ts.substring(0, 10); } catch (_) { return ts; }
   }
 }
 
@@ -702,47 +560,24 @@ class _LabValuesCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       border: Border.all(color: AminaTheme.divider(context)),
     ),
-    child: Column(
-      children: [
-        if (values.hba1cPct != null)
-          _LabRow(
-            label: 'HbA1c',
-            value: '${values.hba1cPct!.toStringAsFixed(1)} %',
-          ),
-        if (values.fastingGlucoseMgdl != null)
-          _LabRow(
-            label: 'Glucose à jeun',
-            value: '${values.fastingGlucoseMgdl!.toStringAsFixed(0)} mg/dL',
-          ),
-        if (values.totalCholesterolMgdl != null)
-          _LabRow(
-            label: 'Cholestérol total',
-            value: '${values.totalCholesterolMgdl!.toStringAsFixed(0)} mg/dL',
-          ),
-        if (values.hdlMgdl != null)
-          _LabRow(
-            label: 'HDL',
-            value: '${values.hdlMgdl!.toStringAsFixed(0)} mg/dL',
-          ),
-        if (values.ldlMgdl != null)
-          _LabRow(
-            label: 'LDL',
-            value: '${values.ldlMgdl!.toStringAsFixed(0)} mg/dL',
-          ),
-        if (values.triglyceridesMgdl != null)
-          _LabRow(
-            label: 'Triglycérides',
-            value: '${values.triglyceridesMgdl!.toStringAsFixed(0)} mg/dL',
-          ),
-        if (values.creatinineUmol != null)
-          _LabRow(
-            label: 'Créatinine',
-            value: '${values.creatinineUmol!.toStringAsFixed(0)} µmol/L',
-          ),
-        if (values.reportDate != null)
-          _LabRow(label: 'Date du bilan', value: values.reportDate!),
-      ],
-    ),
+    child: Column(children: [
+      if (values.hba1cPct != null)
+        _LabRow(label: 'HbA1c', value: '${values.hba1cPct!.toStringAsFixed(1)} %'),
+      if (values.fastingGlucoseMgdl != null)
+        _LabRow(label: 'Glucose à jeun', value: '${values.fastingGlucoseMgdl!.toStringAsFixed(0)} mg/dL'),
+      if (values.totalCholesterolMgdl != null)
+        _LabRow(label: 'Cholestérol total', value: '${values.totalCholesterolMgdl!.toStringAsFixed(0)} mg/dL'),
+      if (values.hdlMgdl != null)
+        _LabRow(label: 'HDL', value: '${values.hdlMgdl!.toStringAsFixed(0)} mg/dL'),
+      if (values.ldlMgdl != null)
+        _LabRow(label: 'LDL', value: '${values.ldlMgdl!.toStringAsFixed(0)} mg/dL'),
+      if (values.triglyceridesMgdl != null)
+        _LabRow(label: 'Triglycérides', value: '${values.triglyceridesMgdl!.toStringAsFixed(0)} mg/dL'),
+      if (values.creatinineUmol != null)
+        _LabRow(label: 'Créatinine', value: '${values.creatinineUmol!.toStringAsFixed(0)} µmol/L'),
+      if (values.reportDate != null)
+        _LabRow(label: 'Date du bilan', value: values.reportDate!),
+    ]),
   );
 }
 
@@ -753,26 +588,11 @@ class _LabRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 5),
-    child: Row(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            color: AminaTheme.textSecondary(context),
-          ),
-        ),
-        const Spacer(),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: AminaTheme.textPrimary(context),
-          ),
-        ),
-      ],
-    ),
+    child: Row(children: [
+      Text(label, style: TextStyle(fontSize: 13, color: AminaTheme.textSecondary(context))),
+      const Spacer(),
+      Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AminaTheme.textPrimary(context))),
+    ]),
   );
 }
 
@@ -789,32 +609,18 @@ class _MedicationTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       border: Border.all(color: AminaTheme.divider(context)),
     ),
-    child: Row(
-      children: [
-        const Icon(Icons.medication, size: 16),
+    child: Row(children: [
+      const Icon(Icons.medication, size: 16),
+      const SizedBox(width: 8),
+      Text(med.name, style: TextStyle(fontWeight: FontWeight.w600, color: AminaTheme.textPrimary(context))),
+      if (med.dose != null) ...[
         const SizedBox(width: 8),
-        Text(
-          med.name,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: AminaTheme.textPrimary(context),
-          ),
-        ),
-        if (med.dose != null) ...[
-          const SizedBox(width: 8),
-          _Chip(label: med.dose!),
-        ],
-        const Spacer(),
-        if (med.frequency != null)
-          Text(
-            med.frequency!,
-            style: TextStyle(
-              fontSize: 11,
-              color: AminaTheme.textSecondary(context),
-            ),
-          ),
+        _Chip(label: med.dose!),
       ],
-    ),
+      const Spacer(),
+      if (med.frequency != null)
+        Text(med.frequency!, style: TextStyle(fontSize: 11, color: AminaTheme.textSecondary(context))),
+    ]),
   );
 }
 
@@ -831,14 +637,7 @@ class _NotesCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       border: Border.all(color: AminaTheme.divider(context)),
     ),
-    child: Text(
-      notes,
-      style: TextStyle(
-        fontSize: 13,
-        color: AminaTheme.textPrimary(context),
-        height: 1.5,
-      ),
-    ),
+    child: Text(notes, style: TextStyle(fontSize: 13, color: AminaTheme.textPrimary(context), height: 1.5)),
   );
 }
 
@@ -855,13 +654,11 @@ class _WarningTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
     ),
-    child: Row(
-      children: [
-        const Icon(Icons.warning_amber, size: 16, color: Colors.amber),
-        const SizedBox(width: 8),
-        Expanded(child: Text(warning, style: const TextStyle(fontSize: 12))),
-      ],
-    ),
+    child: Row(children: [
+      const Icon(Icons.warning_amber, size: 16, color: Colors.amber),
+      const SizedBox(width: 8),
+      Expanded(child: Text(warning, style: const TextStyle(fontSize: 12))),
+    ]),
   );
 }
 
@@ -878,19 +675,11 @@ class _ErrorCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
     ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.error_outline, size: 18, color: Colors.red),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            message,
-            style: const TextStyle(fontSize: 13, color: Colors.red),
-          ),
-        ),
-      ],
-    ),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Icon(Icons.error_outline, size: 18, color: Colors.red),
+      const SizedBox(width: 10),
+      Expanded(child: Text(message, style: const TextStyle(fontSize: 13, color: Colors.red))),
+    ]),
   );
 }
 
@@ -906,21 +695,15 @@ class _EmptyCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       border: Border.all(color: AminaTheme.divider(context)),
     ),
-    child: Column(
-      children: [
-        Icon(
-          Icons.search_off,
-          size: 40,
-          color: AminaTheme.textSecondary(context),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'Aucune donnée médicale détectée dans ce document.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AminaTheme.textSecondary(context)),
-        ),
-      ],
-    ),
+    child: Column(children: [
+      Icon(Icons.search_off, size: 40, color: AminaTheme.textSecondary(context)),
+      const SizedBox(height: 12),
+      Text(
+        'Aucune donnée médicale détectée dans ce document.',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: AminaTheme.textSecondary(context)),
+      ),
+    ]),
   );
 }
 
@@ -936,14 +719,7 @@ class _Chip extends StatelessWidget {
       color: AminaTheme.teal500.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(99),
     ),
-    child: Text(
-      label,
-      style: TextStyle(
-        fontSize: 11,
-        color: AminaTheme.teal600,
-        fontWeight: FontWeight.w600,
-      ),
-    ), // ignore: prefer_const_constructors
+    child: Text(label, style: TextStyle(fontSize: 11, color: AminaTheme.teal600, fontWeight: FontWeight.w600)), // ignore: prefer_const_constructors
   );
 }
 
@@ -954,21 +730,9 @@ class _StatRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          '$label : ',
-          style: TextStyle(color: AminaTheme.textSecondary(context)),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: AminaTheme.textPrimary(context),
-          ),
-        ),
-      ],
-    ),
+    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Text('$label : ', style: TextStyle(color: AminaTheme.textSecondary(context))),
+      Text(value, style: TextStyle(fontWeight: FontWeight.w700, color: AminaTheme.textPrimary(context))),
+    ]),
   );
 }

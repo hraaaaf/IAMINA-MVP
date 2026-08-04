@@ -68,7 +68,8 @@ class AgpPainter extends CustomPainter {
 
   // ── coordinate helpers ────────────────────────────────────────────────────
 
-  double _toY(double val, double h) => h - ((val - minY) / (maxY - minY)) * h;
+  double _toY(double val, double h) =>
+      h - ((val - minY) / (maxY - minY)) * h;
 
   double _toX(double hour, double w) => (hour / 23.0) * w;
 
@@ -96,12 +97,8 @@ class AgpPainter extends CustomPainter {
   }
 
   /// Smooth (cubic Bézier) open curve for a single percentile.
-  Path _curve(
-    List<AgpPoint> pts,
-    double Function(AgpPoint) valFn,
-    double w,
-    double h,
-  ) {
+  Path _curve(List<AgpPoint> pts, double Function(AgpPoint) valFn,
+      double w, double h) {
     final path = Path();
     for (var i = 0; i < pts.length; i++) {
       final x = _toX(pts[i].hour, w);
@@ -124,7 +121,8 @@ class AgpPainter extends CustomPainter {
       ..strokeWidth = 1.5;
     const dash = 5.0, gap = 4.0;
     for (var x = 0.0; x < w; x += dash + gap) {
-      canvas.drawLine(Offset(x, y), Offset(math.min(x + dash, w), y), paint);
+      canvas.drawLine(
+        Offset(x, y), Offset(math.min(x + dash, w), y), paint);
     }
   }
 
@@ -135,25 +133,20 @@ class AgpPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
     final yHigh = _toY(high, h);
-    final yLow = _toY(low, h);
+    final yLow  = _toY(low,  h);
 
     // 1. Zone backgrounds
     canvas.drawRect(
       Rect.fromLTRB(0, _toY(maxY, h), w, yHigh),
-      Paint()
-        ..color = const Color(
-          0xFFFB923C,
-        ).withValues(alpha: isDark ? 0.12 : 0.08),
+      Paint()..color = const Color(0xFFFB923C).withValues(alpha: isDark ? 0.12 : 0.08),
     );
     canvas.drawRect(
       Rect.fromLTRB(0, yHigh, w, yLow),
-      Paint()
-        ..color = AminaTheme.teal500.withValues(alpha: isDark ? 0.10 : 0.07),
+      Paint()..color = AminaTheme.teal500.withValues(alpha: isDark ? 0.10 : 0.07),
     );
     canvas.drawRect(
       Rect.fromLTRB(0, yLow, w, _toY(minY, h)),
-      Paint()
-        ..color = AminaTheme.dangerRed.withValues(alpha: isDark ? 0.15 : 0.08),
+      Paint()..color = AminaTheme.dangerRed.withValues(alpha: isDark ? 0.15 : 0.08),
     );
 
     // 2. Horizontal grid
@@ -167,22 +160,20 @@ class AgpPainter extends CustomPainter {
 
     // 3. Target dashed boundary lines
     _dashedH(canvas, w, yHigh, const Color(0xFFE4A85B));
-    _dashedH(canvas, w, yLow, const Color(0xFFE4A85B));
+    _dashedH(canvas, w, yLow,  const Color(0xFFE4A85B));
 
     if (points.isEmpty) return;
 
     // 4. 5–95% band (outer, low opacity)
     canvas.drawPath(
       _band(points, (p) => p.p95, (p) => p.p5, w, h),
-      Paint()
-        ..color = AminaTheme.teal500.withValues(alpha: isDark ? 0.18 : 0.13),
+      Paint()..color = AminaTheme.teal500.withValues(alpha: isDark ? 0.18 : 0.13),
     );
 
     // 5. 25–75% band (inner, higher opacity)
     canvas.drawPath(
       _band(points, (p) => p.p75, (p) => p.p25, w, h),
-      Paint()
-        ..color = AminaTheme.teal500.withValues(alpha: isDark ? 0.35 : 0.28),
+      Paint()..color = AminaTheme.teal500.withValues(alpha: isDark ? 0.35 : 0.28),
     );
 
     // 6. Band borders
@@ -191,7 +182,7 @@ class AgpPainter extends CustomPainter {
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
     canvas.drawPath(_curve(points, (p) => p.p95, w, h), border);
-    canvas.drawPath(_curve(points, (p) => p.p5, w, h), border);
+    canvas.drawPath(_curve(points, (p) => p.p5,  w, h), border);
 
     // 7. Median line (p50)
     canvas.drawPath(
@@ -206,10 +197,8 @@ class AgpPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(AgpPainter old) =>
-      old.points != points ||
-      old.isDark != isDark ||
-      old.minY != minY ||
-      old.maxY != maxY;
+      old.points != points || old.isDark != isDark ||
+      old.minY != minY || old.maxY != maxY;
 }
 
 // ── Y-Axis ────────────────────────────────────────────────────────────────────
@@ -234,26 +223,24 @@ class AgpYAxis extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final visible = labels.where((v) => v >= minY && v <= maxY).toList();
-    return LayoutBuilder(
-      builder: (_, c) {
-        return Stack(
-          children: visible.map((v) {
-            final frac = 1 - ((v - minY) / (maxY - minY));
-            return Positioned(
-              top: frac * (c.maxHeight - 16),
-              right: 2,
-              child: Text(
-                '$v',
-                style: TextStyle(
-                  fontSize: 8,
-                  color: isDark ? AminaTheme.ink300 : AminaTheme.ink400,
-                ),
+    return LayoutBuilder(builder: (_, c) {
+      return Stack(
+        children: visible.map((v) {
+          final frac = 1 - ((v - minY) / (maxY - minY));
+          return Positioned(
+            top: frac * (c.maxHeight - 16),
+            right: 2,
+            child: Text(
+              '$v',
+              style: TextStyle(
+                fontSize: 8,
+                color: isDark ? AminaTheme.ink300 : AminaTheme.ink400,
               ),
-            );
-          }).toList(),
-        );
-      },
-    );
+            ),
+          );
+        }).toList(),
+      );
+    });
   }
 }
 
@@ -267,25 +254,23 @@ class AgpXAxis extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (_, c) {
-        return Stack(
-          children: [0, 6, 12, 18, 23].map((h) {
-            final x = (h / 23.0) * c.maxWidth;
-            return Positioned(
-              left: x - 8,
-              top: 2,
-              child: Text(
-                '${h}h',
-                style: TextStyle(
-                  fontSize: 8,
-                  color: isDark ? AminaTheme.ink300 : AminaTheme.ink400,
-                ),
+    return LayoutBuilder(builder: (_, c) {
+      return Stack(
+        children: [0, 6, 12, 18, 23].map((h) {
+          final x = (h / 23.0) * c.maxWidth;
+          return Positioned(
+            left: x - 8,
+            top: 2,
+            child: Text(
+              '${h}h',
+              style: TextStyle(
+                fontSize: 8,
+                color: isDark ? AminaTheme.ink300 : AminaTheme.ink400,
               ),
-            );
-          }).toList(),
-        );
-      },
-    );
+            ),
+          );
+        }).toList(),
+      );
+    });
   }
 }
