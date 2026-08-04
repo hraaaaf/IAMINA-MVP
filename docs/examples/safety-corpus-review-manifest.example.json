@@ -1,0 +1,13 @@
+{
+  "schema_version": "2026-08-04.1",
+  "corpus_fingerprint": "REPLACE_WITH_EXPORTED_PACKET_FINGERPRINT",
+  "source_commit_sha": "REPLACE_WITH_FULL_40_CHARACTER_GIT_SHA",
+  "review_batch_reference": "REPLACE_WITH_OPAQUE_REVIEW_BATCH_REFERENCE",
+  "clinical_approval_reference": "REPLACE_WITH_OPAQUE_CLINICAL_APPROVAL_REFERENCE",
+  "safety_owner_approval_reference": "REPLACE_WITH_OPAQUE_SAFETY_APPROVAL_REFERENCE",
+  "reviewed_on": "YYYY-MM-DD",
+  "review_due_on": "YYYY-MM-DD",
+  "locale_reviews": [],
+  "case_reviews": [],
+  "parity_reviews": []
+}
