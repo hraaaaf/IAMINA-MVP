@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-04 — technical RTL screen coverage certified in PR #36; governance and residency release gates prepared in PRs #34–#35; external approvals remain open.
+> **Last updated:** 2026-08-04 — technical RTL certified in PR #36; fingerprinted native/clinical safety-review gate prepared in PR #37; human approvals remain open.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -27,7 +27,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
-| P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16 and RTL certification PR #36; three linguistic/parity gates remain |
+| P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 All execution paths prepared; live runs blocked | Framework PR #18; text/STT/vision preparation PRs #19–#22 |
 | Pilot safety/compliance gate | 69% | 🟡 Automated procedures complete; external security/legal/human gates remain | 9 of 13 explicit gates complete; PRs #34–#35 prepare two external approval gates; secret-history remediation is blocked by issue #30 |
@@ -98,11 +98,11 @@ Preparation work does not close a live benchmark, legal/privacy approval or nati
 
 ## Remaining human-language gates
 
-- [ ] Obtain native-speaker approval for every enabled safety corpus.
-- [ ] Close remaining Darija high-severity orthographic variants through native review.
-- [ ] Approve safety parity across text, voice transcript, mixed language and transliteration.
+- [ ] Obtain native-speaker approval for every enabled safety corpus. **PR #37 exports the exact fingerprinted corpus and requires one opaque qualified-review reference per enabled locale.**
+- [ ] Close remaining Darija high-severity orthographic variants through native review. **PR #37 binds every exact Darija phrase recognized by the classifier to a stable mandatory case ID.**
+- [ ] Approve safety parity across text, voice transcript, mixed language and transliteration. **PR #37 derives and enforces every represented locale/channel/input-form review tuple.**
 
-Automated corpus, route coverage and directionality groundwork is green, but no native or clinical approval is inferred from automated tests.
+Automated corpus, route coverage and directionality groundwork is green. `audit_safety_corpus_review --require-approved` remains fail-closed until current restricted native, clinical and safety-owner evidence covers the exact corpus fingerprint.
 
 ---
 
@@ -168,7 +168,7 @@ No provider score, decision or production approval may be inferred from preparat
 - [x] Prove insulin-dose and treatment requests are refused deterministically without a generative chat LLM call. **PR #23 covers sync chat, SSE and post-STT voice paths across FR/EN/AR/Darija.**
 - [x] Prove doctor-facing and summary outputs pass the same no-prescription policy. **PR #23 recursively sanitizes generated and fallback structures and verifies observation-only OCR schemas.**
 - [x] Route emergencies to a monitored human channel or formally adopt a documented self-care-only mode. **PR #24 adopts truthful `SELF_CARE_ONLY` behavior and prevents false claims of automatic human monitoring.**
-- [ ] Close Darija high-severity review.
+- [ ] Close Darija high-severity review. **The exact-variant review gate is prepared in PR #37; no human approval is recorded in source control.**
 - [x] Enforce base AI/model consent server-side.
 - [x] Expose granular raw-media consent through the authenticated patient API.
 - [ ] Approve the pilot consent matrix and processor/subprocessor register. **PR #34 provides the complete executable matrix, processor evidence registry and fail-closed `--require-approved` command; restricted CNDP, contract, privacy and security approvals remain external.**
@@ -190,7 +190,8 @@ Merged technical and operational units:
 - PR #27 — incident response and escalation procedure;
 - PR #28 — onboarding, monitoring, escalation and exit checklists;
 - PR #34 — consent and processor-approval readiness gate;
-- PR #35 — Morocco residency and foreign-transfer deployment gate.
+- PR #35 — Morocco residency and foreign-transfer deployment gate;
+- PR #37 — fingerprinted native, clinical and multilingual parity review package.
 
 These units close procedures and executable controls. They do not imply native-language approval, country-specific legal approval, processor approval, completion of a real cohort checklist, completion of an incident drill or approval of the actual production deployment manifest.
 
@@ -201,5 +202,5 @@ These units close procedures and executable controls. They do not imply native-l
 1. **Security emergency:** revoke or rotate all potentially affected PekPik credentials and review provider activity under issue #30.
 2. Rewrite affected Git history only after revocation, coordinate fresh clones, obtain a passing non-shallow history scan and merge PR #29.
 3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals, then run the PR #34 and PR #35 `--require-approved` gates.
-4. Complete the remaining P0-MENA-2 native-language and Darija parity gates with qualified reviewers.
+4. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
 5. Run the deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
