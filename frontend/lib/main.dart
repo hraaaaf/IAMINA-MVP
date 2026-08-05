@@ -35,15 +35,21 @@ Future<void> main() async {
     ..seedInitialProfile(initialProfile)
     ..attachStream(db.watchProfile());
 
+  final auditAllowed = AuditAccessPolicy.isAllowed(Uri.base);
   final authService = AuthService();
   await authService.initialize();
-  if (AuditAccessPolicy.isAllowed(Uri.base)) {
+  if (auditAllowed) {
     authService.enterAuditSession();
   }
 
   final apiClient = ApiClient(authService: authService);
   final syncService = SyncService(db, apiClient)..init();
-  final localePreferenceService = LocalePreferenceService(apiClient)..refresh();
+  final localePreferenceService = LocalePreferenceService(
+    apiClient,
+    auditLocale: auditAllowed
+        ? AuditAccessPolicy.requestedLocale(Uri.base)
+        : null,
+  )..refresh();
 
   final routerHolder = createAppRouterHolder(
     authService: authService,
