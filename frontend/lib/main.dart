@@ -10,6 +10,7 @@ import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'routes/app_router.dart';
 import 'services/api_client.dart';
+import 'services/audit_access_policy.dart';
 import 'services/auth_service.dart';
 import 'services/consent_service.dart';
 import 'services/locale_preference_service.dart';
@@ -36,6 +37,9 @@ Future<void> main() async {
 
   final authService = AuthService();
   await authService.initialize();
+  if (AuditAccessPolicy.isAllowed(Uri.base)) {
+    authService.enterAuditSession();
+  }
 
   final apiClient = ApiClient(authService: authService);
   final syncService = SyncService(db, apiClient)..init();
@@ -144,7 +148,7 @@ class _AminaAppState extends State<AminaApp> {
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
+        GlobalWidgets.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
