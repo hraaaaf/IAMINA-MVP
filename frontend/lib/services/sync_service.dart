@@ -6,14 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../data/drift/database.dart';
 import 'api_client.dart';
 
-enum SyncUiState {
-  checking,
-  upToDate,
-  pending,
-  syncing,
-  offline,
-  error,
-}
+enum SyncUiState { checking, upToDate, pending, syncing, offline, error }
 
 class SyncService {
   final AppDatabase _db;
@@ -26,14 +19,17 @@ class SyncService {
 
   /// Authoritative patient-facing state. UI must never infer synchronization
   /// from a decorative icon or from local data existing on the device.
-  final ValueNotifier<SyncUiState> state =
-      ValueNotifier<SyncUiState>(SyncUiState.checking);
+  final ValueNotifier<SyncUiState> state = ValueNotifier<SyncUiState>(
+    SyncUiState.checking,
+  );
 
   SyncService(this._db, this._apiClient);
 
   void init() {
     unawaited(refreshState());
-    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((results) {
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
+      results,
+    ) {
       if (_isOffline(results)) {
         state.value = SyncUiState.offline;
         return;
@@ -43,7 +39,8 @@ class SyncService {
   }
 
   bool _isOffline(List<ConnectivityResult> results) {
-    return results.isEmpty || results.every((result) => result == ConnectivityResult.none);
+    return results.isEmpty ||
+        results.every((result) => result == ConnectivityResult.none);
   }
 
   Future<void> refreshState() async {
