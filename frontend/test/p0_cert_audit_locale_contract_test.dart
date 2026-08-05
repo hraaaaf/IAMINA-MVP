@@ -37,9 +37,7 @@ void main() {
     expect(main, contains('auditLocale: auditAllowed'));
   });
 
-  testWidgets('certified Arabic locale resolves to RTL across navigation shell', (
-    tester,
-  ) async {
+  testWidgets('certified Arabic locale resolves to RTL', (tester) async {
     TextDirection? direction;
 
     await tester.pumpWidget(
@@ -50,9 +48,7 @@ void main() {
         home: Builder(
           builder: (context) {
             direction = Directionality.of(context);
-            return const Navigator(
-              onGenerateRoute: _route,
-            );
+            return const SizedBox.shrink();
           },
         ),
       ),
@@ -60,14 +56,4 @@ void main() {
 
     expect(direction, TextDirection.rtl);
   });
-}
-
-Route<void> _route(RouteSettings settings) {
-  return MaterialPageRoute<void>(
-    settings: settings,
-    builder: (_) => const Directionality(
-      textDirection: TextDirection.rtl,
-      child: SizedBox.shrink(),
-    ),
-  );
 }
