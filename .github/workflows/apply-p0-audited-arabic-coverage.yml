@@ -8,6 +8,7 @@ on:
       - scripts/apply_p0_audited_arabic_coverage.py
       - scripts/run_p0_audited_arabic_coverage.py
       - scripts/finalize_p0_audited_arabic_tests.py
+      - scripts/fix_p0_audited_dynamic_consts.py
       - .github/workflows/apply-p0-audited-arabic-coverage.yml
 
 permissions:
@@ -31,6 +32,7 @@ jobs:
       - name: Apply scoped localization migration
         run: |
           python scripts/run_p0_audited_arabic_coverage.py
+          python scripts/fix_p0_audited_dynamic_consts.py
           python scripts/finalize_p0_audited_arabic_tests.py
 
       - name: Format and validate Flutter
