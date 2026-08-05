@@ -23,6 +23,7 @@ class _TIRCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final copy = AuditedPageCopy.of(context);
     final tir = ClinicalEngine.calcTIR(logs, low, high);
     final tirHigh = ClinicalEngine.calcHigh(logs, high);
     final tirVHigh = ClinicalEngine.calcVeryHigh(logs);
@@ -62,7 +63,7 @@ class _TIRCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const CardHead(title: 'Mesures dans la cible', meta: 'Repère 70–180'),
+          CardHead(title: copy.readingsInRange, meta: copy.rangeReference),
           const SizedBox(height: 16),
           Builder(
             builder: (context) {
@@ -105,7 +106,7 @@ class _TIRCard extends StatelessWidget {
           if (logs.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              '${logs.length} mesures sur $daysWithData jour${daysWithData > 1 ? 's' : ''} · proportion de mesures, pas durée CGM',
+              copy.targetCoverage(logs.length, daysWithData),
               style: TextStyle(
                 fontSize: 11,
                 color: AminaTheme.textSecondary(context),
@@ -190,14 +191,14 @@ class _TIRCard extends StatelessWidget {
               Expanded(
                 child: _LegendDot(
                   color: AminaTheme.teal500,
-                  label: 'Dans la cible',
+                  label: copy.inRange,
                   value: '$tir%',
                 ),
               ),
               Expanded(
                 child: _LegendDot(
                   color: const Color(0xFFE4A85B),
-                  label: 'Élevé',
+                  label: copy.high,
                   value: '$tirHigh%',
                 ),
               ),
@@ -209,14 +210,14 @@ class _TIRCard extends StatelessWidget {
               Expanded(
                 child: _LegendDot(
                   color: const Color(0xFF6A8ACB),
-                  label: 'Bas',
+                  label: copy.low,
                   value: '$tirLow%',
                 ),
               ),
               Expanded(
                 child: _LegendDot(
                   color: const Color(0xFFD46A5A),
-                  label: 'Très élevé',
+                  label: copy.veryHigh,
                   value: '$tirVHigh%',
                 ),
               ),
@@ -224,7 +225,7 @@ class _TIRCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Repère général : plus de 70 % des mesures dans 70–180 mg/dL. Votre cible personnelle peut être différente.',
+            copy.targetExplanation,
             style: TextStyle(
               fontSize: 11,
               color: AminaTheme.textSecondary(context),
