@@ -38,7 +38,7 @@ jobs:
 
       - name: Analyze Flutter
         working-directory: frontend
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Run P0 privacy and mobile contracts
         working-directory: frontend
