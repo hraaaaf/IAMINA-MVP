@@ -4,14 +4,17 @@ import 'api_client.dart';
 
 class LocalePreferenceService extends ChangeNotifier {
   final ApiClient _apiClient;
+  final Locale? _auditLocale;
 
   Locale _locale = const Locale('fr');
   bool _loaded = false;
 
-  LocalePreferenceService(this._apiClient);
+  LocalePreferenceService(this._apiClient, {Locale? auditLocale})
+      : _auditLocale = auditLocale;
 
   Locale get locale => _locale;
   bool get loaded => _loaded;
+  bool get isAuditLocale => _auditLocale != null;
 
   static Locale localeFromResolvedLanguage(Object? value) {
     switch (value) {
@@ -26,6 +29,14 @@ class LocalePreferenceService extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
+    final auditLocale = _auditLocale;
+    if (auditLocale != null) {
+      _locale = auditLocale;
+      _loaded = true;
+      notifyListeners();
+      return;
+    }
+
     try {
       final response = await _apiClient.client.get(
         Uri.parse('/api/v1/profile/locale'),
