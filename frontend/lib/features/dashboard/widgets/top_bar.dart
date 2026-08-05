@@ -32,21 +32,33 @@ class _TopBar extends StatelessWidget {
             Expanded(
               child: RichText(
                 text: TextSpan(
-                  style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: AminaTheme.textSecondary(context)),
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 14,
+                    color: AminaTheme.textSecondary(context),
+                  ),
                   children: [
                     const TextSpan(text: 'Accueil · '),
-                    TextSpan(text: 'Vue d\'ensemble', style: TextStyle(color: AminaTheme.textPrimary(context), fontWeight: FontWeight.w600)),
+                    TextSpan(
+                      text: 'Vue d\'ensemble',
+                      style: TextStyle(
+                        color: AminaTheme.textPrimary(context),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
             _RangeChips(range: range, onChanged: onRangeChanged),
             const SizedBox(width: 12),
-            ValueListenableBuilder<bool>(
-              valueListenable: syncService.isSyncing,
-              builder: (_, syncing, __) => _IconBtn(
-                icon: syncing ? Icons.cloud_sync : Icons.upload_outlined,
-                onTap: syncing ? null : () => syncService.syncPendingLogs(),
+            ValueListenableBuilder<SyncUiState>(
+              valueListenable: syncService.state,
+              builder: (_, state, __) => _SyncStatusButton(
+                state: state,
+                onRetry: state == SyncUiState.syncing
+                    ? null
+                    : syncService.syncPendingLogs,
               ),
             ),
             const SizedBox(width: 12),
@@ -73,7 +85,11 @@ class _ParlerButton extends StatelessWidget {
           gradient: AminaTheme.heroGradient,
           borderRadius: BorderRadius.circular(99),
           boxShadow: [
-            BoxShadow(color: AminaTheme.teal500.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(
+              color: AminaTheme.teal500.withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
           ],
         ),
         child: const Row(
@@ -81,7 +97,14 @@ class _ParlerButton extends StatelessWidget {
           children: [
             Icon(Icons.chat_bubble_outline, color: Colors.white, size: 14),
             SizedBox(width: 8),
-            Text('Parler à IAmina', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+            Text(
+              'Parler à IAmina',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
@@ -89,25 +112,77 @@ class _ParlerButton extends StatelessWidget {
   }
 }
 
-// ── Icon Button ─────────────────────────────────────────────────────────────
+class _SyncStatusButton extends StatelessWidget {
+  final SyncUiState state;
+  final VoidCallback? onRetry;
 
-class _IconBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-  const _IconBtn({required this.icon, this.onTap});
+  const _SyncStatusButton({required this.state, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44, height: 44,
-        decoration: BoxDecoration(
-          color: AminaTheme.surface(context),
-          border: Border.all(color: AminaTheme.divider(context)),
+    final (icon, label, color) = switch (state) {
+      SyncUiState.checking => (
+        Icons.cloud_queue_outlined,
+        'Vérification de la synchronisation',
+        AminaTheme.textSecondary(context),
+      ),
+      SyncUiState.upToDate => (
+        Icons.cloud_done_outlined,
+        'Données à jour',
+        AminaTheme.successEmerald,
+      ),
+      SyncUiState.pending => (
+        Icons.cloud_upload_outlined,
+        'Données en attente de synchronisation',
+        AminaTheme.warningOrange,
+      ),
+      SyncUiState.syncing => (
+        Icons.cloud_sync_outlined,
+        'Synchronisation en cours',
+        AminaTheme.teal500,
+      ),
+      SyncUiState.offline => (
+        Icons.cloud_off_outlined,
+        'Hors ligne · données conservées sur cet appareil',
+        AminaTheme.ink500,
+      ),
+      SyncUiState.error => (
+        Icons.error_outline,
+        'Échec de synchronisation · appuyer pour réessayer',
+        AminaTheme.dangerFg,
+      ),
+    };
+
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: onRetry != null,
+        label: label,
+        child: InkWell(
+          onTap: onRetry,
           borderRadius: BorderRadius.circular(10),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              border: Border.all(color: color.withValues(alpha: 0.25)),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: state == SyncUiState.syncing
+                ? Center(
+                    child: SizedBox(
+                      width: 17,
+                      height: 17,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: color,
+                      ),
+                    ),
+                  )
+                : Icon(icon, size: 18, color: color),
+          ),
         ),
-        child: Icon(icon, size: 16, color: AminaTheme.textSecondary(context)),
       ),
     );
   }
@@ -136,7 +211,9 @@ class _RangeChips extends StatelessWidget {
               duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: sel ? (dark ? AminaTheme.dark500 : AminaTheme.cardBg) : Colors.transparent,
+                color: sel
+                    ? (dark ? AminaTheme.dark500 : AminaTheme.cardBg)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
                 boxShadow: sel ? AminaTheme.shadowClinical : null,
               ),
@@ -145,7 +222,9 @@ class _RangeChips extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                  color: sel ? AminaTheme.textPrimary(context) : AminaTheme.textSecondary(context),
+                  color: sel
+                      ? AminaTheme.textPrimary(context)
+                      : AminaTheme.textSecondary(context),
                 ),
               ),
             ),
