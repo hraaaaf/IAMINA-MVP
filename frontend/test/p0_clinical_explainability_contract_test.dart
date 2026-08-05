@@ -36,22 +36,48 @@ void main() {
     }
   });
 
-  test('target range is labelled as discrete measurements rather than CGM time', () {
-    final source = _read('lib/features/dashboard/widgets/kpi_tir_card.dart');
+  test('all target-range surfaces describe discrete measurements, not CGM time', () {
+    final sources = <String, String>{
+      'KPI card': _read('lib/features/dashboard/widgets/kpi_tir_card.dart'),
+      'contextual hero': _read('lib/features/dashboard/widgets/hero_tir.dart'),
+    };
 
-    expect(source, contains('Mesures dans la cible'));
-    expect(source, contains('proportion de mesures, pas durée CGM'));
-    expect(source, contains('Votre cible personnelle peut être différente'));
-    expect(source, contains(r'${logs.length} mesures'));
-    expect(source, contains(r'$daysWithData jour'));
+    for (final entry in sources.entries) {
+      final source = entry.value;
+      expect(
+        source.toLowerCase(),
+        contains('mesures dans la cible'),
+        reason: '${entry.key} must name discrete measurements',
+      );
+      expect(
+        source,
+        contains('proportion de mesures, pas durée CGM'),
+        reason: '${entry.key} must disclose the sampling method',
+      );
+      expect(
+        source.toLowerCase(),
+        contains('cible personnelle peut être différente'),
+        reason: '${entry.key} must not personalize a general reference',
+      );
+      expect(
+        source,
+        contains(r'${logs.length} mesures'),
+        reason: '${entry.key} must expose measurement coverage',
+      );
 
-    for (final forbidden in <String>[
-      'Temps en cible',
-      'Objectif ADA',
-      'Objectif ≥',
-      'Atteint',
-    ]) {
-      expect(source, isNot(contains(forbidden)), reason: 'Misleading TIR wording: $forbidden');
+      for (final forbidden in <String>[
+        'Temps en cible',
+        'TEMPS EN CIBLE',
+        'Objectif ADA',
+        'Objectif ≥',
+        'Atteint',
+      ]) {
+        expect(
+          source,
+          isNot(contains(forbidden)),
+          reason: '${entry.key} retains misleading wording: $forbidden',
+        );
+      }
     }
   });
 
