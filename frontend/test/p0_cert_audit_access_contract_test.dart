@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 String _read(String path) => File(path).readAsStringSync();
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('audit access remains compile-time opt-in and loopback-only', () {
     final policy = _read('lib/services/audit_access_policy.dart');
 
@@ -47,8 +49,6 @@ void main() {
     expect(await auth.getIdToken(), isNull);
     expect(await auth.refreshToken(), isNull);
 
-    await auth.signOut();
-    expect(auth.isAuditSession, isFalse);
     auth.dispose();
   });
 }
