@@ -13,10 +13,13 @@ class _GMICard extends StatelessWidget {
     required this.range,
   });
 
-  static int _daysWithData(List<LogEntryData> values) => values.map((entry) {
-    final date = entry.loggedAt ?? entry.createdAt;
-    return '${date.year}-${date.month}-${date.day}';
-  }).toSet().length;
+  static int _daysWithData(List<LogEntryData> values) => values
+      .map((entry) {
+        final date = entry.loggedAt ?? entry.createdAt;
+        return '${date.year}-${date.month}-${date.day}';
+      })
+      .toSet()
+      .length;
 
   @override
   Widget build(BuildContext context) {

@@ -13,10 +13,13 @@ class _TIRCard extends StatelessWidget {
     required this.high,
   });
 
-  int _daysWithData(List<LogEntryData> values) => values.map((entry) {
-    final date = entry.loggedAt ?? entry.createdAt;
-    return '${date.year}-${date.month}-${date.day}';
-  }).toSet().length;
+  int _daysWithData(List<LogEntryData> values) => values
+      .map((entry) {
+        final date = entry.loggedAt ?? entry.createdAt;
+        return '${date.year}-${date.month}-${date.day}';
+      })
+      .toSet()
+      .length;
 
   @override
   Widget build(BuildContext context) {
@@ -31,9 +34,8 @@ class _TIRCard extends StatelessWidget {
       if (logs.isEmpty) return [];
       final sorted = List<LogEntryData>.from(logs)
         ..sort(
-          (a, b) => (a.loggedAt ?? a.createdAt).compareTo(
-            b.loggedAt ?? b.createdAt,
-          ),
+          (a, b) =>
+              (a.loggedAt ?? a.createdAt).compareTo(b.loggedAt ?? b.createdAt),
         );
 
       final Map<String, List<LogEntryData>> groups = {};
@@ -60,10 +62,7 @@ class _TIRCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const CardHead(
-            title: 'Mesures dans la cible',
-            meta: 'Repère 70–180',
-          ),
+          const CardHead(title: 'Mesures dans la cible', meta: 'Repère 70–180'),
           const SizedBox(height: 16),
           Builder(
             builder: (context) {

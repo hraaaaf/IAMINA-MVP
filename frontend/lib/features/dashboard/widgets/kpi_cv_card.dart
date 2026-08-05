@@ -8,10 +8,13 @@ class _CVCard extends StatelessWidget {
 
   const _CVCard({required this.logs, required this.prevLogs});
 
-  static int _daysWithData(List<LogEntryData> values) => values.map((entry) {
-    final date = entry.loggedAt ?? entry.createdAt;
-    return '${date.year}-${date.month}-${date.day}';
-  }).toSet().length;
+  static int _daysWithData(List<LogEntryData> values) => values
+      .map((entry) {
+        final date = entry.loggedAt ?? entry.createdAt;
+        return '${date.year}-${date.month}-${date.day}';
+      })
+      .toSet()
+      .length;
 
   @override
   Widget build(BuildContext context) {
@@ -23,9 +26,8 @@ class _CVCard extends StatelessWidget {
       if (logs.isEmpty) return [];
       final sorted = List<LogEntryData>.from(logs)
         ..sort(
-          (a, b) => (a.loggedAt ?? a.createdAt).compareTo(
-            b.loggedAt ?? b.createdAt,
-          ),
+          (a, b) =>
+              (a.loggedAt ?? a.createdAt).compareTo(b.loggedAt ?? b.createdAt),
         );
 
       final Map<String, List<LogEntryData>> groups = {};
