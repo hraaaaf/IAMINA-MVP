@@ -1,0 +1,91 @@
+name: Final visual certification
+on:
+  push:
+    branches: [audit/final-visual-cert-98fb6ce8]
+permissions:
+  contents: read
+jobs:
+  certify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build exact Flutter web bundle
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter build web --release --dart-define=API_BASE_URL=http://127.0.0.1:8000
+          echo "${GITHUB_SHA}" > build/web/CERTIFIED_COMMIT.txt
+      - name: Install browser tooling
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install --with-deps chromium
+      - name: Serve and capture
+        run: |
+          cd frontend/build/web
+          python3 -m http.server 4173 > /tmp/iamina-web.log 2>&1 &
+          cd ../../..
+          cat > /tmp/capture.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const out='visual-cert'; fs.mkdirSync(out,{recursive:true});
+          const browser=await chromium.launch({headless:true});
+          async function open(viewport, locale, prefix){
+            const context=await browser.newContext({viewport, locale});
+            const page=await context.newPage();
+            const errors=[];
+            page.on('pageerror',e=>errors.push('pageerror: '+e.message));
+            page.on('console',m=>{if(m.type()==='error') errors.push('console: '+m.text())});
+            await page.goto('http://127.0.0.1:4173',{waitUntil:'networkidle',timeout:90000});
+            await page.waitForTimeout(3000);
+            const demo=page.getByText(/Demo access|Accès démo|دخول تجريبي/i).first();
+            if(await demo.count()) { await demo.click(); await page.waitForTimeout(5000); }
+            const consent=page.getByText(/Accept.*continue|Accepter.*continuer|موافقة/i).first();
+            if(await consent.count()) { await consent.click(); await page.waitForTimeout(3500); }
+            const paths=['dashboard','journal','importer','pulper','profile'];
+            for(const p of paths){
+              await page.goto('http://127.0.0.1:4173/#/'+p,{waitUntil:'networkidle',timeout:90000});
+              await page.waitForTimeout(2500);
+              await page.screenshot({path:`${out}/${prefix}-${p}.png`,fullPage:true});
+              fs.writeFileSync(`${out}/${prefix}-${p}.txt`,await page.locator('body').innerText());
+            }
+            fs.writeFileSync(`${out}/${prefix}-errors.txt`,errors.join('\n'));
+            await context.close();
+          }
+          await open({width:1440,height:1100},'fr-FR','desktop-fr');
+          await open({width:390,height:844},'fr-FR','mobile-fr');
+          await open({width:390,height:844},'ar-MA','mobile-ar');
+          await browser.close();
+          EOF
+          node /tmp/capture.mjs
+      - name: Structural audit
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('visual-cert')
+          findings=[]
+          for err in root.glob('*-errors.txt'):
+              txt=err.read_text(errors='ignore').strip()
+              if txt: findings.append(f'{err.name}: {txt}')
+          for txt in root.glob('*.txt'):
+              if txt.name.endswith('-errors.txt'): continue
+              body=txt.read_text(errors='ignore')
+              if 'Une erreur de rendu est survenue' in body: findings.append(f'{txt.name}: render error')
+              if 'A RenderFlex overflowed' in body: findings.append(f'{txt.name}: overflow')
+          Path('visual-cert/AUDIT.txt').write_text('CERTIFIED_COMMIT='+Path('frontend/build/web/CERTIFIED_COMMIT.txt').read_text().strip()+'\nFINDINGS='+str(len(findings))+'\n'+'\n'.join(findings))
+          print(Path('visual-cert/AUDIT.txt').read_text())
+          if findings: raise SystemExit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: final-visual-cert-98fb6ce8
+          path: visual-cert
+          if-no-files-found: error
+          retention-days: 7
