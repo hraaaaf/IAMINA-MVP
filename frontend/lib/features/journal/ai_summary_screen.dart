@@ -601,8 +601,8 @@ class _HeroInsightCard extends StatelessWidget {
           const SizedBox(height: 24),
           Text(
             tir >= 70
-                ? 'Votre équilibre glycémique est dans la cible\n— TIR à ${tir.toStringAsFixed(0)} % sur cette période.'
-                : 'Quelques défis détectés\nsur votre période récente.',
+                ? 'Une majorité des mesures disponibles\nse situe dans le repère 70–180 mg/dL.'
+                : 'Certaines mesures disponibles\nméritent d’être examinées.',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
@@ -691,61 +691,65 @@ class _KpiRow extends StatelessWidget {
     final tir = kpis.tirPct ?? 0.0;
     final gmi = kpis.gmi ?? 0.0;
     final cv = kpis.cvPct ?? 0.0;
+    final coverage =
+        '${kpis.logCount} mesures sur ${kpis.daysWithData} jour${kpis.daysWithData > 1 ? 's' : ''}';
 
-    final tirColor = tir >= 70
-        ? AminaTheme.teal500
-        : tir >= 50
-        ? AminaTheme.ambre500
-        : AminaTheme.dangerFg;
-    final gmiColor = gmi < 7
-        ? AminaTheme.teal500
-        : gmi < 8
-        ? AminaTheme.ambre500
-        : AminaTheme.dangerFg;
-    final cvColor = cv < 36
-        ? AminaTheme.teal500
-        : cv < 40
-        ? AminaTheme.ambre500
-        : AminaTheme.dangerFg;
+    final cards = <Widget>[
+      _KpiCard(
+        label: 'MESURES DANS LA CIBLE',
+        value: '${tir.toStringAsFixed(0)}%',
+        color: AminaTheme.teal500,
+        reference: 'Repère général 70–180 mg/dL',
+      ),
+      _KpiCard(
+        label: 'GMI ESTIMÉE',
+        value: '${gmi.toStringAsFixed(1)}%',
+        color: AminaTheme.ocean500,
+        reference: kpis.gmiBasis.isNotEmpty
+            ? '${kpis.gmiBasis} · estimation, pas HbA1c laboratoire'
+            : 'Moyenne disponible · estimation, pas HbA1c laboratoire',
+      ),
+      _KpiCard(
+        label: 'VARIABILITÉ (CV)',
+        value: '${cv.toStringAsFixed(0)}%',
+        color: AminaTheme.ambre500,
+        reference: 'Repère général <36 %',
+      ),
+    ];
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: _KpiCard(
-            label: 'TIME IN RANGE',
-            abbr: '${tir.toStringAsFixed(0)}%',
-            value: '${tir.toStringAsFixed(0)}%',
-            color: tirColor,
-            progress: tir / 100,
-            target: '70-180 mg/dL',
-            trend: tir >= 70 ? 1 : -1,
-          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 720) {
+              return Column(
+                children: [
+                  for (var index = 0; index < cards.length; index++) ...[
+                    cards[index],
+                    if (index < cards.length - 1) const SizedBox(height: 12),
+                  ],
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var index = 0; index < cards.length; index++) ...[
+                  Expanded(child: cards[index]),
+                  if (index < cards.length - 1) const SizedBox(width: 12),
+                ],
+              ],
+            );
+          },
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _KpiCard(
-            label: 'HbA1C ESTIMÉE (GMI)',
-            abbr: '${gmi.toStringAsFixed(1)}%',
-            value: '${gmi.toStringAsFixed(1)}%',
-            color: gmiColor,
-            progress: ((gmi - 5) / 5).clamp(0.0, 1.0),
-            target: kpis.gmiBasis.isNotEmpty
-                ? kpis.gmiBasis
-                : '${kpis.daysWithData}j',
-            trend: gmi < 7 ? 1 : -1,
-            confidenceBadge: _buildGmiBadge(context, kpis.gmiConfidence),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _KpiCard(
-            label: 'VARIABILITÉ (CV)',
-            abbr: '${cv.toStringAsFixed(0)}%',
-            value: '${cv.toStringAsFixed(0)}%',
-            color: cvColor,
-            progress: (cv / 50).clamp(0.0, 1.0),
-            target: '<36% ADA',
-            trend: cv < 36 ? 1 : -1,
+        const SizedBox(height: 10),
+        Text(
+          'Repères généraux non personnalisés · $coverage. Les données manquantes peuvent modifier l’interprétation.',
+          style: TextStyle(
+            fontSize: 10.5,
+            color: AminaTheme.textSecondary(context),
+            height: 1.4,
           ),
         ),
       ],
@@ -753,64 +757,22 @@ class _KpiRow extends StatelessWidget {
   }
 }
 
-Widget? _buildGmiBadge(BuildContext context, String? confidence) {
-  if (confidence == null || confidence == 'high') return null;
-  final isLow = confidence == 'low';
-  final color = isLow ? AminaTheme.ambre500 : const Color(0xFF3B82F6);
-  final bgColor = isLow
-      ? AminaTheme.ambre500.withValues(alpha: 0.12)
-      : const Color(0xFF3B82F6).withValues(alpha: 0.10);
-  final icon = isLow ? Icons.warning_amber_rounded : Icons.info_outline_rounded;
-  final label = isLow ? '⚠ Peu de données' : 'Indicatif (<14j)';
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-    decoration: BoxDecoration(
-      color: bgColor,
-      borderRadius: BorderRadius.circular(6),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 10, color: color),
-        const SizedBox(width: 3),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
 class _KpiCard extends StatelessWidget {
-  final String label, abbr, value, target;
+  final String label, value, reference;
   final Color color;
-  final double progress;
-  final int trend;
-  final Widget? confidenceBadge;
 
   const _KpiCard({
     required this.label,
-    required this.abbr,
     required this.value,
     required this.color,
-    required this.progress,
-    required this.target,
-    required this.trend,
-    this.confidenceBadge,
+    required this.reference,
   });
 
   @override
   Widget build(BuildContext context) {
-    final trendIcon = trend > 0 ? Icons.arrow_upward : Icons.arrow_downward;
-    final trendColor = trend > 0 ? AminaTheme.teal500 : AminaTheme.dangerFg;
-
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(20, 24, 20, 20),
+      width: double.infinity,
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 22, 20, 20),
       decoration: BoxDecoration(
         color: AminaTheme.surface(context),
         borderRadius: BorderRadius.circular(24),
@@ -826,61 +788,42 @@ class _KpiCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: AminaTheme.textSecondary(context),
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                target,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AminaTheme.textSecondary(context),
-                ),
-              ),
-            ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: AminaTheme.textSecondary(context),
+              letterSpacing: 0.5,
+            ),
           ),
           const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 42,
-                  fontWeight: FontWeight.w800,
-                  color: AminaTheme.textPrimary(context),
-                  letterSpacing: -1.5,
-                  height: 1.0,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Icon(trendIcon, size: 16, color: trendColor),
-              ),
-            ],
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 42,
+              fontWeight: FontWeight.w800,
+              color: AminaTheme.textPrimary(context),
+              letterSpacing: -1.5,
+              height: 1.0,
+            ),
           ),
-          if (confidenceBadge != null) ...[
-            const SizedBox(height: 6),
-            confidenceBadge!,
-          ],
-          const SizedBox(height: 20),
-          // Real progress bar based on the KPI value (no fake data)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progress.clamp(0.0, 1.0),
-              minHeight: 6,
-              backgroundColor: color.withValues(alpha: 0.12),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
+          const SizedBox(height: 12),
+          Container(
+            width: 28,
+            height: 3,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            reference,
+            style: TextStyle(
+              fontSize: 10.5,
+              color: AminaTheme.textSecondary(context),
+              height: 1.35,
             ),
           ),
         ],
@@ -1154,7 +1097,7 @@ class _AgpCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  'Cible 70–180',
+                  'Repère général 70–180',
                   style: TextStyle(
                     fontSize: 9,
                     color: AminaTheme.textSecondary(context),
@@ -1601,10 +1544,8 @@ class _InsightCardWidgetState extends State<_InsightCardWidget> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            _SignalBars(color: barColor),
-                            const SizedBox(width: 6),
                             Text(
-                              'conf. ${_confidenceForSeverity(card.severity)}%',
+                              'Observation automatique',
                               style: TextStyle(
                                 fontSize: 10,
                                 color: AminaTheme.textSecondary(context),
@@ -1702,12 +1643,6 @@ class _InsightCardWidgetState extends State<_InsightCardWidget> {
       ),
     );
   }
-
-  int _confidenceForSeverity(InsightSeverity s) => switch (s) {
-    InsightSeverity.danger => 92,
-    InsightSeverity.warn => 87,
-    InsightSeverity.good => 96,
-  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1744,7 +1679,7 @@ class _ChatCta extends StatelessWidget {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Posez vos questions ou demandez des conseils personnalisés.',
+                  'Posez vos questions ou demandez une explication des données disponibles.',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.white70,
@@ -1852,29 +1787,6 @@ class _ChatFabState extends State<_ChatFab>
 // ─────────────────────────────────────────────────────────────────────────────
 // Signal Bars + Pulse Animation (inchangés)
 // ─────────────────────────────────────────────────────────────────────────────
-
-class _SignalBars extends StatelessWidget {
-  final Color color;
-  const _SignalBars({required this.color});
-  @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.end,
-    children: [
-      for (int i = 0; i < 3; i++) ...[
-        Container(
-          width: 4,
-          height: 6.0 + i * 4,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        if (i < 2) const SizedBox(width: 2),
-      ],
-    ],
-  );
-}
 
 class _PulseAnimation extends StatefulWidget {
   final Widget child;
