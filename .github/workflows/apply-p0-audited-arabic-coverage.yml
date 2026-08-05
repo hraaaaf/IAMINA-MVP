@@ -6,6 +6,7 @@ on:
       - fix/p0-audited-pages-arabic-coverage-v2
     paths:
       - scripts/apply_p0_audited_arabic_coverage.py
+      - scripts/run_p0_audited_arabic_coverage.py
       - .github/workflows/apply-p0-audited-arabic-coverage.yml
 
 permissions:
@@ -27,7 +28,7 @@ jobs:
           cache: true
 
       - name: Apply scoped localization migration
-        run: python scripts/apply_p0_audited_arabic_coverage.py
+        run: python scripts/run_p0_audited_arabic_coverage.py
 
       - name: Format and validate Flutter
         working-directory: frontend
