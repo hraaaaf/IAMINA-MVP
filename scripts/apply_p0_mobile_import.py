@@ -42,7 +42,7 @@ def main() -> None:
     replace_once(
         IMPORT_SCREEN,
         """        ),\n      ),\n    );\n  }\n}\n\nclass _PulperChip""",
-        """        ),\n      ),\n    );\n  }\n}\n\nclass _PulperChip""",
+        """        ),\n      ),\n      ),\n    );\n  }\n}\n\nclass _PulperChip""",
     )
 
     old_pick_start = """  Widget _buildPick() {\n    return Padding(\n      padding: const EdgeInsets.all(24),\n      child: Column(\n        mainAxisAlignment: MainAxisAlignment.center,\n        children: ["""
