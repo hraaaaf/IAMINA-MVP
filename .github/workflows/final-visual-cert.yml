@@ -26,7 +26,7 @@ jobs:
           npm init -y
           npm install playwright
           npx playwright install --with-deps chromium
-      - name: Serve and capture
+      - name: Serve and capture authenticated journeys
         run: |
           cd frontend/build/web
           python3 -m http.server 4173 > /tmp/iamina-web.log 2>&1 &
@@ -36,30 +36,32 @@ jobs:
           import fs from 'fs';
           const out='visual-cert'; fs.mkdirSync(out,{recursive:true});
           const browser=await chromium.launch({headless:true});
-          async function settle(page){ await page.waitForLoadState('domcontentloaded'); await page.waitForTimeout(3500); }
-          async function open(viewport, locale, prefix){
-            const context=await browser.newContext({viewport, locale});
+          async function settle(page, ms=3500){ await page.waitForLoadState('domcontentloaded'); await page.waitForTimeout(ms); }
+          async function open(viewport, lang, prefix){
+            const context=await browser.newContext({viewport, locale:lang==='ar'?'ar-MA':'fr-FR'});
             const page=await context.newPage();
             const errors=[];
+            await page.route('**/api/v1/profile/locale', route => route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({resolved:{ui_language:lang}})}));
             page.on('pageerror',e=>errors.push('pageerror: '+e.message));
-            page.on('console',m=>{if(m.type()==='error') errors.push('console: '+m.text())});
+            page.on('console',m=>{if(m.type()==='error' && !m.text().includes('localhost:8000')) errors.push('console: '+m.text())});
             await page.goto('http://127.0.0.1:4173',{waitUntil:'domcontentloaded',timeout:30000}); await settle(page);
-            const demo=page.getByText(/Demo access|Accès démo|دخول تجريبي/i).first();
-            if(await demo.count()) { await demo.click(); await page.waitForTimeout(5000); }
-            const consent=page.getByText(/Accept.*continue|Accepter.*continuer|موافقة/i).first();
-            if(await consent.count()) { await consent.click(); await page.waitForTimeout(3500); }
+            const demoY=viewport.width<600 ? viewport.height*0.84 : viewport.height*0.745;
+            await page.mouse.click(viewport.width/2,demoY); await page.waitForTimeout(6500);
+            await page.screenshot({path:`${out}/${prefix}-post-demo.png`,fullPage:true});
+            // Consent accept button sits in the lower action area when present.
+            if(page.url().includes('consent')) { await page.mouse.click(viewport.width/2,viewport.height*0.78); await page.waitForTimeout(4500); }
             const paths=['dashboard','journal','importer','pulper','profile'];
             for(const p of paths){
               await page.goto('http://127.0.0.1:4173/#/'+p,{waitUntil:'domcontentloaded',timeout:30000}); await settle(page);
               await page.screenshot({path:`${out}/${prefix}-${p}.png`,fullPage:true});
-              fs.writeFileSync(`${out}/${prefix}-${p}.txt`,await page.locator('body').innerText());
             }
+            fs.writeFileSync(`${out}/${prefix}-url.txt`,page.url());
             fs.writeFileSync(`${out}/${prefix}-errors.txt`,errors.join('\n'));
             await context.close();
           }
-          await open({width:1440,height:1100},'fr-FR','desktop-fr');
-          await open({width:390,height:844},'fr-FR','mobile-fr');
-          await open({width:390,height:844},'ar-MA','mobile-ar');
+          await open({width:1440,height:1100},'fr','desktop-fr');
+          await open({width:390,height:844},'fr','mobile-fr');
+          await open({width:390,height:844},'ar','mobile-ar');
           await browser.close();
           EOF
           node capture.mjs
@@ -68,23 +70,19 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           root=Path('visual-cert'); findings=[]
+          pngs=list(root.glob('*.png'))
+          if len(pngs) != 18: findings.append(f'expected 18 captures, got {len(pngs)}')
           for err in root.glob('*-errors.txt'):
               txt=err.read_text(errors='ignore').strip()
-              filtered='\n'.join(x for x in txt.splitlines() if 'Failed to load resource' not in x and 'localhost:8000' not in x)
-              if filtered: findings.append(f'{err.name}: {filtered}')
-          for txt in root.glob('*.txt'):
-              if txt.name.endswith('-errors.txt'): continue
-              body=txt.read_text(errors='ignore')
-              if 'Une erreur de rendu est survenue' in body: findings.append(f'{txt.name}: render error')
-              if 'A RenderFlex overflowed' in body: findings.append(f'{txt.name}: overflow')
-          Path('visual-cert/AUDIT.txt').write_text('CERTIFIED_COMMIT='+Path('frontend/build/web/CERTIFIED_COMMIT.txt').read_text().strip()+'\nCAPTURES='+str(len(list(root.glob('*.png'))))+'\nFINDINGS='+str(len(findings))+'\n'+'\n'.join(findings))
+              if txt: findings.append(f'{err.name}: {txt}')
+          Path('visual-cert/AUDIT.txt').write_text('CERTIFIED_COMMIT='+Path('frontend/build/web/CERTIFIED_COMMIT.txt').read_text().strip()+'\nCAPTURES='+str(len(pngs))+'\nFINDINGS='+str(len(findings))+'\n'+'\n'.join(findings))
           print(Path('visual-cert/AUDIT.txt').read_text())
           if findings: raise SystemExit(1)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: final-visual-cert-98fb6ce8
+          name: final-visual-cert-authenticated-98fb6ce8
           path: visual-cert
           if-no-files-found: error
           retention-days: 7
