@@ -10,15 +10,15 @@ feature unless its state and outcome are backed by executable behavior.
 
 | Item | Requirement | Status | Evidence |
 |---|---|---|---|
-| P0-UX-1 | Every apparent action is functional or explicitly unavailable | **In validation** | `p0_real_actions_contract_test.dart`; summary and import UI corrections in current PR |
-| P0-UX-2 | System states such as synchronization, notifications and pilot status are live and truthful | Open | Dedicated LOT required |
+| P0-UX-1 | Every apparent action is functional or explicitly unavailable | **Closed** | PR #39; `p0_real_actions_contract_test.dart` |
+| P0-UX-2 | System states such as synchronization, notifications and pilot status are live and truthful | **In validation** | Typed `SyncUiState`; `p0_truthful_system_state_contract_test.dart` |
 | P0-UX-3 | Clinical conclusions, confidence and goals are explainable; no opaque score or fabricated precision | Open | Dedicated LOT required |
 | P0-UX-4 | Import is reachable and usable on mobile | Existing implementation observed; dedicated certification pending | Module registry and bottom navigation derive `/importer` |
 | P0-UX-5 | Privacy wording never exceeds approved deployment and processor evidence | Open | Dedicated LOT required |
 
 ## P0-UX-1 contract
 
-The current LOT closes the first requirement by enforcing all of the following:
+PR #39 closes the first requirement by enforcing all of the following:
 
 - the desktop summary discovery control scrolls to real content;
 - decorative notification controls are removed rather than simulated;
@@ -30,6 +30,23 @@ The current LOT closes the first requirement by enforcing all of the following:
 - the real create, read, update and delete loop is continuously checked against
   Drift persistence and journal routes;
 - mobile navigation derivation includes the Import destination.
+
+## P0-UX-2 contract
+
+The current LOT makes synchronization and storage claims derive from real runtime
+state:
+
+- `SyncService` exposes checking, up-to-date, pending, syncing, offline and error
+  states;
+- connectivity loss produces an explicit offline state rather than a success icon;
+- pending local records produce a pending state;
+- only an empty pending queue or confirmed successful synchronization may produce
+  the up-to-date state;
+- partial and total failures produce an error state with a retry action;
+- the dashboard renders the authoritative state with accessible labels and tooltips;
+- data shown on the Import page is labelled as local storage, not synchronization;
+- decorative notification controls and static success labels are permanently
+  rejected by the source contract.
 
 ## Score policy
 
