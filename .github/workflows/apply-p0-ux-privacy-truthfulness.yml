@@ -6,6 +6,7 @@ on:
       - fix/p0-ux-privacy-truthfulness
     paths:
       - scripts/apply_p0_ux_privacy_truthfulness.py
+      - frontend/test/p0_mobile_import_navigation_test.dart
       - .github/workflows/apply-p0-ux-privacy-truthfulness.yml
 
 permissions:
