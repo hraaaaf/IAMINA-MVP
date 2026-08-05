@@ -194,6 +194,25 @@ class AuditedPageCopy {
   );
   String get profileComplete =>
       pick(fr: 'Profil complet', en: 'Profile complete', ar: 'الملف مكتمل');
+
+  String profileCompletionLabel(int percentage) => percentage >= 100
+      ? pick(
+          fr: 'Profil complet ✓',
+          en: 'Profile complete ✓',
+          ar: 'الملف مكتمل ✓',
+        )
+      : pick(
+          fr: 'Profil complété à $percentage%',
+          en: 'Profile $percentage% complete',
+          ar: 'اكتمل الملف بنسبة $percentage٪',
+        );
+
+  String get profileCompletionPrompt => pick(
+    fr: 'Complétez votre profil pour des analyses plus précises.',
+    en: 'Complete your profile for more precise analyses.',
+    ar: 'أكمل ملفك للحصول على تحليلات أدق.',
+  );
+
   String get minimum => pick(fr: 'Min', en: 'Min', ar: 'الحد الأدنى');
   String get maximum => pick(fr: 'Max', en: 'Max', ar: 'الحد الأقصى');
 }

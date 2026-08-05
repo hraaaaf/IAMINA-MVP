@@ -18,6 +18,8 @@ void main() {
       'غير متاح',
       'استيراد مستند',
       'الملف مكتمل',
+      'اكتمل الملف بنسبة',
+      'أكمل ملفك للحصول على تحليلات أدق.',
     ]) {
       expect(
         copy,
@@ -68,6 +70,9 @@ void main() {
       "_buildTextField('Min'",
       "_buildTextField('Max'",
       "'Profil complet'",
+      "'Profil complet ✓'",
+      "'Profil complété à",
+      'Complétez votre profil pour des analyses plus précises.',
     ]) {
       expect(
         combined,
