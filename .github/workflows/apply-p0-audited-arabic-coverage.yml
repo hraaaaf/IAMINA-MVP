@@ -1,0 +1,48 @@
+name: Apply audited-page Arabic coverage
+
+on:
+  push:
+    branches:
+      - fix/p0-audited-pages-arabic-coverage-v2
+    paths:
+      - scripts/apply_p0_audited_arabic_coverage.py
+      - .github/workflows/apply-p0-audited-arabic-coverage.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p0-audited-pages-arabic-coverage-v2
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Apply scoped localization migration
+        run: python scripts/apply_p0_audited_arabic_coverage.py
+
+      - name: Format and validate Flutter
+        working-directory: frontend
+        run: |
+          flutter pub get
+          dart format lib/l10n/audited_page_copy.dart lib/features/dashboard/dashboard_screen.dart lib/features/dashboard/widgets/top_bar.dart lib/features/dashboard/widgets/hero_section.dart lib/features/dashboard/widgets/hero_live.dart lib/features/dashboard/widgets/hero_tir.dart lib/features/dashboard/widgets/kpi_tir_card.dart lib/features/import/import_screen.dart lib/features/documents/document_import_screen.dart lib/features/profile/profile_screen.dart test/p0_audited_page_localization_contract_test.dart
+          flutter analyze --no-fatal-infos
+          flutter test test/p0_audited_page_localization_contract_test.dart
+          flutter test test/p0_clinical_explainability_contract_test.dart
+          flutter test test/p0_mobile_import_navigation_test.dart
+
+      - name: Commit generated product changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/lib frontend/test/p0_audited_page_localization_contract_test.dart
+          git commit -m "feat(l10n): localize audited pages in Arabic"
+          git push origin HEAD:fix/p0-audited-pages-arabic-coverage-v2
