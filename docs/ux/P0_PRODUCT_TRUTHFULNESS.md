@@ -12,8 +12,8 @@ feature unless its state and outcome are backed by executable behavior.
 |---|---|---|---|
 | P0-UX-1 | Every apparent action is functional or explicitly unavailable | **Closed** | PR #39; `p0_real_actions_contract_test.dart` |
 | P0-UX-2 | System states such as synchronization, notifications and pilot status are live and truthful | **Closed** | PR #40; typed `SyncUiState`; `p0_truthful_system_state_contract_test.dart` |
-| P0-UX-3 | Clinical conclusions, confidence and goals are explainable; no opaque score or fabricated precision | **In validation** | Coverage-aware KPI UI; `p0_clinical_explainability_contract_test.dart` |
-| P0-UX-4 | Import is reachable and usable on mobile | Existing implementation observed; dedicated certification pending | Module registry and bottom navigation derive `/importer` |
+| P0-UX-3 | Clinical conclusions, confidence and goals are explainable; no opaque score or fabricated precision | **Closed** | PR #41; coverage-aware KPI UI; `p0_clinical_explainability_contract_test.dart` |
+| P0-UX-4 | Import is reachable and usable on mobile | **In validation** | 390 px navigation and short-viewport widget tests in current LOT |
 | P0-UX-5 | Privacy wording never exceeds approved deployment and processor evidence | Open | Dedicated LOT required |
 
 ## P0-UX-1 contract
@@ -50,7 +50,7 @@ derive from real runtime state:
 
 ## P0-UX-3 contract
 
-The current LOT removes fabricated clinical precision and exposes the basis of each
+PR #41 removes fabricated clinical precision and exposes the basis of each
 patient-facing metric:
 
 - a discrete set of manual/imported entries is labelled **measures in range**, not
@@ -68,6 +68,23 @@ patient-facing metric:
   not personalized prescriptions;
 - the permanent Flutter contract rejects opaque `/100` scores, decorative signal
   strength, unsupported confidence labels and misleading CGM-duration wording.
+
+## P0-UX-4 contract
+
+The current LOT certifies the full mobile entry path rather than merely checking
+that routes exist:
+
+- every mobile destination receives a stable route-derived key;
+- at widths below 430 px only the selected label is shown, preserving six usable
+  destinations without removing Importer or Settings;
+- a 390 × 844 widget test taps the actual Importer destination rendered by
+  `MainShell`;
+- the test reaches the real `ImportScreen`, opens the Pulper CTA and reaches the
+  full-screen `DocumentImportScreen`;
+- a 360 × 560 test proves the document picker remains scrollable and reachable;
+- the Pulper CTA has button semantics and a stable automation key;
+- the real flow uses `FilePicker`, calls document ingestion, displays extracted
+  data for review and persists nothing until explicit confirmation.
 
 ## Score policy
 
