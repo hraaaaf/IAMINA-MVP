@@ -36,34 +36,26 @@ void main() {
     }
   });
 
-  test('all target-range surfaces describe discrete measurements, not CGM time', () {
+  test('all target-range surfaces use the localized truthful contract', () {
+    final copy = _read('lib/l10n/audited_page_copy.dart');
     final sources = <String, String>{
       'KPI card': _read('lib/features/dashboard/widgets/kpi_tir_card.dart'),
       'contextual hero': _read('lib/features/dashboard/widgets/hero_tir.dart'),
     };
 
+    for (final required in <String>[
+      'Mesures dans la cible',
+      'proportion de mesures, pas durée CGM',
+      'votre cible personnelle peut être différente',
+      r'$count mesures sur $days jour',
+    ]) {
+      expect(copy, contains(required), reason: 'Localized truthfulness contract is missing: $required');
+    }
+
     for (final entry in sources.entries) {
       final source = entry.value;
-      expect(
-        source.toLowerCase(),
-        contains('mesures dans la cible'),
-        reason: '${entry.key} must name discrete measurements',
-      );
-      expect(
-        source,
-        contains('proportion de mesures, pas durée CGM'),
-        reason: '${entry.key} must disclose the sampling method',
-      );
-      expect(
-        source.toLowerCase(),
-        contains('cible personnelle peut être différente'),
-        reason: '${entry.key} must not personalize a general reference',
-      );
-      expect(
-        source,
-        contains(r'${logs.length} mesures'),
-        reason: '${entry.key} must expose measurement coverage',
-      );
+      expect(source, contains('AuditedPageCopy.of(context)'), reason: '${entry.key} must use the localized truthfulness source');
+      expect(source, contains('copy.targetCoverage'), reason: '${entry.key} must expose measurement coverage');
 
       for (final forbidden in <String>[
         'Temps en cible',
@@ -72,11 +64,7 @@ void main() {
         'Objectif ≥',
         'Atteint',
       ]) {
-        expect(
-          source,
-          isNot(contains(forbidden)),
-          reason: '${entry.key} retains misleading wording: $forbidden',
-        );
+        expect(source, isNot(contains(forbidden)), reason: '${entry.key} retains misleading wording: $forbidden');
       }
     }
   });
