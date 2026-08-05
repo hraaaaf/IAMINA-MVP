@@ -93,15 +93,12 @@ class _HeroLive extends StatelessWidget {
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             alignment: AlignmentDirectional.centerStart,
-                            child: Directionality(
-                              textDirection: TextDirection.ltr,
-                              child: _MeasurementValue(
-                                value: value,
-                                unit: unit,
-                                trend: trend,
-                                trendUp: trendUp,
-                                compact: compact,
-                              ),
+                            child: _MeasurementValue(
+                              value: value,
+                              unit: unit,
+                              trend: trend,
+                              trendUp: trendUp,
+                              compact: compact,
                             ),
                           ),
                         ),
@@ -164,12 +161,13 @@ class _MeasurementValue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayValue = value > 0 ? value.toStringAsFixed(0) : '--';
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Text(
-          value > 0 ? value.toStringAsFixed(0) : '--',
+          '\u2066$displayValue\u2069',
           style: TextStyle(
             color: Colors.white,
             fontSize: compact ? 68 : 88,
@@ -185,7 +183,7 @@ class _MeasurementValue extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                unit,
+                '\u2066$unit\u2069',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.72),
                   fontSize: 14,
@@ -213,7 +211,7 @@ class _MeasurementValue extends StatelessWidget {
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        trend!,
+                        '\u2066${trend!}\u2069',
                         style: const TextStyle(
                           color: Color(0xFFFCD34D),
                           fontSize: 11,
