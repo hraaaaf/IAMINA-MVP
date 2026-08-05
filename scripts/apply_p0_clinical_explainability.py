@@ -25,7 +25,13 @@ def replace_once(old: str, new: str) -> None:
 
 def regex_once(pattern: str, replacement: str) -> None:
     source = SUMMARY.read_text(encoding="utf-8")
-    updated, count = re.subn(pattern, replacement, source, count=1, flags=re.DOTALL)
+    updated, count = re.subn(
+        pattern,
+        lambda _match: replacement,
+        source,
+        count=1,
+        flags=re.DOTALL,
+    )
     if count != 1:
         raise RuntimeError(f"expected one regex match, found {count}: {pattern[:80]!r}")
     SUMMARY.write_text(updated, encoding="utf-8")
