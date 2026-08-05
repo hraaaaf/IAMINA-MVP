@@ -356,7 +356,7 @@ class _LastImportBanner extends StatelessWidget {
                 ),
                 if (lastLogAt != null)
                   Text(
-                    'Dernière mesure $label',
+                    'Dernière mesure $label · Stockage local',
                     style: const TextStyle(
                       fontSize: 11,
                       color: AminaTheme.teal600,
@@ -365,7 +365,14 @@ class _LastImportBanner extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.sync_outlined, size: 16, color: AminaTheme.teal500),
+          const Tooltip(
+            message: 'Données stockées sur cet appareil',
+            child: Icon(
+              Icons.storage_outlined,
+              size: 16,
+              color: AminaTheme.teal500,
+            ),
+          ),
         ],
       ),
     );
