@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
+import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
 import 'package:drift/drift.dart' as drift;
 
@@ -97,10 +98,10 @@ class _ImportScreenState extends State<ImportScreen> {
                     onTap: () => context.push('/pulper'),
                   ),
                   const SizedBox(height: 20),
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 16),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
                     child: Text(
-                      'Connexions directes',
+                      AuditedPageCopy.of(context).directConnections,
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -170,9 +171,8 @@ class _ImportScreenState extends State<ImportScreen> {
                   _ImportOption(
                     icon: Icons.bluetooth,
                     title: 'Dexcom G6/G7',
-                    subtitle:
-                        'Connexion Dexcom CLARITY prévue. Fréquence et disponibilité à confirmer avant activation.',
-                    badge: 'BIENTÔT',
+                    subtitle: AuditedPageCopy.of(context).dexcomDescription,
+                    badge: AuditedPageCopy.of(context).soon,
                     badgeBg: AminaTheme.ink50,
                     badgeFg: AminaTheme.ink500,
                     action: const _UnavailableAction(),
@@ -181,9 +181,8 @@ class _ImportScreenState extends State<ImportScreen> {
                   _ImportOption(
                     icon: Icons.sensors,
                     title: 'Abbott LibreLink',
-                    subtitle:
-                        'Import LibreView prévu. Formats et disponibilité à confirmer avant activation.',
-                    badge: 'BIENTÔT',
+                    subtitle: AuditedPageCopy.of(context).libreDescription,
+                    badge: AuditedPageCopy.of(context).soon,
                     badgeBg: AminaTheme.ink50,
                     badgeFg: AminaTheme.ink500,
                     action: const _UnavailableAction(),
@@ -212,14 +211,14 @@ class _TopBar extends StatelessWidget {
         color: AminaTheme.cardBg,
         border: Border(bottom: BorderSide(color: AminaTheme.ink100)),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Importer',
+                  AuditedPageCopy.of(context).importTitle,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -227,7 +226,7 @@ class _TopBar extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Connectez vos sources de données',
+                  AuditedPageCopy.of(context).importSubtitle,
                   style: TextStyle(fontSize: 12, color: AminaTheme.ink500),
                 ),
               ],
@@ -392,7 +391,7 @@ class _PulperCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'Ouvrir l’import de document',
+      label: AuditedPageCopy.of(context).openDocumentImport,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
@@ -433,7 +432,7 @@ class _PulperCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'PDF · Photo · Excel · Word — IAmina extrait tout automatiquement.',
+                      AuditedPageCopy.of(context).pulperDescription,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.82),
                         fontSize: 12,
@@ -441,13 +440,13 @@ class _PulperCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const Wrap(
+                    Wrap(
                       spacing: 6,
                       children: [
-                        _PulperChip(label: 'Bilan labo'),
-                        _PulperChip(label: 'Export CGM'),
-                        _PulperChip(label: 'Ordonnance'),
-                        _PulperChip(label: 'Photo'),
+                        _PulperChip(label: AuditedPageCopy.of(context).labReport),
+                        _PulperChip(label: AuditedPageCopy.of(context).cgmExport),
+                        _PulperChip(label: AuditedPageCopy.of(context).prescription),
+                        _PulperChip(label: AuditedPageCopy.of(context).photo),
                       ],
                     ),
                   ],
@@ -500,8 +499,8 @@ class _UnavailableAction extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       border: Border.all(color: AminaTheme.ink200),
     ),
-    child: const Text(
-      'Non disponible',
+    child: Text(
+      AuditedPageCopy.of(context).unavailable,
       style: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w600,

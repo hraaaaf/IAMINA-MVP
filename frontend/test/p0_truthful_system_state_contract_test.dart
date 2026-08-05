@@ -30,13 +30,30 @@ void main() {
 
   test('dashboard renders only the authoritative synchronization state', () {
     final source = _read('lib/features/dashboard/widgets/top_bar.dart');
+    final copy = _read('lib/l10n/audited_page_copy.dart');
 
     expect(source, contains('ValueListenableBuilder<SyncUiState>'));
     expect(source, contains('valueListenable: syncService.state'));
-    expect(source, contains('Données à jour'));
-    expect(source, contains('Données en attente de synchronisation'));
-    expect(source, contains('Hors ligne · données conservées sur cet appareil'));
-    expect(source, contains('Échec de synchronisation · appuyer pour réessayer'));
+
+    for (final state in <String>[
+      'checking',
+      'upToDate',
+      'pending',
+      'syncing',
+      'offline',
+      'error',
+    ]) {
+      expect(
+        source,
+        contains("AuditedPageCopy.of(context).sync('$state')"),
+        reason: 'Dashboard must localize authoritative sync state: $state',
+      );
+    }
+
+    expect(copy, contains('Données à jour'));
+    expect(copy, contains('Données en attente de synchronisation'));
+    expect(copy, contains('Hors ligne · données conservées sur cet appareil'));
+    expect(copy, contains('Échec de synchronisation · appuyer pour réessayer'));
     expect(source, isNot(contains('valueListenable: syncService.isSyncing')));
   });
 

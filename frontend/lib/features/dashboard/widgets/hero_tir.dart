@@ -16,6 +16,7 @@ class _HeroTIR extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final copy = AuditedPageCopy.of(context);
     final percentage = ClinicalEngine.calcTIR(logs, low, high);
     final daysWithData = logs
         .map((log) {
@@ -39,7 +40,7 @@ class _HeroTIR extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _HeroBadge(label: 'MESURES DANS LA CIBLE · $range JOURS'),
+                _HeroBadge(label: copy.targetTitle(range)),
                 const SizedBox(height: 16),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -67,7 +68,7 @@ class _HeroTIR extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  '${logs.length} mesures sur $daysWithData jour${daysWithData > 1 ? 's' : ''} · proportion de mesures, pas durée CGM',
+                  copy.targetCoverage(logs.length, daysWithData),
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.78),
                     fontSize: 12,
@@ -76,7 +77,7 @@ class _HeroTIR extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Repère général ≥ 70 % · votre cible personnelle peut être différente.',
+                  copy.targetReference,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 13,
@@ -85,7 +86,7 @@ class _HeroTIR extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 _HeroOutlineBtn(
-                  label: 'Voir le journal',
+                  label: copy.viewJournal,
                   onTap: () => GoRouter.of(context).go('/journal'),
                 ),
               ],

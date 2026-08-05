@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/drift/database.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
+import '../../l10n/audited_page_copy.dart';
 import '../../services/sync_service.dart';
 import 'clinical_engine.dart';
 import 'widgets/glucose_chart_with_events.dart';

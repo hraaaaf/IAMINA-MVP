@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/amina_text_field.dart';
+import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
@@ -103,9 +104,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _buildTextField('Min', _targetLowController, l10n)),
+                Expanded(child: _buildTextField(AuditedPageCopy.of(context).minimum, _targetLowController, l10n)),
                 const SizedBox(width: 16),
-                Expanded(child: _buildTextField('Max', _targetHighController, l10n)),
+                Expanded(child: _buildTextField(AuditedPageCopy.of(context).maximum, _targetHighController, l10n)),
               ],
             ),
 
@@ -480,7 +481,8 @@ class _ProfileCompletionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = pct >= 100 ? 'Profil complet ✓' : 'Profil complété à $pct%';
+    final copy = AuditedPageCopy.of(context);
+    final label = copy.profileCompletionLabel(pct);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -513,9 +515,9 @@ class _ProfileCompletionHeader extends StatelessWidget {
         ),
         if (pct < 100) ...[
           const SizedBox(height: 8),
-          const Text(
-            'Complétez votre profil pour des analyses plus précises.',
-            style: TextStyle(fontSize: 11, color: AminaTheme.ink500, height: 1.4),
+          Text(
+            copy.profileCompletionPrompt,
+            style: const TextStyle(fontSize: 11, color: AminaTheme.ink500, height: 1.4),
           ),
         ],
       ]),

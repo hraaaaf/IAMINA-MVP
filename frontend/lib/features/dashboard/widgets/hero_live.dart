@@ -35,6 +35,7 @@ class _HeroLive extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final copy = AuditedPageCopy.of(context);
     final latest = logs.isNotEmpty ? logs.first : null;
     final value = latest?.bloodSugar ?? 0;
     final minutesAgo = latest != null
@@ -42,9 +43,10 @@ class _HeroLive extends StatelessWidget {
               .difference(latest.loggedAt ?? latest.createdAt)
               .inMinutes
         : 0;
-    final mealLabel = latest?.mealType?.isNotEmpty == true
+    final rawMealLabel = latest?.mealType?.isNotEmpty == true
         ? latest!.mealType!
         : null;
+    final mealLabel = rawMealLabel == null ? null : copy.meal(rawMealLabel);
     final insulin = latest?.insulinUnits != null &&
             (latest!.insulinUnits ?? 0) > 0
         ? '${latest.insulinUnits!.toStringAsFixed(latest.insulinUnits! == latest.insulinUnits!.truncateToDouble() ? 0 : 1)}u rapide'
@@ -85,7 +87,7 @@ class _HeroLive extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _HeroBadge(label: 'DERNIÈRE MESURE'),
+                    _HeroBadge(label: copy.latestReading),
                     SizedBox(height: compact ? 14 : 18),
                     Row(
                       children: [
@@ -114,9 +116,7 @@ class _HeroLive extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      minutesAgo == 0
-                          ? 'à l\'instant'
-                          : 'il y a $minutesAgo min',
+                      minutesAgo == 0 ? copy.justNow : copy.minutesAgo(minutesAgo),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.65),
                         fontSize: 12,

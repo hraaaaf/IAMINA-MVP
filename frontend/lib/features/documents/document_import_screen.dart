@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../l10n/audited_page_copy.dart';
 import '../../data/models/document_models.dart';
 import '../../services/api_client.dart';
 
@@ -136,7 +137,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
               context.canPop() ? context.pop() : context.go('/dashboard'),
         ),
         title: Text(
-          'Importer un document',
+          AuditedPageCopy.of(context).documentTitle,
           style: TextStyle(
             color: AminaTheme.textPrimary(context),
             fontWeight: FontWeight.w700,
@@ -184,7 +185,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                'Importez n\'importe quel document médical.\nIAmina l\'analyse et extrait les données automatiquement.',
+                AuditedPageCopy.of(context).documentIntro,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -214,7 +215,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                   key: const ValueKey('choose-document-button'),
                   onPressed: _pickFile,
                   icon: const Icon(Icons.folder_open),
-                  label: const Text('Choisir un document'),
+                  label: Text(AuditedPageCopy.of(context).chooseDocument),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AminaTheme.teal600,
                     foregroundColor: Colors.white,
