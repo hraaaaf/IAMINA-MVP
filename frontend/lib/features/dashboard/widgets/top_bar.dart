@@ -26,45 +26,79 @@ class _TopBar extends StatelessWidget {
         border: Border(bottom: BorderSide(color: AminaTheme.divider(context))),
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(hPad, top + 10, hPad, 10),
-        child: Row(
+        padding: EdgeInsetsDirectional.fromSTEB(hPad, top + 10, hPad, 10),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 760;
+            return compact
+                ? _buildCompact(context)
+                : _buildDesktop(context);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktop(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: _breadcrumb(context, detailed: true)),
+        _RangeChips(range: range, onChanged: onRangeChanged),
+        const SizedBox(width: 12),
+        _syncButton(),
+        const SizedBox(width: 12),
+        _ParlerButton(onTap: onChatTap),
+      ],
+    );
+  }
+
+  Widget _buildCompact(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
           children: [
-            Expanded(
-              child: RichText(
-                text: TextSpan(
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    color: AminaTheme.textSecondary(context),
-                  ),
-                  children: [
-                    const TextSpan(text: 'Accueil · '),
-                    TextSpan(
-                      text: 'Vue d\'ensemble',
-                      style: TextStyle(
-                        color: AminaTheme.textPrimary(context),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            _RangeChips(range: range, onChanged: onRangeChanged),
-            const SizedBox(width: 12),
-            ValueListenableBuilder<SyncUiState>(
-              valueListenable: syncService.state,
-              builder: (_, state, __) => _SyncStatusButton(
-                state: state,
-                onRetry: state == SyncUiState.syncing
-                    ? null
-                    : syncService.syncPendingLogs,
-              ),
-            ),
-            const SizedBox(width: 12),
-            _ParlerButton(onTap: onChatTap),
+            Expanded(child: _breadcrumb(context, detailed: false)),
+            const SizedBox(width: 8),
+            _syncButton(),
           ],
         ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _RangeChips(range: range, onChanged: onRangeChanged),
+            const SizedBox(width: 8),
+            Expanded(child: _ParlerButton(onTap: onChatTap, compact: true)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _breadcrumb(BuildContext context, {required bool detailed}) {
+    return Text(
+      detailed ? 'Accueil · Vue d\'ensemble' : 'Vue d\'ensemble',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontFamily: 'Inter',
+        fontSize: 14,
+        color: detailed
+            ? AminaTheme.textSecondary(context)
+            : AminaTheme.textPrimary(context),
+        fontWeight: detailed ? FontWeight.w500 : FontWeight.w700,
+      ),
+    );
+  }
+
+  Widget _syncButton() {
+    return ValueListenableBuilder<SyncUiState>(
+      valueListenable: syncService.state,
+      builder: (_, state, __) => _SyncStatusButton(
+        state: state,
+        onRetry: state == SyncUiState.syncing
+            ? null
+            : syncService.syncPendingLogs,
       ),
     );
   }
@@ -72,40 +106,59 @@ class _TopBar extends StatelessWidget {
 
 class _ParlerButton extends StatelessWidget {
   final VoidCallback onTap;
-  const _ParlerButton({required this.onTap});
+  final bool compact;
+
+  const _ParlerButton({required this.onTap, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 44),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          gradient: AminaTheme.heroGradient,
-          borderRadius: BorderRadius.circular(99),
-          boxShadow: [
-            BoxShadow(
-              color: AminaTheme.teal500.withValues(alpha: 0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.chat_bubble_outline, color: Colors.white, size: 14),
-            SizedBox(width: 8),
-            Text(
-              'Parler à IAmina',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
+    final label = Text(
+      compact ? 'IAmina' : 'Parler à IAmina',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+
+    return Semantics(
+      button: true,
+      label: 'Parler à IAmina',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(99),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 10 : 14,
+            vertical: 12,
+          ),
+          decoration: BoxDecoration(
+            gradient: AminaTheme.heroGradient,
+            borderRadius: BorderRadius.circular(99),
+            boxShadow: [
+              BoxShadow(
+                color: AminaTheme.teal500.withValues(alpha: 0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-            ),
-          ],
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.chat_bubble_outline,
+                color: Colors.white,
+                size: 14,
+              ),
+              const SizedBox(width: 8),
+              if (compact) Expanded(child: label) else label,
+            ],
+          ),
         ),
       ),
     );
@@ -191,6 +244,7 @@ class _SyncStatusButton extends StatelessWidget {
 class _RangeChips extends StatelessWidget {
   final int range;
   final ValueChanged<int> onChanged;
+
   const _RangeChips({required this.range, required this.onChanged});
 
   @override
@@ -203,26 +257,28 @@ class _RangeChips extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(2),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [7, 21, 90].map((r) {
-          final sel = r == range;
-          return GestureDetector(
+          final selected = r == range;
+          return InkWell(
             onTap: () => onChanged(r),
+            borderRadius: BorderRadius.circular(6),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: sel
+                color: selected
                     ? (dark ? AminaTheme.dark500 : AminaTheme.cardBg)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
-                boxShadow: sel ? AminaTheme.shadowClinical : null,
+                boxShadow: selected ? AminaTheme.shadowClinical : null,
               ),
               child: Text(
                 '$r j',
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                  color: sel
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected
                       ? AminaTheme.textPrimary(context)
                       : AminaTheme.textSecondary(context),
                 ),
