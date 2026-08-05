@@ -18,6 +18,7 @@ class AuthService extends ChangeNotifier {
   final http.Client _httpClient;
   String? _nativeToken;
   bool _initialized = false;
+  bool _auditSession = false;
 
   AuthService({
     FirebaseAuth? auth,
@@ -37,9 +38,13 @@ class AuthService extends ChangeNotifier {
 
   bool get isInitialized => _initialized;
   bool get isAuthenticated =>
-      (_nativeToken?.isNotEmpty ?? false) || _firebaseAuth?.currentUser != null;
+      _auditSession ||
+      (_nativeToken?.isNotEmpty ?? false) ||
+      _firebaseAuth?.currentUser != null;
   bool get isAnonymous =>
-      _nativeToken == null && (_firebaseAuth?.currentUser?.isAnonymous ?? false);
+      _auditSession ||
+      (_nativeToken == null && (_firebaseAuth?.currentUser?.isAnonymous ?? false));
+  bool get isAuditSession => _auditSession;
   User? get firebaseUser => _firebaseAuth?.currentUser;
 
   Future<void> initialize() async {
@@ -60,13 +65,23 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  void enterAuditSession() {
+    if (!_initialized) {
+      throw StateError('Audit session requires initialized authentication');
+    }
+    _auditSession = true;
+    notifyListeners();
+  }
+
   Future<String?> getIdToken() async {
+    if (_auditSession) return null;
     final native = _nativeToken;
     if (native != null && native.isNotEmpty) return native;
     return _firebaseAuth?.currentUser?.getIdToken();
   }
 
   Future<String?> refreshToken() async {
+    if (_auditSession) return null;
     final native = _nativeToken;
     if (native != null && native.isNotEmpty) return native;
     return _firebaseAuth?.currentUser?.getIdToken(true);
@@ -116,6 +131,7 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    _auditSession = false;
     final token = _nativeToken;
     if (token != null) {
       try {
