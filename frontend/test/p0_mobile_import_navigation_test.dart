@@ -105,7 +105,12 @@ void main() {
     await tester.pumpWidget(
       Provider<ApiClient>.value(
         value: ApiClient(baseUrl: 'http://127.0.0.1:1'),
-        child: const MaterialApp(home: DocumentImportScreen()),
+        child: MaterialApp(
+          locale: const Locale('fr'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const DocumentImportScreen(),
+        ),
       ),
     );
     await tester.pumpAndSettle();

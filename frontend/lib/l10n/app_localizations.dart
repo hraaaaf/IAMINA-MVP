@@ -133,7 +133,7 @@ abstract class AppLocalizations {
   /// No description provided for @dataPrivacyNote.
   ///
   /// In en, this message translates to:
-  /// **'Pseudonymised data'**
+  /// **'AI processing subject to approval'**
   String get dataPrivacyNote;
 
   /// No description provided for @sensorStatus.
@@ -559,13 +559,13 @@ abstract class AppLocalizations {
   /// No description provided for @consentHeadline.
   ///
   /// In en, this message translates to:
-  /// **'IAmina analyses your glucose data with AI'**
+  /// **'IAmina may process some data with approved AI services'**
   String get consentHeadline;
 
   /// No description provided for @consentBody.
   ///
   /// In en, this message translates to:
-  /// **'To provide personalised insights, IAmina uses Gemini AI to process your glucose readings, meals, and health context. Your data is pseudonymised before transmission and never sold to third parties.\n\nYou can withdraw this consent at any time from your profile settings.'**
+  /// **'This consent authorises IAmina to use the data categories listed above for AI features. External processing occurs only when the deployment provider, region and retention policy have been approved. Without consent or a valid provider approval, data is not sent to the AI service.\n\nThe provider and terms may vary by deployment. You can withdraw this consent at any time from your profile settings.'**
   String get consentBody;
 
   /// No description provided for @consentDataPoint1.
@@ -633,6 +633,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'AI consent required to use this feature'**
   String get consentRequired;
+
+  /// No description provided for @documentPrivacyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Controlled external processing'**
+  String get documentPrivacyTitle;
+
+  /// No description provided for @documentPrivacyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The document is sent to an external service only when your consent and the deployment provider policy are valid. Otherwise, import is refused.'**
+  String get documentPrivacyBody;
 
   /// No description provided for @save.
   ///
