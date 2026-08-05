@@ -1,7 +1,7 @@
 import 'dart:io';
 
+import 'package:amina/services/auth_service.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:iamina_app/services/auth_service.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
