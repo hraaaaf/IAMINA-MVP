@@ -17,8 +17,8 @@ def replace_once(old: str, new: str) -> None:
 
 def main() -> None:
     replace_once(
-        """          if (lastLogAt != null)\n            Text(\n              'Dernière mesure $label',\n              style: const TextStyle(\n                fontSize: 11,\n                color: AminaTheme.teal600,\n              ),\n            ),\n        ])),\n        const Icon(\n          Icons.sync_outlined,\n          size: 16,\n          color: AminaTheme.teal500,\n        ),""",
-        """          if (lastLogAt != null)\n            Text(\n              'Dernière mesure $label · Stockage local',\n              style: const TextStyle(\n                fontSize: 11,\n                color: AminaTheme.teal600,\n              ),\n            ),\n        ])),\n        const Tooltip(\n          message: 'Données stockées sur cet appareil',\n          child: Icon(\n            Icons.storage_outlined,\n            size: 16,\n            color: AminaTheme.teal500,\n          ),\n        ),""",
+        """                if (lastLogAt != null)\n                  Text(\n                    'Dernière mesure $label',\n                    style: const TextStyle(\n                      fontSize: 11,\n                      color: AminaTheme.teal600,\n                    ),\n                  ),\n              ],\n            ),\n          ),\n          const Icon(Icons.sync_outlined, size: 16, color: AminaTheme.teal500),""",
+        """                if (lastLogAt != null)\n                  Text(\n                    'Dernière mesure $label · Stockage local',\n                    style: const TextStyle(\n                      fontSize: 11,\n                      color: AminaTheme.teal600,\n                    ),\n                  ),\n              ],\n            ),\n          ),\n          const Tooltip(\n            message: 'Données stockées sur cet appareil',\n            child: Icon(\n              Icons.storage_outlined,\n              size: 16,\n              color: AminaTheme.teal500,\n            ),\n          ),""",
     )
     print("P0 truthful-system-state copy patch applied.")
 
