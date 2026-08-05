@@ -6,7 +6,14 @@ import 'package:flutter/foundation.dart';
 import '../data/drift/database.dart';
 import 'api_client.dart';
 
-enum SyncUiState { checking, upToDate, pending, syncing, offline, error }
+enum SyncUiState {
+  checking,
+  upToDate,
+  pending,
+  syncing,
+  offline,
+  error,
+}
 
 class SyncService {
   final AppDatabase _db;
@@ -19,17 +26,14 @@ class SyncService {
 
   /// Authoritative patient-facing state. UI must never infer synchronization
   /// from a decorative icon or from local data existing on the device.
-  final ValueNotifier<SyncUiState> state = ValueNotifier<SyncUiState>(
-    SyncUiState.checking,
-  );
+  final ValueNotifier<SyncUiState> state =
+      ValueNotifier<SyncUiState>(SyncUiState.checking);
 
   SyncService(this._db, this._apiClient);
 
   void init() {
     unawaited(refreshState());
-    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
-      results,
-    ) {
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((results) {
       if (_isOffline(results)) {
         state.value = SyncUiState.offline;
         return;
@@ -57,12 +61,9 @@ class SyncService {
   Future<void> syncPendingLogs() async {
     if (isSyncing.value) return;
 
-    final connectivity = await _connectivity.checkConnectivity();
-    if (_isOffline(connectivity)) {
-      state.value = SyncUiState.offline;
-      return;
-    }
-
+    // An explicit retry must remain usable and testable without consulting a
+    // platform channel first. Connectivity events set the offline state; the
+    // network request itself is the source of truth for reachability.
     final pending = await _db.getPendingLogs();
     if (pending.isEmpty) {
       state.value = SyncUiState.upToDate;
