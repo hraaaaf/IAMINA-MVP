@@ -6,7 +6,7 @@
   "appTagline": "Votre équilibre glycémique, chaque jour",
   "brandName": "Diabetes Log",
   "brandTagShort": "IA · AMINA",
-  "dataPrivacyNote": "Données pseudonymisées",
+  "dataPrivacyNote": "Traitement IA soumis à autorisation",
   "sensorStatus": "Capteur G7 · IAmina",
 
   "login": "Connexion",
@@ -84,8 +84,8 @@
   "entryDeleted": "Mesure supprimée",
 
   "consentTitle": "Confidentialité & IA",
-  "consentHeadline": "IAmina analyse vos données glycémiques avec l'IA",
-  "consentBody": "Pour vous fournir des analyses personnalisées, IAmina utilise Gemini AI pour traiter vos mesures glycémiques, vos repas et votre contexte de santé. Vos données sont pseudonymisées avant transmission et ne sont jamais vendues à des tiers.\n\nVous pouvez retirer ce consentement à tout moment depuis vos paramètres de profil.",
+  "consentHeadline": "IAmina peut traiter certaines données avec des services IA approuvés",
+  "consentBody": "Ce consentement autorise IAmina à utiliser les catégories de données listées ci-dessus pour les fonctionnalités IA. Un traitement externe n'est effectué que si le fournisseur, la région et la politique de conservation du déploiement ont été approuvés. Sans consentement ou approbation fournisseur valide, les données ne sont pas envoyées au service IA.\n\nLe fournisseur et les conditions peuvent varier selon le déploiement. Vous pouvez retirer ce consentement à tout moment depuis vos paramètres de profil.",
   "consentDataPoint1": "📊 Mesures glycémiques et tendances",
   "consentDataPoint2": "🍽️ Contexte repas et doses d'insuline",
   "consentDataPoint3": "😴 Fatigue et marqueurs d'événements de vie",
@@ -97,6 +97,8 @@
   "consentWithdrawConfirmBody": "Les fonctionnalités IA (Résumé IAmina, Chat, Vocal) seront désactivées jusqu'à ce que vous donniez à nouveau votre consentement.",
   "consentWithdrawn": "Consentement IA retiré",
   "consentRequired": "Consentement IA requis pour utiliser cette fonctionnalité",
+  "documentPrivacyTitle": "Traitement externe contrôlé",
+  "documentPrivacyBody": "Le document n’est transmis à un service externe que si votre consentement et la politique fournisseur du déploiement sont valides. Sinon, l’import est refusé.",
 
   "save": "Sauvegarder",
   "saveProfile": "Enregistrer",

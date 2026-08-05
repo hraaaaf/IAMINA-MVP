@@ -24,7 +24,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get brandTagShort => 'AI · AMINA';
 
   @override
-  String get dataPrivacyNote => 'بيانات مجهولة الهوية';
+  String get dataPrivacyNote => 'معالجة الذكاء الاصطناعي تخضع للموافقة';
 
   @override
   String get sensorStatus => 'مستشعر G7 · IAmina';
@@ -242,11 +242,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get consentHeadline =>
-      'IAmina تحلل بيانات الجلوكوز باستخدام الذكاء الاصطناعي';
+      'قد تعالج IAmina بعض البيانات باستخدام خدمات ذكاء اصطناعي معتمدة';
 
   @override
   String get consentBody =>
-      'لتزويدك برؤى مخصصة، تستخدم IAmina الذكاء الاصطناعي (Gemini) لمعالجة قراءات الجلوكوز ووجباتك وسياقك الصحي. تُجهَّل بياناتك قبل الإرسال ولا تُباع لأطراف ثالثة أبدًا.\n\nيمكنك سحب هذا الموافقة في أي وقت من إعدادات ملفك الشخصي.';
+      'تسمح هذه الموافقة لـ IAmina باستخدام فئات البيانات المذكورة أعلاه لتشغيل ميزات الذكاء الاصطناعي. لا تتم المعالجة الخارجية إلا إذا تمت الموافقة على المزوّد والمنطقة وسياسة الاحتفاظ الخاصة ببيئة التشغيل. من دون موافقة المستخدم أو اعتماد صالح للمزوّد، لا تُرسل البيانات إلى خدمة الذكاء الاصطناعي.\n\nقد يختلف المزوّد والشروط حسب بيئة التشغيل. يمكنك سحب هذه الموافقة في أي وقت من إعدادات ملفك الشخصي.';
 
   @override
   String get consentDataPoint1 => '📊 قراءات الجلوكوز والاتجاهات';
@@ -282,6 +282,13 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get consentRequired =>
       'مطلوب موافقة الذكاء الاصطناعي لاستخدام هذه الميزة';
+
+  @override
+  String get documentPrivacyTitle => 'معالجة خارجية مضبوطة';
+
+  @override
+  String get documentPrivacyBody =>
+      'لا يُرسل المستند إلى خدمة خارجية إلا إذا كانت موافقتك وسياسة المزوّد الخاصة ببيئة التشغيل صالحتين. خلاف ذلك، يُرفض الاستيراد.';
 
   @override
   String get save => 'حفظ';

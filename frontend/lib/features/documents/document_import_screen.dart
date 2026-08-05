@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:amina/l10n/app_localizations.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -204,7 +205,9 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                   _FormatChip(icon: Icons.description, label: 'Word'),
                 ],
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: 20),
+              const _PrivacyGateNotice(),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -461,6 +464,62 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
 enum _Phase { pick, preview, done }
 
 // ── Sub-widgets ────────────────────────────────────────────────────────────────
+
+class _PrivacyGateNotice extends StatelessWidget {
+  const _PrivacyGateNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      key: const ValueKey('document-privacy-gate'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AminaTheme.isDark(context)
+            ? AminaTheme.dark700
+            : AminaTheme.ink50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AminaTheme.divider(context)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.shield_outlined,
+            size: 20,
+            color: AminaTheme.teal600,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.documentPrivacyTitle,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AminaTheme.textPrimary(context),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  l10n.documentPrivacyBody,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.45,
+                    color: AminaTheme.textSecondary(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _FormatChip extends StatelessWidget {
   final IconData icon;

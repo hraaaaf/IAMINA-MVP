@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-04 — native/clinical review gate prepared in PR #37; secret-history remediation preflight prepared in PR #38; external rotation and approvals remain open.
+> **Last updated:** 2026-08-05 — P0 product-truthfulness closure completed through PRs #39–#43; external MENA, legal, linguistic and secret-history gates remain open.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -26,6 +26,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | Workstream | Progress | Status | Evidence |
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
+| P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -66,6 +67,17 @@ Preparation work does not close a live benchmark, legal/privacy approval, native
 
 - Migration state reconciled without unnecessary ALTER operations.
 - `makemigrations --check --dry-run` is a permanent CI gate.
+
+## ✅ P0 product truthfulness
+
+- Real actions and the complete local CRUD loop are permanently certified.
+- Synchronization and storage labels derive from real typed state.
+- Clinical metrics disclose method, coverage and limitations without fabricated precision.
+- Mobile Importer and the document picker are certified on narrow and short viewports.
+- Privacy wording is deployment-aware in FR/EN/AR and fails closed before external document processing.
+- Permanent Flutter contracts prevent regression of all five requirements.
+
+**Closure:** PRs #39–#43. This workstream is separate from the MENA critical-path numerator.
 
 ---
 

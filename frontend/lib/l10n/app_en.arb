@@ -6,7 +6,7 @@
   "appTagline": "Your blood sugar balance, every day",
   "brandName": "Diabetes Log",
   "brandTagShort": "AI · AMINA",
-  "dataPrivacyNote": "Pseudonymised data",
+  "dataPrivacyNote": "AI processing subject to approval",
   "sensorStatus": "Sensor G7 · IAmina",
 
   "login": "Log in",
@@ -84,8 +84,8 @@
   "entryDeleted": "Reading deleted",
 
   "consentTitle": "Privacy & AI",
-  "consentHeadline": "IAmina analyses your glucose data with AI",
-  "consentBody": "To provide personalised insights, IAmina uses Gemini AI to process your glucose readings, meals, and health context. Your data is pseudonymised before transmission and never sold to third parties.\n\nYou can withdraw this consent at any time from your profile settings.",
+  "consentHeadline": "IAmina may process some data with approved AI services",
+  "consentBody": "This consent authorises IAmina to use the data categories listed above for AI features. External processing occurs only when the deployment provider, region and retention policy have been approved. Without consent or a valid provider approval, data is not sent to the AI service.\n\nThe provider and terms may vary by deployment. You can withdraw this consent at any time from your profile settings.",
   "consentDataPoint1": "📊 Glucose readings and trends",
   "consentDataPoint2": "🍽️ Meal context and insulin doses",
   "consentDataPoint3": "😴 Fatigue and life event markers",
@@ -97,6 +97,8 @@
   "consentWithdrawConfirmBody": "AI features (IAmina Summary, Chat, Voice) will be disabled until you give consent again.",
   "consentWithdrawn": "AI consent withdrawn",
   "consentRequired": "AI consent required to use this feature",
+  "documentPrivacyTitle": "Controlled external processing",
+  "documentPrivacyBody": "The document is sent to an external service only when your consent and the deployment provider policy are valid. Otherwise, import is refused.",
 
   "save": "Save",
   "saveProfile": "Save",

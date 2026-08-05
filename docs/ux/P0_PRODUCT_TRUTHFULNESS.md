@@ -1,10 +1,10 @@
 # P0 Product Truthfulness
 
-> Status: active closure sequence. One LOT, one PR, one independently validated responsibility.
+> **Status: CLOSED.** Five independently validated LOTs are merged or carried by the final closure PR #43.
 
-This P0 exists to ensure that every patient-facing promise in IAmina is real,
-traceable and clinically safe. A visually convincing control is not considered a
-feature unless its state and outcome are backed by executable behavior.
+This P0 ensures that every patient-facing promise in IAmina is real, traceable and
+clinically safe. A visually convincing control is not considered a feature unless
+its state and outcome are backed by executable behavior.
 
 ## Closure checklist
 
@@ -12,84 +12,49 @@ feature unless its state and outcome are backed by executable behavior.
 |---|---|---|---|
 | P0-UX-1 | Every apparent action is functional or explicitly unavailable | **Closed** | PR #39; `p0_real_actions_contract_test.dart` |
 | P0-UX-2 | System states such as synchronization, notifications and pilot status are live and truthful | **Closed** | PR #40; typed `SyncUiState`; `p0_truthful_system_state_contract_test.dart` |
-| P0-UX-3 | Clinical conclusions, confidence and goals are explainable; no opaque score or fabricated precision | **Closed** | PR #41; coverage-aware KPI UI; `p0_clinical_explainability_contract_test.dart` |
-| P0-UX-4 | Import is reachable and usable on mobile | **In validation** | 390 px navigation and short-viewport widget tests in current LOT |
-| P0-UX-5 | Privacy wording never exceeds approved deployment and processor evidence | Open | Dedicated LOT required |
+| P0-UX-3 | Clinical conclusions, confidence and goals are explainable; no opaque score or fabricated precision | **Closed** | PR #41; `p0_clinical_explainability_contract_test.dart` |
+| P0-UX-4 | Import is reachable and usable on mobile | **Closed** | PR #42; 390 × 844 and 360 × 560 widget journeys |
+| P0-UX-5 | Privacy wording never exceeds approved deployment and processor evidence | **Closed** | PR #43; `p0_privacy_truthfulness_contract_test.dart` |
 
-## P0-UX-1 contract
+## P0-UX-1 — real actions
 
-PR #39 closes the first requirement by enforcing all of the following:
+PR #39 closes false or empty controls, preserves the real Drift CRUD loop and
+requires unavailable integrations to be visibly non-interactive.
 
-- the desktop summary discovery control scrolls to real content;
-- decorative notification controls are removed rather than simulated;
-- unavailable Dexcom and Libre integrations are labelled non-interactive and
-  unavailable, with no fake waitlist action;
-- fallback summary content is observation-only and contains no insulin-dose or
-  basal-adjustment suggestion;
-- accept/ignore controls that only changed ephemeral local state are removed;
-- the real create, read, update and delete loop is continuously checked against
-  Drift persistence and journal routes;
-- mobile navigation derivation includes the Import destination.
+## P0-UX-2 — truthful system state
 
-## P0-UX-2 contract
+PR #40 makes synchronization, offline, pending and error labels derive from typed
+runtime state. Local storage is never presented as confirmed server synchronization.
 
-PR #40 closes the second requirement by making synchronization and storage claims
-derive from real runtime state:
+## P0-UX-3 — clinical explainability
 
-- `SyncService` exposes checking, up-to-date, pending, syncing, offline and error
-  states;
-- connectivity loss produces an explicit offline state rather than a success icon;
-- pending local records produce a pending state;
-- only an empty pending queue or confirmed successful synchronization may produce
-  the up-to-date state;
-- partial and total failures produce an error state with a retry action;
-- the dashboard renders the authoritative state with accessible labels and tooltips;
-- data shown on the Import page is labelled as local storage, not synchronization;
-- decorative notification controls and static success labels are permanently
-  rejected by the source contract.
+PR #41 removes fabricated confidence, decorative trends and opaque scores. Discrete
+manual/imported readings are not labelled as CGM time, and KPI method, coverage and
+limitations remain visible.
 
-## P0-UX-3 contract
+## P0-UX-4 — mobile import
 
-PR #41 removes fabricated clinical precision and exposes the basis of each
-patient-facing metric:
+PR #42 proves that Importer remains reachable at 390 px, the real Pulper route opens,
+and the picker remains scrollable without overflow at 360 × 560. Persistence still
+requires explicit review and confirmation.
 
-- a discrete set of manual/imported entries is labelled **measures in range**, not
-  continuous **time in range**;
-- measurement count and number of represented days are visible alongside the
-  target-range, GMI and CV metrics;
-- thresholds are labelled as general, non-personalized references and explicitly
-  state that a patient's target may differ;
-- GMI states its available-data basis, flags limited coverage and says that it does
-  not replace a laboratory HbA1c;
-- summary KPI cards expose coverage and remain readable on mobile and desktop;
-- severity is never converted into a fabricated confidence percentage;
-- threshold comparisons are never rendered as historical trend arrows;
-- automated findings are labelled as observations and actions as points to discuss,
-  not personalized prescriptions;
-- the permanent Flutter contract rejects opaque `/100` scores, decorative signal
-  strength, unsupported confidence labels and misleading CGM-duration wording.
+## P0-UX-5 — privacy truthfulness
 
-## P0-UX-4 contract
+PR #43 closes privacy overclaiming through a fail-closed patient-facing contract:
 
-The current LOT certifies the full mobile entry path rather than merely checking
-that routes exist:
+- no provider name is hardcoded as a permanent deployment fact;
+- consent text does not promise pseudonymisation, no-training, no-retention or
+  third-party-sales guarantees without deployment evidence;
+- French, English and Arabic state that external processing requires valid consent
+  plus approved provider, region and retention policy;
+- the document picker shows the external-processing gate before file selection;
+- unsupported privacy claims are rejected permanently by a Flutter source contract;
+- generated localizations are checked so reviewed ARB wording cannot drift from the
+  runtime application.
 
-- every mobile destination receives a stable route-derived key;
-- at widths below 430 px only the selected label is shown, preserving six usable
-  destinations without removing Importer or Settings;
-- a 390 × 844 widget test taps the actual Importer destination rendered by
-  `MainShell`;
-- the test reaches the real `ImportScreen`, opens the Pulper CTA and reaches the
-  full-screen `DocumentImportScreen`;
-- a 360 × 560 test proves the document picker remains scrollable and reachable;
-- the Pulper CTA has button semantics and a stable automation key;
-- the real flow uses `FilePicker`, calls document ingestion, displays extracted
-  data for review and persists nothing until explicit confirmation.
+## Closure and score policy
 
-## Score policy
-
-A score above **9.5/10** may only be claimed after all five checklist items are
-closed, the complete CI matrix is green, the application is launched from the
-certified commit and the final visual/functional audit finds no critical or high
-severity issue. Preparation work and source inspection alone do not increase the
-score.
+**P0 source and CI closure: 5/5 requirements complete.** A product score above
+**9.5/10** still requires launching the certified merge commit and completing the
+final visual/functional audit with no critical or high-severity finding. This file
+does not convert source inspection into a deployment claim.

@@ -24,7 +24,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get brandTagShort => 'AI · AMINA';
 
   @override
-  String get dataPrivacyNote => 'Pseudonymised data';
+  String get dataPrivacyNote => 'AI processing subject to approval';
 
   @override
   String get sensorStatus => 'Sensor G7 · IAmina';
@@ -240,11 +240,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get consentTitle => 'Privacy & AI';
 
   @override
-  String get consentHeadline => 'IAmina analyses your glucose data with AI';
+  String get consentHeadline =>
+      'IAmina may process some data with approved AI services';
 
   @override
   String get consentBody =>
-      'To provide personalised insights, IAmina uses Gemini AI to process your glucose readings, meals, and health context. Your data is pseudonymised before transmission and never sold to third parties.\n\nYou can withdraw this consent at any time from your profile settings.';
+      'This consent authorises IAmina to use the data categories listed above for AI features. External processing occurs only when the deployment provider, region and retention policy have been approved. Without consent or a valid provider approval, data is not sent to the AI service.\n\nThe provider and terms may vary by deployment. You can withdraw this consent at any time from your profile settings.';
 
   @override
   String get consentDataPoint1 => '📊 Glucose readings and trends';
@@ -279,6 +280,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get consentRequired => 'AI consent required to use this feature';
+
+  @override
+  String get documentPrivacyTitle => 'Controlled external processing';
+
+  @override
+  String get documentPrivacyBody =>
+      'The document is sent to an external service only when your consent and the deployment provider policy are valid. Otherwise, import is refused.';
 
   @override
   String get save => 'Save';
