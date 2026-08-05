@@ -660,7 +660,8 @@ class _ProfileCompletionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = pct >= 100 ? 'Profil complet ✓' : 'Profil complété à $pct%';
+    final copy = AuditedPageCopy.of(context);
+    final label = copy.profileCompletionLabel(pct);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -713,9 +714,9 @@ class _ProfileCompletionHeader extends StatelessWidget {
           ),
           if (pct < 100) ...[
             const SizedBox(height: 8),
-            const Text(
-              'Complétez votre profil pour des analyses plus précises.',
-              style: TextStyle(
+            Text(
+              copy.profileCompletionPrompt,
+              style: const TextStyle(
                 fontSize: 11,
                 color: AminaTheme.ink500,
                 height: 1.4,
