@@ -92,7 +92,10 @@ class _ImportScreenState extends State<ImportScreen> {
                     const SizedBox(height: 16),
                   ],
                   // ── Pulper IAmina ──────────────────────────────────────────
-                  _PulperCard(onTap: () => context.push('/pulper')),
+                  _PulperCard(
+                    key: const ValueKey('import-document-cta'),
+                    onTap: () => context.push('/pulper'),
+                  ),
                   const SizedBox(height: 20),
                   const Padding(
                     padding: EdgeInsets.only(bottom: 16),
@@ -383,72 +386,81 @@ class _LastImportBanner extends StatelessWidget {
 
 class _PulperCard extends StatelessWidget {
   final VoidCallback onTap;
-  const _PulperCard({required this.onTap});
+  const _PulperCard({super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: AminaTheme.heroGradient,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: AminaTheme.shadowFab,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(14),
+    return Semantics(
+      button: true,
+      label: 'Ouvrir l’import de document',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: AminaTheme.heroGradient,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: AminaTheme.shadowFab,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.upload_file,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
-              child: const Icon(
-                Icons.upload_file,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Pulper IAmina',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'PDF · Photo · Excel · Word — IAmina extrait tout automatiquement.',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.82),
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Wrap(
+                      spacing: 6,
+                      children: [
+                        _PulperChip(label: 'Bilan labo'),
+                        _PulperChip(label: 'Export CGM'),
+                        _PulperChip(label: 'Ordonnance'),
+                        _PulperChip(label: 'Photo'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.arrow_forward_ios,
                 color: Colors.white,
-                size: 28,
+                size: 16,
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Pulper IAmina',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'PDF · Photo · Excel · Word — IAmina extrait tout automatiquement.',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.82),
-                      fontSize: 12,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Wrap(
-                    spacing: 6,
-                    children: [
-                      _PulperChip(label: 'Bilan labo'),
-                      _PulperChip(label: 'Export CGM'),
-                      _PulperChip(label: 'Ordonnance'),
-                      _PulperChip(label: 'Photo'),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
-          ],
+            ],
+          ),
         ),
       ),
     );
