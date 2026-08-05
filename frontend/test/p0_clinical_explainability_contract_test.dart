@@ -5,63 +5,78 @@ import 'package:flutter_test/flutter_test.dart';
 String _read(String path) => File(path).readAsStringSync();
 
 void main() {
-  test('summary exposes coverage and never fabricates confidence or trends', () {
-    final source = _read('lib/features/journal/ai_summary_screen.dart');
+  test(
+    'summary exposes coverage and never fabricates confidence or trends',
+    () {
+      final source = _read('lib/features/journal/ai_summary_screen.dart');
 
-    for (final required in <String>[
-      'Repères généraux non personnalisés',
-      'kpis.logCount',
-      'kpis.daysWithData',
-      'Observation automatique',
-      'estimation, pas HbA1c laboratoire',
-      'constraints.maxWidth < 720',
-      'Les données manquantes peuvent modifier l’interprétation',
-    ]) {
-      expect(source, contains(required), reason: 'Missing explainability contract: $required');
-    }
+      for (final required in <String>[
+        'Repères généraux non personnalisés',
+        'kpis.logCount',
+        'kpis.daysWithData',
+        'Observation automatique',
+        'estimation, pas HbA1c laboratoire',
+        'constraints.maxWidth < 720',
+        'Les données manquantes peuvent modifier l’interprétation',
+      ]) {
+        expect(
+          source,
+          contains(required),
+          reason: 'Missing explainability contract: $required',
+        );
+      }
 
-    for (final forbidden in <String>[
-      '_confidenceForSeverity',
-      'conf. ',
-      'class _SignalBars',
-      'Icons.arrow_upward',
-      'Icons.arrow_downward',
-      'confidenceBadge',
-      'required this.trend',
-      'conseils personnalisés',
-      'Cible 70–180',
-      '/100',
-    ]) {
-      expect(source, isNot(contains(forbidden)), reason: 'Fabricated precision remains: $forbidden');
-    }
-  });
+      for (final forbidden in <String>[
+        '_confidenceForSeverity',
+        'conf. ',
+        'class _SignalBars',
+        'Icons.arrow_upward',
+        'Icons.arrow_downward',
+        'confidenceBadge',
+        'required this.trend',
+        'conseils personnalisés',
+        'Cible 70–180',
+        '/100',
+      ]) {
+        expect(
+          source,
+          isNot(contains(forbidden)),
+          reason: 'Fabricated precision remains: $forbidden',
+        );
+      }
+    },
+  );
 
-  test('all target-range surfaces describe discrete measurements, not CGM time', () {
+  test('all target-range surfaces use the localized truthful contract', () {
+    final copy = _read('lib/l10n/audited_page_copy.dart');
     final sources = <String, String>{
       'KPI card': _read('lib/features/dashboard/widgets/kpi_tir_card.dart'),
       'contextual hero': _read('lib/features/dashboard/widgets/hero_tir.dart'),
     };
 
+    for (final required in <String>[
+      'Mesures dans la cible',
+      'proportion de mesures, pas durée CGM',
+      'votre cible personnelle peut être différente',
+      r'$count mesures sur $days jour',
+    ]) {
+      expect(
+        copy,
+        contains(required),
+        reason: 'Localized truthfulness contract is missing: $required',
+      );
+    }
+
     for (final entry in sources.entries) {
       final source = entry.value;
       expect(
-        source.toLowerCase(),
-        contains('mesures dans la cible'),
-        reason: '${entry.key} must name discrete measurements',
+        source,
+        contains('AuditedPageCopy.of(context)'),
+        reason: '${entry.key} must use the localized truthfulness source',
       );
       expect(
         source,
-        contains('proportion de mesures, pas durée CGM'),
-        reason: '${entry.key} must disclose the sampling method',
-      );
-      expect(
-        source.toLowerCase(),
-        contains('cible personnelle peut être différente'),
-        reason: '${entry.key} must not personalize a general reference',
-      );
-      expect(
-        source,
-        contains(r'${logs.length} mesures'),
+        contains('copy.targetCoverage'),
         reason: '${entry.key} must expose measurement coverage',
       );
 
@@ -97,7 +112,11 @@ void main() {
       'Confiance moyenne',
       'Confiance faible',
     ]) {
-      expect(source, isNot(contains(forbidden)), reason: 'Unsupported GMI confidence: $forbidden');
+      expect(
+        source,
+        isNot(contains(forbidden)),
+        reason: 'Unsupported GMI confidence: $forbidden',
+      );
     }
   });
 
@@ -115,7 +134,11 @@ void main() {
       "'Stable'",
       'Cible recommandée',
     ]) {
-      expect(source, isNot(contains(forbidden)), reason: 'Personalized CV claim remains: $forbidden');
+      expect(
+        source,
+        isNot(contains(forbidden)),
+        reason: 'Personalized CV claim remains: $forbidden',
+      );
     }
   });
 }
