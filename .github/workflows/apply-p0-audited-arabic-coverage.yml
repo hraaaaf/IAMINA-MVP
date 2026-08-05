@@ -1,21 +1,18 @@
-name: Apply audited-page Arabic coverage
+name: Finalize audited-page Arabic coverage
 
 on:
   push:
     branches:
       - fix/p0-audited-pages-arabic-coverage-v2
     paths:
-      - scripts/apply_p0_audited_arabic_coverage.py
-      - scripts/run_p0_audited_arabic_coverage.py
-      - scripts/finalize_p0_audited_arabic_tests.py
-      - scripts/fix_p0_audited_dynamic_consts.py
+      - scripts/fix_p0_profile_completion_localization.py
       - .github/workflows/apply-p0-audited-arabic-coverage.yml
 
 permissions:
   contents: write
 
 jobs:
-  apply:
+  finalize:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -29,26 +26,23 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Apply scoped localization migration
-        run: |
-          python scripts/run_p0_audited_arabic_coverage.py
-          python scripts/fix_p0_audited_dynamic_consts.py
-          python scripts/finalize_p0_audited_arabic_tests.py
+      - name: Close residual Profile completion copy
+        run: python scripts/fix_p0_profile_completion_localization.py
 
-      - name: Format and validate Flutter
+      - name: Format and validate final product state
         working-directory: frontend
         run: |
           flutter pub get
-          dart format lib/l10n/audited_page_copy.dart lib/features/dashboard/dashboard_screen.dart lib/features/dashboard/widgets/top_bar.dart lib/features/dashboard/widgets/hero_section.dart lib/features/dashboard/widgets/hero_live.dart lib/features/dashboard/widgets/hero_tir.dart lib/features/dashboard/widgets/kpi_tir_card.dart lib/features/import/import_screen.dart lib/features/documents/document_import_screen.dart lib/features/profile/profile_screen.dart test/p0_audited_page_localization_contract_test.dart test/p0_clinical_explainability_contract_test.dart
+          dart format lib/l10n/audited_page_copy.dart lib/features/profile/profile_screen.dart test/p0_audited_page_localization_contract_test.dart
           flutter analyze --no-fatal-infos
           flutter test test/p0_audited_page_localization_contract_test.dart
           flutter test test/p0_clinical_explainability_contract_test.dart
           flutter test test/p0_mobile_import_navigation_test.dart
 
-      - name: Commit generated product changes
+      - name: Commit final product changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/lib frontend/test
-          git commit -m "feat(l10n): localize audited pages in Arabic"
+          git add frontend/lib/l10n/audited_page_copy.dart frontend/lib/features/profile/profile_screen.dart frontend/test/p0_audited_page_localization_contract_test.dart
+          git commit -m "fix(l10n): localize Profile completion copy"
           git push origin HEAD:fix/p0-audited-pages-arabic-coverage-v2
