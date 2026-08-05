@@ -11,8 +11,8 @@ feature unless its state and outcome are backed by executable behavior.
 | Item | Requirement | Status | Evidence |
 |---|---|---|---|
 | P0-UX-1 | Every apparent action is functional or explicitly unavailable | **Closed** | PR #39; `p0_real_actions_contract_test.dart` |
-| P0-UX-2 | System states such as synchronization, notifications and pilot status are live and truthful | **In validation** | Typed `SyncUiState`; `p0_truthful_system_state_contract_test.dart` |
-| P0-UX-3 | Clinical conclusions, confidence and goals are explainable; no opaque score or fabricated precision | Open | Dedicated LOT required |
+| P0-UX-2 | System states such as synchronization, notifications and pilot status are live and truthful | **Closed** | PR #40; typed `SyncUiState`; `p0_truthful_system_state_contract_test.dart` |
+| P0-UX-3 | Clinical conclusions, confidence and goals are explainable; no opaque score or fabricated precision | **In validation** | Coverage-aware KPI UI; `p0_clinical_explainability_contract_test.dart` |
 | P0-UX-4 | Import is reachable and usable on mobile | Existing implementation observed; dedicated certification pending | Module registry and bottom navigation derive `/importer` |
 | P0-UX-5 | Privacy wording never exceeds approved deployment and processor evidence | Open | Dedicated LOT required |
 
@@ -33,8 +33,8 @@ PR #39 closes the first requirement by enforcing all of the following:
 
 ## P0-UX-2 contract
 
-The current LOT makes synchronization and storage claims derive from real runtime
-state:
+PR #40 closes the second requirement by making synchronization and storage claims
+derive from real runtime state:
 
 - `SyncService` exposes checking, up-to-date, pending, syncing, offline and error
   states;
@@ -47,6 +47,27 @@ state:
 - data shown on the Import page is labelled as local storage, not synchronization;
 - decorative notification controls and static success labels are permanently
   rejected by the source contract.
+
+## P0-UX-3 contract
+
+The current LOT removes fabricated clinical precision and exposes the basis of each
+patient-facing metric:
+
+- a discrete set of manual/imported entries is labelled **measures in range**, not
+  continuous **time in range**;
+- measurement count and number of represented days are visible alongside the
+  target-range, GMI and CV metrics;
+- thresholds are labelled as general, non-personalized references and explicitly
+  state that a patient's target may differ;
+- GMI states its available-data basis, flags limited coverage and says that it does
+  not replace a laboratory HbA1c;
+- summary KPI cards expose coverage and remain readable on mobile and desktop;
+- severity is never converted into a fabricated confidence percentage;
+- threshold comparisons are never rendered as historical trend arrows;
+- automated findings are labelled as observations and actions as points to discuss,
+  not personalized prescriptions;
+- the permanent Flutter contract rejects opaque `/100` scores, decorative signal
+  strength, unsupported confidence labels and misleading CGM-duration wording.
 
 ## Score policy
 
