@@ -95,6 +95,12 @@ async function activateSemantics() {
   await page.waitForTimeout(800);
 }
 
+async function waitForFlutter() {
+  await page.waitForSelector('flutter-view, flt-glass-pane', { timeout: 30000 });
+  await page.waitForTimeout(4500);
+  await activateSemantics();
+}
+
 async function shot(name, fullPage = true) {
   const file = path.join(outDir, `${name}.png`);
   await page.screenshot({ path: file, fullPage });
@@ -103,14 +109,6 @@ async function shot(name, fullPage = true) {
 
 async function assert(name, condition, details = '') {
   audit.assertions.push({ name, pass: Boolean(condition), details });
-}
-
-async function textVisible(pattern) {
-  try {
-    return await page.getByText(pattern).first().isVisible({ timeout: 1500 });
-  } catch {
-    return false;
-  }
 }
 
 async function openHash(route) {
@@ -135,9 +133,8 @@ try {
   await assert('certified-build marker reachable', buildResponse.ok(), `${buildResponse.status()} ${buildText}`);
   await assert('certified-build source commit matches', buildText.includes(expectedCommit), buildText);
 
-  await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 60000 });
-  await page.waitForTimeout(5000);
-  await activateSemantics();
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await waitForFlutter();
   await shot('01-login-desktop');
 
   const loginText = await page.locator('body').innerText().catch(() => '');
@@ -180,9 +177,8 @@ try {
     await captureRoute('/profile', '13-profile-mobile-390');
 
     uiLanguage = 'ar';
-    await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 60000 });
-    await page.waitForTimeout(6000);
-    await activateSemantics();
+    await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await waitForFlutter();
     await openHash('/dashboard');
     const direction = await page.evaluate(() => getComputedStyle(document.documentElement).direction);
     const arabicText = await page.locator('body').innerText().catch(() => '');
