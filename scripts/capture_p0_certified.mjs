@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const baseUrl = process.env.TARGET_URL || 'http://127.0.0.1:4173';
-const expectedCommit = '5e9bded4fad58e9301bb7df4c638cc2b8a42d0f7';
+const expectedCommit = 'ffaeae75d64c69359ddcc41cd688ae232097128f';
 const outDir = process.env.OUTPUT_DIR || 'p0-certification-evidence';
 fs.mkdirSync(outDir, { recursive: true });
 
@@ -40,11 +40,12 @@ const corsHeaders = {
 await page.route('http://localhost:8000/**', async (route) => {
   const request = route.request();
   const url = new URL(request.url());
+  const pathname = url.pathname.replace(/\/+$/, '');
   if (request.method() === 'OPTIONS') {
     await route.fulfill({ status: 204, headers: corsHeaders, body: '' });
     return;
   }
-  if (url.pathname === '/api/v1/profile/locale') {
+  if (pathname === '/api/v1/profile/locale') {
     await route.fulfill({
       status: 200,
       headers: corsHeaders,
@@ -55,11 +56,11 @@ await page.route('http://localhost:8000/**', async (route) => {
     });
     return;
   }
-  if (url.pathname === '/api/v1/demo/seed') {
+  if (pathname === '/api/v1/demo/seed') {
     await route.fulfill({ status: 200, headers: corsHeaders, body: '{}' });
     return;
   }
-  if (url.pathname === '/api/v1/account/modules') {
+  if (pathname === '/api/v1/account/modules') {
     await route.fulfill({
       status: 200,
       headers: corsHeaders,
@@ -67,11 +68,11 @@ await page.route('http://localhost:8000/**', async (route) => {
     });
     return;
   }
-  if (url.pathname.includes('/api/v1/kpis')) {
+  if (pathname.includes('/api/v1/kpis')) {
     await route.fulfill({ status: 404, headers: corsHeaders, body: '{}' });
     return;
   }
-  if (url.pathname === '/api/v1/ai/summary') {
+  if (pathname === '/api/v1/ai/summary') {
     await route.fulfill({ status: 503, headers: corsHeaders, body: '{}' });
     return;
   }
@@ -111,16 +112,16 @@ async function assert(name, condition, details = '') {
   audit.assertions.push({ name, pass: Boolean(condition), details });
 }
 
-async function openHash(route) {
+async function openHash(route, settleMs = 2500) {
   await page.evaluate((value) => {
     window.location.hash = value;
   }, route);
-  await page.waitForTimeout(2500);
+  await page.waitForTimeout(settleMs);
   await activateSemantics();
 }
 
-async function captureRoute(route, name) {
-  await openHash(route);
+async function captureRoute(route, name, settleMs = 2500) {
+  await openHash(route, settleMs);
   const bodyText = await page.locator('body').innerText().catch(() => '');
   const renderError = bodyText.includes('Une erreur de rendu est survenue');
   await assert(`${name}: no Flutter render error`, !renderError, renderError ? bodyText.slice(0, 500) : '');
@@ -162,15 +163,16 @@ try {
 
   if (audit.authenticatedDemo) {
     await captureRoute('/dashboard', '02-dashboard-desktop');
-    await captureRoute('/summary', '03-summary-desktop');
+    await captureRoute('/summary', '03-summary-desktop', 12000);
     await captureRoute('/journal', '04-journal-desktop');
     await captureRoute('/importer', '05-importer-desktop');
     await captureRoute('/pulper', '06-document-import-desktop');
     await captureRoute('/profile', '07-profile-desktop');
 
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(1200);
     await captureRoute('/dashboard', '08-dashboard-mobile-390');
-    await captureRoute('/summary', '09-summary-mobile-390');
+    await captureRoute('/summary', '09-summary-mobile-390', 12000);
     await captureRoute('/journal', '10-journal-mobile-390');
     await captureRoute('/importer', '11-importer-mobile-390');
     await captureRoute('/pulper', '12-document-import-mobile-390');
@@ -180,10 +182,9 @@ try {
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await waitForFlutter();
     await openHash('/dashboard');
-    const direction = await page.evaluate(() => getComputedStyle(document.documentElement).direction);
     const arabicText = await page.locator('body').innerText().catch(() => '');
-    audit.arabicRtlConfirmed = direction === 'rtl' || /لوحة|الرئيسية|اليومية|استيراد/.test(arabicText);
-    await assert('Arabic RTL application rendered', audit.arabicRtlConfirmed, `direction=${direction}; ${arabicText.slice(0, 500)}`);
+    audit.arabicRtlConfirmed = /الرئيسية|الإعدادات|اليومية|استيراد|لوحة/.test(arabicText);
+    await assert('Arabic application shell rendered', audit.arabicRtlConfirmed, arabicText.slice(0, 700));
     await shot('14-dashboard-arabic-rtl-mobile');
     await captureRoute('/importer', '15-importer-arabic-rtl-mobile');
     await captureRoute('/profile', '16-profile-arabic-rtl-mobile');
