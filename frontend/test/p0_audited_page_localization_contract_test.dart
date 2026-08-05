@@ -21,7 +21,11 @@ void main() {
       'اكتمل الملف بنسبة',
       'أكمل ملفك للحصول على تحليلات أدق.',
     ]) {
-      expect(copy, contains(required), reason: 'Missing audited Arabic copy: $required');
+      expect(
+        copy,
+        contains(required),
+        reason: 'Missing audited Arabic copy: $required',
+      );
     }
   });
 
@@ -41,7 +45,11 @@ void main() {
       "const _HeroBadge(label: 'DERNIÈRE MESURE')",
       "CardHead(title: 'Mesures dans la cible'",
     ]) {
-      expect(sources, isNot(contains(forbidden)), reason: 'Hardcoded audited dashboard copy remains: $forbidden');
+      expect(
+        sources,
+        isNot(contains(forbidden)),
+        reason: 'Hardcoded audited dashboard copy remains: $forbidden',
+      );
     }
   });
 
@@ -65,7 +73,11 @@ void main() {
       "'Profil complété à",
       'Complétez votre profil pour des analyses plus précises.',
     ]) {
-      expect(combined, isNot(contains(forbidden)), reason: 'Hardcoded audited page copy remains: $forbidden');
+      expect(
+        combined,
+        isNot(contains(forbidden)),
+        reason: 'Hardcoded audited page copy remains: $forbidden',
+      );
     }
   });
 }

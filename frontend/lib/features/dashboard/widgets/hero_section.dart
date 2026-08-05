@@ -11,7 +11,7 @@ class _PageHead extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final greeting = now.hour < 12 ? 'Bonjour' : now.hour < 18 ? 'Bon après-midi' : 'Bonsoir';
+    final copy = AuditedPageCopy.of(context);
     return Padding(
       padding: EdgeInsets.only(top: isDesktop ? 32 : 16, bottom: isDesktop ? 4 : 0),
       child: Column(
@@ -19,7 +19,7 @@ class _PageHead extends StatelessWidget {
         children: [
           Builder(builder: (ctx) {
             final firstName = _HeroInsight._firstName();
-            final salut = firstName.isNotEmpty ? '$greeting, $firstName.' : '$greeting !';
+            final salut = copy.greeting(now.hour, firstName);
             return Text(
               salut,
               style: TextStyle(
@@ -33,9 +33,7 @@ class _PageHead extends StatelessWidget {
           }),
           const SizedBox(height: 8),
           Text(
-            logCount > 0
-                ? 'Voici ce qu\'IAmina a observé sur vos $range derniers jours.'
-                : 'Chargez des données pour voir votre analyse IAmina.',
+            logCount > 0 ? copy.observation(range) : copy.emptyAnalysis,
             style: TextStyle(
               fontSize: isDesktop ? 16 : 14,
               color: AminaTheme.textSecondary(context),

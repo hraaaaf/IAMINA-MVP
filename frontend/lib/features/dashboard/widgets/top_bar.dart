@@ -77,7 +77,7 @@ class _TopBar extends StatelessWidget {
 
   Widget _breadcrumb(BuildContext context, {required bool detailed}) {
     return Text(
-      detailed ? 'Accueil · Vue d\'ensemble' : 'Vue d\'ensemble',
+      detailed ? AuditedPageCopy.of(context).breadcrumb : AuditedPageCopy.of(context).overview,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
@@ -113,7 +113,7 @@ class _ParlerButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = Text(
-      compact ? 'IAmina' : 'Parler à IAmina',
+      compact ? 'IAmina' : AuditedPageCopy.of(context).talk,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(
@@ -125,7 +125,7 @@ class _ParlerButton extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: 'Parler à IAmina',
+      label: AuditedPageCopy.of(context).talk,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(99),
@@ -176,32 +176,32 @@ class _SyncStatusButton extends StatelessWidget {
     final (icon, label, color) = switch (state) {
       SyncUiState.checking => (
         Icons.cloud_queue_outlined,
-        'Vérification de la synchronisation',
+        AuditedPageCopy.of(context).sync('checking'),
         AminaTheme.textSecondary(context),
       ),
       SyncUiState.upToDate => (
         Icons.cloud_done_outlined,
-        'Données à jour',
+        AuditedPageCopy.of(context).sync('upToDate'),
         AminaTheme.successEmerald,
       ),
       SyncUiState.pending => (
         Icons.cloud_upload_outlined,
-        'Données en attente de synchronisation',
+        AuditedPageCopy.of(context).sync('pending'),
         AminaTheme.warningOrange,
       ),
       SyncUiState.syncing => (
         Icons.cloud_sync_outlined,
-        'Synchronisation en cours',
+        AuditedPageCopy.of(context).sync('syncing'),
         AminaTheme.teal500,
       ),
       SyncUiState.offline => (
         Icons.cloud_off_outlined,
-        'Hors ligne · données conservées sur cet appareil',
+        AuditedPageCopy.of(context).sync('offline'),
         AminaTheme.ink500,
       ),
       SyncUiState.error => (
         Icons.error_outline,
-        'Échec de synchronisation · appuyer pour réessayer',
+        AuditedPageCopy.of(context).sync('error'),
         AminaTheme.dangerFg,
       ),
     };
@@ -274,7 +274,7 @@ class _RangeChips extends StatelessWidget {
                 boxShadow: selected ? AminaTheme.shadowClinical : null,
               ),
               child: Text(
-                '$r j',
+                '$r ${AuditedPageCopy.of(context).dayShort}',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
