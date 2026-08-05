@@ -1,0 +1,97 @@
+name: Capture P0 certified application
+
+on:
+  push:
+    branches:
+      - deploy/p0-ux-certified-web-build
+    paths:
+      - scripts/capture_p0_certified.mjs
+      - .github/workflows/capture-p0-certified.yml
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch exact certified static bundle
+        run: |
+          git clone --depth 1 --branch web-p0-ux-certified https://github.com/${GITHUB_REPOSITORY}.git certified-site
+          test -f certified-site/index.html
+          test -f certified-site/certified-build.json
+          grep -F '5e9bded4fad58e9301bb7df4c638cc2b8a42d0f7' certified-site/certified-build.json
+
+      - name: Start local certified application
+        run: |
+          python3 -m http.server 4173 --directory certified-site > /tmp/iamina-static.log 2>&1 &
+          echo $! > /tmp/iamina-static.pid
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/certified-build.json >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/iamina-static.log
+          exit 1
+
+      - name: Independently verify Vercel preview
+        id: vercel
+        env:
+          VERCEL_URL: https://iamina-p0-certified-fwq0jztxj-achraf-benmoussa-s-projects.vercel.app
+        run: |
+          set +e
+          status=$(curl -L --silent --show-error --output /tmp/vercel-index.html --write-out '%{http_code}' "$VERCEL_URL")
+          marker_status=$(curl -L --silent --show-error --output /tmp/vercel-marker.json --write-out '%{http_code}' "$VERCEL_URL/certified-build.json")
+          verified=false
+          if [ "$status" = "200" ] && [ "$marker_status" = "200" ] && grep -Fq '5e9bded4fad58e9301bb7df4c638cc2b8a42d0f7' /tmp/vercel-marker.json; then
+            verified=true
+          fi
+          echo "http_status=$status" >> "$GITHUB_OUTPUT"
+          echo "marker_status=$marker_status" >> "$GITHUB_OUTPUT"
+          echo "verified=$verified" >> "$GITHUB_OUTPUT"
+          if [ "$verified" = "true" ]; then
+            echo "target_url=$VERCEL_URL" >> "$GITHUB_OUTPUT"
+          else
+            echo "target_url=http://127.0.0.1:4173" >> "$GITHUB_OUTPUT"
+          fi
+          printf '{"url":"%s","http_status":"%s","marker_status":"%s","verified":%s}\n' "$VERCEL_URL" "$status" "$marker_status" "$verified" > vercel-verification.json
+
+      - name: Install Playwright Chromium
+        run: |
+          npm init -y
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Capture desktop, mobile and Arabic RTL journeys
+        id: capture
+        continue-on-error: true
+        env:
+          TARGET_URL: ${{ steps.vercel.outputs.target_url }}
+          OUTPUT_DIR: p0-certification-evidence
+        run: node scripts/capture_p0_certified.mjs
+
+      - name: Add deployment verification evidence
+        if: always()
+        run: |
+          mkdir -p p0-certification-evidence
+          cp vercel-verification.json p0-certification-evidence/vercel-verification.json
+          cp certified-site/certified-build.json p0-certification-evidence/certified-build.json
+          cp /tmp/iamina-static.log p0-certification-evidence/static-server.log || true
+
+      - name: Upload final audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-p0-final-audit
+          path: p0-certification-evidence
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce audit assertions
+        if: always()
+        run: |
+          test -f p0-certification-evidence/audit.json
+          cat p0-certification-evidence/audit.json
+          test '${{ steps.capture.outcome }}' = 'success'
