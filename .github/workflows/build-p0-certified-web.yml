@@ -16,6 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ffaeae75d64c69359ddcc41cd688ae232097128f
           fetch-depth: 1
 
       - uses: subosito/flutter-action@v2
@@ -29,7 +30,7 @@ jobs:
         run: |
           flutter pub get
           flutter build web --release --base-href /
-          printf '{"source_commit":"5e9bded4fad58e9301bb7df4c638cc2b8a42d0f7","built_at":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > build/web/certified-build.json
+          printf '{"source_commit":"ffaeae75d64c69359ddcc41cd688ae232097128f","built_at":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > build/web/certified-build.json
           touch build/web/.nojekyll
 
       - name: Upload certified web artifact
@@ -50,6 +51,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b web-p0-ux-certified
           git add -A
-          git commit -m "build(web): publish certified P0 bundle from 5e9bded"
+          git commit -m "build(web): publish certified dashboard remediation from ffaeae75"
           git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push --force origin HEAD:refs/heads/web-p0-ux-certified
