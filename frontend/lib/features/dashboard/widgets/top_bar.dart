@@ -112,6 +112,17 @@ class _ParlerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final label = Text(
+      compact ? 'IAmina' : 'Parler à IAmina',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+
     return Semantics(
       button: true,
       label: 'Parler à IAmina',
@@ -145,18 +156,7 @@ class _ParlerButton extends StatelessWidget {
                 size: 14,
               ),
               const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  compact ? 'IAmina' : 'Parler à IAmina',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
+              if (compact) Expanded(child: label) else label,
             ],
           ),
         ),
