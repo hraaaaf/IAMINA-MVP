@@ -1,0 +1,39 @@
+name: Apply P0 truthful system state
+
+on:
+  push:
+    branches: [fix/p0-ux-truthful-system-state]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p0-ux-truthful-system-state
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.1'
+          channel: stable
+          cache: true
+
+      - name: Apply scoped patch
+        run: python scripts/apply_p0_truthful_system_state.py
+
+      - name: Format changed Dart files
+        working-directory: frontend
+        run: dart format lib/features/import/import_screen.dart lib/services/sync_service.dart lib/features/dashboard/widgets/top_bar.dart
+
+      - name: Commit patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/lib/features/import/import_screen.dart frontend/lib/services/sync_service.dart frontend/lib/features/dashboard/widgets/top_bar.dart
+          git commit -m "fix(p0-ux): show truthful system states"
+          git push origin HEAD:fix/p0-ux-truthful-system-state
