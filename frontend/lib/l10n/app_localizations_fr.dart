@@ -24,7 +24,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get brandTagShort => 'IA · AMINA';
 
   @override
-  String get dataPrivacyNote => 'Données pseudonymisées';
+  String get dataPrivacyNote => 'Traitement IA soumis à autorisation';
 
   @override
   String get sensorStatus => 'Capteur G7 · IAmina';
@@ -242,11 +242,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get consentHeadline =>
-      'IAmina analyse vos données glycémiques avec l\'IA';
+      'IAmina peut traiter certaines données avec des services IA approuvés';
 
   @override
   String get consentBody =>
-      'Pour vous fournir des analyses personnalisées, IAmina utilise Gemini AI pour traiter vos mesures glycémiques, vos repas et votre contexte de santé. Vos données sont pseudonymisées avant transmission et ne sont jamais vendues à des tiers.\n\nVous pouvez retirer ce consentement à tout moment depuis vos paramètres de profil.';
+      'Ce consentement autorise IAmina à utiliser les catégories de données listées ci-dessus pour les fonctionnalités IA. Un traitement externe n\'est effectué que si le fournisseur, la région et la politique de conservation du déploiement ont été approuvés. Sans consentement ou approbation fournisseur valide, les données ne sont pas envoyées au service IA.\n\nLe fournisseur et les conditions peuvent varier selon le déploiement. Vous pouvez retirer ce consentement à tout moment depuis vos paramètres de profil.';
 
   @override
   String get consentDataPoint1 => '📊 Mesures glycémiques et tendances';
@@ -283,6 +283,13 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get consentRequired =>
       'Consentement IA requis pour utiliser cette fonctionnalité';
+
+  @override
+  String get documentPrivacyTitle => 'Traitement externe contrôlé';
+
+  @override
+  String get documentPrivacyBody =>
+      'Le document n’est transmis à un service externe que si votre consentement et la politique fournisseur du déploiement sont valides. Sinon, l’import est refusé.';
 
   @override
   String get save => 'Sauvegarder';

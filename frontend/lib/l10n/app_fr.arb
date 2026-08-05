@@ -97,6 +97,8 @@
   "consentWithdrawConfirmBody": "Les fonctionnalités IA (Résumé IAmina, Chat, Vocal) seront désactivées jusqu'à ce que vous donniez à nouveau votre consentement.",
   "consentWithdrawn": "Consentement IA retiré",
   "consentRequired": "Consentement IA requis pour utiliser cette fonctionnalité",
+  "documentPrivacyTitle": "Traitement externe contrôlé",
+  "documentPrivacyBody": "Le document n’est transmis à un service externe que si votre consentement et la politique fournisseur du déploiement sont valides. Sinon, l’import est refusé.",
 
   "save": "Sauvegarder",
   "saveProfile": "Enregistrer",
