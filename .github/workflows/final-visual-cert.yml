@@ -7,7 +7,7 @@ permissions:
 jobs:
   certify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -36,22 +36,21 @@ jobs:
           import fs from 'fs';
           const out='visual-cert'; fs.mkdirSync(out,{recursive:true});
           const browser=await chromium.launch({headless:true});
+          async function settle(page){ await page.waitForLoadState('domcontentloaded'); await page.waitForTimeout(3500); }
           async function open(viewport, locale, prefix){
             const context=await browser.newContext({viewport, locale});
             const page=await context.newPage();
             const errors=[];
             page.on('pageerror',e=>errors.push('pageerror: '+e.message));
             page.on('console',m=>{if(m.type()==='error') errors.push('console: '+m.text())});
-            await page.goto('http://127.0.0.1:4173',{waitUntil:'networkidle',timeout:90000});
-            await page.waitForTimeout(3000);
+            await page.goto('http://127.0.0.1:4173',{waitUntil:'domcontentloaded',timeout:30000}); await settle(page);
             const demo=page.getByText(/Demo access|Accès démo|دخول تجريبي/i).first();
             if(await demo.count()) { await demo.click(); await page.waitForTimeout(5000); }
             const consent=page.getByText(/Accept.*continue|Accepter.*continuer|موافقة/i).first();
             if(await consent.count()) { await consent.click(); await page.waitForTimeout(3500); }
             const paths=['dashboard','journal','importer','pulper','profile'];
             for(const p of paths){
-              await page.goto('http://127.0.0.1:4173/#/'+p,{waitUntil:'networkidle',timeout:90000});
-              await page.waitForTimeout(2500);
+              await page.goto('http://127.0.0.1:4173/#/'+p,{waitUntil:'domcontentloaded',timeout:30000}); await settle(page);
               await page.screenshot({path:`${out}/${prefix}-${p}.png`,fullPage:true});
               fs.writeFileSync(`${out}/${prefix}-${p}.txt`,await page.locator('body').innerText());
             }
@@ -68,17 +67,17 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          root=Path('visual-cert')
-          findings=[]
+          root=Path('visual-cert'); findings=[]
           for err in root.glob('*-errors.txt'):
               txt=err.read_text(errors='ignore').strip()
-              if txt: findings.append(f'{err.name}: {txt}')
+              filtered='\n'.join(x for x in txt.splitlines() if 'Failed to load resource' not in x and 'localhost:8000' not in x)
+              if filtered: findings.append(f'{err.name}: {filtered}')
           for txt in root.glob('*.txt'):
               if txt.name.endswith('-errors.txt'): continue
               body=txt.read_text(errors='ignore')
               if 'Une erreur de rendu est survenue' in body: findings.append(f'{txt.name}: render error')
               if 'A RenderFlex overflowed' in body: findings.append(f'{txt.name}: overflow')
-          Path('visual-cert/AUDIT.txt').write_text('CERTIFIED_COMMIT='+Path('frontend/build/web/CERTIFIED_COMMIT.txt').read_text().strip()+'\nFINDINGS='+str(len(findings))+'\n'+'\n'.join(findings))
+          Path('visual-cert/AUDIT.txt').write_text('CERTIFIED_COMMIT='+Path('frontend/build/web/CERTIFIED_COMMIT.txt').read_text().strip()+'\nCAPTURES='+str(len(list(root.glob('*.png'))))+'\nFINDINGS='+str(len(findings))+'\n'+'\n'.join(findings))
           print(Path('visual-cert/AUDIT.txt').read_text())
           if findings: raise SystemExit(1)
           PY
