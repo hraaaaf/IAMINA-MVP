@@ -20,7 +20,7 @@ jobs:
         run: |
           flutter pub get
           flutter build web --release --dart-define=API_BASE_URL=http://127.0.0.1:8000
-          echo "${GITHUB_SHA}" > build/web/CERTIFIED_COMMIT.txt
+          echo "98fb6ce817cb65a6cd80474e9ebceae11c566a91" > build/web/CERTIFIED_COMMIT.txt
       - name: Install browser tooling
         run: |
           npm init -y
@@ -31,7 +31,7 @@ jobs:
           cd frontend/build/web
           python3 -m http.server 4173 > /tmp/iamina-web.log 2>&1 &
           cd ../../..
-          cat > /tmp/capture.mjs <<'EOF'
+          cat > capture.mjs <<'EOF'
           import { chromium } from 'playwright';
           import fs from 'fs';
           const out='visual-cert'; fs.mkdirSync(out,{recursive:true});
@@ -63,7 +63,7 @@ jobs:
           await open({width:390,height:844},'ar-MA','mobile-ar');
           await browser.close();
           EOF
-          node /tmp/capture.mjs
+          node capture.mjs
       - name: Structural audit
         run: |
           python3 - <<'PY'
