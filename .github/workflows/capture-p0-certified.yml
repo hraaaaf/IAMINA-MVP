@@ -23,7 +23,7 @@ jobs:
           git clone --depth 1 --branch web-p0-ux-certified https://github.com/${GITHUB_REPOSITORY}.git certified-site
           test -f certified-site/index.html
           test -f certified-site/certified-build.json
-          grep -F '5e9bded4fad58e9301bb7df4c638cc2b8a42d0f7' certified-site/certified-build.json
+          grep -F 'ffaeae75d64c69359ddcc41cd688ae232097128f' certified-site/certified-build.json
 
       - name: Start local certified application
         run: |
@@ -45,7 +45,7 @@ jobs:
           status=$(curl -L --silent --show-error --output /tmp/vercel-index.html --write-out '%{http_code}' "$VERCEL_URL")
           marker_status=$(curl -L --silent --show-error --output /tmp/vercel-marker.json --write-out '%{http_code}' "$VERCEL_URL/certified-build.json")
           verified=false
-          if [ "$status" = "200" ] && [ "$marker_status" = "200" ] && grep -Fq '5e9bded4fad58e9301bb7df4c638cc2b8a42d0f7' /tmp/vercel-marker.json; then
+          if [ "$status" = "200" ] && [ "$marker_status" = "200" ] && grep -Fq 'ffaeae75d64c69359ddcc41cd688ae232097128f' /tmp/vercel-marker.json; then
             verified=true
           fi
           echo "http_status=$status" >> "$GITHUB_OUTPUT"
