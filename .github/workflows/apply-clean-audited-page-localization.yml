@@ -6,6 +6,7 @@ on:
       - fix/p0-audited-pages-arabic-coverage-v3
     paths:
       - scripts/apply_clean_audited_page_localization.py
+      - scripts/run_clean_audited_page_localization.py
       - .github/workflows/apply-clean-audited-page-localization.yml
 
 permissions:
@@ -27,7 +28,7 @@ jobs:
           cache: true
 
       - name: Apply precise product replacements
-        run: python scripts/apply_clean_audited_page_localization.py
+        run: python scripts/run_clean_audited_page_localization.py
 
       - name: Validate without reformatting existing product files
         working-directory: frontend
