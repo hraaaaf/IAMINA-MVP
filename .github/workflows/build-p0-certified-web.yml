@@ -1,0 +1,55 @@
+name: Build P0 certified Flutter web
+
+on:
+  push:
+    branches:
+      - deploy/p0-ux-certified-web-build
+    paths:
+      - .github/workflows/build-p0-certified-web.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Build certified Flutter web bundle
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter build web --release --base-href /
+          printf '{"source_commit":"5e9bded4fad58e9301bb7df4c638cc2b8a42d0f7","built_at":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > build/web/certified-build.json
+          touch build/web/.nojekyll
+
+      - name: Upload certified web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-p0-certified-web
+          path: frontend/build/web
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Publish static bundle branch
+        working-directory: frontend/build/web
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b web-p0-ux-certified
+          git add -A
+          git commit -m "build(web): publish certified P0 bundle from 5e9bded"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin HEAD:refs/heads/web-p0-ux-certified
