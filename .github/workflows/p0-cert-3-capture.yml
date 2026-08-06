@@ -1,0 +1,117 @@
+name: P0-CERT-3 capture matrix
+
+on:
+  push:
+    branches:
+      - cert/p0-cert-3-capture-matrix
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Build certified Flutter Web bundle
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter build web --release --dart-define=IAMINA_AUDIT_ACCESS=true
+
+      - name: Install capture runtime
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.54.2
+          npx playwright install --with-deps chromium
+
+      - name: Start local certified bundle
+        working-directory: frontend/build/web
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 > /tmp/iamina-web.log 2>&1 &
+          echo $! > /tmp/iamina-web.pid
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8080/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/iamina-web.log
+          exit 1
+
+      - name: Capture matrix
+        run: |
+          mkdir -p /tmp/p0-cert-3
+          cat > /tmp/p0-cert-3/capture.cjs <<'EOF'
+          const { chromium } = require(process.cwd() + '/node_modules/playwright');
+          const fs = require('fs');
+          const path = require('path');
+
+          const routes = [
+            ['dashboard', '/dashboard'],
+            ['journal', '/journal'],
+            ['importer', '/importer'],
+            ['pulper', '/pulper'],
+            ['profile', '/profile'],
+          ];
+          const profiles = [
+            ['desktop-fr', 1440, 1000, 'fr'],
+            ['mobile-fr', 390, 844, 'fr'],
+            ['compact-fr', 360, 560, 'fr'],
+            ['mobile-ar', 390, 844, 'ar'],
+            ['tablet-ar', 768, 1024, 'ar'],
+          ];
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const report = [];
+            for (const [profile, width, height, lang] of profiles) {
+              const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1 });
+              for (const [name, route] of routes) {
+                const page = await context.newPage();
+                const consoleErrors = [];
+                const pageErrors = [];
+                page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+                page.on('pageerror', err => pageErrors.push(String(err)));
+                const url = `http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#${route}`;
+                await page.goto(url, { waitUntil: 'networkidle', timeout: 90000 });
+                await page.waitForTimeout(8000);
+                const file = `${profile}__${name}.png`;
+                await page.screenshot({ path: path.join('/tmp/p0-cert-3', file), fullPage: true });
+                const canvasCount = await page.locator('canvas').count();
+                const bodyText = (await page.locator('body').innerText().catch(() => '')).trim();
+                report.push({ profile, name, route, lang, width, height, url: page.url(), canvasCount, bodyTextLength: bodyText.length, consoleErrors, pageErrors, screenshot: file });
+                await page.close();
+              }
+              await context.close();
+            }
+            await browser.close();
+            fs.writeFileSync('/tmp/p0-cert-3/report.json', JSON.stringify(report, null, 2));
+            const failures = report.filter(x => x.canvasCount === 0 || x.pageErrors.length > 0);
+            if (failures.length) {
+              console.error(JSON.stringify(failures, null, 2));
+              process.exit(1);
+            }
+          })();
+          EOF
+          node /tmp/p0-cert-3/capture.cjs
+
+      - name: Record certified source
+        run: |
+          git rev-parse HEAD > /tmp/p0-cert-3/source-sha.txt
+          cp /tmp/iamina-web.log /tmp/p0-cert-3/server.log
+          find /tmp/p0-cert-3 -maxdepth 1 -type f -printf '%f %s bytes\n' | sort > /tmp/p0-cert-3/manifest.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p0-cert-3-capture-matrix
+          path: /tmp/p0-cert-3
+          retention-days: 14
+          if-no-files-found: error
