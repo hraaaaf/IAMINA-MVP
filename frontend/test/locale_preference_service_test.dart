@@ -4,28 +4,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('unknown or missing language fails closed to French', () {
-    expect(
-      LocalePreferenceService.localeFromResolvedLanguage(null).languageCode,
-      'fr',
+  test('unsupported language is rejected before deterministic resolution', () {
+    expect(LocalePreferenceService.supportedLocale(null), isNull);
+    expect(LocalePreferenceService.supportedLocale('es-MA'), isNull);
+
+    final fallback = LocalePreferenceService.resolveLocale(
+      systemLocale: const Locale('es', 'MA'),
     );
-    expect(
-      LocalePreferenceService.localeFromResolvedLanguage('ar-MA').languageCode,
-      'fr',
-    );
+    expect(fallback.locale.languageCode, 'fr');
+    expect(fallback.source, LocaleResolutionSource.baseline);
   });
 
-  test('confirmed baseline languages map independently', () {
+  test('confirmed languages and regional variants map independently', () {
     expect(
-      LocalePreferenceService.localeFromResolvedLanguage('fr').languageCode,
+      LocalePreferenceService.supportedLocale('fr')?.languageCode,
       'fr',
     );
     expect(
-      LocalePreferenceService.localeFromResolvedLanguage('en').languageCode,
+      LocalePreferenceService.supportedLocale('en-GB')?.languageCode,
       'en',
     );
     expect(
-      LocalePreferenceService.localeFromResolvedLanguage('ar').languageCode,
+      LocalePreferenceService.supportedLocale('ar-MA')?.languageCode,
       'ar',
     );
   });
