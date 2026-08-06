@@ -20,16 +20,16 @@ void main() {
     expect(policy, contains('return null;'));
   });
 
-  test('audit locale bypasses remote preference lookup and stays in memory', () {
+  test('audit locale bypasses remote preference lookup and has top priority', () {
     final localeService = _read('lib/services/locale_preference_service.dart');
     final main = _read('lib/main.dart');
 
     expect(localeService, contains('final Locale? _auditLocale'));
-    expect(localeService, contains('final auditLocale = _auditLocale'));
-    expect(localeService, contains('if (auditLocale != null)'));
-    expect(localeService, contains('_locale = auditLocale'));
+    expect(localeService, contains('if (_auditLocale == null)'));
+    expect(localeService, contains('auditLocale: _auditLocale'));
+    expect(localeService, contains('LocaleResolutionSource.audit'));
     expect(
-      localeService.indexOf('if (auditLocale != null)'),
+      localeService.indexOf('if (_auditLocale == null)'),
       lessThan(localeService.indexOf("Uri.parse('/api/v1/profile/locale')")),
     );
 
