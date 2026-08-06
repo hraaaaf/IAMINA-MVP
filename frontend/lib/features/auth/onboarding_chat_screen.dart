@@ -1,10 +1,13 @@
+import 'package:drift/drift.dart' as drift;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:drift/drift.dart' as drift;
+
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
+import '../../l10n/app_localizations.dart';
+import '../../services/locale_preference_service.dart';
 
 class OnboardingChatScreen extends StatefulWidget {
   const OnboardingChatScreen({super.key});
@@ -14,356 +17,267 @@ class OnboardingChatScreen extends StatefulWidget {
 }
 
 class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
-  final List<Map<String, dynamic>> _messages = [];
-  bool _isTyping = false;
-  double _progress = 0.2;
-  final ScrollController _scrollController = ScrollController();
+  String? _language;
+  String? _country;
+  String? _tone;
+  String? _diabetesType;
+  String? _treatment;
+  String _unit = 'mg/dL';
+  bool _saving = false;
 
-  final Map<String, dynamic> _userData = {
-    'diabetes_type': '',
-    'treatment': '',
-    'target_low': 70.0,
-    'target_high': 180.0,
-    'unit': 'mg/dL',
-  };
+  AppLocalizations get l10n => AppLocalizations.of(context)!;
 
-  @override
-  void initState() {
-    super.initState();
-    _startConversation();
+  Future<void> _selectLanguage(String value) async {
+    _language = value;
+    await context.read<LocalePreferenceService>().setExperience(
+      language: value,
+      country: _country ?? 'MA',
+      tone: _tone ?? 'neutral',
+    );
+    if (mounted) setState(() {});
   }
 
-  void _startConversation() async {
-    await _addBotMessage("Bonjour ! Je suis IAmina, ton compagnon pour une vie équilibrée avec le diabète. 😊");
-    await _addBotMessage("Pour commencer, quel type de diabète gères-tu au quotidien ?");
-    _showOptions([
-      {'id': 'type1', 'label': 'Diabète Type 1'},
-      {'id': 'type2', 'label': 'Diabète Type 2'},
-      {'id': 'gestational', 'label': 'Gestationnel'},
-      {'id': 'pre', 'label': 'Pré-diabète'},
-    ], _onTypeSelected);
-  }
-
-  Future<void> _addBotMessage(String text) async {
-    setState(() => _isTyping = true);
-    await Future.delayed(const Duration(milliseconds: 1500));
+  Future<void> _finish() async {
+    if (_language == null ||
+        _country == null ||
+        _tone == null ||
+        _diabetesType == null ||
+        _treatment == null)
+      return;
+    setState(() => _saving = true);
+    final localeService = context.read<LocalePreferenceService>();
+    await localeService.setExperience(
+      language: _language!,
+      country: _country!,
+      tone: _tone!,
+    );
     if (!mounted) return;
-    setState(() {
-      _isTyping = false;
-      _messages.add({'text': text, 'isBot': true});
-    });
-    _scrollToBottom();
-  }
-
-  void _addUserMessage(String text) {
-    setState(() {
-      _messages.add({'text': text, 'isBot': false});
-    });
-    _scrollToBottom();
-  }
-
-  void _showOptions(List<Map<String, String>> options, Function(String, String) onSelect) {
-    setState(() {
-      _messages.add({
-        'isOptions': true,
-        'options': options,
-        'onSelect': onSelect,
-      });
-    });
-    _scrollToBottom();
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
-  void _onTypeSelected(String id, String label) async {
-    _addUserMessage(label);
-    _userData['diabetes_type'] = id;
-    setState(() => _progress = 0.4);
-    
-    await _addBotMessage("D'accord. Et quel est ton mode de traitement principal ?");
-    _showOptions([
-      {'id': 'insulin', 'label': 'Insuline (Injection/Pompe)'},
-      {'id': 'tablets', 'label': 'Comprimés'},
-      {'id': 'lifestyle', 'label': 'Hygiène de vie seule'},
-    ], _onTreatmentSelected);
-  }
-
-  void _onTreatmentSelected(String id, String label) async {
-    _addUserMessage(label);
-    _userData['treatment'] = id;
-    setState(() => _progress = 0.6);
-
-    await _addBotMessage("Très bien. Quels sont tes objectifs glycémiques (en mg/dL) ? On utilise classiquement 70–180.");
-    _showOptions([
-      {'id': 'standard', 'label': 'Standards (70–180)'},
-      {'id': 'custom', 'label': 'Personnalisés'},
-    ], _onTargetSelected);
-  }
-
-  void _onTargetSelected(String id, String label) async {
-    _addUserMessage(label);
-    setState(() => _progress = 0.75);
-
-    await _addBotMessage("Dernière question : quelle unité préfères-tu pour les mesures ?");
-    _showOptions([
-      {'id': 'mg/dL',  'label': 'mg/dL  (standard France/Maroc)'},
-      {'id': 'mmol/L', 'label': 'mmol/L  (UK, Canada, international)'},
-    ], _onUnitSelected);
-  }
-
-  void _onUnitSelected(String id, String label) async {
-    _addUserMessage(label);
-    _userData['unit'] = id;
-    setState(() => _progress = 0.9);
-
-    await _addBotMessage("Parfait ! J'ai configuré ton espace personnel. Prêt à transformer ton suivi ?");
-    _showOptions([
-      {'id': 'go', 'label': "C'est parti ! 🚀"},
-    ], (id, label) => _finish());
-  }
-
-  void _finish() async {
-    _addUserMessage("C'est parti ! 🚀");
-    setState(() => _progress = 1.0);
-    await _addBotMessage("Tout est prêt ! Redirection en cours…");
-    
-    if (!mounted) return;
-    // Save to DB — derive a stable integer ID from Firebase UID hash
-    final db       = context.read<AppDatabase>();
+    final db = context.read<AppDatabase>();
     final firebaseUser = FirebaseAuth.instance.currentUser;
-    final userId   = firebaseUser?.uid.hashCode.abs() ?? 1;
+    final userId = firebaseUser?.uid.hashCode.abs() ?? 1;
     final profile = PatientProfilesCompanion.insert(
       userId: drift.Value(userId),
-      preferredLanguage: const drift.Value('fr'),
+      preferredLanguage: drift.Value(_language!),
       updatedAt: DateTime.now(),
-      diabetesType:   drift.Value(_userData['diabetes_type'] as String),
-      treatment:      drift.Value(_userData['treatment']     as String),
-      unitPreference: drift.Value(_userData['unit']          as String),
-      targetRangeLow:  drift.Value(_userData['target_low']  as double),
-      targetRangeHigh: drift.Value(_userData['target_high'] as double),
+      diabetesType: drift.Value(_diabetesType!),
+      treatment: drift.Value(_treatment!),
+      unitPreference: drift.Value(_unit),
+      targetRangeLow: const drift.Value(70),
+      targetRangeHigh: const drift.Value(180),
     );
     await db.into(db.patientProfiles).insertOnConflictUpdate(profile);
-    
     if (mounted) context.go('/dashboard');
   }
 
   @override
   Widget build(BuildContext context) {
+    final steps = <Widget>[
+      _Question(
+        title: l10n.onboardingChooseLanguage,
+        children: [
+          _Choice(
+            label: 'Français',
+            selected: _language == 'fr',
+            onTap: () => _selectLanguage('fr'),
+          ),
+          _Choice(
+            label: 'English',
+            selected: _language == 'en',
+            onTap: () => _selectLanguage('en'),
+          ),
+          _Choice(
+            label: 'العربية',
+            selected: _language == 'ar',
+            onTap: () => _selectLanguage('ar'),
+          ),
+        ],
+      ),
+      if (_language != null)
+        _Question(
+          title: l10n.onboardingChooseCountry,
+          children: [
+            _Choice(
+              label: l10n.onboardingCountryMorocco,
+              selected: _country == 'MA',
+              onTap: () => setState(() => _country = 'MA'),
+            ),
+            _Choice(
+              label: l10n.onboardingCountryFrance,
+              selected: _country == 'FR',
+              onTap: () => setState(() => _country = 'FR'),
+            ),
+            _Choice(
+              label: l10n.onboardingCountryOther,
+              selected: _country == 'OTHER',
+              onTap: () => setState(() => _country = 'OTHER'),
+            ),
+          ],
+        ),
+      if (_country != null)
+        _Question(
+          title: l10n.onboardingChooseTone,
+          children: [
+            _Choice(
+              label: l10n.onboardingToneNeutral,
+              selected: _tone == 'neutral',
+              onTap: () => setState(() => _tone = 'neutral'),
+            ),
+            _Choice(
+              label: l10n.onboardingToneFriendly,
+              selected: _tone == 'friendly',
+              onTap: () => setState(() => _tone = 'friendly'),
+            ),
+          ],
+        ),
+      if (_tone != null)
+        _Question(
+          title: l10n.onboardingTypeQuestion,
+          children: [
+            _Choice(
+              label: l10n.diabetesType1,
+              selected: _diabetesType == 'type1',
+              onTap: () => setState(() => _diabetesType = 'type1'),
+            ),
+            _Choice(
+              label: l10n.diabetesType2,
+              selected: _diabetesType == 'type2',
+              onTap: () => setState(() => _diabetesType = 'type2'),
+            ),
+            _Choice(
+              label: l10n.diabetesGestational,
+              selected: _diabetesType == 'gestational',
+              onTap: () => setState(() => _diabetesType = 'gestational'),
+            ),
+            _Choice(
+              label: l10n.diabetesPreDiabetes,
+              selected: _diabetesType == 'pre',
+              onTap: () => setState(() => _diabetesType = 'pre'),
+            ),
+          ],
+        ),
+      if (_diabetesType != null)
+        _Question(
+          title: l10n.onboardingTreatmentQuestion,
+          children: [
+            _Choice(
+              label: l10n.onboardingTreatmentInsulin,
+              selected: _treatment == 'insulin',
+              onTap: () => setState(() => _treatment = 'insulin'),
+            ),
+            _Choice(
+              label: l10n.treatmentTablets,
+              selected: _treatment == 'tablets',
+              onTap: () => setState(() => _treatment = 'tablets'),
+            ),
+            _Choice(
+              label: l10n.onboardingTreatmentLifestyle,
+              selected: _treatment == 'lifestyle',
+              onTap: () => setState(() => _treatment = 'lifestyle'),
+            ),
+          ],
+        ),
+      if (_treatment != null)
+        _Question(
+          title: l10n.onboardingUnitQuestion,
+          children: [
+            _Choice(
+              label: l10n.onboardingUnitMg,
+              selected: _unit == 'mg/dL',
+              onTap: () => setState(() => _unit = 'mg/dL'),
+            ),
+            _Choice(
+              label: l10n.onboardingUnitMmol,
+              selected: _unit == 'mmol/L',
+              onTap: () => setState(() => _unit = 'mmol/L'),
+            ),
+          ],
+        ),
+    ];
+
+    final ready =
+        _language != null &&
+        _country != null &&
+        _tone != null &&
+        _diabetesType != null &&
+        _treatment != null;
     return Scaffold(
       backgroundColor: AminaTheme.surfaceMuted,
-      body: SafeArea(
-        child: Column(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            LinearProgressIndicator(
-              value: _progress,
-              backgroundColor: Colors.transparent,
-              valueColor: const AlwaysStoppedAnimation<Color>(AminaTheme.primaryTeal),
-              minHeight: 4,
+            const Text('IAmina'),
+            Text(
+              l10n.onboardingAssistantLabel,
+              style: const TextStyle(fontSize: 12),
             ),
-            _buildHeader(),
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(20),
-                itemCount: _messages.length + (_isTyping ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == _messages.length) return _buildTypingIndicator();
-                  final msg = _messages[index];
-                  if (msg['isOptions'] == true) return _buildOptions(msg);
-                  return _buildMessage(msg);
-                },
+          ],
+        ),
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(
+              l10n.onboardingWelcome,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 20),
+            ...steps,
+            if (ready) ...[
+              const SizedBox(height: 12),
+              Text(l10n.onboardingReady),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _saving ? null : _finish,
+                child: Text(
+                  _saving ? l10n.onboardingSaving : l10n.onboardingStart,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
     );
   }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: const Border(bottom: BorderSide(color: AminaTheme.borderLight)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              gradient: AminaTheme.heroGradient,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
-          ),
-          const SizedBox(width: 12),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'IAmina',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: -0.5),
-              ),
-              Text(
-                'Assistant Intelligent',
-                style: TextStyle(
-                  color: AminaTheme.successEmerald,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMessage(Map<String, dynamic> msg) {
-    final isBot = msg['isBot'] as bool;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      alignment: isBot ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd,
-      child: Container(
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        decoration: BoxDecoration(
-          color: isBot ? const Color(0xFFF3F4F6) : AminaTheme.primaryTeal,
-          borderRadius: BorderRadiusDirectional.only(
-            topStart: const Radius.circular(18),
-            topEnd: const Radius.circular(18),
-            bottomStart: Radius.circular(isBot ? 4 : 18),
-            bottomEnd: Radius.circular(isBot ? 18 : 4),
-          ),
-        ),
-        child: Text(
-          msg['text'] as String,
-          style: TextStyle(
-            color: isBot ? AminaTheme.textDark : Colors.white,
-            fontSize: 15,
-            fontWeight: isBot ? FontWeight.w500 : FontWeight.w700,
-            height: 1.5,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOptions(Map<String, dynamic> msg) {
-    final options = msg['options'] as List<Map<String, String>>;
-    final onSelect = msg['onSelect'] as Function(String, String);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: options.map((opt) {
-          return InkWell(
-            onTap: () => onSelect(opt['id']!, opt['label']!),
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AminaTheme.borderLight, width: 1.5),
-              ),
-              child: Text(
-                opt['label']!,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: AminaTheme.textMuted,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildTypingIndicator() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      alignment: AlignmentDirectional.centerStart,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: const BorderRadiusDirectional.only(
-            topStart: Radius.circular(18),
-            topEnd: Radius.circular(18),
-            bottomStart: Radius.circular(4),
-            bottomEnd: Radius.circular(18),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(3, (index) => _TypingDot(delay: index * 0.2)),
-        ),
-      ),
-    );
-  }
 }
 
-class _TypingDot extends StatefulWidget {
-  final double delay;
-  const _TypingDot({required this.delay});
-
+class _Question extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+  const _Question({required this.title, required this.children});
   @override
-  State<_TypingDot> createState() => _TypingDotState();
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 20),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+        ),
+        const SizedBox(height: 10),
+        Wrap(spacing: 8, runSpacing: 8, children: children),
+      ],
+    ),
+  );
 }
 
-class _TypingDotState extends State<_TypingDot> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
+class _Choice extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _Choice({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
   @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    Future.delayed(Duration(milliseconds: (widget.delay * 1000).toInt()), () {
-      if (mounted) _controller.repeat(reverse: true);
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: Tween<double>(begin: 0.3, end: 1.0).animate(_controller),
-      child: Container(
-        width: 6,
-        height: 6,
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: const BoxDecoration(color: Colors.grey, shape: BoxShape.circle),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => ChoiceChip(
+    label: Text(label),
+    selected: selected,
+    onSelected: (_) => onTap(),
+  );
 }

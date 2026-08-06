@@ -503,4 +503,76 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get maximum => 'الحد الأقصى';
+
+  @override
+  String get onboardingWelcome =>
+      'مرحبًا! أنا IAmina، رفيقك لمتابعة داء السكري.';
+
+  @override
+  String get onboardingChooseLanguage => 'اختر لغة التطبيق.';
+
+  @override
+  String get onboardingChooseCountry => 'في أي بلد تستخدم IAmina؟';
+
+  @override
+  String get onboardingChooseTone => 'ما الأسلوب الذي تفضله؟';
+
+  @override
+  String get onboardingToneNeutral => 'محايد ومهني';
+
+  @override
+  String get onboardingToneFriendly => 'بسيط وودود';
+
+  @override
+  String get onboardingCountryMorocco => 'المغرب';
+
+  @override
+  String get onboardingCountryFrance => 'فرنسا';
+
+  @override
+  String get onboardingCountryOther => 'بلد آخر';
+
+  @override
+  String get onboardingTypeQuestion => 'ما نوع داء السكري الذي تتابعه؟';
+
+  @override
+  String get onboardingTreatmentQuestion => 'ما هو علاجك الرئيسي؟';
+
+  @override
+  String get onboardingTreatmentInsulin => 'الأنسولين (حقن أو مضخة)';
+
+  @override
+  String get onboardingTreatmentLifestyle => 'نمط الحياة فقط';
+
+  @override
+  String get onboardingTargetQuestion =>
+      'ما أهداف سكر الدم لديك؟ المرجع العام المعروض هو 70–180 mg/dL ما لم يختلف هدفك الشخصي.';
+
+  @override
+  String get onboardingTargetStandard => 'المرجع العام (70–180)';
+
+  @override
+  String get onboardingTargetCustom => 'هدف شخصي';
+
+  @override
+  String get onboardingUnitQuestion => 'ما وحدة القياس التي تفضلها؟';
+
+  @override
+  String get onboardingUnitMg => 'mg/dL';
+
+  @override
+  String get onboardingUnitMmol => 'mmol/L';
+
+  @override
+  String get onboardingReady =>
+      'تم إعداد مساحتك. يمكنك تعديل هذه الاختيارات من ملفك الشخصي.';
+
+  @override
+  String get onboardingStart => 'ابدأ';
+
+  @override
+  String get onboardingSaving => 'جارٍ الحفظ…';
+
+  @override
+  String get onboardingAssistantLabel => 'مساعد الإعداد';
 }
