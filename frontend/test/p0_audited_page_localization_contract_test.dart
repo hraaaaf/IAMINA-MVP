@@ -6,9 +6,15 @@ String read(String path) => File(path).readAsStringSync();
 
 void main() {
   test('audited pages expose explicit FR EN AR product copy', () {
-    final copy = read('lib/l10n/audited_page_copy.dart');
+    final adapter = read('lib/l10n/audited_page_copy.dart');
+    final arabic = read('lib/l10n/app_ar.arb');
+    final english = read('lib/l10n/app_en.arb');
+    final french = read('lib/l10n/app_fr.arb');
+
+    expect(adapter, contains('AppLocalizations.of(context)'));
+    expect(adapter, isNot(contains('String pick(')));
+
     for (final required in <String>[
-      "'ar' => ar",
       'نظرة عامة',
       'البيانات محدّثة',
       'آخر قياس',
@@ -22,10 +28,16 @@ void main() {
       'أكمل ملفك للحصول على تحليلات أدق.',
     ]) {
       expect(
-        copy,
+        arabic,
         contains(required),
         reason: 'Missing audited Arabic copy: $required',
       );
+    }
+
+    for (final catalog in <String>[english, french]) {
+      expect(catalog, contains('"overview"'));
+      expect(catalog, contains('"unavailable"'));
+      expect(catalog, contains('"profileCompletionPrompt"'));
     }
   });
 
