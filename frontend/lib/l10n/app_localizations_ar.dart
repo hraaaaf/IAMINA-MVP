@@ -319,4 +319,188 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get welcome => 'مرحبًا بك في IAmina';
+
+  @override
+  String get overview => 'نظرة عامة';
+
+  @override
+  String get breadcrumb => 'الرئيسية · نظرة عامة';
+
+  @override
+  String get talk => 'تحدث مع IAmina';
+
+  @override
+  String get dayShort => 'ي';
+
+  @override
+  String get syncChecking => 'جارٍ التحقق من المزامنة';
+
+  @override
+  String get syncUpToDate => 'البيانات محدّثة';
+
+  @override
+  String get syncPending => 'بيانات في انتظار المزامنة';
+
+  @override
+  String get syncing => 'جارٍ المزامنة';
+
+  @override
+  String get syncOffline => 'غير متصل · البيانات محفوظة على هذا الجهاز';
+
+  @override
+  String get syncFailed => 'فشلت المزامنة · اضغط لإعادة المحاولة';
+
+  @override
+  String get goodMorning => 'صباح الخير';
+
+  @override
+  String get goodAfternoon => 'مساء الخير';
+
+  @override
+  String get goodEvening => 'مساء الخير';
+
+  @override
+  String greetingWithName(String greeting, String firstName) {
+    return '$greeting، $firstName';
+  }
+
+  @override
+  String greetingWithoutName(String greeting) {
+    return '$greeting!';
+  }
+
+  @override
+  String observation(int range) {
+    return 'إليك ما لاحظته IAmina خلال آخر $range يومًا.';
+  }
+
+  @override
+  String get emptyAnalysis => 'أضف بيانات لعرض تحليل IAmina.';
+
+  @override
+  String get latestReading => 'آخر قياس';
+
+  @override
+  String get justNow => 'الآن';
+
+  @override
+  String minutesAgo(int value) {
+    return 'منذ $value دقيقة';
+  }
+
+  @override
+  String get afterMeal => 'بعد الوجبة';
+
+  @override
+  String get fasting => 'صائم';
+
+  @override
+  String targetTitle(int range) {
+    return 'القياسات ضمن النطاق · $range يومًا';
+  }
+
+  @override
+  String targetCoverage(int count, int days) {
+    return '$count قياسًا خلال $days يومًا · نسبة قياسات وليست مدة قياس مستمر';
+  }
+
+  @override
+  String get targetReference => 'مرجع عام ≥ 70٪ · قد يختلف هدفك الشخصي.';
+
+  @override
+  String get viewJournal => 'عرض اليومية';
+
+  @override
+  String get readingsInRange => 'القياسات ضمن النطاق';
+
+  @override
+  String get rangeReference => 'مرجع 70–180';
+
+  @override
+  String get inRange => 'ضمن النطاق';
+
+  @override
+  String get high => 'مرتفع';
+
+  @override
+  String get low => 'منخفض';
+
+  @override
+  String get veryHigh => 'مرتفع جدًا';
+
+  @override
+  String get targetExplanation =>
+      'مرجع عام: أكثر من 70٪ من القياسات بين 70 و180 mg/dL. قد يختلف هدفك الشخصي.';
+
+  @override
+  String get importTitle => 'استيراد';
+
+  @override
+  String get importSubtitle => 'اربط مصادر بياناتك';
+
+  @override
+  String get directConnections => 'اتصالات مباشرة';
+
+  @override
+  String get pulperDescription =>
+      'PDF · صورة · Excel · Word — تستخرج IAmina البيانات لمراجعتك.';
+
+  @override
+  String get labReport => 'تحاليل مخبرية';
+
+  @override
+  String get cgmExport => 'تصدير CGM';
+
+  @override
+  String get prescription => 'وصفة طبية';
+
+  @override
+  String get photo => 'صورة';
+
+  @override
+  String get soon => 'قريبًا';
+
+  @override
+  String get unavailable => 'غير متاح';
+
+  @override
+  String get dexcomDescription =>
+      'ربط Dexcom CLARITY مخطط له. يجب تأكيد التواتر والتوفر قبل التفعيل.';
+
+  @override
+  String get libreDescription =>
+      'استيراد LibreView مخطط له. يجب تأكيد الصيغ والتوفر قبل التفعيل.';
+
+  @override
+  String get openDocumentImport => 'فتح استيراد المستند';
+
+  @override
+  String get documentTitle => 'استيراد مستند';
+
+  @override
+  String get documentIntro =>
+      'استورد مستندًا طبيًا. تستخرج IAmina البيانات ثم يجب عليك مراجعتها وتأكيدها.';
+
+  @override
+  String get chooseDocument => 'اختيار مستند';
+
+  @override
+  String get profileComplete => 'الملف مكتمل';
+
+  @override
+  String get profileCompleteChecked => 'الملف مكتمل ✓';
+
+  @override
+  String profileCompletionPercent(int percentage) {
+    return 'اكتمل الملف بنسبة $percentage٪';
+  }
+
+  @override
+  String get profileCompletionPrompt => 'أكمل ملفك للحصول على تحليلات أدق.';
+
+  @override
+  String get minimum => 'الحد الأدنى';
+
+  @override
+  String get maximum => 'الحد الأقصى';
 }

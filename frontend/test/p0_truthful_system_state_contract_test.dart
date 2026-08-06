@@ -30,7 +30,8 @@ void main() {
 
   test('dashboard renders only the authoritative synchronization state', () {
     final source = _read('lib/features/dashboard/widgets/top_bar.dart');
-    final copy = _read('lib/l10n/audited_page_copy.dart');
+    final catalog = _read('lib/l10n/app_fr.arb');
+    final adapter = _read('lib/l10n/audited_page_copy.dart');
 
     expect(source, contains('ValueListenableBuilder<SyncUiState>'));
     expect(source, contains('valueListenable: syncService.state'));
@@ -50,10 +51,22 @@ void main() {
       );
     }
 
-    expect(copy, contains('Données à jour'));
-    expect(copy, contains('Données en attente de synchronisation'));
-    expect(copy, contains('Hors ligne · données conservées sur cet appareil'));
-    expect(copy, contains('Échec de synchronisation · appuyer pour réessayer'));
+    for (final label in <String>[
+      'Données à jour',
+      'Données en attente de synchronisation',
+      'Hors ligne · données conservées sur cet appareil',
+      'Échec de synchronisation · appuyer pour réessayer',
+    ]) {
+      expect(catalog, contains(label));
+    }
+    for (final key in <String>[
+      'l10n.syncUpToDate',
+      'l10n.syncPending',
+      'l10n.syncOffline',
+      'l10n.syncFailed',
+    ]) {
+      expect(adapter, contains(key));
+    }
     expect(source, isNot(contains('valueListenable: syncService.isSyncing')));
   });
 

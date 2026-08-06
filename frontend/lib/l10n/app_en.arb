@@ -1,6 +1,5 @@
 {
   "@@locale": "en",
-
   "appTitle": "IAmina",
   "appSubtitle": "Diabetes Companion",
   "appTagline": "Your blood sugar balance, every day",
@@ -8,7 +7,6 @@
   "brandTagShort": "AI · AMINA",
   "dataPrivacyNote": "AI processing subject to approval",
   "sensorStatus": "Sensor G7 · IAmina",
-
   "login": "Log in",
   "logout": "Log out",
   "signIn": "Sign in",
@@ -30,7 +28,6 @@
   "send": "Send",
   "or": "or",
   "demoAccess": "Demo access — 21 days of data",
-
   "dashboard": "Dashboard",
   "addEntry": "Add entry",
   "addMeasurement": "Add a reading",
@@ -38,7 +35,6 @@
   "profile": "Profile",
   "myProfile": "My Profile",
   "profileUpdated": "Profile updated",
-
   "navSectionMain": "Main",
   "navSectionAccount": "Account",
   "navHome": "Home",
@@ -48,7 +44,6 @@
   "navSettings": "Settings",
   "navJournal": "Journal",
   "journalSubtitle": "Full history",
-
   "glucose": "Glucose",
   "insulin": "Insulin",
   "meal": "Meal",
@@ -57,7 +52,6 @@
   "stressed": "Stressed",
   "freeMeasurement": "Free reading",
   "enterValue": "Enter a value",
-
   "diabetesType": "Diabetes type",
   "diabetesType1": "Type 1 Diabetes",
   "diabetesType2": "Type 2 Diabetes",
@@ -72,7 +66,6 @@
   "dangerZone": "Danger zone",
   "configureWithIamina": "Configure with IAmina",
   "conversationalAssistant": "Use the conversational assistant",
-
   "journalEmpty": "Your journal is empty",
   "journalEmptySubtitle": "Add your first reading\nto start tracking.",
   "last7Days": "Last 7 days",
@@ -82,7 +75,6 @@
   "deleteEntryTitle": "Delete this reading?",
   "actionIrreversible": "This action cannot be undone.",
   "entryDeleted": "Reading deleted",
-
   "consentTitle": "Privacy & AI",
   "consentHeadline": "IAmina may process some data with approved AI services",
   "consentBody": "This consent authorises IAmina to use the data categories listed above for AI features. External processing occurs only when the deployment provider, region and retention policy have been approved. Without consent or a valid provider approval, data is not sent to the AI service.\n\nThe provider and terms may vary by deployment. You can withdraw this consent at any time from your profile settings.",
@@ -99,7 +91,6 @@
   "consentRequired": "AI consent required to use this feature",
   "documentPrivacyTitle": "Controlled external processing",
   "documentPrivacyBody": "The document is sent to an external service only when your consent and the deployment provider policy are valid. Otherwise, import is refused.",
-
   "save": "Save",
   "saveProfile": "Save",
   "cancel": "Cancel",
@@ -109,5 +100,115 @@
   "error": "Error",
   "loading": "Loading...",
   "noData": "No data",
-  "welcome": "Welcome to IAmina"
+  "welcome": "Welcome to IAmina",
+  "overview": "Overview",
+  "breadcrumb": "Home · Overview",
+  "talk": "Talk to IAmina",
+  "dayShort": "d",
+  "syncChecking": "Checking synchronization",
+  "syncUpToDate": "Data up to date",
+  "syncPending": "Data waiting to sync",
+  "syncing": "Synchronizing",
+  "syncOffline": "Offline · data kept on this device",
+  "syncFailed": "Synchronization failed · tap to retry",
+  "goodMorning": "Good morning",
+  "goodAfternoon": "Good afternoon",
+  "goodEvening": "Good evening",
+  "greetingWithName": "{greeting}, {firstName}.",
+  "@greetingWithName": {
+    "placeholders": {
+      "greeting": {
+        "type": "String"
+      },
+      "firstName": {
+        "type": "String"
+      }
+    }
+  },
+  "greetingWithoutName": "{greeting}!",
+  "@greetingWithoutName": {
+    "placeholders": {
+      "greeting": {
+        "type": "String"
+      }
+    }
+  },
+  "observation": "Here is what IAmina observed over your last {range} days.",
+  "@observation": {
+    "placeholders": {
+      "range": {
+        "type": "int"
+      }
+    }
+  },
+  "emptyAnalysis": "Add data to view your IAmina analysis.",
+  "latestReading": "LATEST READING",
+  "justNow": "just now",
+  "minutesAgo": "{value} min ago",
+  "@minutesAgo": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "afterMeal": "After meal",
+  "fasting": "Fasting",
+  "targetTitle": "READINGS IN RANGE · {range} DAYS",
+  "@targetTitle": {
+    "placeholders": {
+      "range": {
+        "type": "int"
+      }
+    }
+  },
+  "targetCoverage": "{count} readings over {days} days · share of readings, not CGM duration",
+  "@targetCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "targetReference": "General reference ≥ 70% · your personal target may differ.",
+  "viewJournal": "View journal",
+  "readingsInRange": "Readings in range",
+  "rangeReference": "Reference 70–180",
+  "inRange": "In range",
+  "high": "High",
+  "low": "Low",
+  "veryHigh": "Very high",
+  "targetExplanation": "General reference: more than 70% of readings within 70–180 mg/dL. Your personal target may differ.",
+  "importTitle": "Import",
+  "importSubtitle": "Connect your data sources",
+  "directConnections": "Direct connections",
+  "pulperDescription": "PDF · Photo · Excel · Word — IAmina extracts data for your review.",
+  "labReport": "Lab report",
+  "cgmExport": "CGM export",
+  "prescription": "Prescription",
+  "photo": "Photo",
+  "soon": "SOON",
+  "unavailable": "Unavailable",
+  "dexcomDescription": "Dexcom CLARITY connection planned. Frequency and availability must be confirmed before activation.",
+  "libreDescription": "LibreView import planned. Formats and availability must be confirmed before activation.",
+  "openDocumentImport": "Open document import",
+  "documentTitle": "Import a document",
+  "documentIntro": "Import a medical document. IAmina extracts the data, then you must review and confirm it.",
+  "chooseDocument": "Choose a document",
+  "profileComplete": "Profile complete",
+  "profileCompleteChecked": "Profile complete ✓",
+  "profileCompletionPercent": "Profile {percentage}% complete",
+  "@profileCompletionPercent": {
+    "placeholders": {
+      "percentage": {
+        "type": "int"
+      }
+    }
+  },
+  "profileCompletionPrompt": "Complete your profile for more precise analyses.",
+  "minimum": "Min",
+  "maximum": "Max"
 }

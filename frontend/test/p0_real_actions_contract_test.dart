@@ -59,7 +59,8 @@ void main() {
 
   test('unavailable integrations cannot masquerade as active actions', () {
     final import = _read('lib/features/import/import_screen.dart');
-    final copy = _read('lib/l10n/audited_page_copy.dart');
+    final frenchArb = _read('lib/l10n/app_fr.arb');
+    final adapter = _read('lib/l10n/audited_page_copy.dart');
 
     expect(import, isNot(contains('Notifiez-moi')));
     expect(import, isNot(contains('rejoignez la liste d\'attente')));
@@ -67,8 +68,11 @@ void main() {
     expect(import, contains('AuditedPageCopy.of(context).dexcomDescription'));
     expect(import, contains('AuditedPageCopy.of(context).libreDescription'));
     expect(import, contains('action: const _UnavailableAction()'));
-    expect(copy, contains('Non disponible'));
-    expect(copy, contains('à confirmer avant activation'));
+    expect(frenchArb, contains('Non disponible'));
+    expect(frenchArb, contains('à confirmer avant activation'));
+    expect(adapter, contains('l10n.unavailable'));
+    expect(adapter, contains('l10n.dexcomDescription'));
+    expect(adapter, contains('l10n.libreDescription'));
   });
 
   test('summary contains no fallback dose or basal adjustment advice', () {
