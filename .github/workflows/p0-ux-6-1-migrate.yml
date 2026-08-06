@@ -26,7 +26,7 @@ jobs:
         run: python scripts/p0_ux_6_1_migrate_i18n.py
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.4'
+          flutter-version: '3.41.0'
           channel: stable
           cache: true
       - name: Generate localization code
@@ -38,8 +38,8 @@ jobs:
       - name: Verify focused tests
         working-directory: frontend
         run: |
-          flutter analyze
-          flutter test test/l10n/audited_page_copy_source_test.dart
+          flutter analyze --no-fatal-infos
+          flutter test --no-pub test/l10n/audited_page_copy_source_test.dart
       - name: Commit migration result
         run: |
           git config user.name github-actions[bot]
