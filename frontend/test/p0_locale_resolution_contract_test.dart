@@ -1,6 +1,6 @@
+import 'package:amina/services/locale_preference_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:iamina/services/locale_preference_service.dart';
 
 void main() {
   group('locale normalization', () {
