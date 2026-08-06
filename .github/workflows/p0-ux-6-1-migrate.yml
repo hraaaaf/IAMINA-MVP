@@ -1,0 +1,53 @@
+name: P0-UX-6.1 one-shot migration
+
+on:
+  push:
+    branches:
+      - fix/p0-ux-6-1-i18n-single-source
+    paths:
+      - scripts/p0_ux_6_1_migrate_i18n.py
+      - .github/workflows/p0-ux-6-1-migrate.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p0-ux-6-1-i18n-single-source
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply ARB canonicalization
+        run: python scripts/p0_ux_6_1_migrate_i18n.py
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.4'
+          channel: stable
+          cache: true
+      - name: Generate localization code
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          dart format lib/l10n/audited_page_copy.dart test/l10n/audited_page_copy_source_test.dart
+      - name: Verify focused tests
+        working-directory: frontend
+        run: |
+          flutter analyze
+          flutter test test/l10n/audited_page_copy_source_test.dart
+      - name: Commit migration result
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/lib/l10n frontend/test/l10n
+          if git diff --cached --quiet; then
+            echo 'No migration changes to commit'
+            exit 0
+          fi
+          git commit -m 'refactor(i18n): make ARB the audited page copy source'
+          git push origin HEAD:fix/p0-ux-6-1-i18n-single-source
