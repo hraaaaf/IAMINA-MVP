@@ -1035,6 +1035,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Max'**
   String get maximum;
+
+  /// No description provided for @onboardingWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Hello! I am IAmina, your diabetes tracking companion.'**
+  String get onboardingWelcome;
+
+  /// No description provided for @onboardingChooseLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the app language.'**
+  String get onboardingChooseLanguage;
+
+  /// No description provided for @onboardingChooseCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Which country do you use IAmina in?'**
+  String get onboardingChooseCountry;
+
+  /// No description provided for @onboardingChooseTone.
+  ///
+  /// In en, this message translates to:
+  /// **'Which tone do you prefer?'**
+  String get onboardingChooseTone;
+
+  /// No description provided for @onboardingToneNeutral.
+  ///
+  /// In en, this message translates to:
+  /// **'Neutral and professional'**
+  String get onboardingToneNeutral;
+
+  /// No description provided for @onboardingToneFriendly.
+  ///
+  /// In en, this message translates to:
+  /// **'Simple and warm'**
+  String get onboardingToneFriendly;
+
+  /// No description provided for @onboardingCountryMorocco.
+  ///
+  /// In en, this message translates to:
+  /// **'Morocco'**
+  String get onboardingCountryMorocco;
+
+  /// No description provided for @onboardingCountryFrance.
+  ///
+  /// In en, this message translates to:
+  /// **'France'**
+  String get onboardingCountryFrance;
+
+  /// No description provided for @onboardingCountryOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Another country'**
+  String get onboardingCountryOther;
+
+  /// No description provided for @onboardingTypeQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'What type of diabetes do you manage?'**
+  String get onboardingTypeQuestion;
+
+  /// No description provided for @onboardingTreatmentQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'What is your main treatment?'**
+  String get onboardingTreatmentQuestion;
+
+  /// No description provided for @onboardingTreatmentInsulin.
+  ///
+  /// In en, this message translates to:
+  /// **'Insulin (injection or pump)'**
+  String get onboardingTreatmentInsulin;
+
+  /// No description provided for @onboardingTreatmentLifestyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lifestyle only'**
+  String get onboardingTreatmentLifestyle;
+
+  /// No description provided for @onboardingTargetQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'What are your glucose targets? The general reference shown is 70–180 mg/dL unless your personal target differs.'**
+  String get onboardingTargetQuestion;
+
+  /// No description provided for @onboardingTargetStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'General reference (70–180)'**
+  String get onboardingTargetStandard;
+
+  /// No description provided for @onboardingTargetCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal target'**
+  String get onboardingTargetCustom;
+
+  /// No description provided for @onboardingUnitQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Which measurement unit do you prefer?'**
+  String get onboardingUnitQuestion;
+
+  /// No description provided for @onboardingUnitMg.
+  ///
+  /// In en, this message translates to:
+  /// **'mg/dL'**
+  String get onboardingUnitMg;
+
+  /// No description provided for @onboardingUnitMmol.
+  ///
+  /// In en, this message translates to:
+  /// **'mmol/L'**
+  String get onboardingUnitMmol;
+
+  /// No description provided for @onboardingReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Your space is configured. You can change these choices in your profile.'**
+  String get onboardingReady;
+
+  /// No description provided for @onboardingStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get onboardingStart;
+
+  /// No description provided for @onboardingSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get onboardingSaving;
+
+  /// No description provided for @onboardingAssistantLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup assistant'**
+  String get onboardingAssistantLabel;
 }
 
 class _AppLocalizationsDelegate

@@ -503,4 +503,76 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get maximum => 'Max';
+
+  @override
+  String get onboardingWelcome =>
+      'Hello! I am IAmina, your diabetes tracking companion.';
+
+  @override
+  String get onboardingChooseLanguage => 'Choose the app language.';
+
+  @override
+  String get onboardingChooseCountry => 'Which country do you use IAmina in?';
+
+  @override
+  String get onboardingChooseTone => 'Which tone do you prefer?';
+
+  @override
+  String get onboardingToneNeutral => 'Neutral and professional';
+
+  @override
+  String get onboardingToneFriendly => 'Simple and warm';
+
+  @override
+  String get onboardingCountryMorocco => 'Morocco';
+
+  @override
+  String get onboardingCountryFrance => 'France';
+
+  @override
+  String get onboardingCountryOther => 'Another country';
+
+  @override
+  String get onboardingTypeQuestion => 'What type of diabetes do you manage?';
+
+  @override
+  String get onboardingTreatmentQuestion => 'What is your main treatment?';
+
+  @override
+  String get onboardingTreatmentInsulin => 'Insulin (injection or pump)';
+
+  @override
+  String get onboardingTreatmentLifestyle => 'Lifestyle only';
+
+  @override
+  String get onboardingTargetQuestion =>
+      'What are your glucose targets? The general reference shown is 70–180 mg/dL unless your personal target differs.';
+
+  @override
+  String get onboardingTargetStandard => 'General reference (70–180)';
+
+  @override
+  String get onboardingTargetCustom => 'Personal target';
+
+  @override
+  String get onboardingUnitQuestion => 'Which measurement unit do you prefer?';
+
+  @override
+  String get onboardingUnitMg => 'mg/dL';
+
+  @override
+  String get onboardingUnitMmol => 'mmol/L';
+
+  @override
+  String get onboardingReady =>
+      'Your space is configured. You can change these choices in your profile.';
+
+  @override
+  String get onboardingStart => 'Start';
+
+  @override
+  String get onboardingSaving => 'Saving…';
+
+  @override
+  String get onboardingAssistantLabel => 'Setup assistant';
 }
