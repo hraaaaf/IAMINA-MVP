@@ -320,4 +320,191 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get welcome => 'Bienvenue dans IAmina';
+
+  @override
+  String get overview => 'Vue d\'ensemble';
+
+  @override
+  String get breadcrumb => 'Accueil · Vue d\'ensemble';
+
+  @override
+  String get talk => 'Parler à IAmina';
+
+  @override
+  String get dayShort => 'j';
+
+  @override
+  String get syncChecking => 'Vérification de la synchronisation';
+
+  @override
+  String get syncUpToDate => 'Données à jour';
+
+  @override
+  String get syncPending => 'Données en attente de synchronisation';
+
+  @override
+  String get syncing => 'Synchronisation en cours';
+
+  @override
+  String get syncOffline => 'Hors ligne · données conservées sur cet appareil';
+
+  @override
+  String get syncFailed => 'Échec de synchronisation · appuyer pour réessayer';
+
+  @override
+  String get goodMorning => 'Bonjour';
+
+  @override
+  String get goodAfternoon => 'Bon après-midi';
+
+  @override
+  String get goodEvening => 'Bonsoir';
+
+  @override
+  String greetingWithName(String greeting, String firstName) {
+    return '$greeting, $firstName.';
+  }
+
+  @override
+  String greetingWithoutName(String greeting) {
+    return '$greeting !';
+  }
+
+  @override
+  String observation(int range) {
+    return 'Voici ce qu\'IAmina a observé sur vos $range derniers jours.';
+  }
+
+  @override
+  String get emptyAnalysis =>
+      'Chargez des données pour voir votre analyse IAmina.';
+
+  @override
+  String get latestReading => 'DERNIÈRE MESURE';
+
+  @override
+  String get justNow => 'à l\'instant';
+
+  @override
+  String minutesAgo(int value) {
+    return 'il y a $value min';
+  }
+
+  @override
+  String get afterMeal => 'Après repas';
+
+  @override
+  String get fasting => 'À jeun';
+
+  @override
+  String targetTitle(int range) {
+    return 'MESURES DANS LA CIBLE · $range JOURS';
+  }
+
+  @override
+  String targetCoverage(int count, int days) {
+    return '$count mesures sur $days jours · proportion de mesures, pas durée CGM';
+  }
+
+  @override
+  String get targetReference =>
+      'Repère général ≥ 70 % · votre cible personnelle peut être différente.';
+
+  @override
+  String get viewJournal => 'Voir le journal';
+
+  @override
+  String get readingsInRange => 'Mesures dans la cible';
+
+  @override
+  String get rangeReference => 'Repère 70–180';
+
+  @override
+  String get inRange => 'Dans la cible';
+
+  @override
+  String get high => 'Élevé';
+
+  @override
+  String get low => 'Bas';
+
+  @override
+  String get veryHigh => 'Très élevé';
+
+  @override
+  String get targetExplanation =>
+      'Repère général : plus de 70 % des mesures dans 70–180 mg/dL. Votre cible personnelle peut être différente.';
+
+  @override
+  String get importTitle => 'Importer';
+
+  @override
+  String get importSubtitle => 'Connectez vos sources de données';
+
+  @override
+  String get directConnections => 'Connexions directes';
+
+  @override
+  String get pulperDescription =>
+      'PDF · Photo · Excel · Word — IAmina extrait les données pour votre relecture.';
+
+  @override
+  String get labReport => 'Bilan labo';
+
+  @override
+  String get cgmExport => 'Export CGM';
+
+  @override
+  String get prescription => 'Ordonnance';
+
+  @override
+  String get photo => 'Photo';
+
+  @override
+  String get soon => 'BIENTÔT';
+
+  @override
+  String get unavailable => 'Non disponible';
+
+  @override
+  String get dexcomDescription =>
+      'Connexion Dexcom CLARITY prévue. Fréquence et disponibilité à confirmer avant activation.';
+
+  @override
+  String get libreDescription =>
+      'Import LibreView prévu. Formats et disponibilité à confirmer avant activation.';
+
+  @override
+  String get openDocumentImport => 'Ouvrir l\'import de document';
+
+  @override
+  String get documentTitle => 'Importer un document';
+
+  @override
+  String get documentIntro =>
+      'Importez un document médical. IAmina extrait les données, puis vous devez les relire et les confirmer.';
+
+  @override
+  String get chooseDocument => 'Choisir un document';
+
+  @override
+  String get profileComplete => 'Profil complet';
+
+  @override
+  String get profileCompleteChecked => 'Profil complet ✓';
+
+  @override
+  String profileCompletionPercent(int percentage) {
+    return 'Profil complété à $percentage%';
+  }
+
+  @override
+  String get profileCompletionPrompt =>
+      'Complétez votre profil pour des analyses plus précises.';
+
+  @override
+  String get minimum => 'Min';
+
+  @override
+  String get maximum => 'Max';
 }

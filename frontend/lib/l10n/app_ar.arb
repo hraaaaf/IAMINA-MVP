@@ -1,6 +1,5 @@
 {
   "@@locale": "ar",
-
   "appTitle": "IAmina",
   "appSubtitle": "رفيق داء السكري",
   "appTagline": "توازن سكر الدم، كل يوم",
@@ -8,7 +7,6 @@
   "brandTagShort": "AI · AMINA",
   "dataPrivacyNote": "معالجة الذكاء الاصطناعي تخضع للموافقة",
   "sensorStatus": "مستشعر G7 · IAmina",
-
   "login": "تسجيل الدخول",
   "logout": "تسجيل الخروج",
   "signIn": "الدخول",
@@ -30,7 +28,6 @@
   "send": "إرسال",
   "or": "أو",
   "demoAccess": "وصول تجريبي — 21 يومًا من البيانات",
-
   "dashboard": "لوحة التحكم",
   "addEntry": "إضافة قياس",
   "addMeasurement": "إضافة قياس",
@@ -38,7 +35,6 @@
   "profile": "الملف الشخصي",
   "myProfile": "ملفي الشخصي",
   "profileUpdated": "تم تحديث الملف الشخصي",
-
   "navSectionMain": "الرئيسية",
   "navSectionAccount": "الحساب",
   "navHome": "الرئيسية",
@@ -48,7 +44,6 @@
   "navSettings": "الإعدادات",
   "navJournal": "اليومية",
   "journalSubtitle": "السجل الكامل",
-
   "glucose": "سكر الدم",
   "insulin": "الأنسولين",
   "meal": "الوجبة",
@@ -57,7 +52,6 @@
   "stressed": "متوتر",
   "freeMeasurement": "قياس حر",
   "enterValue": "أدخل قيمة",
-
   "diabetesType": "نوع داء السكري",
   "diabetesType1": "السكري النوع 1",
   "diabetesType2": "السكري النوع 2",
@@ -72,7 +66,6 @@
   "dangerZone": "منطقة حساسة",
   "configureWithIamina": "الإعداد مع IAmina",
   "conversationalAssistant": "استخدام المساعد المحادثاتي",
-
   "journalEmpty": "يومياتك فارغة",
   "journalEmptySubtitle": "أضف قياسك الأول\nلبدء المتابعة.",
   "last7Days": "آخر 7 أيام",
@@ -82,7 +75,6 @@
   "deleteEntryTitle": "حذف هذا القياس؟",
   "actionIrreversible": "هذا الإجراء لا يمكن التراجع عنه.",
   "entryDeleted": "تم حذف القياس",
-
   "consentTitle": "الخصوصية والذكاء الاصطناعي",
   "consentHeadline": "قد تعالج IAmina بعض البيانات باستخدام خدمات ذكاء اصطناعي معتمدة",
   "consentBody": "تسمح هذه الموافقة لـ IAmina باستخدام فئات البيانات المذكورة أعلاه لتشغيل ميزات الذكاء الاصطناعي. لا تتم المعالجة الخارجية إلا إذا تمت الموافقة على المزوّد والمنطقة وسياسة الاحتفاظ الخاصة ببيئة التشغيل. من دون موافقة المستخدم أو اعتماد صالح للمزوّد، لا تُرسل البيانات إلى خدمة الذكاء الاصطناعي.\n\nقد يختلف المزوّد والشروط حسب بيئة التشغيل. يمكنك سحب هذه الموافقة في أي وقت من إعدادات ملفك الشخصي.",
@@ -99,7 +91,6 @@
   "consentRequired": "مطلوب موافقة الذكاء الاصطناعي لاستخدام هذه الميزة",
   "documentPrivacyTitle": "معالجة خارجية مضبوطة",
   "documentPrivacyBody": "لا يُرسل المستند إلى خدمة خارجية إلا إذا كانت موافقتك وسياسة المزوّد الخاصة ببيئة التشغيل صالحتين. خلاف ذلك، يُرفض الاستيراد.",
-
   "save": "حفظ",
   "saveProfile": "حفظ",
   "cancel": "إلغاء",
@@ -109,5 +100,115 @@
   "error": "خطأ",
   "loading": "جارٍ التحميل...",
   "noData": "لا توجد بيانات",
-  "welcome": "مرحبًا بك في IAmina"
+  "welcome": "مرحبًا بك في IAmina",
+  "overview": "نظرة عامة",
+  "breadcrumb": "الرئيسية · نظرة عامة",
+  "talk": "تحدث مع IAmina",
+  "dayShort": "ي",
+  "syncChecking": "جارٍ التحقق من المزامنة",
+  "syncUpToDate": "البيانات محدّثة",
+  "syncPending": "بيانات في انتظار المزامنة",
+  "syncing": "جارٍ المزامنة",
+  "syncOffline": "غير متصل · البيانات محفوظة على هذا الجهاز",
+  "syncFailed": "فشلت المزامنة · اضغط لإعادة المحاولة",
+  "goodMorning": "صباح الخير",
+  "goodAfternoon": "مساء الخير",
+  "goodEvening": "مساء الخير",
+  "greetingWithName": "{greeting}، {firstName}",
+  "@greetingWithName": {
+    "placeholders": {
+      "greeting": {
+        "type": "String"
+      },
+      "firstName": {
+        "type": "String"
+      }
+    }
+  },
+  "greetingWithoutName": "{greeting}!",
+  "@greetingWithoutName": {
+    "placeholders": {
+      "greeting": {
+        "type": "String"
+      }
+    }
+  },
+  "observation": "إليك ما لاحظته IAmina خلال آخر {range} يومًا.",
+  "@observation": {
+    "placeholders": {
+      "range": {
+        "type": "int"
+      }
+    }
+  },
+  "emptyAnalysis": "أضف بيانات لعرض تحليل IAmina.",
+  "latestReading": "آخر قياس",
+  "justNow": "الآن",
+  "minutesAgo": "منذ {value} دقيقة",
+  "@minutesAgo": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "afterMeal": "بعد الوجبة",
+  "fasting": "صائم",
+  "targetTitle": "القياسات ضمن النطاق · {range} يومًا",
+  "@targetTitle": {
+    "placeholders": {
+      "range": {
+        "type": "int"
+      }
+    }
+  },
+  "targetCoverage": "{count} قياسًا خلال {days} يومًا · نسبة قياسات وليست مدة قياس مستمر",
+  "@targetCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "targetReference": "مرجع عام ≥ 70٪ · قد يختلف هدفك الشخصي.",
+  "viewJournal": "عرض اليومية",
+  "readingsInRange": "القياسات ضمن النطاق",
+  "rangeReference": "مرجع 70–180",
+  "inRange": "ضمن النطاق",
+  "high": "مرتفع",
+  "low": "منخفض",
+  "veryHigh": "مرتفع جدًا",
+  "targetExplanation": "مرجع عام: أكثر من 70٪ من القياسات بين 70 و180 mg/dL. قد يختلف هدفك الشخصي.",
+  "importTitle": "استيراد",
+  "importSubtitle": "اربط مصادر بياناتك",
+  "directConnections": "اتصالات مباشرة",
+  "pulperDescription": "PDF · صورة · Excel · Word — تستخرج IAmina البيانات لمراجعتك.",
+  "labReport": "تحاليل مخبرية",
+  "cgmExport": "تصدير CGM",
+  "prescription": "وصفة طبية",
+  "photo": "صورة",
+  "soon": "قريبًا",
+  "unavailable": "غير متاح",
+  "dexcomDescription": "ربط Dexcom CLARITY مخطط له. يجب تأكيد التواتر والتوفر قبل التفعيل.",
+  "libreDescription": "استيراد LibreView مخطط له. يجب تأكيد الصيغ والتوفر قبل التفعيل.",
+  "openDocumentImport": "فتح استيراد المستند",
+  "documentTitle": "استيراد مستند",
+  "documentIntro": "استورد مستندًا طبيًا. تستخرج IAmina البيانات ثم يجب عليك مراجعتها وتأكيدها.",
+  "chooseDocument": "اختيار مستند",
+  "profileComplete": "الملف مكتمل",
+  "profileCompleteChecked": "الملف مكتمل ✓",
+  "profileCompletionPercent": "اكتمل الملف بنسبة {percentage}٪",
+  "@profileCompletionPercent": {
+    "placeholders": {
+      "percentage": {
+        "type": "int"
+      }
+    }
+  },
+  "profileCompletionPrompt": "أكمل ملفك للحصول على تحليلات أدق.",
+  "minimum": "الحد الأدنى",
+  "maximum": "الحد الأقصى"
 }

@@ -317,4 +317,190 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get welcome => 'Welcome to IAmina';
+
+  @override
+  String get overview => 'Overview';
+
+  @override
+  String get breadcrumb => 'Home · Overview';
+
+  @override
+  String get talk => 'Talk to IAmina';
+
+  @override
+  String get dayShort => 'd';
+
+  @override
+  String get syncChecking => 'Checking synchronization';
+
+  @override
+  String get syncUpToDate => 'Data up to date';
+
+  @override
+  String get syncPending => 'Data waiting to sync';
+
+  @override
+  String get syncing => 'Synchronizing';
+
+  @override
+  String get syncOffline => 'Offline · data kept on this device';
+
+  @override
+  String get syncFailed => 'Synchronization failed · tap to retry';
+
+  @override
+  String get goodMorning => 'Good morning';
+
+  @override
+  String get goodAfternoon => 'Good afternoon';
+
+  @override
+  String get goodEvening => 'Good evening';
+
+  @override
+  String greetingWithName(String greeting, String firstName) {
+    return '$greeting, $firstName.';
+  }
+
+  @override
+  String greetingWithoutName(String greeting) {
+    return '$greeting!';
+  }
+
+  @override
+  String observation(int range) {
+    return 'Here is what IAmina observed over your last $range days.';
+  }
+
+  @override
+  String get emptyAnalysis => 'Add data to view your IAmina analysis.';
+
+  @override
+  String get latestReading => 'LATEST READING';
+
+  @override
+  String get justNow => 'just now';
+
+  @override
+  String minutesAgo(int value) {
+    return '$value min ago';
+  }
+
+  @override
+  String get afterMeal => 'After meal';
+
+  @override
+  String get fasting => 'Fasting';
+
+  @override
+  String targetTitle(int range) {
+    return 'READINGS IN RANGE · $range DAYS';
+  }
+
+  @override
+  String targetCoverage(int count, int days) {
+    return '$count readings over $days days · share of readings, not CGM duration';
+  }
+
+  @override
+  String get targetReference =>
+      'General reference ≥ 70% · your personal target may differ.';
+
+  @override
+  String get viewJournal => 'View journal';
+
+  @override
+  String get readingsInRange => 'Readings in range';
+
+  @override
+  String get rangeReference => 'Reference 70–180';
+
+  @override
+  String get inRange => 'In range';
+
+  @override
+  String get high => 'High';
+
+  @override
+  String get low => 'Low';
+
+  @override
+  String get veryHigh => 'Very high';
+
+  @override
+  String get targetExplanation =>
+      'General reference: more than 70% of readings within 70–180 mg/dL. Your personal target may differ.';
+
+  @override
+  String get importTitle => 'Import';
+
+  @override
+  String get importSubtitle => 'Connect your data sources';
+
+  @override
+  String get directConnections => 'Direct connections';
+
+  @override
+  String get pulperDescription =>
+      'PDF · Photo · Excel · Word — IAmina extracts data for your review.';
+
+  @override
+  String get labReport => 'Lab report';
+
+  @override
+  String get cgmExport => 'CGM export';
+
+  @override
+  String get prescription => 'Prescription';
+
+  @override
+  String get photo => 'Photo';
+
+  @override
+  String get soon => 'SOON';
+
+  @override
+  String get unavailable => 'Unavailable';
+
+  @override
+  String get dexcomDescription =>
+      'Dexcom CLARITY connection planned. Frequency and availability must be confirmed before activation.';
+
+  @override
+  String get libreDescription =>
+      'LibreView import planned. Formats and availability must be confirmed before activation.';
+
+  @override
+  String get openDocumentImport => 'Open document import';
+
+  @override
+  String get documentTitle => 'Import a document';
+
+  @override
+  String get documentIntro =>
+      'Import a medical document. IAmina extracts the data, then you must review and confirm it.';
+
+  @override
+  String get chooseDocument => 'Choose a document';
+
+  @override
+  String get profileComplete => 'Profile complete';
+
+  @override
+  String get profileCompleteChecked => 'Profile complete ✓';
+
+  @override
+  String profileCompletionPercent(int percentage) {
+    return 'Profile $percentage% complete';
+  }
+
+  @override
+  String get profileCompletionPrompt =>
+      'Complete your profile for more precise analyses.';
+
+  @override
+  String get minimum => 'Min';
+
+  @override
+  String get maximum => 'Max';
 }
