@@ -1,6 +1,5 @@
 {
   "@@locale": "fr",
-
   "appTitle": "IAmina",
   "appSubtitle": "Compagnon Diabète",
   "appTagline": "Votre équilibre glycémique, chaque jour",
@@ -8,7 +7,6 @@
   "brandTagShort": "IA · AMINA",
   "dataPrivacyNote": "Traitement IA soumis à autorisation",
   "sensorStatus": "Capteur G7 · IAmina",
-
   "login": "Connexion",
   "logout": "Déconnexion",
   "signIn": "Se connecter",
@@ -30,7 +28,6 @@
   "send": "Envoyer",
   "or": "ou",
   "demoAccess": "Accès démo — 21 jours de données",
-
   "dashboard": "Tableau de bord",
   "addEntry": "Ajouter une entrée",
   "addMeasurement": "Ajouter une mesure",
@@ -38,7 +35,6 @@
   "profile": "Profil",
   "myProfile": "Mon Profil",
   "profileUpdated": "Profil mis à jour",
-
   "navSectionMain": "Principal",
   "navSectionAccount": "Compte",
   "navHome": "Accueil",
@@ -48,7 +44,6 @@
   "navSettings": "Paramètres",
   "navJournal": "Journal",
   "journalSubtitle": "Historique complet",
-
   "glucose": "Glycémie",
   "insulin": "Insuline",
   "meal": "Repas",
@@ -57,7 +52,6 @@
   "stressed": "Stressé",
   "freeMeasurement": "Mesure libre",
   "enterValue": "Entrez une valeur",
-
   "diabetesType": "Type de diabète",
   "diabetesType1": "Diabète Type 1",
   "diabetesType2": "Diabète Type 2",
@@ -72,7 +66,6 @@
   "dangerZone": "Zone sensible",
   "configureWithIamina": "Configurer avec IAmina",
   "conversationalAssistant": "Utiliser l'assistant conversationnel",
-
   "journalEmpty": "Votre journal est vide",
   "journalEmptySubtitle": "Ajoutez votre première mesure\npour commencer votre suivi.",
   "last7Days": "7 derniers jours",
@@ -82,7 +75,6 @@
   "deleteEntryTitle": "Supprimer cette mesure ?",
   "actionIrreversible": "Cette action est irréversible.",
   "entryDeleted": "Mesure supprimée",
-
   "consentTitle": "Confidentialité & IA",
   "consentHeadline": "IAmina peut traiter certaines données avec des services IA approuvés",
   "consentBody": "Ce consentement autorise IAmina à utiliser les catégories de données listées ci-dessus pour les fonctionnalités IA. Un traitement externe n'est effectué que si le fournisseur, la région et la politique de conservation du déploiement ont été approuvés. Sans consentement ou approbation fournisseur valide, les données ne sont pas envoyées au service IA.\n\nLe fournisseur et les conditions peuvent varier selon le déploiement. Vous pouvez retirer ce consentement à tout moment depuis vos paramètres de profil.",
@@ -99,7 +91,6 @@
   "consentRequired": "Consentement IA requis pour utiliser cette fonctionnalité",
   "documentPrivacyTitle": "Traitement externe contrôlé",
   "documentPrivacyBody": "Le document n’est transmis à un service externe que si votre consentement et la politique fournisseur du déploiement sont valides. Sinon, l’import est refusé.",
-
   "save": "Sauvegarder",
   "saveProfile": "Enregistrer",
   "cancel": "Annuler",
@@ -109,5 +100,115 @@
   "error": "Erreur",
   "loading": "Chargement...",
   "noData": "Aucune donnée",
-  "welcome": "Bienvenue dans IAmina"
+  "welcome": "Bienvenue dans IAmina",
+  "overview": "Vue d'ensemble",
+  "breadcrumb": "Accueil · Vue d'ensemble",
+  "talk": "Parler à IAmina",
+  "dayShort": "j",
+  "syncChecking": "Vérification de la synchronisation",
+  "syncUpToDate": "Données à jour",
+  "syncPending": "Données en attente de synchronisation",
+  "syncing": "Synchronisation en cours",
+  "syncOffline": "Hors ligne · données conservées sur cet appareil",
+  "syncFailed": "Échec de synchronisation · appuyer pour réessayer",
+  "goodMorning": "Bonjour",
+  "goodAfternoon": "Bon après-midi",
+  "goodEvening": "Bonsoir",
+  "greetingWithName": "{greeting}, {firstName}.",
+  "@greetingWithName": {
+    "placeholders": {
+      "greeting": {
+        "type": "String"
+      },
+      "firstName": {
+        "type": "String"
+      }
+    }
+  },
+  "greetingWithoutName": "{greeting} !",
+  "@greetingWithoutName": {
+    "placeholders": {
+      "greeting": {
+        "type": "String"
+      }
+    }
+  },
+  "observation": "Voici ce qu'IAmina a observé sur vos {range} derniers jours.",
+  "@observation": {
+    "placeholders": {
+      "range": {
+        "type": "int"
+      }
+    }
+  },
+  "emptyAnalysis": "Chargez des données pour voir votre analyse IAmina.",
+  "latestReading": "DERNIÈRE MESURE",
+  "justNow": "à l'instant",
+  "minutesAgo": "il y a {value} min",
+  "@minutesAgo": {
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "afterMeal": "Après repas",
+  "fasting": "À jeun",
+  "targetTitle": "MESURES DANS LA CIBLE · {range} JOURS",
+  "@targetTitle": {
+    "placeholders": {
+      "range": {
+        "type": "int"
+      }
+    }
+  },
+  "targetCoverage": "{count} mesures sur {days} jours · proportion de mesures, pas durée CGM",
+  "@targetCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "targetReference": "Repère général ≥ 70 % · votre cible personnelle peut être différente.",
+  "viewJournal": "Voir le journal",
+  "readingsInRange": "Mesures dans la cible",
+  "rangeReference": "Repère 70–180",
+  "inRange": "Dans la cible",
+  "high": "Élevé",
+  "low": "Bas",
+  "veryHigh": "Très élevé",
+  "targetExplanation": "Repère général : plus de 70 % des mesures dans 70–180 mg/dL. Votre cible personnelle peut être différente.",
+  "importTitle": "Importer",
+  "importSubtitle": "Connectez vos sources de données",
+  "directConnections": "Connexions directes",
+  "pulperDescription": "PDF · Photo · Excel · Word — IAmina extrait les données pour votre relecture.",
+  "labReport": "Bilan labo",
+  "cgmExport": "Export CGM",
+  "prescription": "Ordonnance",
+  "photo": "Photo",
+  "soon": "BIENTÔT",
+  "unavailable": "Non disponible",
+  "dexcomDescription": "Connexion Dexcom CLARITY prévue. Fréquence et disponibilité à confirmer avant activation.",
+  "libreDescription": "Import LibreView prévu. Formats et disponibilité à confirmer avant activation.",
+  "openDocumentImport": "Ouvrir l'import de document",
+  "documentTitle": "Importer un document",
+  "documentIntro": "Importez un document médical. IAmina extrait les données, puis vous devez les relire et les confirmer.",
+  "chooseDocument": "Choisir un document",
+  "profileComplete": "Profil complet",
+  "profileCompleteChecked": "Profil complet ✓",
+  "profileCompletionPercent": "Profil complété à {percentage}%",
+  "@profileCompletionPercent": {
+    "placeholders": {
+      "percentage": {
+        "type": "int"
+      }
+    }
+  },
+  "profileCompletionPrompt": "Complétez votre profil pour des analyses plus précises.",
+  "minimum": "Min",
+  "maximum": "Max"
 }
