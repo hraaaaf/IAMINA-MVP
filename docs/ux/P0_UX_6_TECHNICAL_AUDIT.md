@@ -6,6 +6,7 @@
 - Type : audit technique préalable
 - Base auditée : `main` au commit `9218ef153ea713b9c60dff273df8f80a45362d4e`
 - Code produit modifié : aucun
+- Décisions produit couvertes : 23 / 23
 
 ## Verdict
 
