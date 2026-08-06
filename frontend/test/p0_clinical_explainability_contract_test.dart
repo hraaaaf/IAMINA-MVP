@@ -48,7 +48,8 @@ void main() {
   );
 
   test('all target-range surfaces use the localized truthful contract', () {
-    final copy = _read('lib/l10n/audited_page_copy.dart');
+    final frenchArb = _read('lib/l10n/app_fr.arb');
+    final adapter = _read('lib/l10n/audited_page_copy.dart');
     final sources = <String, String>{
       'KPI card': _read('lib/features/dashboard/widgets/kpi_tir_card.dart'),
       'contextual hero': _read('lib/features/dashboard/widgets/hero_tir.dart'),
@@ -58,14 +59,16 @@ void main() {
       'Mesures dans la cible',
       'proportion de mesures, pas durée CGM',
       'votre cible personnelle peut être différente',
-      r'$count mesures sur $days jour',
+      '{count} mesures sur {days} jours',
     ]) {
       expect(
-        copy,
+        frenchArb,
         contains(required),
-        reason: 'Localized truthfulness contract is missing: $required',
+        reason: 'Canonical localized truthfulness contract is missing: $required',
       );
     }
+    expect(adapter, contains('l10n.targetCoverage(count, days)'));
+    expect(adapter, contains('l10n.readingsInRange'));
 
     for (final entry in sources.entries) {
       final source = entry.value;
