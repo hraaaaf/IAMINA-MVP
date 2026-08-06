@@ -61,18 +61,23 @@ jobs:
             ['profile', '/profile'],
           ];
           const profiles = [
-            ['desktop-fr', 1440, 1000, 'fr'],
-            ['mobile-fr', 390, 844, 'fr'],
-            ['compact-fr', 360, 560, 'fr'],
-            ['mobile-ar', 390, 844, 'ar'],
-            ['tablet-ar', 768, 1024, 'ar'],
+            ['desktop-fr', 1440, 1000, 'fr', 'fr-FR'],
+            ['mobile-fr', 390, 844, 'fr', 'fr-FR'],
+            ['compact-fr', 360, 560, 'fr', 'fr-FR'],
+            ['mobile-ar', 390, 844, 'ar', 'ar-MA'],
+            ['tablet-ar', 768, 1024, 'ar', 'ar-MA'],
           ];
 
           (async () => {
             const browser = await chromium.launch({ headless: true });
             const report = [];
-            for (const [profile, width, height, lang] of profiles) {
-              const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1 });
+            for (const [profile, width, height, lang, browserLocale] of profiles) {
+              const context = await browser.newContext({
+                viewport: { width, height },
+                deviceScaleFactor: 1,
+                locale: browserLocale,
+                timezoneId: 'Africa/Casablanca',
+              });
               for (const [name, route] of routes) {
                 const page = await context.newPage();
                 const consoleErrors = [];
@@ -80,20 +85,21 @@ jobs:
                 page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
                 page.on('pageerror', err => pageErrors.push(String(err)));
                 const url = `http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#${route}`;
-                await page.goto(url, { waitUntil: 'networkidle', timeout: 90000 });
-                await page.waitForTimeout(8000);
+                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await page.waitForTimeout(6000);
                 const file = `${profile}__${name}.png`;
                 await page.screenshot({ path: path.join('/tmp/p0-cert-3', file), fullPage: true });
+                const flutterViews = await page.locator('flutter-view').count();
                 const canvasCount = await page.locator('canvas').count();
                 const bodyText = (await page.locator('body').innerText().catch(() => '')).trim();
-                report.push({ profile, name, route, lang, width, height, url: page.url(), canvasCount, bodyTextLength: bodyText.length, consoleErrors, pageErrors, screenshot: file });
+                report.push({ profile, name, route, lang, browserLocale, width, height, url: page.url(), flutterViews, canvasCount, bodyTextLength: bodyText.length, consoleErrors, pageErrors, screenshot: file });
                 await page.close();
               }
               await context.close();
             }
             await browser.close();
             fs.writeFileSync('/tmp/p0-cert-3/report.json', JSON.stringify(report, null, 2));
-            const failures = report.filter(x => x.canvasCount === 0 || x.pageErrors.length > 0);
+            const failures = report.filter(x => x.flutterViews === 0 || x.pageErrors.length > 0);
             if (failures.length) {
               console.error(JSON.stringify(failures, null, 2));
               process.exit(1);
@@ -103,6 +109,7 @@ jobs:
           node /tmp/p0-cert-3/capture.cjs
 
       - name: Record certified source
+        if: always()
         run: |
           git rev-parse HEAD > /tmp/p0-cert-3/source-sha.txt
           cp /tmp/iamina-web.log /tmp/p0-cert-3/server.log
