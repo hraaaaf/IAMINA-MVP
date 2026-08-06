@@ -705,6 +705,336 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Welcome to IAmina'**
   String get welcome;
+
+  /// No description provided for @overview.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get overview;
+
+  /// No description provided for @breadcrumb.
+  ///
+  /// In en, this message translates to:
+  /// **'Home · Overview'**
+  String get breadcrumb;
+
+  /// No description provided for @talk.
+  ///
+  /// In en, this message translates to:
+  /// **'Talk to IAmina'**
+  String get talk;
+
+  /// No description provided for @dayShort.
+  ///
+  /// In en, this message translates to:
+  /// **'d'**
+  String get dayShort;
+
+  /// No description provided for @syncChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking synchronization'**
+  String get syncChecking;
+
+  /// No description provided for @syncUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Data up to date'**
+  String get syncUpToDate;
+
+  /// No description provided for @syncPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Data waiting to sync'**
+  String get syncPending;
+
+  /// No description provided for @syncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Synchronizing'**
+  String get syncing;
+
+  /// No description provided for @syncOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline · data kept on this device'**
+  String get syncOffline;
+
+  /// No description provided for @syncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Synchronization failed · tap to retry'**
+  String get syncFailed;
+
+  /// No description provided for @goodMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get goodMorning;
+
+  /// No description provided for @goodAfternoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon'**
+  String get goodAfternoon;
+
+  /// No description provided for @goodEvening.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening'**
+  String get goodEvening;
+
+  /// No description provided for @greetingWithName.
+  ///
+  /// In en, this message translates to:
+  /// **'{greeting}, {firstName}.'**
+  String greetingWithName(String greeting, String firstName);
+
+  /// No description provided for @greetingWithoutName.
+  ///
+  /// In en, this message translates to:
+  /// **'{greeting}!'**
+  String greetingWithoutName(String greeting);
+
+  /// No description provided for @observation.
+  ///
+  /// In en, this message translates to:
+  /// **'Here is what IAmina observed over your last {range} days.'**
+  String observation(int range);
+
+  /// No description provided for @emptyAnalysis.
+  ///
+  /// In en, this message translates to:
+  /// **'Add data to view your IAmina analysis.'**
+  String get emptyAnalysis;
+
+  /// No description provided for @latestReading.
+  ///
+  /// In en, this message translates to:
+  /// **'LATEST READING'**
+  String get latestReading;
+
+  /// No description provided for @justNow.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get justNow;
+
+  /// No description provided for @minutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} min ago'**
+  String minutesAgo(int value);
+
+  /// No description provided for @afterMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'After meal'**
+  String get afterMeal;
+
+  /// No description provided for @fasting.
+  ///
+  /// In en, this message translates to:
+  /// **'Fasting'**
+  String get fasting;
+
+  /// No description provided for @targetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'READINGS IN RANGE · {range} DAYS'**
+  String targetTitle(int range);
+
+  /// No description provided for @targetCoverage.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} readings over {days} days · share of readings, not CGM duration'**
+  String targetCoverage(int count, int days);
+
+  /// No description provided for @targetReference.
+  ///
+  /// In en, this message translates to:
+  /// **'General reference ≥ 70% · your personal target may differ.'**
+  String get targetReference;
+
+  /// No description provided for @viewJournal.
+  ///
+  /// In en, this message translates to:
+  /// **'View journal'**
+  String get viewJournal;
+
+  /// No description provided for @readingsInRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Readings in range'**
+  String get readingsInRange;
+
+  /// No description provided for @rangeReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference 70–180'**
+  String get rangeReference;
+
+  /// No description provided for @inRange.
+  ///
+  /// In en, this message translates to:
+  /// **'In range'**
+  String get inRange;
+
+  /// No description provided for @high.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get high;
+
+  /// No description provided for @low.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get low;
+
+  /// No description provided for @veryHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'Very high'**
+  String get veryHigh;
+
+  /// No description provided for @targetExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'General reference: more than 70% of readings within 70–180 mg/dL. Your personal target may differ.'**
+  String get targetExplanation;
+
+  /// No description provided for @importTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get importTitle;
+
+  /// No description provided for @importSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect your data sources'**
+  String get importSubtitle;
+
+  /// No description provided for @directConnections.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct connections'**
+  String get directConnections;
+
+  /// No description provided for @pulperDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF · Photo · Excel · Word — IAmina extracts data for your review.'**
+  String get pulperDescription;
+
+  /// No description provided for @labReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Lab report'**
+  String get labReport;
+
+  /// No description provided for @cgmExport.
+  ///
+  /// In en, this message translates to:
+  /// **'CGM export'**
+  String get cgmExport;
+
+  /// No description provided for @prescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Prescription'**
+  String get prescription;
+
+  /// No description provided for @photo.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get photo;
+
+  /// No description provided for @soon.
+  ///
+  /// In en, this message translates to:
+  /// **'SOON'**
+  String get soon;
+
+  /// No description provided for @unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get unavailable;
+
+  /// No description provided for @dexcomDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Dexcom CLARITY connection planned. Frequency and availability must be confirmed before activation.'**
+  String get dexcomDescription;
+
+  /// No description provided for @libreDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'LibreView import planned. Formats and availability must be confirmed before activation.'**
+  String get libreDescription;
+
+  /// No description provided for @openDocumentImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Open document import'**
+  String get openDocumentImport;
+
+  /// No description provided for @documentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a document'**
+  String get documentTitle;
+
+  /// No description provided for @documentIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a medical document. IAmina extracts the data, then you must review and confirm it.'**
+  String get documentIntro;
+
+  /// No description provided for @chooseDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a document'**
+  String get chooseDocument;
+
+  /// No description provided for @profileComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile complete'**
+  String get profileComplete;
+
+  /// No description provided for @profileCompleteChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile complete ✓'**
+  String get profileCompleteChecked;
+
+  /// No description provided for @profileCompletionPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile {percentage}% complete'**
+  String profileCompletionPercent(int percentage);
+
+  /// No description provided for @profileCompletionPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete your profile for more precise analyses.'**
+  String get profileCompletionPrompt;
+
+  /// No description provided for @minimum.
+  ///
+  /// In en, this message translates to:
+  /// **'Min'**
+  String get minimum;
+
+  /// No description provided for @maximum.
+  ///
+  /// In en, this message translates to:
+  /// **'Max'**
+  String get maximum;
 }
 
 class _AppLocalizationsDelegate
