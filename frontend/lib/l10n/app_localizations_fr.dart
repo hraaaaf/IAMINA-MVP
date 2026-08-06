@@ -507,4 +507,80 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get maximum => 'Max';
+
+  @override
+  String get onboardingWelcome =>
+      'Bonjour ! Je suis IAmina, votre compagnon de suivi du diabète.';
+
+  @override
+  String get onboardingChooseLanguage =>
+      'Choisissez la langue de l’application.';
+
+  @override
+  String get onboardingChooseCountry => 'Dans quel pays utilisez-vous IAmina ?';
+
+  @override
+  String get onboardingChooseTone => 'Quel ton préférez-vous ?';
+
+  @override
+  String get onboardingToneNeutral => 'Neutre et professionnel';
+
+  @override
+  String get onboardingToneFriendly => 'Simple et chaleureux';
+
+  @override
+  String get onboardingCountryMorocco => 'Maroc';
+
+  @override
+  String get onboardingCountryFrance => 'France';
+
+  @override
+  String get onboardingCountryOther => 'Autre pays';
+
+  @override
+  String get onboardingTypeQuestion =>
+      'Quel type de diabète gérez-vous au quotidien ?';
+
+  @override
+  String get onboardingTreatmentQuestion =>
+      'Quel est votre mode de traitement principal ?';
+
+  @override
+  String get onboardingTreatmentInsulin => 'Insuline (injection ou pompe)';
+
+  @override
+  String get onboardingTreatmentLifestyle => 'Hygiène de vie seule';
+
+  @override
+  String get onboardingTargetQuestion =>
+      'Quels sont vos objectifs glycémiques ? Le repère général affiché est 70–180 mg/dL, sauf cible personnelle différente.';
+
+  @override
+  String get onboardingTargetStandard => 'Repère général (70–180)';
+
+  @override
+  String get onboardingTargetCustom => 'Cible personnelle';
+
+  @override
+  String get onboardingUnitQuestion =>
+      'Quelle unité préférez-vous pour les mesures ?';
+
+  @override
+  String get onboardingUnitMg => 'mg/dL';
+
+  @override
+  String get onboardingUnitMmol => 'mmol/L';
+
+  @override
+  String get onboardingReady =>
+      'Votre espace est configuré. Vous pourrez modifier ces choix dans votre profil.';
+
+  @override
+  String get onboardingStart => 'Commencer';
+
+  @override
+  String get onboardingSaving => 'Enregistrement…';
+
+  @override
+  String get onboardingAssistantLabel => 'Assistant de configuration';
 }
