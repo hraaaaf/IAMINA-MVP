@@ -1,0 +1,45 @@
+name: P0-UX-6.2 one-shot migration
+
+on:
+  push:
+    branches: [fix/p0-ux-6-2-localized-onboarding]
+    paths:
+      - scripts/p0_ux_6_2_localized_onboarding.py
+      - .github/workflows/p0-ux-6-2-migrate.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p0-ux-6-2-localized-onboarding
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply localized onboarding
+        run: python scripts/p0_ux_6_2_localized_onboarding.py
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Generate and verify
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          dart format lib/services/locale_preference_service.dart lib/features/auth/onboarding_chat_screen.dart test/p0_localized_onboarding_contract_test.dart
+          flutter analyze --no-fatal-infos
+          flutter test test/p0_localized_onboarding_contract_test.dart
+      - name: Commit result
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/lib frontend/test
+          git commit -m 'feat(i18n): localize onboarding preferences'
+          git push origin HEAD:fix/p0-ux-6-2-localized-onboarding
