@@ -36,55 +36,59 @@ class _AddFabState extends State<_AddFab>
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Ajouter une entrée',
-      child: InkResponse(
-        onTap: widget.onTap,
-        radius: 30,
-        child: SizedBox(
-          width: 60,
-          height: 60,
-          child: AnimatedBuilder(
-            animation: _pulse,
-            builder: (_, __) {
-              final ripple = _pulse.value;
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  IgnorePointer(
-                    child: Container(
-                      width: 48 + ripple * 12,
-                      height: 48 + ripple * 12,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AminaTheme.teal500.withValues(
-                          alpha: (1 - ripple) * 0.22,
+    final label = AuditedPageCopy.of(context).l10n.addEntry;
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: true,
+        label: label,
+        child: InkResponse(
+          onTap: widget.onTap,
+          radius: 30,
+          child: SizedBox(
+            width: 60,
+            height: 60,
+            child: AnimatedBuilder(
+              animation: _pulse,
+              builder: (_, __) {
+                final ripple = _pulse.value;
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IgnorePointer(
+                      child: Container(
+                        width: 48 + ripple * 12,
+                        height: 48 + ripple * 12,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AminaTheme.teal500.withValues(
+                            alpha: (1 - ripple) * 0.22,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AminaTheme.teal500, AminaTheme.teal700],
-                        begin: AlignmentDirectional.topStart,
-                        end: AlignmentDirectional.bottomEnd,
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AminaTheme.teal500, AminaTheme.teal700],
+                          begin: AlignmentDirectional.topStart,
+                          end: AlignmentDirectional.bottomEnd,
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: AminaTheme.shadowFab,
                       ),
-                      shape: BoxShape.circle,
-                      boxShadow: AminaTheme.shadowFab,
+                      child: const Icon(
+                        Icons.add,
+                        color: Colors.white,
+                        size: 24,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.add,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ],
-              );
-            },
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
