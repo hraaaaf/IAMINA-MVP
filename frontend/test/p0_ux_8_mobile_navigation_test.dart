@@ -79,6 +79,8 @@ void main() {
   ) async {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    final semantics = tester.ensureSemantics();
+    addTearDown(semantics.dispose);
 
     final router = await pumpNavigation(tester, locale: const Locale('fr'));
     addTearDown(router.dispose);
@@ -115,6 +117,8 @@ void main() {
   ) async {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    final semantics = tester.ensureSemantics();
+    addTearDown(semantics.dispose);
 
     final router = await pumpNavigation(tester, locale: const Locale('ar'));
     addTearDown(router.dispose);
