@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-07 — P0-UX-7 desktop/tablet remediation certified and merged; P0-UX execution now requires a documented UX/UI score strictly above 9/10 before closure.
+> **Last updated:** 2026-08-07 — P0-UX-8 mobile navigation certified above the mandatory 9/10 quality gate; P0-UX-9 small-screen certification is next.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -27,7 +27,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
-| P0 visual UX remediation | 22% | 🟡 Active — P0-UX-8 next | P0-UX-6 and P0-UX-7 closed; PRs #53–#57; P0-UX-7 visual recertification run `31166646157` |
+| P0 visual UX remediation | 33% | 🟡 Active — P0-UX-9 next | P0-UX-6 through P0-UX-8 closed; PRs #53–#59; latest mobile recertification run `31182127159` |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -106,8 +106,8 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 |---|---|---:|---|---|
 | P0-UX-6 | Arabe / RTL / i18n | 100% | Closed through PRs #53–#56; canonical ARB source, localized onboarding, deterministic locale resolution, RTL/accessibility contracts | ✅ |
 | P0-UX-7 | Desktop / tablette | 100% | **9.3/10** after double-check; PR #57; merge `0a098d8b157c8d030e4d2ed8a6b4b8fcd895cccb`; CI #1062 and drift #878 green; 10-view recertification run `31166646157` with zero page errors | ✅ |
-| P0-UX-8 | Navigation mobile | 0% | Next LOT — permanent labels, explicit active state, FR/AR, touch targets and screen reader | ⏭️ |
-| P0-UX-9 | Petit écran 360×560 | 0% | Queued after P0-UX-8 | ⬜ |
+| P0-UX-8 | Navigation mobile | 100% | **9.4/10** after double-check; PR #59; CI #1075 and drift #891 green; 10-view 390×844 FR/AR recertification run `31182127159`, artifact `8995273847`, zero page errors | ✅ |
+| P0-UX-9 | Petit écran 360×560 | 0% | Next LOT — overlays, keyboard, modal, snackbar, long Arabic text and final scroll reachability | ⏭️ |
 | P0-UX-10 | Importer / Pulper | 0% | Queued | ⬜ |
 | P0-UX-11 | Dashboard premier utilisateur | 0% | Queued | ⬜ |
 | P1-UX-12 | Profil progressif | 0% | Queued | ⬜ |
@@ -127,6 +127,20 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 - Product head `bf633bc1524f7d52c179f0edc33150d93c5d8431` passed the full pre-merge CI and migration gates; post-merge `main` at `0a098d8b157c8d030e4d2ed8a6b4b8fcd895cccb` also passed CI #1062 and migration drift #878.
 
 **Final P0-UX-7 score: 9.3/10 — PASS.** The score is above the mandatory 9.0 threshold, so no additional remediation iteration is required for this LOT.
+
+### P0-UX-8 delivered work
+
+- The existing Material `NavigationBar` is retained because inspection showed that P0-UX-6.4 had already delivered the required permanent labels and explicit active indicator; no cosmetic rewrite was introduced without evidence.
+- A permanent real-widget contract now mounts the actual `MainShell` at `390×844` in French and Arabic.
+- All five destinations remain visible and labelled: Dashboard, IAmina, Journal, Importer and Settings.
+- The contract proves route-derived active state, real taps to Importer and Journal, Arabic RTL direction, touch targets of at least 48 px and screen-reader semantics containing each localized destination label.
+- The complete frontend suite passed after the semantics contract was corrected to match Flutter's composite semantics labels and to dispose its test handle before end-of-test verification.
+- Mobile FR and AR were visually recaptured at `390×844` across Dashboard, Summary, Journal, Importer and Profile: 10 views, one Flutter view per capture and zero page errors.
+- Visual double-check found permanent labels legible, selected-state pills unambiguous, RTL ordering correctly mirrored and no navigation overlap at the certified viewport.
+- Visual artifact: `8995273847`, digest `sha256:ce0fb1cb2f46855e30c0ed8c4eb9dd22fc67375a646ed3ef55ff91afdf4de607`.
+- Certified pre-roadmap test head `dc70dbcedc56300f811087d0f75312b3460e9232` passed CI #1075 and migration drift #891.
+
+**Final P0-UX-8 score: 9.4/10 — PASS.** No critical or high-severity navigation defect remains in the certified 390×844 FR/AR scope. P0-UX-9 remains separate and will certify the harsher `360×560` viewport and transient overlays.
 
 This UX remediation workstream is separate from the MENA critical-path numerator.
 
