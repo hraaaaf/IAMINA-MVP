@@ -26,15 +26,15 @@ s = s.replace('const _PulperChip({required this.label});', 'const _DocumentForma
 p.write_text(s)
 
 
-# Document flow: describe the user task, not the internal processor name.
+# Document flow: app bar names the task; hero avoids repeating the same title.
 p = Path('frontend/lib/features/documents/document_import_screen.dart')
 s = p.read_text()
 s = replace_once(s, "              const _PulperIcon(),", "              const _DocumentImportIcon(),", 'document icon call')
 s = replace_once(
     s,
-    "              Text(\n                'Pulper IAmina',\n                style: TextStyle(",
-    "              Text(\n                AuditedPageCopy.of(context).documentTitle,\n                style: TextStyle(",
-    'document visible title',
+    "              const SizedBox(height: 28),\n              Text(\n                'Pulper IAmina',\n                style: TextStyle(\n                  fontSize: 26,\n                  fontWeight: FontWeight.w800,\n                  color: AminaTheme.textPrimary(context),\n                  letterSpacing: -0.5,\n                ),\n              ),\n              const SizedBox(height: 10),",
+    "              const SizedBox(height: 20),",
+    'document duplicate hero title',
 )
 s = s.replace('class _PulperIcon extends StatelessWidget {', 'class _DocumentImportIcon extends StatelessWidget {')
 s = s.replace('const _PulperIcon();', 'const _DocumentImportIcon();')
