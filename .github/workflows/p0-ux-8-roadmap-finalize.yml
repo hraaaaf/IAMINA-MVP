@@ -1,0 +1,59 @@
+name: P0-UX-8 roadmap finalize
+
+on:
+  push:
+    branches:
+      - fix/p0-ux-8-mobile-navigation
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p0-ux-8-mobile-navigation
+          fetch-depth: 0
+
+      - name: Update canonical roadmap and remove one-shot workflow
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/ROADMAP.md')
+          text = path.read_text()
+
+          replacements = {
+              '> **Last updated:** 2026-08-07 — P0-UX-7 desktop/tablet remediation certified and merged; P0-UX execution now requires a documented UX/UI score strictly above 9/10 before closure.':
+              '> **Last updated:** 2026-08-07 — P0-UX-8 mobile navigation certified above the mandatory 9/10 quality gate; P0-UX-9 small-screen certification is next.',
+              '| P0 visual UX remediation | 22% | 🟡 Active — P0-UX-8 next | P0-UX-6 and P0-UX-7 closed; PRs #53–#57; P0-UX-7 visual recertification run `31166646157` |':
+              '| P0 visual UX remediation | 33% | 🟡 Active — P0-UX-9 next | P0-UX-6 through P0-UX-8 closed; PRs #53–#59; latest mobile recertification run `31182127159` |',
+              '| P0-UX-8 | Navigation mobile | 0% | Next LOT — permanent labels, explicit active state, FR/AR, touch targets and screen reader | ⏭️ |':
+              '| P0-UX-8 | Navigation mobile | 100% | **9.4/10** after double-check; PR #59; CI #1075 and drift #891 green; 10-view 390×844 FR/AR recertification run `31182127159`, artifact `8995273847`, zero page errors | ✅ |',
+              '| P0-UX-9 | Petit écran 360×560 | 0% | Queued after P0-UX-8 | ⬜ |':
+              '| P0-UX-9 | Petit écran 360×560 | 0% | Next LOT — overlays, keyboard, modal, snackbar, long Arabic text and final scroll reachability | ⏭️ |',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'missing expected roadmap anchor: {old}')
+              text = text.replace(old, new, 1)
+
+          anchor = '**Final P0-UX-7 score: 9.3/10 — PASS.** The score is above the mandatory 9.0 threshold, so no additional remediation iteration is required for this LOT.\n\n'
+          addition = '''### P0-UX-8 delivered work\n\n- The existing Material `NavigationBar` is retained because inspection showed that P0-UX-6.4 had already delivered the required permanent labels and explicit active indicator; no cosmetic rewrite was introduced without evidence.\n- A permanent real-widget contract now mounts the actual `MainShell` at `390×844` in French and Arabic.\n- All five destinations remain visible and labelled: Dashboard, IAmina, Journal, Importer and Settings.\n- The contract proves route-derived active state, real taps to Importer and Journal, Arabic RTL direction, touch targets of at least 48 px and screen-reader semantics containing each localized destination label.\n- The complete frontend suite passed after the semantics contract was corrected to match Flutter's composite semantics labels and to dispose its test handle before end-of-test verification.\n- Mobile FR and AR were visually recaptured at `390×844` across Dashboard, Summary, Journal, Importer and Profile: 10 views, one Flutter view per capture and zero page errors.\n- Visual double-check found permanent labels legible, selected-state pills unambiguous, RTL ordering correctly mirrored and no navigation overlap at the certified viewport.\n- Visual artifact: `8995273847`, digest `sha256:ce0fb1cb2f46855e30c0ed8c4eb9dd22fc67375a646ed3ef55ff91afdf4de607`.\n- Certified pre-roadmap test head `dc70dbcedc56300f811087d0f75312b3460e9232` passed CI #1075 and migration drift #891.\n\n**Final P0-UX-8 score: 9.4/10 — PASS.** No critical or high-severity navigation defect remains in the certified 390×844 FR/AR scope. P0-UX-9 remains separate and will certify the harsher `360×560` viewport and transient overlays.\n\n'''
+          if anchor not in text:
+              raise SystemExit('missing P0-UX-7 score anchor')
+          text = text.replace(anchor, anchor + addition, 1)
+          path.write_text(text)
+          PY
+
+          rm .github/workflows/p0-ux-8-roadmap-finalize.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/ROADMAP.md .github/workflows/p0-ux-8-roadmap-finalize.yml
+          git diff --cached --check
+          git commit -m "docs(roadmap): certify P0-UX-8 mobile navigation"
+          git push origin HEAD:fix/p0-ux-8-mobile-navigation
