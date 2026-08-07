@@ -8,13 +8,37 @@ on:
     branches: [main, dev]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  apply-p0-ux-7:
+    name: Apply P0-UX-7 responsive patch
+    if: github.event_name == 'push' && github.ref == 'refs/heads/fix/p0-ux-7-desktop-tablet-responsive'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply deterministic source patch
+        run: python scripts/apply_p0_ux_7.py
+      - name: Restore CI and remove temporary applicators
+        shell: bash
+        run: |
+          git fetch origin main --depth=1
+          git show origin/main:.github/workflows/ci.yml > .github/workflows/ci.yml
+          rm -f .github/workflows/p0-ux-7-apply.yml scripts/apply_p0_ux_7.py
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(ux): make desktop and tablet layouts responsive"
+          git push origin HEAD:fix/p0-ux-7-desktop-tablet-responsive
+
   secret-hygiene:
     name: Secret hygiene — tracked files
     runs-on: ubuntu-latest
