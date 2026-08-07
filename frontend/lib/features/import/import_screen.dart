@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
+import '../../core/widgets/responsive_content_surface.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
 import 'package:drift/drift.dart' as drift;
@@ -78,7 +79,9 @@ class _ImportScreenState extends State<ImportScreen> {
         children: [
           _TopBar(),
           Expanded(
-            child: SingleChildScrollView(
+            child: ResponsiveContentSurface(
+              maxWidth: 1160,
+              child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -168,27 +171,50 @@ class _ImportScreenState extends State<ImportScreen> {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  _ImportOption(
-                    icon: Icons.bluetooth,
-                    title: 'Dexcom G6/G7',
-                    subtitle: AuditedPageCopy.of(context).dexcomDescription,
-                    badge: AuditedPageCopy.of(context).soon,
-                    badgeBg: AminaTheme.ink50,
-                    badgeFg: AminaTheme.ink500,
-                    action: const _UnavailableAction(),
-                  ),
-                  const SizedBox(height: 12),
-                  _ImportOption(
-                    icon: Icons.sensors,
-                    title: 'Abbott LibreLink',
-                    subtitle: AuditedPageCopy.of(context).libreDescription,
-                    badge: AuditedPageCopy.of(context).soon,
-                    badgeBg: AminaTheme.ink50,
-                    badgeFg: AminaTheme.ink500,
-                    action: const _UnavailableAction(),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final cards = <Widget>[
+                        _ImportOption(
+                          icon: Icons.bluetooth,
+                          title: 'Dexcom G6/G7',
+                          subtitle: AuditedPageCopy.of(context).dexcomDescription,
+                          badge: AuditedPageCopy.of(context).soon,
+                          badgeBg: AminaTheme.ink50,
+                          badgeFg: AminaTheme.ink500,
+                          action: const _UnavailableAction(),
+                        ),
+                        _ImportOption(
+                          icon: Icons.sensors,
+                          title: 'Abbott LibreLink',
+                          subtitle: AuditedPageCopy.of(context).libreDescription,
+                          badge: AuditedPageCopy.of(context).soon,
+                          badgeBg: AminaTheme.ink50,
+                          badgeFg: AminaTheme.ink500,
+                          action: const _UnavailableAction(),
+                        ),
+                      ];
+                      if (constraints.maxWidth >= 900) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: cards[0]),
+                            const SizedBox(width: 16),
+                            Expanded(child: cards[1]),
+                          ],
+                        );
+                      }
+                      return Column(
+                        children: [
+                          cards[0],
+                          const SizedBox(height: 12),
+                          cards[1],
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
+            ),
             ),
           ),
         ],
