@@ -95,8 +95,8 @@ class _ImportScreenState extends State<ImportScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  // ── Pulper IAmina ──────────────────────────────────────────
-                  _PulperCard(
+                  // ── Document import ─────────────────────────────────────────
+                  _DocumentImportCard(
                     key: const ValueKey('import-document-cta'),
                     onTap: () => context.push('/pulper'),
                   ),
@@ -407,11 +407,11 @@ class _LastImportBanner extends StatelessWidget {
   }
 }
 
-// ── Pulper IAmina card ────────────────────────────────────────────────────────
+// ── Document import card ───────────────────────────────────────────────────────
 
-class _PulperCard extends StatelessWidget {
+class _DocumentImportCard extends StatelessWidget {
   final VoidCallback onTap;
-  const _PulperCard({super.key, required this.onTap});
+  const _DocumentImportCard({super.key, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -448,9 +448,9 @@ class _PulperCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Pulper IAmina',
-                      style: TextStyle(
+                    Text(
+                      AuditedPageCopy.of(context).documentTitle,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
@@ -469,10 +469,10 @@ class _PulperCard extends StatelessWidget {
                     Wrap(
                       spacing: 6,
                       children: [
-                        _PulperChip(label: AuditedPageCopy.of(context).labReport),
-                        _PulperChip(label: AuditedPageCopy.of(context).cgmExport),
-                        _PulperChip(label: AuditedPageCopy.of(context).prescription),
-                        _PulperChip(label: AuditedPageCopy.of(context).photo),
+                        _DocumentFormatChip(label: AuditedPageCopy.of(context).labReport),
+                        _DocumentFormatChip(label: AuditedPageCopy.of(context).cgmExport),
+                        _DocumentFormatChip(label: AuditedPageCopy.of(context).prescription),
+                        _DocumentFormatChip(label: AuditedPageCopy.of(context).photo),
                       ],
                     ),
                   ],
@@ -492,9 +492,9 @@ class _PulperCard extends StatelessWidget {
   }
 }
 
-class _PulperChip extends StatelessWidget {
+class _DocumentFormatChip extends StatelessWidget {
   final String label;
-  const _PulperChip({required this.label});
+  const _DocumentFormatChip({required this.label});
 
   @override
   Widget build(BuildContext context) => Container(
