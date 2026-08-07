@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-07 — P0-UX-8 mobile navigation certified above the mandatory 9/10 quality gate; P0-UX-9 small-screen certification is next.
+> **Last updated:** 2026-08-07 — P0-UX-9 small-screen 360×560 certified at 9.2/10 after a second visual remediation pass; P0-UX-10 Importer / Pulper is next.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -27,7 +27,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
-| P0 visual UX remediation | 33% | 🟡 Active — P0-UX-9 next | P0-UX-6 through P0-UX-8 closed; PRs #53–#59; latest mobile recertification run `31182127159` |
+| P0 visual UX remediation | 44% | 🟡 Active — P0-UX-10 next | P0-UX-6 through P0-UX-9 certified; PRs #53–#60; latest 360×560 recertification run `31208830202` |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -107,8 +107,8 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 | P0-UX-6 | Arabe / RTL / i18n | 100% | Closed through PRs #53–#56; canonical ARB source, localized onboarding, deterministic locale resolution, RTL/accessibility contracts | ✅ |
 | P0-UX-7 | Desktop / tablette | 100% | **9.3/10** after double-check; PR #57; merge `0a098d8b157c8d030e4d2ed8a6b4b8fcd895cccb`; CI #1062 and drift #878 green; 10-view recertification run `31166646157` with zero page errors | ✅ |
 | P0-UX-8 | Navigation mobile | 100% | **9.4/10** after double-check; PR #59; CI #1075 and drift #891 green; 10-view 390×844 FR/AR recertification run `31182127159`, artifact `8995273847`, zero page errors | ✅ |
-| P0-UX-9 | Petit écran 360×560 | 0% | Next LOT — overlays, keyboard, modal, snackbar, long Arabic text and final scroll reachability | ⏭️ |
-| P0-UX-10 | Importer / Pulper | 0% | Queued | ⬜ |
+| P0-UX-9 | Petit écran 360×560 | 100% | **9.2/10** after second visual double-check; PR #60; CI #1092 + drift #908 green; 10-view FR/AR recertification run `31208830202`, artifact `9005910951`, zero page errors | ✅ |
+| P0-UX-10 | Importer / Pulper | 0% | Next LOT — consolidate the import entry point and remove ambiguity between Importer and Pulper | ⏭️ |
 | P0-UX-11 | Dashboard premier utilisateur | 0% | Queued | ⬜ |
 | P1-UX-12 | Profil progressif | 0% | Queued | ⬜ |
 | P1-UX-13 | Wording médical et produit | 0% | Queued | ⬜ |
@@ -141,6 +141,20 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 - Certified pre-roadmap test head `dc70dbcedc56300f811087d0f75312b3460e9232` passed CI #1075 and migration drift #891.
 
 **Final P0-UX-8 score: 9.4/10 — PASS.** No critical or high-severity navigation defect remains in the certified 390×844 FR/AR scope. P0-UX-9 remains separate and will certify the harsher `360×560` viewport and transient overlays.
+
+### P0-UX-9 delivered work
+
+- The five certified user journeys were audited at the harsher `360×560` viewport in both French and Arabic/RTL before remediation.
+- The first visual pass scored only **8.6/10** and was explicitly rejected rather than closed: Dashboard CTA crowding, an under-designed Summary error state, a redundant IAmina FAB, French residue in Arabic Summary, cramped Arabic period chips and excessive Profile emphasis remained.
+- Dashboard first-use composition now adapts to short heights: illustration, spacing and CTA padding compact without hiding the secondary import action behind mobile navigation.
+- Summary mobile now uses a localized IAmina header instead of a desktop breadcrumb, removes the redundant IAmina FAB, localizes loaded-state greeting/observation and presents failure as a deliberate bounded product card with a 48 px retry action.
+- Arabic period labels no longer collapse into forms such as `7ي`; the compact label uses the readable `يوم` token and the Summary capture contains no French residue.
+- Profile reduces the promotional elevation of the IAmina configuration card and displays completion percentage only once.
+- The Profile sign-out sheet remains scroll-controlled and safe-area aware for short screens; a permanent `p0_ux_9_small_screen_contract_test.dart` prevents regression of the certified small-screen contracts.
+- The second FR/AR `360×560` matrix covers Dashboard, Summary, Journal, Importer and Profile: **10/10 rendered views, zero page errors**, no observed overlap or RTL regression.
+- Certified product head `0d421f2dc36fd295a4d69f302c7596a5950a9f50` passed CI #1092 and migration drift #908. Visual evidence: run `31208830202`, artifact `9005910951`, digest `sha256:eeeda5f517eaf0c6d0f6a3a6124335bc1250fc2942cb6e7636712a3563a91a14`.
+
+**Final P0-UX-9 score: 9.2/10 — PASS.** The score was assigned only after the rejected 8.6/10 pass was corrected and recaptured. No critical/high small-screen defect remains in the certified FR/AR `360×560` scope. PR #60 is the merge unit for this LOT; P0-UX-10 is next.
 
 This UX remediation workstream is separate from the MENA critical-path numerator.
 
