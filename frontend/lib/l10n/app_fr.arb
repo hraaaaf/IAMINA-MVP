@@ -233,5 +233,16 @@
   "onboardingReady": "Votre espace est configuré. Vous pourrez modifier ces choix dans votre profil.",
   "onboardingStart": "Commencer",
   "onboardingSaving": "Enregistrement…",
-  "onboardingAssistantLabel": "Assistant de configuration"
+  "onboardingAssistantLabel": "Assistant de configuration",
+  "emptyDashboardTitle": "Commencez votre suivi",
+  "emptyDashboardBody": "IAmina est prête à analyser vos données glycémiques et vous accompagner au quotidien.",
+  "addFirstMeasurement": "Ajouter ma première mesure",
+  "importDocument": "Importer un document",
+  "featureRealtimeAgp": "AGP en temps réel",
+  "featureAiAnalysis": "Analyse IA",
+  "featurePrivateData": "Données privées",
+  "analysisLoadError": "Impossible de récupérer les analyses.",
+  "retry": "Réessayer",
+  "analysisLoading": "IAmina analyse vos données…",
+  "analysisLoadingWait": "Cela prend quelques secondes."
 }

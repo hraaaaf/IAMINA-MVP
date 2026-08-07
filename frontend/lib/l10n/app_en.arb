@@ -233,5 +233,16 @@
   "onboardingReady": "Your space is configured. You can change these choices in your profile.",
   "onboardingStart": "Start",
   "onboardingSaving": "Saving…",
-  "onboardingAssistantLabel": "Setup assistant"
+  "onboardingAssistantLabel": "Setup assistant",
+  "emptyDashboardTitle": "Start your tracking",
+  "emptyDashboardBody": "IAmina is ready to analyse your glucose data and support you day to day.",
+  "addFirstMeasurement": "Add my first reading",
+  "importDocument": "Import a document",
+  "featureRealtimeAgp": "Real-time AGP",
+  "featureAiAnalysis": "AI analysis",
+  "featurePrivateData": "Private data",
+  "analysisLoadError": "Unable to retrieve analyses.",
+  "retry": "Retry",
+  "analysisLoading": "IAmina is analysing your data…",
+  "analysisLoadingWait": "This takes a few seconds."
 }
