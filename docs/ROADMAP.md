@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-07 — P0-UX-9 small-screen 360×560 certified at 9.2/10 after a second visual remediation pass; P0-UX-10 Importer / Pulper is next.
+> **Last updated:** 2026-08-07 — P0-UX-10 Importer / document flow certified at 9.4/10 after rejecting a first visual pass; P0-UX-11 first-use Dashboard is next.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -27,7 +27,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
-| P0 visual UX remediation | 44% | 🟡 Active — P0-UX-10 next | P0-UX-6 through P0-UX-9 certified; PRs #53–#60; latest 360×560 recertification run `31208830202` |
+| P0 visual UX remediation | 56% | 🟡 Active — P0-UX-11 next | P0-UX-6 through P0-UX-10 certified; PRs #53–#61; latest Importer/document recertification run `31224557639` |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -108,8 +108,8 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 | P0-UX-7 | Desktop / tablette | 100% | **9.3/10** after double-check; PR #57; merge `0a098d8b157c8d030e4d2ed8a6b4b8fcd895cccb`; CI #1062 and drift #878 green; 10-view recertification run `31166646157` with zero page errors | ✅ |
 | P0-UX-8 | Navigation mobile | 100% | **9.4/10** after double-check; PR #59; CI #1075 and drift #891 green; 10-view 390×844 FR/AR recertification run `31182127159`, artifact `8995273847`, zero page errors | ✅ |
 | P0-UX-9 | Petit écran 360×560 | 100% | **9.2/10** after second visual double-check; PR #60; CI #1092 + drift #908 green; 10-view FR/AR recertification run `31208830202`, artifact `9005910951`, zero page errors | ✅ |
-| P0-UX-10 | Importer / Pulper | 0% | Next LOT — consolidate the import entry point and remove ambiguity between Importer and Pulper | ⏭️ |
-| P0-UX-11 | Dashboard premier utilisateur | 0% | Queued | ⬜ |
+| P0-UX-10 | Importer / document | 100% | **9.4/10** after second visual double-check; PR #61; one primary Importer entry; 16-view FR/AR recertification run `31224557639`, artifact `9011673527`, zero page errors | ✅ |
+| P0-UX-11 | Dashboard premier utilisateur | 0% | Next LOT — certify truthful first-use hierarchy and action priority | ⏭️ |
 | P1-UX-12 | Profil progressif | 0% | Queued | ⬜ |
 | P1-UX-13 | Wording médical et produit | 0% | Queued | ⬜ |
 | P2-UX-14 | Densité et polish | 0% | Queued | ⬜ |
@@ -155,6 +155,20 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 - Certified product head `0d421f2dc36fd295a4d69f302c7596a5950a9f50` passed CI #1092 and migration drift #908. Visual evidence: run `31208830202`, artifact `9005910951`, digest `sha256:eeeda5f517eaf0c6d0f6a3a6124335bc1250fc2942cb6e7636712a3563a91a14`.
 
 **Final P0-UX-9 score: 9.2/10 — PASS.** The score was assigned only after the rejected 8.6/10 pass was corrected and recaptured. No critical/high small-screen defect remains in the certified FR/AR `360×560` scope. PR #60 is the merge unit for this LOT; P0-UX-10 is next.
+
+### P0-UX-10 delivered work
+
+- Code inspection established that Importer and the historical Pulper screen are not competing acquisition products: `/importer` is the sole primary acquisition hub, while `/pulper` is a subordinate document workflow that performs pick → ingest → preview → explicit confirmation.
+- The technical `/pulper` route and internal `PulperPreview` / `PulperConfirmResult` model names remain implementation details; no backend, persistence or confirmation semantics were changed.
+- User-facing `Pulper IAmina` branding was removed. The Importer hub now presents the localized task **Importer un document**, and the document screen uses the same task-first title without duplicating it in the hero.
+- UI implementation names were aligned to the product model (`DocumentImportCard`, `DocumentFormatChip`, `DocumentImportIcon`) while preserving the historical internal route to avoid an unnecessary navigation migration.
+- A permanent `p0_ux_10_importer_document_entry_contract_test.dart` proves that Importer is the only primary navigation entry, the document workflow remains subordinate and no user-facing Pulper branding returns.
+- The first 16-view visual pass was explicitly rejected: the French `360×560` document screen partially clipped the primary **Choisir un document** CTA at the bottom.
+- The same LOT was corrected with a short-height layout contract (`≤600 px`) that reduces only vertical spacing, icon size and CTA padding while preserving the complete privacy notice and all document-format choices.
+- The second matrix covers Importer plus document import in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **16/16 rendered views, zero page errors**, no visible Pulper branding, clean RTL and a fully visible primary CTA at the harshest viewport.
+- Certified product head `14e7a6d605aeb31d6c1813c614f9b72bbbf71d53`; visual evidence: run `31224557639`, artifact `9011673527`, digest `sha256:8e064f44d31f5422d8662cb8f88a962d74fcc8a676a6139cf5906110f2893710`.
+
+**Final P0-UX-10 score: 9.4/10 — PASS.** The LOT was not closed on the first successful implementation: the clipped 360×560 French CTA forced a second remediation and complete recertification. PR #61 is the merge unit; P0-UX-11 is next.
 
 This UX remediation workstream is separate from the MENA critical-path numerator.
 
