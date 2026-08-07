@@ -575,4 +575,38 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingAssistantLabel => 'Setup assistant';
+
+  @override
+  String get emptyDashboardTitle => 'Start your tracking';
+
+  @override
+  String get emptyDashboardBody =>
+      'IAmina is ready to analyse your glucose data and support you day to day.';
+
+  @override
+  String get addFirstMeasurement => 'Add my first reading';
+
+  @override
+  String get importDocument => 'Import a document';
+
+  @override
+  String get featureRealtimeAgp => 'Real-time AGP';
+
+  @override
+  String get featureAiAnalysis => 'AI analysis';
+
+  @override
+  String get featurePrivateData => 'Private data';
+
+  @override
+  String get analysisLoadError => 'Unable to retrieve analyses.';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get analysisLoading => 'IAmina is analysing your data…';
+
+  @override
+  String get analysisLoadingWait => 'This takes a few seconds.';
 }

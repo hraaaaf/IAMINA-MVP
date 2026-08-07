@@ -192,9 +192,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
                 return Scaffold(
                   backgroundColor: AminaTheme.bg(context),
-                  floatingActionButton: screenW >= 720 ? null : _AddFab(
-                    onTap: () => GoRouter.of(context).go('/ajouter'),
-                  ),
+                  floatingActionButton: screenW >= 720 || logs.isEmpty
+                      ? null
+                      : _AddFab(
+                          onTap: () => GoRouter.of(context).go('/ajouter'),
+                        ),
                   body: CustomScrollView(
                     slivers: [
                       SliverToBoxAdapter(
@@ -317,37 +319,44 @@ class _EmptyDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compactHeight = MediaQuery.sizeOf(context).height <= 600;
     return Padding(
-      padding: const EdgeInsets.only(top: 40, bottom: 32),
+      padding: EdgeInsets.only(
+        top: compactHeight ? 12 : 40,
+        bottom: compactHeight ? 16 : 32,
+      ),
       child: Column(children: [
         // Illustration
         Container(
-          width: 96, height: 96,
+          width: compactHeight ? 68 : 96,
+          height: compactHeight ? 68 : 96,
           decoration: BoxDecoration(
             gradient: AminaTheme.heroGradient,
             shape: BoxShape.circle,
             boxShadow: AminaTheme.shadowFab,
           ),
-          child: const Center(child: Text('🩺', style: TextStyle(fontSize: 44))),
+          child: Center(
+            child: Text('🩺', style: TextStyle(fontSize: compactHeight ? 32 : 44)),
+          ),
         ),
-        const SizedBox(height: 28),
+        SizedBox(height: compactHeight ? 16 : 28),
 
         // Headline
-        const Text(
-          'Commencez votre suivi',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AminaTheme.ink900, letterSpacing: -0.4),
+        Text(
+          AuditedPageCopy.of(context).l10n.emptyDashboardTitle,
+          style: TextStyle(fontSize: compactHeight ? 20 : 22, fontWeight: FontWeight.w800, color: AminaTheme.ink900, letterSpacing: -0.4),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 10),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 32),
+        SizedBox(height: compactHeight ? 6 : 10),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: compactHeight ? 16 : 32),
           child: Text(
-            'IAmina est prête à analyser vos données glycémiques et vous accompagner au quotidien.',
-            style: TextStyle(fontSize: 14, color: AminaTheme.ink500, height: 1.55),
+            AuditedPageCopy.of(context).l10n.emptyDashboardBody,
+            style: const TextStyle(fontSize: 14, color: AminaTheme.ink500, height: 1.55),
             textAlign: TextAlign.center,
           ),
         ),
-        const SizedBox(height: 36),
+        SizedBox(height: compactHeight ? 18 : 36),
 
         // CTAs
         Padding(
@@ -359,10 +368,10 @@ class _EmptyDashboard extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: onAddTap,
                 icon: const Icon(Icons.add_circle_outline, size: 18),
-                label: const Text('Ajouter ma première mesure', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                label: Text(AuditedPageCopy.of(context).l10n.addFirstMeasurement, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                 style: FilledButton.styleFrom(
                   backgroundColor: AminaTheme.teal500,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: compactHeight ? 13 : 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
               ),
@@ -374,10 +383,10 @@ class _EmptyDashboard extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: onImportTap,
                 icon: const Icon(Icons.upload_file_outlined, size: 18),
-                label: const Text('Importer un document', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                label: Text(AuditedPageCopy.of(context).l10n.importDocument, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AminaTheme.teal600,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  padding: EdgeInsets.symmetric(vertical: compactHeight ? 12 : 15),
                   side: const BorderSide(color: AminaTheme.teal200),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
@@ -387,11 +396,11 @@ class _EmptyDashboard extends StatelessWidget {
         ),
 
         // Feature pills
-        const SizedBox(height: 32),
-        const Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
-          _FeaturePill(icon: Icons.show_chart, label: 'AGP en temps réel'),
-          _FeaturePill(icon: Icons.auto_awesome, label: 'Analyse IA'),
-          _FeaturePill(icon: Icons.shield_outlined, label: 'Données privées'),
+        SizedBox(height: compactHeight ? 18 : 32),
+        Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
+          _FeaturePill(icon: Icons.show_chart, label: AuditedPageCopy.of(context).l10n.featureRealtimeAgp),
+          _FeaturePill(icon: Icons.auto_awesome, label: AuditedPageCopy.of(context).l10n.featureAiAnalysis),
+          _FeaturePill(icon: Icons.shield_outlined, label: AuditedPageCopy.of(context).l10n.featurePrivateData),
         ]),
       ]),
     );

@@ -330,7 +330,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get talk => 'تحدث مع IAmina';
 
   @override
-  String get dayShort => 'ي';
+  String get dayShort => 'يوم';
 
   @override
   String get syncChecking => 'جارٍ التحقق من المزامنة';
@@ -575,4 +575,38 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get onboardingAssistantLabel => 'مساعد الإعداد';
+
+  @override
+  String get emptyDashboardTitle => 'ابدأ متابعتك';
+
+  @override
+  String get emptyDashboardBody =>
+      'IAmina جاهزة لتحليل بيانات سكر الدم ومرافقتك يوميًا.';
+
+  @override
+  String get addFirstMeasurement => 'إضافة أول قياس';
+
+  @override
+  String get importDocument => 'استيراد مستند';
+
+  @override
+  String get featureRealtimeAgp => 'ملف AGP لحظي';
+
+  @override
+  String get featureAiAnalysis => 'تحليل بالذكاء الاصطناعي';
+
+  @override
+  String get featurePrivateData => 'بيانات خاصة';
+
+  @override
+  String get analysisLoadError => 'تعذّر استرجاع التحليلات.';
+
+  @override
+  String get retry => 'إعادة المحاولة';
+
+  @override
+  String get analysisLoading => 'تقوم IAmina بتحليل بياناتك…';
+
+  @override
+  String get analysisLoadingWait => 'قد يستغرق ذلك بضع ثوانٍ.';
 }
