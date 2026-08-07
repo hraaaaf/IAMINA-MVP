@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-05 — P0 product-truthfulness closure completed through PRs #39–#43; external MENA, legal, linguistic and secret-history gates remain open.
+> **Last updated:** 2026-08-07 — P0-UX-7 desktop/tablet remediation certified and merged; P0-UX execution now requires a documented UX/UI score strictly above 9/10 before closure.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -27,6 +27,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
+| P0 visual UX remediation | 22% | 🟡 Active — P0-UX-8 next | P0-UX-6 and P0-UX-7 closed; PRs #53–#57; P0-UX-7 visual recertification run `31166646157` |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -78,6 +79,56 @@ Preparation work does not close a live benchmark, legal/privacy approval, native
 - Permanent Flutter contracts prevent regression of all five requirements.
 
 **Closure:** PRs #39–#43. This workstream is separate from the MENA critical-path numerator.
+
+---
+
+# P0 visual UX remediation — ACTIVE
+
+Canonical defect register and acceptance criteria: `docs/ux/P0_CERT_4_VISUAL_AUDIT.md`.
+
+## Mandatory per-LOT UX/UI quality gate
+
+Every UX/UI LOT must finish with all of the following before it may be marked `100% ✅`:
+
+1. inspect the real implementation and acceptance criteria before changing code;
+2. run the relevant automated gates and review the final diff;
+3. recapture or exercise the affected user journeys on the required viewport/locale matrix;
+4. perform a documented visual/functional double-check against the LOT objective;
+5. assign a final UX/UI score based on the real evidence, not on implementation completion alone;
+6. if the score is **not strictly above 9.0/10**, continue correcting the same LOT and recertify until it exceeds 9.0/10;
+7. update `docs/ROADMAP.md` with the delivered work, evidence, score, merge and next LOT before declaring the LOT closed.
+
+A critical or high-severity unresolved defect prevents a score above 9/10 regardless of the arithmetic average.
+
+## Current UX execution status
+
+| LOT | Scope | Progress | Quality / evidence | Status |
+|---|---|---:|---|---|
+| P0-UX-6 | Arabe / RTL / i18n | 100% | Closed through PRs #53–#56; canonical ARB source, localized onboarding, deterministic locale resolution, RTL/accessibility contracts | ✅ |
+| P0-UX-7 | Desktop / tablette | 100% | **9.3/10** after double-check; PR #57; merge `0a098d8b157c8d030e4d2ed8a6b4b8fcd895cccb`; CI #1062 and drift #878 green; 10-view recertification run `31166646157` with zero page errors | ✅ |
+| P0-UX-8 | Navigation mobile | 0% | Next LOT — permanent labels, explicit active state, FR/AR, touch targets and screen reader | ⏭️ |
+| P0-UX-9 | Petit écran 360×560 | 0% | Queued after P0-UX-8 | ⬜ |
+| P0-UX-10 | Importer / Pulper | 0% | Queued | ⬜ |
+| P0-UX-11 | Dashboard premier utilisateur | 0% | Queued | ⬜ |
+| P1-UX-12 | Profil progressif | 0% | Queued | ⬜ |
+| P1-UX-13 | Wording médical et produit | 0% | Queued | ⬜ |
+| P2-UX-14 | Densité et polish | 0% | Queued | ⬜ |
+
+### P0-UX-7 delivered work
+
+- Routed pages receive the true post-sidebar viewport instead of the full window width.
+- Dashboard first-use content keeps a readable width while data views may use more space.
+- Journal long-history content is constrained to a readable desktop measure.
+- Importer uses a two-column desktop composition for direct connection cards when space permits.
+- Profile and Pulper use bounded, centered desktop surfaces without shrinking tablet layouts.
+- A shared responsive surface and permanent Flutter non-regression contract were added.
+- Desktop FR `1440×1000` and tablet AR/RTL `768×1024` were recaptured across Dashboard, Journal, Importer, Pulper and Profile.
+- Visual comparison found the desktop composition materially improved and tablet RTL stable, with no new runtime/page error.
+- Product head `bf633bc1524f7d52c179f0edc33150d93c5d8431` passed the full pre-merge CI and migration gates; post-merge `main` at `0a098d8b157c8d030e4d2ed8a6b4b8fcd895cccb` also passed CI #1062 and migration drift #878.
+
+**Final P0-UX-7 score: 9.3/10 — PASS.** The score is above the mandatory 9.0 threshold, so no additional remediation iteration is required for this LOT.
+
+This UX remediation workstream is separate from the MENA critical-path numerator.
 
 ---
 
