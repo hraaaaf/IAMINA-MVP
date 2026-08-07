@@ -52,9 +52,10 @@ void main() {
     final shell = _read('lib/features/navigation/main_shell.dart');
 
     expect(module, contains("route: '/importer'"));
-    expect(shell, contains('for (final e in entries)'));
+    expect(RegExp(r'for \(final \w+ in entries\)').hasMatch(shell), isTrue);
     expect(shell, contains('NavigationDestination('));
     expect(shell, contains('onDestinationSelected:'));
+    expect(shell, contains('GoRouter.of(context).go(entries[index].route)'));
   });
 
   test('unavailable integrations cannot masquerade as active actions', () {
