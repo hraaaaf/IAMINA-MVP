@@ -42,3 +42,5 @@ jobs:
           git add frontend/lib/features/dashboard/dashboard_screen.dart frontend/lib/features/journal/ai_summary_screen.dart frontend/lib/features/profile/profile_screen.dart frontend/lib/l10n/app_ar.arb frontend/lib/l10n/app_localizations_ar.dart frontend/test/p0_ux_9_small_screen_contract_test.dart
           git commit -m 'fix(ux): polish 360x560 flows after visual audit'
           git push origin HEAD:fix/p0-ux-9-small-screen
+
+# rerun: corrected SummaryTopBar target
