@@ -163,31 +163,33 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
 
   // ── Phase 1: Pick ──────────────────────────────────────────────────────────
   Widget _buildPick() {
+    final compactHeight = MediaQuery.sizeOf(context).height <= 600;
+    final verticalPadding = compactHeight ? 12.0 : 24.0;
     return LayoutBuilder(
       builder: (context, constraints) => SingleChildScrollView(
         key: const ValueKey('document-import-pick-scroll'),
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.symmetric(horizontal: compactHeight ? 20 : 24, vertical: verticalPadding),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            minHeight: constraints.maxHeight > 48
-                ? constraints.maxHeight - 48
+            minHeight: constraints.maxHeight > verticalPadding * 2
+                ? constraints.maxHeight - verticalPadding * 2
                 : 0,
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const _DocumentImportIcon(),
-              const SizedBox(height: 20),
+              SizedBox(height: compactHeight ? 14 : 20),
               Text(
                 AuditedPageCopy.of(context).documentIntro,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: compactHeight ? 13 : 14,
                   color: AminaTheme.textSecondary(context),
-                  height: 1.5,
+                  height: compactHeight ? 1.4 : 1.5,
                 ),
               ),
-              const SizedBox(height: 32),
+              SizedBox(height: compactHeight ? 20 : 32),
               // Format chips
               const Wrap(
                 spacing: 8,
@@ -200,9 +202,9 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                   _FormatChip(icon: Icons.description, label: 'Word'),
                 ],
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: compactHeight ? 12 : 20),
               const _PrivacyGateNotice(),
-              const SizedBox(height: 24),
+              SizedBox(height: compactHeight ? 14 : 24),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -213,7 +215,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AminaTheme.teal600,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: compactHeight ? 13 : 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -672,14 +674,15 @@ class _DocumentImportIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compactHeight = MediaQuery.sizeOf(context).height <= 600;
     return Container(
-      width: 100,
-      height: 100,
+      width: compactHeight ? 84 : 100,
+      height: compactHeight ? 84 : 100,
       decoration: BoxDecoration(
         gradient: AminaTheme.heroGradient,
         shape: BoxShape.circle,
       ),
-      child: const Icon(Icons.upload_file, color: Colors.white, size: 48),
+      child: Icon(Icons.upload_file, color: Colors.white, size: compactHeight ? 40 : 48),
     );
   }
 }

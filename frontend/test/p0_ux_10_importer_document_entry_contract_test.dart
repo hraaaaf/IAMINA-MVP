@@ -32,6 +32,8 @@ void main() {
     expect(screen, contains('AuditedPageCopy.of(context).documentIntro'));
     expect(screen, contains('AuditedPageCopy.of(context).chooseDocument'));
     expect(screen, contains('class _DocumentImportIcon'));
+    expect(screen, contains('compactHeight = MediaQuery.sizeOf(context).height <= 600'));
+    expect(screen, contains('verticalPadding = compactHeight ? 12.0 : 24.0'));
     expect(screen, isNot(contains("'Pulper IAmina'")));
     expect(screen, isNot(contains('class _PulperIcon')));
   });
