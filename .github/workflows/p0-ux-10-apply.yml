@@ -1,5 +1,6 @@
 name: P0-UX-10 apply
 
+# v2: remove duplicate document-import hero title
 on:
   push:
     branches:
