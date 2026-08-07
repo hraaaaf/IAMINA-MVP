@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/responsive_content_surface.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/models/document_models.dart';
 import '../../services/api_client.dart';
@@ -145,7 +146,9 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
           ),
         ),
       ),
-      body: SafeArea(
+      body: ResponsiveContentSurface(
+        maxWidth: 980,
+        child: SafeArea(
         child: _loading
             ? _buildLoading()
             : switch (_phase) {
@@ -153,6 +156,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                 _Phase.preview => _buildPreview(),
                 _Phase.done => _buildDone(),
               },
+        ),
       ),
     );
   }
