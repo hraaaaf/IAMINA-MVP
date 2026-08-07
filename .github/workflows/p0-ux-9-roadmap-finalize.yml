@@ -1,0 +1,66 @@
+name: P0-UX-9 roadmap finalize
+
+on:
+  push:
+    branches:
+      - fix/p0-ux-9-small-screen
+    paths:
+      - .github/workflows/p0-ux-9-roadmap-finalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p0-ux-9-small-screen
+          fetch-depth: 0
+      - name: Update canonical roadmap and remove this workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path('docs/ROADMAP.md')
+          s = p.read_text()
+          replacements = [
+            (
+              '> **Last updated:** 2026-08-07 — P0-UX-8 mobile navigation certified above the mandatory 9/10 quality gate; P0-UX-9 small-screen certification is next.',
+              '> **Last updated:** 2026-08-07 — P0-UX-9 small-screen 360×560 certified at 9.2/10 after a second visual remediation pass; P0-UX-10 Importer / Pulper is next.'
+            ),
+            (
+              '| P0 visual UX remediation | 33% | 🟡 Active — P0-UX-9 next | P0-UX-6 through P0-UX-8 closed; PRs #53–#59; latest mobile recertification run `31182127159` |',
+              '| P0 visual UX remediation | 44% | 🟡 Active — P0-UX-10 next | P0-UX-6 through P0-UX-9 certified; PRs #53–#60; latest 360×560 recertification run `31208830202` |'
+            ),
+            (
+              '| P0-UX-9 | Petit écran 360×560 | 0% | Next LOT — overlays, keyboard, modal, snackbar, long Arabic text and final scroll reachability | ⏭️ |',
+              '| P0-UX-9 | Petit écran 360×560 | 100% | **9.2/10** after second visual double-check; PR #60; CI #1092 + drift #908 green; 10-view FR/AR recertification run `31208830202`, artifact `9005910951`, zero page errors | ✅ |'
+            ),
+            (
+              '| P0-UX-10 | Importer / Pulper | 0% | Queued | ⬜ |',
+              '| P0-UX-10 | Importer / Pulper | 0% | Next LOT — consolidate the import entry point and remove ambiguity between Importer and Pulper | ⏭️ |'
+            ),
+          ]
+          for old, new in replacements:
+              count = s.count(old)
+              if count != 1:
+                  raise SystemExit(f'roadmap replacement expected once, found {count}: {old[:60]}')
+              s = s.replace(old, new, 1)
+
+          anchor = '**Final P0-UX-8 score: 9.4/10 — PASS.** No critical or high-severity navigation defect remains in the certified 390×844 FR/AR scope. P0-UX-9 remains separate and will certify the harsher `360×560` viewport and transient overlays.\n'
+          if s.count(anchor) != 1:
+              raise SystemExit('P0-UX-8 closure anchor missing')
+          addition = '''\n### P0-UX-9 delivered work\n\n- The five certified user journeys were audited at the harsher `360×560` viewport in both French and Arabic/RTL before remediation.\n- The first visual pass scored only **8.6/10** and was explicitly rejected rather than closed: Dashboard CTA crowding, an under-designed Summary error state, a redundant IAmina FAB, French residue in Arabic Summary, cramped Arabic period chips and excessive Profile emphasis remained.\n- Dashboard first-use composition now adapts to short heights: illustration, spacing and CTA padding compact without hiding the secondary import action behind mobile navigation.\n- Summary mobile now uses a localized IAmina header instead of a desktop breadcrumb, removes the redundant IAmina FAB, localizes loaded-state greeting/observation and presents failure as a deliberate bounded product card with a 48 px retry action.\n- Arabic period labels no longer collapse into forms such as `7ي`; the compact label uses the readable `يوم` token and the Summary capture contains no French residue.\n- Profile reduces the promotional elevation of the IAmina configuration card and displays completion percentage only once.\n- The Profile sign-out sheet remains scroll-controlled and safe-area aware for short screens; a permanent `p0_ux_9_small_screen_contract_test.dart` prevents regression of the certified small-screen contracts.\n- The second FR/AR `360×560` matrix covers Dashboard, Summary, Journal, Importer and Profile: **10/10 rendered views, zero page errors**, no observed overlap or RTL regression.\n- Certified product head `0d421f2dc36fd295a4d69f302c7596a5950a9f50` passed CI #1092 and migration drift #908. Visual evidence: run `31208830202`, artifact `9005910951`, digest `sha256:eeeda5f517eaf0c6d0f6a3a6124335bc1250fc2942cb6e7636712a3563a91a14`.\n\n**Final P0-UX-9 score: 9.2/10 — PASS.** The score was assigned only after the rejected 8.6/10 pass was corrected and recaptured. No critical/high small-screen defect remains in the certified FR/AR `360×560` scope. PR #60 is the merge unit for this LOT; P0-UX-10 is next.\n'''
+          s = s.replace(anchor, anchor + addition, 1)
+          p.write_text(s)
+          PY
+          git rm .github/workflows/p0-ux-9-roadmap-finalize.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/ROADMAP.md
+          git commit -m 'docs(roadmap): certify P0-UX-9 above 9/10'
+          git push origin HEAD:fix/p0-ux-9-small-screen
