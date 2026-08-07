@@ -213,7 +213,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: AminaTheme.primaryTeal.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: AminaTheme.primaryTeal.withValues(alpha: 0.2), width: 2),
-          boxShadow: AminaTheme.shadowCardLG,
+          boxShadow: AminaTheme.shadowCard,
         ),
         child: Row(
           children: [
@@ -295,8 +295,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
+      builder: (_) => SingleChildScrollView(
+        child: Container(
         padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 24, 40),
         decoration: const BoxDecoration(
           color: Colors.white,
@@ -360,6 +363,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -486,7 +490,7 @@ class _ProfileCompletionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final copy = AuditedPageCopy.of(context);
-    final label = copy.profileCompletionLabel(pct);
+    final label = pct >= 100 ? copy.profileComplete : AppLocalizations.of(context)!.profile;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

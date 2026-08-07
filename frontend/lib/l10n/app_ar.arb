@@ -104,7 +104,7 @@
   "overview": "نظرة عامة",
   "breadcrumb": "الرئيسية · نظرة عامة",
   "talk": "تحدث مع IAmina",
-  "dayShort": "ي",
+  "dayShort": "يوم",
   "syncChecking": "جارٍ التحقق من المزامنة",
   "syncUpToDate": "البيانات محدّثة",
   "syncPending": "بيانات في انتظار المزامنة",
@@ -233,5 +233,16 @@
   "onboardingReady": "تم إعداد مساحتك. يمكنك تعديل هذه الاختيارات من ملفك الشخصي.",
   "onboardingStart": "ابدأ",
   "onboardingSaving": "جارٍ الحفظ…",
-  "onboardingAssistantLabel": "مساعد الإعداد"
+  "onboardingAssistantLabel": "مساعد الإعداد",
+  "emptyDashboardTitle": "ابدأ متابعتك",
+  "emptyDashboardBody": "IAmina جاهزة لتحليل بيانات سكر الدم ومرافقتك يوميًا.",
+  "addFirstMeasurement": "إضافة أول قياس",
+  "importDocument": "استيراد مستند",
+  "featureRealtimeAgp": "ملف AGP لحظي",
+  "featureAiAnalysis": "تحليل بالذكاء الاصطناعي",
+  "featurePrivateData": "بيانات خاصة",
+  "analysisLoadError": "تعذّر استرجاع التحليلات.",
+  "retry": "إعادة المحاولة",
+  "analysisLoading": "تقوم IAmina بتحليل بياناتك…",
+  "analysisLoadingWait": "قد يستغرق ذلك بضع ثوانٍ."
 }

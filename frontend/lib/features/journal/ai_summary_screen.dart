@@ -5,6 +5,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../services/api_client.dart';
 import '../../data/models/ai_models.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/audited_page_copy.dart';
 import './widgets/amina_chat_view.dart';
 import '../dashboard/widgets/tweaks_panel.dart';
 import '../dashboard/widgets/agp_chart.dart';
@@ -66,7 +68,7 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
       _kpis = kpis;
       _isLoading = false;
       if (summary == null)
-        _errorMessage = 'Impossible de récupérer les analyses.';
+        _errorMessage = AppLocalizations.of(context)!.analysisLoadError;
     });
   }
 
@@ -122,8 +124,6 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
             ),
         ],
       ),
-      // Floating chat button (bottom right)
-      floatingActionButton: _ChatFab(onTap: _openChat),
     );
   }
 
@@ -150,7 +150,7 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
           ),
           const SizedBox(height: 22),
           Text(
-            'IAmina analyse vos données…',
+            AppLocalizations.of(context)!.analysisLoading,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -159,7 +159,7 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Cela prend quelques secondes.',
+            AppLocalizations.of(context)!.analysisLoadingWait,
             style: TextStyle(
               color: AminaTheme.textSecondary(context),
               fontSize: 13,
@@ -171,41 +171,67 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
   }
 
   Widget _buildError() {
-    return Center(
+    final l10n = AppLocalizations.of(context)!;
+    return Align(
+      alignment: Alignment.topCenter,
       child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AminaTheme.dangerBg,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(
-                Icons.error_outline,
-                color: AminaTheme.dangerFg,
-                size: 26,
-              ),
+        padding: const EdgeInsetsDirectional.fromSTEB(20, 32, 20, 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AminaTheme.surface(context),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AminaTheme.divider(context)),
+              boxShadow: AminaTheme.shadowClinical,
             ),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AminaTheme.textSecondary(context),
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AminaTheme.dangerBg,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.cloud_off_outlined,
+                    color: AminaTheme.dangerFg,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  l10n.analysisLoadError,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.35,
+                    fontWeight: FontWeight.w800,
+                    color: AminaTheme.textPrimary(context),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _fetchData,
+                    icon: const Icon(Icons.refresh, size: 17),
+                    label: Text(l10n.retry),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: _fetchData,
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Réessayer'),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -388,6 +414,8 @@ class _SummaryTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isCompact = MediaQuery.sizeOf(context).width < 600;
     return Container(
       padding: EdgeInsetsDirectional.fromSTEB(
         16,
@@ -405,44 +433,35 @@ class _SummaryTopBar extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: RichText(
-                  text: TextSpan(
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                      color: AminaTheme.textSecondary(context),
-                    ),
-                    children: [
-                      const TextSpan(text: 'Accueil · '),
-                      TextSpan(
-                        text: 'Vue d\'ensemble',
-                        style: TextStyle(
-                          color: AminaTheme.textPrimary(context),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                child: Text(
+                  isCompact ? l10n.navIamina : l10n.breadcrumb,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: isCompact ? 15 : 13,
+                    fontWeight: isCompact ? FontWeight.w800 : FontWeight.w600,
+                    color: AminaTheme.textPrimary(context),
                   ),
                 ),
               ),
               Row(
                 children: [
                   _PeriodTab(
-                    label: '7j',
+                    label: '7 ${l10n.dayShort}',
                     days: 7,
                     selected: periodDays == 7,
                     onTap: onPeriodChange,
                   ),
                   const SizedBox(width: 4),
                   _PeriodTab(
-                    label: '21j',
+                    label: '21 ${l10n.dayShort}',
                     days: 21,
                     selected: periodDays == 21,
                     onTap: onPeriodChange,
                   ),
                   const SizedBox(width: 4),
                   _PeriodTab(
-                    label: '90j',
+                    label: '90 ${l10n.dayShort}',
                     days: 90,
                     selected: periodDays == 90,
                     onTap: onPeriodChange,
@@ -515,12 +534,14 @@ class _GreetingHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final copy = AuditedPageCopy.of(context);
     final name = _firstName();
+    final hour = DateTime.now().hour;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          name.isNotEmpty ? 'Bonjour, $name.' : 'Bonjour !',
+          copy.greeting(hour, name),
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.w800,
@@ -530,7 +551,7 @@ class _GreetingHeader extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Voici ce qu\'IAmina a observé sur vos $periodDays derniers jours.',
+          copy.observation(periodDays),
           style: TextStyle(
             fontSize: 14,
             color: AminaTheme.textSecondary(context),
