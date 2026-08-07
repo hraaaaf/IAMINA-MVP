@@ -319,37 +319,44 @@ class _EmptyDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compactHeight = MediaQuery.sizeOf(context).height <= 600;
     return Padding(
-      padding: const EdgeInsets.only(top: 40, bottom: 32),
+      padding: EdgeInsets.only(
+        top: compactHeight ? 12 : 40,
+        bottom: compactHeight ? 16 : 32,
+      ),
       child: Column(children: [
         // Illustration
         Container(
-          width: 96, height: 96,
+          width: compactHeight ? 68 : 96,
+          height: compactHeight ? 68 : 96,
           decoration: BoxDecoration(
             gradient: AminaTheme.heroGradient,
             shape: BoxShape.circle,
             boxShadow: AminaTheme.shadowFab,
           ),
-          child: const Center(child: Text('🩺', style: TextStyle(fontSize: 44))),
+          child: Center(
+            child: Text('🩺', style: TextStyle(fontSize: compactHeight ? 32 : 44)),
+          ),
         ),
-        const SizedBox(height: 28),
+        SizedBox(height: compactHeight ? 16 : 28),
 
         // Headline
         Text(
           AuditedPageCopy.of(context).l10n.emptyDashboardTitle,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AminaTheme.ink900, letterSpacing: -0.4),
+          style: TextStyle(fontSize: compactHeight ? 20 : 22, fontWeight: FontWeight.w800, color: AminaTheme.ink900, letterSpacing: -0.4),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: compactHeight ? 6 : 10),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: EdgeInsets.symmetric(horizontal: compactHeight ? 16 : 32),
           child: Text(
             AuditedPageCopy.of(context).l10n.emptyDashboardBody,
             style: const TextStyle(fontSize: 14, color: AminaTheme.ink500, height: 1.55),
             textAlign: TextAlign.center,
           ),
         ),
-        const SizedBox(height: 36),
+        SizedBox(height: compactHeight ? 18 : 36),
 
         // CTAs
         Padding(
@@ -364,7 +371,7 @@ class _EmptyDashboard extends StatelessWidget {
                 label: Text(AuditedPageCopy.of(context).l10n.addFirstMeasurement, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                 style: FilledButton.styleFrom(
                   backgroundColor: AminaTheme.teal500,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: compactHeight ? 13 : 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
               ),
@@ -379,7 +386,7 @@ class _EmptyDashboard extends StatelessWidget {
                 label: Text(AuditedPageCopy.of(context).l10n.importDocument, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AminaTheme.teal600,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  padding: EdgeInsets.symmetric(vertical: compactHeight ? 12 : 15),
                   side: const BorderSide(color: AminaTheme.teal200),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
@@ -389,7 +396,7 @@ class _EmptyDashboard extends StatelessWidget {
         ),
 
         // Feature pills
-        const SizedBox(height: 32),
+        SizedBox(height: compactHeight ? 18 : 32),
         Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [
           _FeaturePill(icon: Icons.show_chart, label: AuditedPageCopy.of(context).l10n.featureRealtimeAgp),
           _FeaturePill(icon: Icons.auto_awesome, label: AuditedPageCopy.of(context).l10n.featureAiAnalysis),

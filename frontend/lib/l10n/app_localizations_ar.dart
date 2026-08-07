@@ -330,7 +330,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get talk => 'تحدث مع IAmina';
 
   @override
-  String get dayShort => 'ي';
+  String get dayShort => 'يوم';
 
   @override
   String get syncChecking => 'جارٍ التحقق من المزامنة';

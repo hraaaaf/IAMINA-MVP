@@ -11,6 +11,7 @@ void main() {
     expect(source, contains('BoxConstraints(maxWidth: 900)'));
     expect(source, contains('emptyDashboardTitle'));
     expect(source, contains('emptyDashboardBody'));
+    expect(source, contains('compactHeight = MediaQuery.sizeOf(context).height <= 600'));
     expect(source, isNot(contains("'Commencez votre suivi'")));
     expect(source, isNot(contains("'Ajouter ma première mesure'")));
   });
@@ -31,12 +32,17 @@ void main() {
     expect(source, contains('analysisLoading'));
     expect(source, contains('analysisLoadingWait'));
     expect(source, contains('.retry'));
+    expect(source, contains('isCompact ? l10n.navIamina : l10n.breadcrumb'));
+    expect(source, isNot(contains('floatingActionButton: _ChatFab')));
+    expect(source, contains('copy.greeting(hour, name)'));
+    expect(source, contains('copy.observation(periodDays)'));
     expect(source, isNot(contains("'Impossible de récupérer les analyses.'")));
     expect(source, isNot(contains("'Réessayer'")));
   });
 
   test('Arabic ARB owns the small-screen first-use and error copy', () {
     final ar = _read('lib/l10n/app_ar.arb');
+    expect(ar, contains('\"dayShort\": \"يوم\"'));
     for (final key in <String>[
       'emptyDashboardTitle',
       'emptyDashboardBody',
