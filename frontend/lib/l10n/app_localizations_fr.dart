@@ -583,4 +583,38 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get onboardingAssistantLabel => 'Assistant de configuration';
+
+  @override
+  String get emptyDashboardTitle => 'Commencez votre suivi';
+
+  @override
+  String get emptyDashboardBody =>
+      'IAmina est prête à analyser vos données glycémiques et vous accompagner au quotidien.';
+
+  @override
+  String get addFirstMeasurement => 'Ajouter ma première mesure';
+
+  @override
+  String get importDocument => 'Importer un document';
+
+  @override
+  String get featureRealtimeAgp => 'AGP en temps réel';
+
+  @override
+  String get featureAiAnalysis => 'Analyse IA';
+
+  @override
+  String get featurePrivateData => 'Données privées';
+
+  @override
+  String get analysisLoadError => 'Impossible de récupérer les analyses.';
+
+  @override
+  String get retry => 'Réessayer';
+
+  @override
+  String get analysisLoading => 'IAmina analyse vos données…';
+
+  @override
+  String get analysisLoadingWait => 'Cela prend quelques secondes.';
 }

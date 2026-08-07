@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../services/api_client.dart';
 import '../../data/models/ai_models.dart';
+import '../../l10n/app_localizations.dart';
 import './widgets/amina_chat_view.dart';
 import '../dashboard/widgets/tweaks_panel.dart';
 import '../dashboard/widgets/agp_chart.dart';
@@ -66,7 +67,7 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
       _kpis = kpis;
       _isLoading = false;
       if (summary == null)
-        _errorMessage = 'Impossible de récupérer les analyses.';
+        _errorMessage = AppLocalizations.of(context)!.analysisLoadError;
     });
   }
 
@@ -150,7 +151,7 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
           ),
           const SizedBox(height: 22),
           Text(
-            'IAmina analyse vos données…',
+            AppLocalizations.of(context)!.analysisLoading,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -159,7 +160,7 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Cela prend quelques secondes.',
+            AppLocalizations.of(context)!.analysisLoadingWait,
             style: TextStyle(
               color: AminaTheme.textSecondary(context),
               fontSize: 13,
@@ -203,7 +204,7 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
             FilledButton.icon(
               onPressed: _fetchData,
               icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Réessayer'),
+              label: Text(AppLocalizations.of(context)!.retry),
             ),
           ],
         ),

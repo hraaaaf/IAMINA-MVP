@@ -1173,6 +1173,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Setup assistant'**
   String get onboardingAssistantLabel;
+
+  /// No description provided for @emptyDashboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start your tracking'**
+  String get emptyDashboardTitle;
+
+  /// No description provided for @emptyDashboardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'IAmina is ready to analyse your glucose data and support you day to day.'**
+  String get emptyDashboardBody;
+
+  /// No description provided for @addFirstMeasurement.
+  ///
+  /// In en, this message translates to:
+  /// **'Add my first reading'**
+  String get addFirstMeasurement;
+
+  /// No description provided for @importDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a document'**
+  String get importDocument;
+
+  /// No description provided for @featureRealtimeAgp.
+  ///
+  /// In en, this message translates to:
+  /// **'Real-time AGP'**
+  String get featureRealtimeAgp;
+
+  /// No description provided for @featureAiAnalysis.
+  ///
+  /// In en, this message translates to:
+  /// **'AI analysis'**
+  String get featureAiAnalysis;
+
+  /// No description provided for @featurePrivateData.
+  ///
+  /// In en, this message translates to:
+  /// **'Private data'**
+  String get featurePrivateData;
+
+  /// No description provided for @analysisLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to retrieve analyses.'**
+  String get analysisLoadError;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @analysisLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'IAmina is analysing your data…'**
+  String get analysisLoading;
+
+  /// No description provided for @analysisLoadingWait.
+  ///
+  /// In en, this message translates to:
+  /// **'This takes a few seconds.'**
+  String get analysisLoadingWait;
 }
 
 class _AppLocalizationsDelegate
