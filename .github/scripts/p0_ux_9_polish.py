@@ -126,12 +126,11 @@ if n != 1:
 marker = 'class _SummaryTopBar extends StatelessWidget {'
 idx = s.index(marker)
 before, topbar = s[:idx], s[idx:]
-topbar = replace_once(
-    topbar,
-    "  Widget build(BuildContext context) {\n    return Container(",
-    "  Widget build(BuildContext context) {\n    final l10n = AppLocalizations.of(context)!;\n    final isCompact = MediaQuery.sizeOf(context).width < 600;\n    return Container(",
-    'summary topbar locals',
-)
+old = "  Widget build(BuildContext context) {\n    return Container("
+new = "  Widget build(BuildContext context) {\n    final l10n = AppLocalizations.of(context)!;\n    final isCompact = MediaQuery.sizeOf(context).width < 600;\n    return Container("
+if old not in topbar:
+    raise SystemExit('summary topbar locals: target not found')
+topbar = topbar.replace(old, new, 1)
 rich = re.compile(r"              Expanded\(\n                child: RichText\(.*?\n              \),\n              Row\(", re.S)
 rich_replacement = '''              Expanded(
                 child: Text(
