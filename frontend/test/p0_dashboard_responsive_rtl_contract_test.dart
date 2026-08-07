@@ -62,7 +62,10 @@ void main() {
   test('mobile add action has a bounded accessible footprint', () {
     final source = _read('lib/features/dashboard/widgets/speed_dial.dart');
 
-    expect(source, contains("label: 'Ajouter une entrée'"));
+    expect(source, contains('AuditedPageCopy.of(context).l10n.addEntry'));
+    expect(source, contains('message: label'));
+    expect(source, contains('label: label'));
+    expect(source, isNot(contains("label: 'Ajouter une entrée'")));
     expect(source, contains('width: 60'));
     expect(source, contains('width: 48'));
     expect(source, contains('AlignmentDirectional.topStart'));
