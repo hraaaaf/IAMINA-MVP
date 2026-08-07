@@ -83,7 +83,6 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
 
     final router = await pumpNavigation(tester, locale: const Locale('fr'));
     addTearDown(router.dispose);
@@ -113,6 +112,7 @@ void main() {
     expect(tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex, 3);
     expect(find.text('route:/importer'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    semantics.dispose();
   });
 
   testWidgets('390px Arabic navigation is RTL, readable and route-aware', (
@@ -121,7 +121,6 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
 
     final router = await pumpNavigation(tester, locale: const Locale('ar'));
     addTearDown(router.dispose);
@@ -149,5 +148,6 @@ void main() {
     expect(tester.widget<NavigationBar>(navFinder).selectedIndex, 2);
     expect(find.text('route:/journal'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    semantics.dispose();
   });
 }
