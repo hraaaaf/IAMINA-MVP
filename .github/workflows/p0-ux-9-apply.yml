@@ -1,0 +1,188 @@
+name: P0-UX-9 apply
+
+on:
+  push:
+    branches:
+      - fix/p0-ux-9-small-screen
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p0-ux-9-small-screen
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+      - name: Apply focused remediation
+        run: |
+          python3 <<'PY'
+          import json
+          from pathlib import Path
+
+          # Add canonical copy keys to all ARBs.
+          values = {
+            'fr': {
+              'emptyDashboardTitle': 'Commencez votre suivi',
+              'emptyDashboardBody': 'IAmina est prête à analyser vos données glycémiques et vous accompagner au quotidien.',
+              'addFirstMeasurement': 'Ajouter ma première mesure',
+              'importDocument': 'Importer un document',
+              'featureRealtimeAgp': 'AGP en temps réel',
+              'featureAiAnalysis': 'Analyse IA',
+              'featurePrivateData': 'Données privées',
+              'analysisLoadError': 'Impossible de récupérer les analyses.',
+              'retry': 'Réessayer',
+              'analysisLoading': 'IAmina analyse vos données…',
+              'analysisLoadingWait': 'Cela prend quelques secondes.'
+            },
+            'en': {
+              'emptyDashboardTitle': 'Start your tracking',
+              'emptyDashboardBody': 'IAmina is ready to analyse your glucose data and support you day to day.',
+              'addFirstMeasurement': 'Add my first reading',
+              'importDocument': 'Import a document',
+              'featureRealtimeAgp': 'Real-time AGP',
+              'featureAiAnalysis': 'AI analysis',
+              'featurePrivateData': 'Private data',
+              'analysisLoadError': 'Unable to retrieve analyses.',
+              'retry': 'Retry',
+              'analysisLoading': 'IAmina is analysing your data…',
+              'analysisLoadingWait': 'This takes a few seconds.'
+            },
+            'ar': {
+              'emptyDashboardTitle': 'ابدأ متابعتك',
+              'emptyDashboardBody': 'IAmina جاهزة لتحليل بيانات سكر الدم ومرافقتك يوميًا.',
+              'addFirstMeasurement': 'إضافة أول قياس',
+              'importDocument': 'استيراد مستند',
+              'featureRealtimeAgp': 'ملف AGP لحظي',
+              'featureAiAnalysis': 'تحليل بالذكاء الاصطناعي',
+              'featurePrivateData': 'بيانات خاصة',
+              'analysisLoadError': 'تعذّر استرجاع التحليلات.',
+              'retry': 'إعادة المحاولة',
+              'analysisLoading': 'تقوم IAmina بتحليل بياناتك…',
+              'analysisLoadingWait': 'قد يستغرق ذلك بضع ثوانٍ.'
+            },
+          }
+          for lang in ('fr','en','ar'):
+            p = Path(f'frontend/lib/l10n/app_{lang}.arb')
+            data = json.loads(p.read_text())
+            data.update(values[lang])
+            p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
+
+          # Dashboard: localize empty state and remove redundant FAB when empty.
+          p = Path('frontend/lib/features/dashboard/dashboard_screen.dart')
+          s = p.read_text()
+          s = s.replace(
+            "floatingActionButton: screenW >= 720 ? null : _AddFab(\n                    onTap: () => GoRouter.of(context).go('/ajouter'),\n                  ),",
+            "floatingActionButton: screenW >= 720 || logs.isEmpty\n                      ? null\n                      : _AddFab(\n                          onTap: () => GoRouter.of(context).go('/ajouter'),\n                        ),"
+          )
+          old = """        const Text(\n          'Commencez votre suivi',\n          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AminaTheme.ink900, letterSpacing: -0.4),\n          textAlign: TextAlign.center,\n        ),\n        const SizedBox(height: 10),\n        const Padding(\n          padding: EdgeInsets.symmetric(horizontal: 32),\n          child: Text(\n            'IAmina est prête à analyser vos données glycémiques et vous accompagner au quotidien.',\n            style: TextStyle(fontSize: 14, color: AminaTheme.ink500, height: 1.55),\n            textAlign: TextAlign.center,\n          ),\n        ),"""
+          new = """        Text(\n          AuditedPageCopy.of(context).l10n.emptyDashboardTitle,\n          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AminaTheme.ink900, letterSpacing: -0.4),\n          textAlign: TextAlign.center,\n        ),\n        const SizedBox(height: 10),\n        Padding(\n          padding: const EdgeInsets.symmetric(horizontal: 32),\n          child: Text(\n            AuditedPageCopy.of(context).l10n.emptyDashboardBody,\n            style: const TextStyle(fontSize: 14, color: AminaTheme.ink500, height: 1.55),\n            textAlign: TextAlign.center,\n          ),\n        ),"""
+          assert old in s
+          s = s.replace(old, new)
+          s = s.replace("label: const Text('Ajouter ma première mesure', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),", "label: Text(AuditedPageCopy.of(context).l10n.addFirstMeasurement, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),")
+          s = s.replace("label: const Text('Importer un document', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),", "label: Text(AuditedPageCopy.of(context).l10n.importDocument, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),")
+          s = s.replace("const Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [\n          _FeaturePill(icon: Icons.show_chart, label: 'AGP en temps réel'),\n          _FeaturePill(icon: Icons.auto_awesome, label: 'Analyse IA'),\n          _FeaturePill(icon: Icons.shield_outlined, label: 'Données privées'),\n        ])", "Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: [\n          _FeaturePill(icon: Icons.show_chart, label: AuditedPageCopy.of(context).l10n.featureRealtimeAgp),\n          _FeaturePill(icon: Icons.auto_awesome, label: AuditedPageCopy.of(context).l10n.featureAiAnalysis),\n          _FeaturePill(icon: Icons.shield_outlined, label: AuditedPageCopy.of(context).l10n.featurePrivateData),\n        ])")
+          p.write_text(s)
+
+          # Summary: localize states exercised by the certified offline audit.
+          p = Path('frontend/lib/features/journal/ai_summary_screen.dart')
+          s = p.read_text()
+          if "../../l10n/app_localizations.dart" not in s:
+            s = s.replace("import '../../data/models/ai_models.dart';", "import '../../data/models/ai_models.dart';\nimport '../../l10n/app_localizations.dart';")
+          s = s.replace("_errorMessage = 'Impossible de récupérer les analyses.';", "_errorMessage = AppLocalizations.of(context)!.analysisLoadError;")
+          s = s.replace("'IAmina analyse vos données…'", "AppLocalizations.of(context)!.analysisLoading")
+          s = s.replace("'Cela prend quelques secondes.'", "AppLocalizations.of(context)!.analysisLoadingWait")
+          s = s.replace("label: const Text('Réessayer'),", "label: Text(AppLocalizations.of(context)!.retry),")
+          p.write_text(s)
+
+          # Profile: short-screen-safe sign-out sheet.
+          p = Path('frontend/lib/features/profile/profile_screen.dart')
+          s = p.read_text()
+          needle = "showModalBottomSheet(\n      context: context,\n      backgroundColor: Colors.transparent,\n      builder: (_) => Container("
+          repl = "showModalBottomSheet(\n      context: context,\n      isScrollControlled: true,\n      useSafeArea: true,\n      backgroundColor: Colors.transparent,\n      builder: (_) => SingleChildScrollView(\n        child: Container("
+          assert needle in s
+          s = s.replace(needle, repl, 1)
+          # Close SingleChildScrollView around the first signout sheet only.
+          marker = """          ],\n        ),\n      ),\n    );\n  }\n\n  void _confirmWithdrawConsent"""
+          replacement = """          ],\n        ),\n      ),\n      ),\n    );\n  }\n\n  void _confirmWithdrawConsent"""
+          assert marker in s
+          s = s.replace(marker, replacement, 1)
+          p.write_text(s)
+
+          # Permanent source contract for the P0-UX-9 risks.
+          test = Path('frontend/test/p0_ux_9_small_screen_contract_test.dart')
+          test.write_text(r'''import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+
+String _read(String path) => File(path).readAsStringSync();
+
+void main() {
+  test('360px dashboard removes redundant FAB on first-use state', () {
+    final source = _read('lib/features/dashboard/dashboard_screen.dart');
+    expect(source, contains('screenW >= 720 || logs.isEmpty'));
+    expect(source, contains('emptyDashboardTitle'));
+    expect(source, contains('emptyDashboardBody'));
+    expect(source, isNot(contains("'Commencez votre suivi'")));
+    expect(source, isNot(contains("'Ajouter ma première mesure'")));
+  });
+
+  test('short-screen profile sign-out sheet is scroll controlled and safe-area aware', () {
+    final source = _read('lib/features/profile/profile_screen.dart');
+    final signOutStart = source.indexOf('void _confirmSignOut()');
+    final withdrawStart = source.indexOf('void _confirmWithdrawConsent');
+    final block = source.substring(signOutStart, withdrawStart);
+    expect(block, contains('isScrollControlled: true'));
+    expect(block, contains('useSafeArea: true'));
+    expect(block, contains('SingleChildScrollView'));
+  });
+
+  test('certified offline IAmina states are localized', () {
+    final source = _read('lib/features/journal/ai_summary_screen.dart');
+    expect(source, contains('analysisLoadError'));
+    expect(source, contains('analysisLoading'));
+    expect(source, contains('analysisLoadingWait'));
+    expect(source, contains('.retry'));
+    expect(source, isNot(contains("'Impossible de récupérer les analyses.'")));
+    expect(source, isNot(contains("'Réessayer'")));
+  });
+
+  test('Arabic ARB owns the small-screen first-use and error copy', () {
+    final ar = _read('lib/l10n/app_ar.arb');
+    for (final key in <String>[
+      'emptyDashboardTitle',
+      'emptyDashboardBody',
+      'addFirstMeasurement',
+      'importDocument',
+      'analysisLoadError',
+      'retry',
+    ]) {
+      expect(ar, contains('"$key"'));
+    }
+  });
+}
+''')
+          PY
+
+          cd frontend
+          flutter pub get
+          flutter gen-l10n
+          dart format lib/features/dashboard/dashboard_screen.dart lib/features/journal/ai_summary_screen.dart lib/features/profile/profile_screen.dart test/p0_ux_9_small_screen_contract_test.dart
+          flutter analyze
+          flutter test test/p0_ux_9_small_screen_contract_test.dart test/p0_mobile_import_navigation_test.dart test/p0_ux_8_mobile_navigation_test.dart
+          cd ..
+
+          rm .github/workflows/p0-ux-9-apply.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix(ux): harden 360px small-screen flows'
+          git push origin HEAD:fix/p0-ux-9-small-screen
