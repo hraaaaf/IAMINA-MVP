@@ -176,18 +176,8 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const _PulperIcon(),
-              const SizedBox(height: 28),
-              Text(
-                'Pulper IAmina',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: AminaTheme.textPrimary(context),
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 10),
+              const _DocumentImportIcon(),
+              const SizedBox(height: 20),
               Text(
                 AuditedPageCopy.of(context).documentIntro,
                 textAlign: TextAlign.center,
@@ -677,8 +667,8 @@ class _SectionHeader extends StatelessWidget {
   );
 }
 
-class _PulperIcon extends StatelessWidget {
-  const _PulperIcon();
+class _DocumentImportIcon extends StatelessWidget {
+  const _DocumentImportIcon();
 
   @override
   Widget build(BuildContext context) {
