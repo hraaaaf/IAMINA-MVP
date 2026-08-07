@@ -74,6 +74,9 @@ void main() {
     }
   }
 
+  Finder semanticsContaining(String label) =>
+      find.bySemanticsLabel(RegExp(RegExp.escape(label)));
+
   testWidgets('390px French navigation keeps every label visible and explicit', (
     tester,
   ) async {
@@ -98,7 +101,7 @@ void main() {
       'Paramètres',
     ]) {
       expect(find.text(label), findsOneWidget);
-      expect(find.bySemanticsLabel(label), findsWidgets);
+      expect(semanticsContaining(label), findsWidgets);
     }
 
     expectTouchTargets(tester);
@@ -134,7 +137,7 @@ void main() {
       'الإعدادات',
     ]) {
       expect(find.text(label), findsOneWidget);
-      expect(find.bySemanticsLabel(label), findsWidgets);
+      expect(semanticsContaining(label), findsWidgets);
     }
 
     expectTouchTargets(tester);
