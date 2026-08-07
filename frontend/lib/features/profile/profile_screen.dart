@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/amina_text_field.dart';
+import '../../core/widgets/responsive_content_surface.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
 import '../../services/auth_service.dart';
@@ -68,7 +69,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: Text(l10n.myProfile),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
+      body: ResponsiveContentSurface(
+        maxWidth: 1040,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -194,6 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 32),
           ],
+        ),
         ),
       ),
     );
