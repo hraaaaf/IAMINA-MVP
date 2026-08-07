@@ -24,6 +24,12 @@ class _JournalScreenState extends State<JournalScreen> {
     final unit = profile?.unitPreference ?? 'mg/dL';
     final targetLow = profile?.targetRangeLow ?? 70.0;
     final targetHigh = profile?.targetRangeHigh ?? 180.0;
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final horizontalPadding = viewportWidth >= 1100
+        ? (viewportWidth - 980) / 2
+        : viewportWidth >= 700
+        ? 28.0
+        : 20.0;
 
     final now = DateTime.now();
     final start = _selectedFilterDays == 0 
@@ -38,9 +44,14 @@ class _JournalScreenState extends State<JournalScreen> {
             stream: db.watchLogsInRange(start, now),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SliverPadding(
-                  padding: EdgeInsetsDirectional.fromSTEB(20, 16, 20, 20),
-                  sliver: _JournalSkeletonSliver(),
+                return SliverPadding(
+                  padding: EdgeInsetsDirectional.fromSTEB(
+                    horizontalPadding,
+                    16,
+                    horizontalPadding,
+                    20,
+                  ),
+                  sliver: const _JournalSkeletonSliver(),
                 );
               }
 
@@ -96,7 +107,12 @@ class _JournalScreenState extends State<JournalScreen> {
               final sortedDays = groupedLogs.keys.toList()..sort((a, b) => b.compareTo(a));
 
               return SliverPadding(
-                padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 100),
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  horizontalPadding,
+                  0,
+                  horizontalPadding,
+                  100,
+                ),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {

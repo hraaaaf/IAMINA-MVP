@@ -215,9 +215,15 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                           delegate: SliverChildListDelegate([
                             if (logs.isEmpty) ...[
                               if (kDebugMode) _SeedBanner(db: db),
-                              _EmptyDashboard(
-                                onAddTap:    () => GoRouter.of(context).go('/ajouter'),
-                                onImportTap: () => GoRouter.of(context).go('/importer'),
+                              Align(
+                                alignment: AlignmentDirectional.topCenter,
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(maxWidth: 900),
+                                  child: _EmptyDashboard(
+                                    onAddTap: () => GoRouter.of(context).go('/ajouter'),
+                                    onImportTap: () => GoRouter.of(context).go('/importer'),
+                                  ),
+                                ),
                               ),
                             ] else ...[
                               _staggered(0, _PageHead(logCount: logs.length, range: _range, isDesktop: screenW >= 900)),

@@ -92,7 +92,19 @@ class MainShell extends StatelessWidget {
       body: Row(
         children: [
           if (isMedium) _Sidebar(entries: entries, selectedIndex: selected),
-          Expanded(child: child),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final media = MediaQuery.of(context);
+                return MediaQuery(
+                  data: media.copyWith(
+                    size: Size(constraints.maxWidth, constraints.maxHeight),
+                  ),
+                  child: child,
+                );
+              },
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: isMedium
