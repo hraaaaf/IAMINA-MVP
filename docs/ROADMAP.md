@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-08 — P1-UX-13 medical/product wording certified at 9.3/10 in PR #65 after two rejected passes; P2-UX-14 density/polish is next.
+> **Last updated:** 2026-08-08 — P2-UX-14 density/polish certified at 9.2/10 in PR #66 after a rejected 8.5/10 baseline; final visual UX remediation matrix is complete.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -28,7 +28,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
-| P0 visual UX remediation | 89% | 🟡 Active — P2-UX-14 next | P0-UX-6 through P1-UX-13 certified; PRs #53–#65; latest wording recertification run `31263898750` |
+| P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -123,7 +123,7 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 | P0-UX-11 | Dashboard premier utilisateur | 100% | **9.3/10** after second post-patch visual double-check; PR #62; truthful loading/error/empty/offline states; 8-view FR/AR recertification run `31248641421`, artifact `9019314222`, zero page errors | ✅ |
 | P1-UX-12 | Profil progressif | 100% | **9.4/10** after Reviewer double-check; PR #64; three truthful progressive sections; 8-view FR/AR recertification run `31258575687`, artifact `9022145295`, zero page errors | ✅ |
 | P1-UX-13 | Wording médical et produit | 100% | **9.3/10** after second visual recertification; PR #65; plain-language CGM/AGP + privacy wording; 32-view FR/AR run `31263898750`, artifact `9023631718`, zero page errors | ✅ |
-| P2-UX-14 | Densité et polish | 0% | Queued | ⬜ |
+| P2-UX-14 | Densité et polish | 100% | **9.2/10** after Reviewer double-check; PR #66; 40-view FR/AR final matrix run `31267173791`, artifact `9024558783`, zero page errors | ✅ |
 
 ### P0-UX-7 delivered work
 
@@ -227,6 +227,19 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 - Clinical Safety Reviewer PASS: no diagnostic, treatment, dose, clinical threshold or calculation behavior changed; wording remains non-prescriptive and privacy egress conditions remain fail-closed.
 
 **Final P1-UX-13 score: 9.3/10 — PASS.** The LOT exceeded the mandatory threshold only after the 7.9 baseline and 8.8 first recertification were both rejected and remediated. PR #65 is the merge unit; P2-UX-14 is next.
+
+### P2-UX-14 delivered work
+
+- The canonical UX-A09/UX-A10 baseline covered Dashboard, Summary, Journal, Importer and Profile in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **40/40 rendered views**, one Flutter view per capture and zero page errors. Baseline evidence: run `31266321341`, artifact `9024312935`, digest `sha256:6f402c09185e5fcde6be8bbd09f856ecf072a7bd390c115884375491e5958ef1`.
+- The baseline scored **8.5/10 — CHANGES_REQUIRED**. Wide layouts still felt under-structured: the Summary error state was too small for desktop, Journal empty state floated in excessive whitespace, and Profile lacked a sufficiently coherent clinical grouping.
+- Remediation stayed deliberately cosmetic/structural: no business logic, clinical calculation, privacy behavior, persistence, route contract or patient-facing medical meaning changed.
+- Summary now uses a proportionate wide error composition while preserving the compact `360×560` state and 48 px retry action. Journal wide empty state is anchored to the readable content region rather than centered in unused canvas. Profile progressive sections gain a coherent desktop grouping with shared clinical radii and shadows.
+- Existing Dashboard and Importer layouts were intentionally left unchanged after review showed they already met the density objective. P0 desktop/tablet width contracts, mobile navigation, small-screen behavior and RTL remained stable.
+- Builder double-check caught and removed generated Flutter metadata/lockfile noise plus broad formatter churn before review; the final product diff contains only the three targeted screens and permanent `p2_ux_14_density_polish_contract_test.dart`.
+- Final exact visual product head `b6f42319207fff380b634f0d390dd3c8b45221b4` was recaptured across the complete **40-view** matrix. `source-sha.txt` matches; all 40 report rows have one Flutter view and zero page errors. Final evidence: run `31267173791`, artifact `9024558783`, digest `sha256:fcb730b7c32b8b2a8435072109f6a879170414f81e39ec8f139c28b421d5e902`.
+- Independent UX Reviewer PASS review `4889215432`: no critical/high defect observed; final score **9.2/10**. Pre-ROADMAP PR-head gates on the reviewed SHA were green: CI `31267596592` and migration drift `31267596575`.
+
+**Final P2-UX-14 score: 9.2/10 — PASS.** PR #66 is the merge unit. The visual UX remediation workstream has now completed all canonical P0-CERT-4 defect lots; merge still requires exact-final-head CI/drift, Release Certifier GO and post-merge verification.
 
 This UX remediation workstream is separate from the MENA critical-path numerator.
 
