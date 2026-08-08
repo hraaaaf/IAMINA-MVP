@@ -87,7 +87,9 @@ class _ConsentScreenState extends State<ConsentScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AminaTheme.teal500.withValues(alpha: 0.28),
+                                color: AminaTheme.teal500.withValues(
+                                  alpha: 0.28,
+                                ),
                                 blurRadius: compactHeight ? 12 : 20,
                                 offset: Offset(0, compactHeight ? 4 : 8),
                               ),
@@ -131,7 +133,9 @@ class _ConsentScreenState extends State<ConsentScreen> {
                         decoration: BoxDecoration(
                           color: AminaTheme.surface(context),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AminaTheme.divider(context)),
+                          border: Border.all(
+                            color: AminaTheme.divider(context),
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
