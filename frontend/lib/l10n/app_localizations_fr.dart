@@ -653,4 +653,7 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get profileAccountSectionHint =>
       'Consentement IA et actions du compte';
+
+  @override
+  String get profileMedicalSectionHint => 'À compléter ou vérifier';
 }

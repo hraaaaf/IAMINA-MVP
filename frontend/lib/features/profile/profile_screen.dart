@@ -25,6 +25,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _diabetesType = 'type1';
   String _treatment = 'insulin';
   String _unit = 'mg/dL';
+  bool _hasPersistedProfile = false;
 
   @override
   void initState() {
@@ -37,6 +38,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final profile = await db.select(db.patientProfiles).getSingleOrNull();
     if (profile != null) {
       setState(() {
+        _hasPersistedProfile = true;
         _diabetesType = profile.diabetesType ?? 'type1';
         _treatment = profile.treatment ?? 'insulin';
         _unit = profile.unitPreference;
@@ -83,7 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       icon: Icons.favorite_border_rounded,
       title: l10n.profileMedicalSection,
       subtitle: _medicalSummary(l10n),
-      initiallyExpanded: true,
+      initiallyExpanded: false,
       children: [
         _buildSectionTitle(Icons.favorite_border, l10n.diabetesType),
         const SizedBox(height: 12),
@@ -327,6 +329,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   String _medicalSummary(AppLocalizations l10n) {
+    if (!_hasPersistedProfile) return l10n.profileMedicalSectionHint;
+
     final diabetes = switch (_diabetesType) {
       'type2' => l10n.diabetesType2,
       'gestational' => l10n.diabetesGestational,
@@ -718,6 +722,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
 
     if (mounted) {
+      setState(() => _hasPersistedProfile = true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.profileUpdated),

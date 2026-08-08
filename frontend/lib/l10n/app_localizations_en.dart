@@ -643,4 +643,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileAccountSectionHint => 'AI consent and account actions';
+
+  @override
+  String get profileMedicalSectionHint => 'Complete or review';
 }

@@ -643,4 +643,7 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get profileAccountSectionHint =>
       'موافقة الذكاء الاصطناعي وإجراءات الحساب';
+
+  @override
+  String get profileMedicalSectionHint => 'أكمل المعلومات أو راجعها';
 }

@@ -1299,6 +1299,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'AI consent and account actions'**
   String get profileAccountSectionHint;
+
+  /// No description provided for @profileMedicalSectionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete or review'**
+  String get profileMedicalSectionHint;
 }
 
 class _AppLocalizationsDelegate
