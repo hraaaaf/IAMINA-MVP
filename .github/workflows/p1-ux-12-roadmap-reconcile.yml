@@ -1,0 +1,51 @@
+name: P1-UX-12 roadmap reconcile
+
+on:
+  push:
+    branches:
+      - fix/p1-ux-12-progressive-profile
+    paths:
+      - .github/workflows/p1-ux-12-roadmap-reconcile.yml
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p1-ux-12-progressive-profile
+          fetch-depth: 0
+      - name: Reconcile canonical evidence
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('docs/ROADMAP.md')
+          s=p.read_text()
+          s=s.replace('31254768210', '31258575687')
+          s=s.replace('9021086039', '9022145295')
+          s=s.replace('sha256:f14c01a438ad45943a5b04561a789555c6b3182e0e07cbf70a6049b949971aba', 'sha256:091faa01cb4c4b7004844a0eb29e3f6bf3328f2588dbf6e6ebbed1a5048fb996')
+          s=s.replace('561a45ef5a9ff67e198a169c1f87f8b531788955', '322be3bf82e3f112e4ebf89aea732353a0c72d59')
+          needle='- Builder/Reviewer remediation run `31254691325` passed `flutter analyze --no-fatal-infos` and **8/8 targeted tests**.\n'
+          extra=('- Builder/Reviewer remediation run `31254691325` passed `flutter analyze --no-fatal-infos` and **8/8 targeted tests**.\n'
+                 '- Final full CI then caught a real non-regression: P1-UX-12 had narrowed the Profile surface from the P0-UX-7 certified `1040` px contract to `920` px. The LOT stayed open; run `31258415090` restored `maxWidth: 1040` and passed the P1-UX-12, P0-UX-7 and P0-UX-9 targeted contracts before commit.\n')
+          if needle in s and 'run `31258415090` restored' not in s:
+              s=s.replace(needle,extra,1)
+          p.write_text(s)
+          PY
+          grep -q '322be3bf82e3f112e4ebf89aea732353a0c72d59' docs/ROADMAP.md
+          grep -q '31258575687' docs/ROADMAP.md
+          grep -q '9022145295' docs/ROADMAP.md
+          grep -q '31258415090' docs/ROADMAP.md
+          git diff --check
+      - name: Commit evidence and remove transport
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/p1-ux-12-roadmap-reconcile.yml
+          git add docs/ROADMAP.md
+          git diff --cached --check
+          git commit -m 'docs(roadmap): reconcile P1-UX-12 final evidence'
+          git push origin HEAD:fix/p1-ux-12-progressive-profile
