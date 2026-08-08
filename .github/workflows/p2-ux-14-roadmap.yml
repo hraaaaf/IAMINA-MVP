@@ -1,0 +1,51 @@
+name: P2-UX-14 roadmap closeout
+
+on:
+  push:
+    branches: [fix/p2-ux-14-density-polish]
+    paths: [.github/workflows/p2-ux-14-roadmap.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p2-ux-14-density-polish
+          fetch-depth: 0
+      - name: Update canonical roadmap
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('docs/ROADMAP.md')
+          s=p.read_text()
+          s=s.replace(
+            '> **Last updated:** 2026-08-08 — P1-UX-13 medical/product wording certified at 9.3/10 in PR #65 after two rejected passes; P2-UX-14 density/polish is next.',
+            '> **Last updated:** 2026-08-08 — P2-UX-14 density/polish certified at 9.2/10 in PR #66 after a rejected 8.5/10 baseline; final visual UX remediation matrix is complete.'
+          )
+          s=s.replace(
+            '| P0 visual UX remediation | 89% | 🟡 Active — P2-UX-14 next | P0-UX-6 through P1-UX-13 certified; PRs #53–#65; latest wording recertification run `31263898750` |',
+            '| P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |'
+          )
+          s=s.replace(
+            '| P2-UX-14 | Densité et polish | 0% | Queued | ⬜ |',
+            '| P2-UX-14 | Densité et polish | 100% | **9.2/10** after Reviewer double-check; PR #66; 40-view FR/AR final matrix run `31267173791`, artifact `9024558783`, zero page errors | ✅ |'
+          )
+          marker='This UX remediation workstream is separate from the MENA critical-path numerator.'
+          block='''### P2-UX-14 delivered work\n\n- The canonical UX-A09/UX-A10 baseline covered Dashboard, Summary, Journal, Importer and Profile in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **40/40 rendered views**, one Flutter view per capture and zero page errors. Baseline evidence: run `31266321341`, artifact `9024312935`, digest `sha256:6f402c09185e5fcde6be8bbd09f856ecf072a7bd390c115884375491e5958ef1`.\n- The baseline scored **8.5/10 — CHANGES_REQUIRED**. Wide layouts still felt under-structured: the Summary error state was too small for desktop, Journal empty state floated in excessive whitespace, and Profile lacked a sufficiently coherent clinical grouping.\n- Remediation stayed deliberately cosmetic/structural: no business logic, clinical calculation, privacy behavior, persistence, route contract or patient-facing medical meaning changed.\n- Summary now uses a proportionate wide error composition while preserving the compact `360×560` state and 48 px retry action. Journal wide empty state is anchored to the readable content region rather than centered in unused canvas. Profile progressive sections gain a coherent desktop grouping with shared clinical radii and shadows.\n- Existing Dashboard and Importer layouts were intentionally left unchanged after review showed they already met the density objective. P0 desktop/tablet width contracts, mobile navigation, small-screen behavior and RTL remained stable.\n- Builder double-check caught and removed generated Flutter metadata/lockfile noise plus broad formatter churn before review; the final product diff contains only the three targeted screens and permanent `p2_ux_14_density_polish_contract_test.dart`.\n- Final exact visual product head `b6f42319207fff380b634f0d390dd3c8b45221b4` was recaptured across the complete **40-view** matrix. `source-sha.txt` matches; all 40 report rows have one Flutter view and zero page errors. Final evidence: run `31267173791`, artifact `9024558783`, digest `sha256:fcb730b7c32b8b2a8435072109f6a879170414f81e39ec8f139c28b421d5e902`.\n- Independent UX Reviewer PASS review `4889215432`: no critical/high defect observed; final score **9.2/10**. Pre-ROADMAP PR-head gates on the reviewed SHA were green: CI `31267596592` and migration drift `31267596575`.\n\n**Final P2-UX-14 score: 9.2/10 — PASS.** PR #66 is the merge unit. The visual UX remediation workstream has now completed all canonical P0-CERT-4 defect lots; merge still requires exact-final-head CI/drift, Release Certifier GO and post-merge verification.\n\n'''
+          if '### P2-UX-14 delivered work' not in s:
+              s=s.replace(marker, block+marker)
+          p.write_text(s)
+          PY
+          git diff --check
+      - name: Remove temporary transport and commit
+        run: |
+          rm .github/workflows/p2-ux-14-roadmap.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/ROADMAP.md .github/workflows/p2-ux-14-roadmap.yml
+          git commit -m "docs(roadmap): close P2-UX-14 density polish"
+          git push origin HEAD:fix/p2-ux-14-density-polish
