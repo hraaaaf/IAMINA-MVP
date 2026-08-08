@@ -249,5 +249,10 @@
   "dashboardLoadingBody": "تتحقق IAmina من البيانات المحفوظة على هذا الجهاز قبل عرض لوحة المتابعة.",
   "dashboardLoadErrorTitle": "تعذر عرض بياناتك",
   "dashboardLoadErrorBody": "تعذر على لوحة المتابعة قراءة بياناتك المحلية. يمكنك إعادة المحاولة من دون إنشاء أي بيانات افتراضية.",
-  "firstUseTruthNote": "لن تظهر الاتجاهات والتحليلات إلا عند توفر بيانات حقيقية."
+  "firstUseTruthNote": "لن تظهر الاتجاهات والتحليلات إلا عند توفر بيانات حقيقية.",
+  "profileMedicalSection": "المتابعة الطبية",
+  "profileIaminaSection": "IAmina والتفضيلات",
+  "profileIaminaSectionHint": "اللغة والبلد والأسلوب ومساعد الإعداد",
+  "profileAccountSection": "الخصوصية والحساب",
+  "profileAccountSectionHint": "موافقة الذكاء الاصطناعي وإجراءات الحساب"
 }

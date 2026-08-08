@@ -249,5 +249,10 @@
   "dashboardLoadingBody": "IAmina is checking the data stored on this device before showing your dashboard.",
   "dashboardLoadErrorTitle": "Your data cannot be displayed",
   "dashboardLoadErrorBody": "The dashboard could not read your local data. You can retry without creating any placeholder data.",
-  "firstUseTruthNote": "Trends and analyses will appear only when real data is available."
+  "firstUseTruthNote": "Trends and analyses will appear only when real data is available.",
+  "profileMedicalSection": "Medical tracking",
+  "profileIaminaSection": "IAmina & preferences",
+  "profileIaminaSectionHint": "Language, country, tone and setup assistant",
+  "profileAccountSection": "Privacy & account",
+  "profileAccountSectionHint": "AI consent and account actions"
 }

@@ -636,4 +636,21 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get firstUseTruthNote =>
       'Les tendances et analyses apparaîtront uniquement quand des données réelles seront disponibles.';
+
+  @override
+  String get profileMedicalSection => 'Suivi médical';
+
+  @override
+  String get profileIaminaSection => 'IAmina & préférences';
+
+  @override
+  String get profileIaminaSectionHint =>
+      'Langue, pays, ton et assistant de configuration';
+
+  @override
+  String get profileAccountSection => 'Confidentialité & compte';
+
+  @override
+  String get profileAccountSectionHint =>
+      'Consentement IA et actions du compte';
 }
