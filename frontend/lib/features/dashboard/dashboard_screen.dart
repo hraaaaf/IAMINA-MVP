@@ -511,28 +511,30 @@ class _EmptyDashboard extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
             ),
-            SizedBox(height: compactHeight ? 12 : 18),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AminaTheme.teal50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AminaTheme.teal100),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.verified_user_outlined, size: 17, color: AminaTheme.teal700),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      l10n.firstUseTruthNote,
-                      style: const TextStyle(fontSize: 12, height: 1.4, color: AminaTheme.teal700),
+            if (!compactHeight) ...[
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AminaTheme.teal50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AminaTheme.teal100),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.verified_user_outlined, size: 17, color: AminaTheme.teal700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.firstUseTruthNote,
+                        style: const TextStyle(fontSize: 12, height: 1.4, color: AminaTheme.teal700),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ],
           ],
         );
 
