@@ -57,22 +57,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
         maxWidth: 1040,
         child: SingleChildScrollView(
           padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 24, 40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildMedicalSection(l10n),
-              const SizedBox(height: 14),
-              _buildProfileSection(
-                key: const ValueKey('profile-iamina-section'),
-                icon: Icons.auto_awesome_outlined,
-                title: l10n.profileIaminaSection,
-                subtitle: l10n.profileIaminaSectionHint,
-                initiallyExpanded: false,
-                children: [_buildIASetupCard(l10n)],
-              ),
-              const SizedBox(height: 14),
-              _buildAccountSection(l10n),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final sections = Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildMedicalSection(l10n),
+                  const SizedBox(height: 14),
+                  _buildProfileSection(
+                    key: const ValueKey('profile-iamina-section'),
+                    icon: Icons.auto_awesome_outlined,
+                    title: l10n.profileIaminaSection,
+                    subtitle: l10n.profileIaminaSectionHint,
+                    initiallyExpanded: false,
+                    children: [_buildIASetupCard(l10n)],
+                  ),
+                  const SizedBox(height: 14),
+                  _buildAccountSection(l10n),
+                ],
+              );
+              if (constraints.maxWidth < 900) return sections;
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AminaTheme.ink50,
+                  borderRadius: BorderRadius.circular(AminaTheme.radius3XL),
+                  border: Border.all(color: AminaTheme.ink100),
+                ),
+                child: sections,
+              );
+            },
           ),
         ),
       ),
@@ -280,9 +294,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       key: key,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AminaTheme.ink200.withValues(alpha: 0.75)),
-        boxShadow: AminaTheme.shadowCard,
+        borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
+        border: Border.all(color: AminaTheme.ink100),
+        boxShadow: AminaTheme.shadowClinical,
       ),
       clipBehavior: Clip.antiAlias,
       child: Theme(
@@ -353,12 +367,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AminaTheme.primaryTeal.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
           border: Border.all(
             color: AminaTheme.primaryTeal.withValues(alpha: 0.2),
-            width: 2,
           ),
-          boxShadow: AminaTheme.shadowCard,
+          boxShadow: AminaTheme.shadowClinical,
         ),
         child: Row(
           children: [
