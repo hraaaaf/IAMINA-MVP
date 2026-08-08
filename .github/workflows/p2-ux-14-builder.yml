@@ -1,0 +1,54 @@
+name: P2-UX-14 builder
+
+on:
+  push:
+    branches: [fix/p2-ux-14-density-polish]
+    paths:
+      - .github/workflows/p2-ux-14-builder.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p2-ux-14-density-polish
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Apply focused density/polish patch
+        run: python3 .tmp/p2_ux_14_builder.py
+      - name: Format and analyze
+        working-directory: frontend
+        run: |
+          dart format lib/features/journal/ai_summary_screen.dart lib/features/journal/journal_screen.dart lib/features/profile/profile_screen.dart test/p2_ux_14_density_polish_contract_test.dart
+          flutter pub get
+          flutter analyze --no-fatal-infos
+      - name: Targeted regression contracts
+        working-directory: frontend
+        run: |
+          flutter test --no-pub \
+            test/p2_ux_14_density_polish_contract_test.dart \
+            test/p0_ux_7_desktop_tablet_contract_test.dart \
+            test/p0_ux_9_small_screen_contract_test.dart \
+            test/p0_ux_11_first_use_dashboard_contract_test.dart \
+            test/p1_ux_12_progressive_profile_contract_test.dart \
+            test/p1_ux_13_wording_contract_test.dart \
+            test/p1_ux_13_compact_consent_contract_test.dart
+      - name: Remove temporary builder transport
+        run: rm -f .tmp/p2_ux_14_builder.py .github/workflows/p2-ux-14-builder.yml
+      - name: Commit product patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && exit 1
+          git commit -m 'fix(ux): harmonize density and visual polish'
+          git push origin HEAD:fix/p2-ux-14-density-polish
