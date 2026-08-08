@@ -1,0 +1,59 @@
+name: P1-UX-12 roadmap finalize
+
+on:
+  push:
+    branches:
+      - fix/p1-ux-12-progressive-profile
+    paths:
+      - .github/workflows/p1-ux-12-roadmap-finalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p1-ux-12-progressive-profile
+          fetch-depth: 0
+
+      - name: Update canonical roadmap
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path('docs/ROADMAP.md')
+          s = p.read_text()
+          s = s.replace(
+            '> **Last updated:** 2026-08-08 — agent governance protocol established through PR #63; P1-UX-12 progressive Profile remains the next product LOT.',
+            '> **Last updated:** 2026-08-08 — P1-UX-12 progressive Profile certified at 9.4/10 in PR #64; P1-UX-13 wording médical et produit is next.'
+          )
+          s = s.replace(
+            '| P0 visual UX remediation | 67% | 🟡 Active — P1-UX-12 next | P0-UX-6 through P0-UX-11 certified; PRs #53–#62; latest first-use Dashboard recertification run `31248641421` |',
+            '| P0 visual UX remediation | 78% | 🟡 Active — P1-UX-13 next | P0-UX-6 through P1-UX-12 certified; PRs #53–#64; latest Profile recertification run `31254768210` |'
+          )
+          s = s.replace(
+            '| P1-UX-12 | Profil progressif | 0% | Next LOT — progressive disclosure and hierarchy | ⏭️ |\n| P1-UX-13 | Wording médical et produit | 0% | Queued | ⬜ |',
+            '| P1-UX-12 | Profil progressif | 100% | **9.4/10** after Reviewer double-check; PR #64; three truthful progressive sections; 8-view FR/AR recertification run `31254768210`, artifact `9021086039`, zero page errors | ✅ |\n| P1-UX-13 | Wording médical et produit | 0% | Next LOT | ⏭️ |'
+          )
+          anchor = 'This UX remediation workstream is separate from the MENA critical-path numerator.'
+          section = '''### P1-UX-12 delivered work\n\n- The existing Profile was inspected before modification and found to mix medical configuration, IAmina preferences, account/privacy actions and a fabricated completion percentage in one long surface.\n- The Profile is now organized into three explicit progressive sections: **Suivi médical**, **IAmina & préférences**, and **Confidentialité & compte**, all collapsed by default for fast scanning on narrow screens.\n- The former completion percentage was removed because default values could make an unconfigured profile look partially complete.\n- Empty medical state is fail-closed and truthful: it shows a neutral “À compléter ou vérifier” summary until a persisted profile actually exists; real diabetes/treatment/unit values are summarized only after persisted data is loaded or successfully saved.\n- Medical target inputs stack on compact widths, account/consent actions remain isolated with 48 px controls, and existing safe-area/scroll behavior is preserved.\n- FR/EN/AR localization owns all new section labels and hints; Arabic RTL remained visually coherent across the certified matrix.\n- A permanent `p1_ux_12_progressive_profile_contract_test.dart` locks the progressive structure, collapsed defaults, truthful persisted-profile summary and sensitive-action grouping.\n- Builder/Reviewer remediation run `31254691325` passed `flutter analyze --no-fatal-infos` and **8/8 targeted tests**.\n- Exact product head `561a45ef5a9ff67e198a169c1f87f8b531788955` was visually recertified in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **8/8 rendered views, one Flutter view each, zero page errors**. Expected local API `ERR_CONNECTION_REFUSED` console noise is unchanged and not treated as a page/runtime regression.\n- Visual evidence: run `31254768210`, artifact `9021086039`, digest `sha256:f14c01a438ad45943a5b04561a789555c6b3182e0e07cbf70a6049b949971aba`.\n- Independent visual Reviewer found no critical/high defect after remediation and scored the final Profile **9.4/10**.\n\n**Final P1-UX-12 score: 9.4/10 — PASS.** PR #64 is the merge unit; P1-UX-13 is next.\n\n'''
+          if '### P1-UX-12 delivered work' not in s:
+              s = s.replace(anchor, section + anchor)
+          p.write_text(s)
+          PY
+
+          grep -q 'P1-UX-12 | Profil progressif | 100%' docs/ROADMAP.md
+          grep -q 'Final P1-UX-12 score: 9.4/10' docs/ROADMAP.md
+          git diff --check
+
+      - name: Commit roadmap and remove transport
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/p1-ux-12-roadmap-finalize.yml
+          git add docs/ROADMAP.md
+          git diff --cached --check
+          git commit -m 'docs(roadmap): certify P1-UX-12 above 9/10'
+          git push origin HEAD:fix/p1-ux-12-progressive-profile
