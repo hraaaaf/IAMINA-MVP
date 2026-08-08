@@ -5,7 +5,7 @@
   "appTagline": "Votre équilibre glycémique, chaque jour",
   "brandName": "Diabetes Log",
   "brandTagShort": "IA · AMINA",
-  "dataPrivacyNote": "Traitement IA soumis à autorisation",
+  "dataPrivacyNote": "Services IA externes : votre consentement et une autorisation valide du fournisseur sont requis",
   "sensorStatus": "Capteur G7 · IAmina",
   "login": "Connexion",
   "logout": "Déconnexion",
@@ -76,8 +76,8 @@
   "actionIrreversible": "Cette action est irréversible.",
   "entryDeleted": "Mesure supprimée",
   "consentTitle": "Confidentialité & IA",
-  "consentHeadline": "IAmina peut traiter certaines données avec des services IA approuvés",
-  "consentBody": "Ce consentement autorise IAmina à utiliser les catégories de données listées ci-dessus pour les fonctionnalités IA. Un traitement externe n'est effectué que si le fournisseur, la région et la politique de conservation du déploiement ont été approuvés. Sans consentement ou approbation fournisseur valide, les données ne sont pas envoyées au service IA.\n\nLe fournisseur et les conditions peuvent varier selon le déploiement. Vous pouvez retirer ce consentement à tout moment depuis vos paramètres de profil.",
+  "consentHeadline": "IAmina peut utiliser des services d’IA externes pour certaines fonctionnalités",
+  "consentBody": "Avec votre consentement, IAmina peut envoyer uniquement les catégories de données indiquées ci-dessus à un service d’IA externe. L’envoi n’a lieu que si le fournisseur, sa région d’hébergement et sa durée de conservation sont autorisés pour votre environnement IAmina. Sans consentement ou sans autorisation valide du fournisseur, aucune donnée n’est envoyée.\n\nVous pouvez retirer votre consentement à tout moment depuis votre profil.",
   "consentDataPoint1": "📊 Mesures glycémiques et tendances",
   "consentDataPoint2": "🍽️ Contexte repas et doses d'insuline",
   "consentDataPoint3": "😴 Fatigue et marqueurs d'événements de vie",
@@ -89,8 +89,8 @@
   "consentWithdrawConfirmBody": "Les fonctionnalités IA (Résumé IAmina, Chat, Vocal) seront désactivées jusqu'à ce que vous donniez à nouveau votre consentement.",
   "consentWithdrawn": "Consentement IA retiré",
   "consentRequired": "Consentement IA requis pour utiliser cette fonctionnalité",
-  "documentPrivacyTitle": "Traitement externe contrôlé",
-  "documentPrivacyBody": "Le document n’est transmis à un service externe que si votre consentement et la politique fournisseur du déploiement sont valides. Sinon, l’import est refusé.",
+  "documentPrivacyTitle": "Envoi externe uniquement si autorisé",
+  "documentPrivacyBody": "IAmina n’envoie ce document à un service externe que si vous avez donné votre consentement et si le fournisseur de ce service est autorisé pour votre environnement IAmina. Sinon, l’import est bloqué.",
   "save": "Sauvegarder",
   "saveProfile": "Enregistrer",
   "cancel": "Annuler",
@@ -162,7 +162,7 @@
       }
     }
   },
-  "targetCoverage": "{count} mesures sur {days} jours · proportion de mesures, pas durée CGM",
+  "targetCoverage": "{count} mesures sur {days} jours · proportion des mesures enregistrées, pas temps dans la cible d’un capteur de glucose en continu (CGM)",
   "@targetCoverage": {
     "placeholders": {
       "count": {
@@ -187,7 +187,7 @@
   "directConnections": "Connexions directes",
   "pulperDescription": "PDF · Photo · Excel · Word — IAmina extrait les données pour votre relecture.",
   "labReport": "Bilan labo",
-  "cgmExport": "Export CGM",
+  "cgmExport": "Export de mesure continue du glucose (CGM)",
   "prescription": "Ordonnance",
   "photo": "Photo",
   "soon": "BIENTÔT",
@@ -238,7 +238,7 @@
   "emptyDashboardBody": "Aucune donnée n’est encore enregistrée. Ajoutez une mesure ou importez un document pour construire ce tableau de bord à partir de vos données réelles.",
   "addFirstMeasurement": "Ajouter ma première mesure",
   "importDocument": "Importer un document",
-  "featureRealtimeAgp": "AGP en temps réel",
+  "featureRealtimeAgp": "Résumé des tendances du capteur (AGP)",
   "featureAiAnalysis": "Analyse IA",
   "featurePrivateData": "Données privées",
   "analysisLoadError": "Impossible de récupérer les analyses.",
