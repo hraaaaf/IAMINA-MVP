@@ -1,0 +1,148 @@
+name: P1-UX-13 builder v3
+
+on:
+  push:
+    branches: [fix/p1-ux-13-medical-product-wording]
+    paths: [.github/workflows/p1-ux-13-builder-v3.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p1-ux-13-medical-product-wording
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Apply clinically safe wording and contract migration
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          updates = {
+            'fr': {
+              'dataPrivacyNote': "Services IA externes : votre consentement et une autorisation valide du fournisseur sont requis",
+              'consentHeadline': "IAmina peut utiliser des services d’IA externes pour certaines fonctionnalités",
+              'consentBody': "Avec votre consentement, IAmina peut envoyer uniquement les catégories de données indiquées ci-dessus à un service d’IA externe. L’envoi n’a lieu que si le fournisseur, sa région d’hébergement et sa durée de conservation sont autorisés pour votre environnement IAmina. Sans consentement ou sans autorisation valide du fournisseur, aucune donnée n’est envoyée.\n\nVous pouvez retirer votre consentement à tout moment depuis votre profil.",
+              'documentPrivacyTitle': "Envoi externe uniquement si autorisé",
+              'documentPrivacyBody': "IAmina n’envoie ce document à un service externe que si vous avez donné votre consentement et si le fournisseur de ce service est autorisé pour votre environnement IAmina. Sinon, l’import est bloqué.",
+              'targetCoverage': "{count} mesures sur {days} jours · proportion des mesures enregistrées, pas temps dans la cible d’un capteur de glucose en continu (CGM)",
+              'cgmExport': "Export de mesure continue du glucose (CGM)",
+              'featureRealtimeAgp': "Résumé des tendances du capteur (AGP)",
+            },
+            'en': {
+              'dataPrivacyNote': "External AI services require your consent and valid provider approval",
+              'consentHeadline': "IAmina may use external AI services for some features",
+              'consentBody': "With your consent, IAmina may send only the data categories listed above to an external AI service. Data is sent only when the provider, its hosting region, and its retention period are approved for your IAmina environment. Without consent or valid provider approval, no data is sent.\n\nYou can withdraw your consent at any time from your profile.",
+              'documentPrivacyTitle': "External sending only when authorised",
+              'documentPrivacyBody': "IAmina sends this document to an external service only if you have given consent and the provider of that service is authorised for your IAmina environment. Otherwise, the import is blocked.",
+              'targetCoverage': "{count} readings over {days} days · share of recorded readings, not time in range from continuous glucose monitoring (CGM)",
+              'cgmExport': "Continuous glucose monitoring (CGM) export",
+              'featureRealtimeAgp': "Sensor trend summary (AGP)",
+            },
+            'ar': {
+              'dataPrivacyNote': "خدمات الذكاء الاصطناعي الخارجية تتطلب موافقتك واعتمادًا صالحًا للمزوّد",
+              'consentHeadline': "قد تستخدم IAmina خدمات ذكاء اصطناعي خارجية لبعض الميزات",
+              'consentBody': "بموافقتك، يمكن لـ IAmina إرسال فئات البيانات المذكورة أعلاه فقط إلى خدمة ذكاء اصطناعي خارجية. لا يتم الإرسال إلا إذا كان المزوّد والمنطقة التي تستضيف البيانات ومدة الاحتفاظ بها معتمدة لبيئة IAmina الخاصة بك. من دون موافقة أو اعتماد صالح للمزوّد، لا تُرسل أي بيانات.\n\nيمكنك سحب موافقتك في أي وقت من ملفك الشخصي.",
+              'documentPrivacyTitle': "إرسال خارجي فقط عند السماح به",
+              'documentPrivacyBody': "لا ترسل IAmina هذا المستند إلى خدمة خارجية إلا إذا منحت موافقتك وكان مزوّد هذه الخدمة معتمدًا لبيئة IAmina الخاصة بك. خلاف ذلك، يُحظر الاستيراد.",
+              'targetCoverage': "{count} قياسًا خلال {days} يومًا · نسبة القراءات المسجلة وليست الوقت ضمن النطاق المحسوب من المراقبة المستمرة للجلوكوز (CGM)",
+              'cgmExport': "تصدير بيانات المراقبة المستمرة للجلوكوز (CGM)",
+              'featureRealtimeAgp': "ملخص اتجاهات المستشعر (AGP)",
+            },
+          }
+          root=Path('frontend/lib/l10n')
+          for locale, values in updates.items():
+            p=root/f'app_{locale}.arb'
+            data=json.loads(p.read_text())
+            for k,v in values.items():
+              assert k in data, (locale,k)
+              data[k]=v
+            p.write_text(json.dumps(data, ensure_ascii=False, indent=2)+"\n")
+          PY
+          cat > frontend/test/p1_ux_13_wording_contract_test.dart <<'EOF'
+          import 'dart:convert';
+          import 'dart:io';
+          import 'package:flutter_test/flutter_test.dart';
+
+          Map<String, dynamic> arb(String locale) => jsonDecode(
+                File('lib/l10n/app_$locale.arb').readAsStringSync(),
+              ) as Map<String, dynamic>;
+
+          void main() {
+            test('P1-UX-13 puts plain language before CGM and AGP jargon', () {
+              final fr = arb('fr'); final en = arb('en'); final ar = arb('ar');
+              expect(fr['cgmExport'], 'Export de mesure continue du glucose (CGM)');
+              expect(en['cgmExport'], 'Continuous glucose monitoring (CGM) export');
+              expect(ar['cgmExport'], contains('المراقبة المستمرة للجلوكوز (CGM)'));
+              expect(fr['featureRealtimeAgp'], 'Résumé des tendances du capteur (AGP)');
+              expect(en['featureRealtimeAgp'], 'Sensor trend summary (AGP)');
+              expect(ar['featureRealtimeAgp'], contains('(AGP)'));
+              expect(fr['featureRealtimeAgp'], isNot(contains('temps réel')));
+              expect(en['featureRealtimeAgp'], isNot(contains('Real-time')));
+            });
+
+            test('P1-UX-13 preserves deployment-aware privacy conditions', () {
+              final required = <String, List<String>>{
+                'fr': ['fournisseur', 'région', 'conservation', 'Sans consentement'],
+                'en': ['provider', 'region', 'retention', 'Without consent'],
+                'ar': ['المزوّد', 'المنطقة', 'الاحتفاظ', 'من دون موافقة'],
+              };
+              for (final locale in required.keys) {
+                final data = arb(locale);
+                final copy = [
+                  data['dataPrivacyNote'], data['consentHeadline'], data['consentBody'],
+                  data['documentPrivacyTitle'], data['documentPrivacyBody'],
+                ].join(' ');
+                for (final token in required[locale]!) expect(copy, contains(token));
+              }
+              expect(arb('fr')['documentPrivacyTitle'], 'Envoi externe uniquement si autorisé');
+            });
+
+            test('P1-UX-13 distinguishes reading coverage from CGM time in range', () {
+              final fr = arb('fr')['targetCoverage'].toString();
+              final en = arb('en')['targetCoverage'].toString();
+              final ar = arb('ar')['targetCoverage'].toString();
+              expect(fr, contains('capteur de glucose en continu (CGM)'));
+              expect(fr, contains('pas temps dans la cible'));
+              expect(en, contains('not time in range'));
+              expect(en, contains('continuous glucose monitoring (CGM)'));
+              expect(ar, contains('المراقبة المستمرة للجلوكوز (CGM)'));
+            });
+          }
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('frontend/test/p0_privacy_truthfulness_contract_test.dart')
+          s=p.read_text()
+          old="""    expect(generated['fr'], contains('Traitement externe contrôlé'));\n    expect(generated['en'], contains('Controlled external processing'));\n    expect(generated['ar'], contains('معالجة خارجية مضبوطة'));\n"""
+          new="""    expect(generated['fr'], contains('Envoi externe uniquement si autorisé'));\n    expect(generated['en'], contains('External sending only when authorised'));\n    expect(generated['ar'], contains('إرسال خارجي فقط عند السماح به'));\n\n    expect(generated['fr'], isNot(contains('Traitement externe contrôlé')));\n    expect(generated['en'], isNot(contains('Controlled external processing')));\n    expect(generated['ar'], isNot(contains('معالجة خارجية مضبوطة')));\n"""
+          assert old in s
+          p.write_text(s.replace(old,new))
+          PY
+      - name: Generate localization and validate
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          dart format test/p1_ux_13_wording_contract_test.dart test/p0_privacy_truthfulness_contract_test.dart
+          flutter analyze --no-fatal-infos
+          flutter test test/p1_ux_13_wording_contract_test.dart
+          flutter test test/p0_privacy_truthfulness_contract_test.dart
+          flutter test test/p0_ux_10_importer_document_entry_contract_test.dart
+          flutter test test/p0_dashboard_responsive_rtl_contract_test.dart
+      - name: Commit product patch and remove transports
+        run: |
+          rm -f .github/workflows/p1-ux-13-builder.yml .github/workflows/p1-ux-13-builder-v2.yml .github/workflows/p1-ux-13-builder-v3.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/lib/l10n frontend/test/p1_ux_13_wording_contract_test.dart frontend/test/p0_privacy_truthfulness_contract_test.dart .github/workflows/p1-ux-13-builder.yml .github/workflows/p1-ux-13-builder-v2.yml .github/workflows/p1-ux-13-builder-v3.yml
+          git commit -m "fix(ux): clarify medical and product terminology"
+          git push origin HEAD:fix/p1-ux-13-medical-product-wording
