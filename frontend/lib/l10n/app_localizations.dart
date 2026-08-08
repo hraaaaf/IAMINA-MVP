@@ -1269,6 +1269,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Trends and analyses will appear only when real data is available.'**
   String get firstUseTruthNote;
+
+  /// No description provided for @profileMedicalSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Medical tracking'**
+  String get profileMedicalSection;
+
+  /// No description provided for @profileIaminaSection.
+  ///
+  /// In en, this message translates to:
+  /// **'IAmina & preferences'**
+  String get profileIaminaSection;
+
+  /// No description provided for @profileIaminaSectionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Language, country, tone and setup assistant'**
+  String get profileIaminaSectionHint;
+
+  /// No description provided for @profileAccountSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy & account'**
+  String get profileAccountSection;
+
+  /// No description provided for @profileAccountSectionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'AI consent and account actions'**
+  String get profileAccountSectionHint;
 }
 
 class _AppLocalizationsDelegate
