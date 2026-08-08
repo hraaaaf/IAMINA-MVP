@@ -57,7 +57,7 @@ void main() {
 
     for (final required in <String>[
       'Mesures dans la cible',
-      'proportion de mesures, pas durée CGM',
+      'proportion des mesures enregistrées, pas temps dans la cible d’un capteur de glucose en continu (CGM)',
       'votre cible personnelle peut être différente',
       '{count} mesures sur {days} jours',
     ]) {

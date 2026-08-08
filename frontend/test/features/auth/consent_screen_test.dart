@@ -17,8 +17,6 @@ import 'package:amina/services/api_client.dart';
 import 'package:amina/services/consent_service.dart';
 import '../../mocks.dart';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 AppDatabase _openDb() => AppDatabase(NativeDatabase.memory());
 
 class _FakeConsentService extends Fake implements ConsentService {
@@ -31,8 +29,6 @@ class _FakeConsentService extends Fake implements ConsentService {
   @override void dispose() {}
 }
 
-/// Wraps ConsentScreen in a minimal testable app.
-/// [onNavigate] receives every GoRouter location change.
 Widget _makeApp({
   required AppDatabase db,
   required ApiClient apiClient,
@@ -91,8 +87,6 @@ class _NavigationObserver extends NavigatorObserver {
   }
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
-
 void main() {
   late AppDatabase db;
   late MockApiClient mockApi;
@@ -106,16 +100,12 @@ void main() {
     db = _openDb();
     mockApi = MockApiClient();
     consentService = _FakeConsentService();
-
-    // Default: giveConsent returns success
     when(() => mockApi.giveConsent()).thenAnswer((_) async => true);
   });
 
   tearDown(() async {
     await db.close();
   });
-
-  // ── Rendering ────────────────────────────────────────────────────────────────
 
   testWidgets('renders without error (smoke test)', (tester) async {
     await tester.pumpWidget(_makeApp(
@@ -138,12 +128,7 @@ void main() {
       db: db, apiClient: mockApi, consentService: consentService,
     ));
     await tester.pumpAndSettle();
-    // l10n key: consentAccept
-    expect(
-      find.textContaining('Accepter').evaluate().isNotEmpty ||
-      find.textContaining('Accept').evaluate().isNotEmpty,
-      isTrue,
-    );
+    expect(find.text('Accepter et continuer'), findsOneWidget);
   });
 
   testWidgets('shows decline button', (tester) async {
@@ -151,12 +136,7 @@ void main() {
       db: db, apiClient: mockApi, consentService: consentService,
     ));
     await tester.pumpAndSettle();
-    // l10n key: consentDeclineWithoutAI
-    expect(
-      find.textContaining('sans').evaluate().isNotEmpty ||
-      find.textContaining('without').evaluate().isNotEmpty,
-      isTrue,
-    );
+    expect(find.text('Continuer sans IA'), findsOneWidget);
   });
 
   testWidgets('shows lock icon in privacy footnote', (tester) async {
@@ -177,25 +157,20 @@ void main() {
     expect(find.textContaining('😴'), findsOneWidget);
   });
 
-  // ── Decline flow ─────────────────────────────────────────────────────────────
-
   testWidgets('tapping decline marks service declined', (tester) async {
     await tester.pumpWidget(_makeApp(
       db: db, apiClient: mockApi, consentService: consentService,
     ));
     await tester.pumpAndSettle();
 
-    // The screen is taller than the 800×600 test viewport — scroll to buttons.
-    final declineBtn = find.textContaining('sans').first;
+    final declineBtn = find.text('Continuer sans IA');
     await tester.ensureVisible(declineBtn);
     await tester.pumpAndSettle();
-    await tester.tap(declineBtn, warnIfMissed: false);
+    await tester.tap(declineBtn);
     await tester.pump();
 
     expect(consentService.hasDeclinedLocally, isTrue);
   });
-
-  // ── Accept flow ──────────────────────────────────────────────────────────────
 
   testWidgets('accept button calls giveConsent on ApiClient', (tester) async {
     await tester.pumpWidget(_makeApp(
@@ -203,18 +178,16 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    final acceptBtn = find.textContaining('Accepter').first;
+    final acceptBtn = find.text('Accepter et continuer');
     await tester.ensureVisible(acceptBtn);
     await tester.pumpAndSettle();
-    await tester.tap(acceptBtn, warnIfMissed: false);
+    await tester.tap(acceptBtn);
     await tester.pump();
 
     verify(() => mockApi.giveConsent()).called(1);
   });
 
   testWidgets('loading indicator shown while accepting', (tester) async {
-    // Use a Completer so the future never resolves during the test
-    // (avoids the pending-timer assertion from Future.delayed).
     final completer = Completer<bool>();
     when(() => mockApi.giveConsent()).thenAnswer((_) => completer.future);
 
@@ -223,15 +196,14 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    final acceptBtn = find.textContaining('Accepter').first;
+    final acceptBtn = find.text('Accepter et continuer');
     await tester.ensureVisible(acceptBtn);
     await tester.pumpAndSettle();
-    await tester.tap(acceptBtn, warnIfMissed: false);
-    await tester.pump(); // trigger setState(_isLoading = true)
+    await tester.tap(acceptBtn);
+    await tester.pump();
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    // Complete the future cleanly so no pending work remains at teardown.
     completer.complete(true);
     await tester.pumpAndSettle();
   });

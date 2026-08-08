@@ -5,7 +5,7 @@
   "appTagline": "Your blood sugar balance, every day",
   "brandName": "Diabetes Log",
   "brandTagShort": "AI · AMINA",
-  "dataPrivacyNote": "AI processing subject to approval",
+  "dataPrivacyNote": "External AI services require your consent and valid provider approval",
   "sensorStatus": "Sensor G7 · IAmina",
   "login": "Log in",
   "logout": "Log out",
@@ -76,8 +76,8 @@
   "actionIrreversible": "This action cannot be undone.",
   "entryDeleted": "Reading deleted",
   "consentTitle": "Privacy & AI",
-  "consentHeadline": "IAmina may process some data with approved AI services",
-  "consentBody": "This consent authorises IAmina to use the data categories listed above for AI features. External processing occurs only when the deployment provider, region and retention policy have been approved. Without consent or a valid provider approval, data is not sent to the AI service.\n\nThe provider and terms may vary by deployment. You can withdraw this consent at any time from your profile settings.",
+  "consentHeadline": "IAmina may use external AI services for some features",
+  "consentBody": "With your consent, IAmina may send only the data categories listed above to an external AI service. Data is sent only when the provider, its hosting region, and its retention period are approved for your IAmina environment. Without consent or valid provider approval, no data is sent.\n\nYou can withdraw your consent at any time from your profile.",
   "consentDataPoint1": "📊 Glucose readings and trends",
   "consentDataPoint2": "🍽️ Meal context and insulin doses",
   "consentDataPoint3": "😴 Fatigue and life event markers",
@@ -89,8 +89,8 @@
   "consentWithdrawConfirmBody": "AI features (IAmina Summary, Chat, Voice) will be disabled until you give consent again.",
   "consentWithdrawn": "AI consent withdrawn",
   "consentRequired": "AI consent required to use this feature",
-  "documentPrivacyTitle": "Controlled external processing",
-  "documentPrivacyBody": "The document is sent to an external service only when your consent and the deployment provider policy are valid. Otherwise, import is refused.",
+  "documentPrivacyTitle": "External sending only when authorised",
+  "documentPrivacyBody": "IAmina sends this document to an external service only if you have given consent and the provider of that service is authorised for your IAmina environment. Otherwise, the import is blocked.",
   "save": "Save",
   "saveProfile": "Save",
   "cancel": "Cancel",
@@ -162,7 +162,7 @@
       }
     }
   },
-  "targetCoverage": "{count} readings over {days} days · share of readings, not CGM duration",
+  "targetCoverage": "{count} readings over {days} days · share of recorded readings, not time in range from continuous glucose monitoring (CGM)",
   "@targetCoverage": {
     "placeholders": {
       "count": {
@@ -187,7 +187,7 @@
   "directConnections": "Direct connections",
   "pulperDescription": "PDF · Photo · Excel · Word — IAmina extracts data for your review.",
   "labReport": "Lab report",
-  "cgmExport": "CGM export",
+  "cgmExport": "Continuous glucose monitoring (CGM) export",
   "prescription": "Prescription",
   "photo": "Photo",
   "soon": "SOON",
@@ -238,7 +238,7 @@
   "emptyDashboardBody": "No data has been recorded yet. Add a reading or import a document to build this dashboard from your real data.",
   "addFirstMeasurement": "Add my first reading",
   "importDocument": "Import a document",
-  "featureRealtimeAgp": "Real-time AGP",
+  "featureRealtimeAgp": "Sensor trend summary (AGP)",
   "featureAiAnalysis": "AI analysis",
   "featurePrivateData": "Private data",
   "analysisLoadError": "Unable to retrieve analyses.",
