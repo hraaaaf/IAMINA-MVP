@@ -24,7 +24,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get brandTagShort => 'AI · AMINA';
 
   @override
-  String get dataPrivacyNote => 'معالجة الذكاء الاصطناعي تخضع للموافقة';
+  String get dataPrivacyNote =>
+      'خدمات الذكاء الاصطناعي الخارجية تتطلب موافقتك واعتمادًا صالحًا للمزوّد';
 
   @override
   String get sensorStatus => 'مستشعر G7 · IAmina';
@@ -242,11 +243,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get consentHeadline =>
-      'قد تعالج IAmina بعض البيانات باستخدام خدمات ذكاء اصطناعي معتمدة';
+      'قد تستخدم IAmina خدمات ذكاء اصطناعي خارجية لبعض الميزات';
 
   @override
   String get consentBody =>
-      'تسمح هذه الموافقة لـ IAmina باستخدام فئات البيانات المذكورة أعلاه لتشغيل ميزات الذكاء الاصطناعي. لا تتم المعالجة الخارجية إلا إذا تمت الموافقة على المزوّد والمنطقة وسياسة الاحتفاظ الخاصة ببيئة التشغيل. من دون موافقة المستخدم أو اعتماد صالح للمزوّد، لا تُرسل البيانات إلى خدمة الذكاء الاصطناعي.\n\nقد يختلف المزوّد والشروط حسب بيئة التشغيل. يمكنك سحب هذه الموافقة في أي وقت من إعدادات ملفك الشخصي.';
+      'بموافقتك، يمكن لـ IAmina إرسال فئات البيانات المذكورة أعلاه فقط إلى خدمة ذكاء اصطناعي خارجية. لا يتم الإرسال إلا إذا كان المزوّد والمنطقة التي تستضيف البيانات ومدة الاحتفاظ بها معتمدة لبيئة IAmina الخاصة بك. من دون موافقة أو اعتماد صالح للمزوّد، لا تُرسل أي بيانات.\n\nيمكنك سحب موافقتك في أي وقت من ملفك الشخصي.';
 
   @override
   String get consentDataPoint1 => '📊 قراءات الجلوكوز والاتجاهات';
@@ -284,11 +285,11 @@ class AppLocalizationsAr extends AppLocalizations {
       'مطلوب موافقة الذكاء الاصطناعي لاستخدام هذه الميزة';
 
   @override
-  String get documentPrivacyTitle => 'معالجة خارجية مضبوطة';
+  String get documentPrivacyTitle => 'إرسال خارجي فقط عند السماح به';
 
   @override
   String get documentPrivacyBody =>
-      'لا يُرسل المستند إلى خدمة خارجية إلا إذا كانت موافقتك وسياسة المزوّد الخاصة ببيئة التشغيل صالحتين. خلاف ذلك، يُرفض الاستيراد.';
+      'لا ترسل IAmina هذا المستند إلى خدمة خارجية إلا إذا منحت موافقتك وكان مزوّد هذه الخدمة معتمدًا لبيئة IAmina الخاصة بك. خلاف ذلك، يُحظر الاستيراد.';
 
   @override
   String get save => 'حفظ';
@@ -401,7 +402,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String targetCoverage(int count, int days) {
-    return '$count قياسًا خلال $days يومًا · نسبة قياسات وليست مدة قياس مستمر';
+    return '$count قياسًا خلال $days يومًا · نسبة القراءات المسجلة وليست الوقت ضمن النطاق المحسوب من المراقبة المستمرة للجلوكوز (CGM)';
   }
 
   @override
@@ -449,7 +450,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get labReport => 'تحاليل مخبرية';
 
   @override
-  String get cgmExport => 'تصدير CGM';
+  String get cgmExport => 'تصدير بيانات المراقبة المستمرة للجلوكوز (CGM)';
 
   @override
   String get prescription => 'وصفة طبية';
@@ -590,7 +591,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get importDocument => 'استيراد مستند';
 
   @override
-  String get featureRealtimeAgp => 'ملف AGP لحظي';
+  String get featureRealtimeAgp => 'ملخص اتجاهات المستشعر (AGP)';
 
   @override
   String get featureAiAnalysis => 'تحليل بالذكاء الاصطناعي';
