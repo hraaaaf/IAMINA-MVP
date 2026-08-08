@@ -102,9 +102,13 @@ void main() {
       'ar': _read('lib/l10n/app_localizations_ar.dart'),
     };
 
-    expect(generated['fr'], contains('Traitement externe contrôlé'));
-    expect(generated['en'], contains('Controlled external processing'));
-    expect(generated['ar'], contains('معالجة خارجية مضبوطة'));
+    expect(generated['fr'], contains('Envoi externe uniquement si autorisé'));
+    expect(generated['en'], contains('External sending only when authorised'));
+    expect(generated['ar'], contains('إرسال خارجي فقط عند السماح به'));
+
+    expect(generated['fr'], isNot(contains('Traitement externe contrôlé')));
+    expect(generated['en'], isNot(contains('Controlled external processing')));
+    expect(generated['ar'], isNot(contains('معالجة خارجية مضبوطة')));
 
     for (final source in generated.values) {
       expect(source, isNot(contains('Gemini')));

@@ -133,7 +133,7 @@ abstract class AppLocalizations {
   /// No description provided for @dataPrivacyNote.
   ///
   /// In en, this message translates to:
-  /// **'AI processing subject to approval'**
+  /// **'External AI services require your consent and valid provider approval'**
   String get dataPrivacyNote;
 
   /// No description provided for @sensorStatus.
@@ -559,13 +559,13 @@ abstract class AppLocalizations {
   /// No description provided for @consentHeadline.
   ///
   /// In en, this message translates to:
-  /// **'IAmina may process some data with approved AI services'**
+  /// **'IAmina may use external AI services for some features'**
   String get consentHeadline;
 
   /// No description provided for @consentBody.
   ///
   /// In en, this message translates to:
-  /// **'This consent authorises IAmina to use the data categories listed above for AI features. External processing occurs only when the deployment provider, region and retention policy have been approved. Without consent or a valid provider approval, data is not sent to the AI service.\n\nThe provider and terms may vary by deployment. You can withdraw this consent at any time from your profile settings.'**
+  /// **'With your consent, IAmina may send only the data categories listed above to an external AI service. Data is sent only when the provider, its hosting region, and its retention period are approved for your IAmina environment. Without consent or valid provider approval, no data is sent.\n\nYou can withdraw your consent at any time from your profile.'**
   String get consentBody;
 
   /// No description provided for @consentDataPoint1.
@@ -637,13 +637,13 @@ abstract class AppLocalizations {
   /// No description provided for @documentPrivacyTitle.
   ///
   /// In en, this message translates to:
-  /// **'Controlled external processing'**
+  /// **'External sending only when authorised'**
   String get documentPrivacyTitle;
 
   /// No description provided for @documentPrivacyBody.
   ///
   /// In en, this message translates to:
-  /// **'The document is sent to an external service only when your consent and the deployment provider policy are valid. Otherwise, import is refused.'**
+  /// **'IAmina sends this document to an external service only if you have given consent and the provider of that service is authorised for your IAmina environment. Otherwise, the import is blocked.'**
   String get documentPrivacyBody;
 
   /// No description provided for @save.
@@ -847,7 +847,7 @@ abstract class AppLocalizations {
   /// No description provided for @targetCoverage.
   ///
   /// In en, this message translates to:
-  /// **'{count} readings over {days} days · share of readings, not CGM duration'**
+  /// **'{count} readings over {days} days · share of recorded readings, not time in range from continuous glucose monitoring (CGM)'**
   String targetCoverage(int count, int days);
 
   /// No description provided for @targetReference.
@@ -937,7 +937,7 @@ abstract class AppLocalizations {
   /// No description provided for @cgmExport.
   ///
   /// In en, this message translates to:
-  /// **'CGM export'**
+  /// **'Continuous glucose monitoring (CGM) export'**
   String get cgmExport;
 
   /// No description provided for @prescription.
@@ -1201,7 +1201,7 @@ abstract class AppLocalizations {
   /// No description provided for @featureRealtimeAgp.
   ///
   /// In en, this message translates to:
-  /// **'Real-time AGP'**
+  /// **'Sensor trend summary (AGP)'**
   String get featureRealtimeAgp;
 
   /// No description provided for @featureAiAnalysis.

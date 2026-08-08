@@ -24,7 +24,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get brandTagShort => 'AI · AMINA';
 
   @override
-  String get dataPrivacyNote => 'AI processing subject to approval';
+  String get dataPrivacyNote =>
+      'External AI services require your consent and valid provider approval';
 
   @override
   String get sensorStatus => 'Sensor G7 · IAmina';
@@ -241,11 +242,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get consentHeadline =>
-      'IAmina may process some data with approved AI services';
+      'IAmina may use external AI services for some features';
 
   @override
   String get consentBody =>
-      'This consent authorises IAmina to use the data categories listed above for AI features. External processing occurs only when the deployment provider, region and retention policy have been approved. Without consent or a valid provider approval, data is not sent to the AI service.\n\nThe provider and terms may vary by deployment. You can withdraw this consent at any time from your profile settings.';
+      'With your consent, IAmina may send only the data categories listed above to an external AI service. Data is sent only when the provider, its hosting region, and its retention period are approved for your IAmina environment. Without consent or valid provider approval, no data is sent.\n\nYou can withdraw your consent at any time from your profile.';
 
   @override
   String get consentDataPoint1 => '📊 Glucose readings and trends';
@@ -282,11 +283,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get consentRequired => 'AI consent required to use this feature';
 
   @override
-  String get documentPrivacyTitle => 'Controlled external processing';
+  String get documentPrivacyTitle => 'External sending only when authorised';
 
   @override
   String get documentPrivacyBody =>
-      'The document is sent to an external service only when your consent and the deployment provider policy are valid. Otherwise, import is refused.';
+      'IAmina sends this document to an external service only if you have given consent and the provider of that service is authorised for your IAmina environment. Otherwise, the import is blocked.';
 
   @override
   String get save => 'Save';
@@ -399,7 +400,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String targetCoverage(int count, int days) {
-    return '$count readings over $days days · share of readings, not CGM duration';
+    return '$count readings over $days days · share of recorded readings, not time in range from continuous glucose monitoring (CGM)';
   }
 
   @override
@@ -448,7 +449,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get labReport => 'Lab report';
 
   @override
-  String get cgmExport => 'CGM export';
+  String get cgmExport => 'Continuous glucose monitoring (CGM) export';
 
   @override
   String get prescription => 'Prescription';
@@ -590,7 +591,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importDocument => 'Import a document';
 
   @override
-  String get featureRealtimeAgp => 'Real-time AGP';
+  String get featureRealtimeAgp => 'Sensor trend summary (AGP)';
 
   @override
   String get featureAiAnalysis => 'AI analysis';
