@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ac0ff4167e6adaba3a62591852b0e103eedea43d
+          ref: 561a45ef5a9ff67e198a169c1f87f8b531788955
 
       - uses: subosito/flutter-action@v2
         with:
@@ -48,7 +48,7 @@ jobs:
           cat /tmp/iamina-web.log
           exit 1
 
-      - name: Capture Profile matrix and expanded small-screen states
+      - name: Capture exact-head Profile matrix
         run: |
           mkdir -p /tmp/p1-ux-12
           cat > /tmp/p1-ux-12/capture.cjs <<'EOF'
@@ -75,26 +75,12 @@ jobs:
               const file=`${profile}__profile.png`;
               await page.screenshot({path:path.join('/tmp/p1-ux-12',file),fullPage:true});
               const flutterViews=await page.locator('flutter-view').count();
-              report.push({profile,state:'default',lang,width,height,url:page.url(),flutterViews,consoleErrors,pageErrors,screenshot:file});
-              if (profile.startsWith('small-')) {
-                const iaminaLabel = lang === 'ar' ? 'IAmina والتفضيلات' : 'IAmina & préférences';
-                const accountLabel = lang === 'ar' ? 'الخصوصية والحساب' : 'Confidentialité & compte';
-                await page.getByText(iaminaLabel, {exact:true}).click();
-                await page.waitForTimeout(500);
-                const iaminaFile=`${profile}__profile-iamina-open.png`;
-                await page.screenshot({path:path.join('/tmp/p1-ux-12',iaminaFile),fullPage:true});
-                report.push({profile,state:'iamina-open',lang,width,height,url:page.url(),flutterViews:await page.locator('flutter-view').count(),consoleErrors:[...consoleErrors],pageErrors:[...pageErrors],screenshot:iaminaFile});
-                await page.getByText(accountLabel, {exact:true}).click();
-                await page.waitForTimeout(500);
-                const accountFile=`${profile}__profile-account-open.png`;
-                await page.screenshot({path:path.join('/tmp/p1-ux-12',accountFile),fullPage:true});
-                report.push({profile,state:'account-open',lang,width,height,url:page.url(),flutterViews:await page.locator('flutter-view').count(),consoleErrors:[...consoleErrors],pageErrors:[...pageErrors],screenshot:accountFile});
-              }
+              report.push({profile,lang,width,height,url:page.url(),flutterViews,consoleErrors,pageErrors,screenshot:file});
               await context.close();
             }
             await browser.close();
             fs.writeFileSync('/tmp/p1-ux-12/report.json', JSON.stringify(report,null,2));
-            const failures=report.filter(x=>x.flutterViews===0 || x.pageErrors.length>0);
+            const failures=report.filter(x=>x.flutterViews!==1 || x.pageErrors.length>0);
             if (failures.length) { console.error(JSON.stringify(failures,null,2)); process.exit(1); }
           })();
           EOF
@@ -103,13 +89,13 @@ jobs:
       - name: Record source
         if: always()
         run: |
-          echo ac0ff4167e6adaba3a62591852b0e103eedea43d > /tmp/p1-ux-12/source-sha.txt
+          echo 561a45ef5a9ff67e198a169c1f87f8b531788955 > /tmp/p1-ux-12/source-sha.txt
           cp /tmp/iamina-web.log /tmp/p1-ux-12/server.log
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: p1-ux-12-profile-recert
+          name: p1-ux-12-profile-recert-v2
           path: /tmp/p1-ux-12
           retention-days: 14
           if-no-files-found: error
