@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-07 — P0-UX-10 Importer / document flow certified at 9.4/10 after rejecting a first visual pass; P0-UX-11 first-use Dashboard is next.
+> **Last updated:** 2026-08-08 — P0-UX-11 first-use Dashboard certified at 9.3/10 after rejecting the baseline and a first post-patch small-screen pass; P1-UX-12 progressive Profile is next.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -27,7 +27,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
-| P0 visual UX remediation | 56% | 🟡 Active — P0-UX-11 next | P0-UX-6 through P0-UX-10 certified; PRs #53–#61; latest Importer/document recertification run `31224557639` |
+| P0 visual UX remediation | 67% | 🟡 Active — P1-UX-12 next | P0-UX-6 through P0-UX-11 certified; PRs #53–#62; latest first-use Dashboard recertification run `31248641421` |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -109,8 +109,8 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 | P0-UX-8 | Navigation mobile | 100% | **9.4/10** after double-check; PR #59; CI #1075 and drift #891 green; 10-view 390×844 FR/AR recertification run `31182127159`, artifact `8995273847`, zero page errors | ✅ |
 | P0-UX-9 | Petit écran 360×560 | 100% | **9.2/10** after second visual double-check; PR #60; CI #1092 + drift #908 green; 10-view FR/AR recertification run `31208830202`, artifact `9005910951`, zero page errors | ✅ |
 | P0-UX-10 | Importer / document | 100% | **9.4/10** after second visual double-check; PR #61; one primary Importer entry; 16-view FR/AR recertification run `31224557639`, artifact `9011673527`, zero page errors | ✅ |
-| P0-UX-11 | Dashboard premier utilisateur | 0% | Next LOT — certify truthful first-use hierarchy and action priority | ⏭️ |
-| P1-UX-12 | Profil progressif | 0% | Queued | ⬜ |
+| P0-UX-11 | Dashboard premier utilisateur | 100% | **9.3/10** after second post-patch visual double-check; PR #62; truthful loading/error/empty/offline states; 8-view FR/AR recertification run `31248641421`, artifact `9019314222`, zero page errors | ✅ |
+| P1-UX-12 | Profil progressif | 0% | Next LOT — progressive disclosure and hierarchy | ⏭️ |
 | P1-UX-13 | Wording médical et produit | 0% | Queued | ⬜ |
 | P2-UX-14 | Densité et polish | 0% | Queued | ⬜ |
 
@@ -169,6 +169,20 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 - Certified product head `14e7a6d605aeb31d6c1813c614f9b72bbbf71d53`; visual evidence: run `31224557639`, artifact `9011673527`, digest `sha256:8e064f44d31f5422d8662cb8f88a962d74fcc8a676a6139cf5906110f2893710`.
 
 **Final P0-UX-10 score: 9.4/10 — PASS.** The LOT was not closed on the first successful implementation: the clipped 360×560 French CTA forced a second remediation and complete recertification. PR #61 is the merge unit; P0-UX-11 is next.
+
+
+### P0-UX-11 delivered work
+
+- The existing first-use Dashboard was audited before modification across FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`. The baseline scored **8.4/10** and was rejected: desktop was under-composed, the empty state could appear while local streams were still loading, and feature pills such as real-time AGP / AI analysis could imply capabilities before any patient data existed.
+- Local data states are now explicit and truthful: loading and local-read error are distinct from an actually empty Dashboard, with a localized retry action for errors; offline state remains derived from the real `SyncService` state.
+- The empty state presents no fabricated KPI, graph or sample patient value. The primary action is the real **add first measurement** route and document import remains a real secondary action.
+- Ambiguous feature-promise pills and the emoji illustration were removed. A clinical Material icon and factual FR/AR/EN copy explain that the Dashboard is built only from real recorded data.
+- Wide layouts use a two-zone first-use composition instead of a narrow mobile block stretched across desktop; mobile and RTL use a single directional column with 48 px actions.
+- The first post-patch visual pass was also rejected because the French truth-note card was partially obscured by the bottom navigation at `360×560`. The same LOT was corrected so short-height screens prioritize the factual body and both acquisition actions without hiding content.
+- The final matrix covers the Dashboard in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **8/8 rendered views, zero page errors**, stable RTL and fully visible primary/secondary actions. Baseline local API connection-refused console noise remains unchanged and is not presented as a new runtime regression.
+- Certified product head `2b65e9c4357b59bbc2d53cdde2e6a3271e65911c` passed CI #1128 and migration drift #944. Visual evidence: run `31248641421`, artifact `9019314222`, digest `sha256:b1846c10a68a918ad0ea5484fe50726da3ae69710944b072bf88e947eb45dd03`.
+
+**Final P0-UX-11 score: 9.3/10 — PASS.** The LOT exceeded the mandatory threshold only after the baseline and the first post-patch small-screen result were both rejected and remediated. PR #62 is the merge unit; P1-UX-12 is next.
 
 This UX remediation workstream is separate from the MENA critical-path numerator.
 
