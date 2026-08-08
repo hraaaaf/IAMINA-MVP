@@ -188,7 +188,6 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
             size: isWide ? 28 : 24,
           ),
         );
-
         final message = Text(
           l10n.analysisLoadError,
           textAlign: isWide ? TextAlign.start : TextAlign.center,
@@ -199,7 +198,6 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
             color: AminaTheme.textPrimary(context),
           ),
         );
-
         final retry = FilledButton.icon(
           onPressed: _fetchData,
           icon: const Icon(Icons.refresh, size: 17),
@@ -211,16 +209,10 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
             ),
           ),
         );
-
         return Align(
           alignment: Alignment.topCenter,
           child: Padding(
-            padding: EdgeInsetsDirectional.fromSTEB(
-              20,
-              isWide ? 48 : 32,
-              20,
-              24,
-            ),
+            padding: EdgeInsetsDirectional.fromSTEB(20, isWide ? 48 : 32, 20, 24),
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: isWide ? 680 : 420),
               child: Container(
