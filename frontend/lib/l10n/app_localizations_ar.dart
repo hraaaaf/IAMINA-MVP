@@ -627,4 +627,23 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get firstUseTruthNote =>
       'لن تظهر الاتجاهات والتحليلات إلا عند توفر بيانات حقيقية.';
+
+  @override
+  String get profileMedicalSection => 'المتابعة الطبية';
+
+  @override
+  String get profileIaminaSection => 'IAmina والتفضيلات';
+
+  @override
+  String get profileIaminaSectionHint => 'اللغة والبلد والأسلوب ومساعد الإعداد';
+
+  @override
+  String get profileAccountSection => 'الخصوصية والحساب';
+
+  @override
+  String get profileAccountSectionHint =>
+      'موافقة الذكاء الاصطناعي وإجراءات الحساب';
+
+  @override
+  String get profileMedicalSectionHint => 'أكمل المعلومات أو راجعها';
 }
