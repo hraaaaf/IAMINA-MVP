@@ -54,7 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.myProfile), centerTitle: true),
       body: ResponsiveContentSurface(
-        maxWidth: 920,
+        maxWidth: 1040,
         child: SingleChildScrollView(
           padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 24, 40),
           child: Column(
