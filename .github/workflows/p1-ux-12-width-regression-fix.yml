@@ -1,0 +1,52 @@
+name: P1-UX-12 width regression fix
+
+on:
+  push:
+    branches:
+      - fix/p1-ux-12-progressive-profile
+    paths:
+      - .github/workflows/p1-ux-12-width-regression-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p1-ux-12-progressive-profile
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Restore certified desktop width
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('frontend/lib/features/profile/profile_screen.dart')
+          s=p.read_text()
+          old='        maxWidth: 920,\n'
+          new='        maxWidth: 1040,\n'
+          assert old in s, 'expected P1-UX-12 width not found'
+          p.write_text(s.replace(old,new,1))
+          PY
+      - name: Validate non-regression
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos
+          flutter test test/p1_ux_12_progressive_profile_contract_test.dart test/p0_ux_7_desktop_tablet_contract_test.dart test/p0_ux_9_small_screen_contract_test.dart
+      - name: Commit product fix and remove transport
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/p1-ux-12-width-regression-fix.yml
+          git add frontend/lib/features/profile/profile_screen.dart
+          git diff --cached --check
+          git commit -m 'fix(ux): preserve certified profile desktop width'
+          git push origin HEAD:fix/p1-ux-12-progressive-profile
