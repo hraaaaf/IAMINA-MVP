@@ -44,6 +44,27 @@ Use short-lived prefixes such as `feature/`, `fix/`, `docs/`, or `chore/`.
 
 One roadmap unit should normally map to one focused branch and one PR.
 
+## Mandatory Builder → Reviewer → Certifier workflow
+
+Every roadmap LOT, P-level remediation unit, hotfix or governance change must follow the repository-owned team protocol in `AGENTS.md` and `.agents/README.md`:
+
+1. **Builder** inspects, reproduces, defines acceptance criteria, implements and prepares evidence.
+2. **Applicable Reviewer(s)** independently review the final behavior/diff using the relevant `.skills/*/SKILL.md` procedures. Blocking findings return the LOT to the Builder.
+3. **Release Certifier** independently verifies reviewer closure, exact-head gates, final diff hygiene, canonical documentation and merge readiness.
+4. **Merge** uses expected-head SHA locking when supported.
+5. **Post-merge verification** on `main` is required before a LOT may be declared 100% complete.
+
+The Builder may not certify its own LOT. Prefer separate agents when orchestration supports them. If only one runtime/session is available, Builder, Reviewer and Certifier must still be executed as explicit isolated passes; Reviewer and Certifier must re-read evidence rather than inheriting Builder conclusions.
+
+Mandatory skills for every LOT:
+
+- `.skills/lot-execution/SKILL.md`;
+- `.skills/release-certification/SKILL.md`.
+
+Additional skills/reviewers are mandatory according to `.agents/README.md` when UX/UI, clinical safety, database/migrations or security/privacy/egress surfaces are touched.
+
+A code or documentation change after certification changes the head SHA and invalidates stale exact-head evidence. Re-run the applicable gates before merge.
+
 ## Source of truth discipline
 
 - `docs/ROADMAP.md`: single forward backlog, priorities, gates, recent closeout state.
@@ -53,6 +74,7 @@ One roadmap unit should normally map to one focused branch and one PR.
 - `docs/TECHDEBT.md`: unresolved technical debt only.
 - `docs/MISTAKES.md`: reusable engineering lessons only.
 - `CLAUDE.md` / `AGENTS.md`: stable agent briefs, never session diaries.
+- `.agents/`: role briefs; `.skills/`: durable execution procedures. Neither replaces canonical product/safety/architecture sources.
 - ADRs / architecture timeline / assessments: historical evidence, not active backlog.
 
 Do not duplicate roadmap state across multiple documents.
@@ -66,7 +88,8 @@ A PR should state:
 3. safety/privacy impact;
 4. tests/checks run;
 5. any manual verification still required;
-6. which canonical docs must change at closeout.
+6. which canonical docs must change at closeout;
+7. Builder identity/pass, applicable Reviewer verdict(s), and Release Certifier verdict.
 
 Keep PRs focused. Large diffs are acceptable when a coherent cleanup cannot safely be split, but explain why.
 
