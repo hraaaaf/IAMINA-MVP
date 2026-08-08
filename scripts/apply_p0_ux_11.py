@@ -1,0 +1,349 @@
+from pathlib import Path
+import json
+
+p = Path('frontend/lib/features/dashboard/dashboard_screen.dart')
+s = p.read_text()
+
+old = """            final logs = logsSnap.data ?? [];
+            // Cache logs + unit for _buildChatContext (no setState — read-only cache)
+"""
+new = """            final logs = logsSnap.data ?? [];
+            final localDataLoading =
+                profileSnap.connectionState == ConnectionState.waiting ||
+                logsSnap.connectionState == ConnectionState.waiting;
+            final localDataError = profileSnap.hasError || logsSnap.hasError;
+            // Cache logs + unit for _buildChatContext (no setState — read-only cache)
+"""
+assert old in s
+s = s.replace(old, new, 1)
+
+old = """                            if (logs.isEmpty) ...[
+                              if (kDebugMode) _SeedBanner(db: db),
+                              Align(
+                                alignment: AlignmentDirectional.topCenter,
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(maxWidth: 900),
+                                  child: _EmptyDashboard(
+                                    onAddTap: () => GoRouter.of(context).go('/ajouter'),
+                                    onImportTap: () => GoRouter.of(context).go('/importer'),
+                                  ),
+                                ),
+                              ),
+                            ] else ...[
+"""
+new = """                            if (localDataError) ...[
+                              _DashboardLocalState(
+                                isError: true,
+                                onRetry: () => setState(() {}),
+                              ),
+                            ] else if (localDataLoading) ...[
+                              const _DashboardLocalState(),
+                            ] else if (logs.isEmpty) ...[
+                              if (kDebugMode) _SeedBanner(db: db),
+                              Align(
+                                alignment: AlignmentDirectional.topCenter,
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(maxWidth: 900),
+                                  child: _EmptyDashboard(
+                                    onAddTap: () => GoRouter.of(context).go('/ajouter'),
+                                    onImportTap: () => GoRouter.of(context).go('/importer'),
+                                  ),
+                                ),
+                              ),
+                            ] else ...[
+"""
+assert old in s
+s = s.replace(old, new, 1)
+
+start = s.index('// ── Empty Dashboard (onboarding state — no logs yet)')
+replacement = '''// ── Dashboard local states + first use ────────────────────────────────────────
+
+class _DashboardLocalState extends StatelessWidget {
+  final bool isError;
+  final VoidCallback? onRetry;
+
+  const _DashboardLocalState({this.isError = false, this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AuditedPageCopy.of(context).l10n;
+    return Align(
+      alignment: AlignmentDirectional.topCenter,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 720),
+        margin: const EdgeInsets.only(top: 32),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AminaTheme.surface(context),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AminaTheme.divider(context)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: (isError ? AminaTheme.dangerFg : AminaTheme.teal500)
+                    .withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: isError
+                  ? const Icon(Icons.error_outline, color: AminaTheme.dangerFg)
+                  : const Padding(
+                      padding: EdgeInsets.all(14),
+                      child: CircularProgressIndicator(strokeWidth: 2.2),
+                    ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isError ? l10n.dashboardLoadErrorTitle : l10n.dashboardLoadingTitle,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AminaTheme.textPrimary(context),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isError ? l10n.dashboardLoadErrorBody : l10n.dashboardLoadingBody,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.45,
+                      color: AminaTheme.textSecondary(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isError && onRetry != null) ...[
+              const SizedBox(width: 12),
+              TextButton(onPressed: onRetry, child: Text(l10n.retry)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyDashboard extends StatelessWidget {
+  final VoidCallback onAddTap;
+  final VoidCallback onImportTap;
+  const _EmptyDashboard({required this.onAddTap, required this.onImportTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AuditedPageCopy.of(context).l10n;
+    final compactHeight = MediaQuery.sizeOf(context).height <= 600;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wideFirstUse = constraints.maxWidth >= 720 && !compactHeight;
+        final padding = compactHeight ? 16.0 : wideFirstUse ? 30.0 : 24.0;
+
+        final intro = Column(
+          crossAxisAlignment: wideFirstUse
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: compactHeight ? 60 : 78,
+              height: compactHeight ? 60 : 78,
+              decoration: BoxDecoration(
+                gradient: AminaTheme.heroGradient,
+                shape: BoxShape.circle,
+                boxShadow: AminaTheme.shadowFab,
+              ),
+              child: Icon(
+                Icons.monitor_heart_outlined,
+                color: Colors.white,
+                size: compactHeight ? 30 : 38,
+              ),
+            ),
+            SizedBox(height: compactHeight ? 14 : 20),
+            Text(
+              l10n.emptyDashboardTitle,
+              style: TextStyle(
+                fontSize: compactHeight ? 20 : 24,
+                fontWeight: FontWeight.w800,
+                color: AminaTheme.textPrimary(context),
+                letterSpacing: -0.4,
+              ),
+              textAlign: wideFirstUse ? TextAlign.start : TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.emptyDashboardBody,
+              style: TextStyle(
+                fontSize: compactHeight ? 13 : 14,
+                color: AminaTheme.textSecondary(context),
+                height: 1.5,
+              ),
+              textAlign: wideFirstUse ? TextAlign.start : TextAlign.center,
+            ),
+          ],
+        );
+
+        final actions = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ValueListenableBuilder<SyncUiState>(
+              valueListenable: context.read<SyncService>().state,
+              builder: (context, state, _) {
+                if (state != SyncUiState.offline) return const SizedBox.shrink();
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AminaTheme.ink50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.cloud_off_outlined, size: 17, color: AminaTheme.ink500),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          AuditedPageCopy.of(context).sync('offline'),
+                          style: const TextStyle(fontSize: 12, height: 1.35, color: AminaTheme.ink600),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            FilledButton.icon(
+              onPressed: onAddTap,
+              icon: const Icon(Icons.add_circle_outline, size: 18),
+              label: Text(
+                l10n.addFirstMeasurement,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AminaTheme.teal500,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: onImportTap,
+              icon: const Icon(Icons.upload_file_outlined, size: 18),
+              label: Text(
+                l10n.importDocument,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AminaTheme.teal600,
+                minimumSize: const Size.fromHeight(48),
+                side: const BorderSide(color: AminaTheme.teal200),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+            SizedBox(height: compactHeight ? 12 : 18),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AminaTheme.teal50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AminaTheme.teal100),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.verified_user_outlined, size: 17, color: AminaTheme.teal700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l10n.firstUseTruthNote,
+                      style: const TextStyle(fontSize: 12, height: 1.4, color: AminaTheme.teal700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+
+        return Padding(
+          padding: EdgeInsets.only(
+            top: compactHeight ? 10 : 34,
+            bottom: compactHeight ? 14 : 28,
+          ),
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(padding),
+            decoration: BoxDecoration(
+              color: AminaTheme.surface(context),
+              borderRadius: BorderRadius.circular(compactHeight ? 18 : 24),
+              border: Border.all(color: AminaTheme.divider(context)),
+            ),
+            child: wideFirstUse
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(flex: 5, child: intro),
+                      const SizedBox(width: 34),
+                      Container(width: 1, height: 210, color: AminaTheme.divider(context)),
+                      const SizedBox(width: 34),
+                      Expanded(flex: 5, child: actions),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      intro,
+                      SizedBox(height: compactHeight ? 16 : 24),
+                      actions,
+                    ],
+                  ),
+          ),
+        );
+      },
+    );
+  }
+}
+'''
+s = s[:start] + replacement + '\n'
+p.write_text(s)
+
+additions = {
+    'frontend/lib/l10n/app_fr.arb': {
+        'emptyDashboardTitle': 'Ajoutez votre première donnée',
+        'emptyDashboardBody': 'Aucune donnée n’est encore enregistrée. Ajoutez une mesure ou importez un document pour construire ce tableau de bord à partir de vos données réelles.',
+        'dashboardLoadingTitle': 'Chargement de vos données',
+        'dashboardLoadingBody': 'IAmina vérifie les données enregistrées sur cet appareil avant d’afficher votre tableau de bord.',
+        'dashboardLoadErrorTitle': 'Vos données ne peuvent pas être affichées',
+        'dashboardLoadErrorBody': 'Le tableau de bord n’a pas pu lire vos données locales. Vous pouvez réessayer sans créer de données fictives.',
+        'firstUseTruthNote': 'Les tendances et analyses apparaîtront uniquement quand des données réelles seront disponibles.',
+    },
+    'frontend/lib/l10n/app_en.arb': {
+        'emptyDashboardTitle': 'Add your first data',
+        'emptyDashboardBody': 'No data has been recorded yet. Add a reading or import a document to build this dashboard from your real data.',
+        'dashboardLoadingTitle': 'Loading your data',
+        'dashboardLoadingBody': 'IAmina is checking the data stored on this device before showing your dashboard.',
+        'dashboardLoadErrorTitle': 'Your data cannot be displayed',
+        'dashboardLoadErrorBody': 'The dashboard could not read your local data. You can retry without creating any placeholder data.',
+        'firstUseTruthNote': 'Trends and analyses will appear only when real data is available.',
+    },
+    'frontend/lib/l10n/app_ar.arb': {
+        'emptyDashboardTitle': 'أضف بياناتك الأولى',
+        'emptyDashboardBody': 'لا توجد بيانات مسجلة بعد. أضف قياسًا أو استورد مستندًا لبناء لوحة المتابعة انطلاقًا من بياناتك الحقيقية.',
+        'dashboardLoadingTitle': 'جارٍ تحميل بياناتك',
+        'dashboardLoadingBody': 'تتحقق IAmina من البيانات المحفوظة على هذا الجهاز قبل عرض لوحة المتابعة.',
+        'dashboardLoadErrorTitle': 'تعذر عرض بياناتك',
+        'dashboardLoadErrorBody': 'تعذر على لوحة المتابعة قراءة بياناتك المحلية. يمكنك إعادة المحاولة من دون إنشاء أي بيانات افتراضية.',
+        'firstUseTruthNote': 'لن تظهر الاتجاهات والتحليلات إلا عند توفر بيانات حقيقية.',
+    },
+}
+
+for file, vals in additions.items():
+    path = Path(file)
+    data = json.loads(path.read_text())
+    data.update(vals)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
