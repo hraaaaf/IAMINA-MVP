@@ -249,5 +249,11 @@
   "dashboardLoadingBody": "IAmina vérifie les données enregistrées sur cet appareil avant d’afficher votre tableau de bord.",
   "dashboardLoadErrorTitle": "Vos données ne peuvent pas être affichées",
   "dashboardLoadErrorBody": "Le tableau de bord n’a pas pu lire vos données locales. Vous pouvez réessayer sans créer de données fictives.",
-  "firstUseTruthNote": "Les tendances et analyses apparaîtront uniquement quand des données réelles seront disponibles."
+  "firstUseTruthNote": "Les tendances et analyses apparaîtront uniquement quand des données réelles seront disponibles.",
+  "profileMedicalSection": "Suivi médical",
+  "profileIaminaSection": "IAmina & préférences",
+  "profileIaminaSectionHint": "Langue, pays, ton et assistant de configuration",
+  "profileAccountSection": "Confidentialité & compte",
+  "profileAccountSectionHint": "Consentement IA et actions du compte",
+  "profileMedicalSectionHint": "À compléter ou vérifier"
 }

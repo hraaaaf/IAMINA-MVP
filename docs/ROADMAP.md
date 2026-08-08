@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-08 — agent governance protocol established through PR #63; P1-UX-12 progressive Profile remains the next product LOT.
+> **Last updated:** 2026-08-08 — P1-UX-12 progressive Profile certified at 9.4/10 in PR #64; P1-UX-13 wording médical et produit is next.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -28,7 +28,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
-| P0 visual UX remediation | 67% | 🟡 Active — P1-UX-12 next | P0-UX-6 through P0-UX-11 certified; PRs #53–#62; latest first-use Dashboard recertification run `31248641421` |
+| P0 visual UX remediation | 78% | 🟡 Active — P1-UX-13 next | P0-UX-6 through P1-UX-12 certified; PRs #53–#64; latest Profile recertification run `31258575687` |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -121,8 +121,8 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 | P0-UX-9 | Petit écran 360×560 | 100% | **9.2/10** after second visual double-check; PR #60; CI #1092 + drift #908 green; 10-view FR/AR recertification run `31208830202`, artifact `9005910951`, zero page errors | ✅ |
 | P0-UX-10 | Importer / document | 100% | **9.4/10** after second visual double-check; PR #61; one primary Importer entry; 16-view FR/AR recertification run `31224557639`, artifact `9011673527`, zero page errors | ✅ |
 | P0-UX-11 | Dashboard premier utilisateur | 100% | **9.3/10** after second post-patch visual double-check; PR #62; truthful loading/error/empty/offline states; 8-view FR/AR recertification run `31248641421`, artifact `9019314222`, zero page errors | ✅ |
-| P1-UX-12 | Profil progressif | 0% | Next LOT — progressive disclosure and hierarchy | ⏭️ |
-| P1-UX-13 | Wording médical et produit | 0% | Queued | ⬜ |
+| P1-UX-12 | Profil progressif | 100% | **9.4/10** after Reviewer double-check; PR #64; three truthful progressive sections; 8-view FR/AR recertification run `31258575687`, artifact `9022145295`, zero page errors | ✅ |
+| P1-UX-13 | Wording médical et produit | 0% | Next LOT | ⏭️ |
 | P2-UX-14 | Densité et polish | 0% | Queued | ⬜ |
 
 ### P0-UX-7 delivered work
@@ -194,6 +194,23 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 - Certified product head `2b65e9c4357b59bbc2d53cdde2e6a3271e65911c` passed CI #1128 and migration drift #944. Visual evidence: run `31248641421`, artifact `9019314222`, digest `sha256:b1846c10a68a918ad0ea5484fe50726da3ae69710944b072bf88e947eb45dd03`.
 
 **Final P0-UX-11 score: 9.3/10 — PASS.** The LOT exceeded the mandatory threshold only after the baseline and the first post-patch small-screen result were both rejected and remediated. PR #62 is the merge unit; P1-UX-12 is next.
+
+### P1-UX-12 delivered work
+
+- The existing Profile was inspected before modification and found to mix medical configuration, IAmina preferences, account/privacy actions and a fabricated completion percentage in one long surface.
+- The Profile is now organized into three explicit progressive sections: **Suivi médical**, **IAmina & préférences**, and **Confidentialité & compte**, all collapsed by default for fast scanning on narrow screens.
+- The former completion percentage was removed because default values could make an unconfigured profile look partially complete.
+- Empty medical state is fail-closed and truthful: it shows a neutral “À compléter ou vérifier” summary until a persisted profile actually exists; real diabetes/treatment/unit values are summarized only after persisted data is loaded or successfully saved.
+- Medical target inputs stack on compact widths, account/consent actions remain isolated with 48 px controls, and existing safe-area/scroll behavior is preserved.
+- FR/EN/AR localization owns all new section labels and hints; Arabic RTL remained visually coherent across the certified matrix.
+- A permanent `p1_ux_12_progressive_profile_contract_test.dart` locks the progressive structure, collapsed defaults, truthful persisted-profile summary and sensitive-action grouping.
+- Builder/Reviewer remediation run `31254691325` passed `flutter analyze --no-fatal-infos` and **8/8 targeted tests**.
+- Final full CI then caught a real non-regression: P1-UX-12 had narrowed the Profile surface from the P0-UX-7 certified `1040` px contract to `920` px. The LOT stayed open; run `31258415090` restored `maxWidth: 1040` and passed the P1-UX-12, P0-UX-7 and P0-UX-9 targeted contracts before commit.
+- Exact product head `322be3bf82e3f112e4ebf89aea732353a0c72d59` was visually recertified in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **8/8 rendered views, one Flutter view each, zero page errors**. Expected local API `ERR_CONNECTION_REFUSED` console noise is unchanged and not treated as a page/runtime regression.
+- Visual evidence: run `31258575687`, artifact `9022145295`, digest `sha256:091faa01cb4c4b7004844a0eb29e3f6bf3328f2588dbf6e6ebbed1a5048fb996`.
+- Independent visual Reviewer found no critical/high defect after remediation and scored the final Profile **9.4/10**.
+
+**Final P1-UX-12 score: 9.4/10 — PASS.** PR #64 is the merge unit; P1-UX-13 is next.
 
 This UX remediation workstream is separate from the MENA critical-path numerator.
 
