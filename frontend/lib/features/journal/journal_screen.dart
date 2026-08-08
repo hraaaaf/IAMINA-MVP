@@ -57,43 +57,10 @@ class _JournalScreenState extends State<JournalScreen> {
 
               final logs = snapshot.data ?? [];
               if (logs.isEmpty) {
-                final l10n = AppLocalizations.of(context)!;
-                return SliverFillRemaining(
-                  child: Padding(
-                    padding: const EdgeInsets.all(40),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 100, height: 100,
-                          child: CustomPaint(painter: _EmptyJournalPainter()),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          l10n.journalEmpty,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AminaTheme.ink900),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          l10n.journalEmptySubtitle,
-                          style: const TextStyle(fontSize: 14, color: AminaTheme.ink500, height: 1.5),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 28),
-                        FilledButton.icon(
-                          onPressed: () => context.go('/ajouter'),
-                          icon: const Icon(Icons.add, size: 16),
-                          label: Text(l10n.addMeasurement),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AminaTheme.teal500,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                return _buildEmptyJournalSliver(
+                  context,
+                  viewportWidth,
+                  horizontalPadding,
                 );
               }
 
@@ -135,6 +102,68 @@ class _JournalScreenState extends State<JournalScreen> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyJournalSliver(
+    BuildContext context,
+    double viewportWidth,
+    double horizontalPadding,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 100, height: 100,
+          child: CustomPaint(painter: _EmptyJournalPainter()),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          l10n.journalEmpty,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AminaTheme.ink900),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          l10n.journalEmptySubtitle,
+          style: const TextStyle(fontSize: 14, color: AminaTheme.ink500, height: 1.5),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 28),
+        FilledButton.icon(
+          onPressed: () => context.go('/ajouter'),
+          icon: const Icon(Icons.add, size: 16),
+          label: Text(l10n.addMeasurement),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 48),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AminaTheme.radiusXL)),
+          ),
+        ),
+      ],
+    );
+    if (viewportWidth < 700) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(child: Padding(padding: const EdgeInsets.all(40), child: content)),
+      );
+    }
+    return SliverFillRemaining(
+      hasScrollBody: false,
+      child: Padding(
+        padding: EdgeInsetsDirectional.fromSTEB(horizontalPadding, 48, horizontalPadding, 32),
+        child: Align(
+          alignment: AlignmentDirectional.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: ClinicalCard(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+              child: content,
+            ),
+          ),
+        ),
       ),
     );
   }
