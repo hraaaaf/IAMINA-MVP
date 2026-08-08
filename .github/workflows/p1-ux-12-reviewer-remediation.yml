@@ -1,0 +1,91 @@
+name: P1-UX-12 Reviewer remediation
+
+on:
+  push:
+    branches:
+      - fix/p1-ux-12-progressive-profile
+    paths:
+      - .github/workflows/p1-ux-12-reviewer-remediation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  remediate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p1-ux-12-progressive-profile
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Apply Reviewer remediation
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+
+          p = Path('frontend/lib/features/profile/profile_screen.dart')
+          s = p.read_text()
+          s = s.replace("  String _unit = 'mg/dL';\n", "  String _unit = 'mg/dL';\n  bool _hasPersistedProfile = false;\n")
+          s = s.replace("        _diabetesType = profile.diabetesType ?? 'type1';\n", "        _hasPersistedProfile = true;\n        _diabetesType = profile.diabetesType ?? 'type1';\n")
+          s = s.replace("      initiallyExpanded: true,\n", "      initiallyExpanded: false,\n", 1)
+          old = "  String _medicalSummary(AppLocalizations l10n) {\n    final diabetes = switch (_diabetesType) {"
+          new = "  String _medicalSummary(AppLocalizations l10n) {\n    if (!_hasPersistedProfile) return l10n.profileMedicalSectionHint;\n\n    final diabetes = switch (_diabetesType) {"
+          assert old in s
+          s = s.replace(old, new, 1)
+          old_save = "    if (mounted) {\n      ScaffoldMessenger.of(context).showSnackBar("
+          new_save = "    if (mounted) {\n      setState(() => _hasPersistedProfile = true);\n      ScaffoldMessenger.of(context).showSnackBar("
+          assert old_save in s
+          s = s.replace(old_save, new_save, 1)
+          p.write_text(s)
+
+          additions = {
+            'frontend/lib/l10n/app_fr.arb': {'profileMedicalSectionHint': 'À compléter ou vérifier'},
+            'frontend/lib/l10n/app_en.arb': {'profileMedicalSectionHint': 'Complete or review'},
+            'frontend/lib/l10n/app_ar.arb': {'profileMedicalSectionHint': 'أكمل المعلومات أو راجعها'},
+          }
+          for path, values in additions.items():
+              f = Path(path)
+              data = json.loads(f.read_text())
+              for key, value in values.items():
+                  data[key] = value
+              f.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
+
+          t = Path('frontend/test/p1_ux_12_progressive_profile_contract_test.dart')
+          ts = t.read_text()
+          ts = ts.replace("  test('medical settings remain primary and secondary sections start collapsed', () {", "  test('all sections start collapsed while medical summary remains truthful', () {")
+          ts = ts.replace("    expect(medicalBlock, contains('initiallyExpanded: true'));\n    expect(source, contains('initiallyExpanded: false'));", "    expect(medicalBlock, contains('initiallyExpanded: false'));\n    expect(source, isNot(contains('initiallyExpanded: true')));\n    expect(source, contains('_hasPersistedProfile'));\n    expect(source, contains('profileMedicalSectionHint'));\n    expect(source, contains('if (!_hasPersistedProfile)'));")
+          ts = ts.replace("        'profileMedicalSection',\n", "        'profileMedicalSection',\n        'profileMedicalSectionHint',\n")
+          t.write_text(ts)
+          PY
+
+      - name: Generate localization and format
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          dart format lib/features/profile/profile_screen.dart test/p1_ux_12_progressive_profile_contract_test.dart
+
+      - name: Validate remediation
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos
+          flutter test test/p1_ux_12_progressive_profile_contract_test.dart test/p0_ux_9_small_screen_contract_test.dart
+
+      - name: Commit Reviewer remediation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/p1-ux-12-reviewer-remediation.yml
+          git add frontend/lib/features/profile/profile_screen.dart frontend/lib/l10n frontend/test/p1_ux_12_progressive_profile_contract_test.dart
+          git diff --cached --check
+          git commit -m 'fix(ux): keep empty profile summary truthful'
+          git push origin HEAD:fix/p1-ux-12-progressive-profile
