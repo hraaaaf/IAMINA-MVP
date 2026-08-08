@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-08 — P0-UX-11 first-use Dashboard certified at 9.3/10 after rejecting the baseline and a first post-patch small-screen pass; P1-UX-12 progressive Profile is next.
+> **Last updated:** 2026-08-08 — agent governance protocol established through PR #63; P1-UX-12 progressive Profile remains the next product LOT.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -27,6 +27,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 |---|---:|---|---|
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
+| P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 67% | 🟡 Active — P1-UX-12 next | P0-UX-6 through P0-UX-11 certified; PRs #53–#62; latest first-use Dashboard recertification run `31248641421` |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
@@ -68,6 +69,16 @@ Preparation work does not close a live benchmark, legal/privacy approval, native
 
 - Migration state reconciled without unnecessary ALTER operations.
 - `makemigrations --check --dry-run` is a permanent CI gate.
+
+## ✅ P0 agent governance
+
+- `AGENTS.md`, `CLAUDE.md` and `docs/CONTRIBUTING.md` require a Builder → applicable Reviewer(s) → Release Certifier chain for every future roadmap LOT, P-level remediation, hotfix and governance change.
+- Six role briefs live under `.agents/`; six reusable procedures live under `.skills/`.
+- Reviewer routing is explicit by change surface; the Builder may not self-certify.
+- Exact-head evidence becomes stale when code or canonical documentation changes and must be rerun.
+- Expected-head merge locking and post-merge CI + migration drift are required before a LOT can be declared 100% complete.
+
+**Closure unit:** PR #63. This governance work does not change the MENA critical-path numerator.
 
 ## ✅ P0 product truthfulness
 
