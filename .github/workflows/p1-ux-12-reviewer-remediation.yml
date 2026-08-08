@@ -31,6 +31,7 @@ jobs:
           python3 <<'PY'
           from pathlib import Path
           import json
+          import re
 
           p = Path('frontend/lib/features/profile/profile_screen.dart')
           s = p.read_text()
@@ -55,15 +56,29 @@ jobs:
           for path, values in additions.items():
               f = Path(path)
               data = json.loads(f.read_text())
-              for key, value in values.items():
-                  data[key] = value
+              data.update(values)
               f.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
 
           t = Path('frontend/test/p1_ux_12_progressive_profile_contract_test.dart')
           ts = t.read_text()
-          ts = ts.replace("  test('medical settings remain primary and secondary sections start collapsed', () {", "  test('all sections start collapsed while medical summary remains truthful', () {")
-          ts = ts.replace("    expect(medicalBlock, contains('initiallyExpanded: true'));\n    expect(source, contains('initiallyExpanded: false'));", "    expect(medicalBlock, contains('initiallyExpanded: false'));\n    expect(source, isNot(contains('initiallyExpanded: true')));\n    expect(source, contains('_hasPersistedProfile'));\n    expect(source, contains('profileMedicalSectionHint'));\n    expect(source, contains('if (!_hasPersistedProfile)'));")
-          ts = ts.replace("        'profileMedicalSection',\n", "        'profileMedicalSection',\n        'profileMedicalSectionHint',\n")
+          ts = ts.replace(
+              "medical settings remain primary and secondary sections start collapsed",
+              "all sections start collapsed while medical summary remains truthful",
+          )
+          ts = ts.replace(
+              "expect(medicalBlock, contains('initiallyExpanded: true'));",
+              "expect(medicalBlock, contains('initiallyExpanded: false'));",
+          )
+          ts = ts.replace(
+              "expect(source, contains('initiallyExpanded: false'));",
+              "expect(source, isNot(contains('initiallyExpanded: true')));\n      expect(source, contains('_hasPersistedProfile'));\n      expect(source, contains('profileMedicalSectionHint'));\n      expect(source, contains('if (!_hasPersistedProfile)'));",
+              1,
+          )
+          if "'profileMedicalSectionHint'," not in ts:
+              ts = ts.replace(
+                  "        'profileMedicalSection',\n",
+                  "        'profileMedicalSection',\n        'profileMedicalSectionHint',\n",
+              )
           t.write_text(ts)
           PY
 
