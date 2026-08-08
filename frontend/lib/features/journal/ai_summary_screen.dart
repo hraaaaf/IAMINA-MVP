@@ -172,68 +172,92 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
 
   Widget _buildError() {
     final l10n = AppLocalizations.of(context)!;
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(20, 32, 20, 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AminaTheme.surface(context),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AminaTheme.divider(context)),
-              boxShadow: AminaTheme.shadowClinical,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AminaTheme.dangerBg,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.cloud_off_outlined,
-                    color: AminaTheme.dangerFg,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  l10n.analysisLoadError,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    height: 1.35,
-                    fontWeight: FontWeight.w800,
-                    color: AminaTheme.textPrimary(context),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _fetchData,
-                    icon: const Icon(Icons.refresh, size: 17),
-                    label: Text(l10n.retry),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 720;
+        final icon = Container(
+          width: isWide ? 56 : 48,
+          height: isWide ? 56 : 48,
+          decoration: BoxDecoration(
+            color: AminaTheme.dangerBg,
+            borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
+          ),
+          child: Icon(
+            Icons.cloud_off_outlined,
+            color: AminaTheme.dangerFg,
+            size: isWide ? 28 : 24,
+          ),
+        );
+
+        final message = Text(
+          l10n.analysisLoadError,
+          textAlign: isWide ? TextAlign.start : TextAlign.center,
+          style: TextStyle(
+            fontSize: isWide ? 16 : 15,
+            height: 1.35,
+            fontWeight: FontWeight.w800,
+            color: AminaTheme.textPrimary(context),
+          ),
+        );
+
+        final retry = FilledButton.icon(
+          onPressed: _fetchData,
+          icon: const Icon(Icons.refresh, size: 17),
+          label: Text(l10n.retry),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
             ),
           ),
-        ),
-      ),
+        );
+
+        return Align(
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: EdgeInsetsDirectional.fromSTEB(
+              20,
+              isWide ? 48 : 32,
+              20,
+              24,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: isWide ? 680 : 420),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(isWide ? 28 : 24),
+                decoration: BoxDecoration(
+                  color: AminaTheme.surface(context),
+                  borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
+                  border: Border.all(color: AminaTheme.divider(context)),
+                  boxShadow: AminaTheme.shadowClinical,
+                ),
+                child: isWide
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          icon,
+                          const SizedBox(width: 20),
+                          Expanded(child: message),
+                          const SizedBox(width: 24),
+                          SizedBox(width: 190, child: retry),
+                        ],
+                      )
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          icon,
+                          const SizedBox(height: 16),
+                          message,
+                          const SizedBox(height: 18),
+                          SizedBox(width: double.infinity, child: retry),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
