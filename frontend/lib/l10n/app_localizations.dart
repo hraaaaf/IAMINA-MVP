@@ -1177,13 +1177,13 @@ abstract class AppLocalizations {
   /// No description provided for @emptyDashboardTitle.
   ///
   /// In en, this message translates to:
-  /// **'Start your tracking'**
+  /// **'Add your first data'**
   String get emptyDashboardTitle;
 
   /// No description provided for @emptyDashboardBody.
   ///
   /// In en, this message translates to:
-  /// **'IAmina is ready to analyse your glucose data and support you day to day.'**
+  /// **'No data has been recorded yet. Add a reading or import a document to build this dashboard from your real data.'**
   String get emptyDashboardBody;
 
   /// No description provided for @addFirstMeasurement.
@@ -1239,6 +1239,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This takes a few seconds.'**
   String get analysisLoadingWait;
+
+  /// No description provided for @dashboardLoadingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading your data'**
+  String get dashboardLoadingTitle;
+
+  /// No description provided for @dashboardLoadingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'IAmina is checking the data stored on this device before showing your dashboard.'**
+  String get dashboardLoadingBody;
+
+  /// No description provided for @dashboardLoadErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data cannot be displayed'**
+  String get dashboardLoadErrorTitle;
+
+  /// No description provided for @dashboardLoadErrorBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The dashboard could not read your local data. You can retry without creating any placeholder data.'**
+  String get dashboardLoadErrorBody;
+
+  /// No description provided for @firstUseTruthNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Trends and analyses will appear only when real data is available.'**
+  String get firstUseTruthNote;
 }
 
 class _AppLocalizationsDelegate
