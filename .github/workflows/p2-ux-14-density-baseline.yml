@@ -1,0 +1,71 @@
+name: P2-UX-14 density baseline
+
+on:
+  push:
+    branches: [audit/p2-ux-14-density-baseline]
+    paths: [.github/workflows/p2-ux-14-density-baseline.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 3ff5e23e5519c3b4aed9110a6a7289ca273e3dfa
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter build web --release --dart-define=IAMINA_AUDIT_ACCESS=true
+      - name: Install capture runtime
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.54.2
+          npx playwright install --with-deps chromium
+      - name: Serve
+        working-directory: frontend/build/web
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 >/tmp/iamina-web.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8080/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Capture baseline matrix
+        run: |
+          mkdir -p /tmp/p2ux14baseline
+          cat >/tmp/p2ux14baseline/capture.cjs <<'EOF'
+          const { chromium } = require(process.cwd() + '/node_modules/playwright');
+          const fs = require('fs'); const path = require('path');
+          const views=[['desktop',1440,1000],['tablet',768,1024],['mobile',390,844],['small',360,560]];
+          const screens=[['dashboard','/dashboard'],['summary','/summary'],['journal','/journal'],['importer','/importer'],['profile','/profile']];
+          const langs=[['fr','fr-FR'],['ar','ar-MA']];
+          (async()=>{const b=await chromium.launch({headless:true}); const report=[];
+            for(const [vp,w,h] of views) for(const [screen,route] of screens) for(const [lang,locale] of langs){
+              const c=await b.newContext({viewport:{width:w,height:h},locale,timezoneId:'Africa/Casablanca'}); const p=await c.newPage();
+              const pageErrors=[]; p.on('pageerror',e=>pageErrors.push(String(e)));
+              await p.goto(`http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#${route}`,{waitUntil:'domcontentloaded',timeout:30000});
+              await p.waitForTimeout(5000);
+              const file=`${vp}-${lang}__${screen}.png`; await p.screenshot({path:path.join('/tmp/p2ux14baseline',file),fullPage:true});
+              report.push({vp,screen,lang,w,h,url:p.url(),flutterViews:await p.locator('flutter-view').count(),pageErrors,screenshot:file}); await c.close();
+            }
+            await b.close(); fs.writeFileSync('/tmp/p2ux14baseline/report.json',JSON.stringify(report,null,2));
+            if(report.some(x=>x.flutterViews!==1||x.pageErrors.length)) process.exit(1);
+          })();
+          EOF
+          node /tmp/p2ux14baseline/capture.cjs
+      - name: Record source
+        if: always()
+        run: echo 3ff5e23e5519c3b4aed9110a6a7289ca273e3dfa >/tmp/p2ux14baseline/source-sha.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p2-ux-14-density-baseline
+          path: /tmp/p2ux14baseline
+          retention-days: 14
