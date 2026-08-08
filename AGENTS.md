@@ -9,6 +9,9 @@ This file is a **stable execution contract for coding agents**, not a session di
 3. `docs/CONTRIBUTING.md` — workflow and non-negotiable guardrails.
 4. `docs/MISTAKES.md` — durable lessons.
 5. Relevant ADR/spec for the assigned unit.
+6. `.skills/lot-execution/SKILL.md` — mandatory LOT procedure.
+7. `.agents/README.md` — reviewer routing matrix.
+8. Every additional `.skills/*/SKILL.md` required by the touched surface.
 
 Do not choose work from old phase numbers, archived plans, assessments, or stale commit notes.
 
@@ -69,6 +72,27 @@ Never:
 - Do not add session-state sections.
 - Update a canonical doc only when a durable truth changes.
 - Historical docs are evidence, not instructions.
+
+## Mandatory Builder → Reviewer → Certifier chain
+
+Every roadmap LOT, P-level remediation unit, hotfix or governance change must use the following sequence:
+
+1. **Builder** — normally `.agents/lead-engineer.md`; inspects, reproduces, defines acceptance criteria, implements, tests and prepares evidence.
+2. **Reviewer(s)** — selected from `.agents/README.md` according to the changed surface. Blocking findings must be remediated and affected evidence rerun.
+3. **Release Certifier** — `.agents/release-certifier.md`; independently verifies final diff, reviewer closure, exact-head gates, canonical docs and merge readiness.
+4. **Merge** — expected-head SHA locking is required when supported.
+5. **Post-merge verification** — `main` must point to the expected merge and post-merge CI + migration drift must be green before declaring 100% complete.
+
+The Builder may not certify its own LOT. Prefer separate agents when orchestration supports them. If only one runtime/session is available, roles must still be executed as explicit isolated passes: the Reviewer must re-read evidence without relying on Builder conclusions, and the Certifier must independently re-check the final diff and exact-head evidence.
+
+For UX/UI LOTs, `.skills/ux-ui-certification/SKILL.md` is mandatory and a score **strictly above 9.0/10** is required. A score `<=9.0` keeps the LOT open.
+
+Specialized skills are mandatory when their surface is touched:
+- clinical/medical/safety → `.skills/clinical-safety/SKILL.md`;
+- models/migrations/persistence/PostgreSQL → `.skills/migrations-database/SKILL.md`;
+- auth/authorization/privacy/secrets/external egress → `.skills/security-review/SKILL.md`.
+
+`.skills/release-certification/SKILL.md` is mandatory for every LOT.
 
 ## Validation
 
