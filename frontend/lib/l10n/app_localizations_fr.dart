@@ -585,11 +585,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get onboardingAssistantLabel => 'Assistant de configuration';
 
   @override
-  String get emptyDashboardTitle => 'Commencez votre suivi';
+  String get emptyDashboardTitle => 'Ajoutez votre première donnée';
 
   @override
   String get emptyDashboardBody =>
-      'IAmina est prête à analyser vos données glycémiques et vous accompagner au quotidien.';
+      'Aucune donnée n’est encore enregistrée. Ajoutez une mesure ou importez un document pour construire ce tableau de bord à partir de vos données réelles.';
 
   @override
   String get addFirstMeasurement => 'Ajouter ma première mesure';
@@ -617,4 +617,23 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get analysisLoadingWait => 'Cela prend quelques secondes.';
+
+  @override
+  String get dashboardLoadingTitle => 'Chargement de vos données';
+
+  @override
+  String get dashboardLoadingBody =>
+      'IAmina vérifie les données enregistrées sur cet appareil avant d’afficher votre tableau de bord.';
+
+  @override
+  String get dashboardLoadErrorTitle =>
+      'Vos données ne peuvent pas être affichées';
+
+  @override
+  String get dashboardLoadErrorBody =>
+      'Le tableau de bord n’a pas pu lire vos données locales. Vous pouvez réessayer sans créer de données fictives.';
+
+  @override
+  String get firstUseTruthNote =>
+      'Les tendances et analyses apparaîtront uniquement quand des données réelles seront disponibles.';
 }

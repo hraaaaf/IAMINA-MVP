@@ -577,11 +577,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingAssistantLabel => 'Setup assistant';
 
   @override
-  String get emptyDashboardTitle => 'Start your tracking';
+  String get emptyDashboardTitle => 'Add your first data';
 
   @override
   String get emptyDashboardBody =>
-      'IAmina is ready to analyse your glucose data and support you day to day.';
+      'No data has been recorded yet. Add a reading or import a document to build this dashboard from your real data.';
 
   @override
   String get addFirstMeasurement => 'Add my first reading';
@@ -609,4 +609,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get analysisLoadingWait => 'This takes a few seconds.';
+
+  @override
+  String get dashboardLoadingTitle => 'Loading your data';
+
+  @override
+  String get dashboardLoadingBody =>
+      'IAmina is checking the data stored on this device before showing your dashboard.';
+
+  @override
+  String get dashboardLoadErrorTitle => 'Your data cannot be displayed';
+
+  @override
+  String get dashboardLoadErrorBody =>
+      'The dashboard could not read your local data. You can retry without creating any placeholder data.';
+
+  @override
+  String get firstUseTruthNote =>
+      'Trends and analyses will appear only when real data is available.';
 }
