@@ -28,7 +28,9 @@ jobs:
           cache: true
 
       - name: Apply Builder patch
-        run: python3 tools/p1_ux_12_builder.py
+        run: |
+          python3 tools/p1_ux_12_builder.py
+          sed -i '/final pct = _completionPct;/d' frontend/lib/features/profile/profile_screen.dart
 
       - name: Generate localization and format
         working-directory: frontend
