@@ -43,6 +43,7 @@ void main() {
     expect(source, contains('wideFirstUse'));
     expect(source, contains('constraints.maxWidth >= 720'));
     expect(source, contains('compactHeight'));
+    expect(source, contains('if (!compactHeight)'));
     expect(source, contains('AlignmentDirectional'));
   });
 }
