@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-08 — P1-UX-12 progressive Profile certified at 9.4/10 in PR #64; P1-UX-13 wording médical et produit is next.
+> **Last updated:** 2026-08-08 — P1-UX-13 medical/product wording certified at 9.3/10 in PR #65 after two rejected passes; P2-UX-14 density/polish is next.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -28,7 +28,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
-| P0 visual UX remediation | 78% | 🟡 Active — P1-UX-13 next | P0-UX-6 through P1-UX-12 certified; PRs #53–#64; latest Profile recertification run `31258575687` |
+| P0 visual UX remediation | 89% | 🟡 Active — P2-UX-14 next | P0-UX-6 through P1-UX-13 certified; PRs #53–#65; latest wording recertification run `31263898750` |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -122,7 +122,7 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 | P0-UX-10 | Importer / document | 100% | **9.4/10** after second visual double-check; PR #61; one primary Importer entry; 16-view FR/AR recertification run `31224557639`, artifact `9011673527`, zero page errors | ✅ |
 | P0-UX-11 | Dashboard premier utilisateur | 100% | **9.3/10** after second post-patch visual double-check; PR #62; truthful loading/error/empty/offline states; 8-view FR/AR recertification run `31248641421`, artifact `9019314222`, zero page errors | ✅ |
 | P1-UX-12 | Profil progressif | 100% | **9.4/10** after Reviewer double-check; PR #64; three truthful progressive sections; 8-view FR/AR recertification run `31258575687`, artifact `9022145295`, zero page errors | ✅ |
-| P1-UX-13 | Wording médical et produit | 0% | Next LOT | ⏭️ |
+| P1-UX-13 | Wording médical et produit | 100% | **9.3/10** after second visual recertification; PR #65; plain-language CGM/AGP + privacy wording; 32-view FR/AR run `31263898750`, artifact `9023631718`, zero page errors | ✅ |
 | P2-UX-14 | Densité et polish | 0% | Queued | ⬜ |
 
 ### P0-UX-7 delivered work
@@ -211,6 +211,22 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 - Independent visual Reviewer found no critical/high defect after remediation and scored the final Profile **9.4/10**.
 
 **Final P1-UX-12 score: 9.4/10 — PASS.** PR #64 is the merge unit; P1-UX-13 is next.
+
+### P1-UX-13 delivered work
+
+- Baseline audit covered Summary, Importer, document import and consent in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **32/32 rendered views, zero page errors**. The baseline scored **7.9/10** and was rejected because expert/internal wording such as `Export CGM` and `Traitement externe contrôlé` required unnecessary domain knowledge.
+- CGM is now expanded in patient-facing acquisition copy, while the acronym remains as the complementary medical term. The former `AGP en temps réel` wording was removed because AGP is a standardized summary/report concept rather than a truthful real-time capability label; the UI now uses a plain-language sensor-trend summary with `(AGP)` in complement.
+- Reading coverage copy now explicitly distinguishes the proportion of recorded readings from CGM time in range, avoiding a clinically misleading equivalence.
+- External-processing copy was simplified to task-first language while retaining the already-certified privacy conditions: consent, provider authorization, hosting region, retention period and fail-closed behavior when approval is missing.
+- The permanent `p0_privacy_truthfulness_contract_test.dart` was migrated rather than weakened: it continues to require deployment/provider evidence and reject unsupported privacy claims, while no longer forcing the obsolete internal phrase `Traitement externe contrôlé`.
+- Permanent `p1_ux_13_wording_contract_test.dart` and `p1_ux_13_compact_consent_contract_test.dart` lock the new terminology and harsh small-screen behavior.
+- The first post-patch visual recertification was **rejected at 8.8/10**: on `360×560` FR/AR the longer, safer consent copy pushed both user choices below the initial viewport. The LOT remained open.
+- Compact-height consent remediation (`≤600 px`) reduces only layout density and typography; it does **not** remove consent conditions. Builder validation run `31263759746` passed Flutter analyze, P1-UX-13 wording, compact-consent, privacy-truthfulness and P0-UX-9 small-screen contracts.
+- Final exact product head `6b283650d055fbb073273734b91ae79eb68fcfe4` was recaptured across the complete 32-view FR/AR matrix. Both **Accept & continue** and **Continue without AI** are visible at `360×560` in FR and AR, RTL remains coherent, and no other audited surface regressed.
+- Final visual evidence: run `31263898750`, artifact `9023631718`, digest `sha256:8cfe6334d10e555d9fc407ff4a82789ebc377dace9e7d5986865e0b7b19ef3e6`; `source-sha.txt` matches the product head, all 32 entries have exactly one Flutter view and zero page errors.
+- Clinical Safety Reviewer PASS: no diagnostic, treatment, dose, clinical threshold or calculation behavior changed; wording remains non-prescriptive and privacy egress conditions remain fail-closed.
+
+**Final P1-UX-13 score: 9.3/10 — PASS.** The LOT exceeded the mandatory threshold only after the 7.9 baseline and 8.8 first recertification were both rejected and remediated. PR #65 is the merge unit; P2-UX-14 is next.
 
 This UX remediation workstream is separate from the MENA critical-path numerator.
 
