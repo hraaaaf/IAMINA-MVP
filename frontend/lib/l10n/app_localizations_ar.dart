@@ -577,11 +577,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get onboardingAssistantLabel => 'مساعد الإعداد';
 
   @override
-  String get emptyDashboardTitle => 'ابدأ متابعتك';
+  String get emptyDashboardTitle => 'أضف بياناتك الأولى';
 
   @override
   String get emptyDashboardBody =>
-      'IAmina جاهزة لتحليل بيانات سكر الدم ومرافقتك يوميًا.';
+      'لا توجد بيانات مسجلة بعد. أضف قياسًا أو استورد مستندًا لبناء لوحة المتابعة انطلاقًا من بياناتك الحقيقية.';
 
   @override
   String get addFirstMeasurement => 'إضافة أول قياس';
@@ -609,4 +609,22 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get analysisLoadingWait => 'قد يستغرق ذلك بضع ثوانٍ.';
+
+  @override
+  String get dashboardLoadingTitle => 'جارٍ تحميل بياناتك';
+
+  @override
+  String get dashboardLoadingBody =>
+      'تتحقق IAmina من البيانات المحفوظة على هذا الجهاز قبل عرض لوحة المتابعة.';
+
+  @override
+  String get dashboardLoadErrorTitle => 'تعذر عرض بياناتك';
+
+  @override
+  String get dashboardLoadErrorBody =>
+      'تعذر على لوحة المتابعة قراءة بياناتك المحلية. يمكنك إعادة المحاولة من دون إنشاء أي بيانات افتراضية.';
+
+  @override
+  String get firstUseTruthNote =>
+      'لن تظهر الاتجاهات والتحليلات إلا عند توفر بيانات حقيقية.';
 }
