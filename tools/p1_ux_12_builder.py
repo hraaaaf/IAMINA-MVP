@@ -1,0 +1,408 @@
+from pathlib import Path
+import json
+import re
+
+p = Path('frontend/lib/features/profile/profile_screen.dart')
+s = p.read_text()
+
+s = re.sub(
+    r"\n  /// Profile completion score: counts non-default field values\..*?\n  @override\n  Widget build",
+    "\n  @override\n  Widget build",
+    s,
+    flags=re.S,
+)
+
+start = s.index('      body: ResponsiveContentSurface(')
+end = s.index('\n  Widget _buildIASetupCard', start)
+replacement = r'''      body: ResponsiveContentSurface(
+        maxWidth: 920,
+        child: SingleChildScrollView(
+          padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 24, 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildMedicalSection(l10n),
+              const SizedBox(height: 14),
+              _buildProfileSection(
+                key: const ValueKey('profile-iamina-section'),
+                icon: Icons.auto_awesome_outlined,
+                title: l10n.profileIaminaSection,
+                subtitle: l10n.profileIaminaSectionHint,
+                initiallyExpanded: false,
+                children: [_buildIASetupCard(l10n)],
+              ),
+              const SizedBox(height: 14),
+              _buildAccountSection(l10n),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMedicalSection(AppLocalizations l10n) {
+    return _buildProfileSection(
+      key: const ValueKey('profile-medical-section'),
+      icon: Icons.favorite_border_rounded,
+      title: l10n.profileMedicalSection,
+      subtitle: _medicalSummary(l10n),
+      initiallyExpanded: true,
+      children: [
+        _buildSectionTitle(Icons.favorite_border, l10n.diabetesType),
+        const SizedBox(height: 12),
+        _buildChoiceGrid(
+          [
+            l10n.diabetesType1,
+            l10n.diabetesType2,
+            l10n.diabetesGestational,
+            l10n.diabetesPreDiabetes,
+          ],
+          ['type1', 'type2', 'gestational', 'pre'],
+          _diabetesType,
+          (val) => setState(() => _diabetesType = val),
+        ),
+        const SizedBox(height: 28),
+        _buildSectionTitle(Icons.science_outlined, l10n.treatment),
+        const SizedBox(height: 12),
+        _buildChoiceGrid(
+          [
+            l10n.treatmentInsulin,
+            l10n.treatmentTablets,
+            l10n.treatmentLifestyle,
+          ],
+          ['insulin', 'tablets', 'lifestyle'],
+          _treatment,
+          (val) => setState(() => _treatment = val),
+        ),
+        const SizedBox(height: 28),
+        _buildSectionTitle(Icons.show_chart, l10n.glucoseTarget),
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 460;
+            final low = _buildTextField(
+              AuditedPageCopy.of(context).minimum,
+              _targetLowController,
+              l10n,
+            );
+            final high = _buildTextField(
+              AuditedPageCopy.of(context).maximum,
+              _targetHighController,
+              l10n,
+            );
+            if (compact) {
+              return Column(
+                children: [low, const SizedBox(height: 12), high],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: low),
+                const SizedBox(width: 16),
+                Expanded(child: high),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 28),
+        _buildSectionTitle(Icons.straighten, l10n.measureUnit),
+        const SizedBox(height: 12),
+        _buildChoiceGrid(
+          ['mg/dL', 'mmol/L'],
+          ['mg/dL', 'mmol/L'],
+          _unit,
+          (val) => setState(() => _unit = val),
+        ),
+        const SizedBox(height: 28),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _saveProfile,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AminaTheme.primaryTeal,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              elevation: 0,
+            ),
+            child: Text(
+              l10n.saveProfile,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAccountSection(AppLocalizations l10n) {
+    return _buildProfileSection(
+      key: const ValueKey('profile-account-section'),
+      icon: Icons.shield_outlined,
+      title: l10n.profileAccountSection,
+      subtitle: l10n.profileAccountSectionHint,
+      initiallyExpanded: false,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AminaTheme.dangerBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AminaTheme.dangerFg.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                l10n.dangerZone,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AminaTheme.dangerFg,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _confirmSignOut,
+                icon: const Icon(Icons.logout, size: 16, color: AminaTheme.dangerFg),
+                label: Text(
+                  l10n.signOut,
+                  style: const TextStyle(
+                    color: AminaTheme.dangerFg,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  side: BorderSide(
+                    color: AminaTheme.dangerFg.withValues(alpha: 0.4),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              Consumer<ConsentService>(
+                builder: (context, consent, _) {
+                  if (!consent.hasConsent) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: OutlinedButton.icon(
+                      onPressed: () => _confirmWithdrawConsent(l10n),
+                      icon: const Icon(
+                        Icons.psychology_outlined,
+                        size: 16,
+                        color: AminaTheme.dangerFg,
+                      ),
+                      label: Text(
+                        l10n.consentWithdraw,
+                        style: const TextStyle(
+                          color: AminaTheme.dangerFg,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        side: BorderSide(
+                          color: AminaTheme.dangerFg.withValues(alpha: 0.4),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileSection({
+    required Key key,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool initiallyExpanded,
+    required List<Widget> children,
+  }) {
+    return Container(
+      key: key,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AminaTheme.ink200.withValues(alpha: 0.75)),
+        boxShadow: AminaTheme.shadowCard,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          maintainState: true,
+          initiallyExpanded: initiallyExpanded,
+          tilePadding: const EdgeInsetsDirectional.fromSTEB(18, 10, 14, 10),
+          childrenPadding: const EdgeInsetsDirectional.fromSTEB(18, 0, 18, 20),
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AminaTheme.primaryTeal.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: AminaTheme.primaryTeal, size: 21),
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AminaTheme.ink900,
+            ),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                height: 1.35,
+                color: AminaTheme.ink500,
+              ),
+            ),
+          ),
+          children: children,
+        ),
+      ),
+    );
+  }
+
+  String _medicalSummary(AppLocalizations l10n) {
+    final diabetes = switch (_diabetesType) {
+      'type2' => l10n.diabetesType2,
+      'gestational' => l10n.diabetesGestational,
+      'pre' => l10n.diabetesPreDiabetes,
+      _ => l10n.diabetesType1,
+    };
+    final treatment = switch (_treatment) {
+      'tablets' => l10n.treatmentTablets,
+      'lifestyle' => l10n.treatmentLifestyle,
+      _ => l10n.treatmentInsulin,
+    };
+    return '$diabetes · $treatment · $_unit';
+  }
+'''
+
+s = s[:start] + replacement + s[end:]
+marker = '\n// ── Profile completion header'
+if marker in s:
+    s = s[:s.index(marker)].rstrip() + '\n'
+p.write_text(s)
+
+entries = {
+    'frontend/lib/l10n/app_fr.arb': {
+        'profileMedicalSection': 'Suivi médical',
+        'profileIaminaSection': 'IAmina & préférences',
+        'profileIaminaSectionHint': 'Langue, pays, ton et assistant de configuration',
+        'profileAccountSection': 'Confidentialité & compte',
+        'profileAccountSectionHint': 'Consentement IA et actions du compte',
+    },
+    'frontend/lib/l10n/app_en.arb': {
+        'profileMedicalSection': 'Medical tracking',
+        'profileIaminaSection': 'IAmina & preferences',
+        'profileIaminaSectionHint': 'Language, country, tone and setup assistant',
+        'profileAccountSection': 'Privacy & account',
+        'profileAccountSectionHint': 'AI consent and account actions',
+    },
+    'frontend/lib/l10n/app_ar.arb': {
+        'profileMedicalSection': 'المتابعة الطبية',
+        'profileIaminaSection': 'IAmina والتفضيلات',
+        'profileIaminaSectionHint': 'اللغة والبلد والأسلوب ومساعد الإعداد',
+        'profileAccountSection': 'الخصوصية والحساب',
+        'profileAccountSectionHint': 'موافقة الذكاء الاصطناعي وإجراءات الحساب',
+    },
+}
+for path, values in entries.items():
+    f = Path(path)
+    text = f.read_text().rstrip()
+    assert text.endswith('}')
+    body = text[:-1].rstrip()
+    if not body.endswith(','):
+        body += ','
+    lines = [body]
+    for i, (k, v) in enumerate(values.items()):
+        comma = ',' if i < len(values) - 1 else ''
+        lines.append(f'  {json.dumps(k)}: {json.dumps(v, ensure_ascii=False)}{comma}')
+    lines.append('}')
+    f.write_text('\n'.join(lines) + '\n')
+
+test = Path('frontend/test/p1_ux_12_progressive_profile_contract_test.dart')
+test.write_text(r'''import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+
+String _read(String path) => File(path).readAsStringSync();
+
+void main() {
+  test('profile uses progressive thematic sections with truthful medical summary', () {
+    final source = _read('lib/features/profile/profile_screen.dart');
+    expect(source, contains("ValueKey('profile-medical-section')"));
+    expect(source, contains("ValueKey('profile-iamina-section')"));
+    expect(source, contains("ValueKey('profile-account-section')"));
+    expect(source, contains('ExpansionTile('));
+    expect(source, contains('maintainState: true'));
+    expect(source, contains('subtitle: _medicalSummary(l10n)'));
+    expect(source, isNot(contains('_ProfileCompletionHeader')));
+  });
+
+  test('medical settings remain primary and secondary sections start collapsed', () {
+    final source = _read('lib/features/profile/profile_screen.dart');
+    final medical = source.indexOf('Widget _buildMedicalSection');
+    final account = source.indexOf('Widget _buildAccountSection');
+    final section = source.indexOf('Widget _buildProfileSection');
+    expect(medical, greaterThan(0));
+    expect(account, greaterThan(medical));
+    expect(section, greaterThan(account));
+    final medicalBlock = source.substring(medical, account);
+    expect(medicalBlock, contains('initiallyExpanded: true'));
+    expect(source, contains('initiallyExpanded: false'));
+    expect(medicalBlock, contains('saveProfile'));
+  });
+
+  test('sensitive actions stay grouped in a distinct account section', () {
+    final source = _read('lib/features/profile/profile_screen.dart');
+    final account = source.indexOf('Widget _buildAccountSection');
+    final generic = source.indexOf('Widget _buildProfileSection');
+    final block = source.substring(account, generic);
+    expect(block, contains('dangerZone'));
+    expect(block, contains('_confirmSignOut'));
+    expect(block, contains('_confirmWithdrawConsent'));
+    expect(block, contains('Size.fromHeight(48)'));
+  });
+
+  test('FR EN AR own all progressive-profile section labels', () {
+    for (final locale in <String>['fr', 'en', 'ar']) {
+      final arb = _read('lib/l10n/app_$locale.arb');
+      for (final key in <String>[
+        'profileMedicalSection',
+        'profileIaminaSection',
+        'profileIaminaSectionHint',
+        'profileAccountSection',
+        'profileAccountSectionHint',
+      ]) {
+        expect(arb, contains('"$key"'));
+      }
+    }
+  });
+}
+''')
