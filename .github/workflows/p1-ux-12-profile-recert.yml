@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 561a45ef5a9ff67e198a169c1f87f8b531788955
+          ref: 9ae99cfd62d8253e553f2acc327a383b7834f69e
 
       - uses: subosito/flutter-action@v2
         with:
@@ -89,13 +89,13 @@ jobs:
       - name: Record source
         if: always()
         run: |
-          echo 561a45ef5a9ff67e198a169c1f87f8b531788955 > /tmp/p1-ux-12/source-sha.txt
+          echo 9ae99cfd62d8253e553f2acc327a383b7834f69e > /tmp/p1-ux-12/source-sha.txt
           cp /tmp/iamina-web.log /tmp/p1-ux-12/server.log
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: p1-ux-12-profile-recert-v2
+          name: p1-ux-12-profile-recert-v3
           path: /tmp/p1-ux-12
           retention-days: 14
           if-no-files-found: error
