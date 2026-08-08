@@ -234,8 +234,8 @@
   "onboardingStart": "Commencer",
   "onboardingSaving": "Enregistrement…",
   "onboardingAssistantLabel": "Assistant de configuration",
-  "emptyDashboardTitle": "Commencez votre suivi",
-  "emptyDashboardBody": "IAmina est prête à analyser vos données glycémiques et vous accompagner au quotidien.",
+  "emptyDashboardTitle": "Ajoutez votre première donnée",
+  "emptyDashboardBody": "Aucune donnée n’est encore enregistrée. Ajoutez une mesure ou importez un document pour construire ce tableau de bord à partir de vos données réelles.",
   "addFirstMeasurement": "Ajouter ma première mesure",
   "importDocument": "Importer un document",
   "featureRealtimeAgp": "AGP en temps réel",
@@ -244,5 +244,10 @@
   "analysisLoadError": "Impossible de récupérer les analyses.",
   "retry": "Réessayer",
   "analysisLoading": "IAmina analyse vos données…",
-  "analysisLoadingWait": "Cela prend quelques secondes."
+  "analysisLoadingWait": "Cela prend quelques secondes.",
+  "dashboardLoadingTitle": "Chargement de vos données",
+  "dashboardLoadingBody": "IAmina vérifie les données enregistrées sur cet appareil avant d’afficher votre tableau de bord.",
+  "dashboardLoadErrorTitle": "Vos données ne peuvent pas être affichées",
+  "dashboardLoadErrorBody": "Le tableau de bord n’a pas pu lire vos données locales. Vous pouvez réessayer sans créer de données fictives.",
+  "firstUseTruthNote": "Les tendances et analyses apparaîtront uniquement quand des données réelles seront disponibles."
 }
