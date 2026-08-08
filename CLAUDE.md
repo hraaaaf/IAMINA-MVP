@@ -8,6 +8,9 @@ This file is a **stable execution brief**, not a session diary or status tracker
 2. `docs/architecture/ARCHITECTURE.md` — current architecture and target boundaries.
 3. `docs/CONTRIBUTING.md` — workflow + non-negotiable safety rules.
 4. `docs/MISTAKES.md` — reusable engineering lessons.
+5. `.skills/lot-execution/SKILL.md` — mandatory LOT procedure.
+6. `.agents/README.md` — mandatory Builder/Reviewer/Certifier routing.
+7. Every domain skill required by the touched surface.
 
 Do not infer current priorities from old commit messages, assessments, archived transformation plans, or historical phase numbers.
 
@@ -65,6 +68,21 @@ See `docs/ROADMAP.md` for exact checkboxes.
 - Update docs only when the change alters a durable contract, architecture fact, guardrail, or forward backlog.
 - Historical documents are evidence, not instructions.
 - Never commit `.env`, service-account credentials, API keys, local agent permission files containing secrets, or generated secret-bearing configuration.
+
+## Mandatory team protocol
+
+Every LOT must execute the repository-owned team model:
+
+`Builder -> applicable Reviewer(s) -> Release Certifier -> merge -> post-merge verification`
+
+- Builder: `.agents/lead-engineer.md`.
+- Reviewer routing: `.agents/README.md`.
+- Final Certifier: `.agents/release-certifier.md`.
+- Every LOT loads `.skills/lot-execution/SKILL.md` and `.skills/release-certification/SKILL.md`.
+- Domain skills/reviewers are mandatory when their surface is touched.
+- Builder may not self-certify. Prefer separate agents; if only one runtime exists, execute isolated role passes with a fresh evidence review.
+- UX/UI work additionally requires `.skills/ux-ui-certification/SKILL.md` and a final score strictly above 9.0/10.
+- Any final code or documentation SHA change invalidates stale exact-head certification evidence and requires the applicable gates to run again.
 
 ## Validation baseline
 
