@@ -254,5 +254,6 @@
   "profileIaminaSection": "IAmina & préférences",
   "profileIaminaSectionHint": "Langue, pays, ton et assistant de configuration",
   "profileAccountSection": "Confidentialité & compte",
-  "profileAccountSectionHint": "Consentement IA et actions du compte"
+  "profileAccountSectionHint": "Consentement IA et actions du compte",
+  "profileMedicalSectionHint": "À compléter ou vérifier"
 }

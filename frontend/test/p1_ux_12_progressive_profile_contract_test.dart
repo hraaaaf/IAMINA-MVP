@@ -20,7 +20,7 @@ void main() {
   );
 
   test(
-    'medical settings remain primary and secondary sections start collapsed',
+    'all sections start collapsed while medical summary remains truthful',
     () {
       final source = _read('lib/features/profile/profile_screen.dart');
       final medical = source.indexOf('Widget _buildMedicalSection');
@@ -30,8 +30,11 @@ void main() {
       expect(account, greaterThan(medical));
       expect(section, greaterThan(account));
       final medicalBlock = source.substring(medical, account);
-      expect(medicalBlock, contains('initiallyExpanded: true'));
-      expect(source, contains('initiallyExpanded: false'));
+      expect(medicalBlock, contains('initiallyExpanded: false'));
+      expect(source, isNot(contains('initiallyExpanded: true')));
+      expect(source, contains('_hasPersistedProfile'));
+      expect(source, contains('profileMedicalSectionHint'));
+      expect(source, contains('if (!_hasPersistedProfile)'));
       expect(medicalBlock, contains('saveProfile'));
     },
   );
@@ -52,6 +55,7 @@ void main() {
       final arb = _read('lib/l10n/app_$locale.arb');
       for (final key in <String>[
         'profileMedicalSection',
+        'profileMedicalSectionHint',
         'profileIaminaSection',
         'profileIaminaSectionHint',
         'profileAccountSection',

@@ -254,5 +254,6 @@
   "profileIaminaSection": "IAmina والتفضيلات",
   "profileIaminaSectionHint": "اللغة والبلد والأسلوب ومساعد الإعداد",
   "profileAccountSection": "الخصوصية والحساب",
-  "profileAccountSectionHint": "موافقة الذكاء الاصطناعي وإجراءات الحساب"
+  "profileAccountSectionHint": "موافقة الذكاء الاصطناعي وإجراءات الحساب",
+  "profileMedicalSectionHint": "أكمل المعلومات أو راجعها"
 }
