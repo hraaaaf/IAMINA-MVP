@@ -1,0 +1,50 @@
+name: P1-UX-13 roadmap finalize
+
+on:
+  push:
+    branches: [fix/p1-ux-13-medical-product-wording]
+    paths: [.github/workflows/p1-ux-13-roadmap-finalize.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/p1-ux-13-medical-product-wording
+      - name: Update canonical roadmap
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('docs/ROADMAP.md')
+          s=p.read_text()
+          s=s.replace(
+            '> **Last updated:** 2026-08-08 — P1-UX-12 progressive Profile certified at 9.4/10 in PR #64; P1-UX-13 wording médical et produit is next.',
+            '> **Last updated:** 2026-08-08 — P1-UX-13 medical/product wording certified at 9.3/10 in PR #65 after two rejected passes; P2-UX-14 density/polish is next.'
+          )
+          s=s.replace(
+            '| P0 visual UX remediation | 78% | 🟡 Active — P1-UX-13 next | P0-UX-6 through P1-UX-12 certified; PRs #53–#64; latest Profile recertification run `31258575687` |',
+            '| P0 visual UX remediation | 89% | 🟡 Active — P2-UX-14 next | P0-UX-6 through P1-UX-13 certified; PRs #53–#65; latest wording recertification run `31263898750` |'
+          )
+          s=s.replace(
+            '| P1-UX-13 | Wording médical et produit | 0% | Next LOT | ⏭️ |',
+            '| P1-UX-13 | Wording médical et produit | 100% | **9.3/10** after second visual recertification; PR #65; plain-language CGM/AGP + privacy wording; 32-view FR/AR run `31263898750`, artifact `9023631718`, zero page errors | ✅ |'
+          )
+          marker='**Final P1-UX-12 score: 9.4/10 — PASS.** PR #64 is the merge unit; P1-UX-13 is next.\n\nThis UX remediation workstream is separate from the MENA critical-path numerator.'
+          block='''**Final P1-UX-12 score: 9.4/10 — PASS.** PR #64 is the merge unit; P1-UX-13 is next.\n\n### P1-UX-13 delivered work\n\n- Baseline audit covered Summary, Importer, document import and consent in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **32/32 rendered views, zero page errors**. The baseline scored **7.9/10** and was rejected because expert/internal wording such as `Export CGM` and `Traitement externe contrôlé` required unnecessary domain knowledge.\n- CGM is now expanded in patient-facing acquisition copy, while the acronym remains as the complementary medical term. The former `AGP en temps réel` wording was removed because AGP is a standardized summary/report concept rather than a truthful real-time capability label; the UI now uses a plain-language sensor-trend summary with `(AGP)` in complement.\n- Reading coverage copy now explicitly distinguishes the proportion of recorded readings from CGM time in range, avoiding a clinically misleading equivalence.\n- External-processing copy was simplified to task-first language while retaining the already-certified privacy conditions: consent, provider authorization, hosting region, retention period and fail-closed behavior when approval is missing.\n- The permanent `p0_privacy_truthfulness_contract_test.dart` was migrated rather than weakened: it continues to require deployment/provider evidence and reject unsupported privacy claims, while no longer forcing the obsolete internal phrase `Traitement externe contrôlé`.\n- Permanent `p1_ux_13_wording_contract_test.dart` and `p1_ux_13_compact_consent_contract_test.dart` lock the new terminology and harsh small-screen behavior.\n- The first post-patch visual recertification was **rejected at 8.8/10**: on `360×560` FR/AR the longer, safer consent copy pushed both user choices below the initial viewport. The LOT remained open.\n- Compact-height consent remediation (`≤600 px`) reduces only layout density and typography; it does **not** remove consent conditions. Builder validation run `31263759746` passed Flutter analyze, P1-UX-13 wording, compact-consent, privacy-truthfulness and P0-UX-9 small-screen contracts.\n- Final exact product head `6b283650d055fbb073273734b91ae79eb68fcfe4` was recaptured across the complete 32-view FR/AR matrix. Both **Accept & continue** and **Continue without AI** are visible at `360×560` in FR and AR, RTL remains coherent, and no other audited surface regressed.\n- Final visual evidence: run `31263898750`, artifact `9023631718`, digest `sha256:8cfe6334d10e555d9fc407ff4a82789ebc377dace9e7d5986865e0b7b19ef3e6`; `source-sha.txt` matches the product head, all 32 entries have exactly one Flutter view and zero page errors.\n- Clinical Safety Reviewer PASS: no diagnostic, treatment, dose, clinical threshold or calculation behavior changed; wording remains non-prescriptive and privacy egress conditions remain fail-closed.\n\n**Final P1-UX-13 score: 9.3/10 — PASS.** The LOT exceeded the mandatory threshold only after the 7.9 baseline and 8.8 first recertification were both rejected and remediated. PR #65 is the merge unit; P2-UX-14 is next.\n\nThis UX remediation workstream is separate from the MENA critical-path numerator.'''
+          if marker not in s:
+            raise SystemExit('roadmap insertion marker not found')
+          s=s.replace(marker,block)
+          p.write_text(s)
+          PY
+      - name: Commit roadmap and remove transport
+        run: |
+          rm .github/workflows/p1-ux-13-roadmap-finalize.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ROADMAP.md .github/workflows/p1-ux-13-roadmap-finalize.yml
+          git commit -m "docs(roadmap): certify P1-UX-13 above 9/10"
+          git push origin HEAD:fix/p1-ux-13-medical-product-wording
