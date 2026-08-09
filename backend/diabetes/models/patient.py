@@ -83,6 +83,24 @@ class DiabetesProfile(models.Model):
         help_text="Preferred glucose unit",
     )
 
+    ramadan_start_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Patient-declared start of an optional Ramadan journal context. "
+            "NULL means no period is configured."
+        ),
+    )
+
+    ramadan_end_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Patient-declared end of an optional Ramadan journal context. "
+            "NULL means no period is configured."
+        ),
+    )
+
     class Meta:
         app_label = 'diabetes'
         # Keep the original table name — the SeparateDatabaseAndState migration
