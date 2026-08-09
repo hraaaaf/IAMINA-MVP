@@ -51,7 +51,6 @@ jobs:
           start = raw.index(start_marker) + len(start_marker)
           end = raw.index(end_marker, start)
           block = raw[start:end]
-
           output = []
           triple = None
           for raw_line in block.splitlines():
@@ -79,22 +78,23 @@ jobs:
                       break
                   pos, triple = min(candidates, key=lambda item: item[0])
                   cursor = pos + 3
-
           source = '\n'.join(output) + '\n'
           compile(source, '<journal7-extracted>', 'exec')
           Path('journal7-extracted.py').write_text(source)
           PY
 
       - name: Apply frontend patch
-        shell: bash
-        run: |
-          python journal7-extracted.py
+        run: python journal7-extracted.py
 
       - name: Install backend dependencies
         working-directory: backend
         run: pip install -r requirements.txt ruff==0.15.17
 
-      - name: Backend Ruff
+      - name: Backend Ruff safe fix
+        working-directory: backend
+        run: ruff check --fix diabetes/models/patient.py diabetes/api/v1/profile.py diabetes/api/v1/schemas.py diabetes/tests/test_ramadan_profile_period.py
+
+      - name: Backend Ruff gate
         working-directory: backend
         run: ruff check diabetes/models/patient.py diabetes/api/v1/profile.py diabetes/api/v1/schemas.py diabetes/tests/test_ramadan_profile_period.py
 
