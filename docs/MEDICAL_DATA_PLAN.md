@@ -65,6 +65,10 @@ Every metric/pattern must define:
 
 Do not hide insufficient data behind confident prose.
 
+### Context observations
+
+Illness, stress, activity, sleep and fatigue context are observational patient-entered data. Missing context is **unknown**, not evidence of a negative/normal state. New logging paths must therefore avoid manufacturing `no`, `good` or `ok` values when the patient did not report them. Existing historical rows are not retrospectively rewritten to guess intent. Context may later support explicitly governed observational pattern detection, but it must not be presented as a proven cause of a glucose change or converted into treatment/dose advice.
+
 ### Nutrition-derived observations
 
 Nutrition values are deterministic derived data, not treatment authority. A patient-facing number requires source/version provenance, compatible food identity/preparation and an explicit portion basis. If those requirements are not met, numeric nutrition must fail closed. Patient-entered portion observations may be stored, but derived carbohydrate values remain recalculable from the versioned catalogue and must not be treated as immutable clinical facts. Uncertainty must remain visible when the source supports only a range. Nutrition-derived output must not be converted into an insulin dose, treatment adjustment, diagnosis or autonomous recommendation.
