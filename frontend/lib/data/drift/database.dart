@@ -19,6 +19,7 @@ class LogEntries extends Table {
   TextColumn get mealType => text().nullable()();
   TextColumn get mealDescription => text().nullable()();
   TextColumn get mealItemsJson => text().nullable()();
+  TextColumn get mealPortionsJson => text().nullable()();
   TextColumn get source => text().withDefault(const Constant('manual'))();
   TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
   TextColumn get clientUuid => text().unique()();
@@ -87,7 +88,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -120,6 +121,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 7) {
         await m.addColumn(logEntries, logEntries.mealItemsJson);
+      }
+      if (from < 8) {
+        await m.addColumn(logEntries, logEntries.mealPortionsJson);
       }
     },
   );
