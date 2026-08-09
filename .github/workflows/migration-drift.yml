@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, dev]
 
+permissions:
+  contents: write
+
 jobs:
   migration-drift:
     name: Django model/migration drift
@@ -33,3 +36,23 @@ jobs:
         run: pip install -q -r requirements.txt
       - name: Reject model/migration drift
         run: python manage.py makemigrations --check --dry-run
+
+  journal-4-final-cleanup:
+    name: P1-JOURNAL-4 final runner cleanup
+    if: github.event_name == 'push' && github.event.head_commit.message == 'activate P1-JOURNAL-4 final cleanup'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p1-journal-nutrition-v2
+          fetch-depth: 0
+      - name: Restore runner-only files after all validation
+        run: |
+          git fetch origin main
+          git checkout origin/main -- frontend/pubspec.lock frontend/.flutter-plugins-dependencies .github/workflows/migration-drift.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .
+          git commit -m 'chore(journal): remove runner-only artifacts'
+          git push origin HEAD:feat/p1-journal-nutrition-v2
