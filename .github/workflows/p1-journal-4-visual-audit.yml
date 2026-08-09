@@ -1,0 +1,34 @@
+name: P1-JOURNAL-4 visual audit
+
+on:
+  push:
+    branches: [audit/p1-journal-4-visual]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  visual-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Render exact product matrix
+        run: flutter test --update-goldens test/audit/p1_journal_4_visual_audit_test.dart
+      - name: Upload rendered matrix
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-journal-4-visual-matrix
+          path: frontend/test/audit/goldens/*.png
+          if-no-files-found: error
