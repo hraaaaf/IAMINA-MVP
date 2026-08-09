@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-08 — P2-UX-14 density/polish certified at 9.2/10 in PR #66 after a rejected 8.5/10 baseline; final visual UX remediation matrix is complete.
+> **Last updated:** 2026-08-09 — metabolic-event Journal redesign registered; P0-JOURNAL-1 clinical truthfulness is the first merge unit and P0-JOURNAL-2 is next.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,6 +29,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
+| Journal metabolic-event redesign | 11% | 🔵 P0-JOURNAL-1 merge unit | PR #67; truthful glucose/nutrition/insulin capture; P0-JOURNAL-2 next |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -36,6 +37,8 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | Pilot safety/compliance gate | 69% | 🟡 Automated procedures complete; external security/legal/human gates remain | 9 of 13 explicit gates complete; PRs #34–#35 prepare approval gates; PR #38 prepares secret-history remediation; issue #30 remains blocking |
 
 **MENA critical-path completion:** 32 of 41 explicit roadmap tasks closed, approximately **78%**.
+
+The Journal redesign is a separate product-quality workstream and does not change the MENA critical-path numerator.
 
 Preparation work does not close a live benchmark, legal/privacy approval, native-review task or external credential-remediation task and does not increase the critical-path numerator.
 
@@ -93,7 +96,35 @@ Preparation work does not close a live benchmark, legal/privacy approval, native
 
 ---
 
-# P0 visual UX remediation — ACTIVE
+# Journal metabolic-event redesign — ACTIVE
+
+**Goal:** turn the add-log surface into a fast, truthful metabolic-event journal that records what happened, keeps treatment decisions out of the UI, and can later support evidence-backed personal response patterns without fabricated precision.
+
+## Mandatory execution rule
+
+Each Journal LOT is a separate branch/PR. Clinical/safety, UX/UI, privacy/egress and persistence reviewers are routed according to the touched surface. UX/UI LOTs require the repository UX certification procedure and a final score strictly above 9.0/10. A clinical safety LOT may not be expanded merely to chase visual polish; its visible behavior must remain usable and non-regressive, while the dedicated UX LOT owns full visual certification.
+
+| LOT | Scope | Status | Acceptance boundary |
+|---|---|---|---|
+| P0-JOURNAL-1 | Clinical truthfulness | 🔵 PR #67 merge unit | no fabricated default glucose/target verdict; no fabricated carbs/IG/meal-impact score; insulin is already-taken logging only; deterministic `<54` vs `54–69` low-glucose safety; no automatic generative post-save verdict |
+| P0-JOURNAL-2 | Express metabolic event | ⏭️ Next | `glycaemia → context → optional meal → save`; glycaemic context separate from meal type; Sport removed from meal taxonomy; FR/EN/AR + RTL/responsive certification >9.0 |
+| P1-JOURNAL-3 | Meal capture | ⬜ Planned | recent/habitual/search + confirmed photo recognition; no “food recommendation” implication; user confirms/corrects media recognition |
+| P1-JOURNAL-4 | Nutrition data v2 | ⬜ Planned | sourced food/portion model, provenance and uncertainty; Morocco/MENA portions; no patient-facing nutrition number without defensible source |
+| P1-JOURNAL-5 | Insulin logging v2 | ⬜ Planned | actual administered dose/context only; no calculator, scoring, optimization or suggested units |
+| P1-JOURNAL-6 | Context intelligence | ⬜ Planned | optional illness/stress/activity/sleep context; avoid repeatedly asking low-value information |
+| P1-JOURNAL-7 | Ramadan mode v2 | ⬜ Planned | Ramadan becomes a profile/period context; meal vocabulary adapts automatically; no per-log pseudo-clinical toggle |
+| P2-JOURNAL-8 | Personal metabolic response | ⬜ Planned | repeated-event associations with explicit evidence count/confidence; observational wording only; no invented causality/treatment advice |
+| P2-JOURNAL-9 | Post-save experience | ⬜ Planned | immediate factual confirmation only; longitudinal insights appear separately only when evidence requirements are met |
+
+### P0-JOURNAL-1 durable closeout contract
+
+PR #67 is the merge unit for the first Journal LOT. Its code removes fabricated clinical/nutritional precision from the reachable add-log surface, preserves Drift persistence and `client_uuid`, distinguishes ADA 2026 level-2 `<54 mg/dL` from level-1 `54–69 mg/dL` before persistence, and removes the automatic post-save generative opinion. OCR, meal-photo recognition, voice dictation, richer nutrition, profile-level Ramadan behavior and longitudinal personalization are intentionally not claimed by this LOT; they return only through their dedicated units and existing egress/safety contracts.
+
+P0-JOURNAL-1 is not declared 100% merely by this roadmap entry: expected-head merge plus post-merge CI and migration drift remain mandatory. P0-JOURNAL-2 must branch from the verified merged main.
+
+---
+
+# P0 visual UX remediation — CLOSED
 
 Canonical defect register and acceptance criteria: `docs/ux/P0_CERT_4_VISUAL_AUDIT.md`.
 
@@ -206,7 +237,7 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 - A permanent `p1_ux_12_progressive_profile_contract_test.dart` locks the progressive structure, collapsed defaults, truthful persisted-profile summary and sensitive-action grouping.
 - Builder/Reviewer remediation run `31254691325` passed `flutter analyze --no-fatal-infos` and **8/8 targeted tests**.
 - Final full CI then caught a real non-regression: P1-UX-12 had narrowed the Profile surface from the P0-UX-7 certified `1040` px contract to `920` px. The LOT stayed open; run `31258415090` restored `maxWidth: 1040` and passed the P1-UX-12, P0-UX-7 and P0-UX-9 targeted contracts before commit.
-- Exact product head `322be3bf82e3f112e4ebf89aea732353a0c72d59` was visually recertified in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **8/8 rendered views, one Flutter view each, zero page errors**. Expected local API `ERR_CONNECTION_REFUSED` console noise is unchanged and not treated as a page/runtime regression.
+- Exact product head `322be3bf82e3f112e4ebf89aea732353a0c72d59` was visually recertified in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **8/8 rendered views, one Flutter view each, zero page errors**. Expected local API `ERR_CONNECTION_REFUSED` console noise is unchanged and not treated as a new runtime regression.
 - Visual evidence: run `31258575687`, artifact `9022145295`, digest `sha256:091faa01cb4c4b7004844a0eb29e3f6bf3328f2588dbf6e6ebbed1a5048fb996`.
 - Independent visual Reviewer found no critical/high defect after remediation and scored the final Profile **9.4/10**.
 
@@ -381,3 +412,4 @@ These units close procedures and executable controls. They do not imply native-l
 3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals, then run the PR #34 and PR #35 `--require-approved` gates.
 4. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
 5. Run the deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
+6. In the product-quality lane, close P0-JOURNAL-1 through expected-head merge/post-merge verification, then execute P0-JOURNAL-2 as the next Journal LOT without changing the MENA critical-path numerator.
