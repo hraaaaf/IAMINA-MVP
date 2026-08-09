@@ -38,7 +38,7 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/feat/p1-journal-meal-capture' &&
-      github.event.head_commit.message == 'ci(temp): resolve P1-JOURNAL-3 nested test quoting'
+      github.event.head_commit.message == 'ci(temp): diagnose P1-JOURNAL-3 focused verification'
     name: P1-JOURNAL-3 branch-only builder
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -137,13 +137,23 @@ jobs:
           pip install -r requirements.txt >/dev/null
           python manage.py export_openapi > ../docs/api/openapi.json
       - name: Focused verification
+        shell: bash
         run: |
-          cd backend
-          python manage.py makemigrations --check --dry-run
-          pytest -q diabetes/tests/test_journal_glycemic_context.py
-          cd ../frontend
-          flutter analyze
-          flutter test test/features/add_log_sheet_test.dart test/features/meal_capture_panel_test.dart test/data/drift/glycemic_context_migration_test.dart test/data/drift/meal_items_migration_test.dart
+          set -o pipefail
+          check() {
+            local title="$1"; shift
+            if ! "$@" > /tmp/p1j3-check.log 2>&1; then
+              cat /tmp/p1j3-check.log
+              local msg
+              msg=$(tail -n 18 /tmp/p1j3-check.log | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g')
+              echo "::error title=${title}::${msg}"
+              return 1
+            fi
+          }
+          check "Django migration drift" bash -lc 'cd backend && python manage.py makemigrations --check --dry-run' || exit 1
+          check "Backend journal tests" bash -lc 'cd backend && pytest -q diabetes/tests/test_journal_glycemic_context.py' || exit 1
+          check "Flutter analyze" bash -lc 'cd frontend && flutter analyze' || exit 1
+          check "Flutter focused tests" bash -lc 'cd frontend && flutter test test/features/add_log_sheet_test.dart test/features/meal_capture_panel_test.dart test/data/drift/glycemic_context_migration_test.dart test/data/drift/meal_items_migration_test.dart' || exit 1
       - name: Commit implementation
         run: |
           git config user.name 'github-actions[bot]'
