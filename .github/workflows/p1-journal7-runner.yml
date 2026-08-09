@@ -35,24 +35,29 @@ jobs:
           python - <<'PY'
           from urllib.request import urlopen
 
-          source_commit = 'fc6faada2b6958e74469e0fcfa87daa5e130b7ce'
-          url = (
-              'https://raw.githubusercontent.com/hraaaaf/IAMINA-MVP/'
-              f'{source_commit}/.github/workflows/p1-journal7-frontend.yml'
-          )
-          with urlopen(url, timeout=30) as response:
-              raw = response.read().decode('utf-8')
-          start_marker = "          python - <<'PY'\n"
-          end_marker = "\n          PY\n"
-          start = raw.index(start_marker) + len(start_marker)
-          end = raw.index(end_marker, start)
-          block = raw[start:end]
-          source = '\n'.join(
-              line[10:] if line.startswith('          ') else line
-              for line in block.splitlines()
-          ) + '\n'
-          compile(source, '<journal7-frontend-patch>', 'exec')
-          exec(source, {})
+          try:
+              source_commit = 'fc6faada2b6958e74469e0fcfa87daa5e130b7ce'
+              url = (
+                  'https://raw.githubusercontent.com/hraaaaf/IAMINA-MVP/'
+                  f'{source_commit}/.github/workflows/p1-journal7-frontend.yml'
+              )
+              with urlopen(url, timeout=30) as response:
+                  raw = response.read().decode('utf-8')
+              start_marker = "          python - <<'PY'\n"
+              end_marker = "\n          PY\n"
+              start = raw.index(start_marker) + len(start_marker)
+              end = raw.index(end_marker, start)
+              block = raw[start:end]
+              source = '\n'.join(
+                  line[10:] if line.startswith('          ') else line
+                  for line in block.splitlines()
+              ) + '\n'
+              compile(source, '<journal7-frontend-patch>', 'exec')
+              exec(source, {})
+          except Exception as exc:
+              message = f'{type(exc).__name__}: {exc}'.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print(f'::error file=.github/workflows/p1-journal7-runner.yml,line=36::{message}')
+              raise
           PY
 
       - name: Backend focused gate and OpenAPI
