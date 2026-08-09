@@ -14,12 +14,14 @@ Map<String, Object> journalContextFieldsForSync({
   required bool isStressed,
   required bool isActive,
   required String? sleepQuality,
+  required int? fatigueLevel,
 }) {
   return <String, Object>{
     if (isSick) 'is_sick': 'yes',
     if (isStressed) 'stressed': 'yes',
     if (isActive) 'exercised': 'yes',
     if (sleepQuality == 'bad') 'sleep_quality': 'bad',
+    if ((fatigueLevel ?? 0) > 0) 'fatigue_level': 'tired',
   };
 }
 
@@ -109,6 +111,7 @@ class SyncService {
             isStressed: log.isStressed,
             isActive: log.isActive,
             sleepQuality: log.sleepQuality,
+            fatigueLevel: log.fatigueLevel,
           ),
         };
       }).toList();
