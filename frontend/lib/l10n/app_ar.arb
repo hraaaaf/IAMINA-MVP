@@ -327,7 +327,7 @@
   "journalNutritionGrams": "غرام",
   "journalNutritionUnavailable": "لا توجد قيمة غذائية رقمية معروضة: الطعام أو الحصة غير موثقين بما يكفي بعد.",
   "journalNutritionCarbsExact": "≈ {value} غ كربوهيدرات",
-  "journalNutritionCarbsRange": "≈ ⁦{low}–{high}⁩ غ كربوهيدرات",
+  "journalNutritionCarbsRange": "≈ {low}–{high} غ كربوهيدرات",
   "journalNutritionSource": "المصدر: {source}",
   "@journalNutritionCarbsExact": {
     "placeholders": {

@@ -5,6 +5,27 @@ import '../../../core/data/nutrition_catalog.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 
+String debugNutritionCarbRangeForTest(
+  AppLocalizations l10n,
+  Locale locale,
+  String low,
+  String high,
+) => _localizedCarbRange(l10n, locale, low, high);
+
+String _localizedCarbRange(
+  AppLocalizations l10n,
+  Locale locale,
+  String low,
+  String high,
+) {
+  if (locale.languageCode != 'ar') {
+    return l10n.journalNutritionCarbsRange(low, high);
+  }
+  final lri = String.fromCharCode(0x2066);
+  final pdi = String.fromCharCode(0x2069);
+  return l10n.journalNutritionCarbsRange('$lri$low', '$high$pdi');
+}
+
 class NutritionPortionEditor extends StatelessWidget {
   final List<String> selectedFoodIds;
   final Map<String, MealPortionSelection> selections;
@@ -215,7 +236,9 @@ class _FoodPortionCardState extends State<_FoodPortionCard> {
                   ? l10n.journalNutritionCarbsExact(
                       estimate.low.toStringAsFixed(1),
                     )
-                  : l10n.journalNutritionCarbsRange(
+                  : _localizedCarbRange(
+                      l10n,
+                      widget.locale,
                       estimate.low.toStringAsFixed(1),
                       estimate.high.toStringAsFixed(1),
                     ),
