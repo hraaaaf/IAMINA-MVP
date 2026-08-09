@@ -38,7 +38,7 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/feat/p1-journal-meal-capture' &&
-      github.event.head_commit.message == 'ci(temp): enforce P1-JOURNAL-3 one-shot history'
+      github.event.head_commit.message == 'ci(temp): fix P1-JOURNAL-3 Arabic finder'
     name: P1-JOURNAL-3 branch-only builder
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -116,18 +116,10 @@ jobs:
           )
           if 'StreamBuilder<List<LogEntryData>>(' not in s:
               raise SystemExit('meal history StreamBuilder marker missing')
-          s = s.replace(
-              'StreamBuilder<List<LogEntryData>>(',
-              'FutureBuilder<List<LogEntryData>>(',
-              1,
-          )
+          s = s.replace('StreamBuilder<List<LogEntryData>>(', 'FutureBuilder<List<LogEntryData>>(', 1)
           if 'stream: db.watchRecentLogs(limit: 100),' not in s:
               raise SystemExit('meal history stream marker missing')
-          s = s.replace(
-              'stream: db.watchRecentLogs(limit: 100),',
-              'future: _historyFuture,',
-              1,
-          )
+          s = s.replace('stream: db.watchRecentLogs(limit: 100),', 'future: _historyFuture,', 1)
           if 'db.watchRecentLogs' in s or 'StreamBuilder<List<LogEntryData>>' in s:
               raise SystemExit('live meal-history subscription survived replacement')
           s = s.replace("    final db = context.read<AppDatabase>();\n", '', 1)
@@ -190,7 +182,11 @@ jobs:
                   1,
               )
           s = s.replace('bloodSugar: 120 + i,', 'bloodSugar: 120.0 + i,', 1)
-          p.write_text(s)
+          old = """    expect(find.text('بيض'), findsOneWidget);\n    expect(Directionality.of(tester.element(find.text('بيض'))), TextDirection.rtl);\n    expect(find.text('Œuf'), findsNothing);\n"""
+          new = """    final result = find.byKey(const Key('meal-search-egg'));\n    expect(result, findsOneWidget);\n    expect(Directionality.of(tester.element(result)), TextDirection.rtl);\n    expect(find.text('Œuf'), findsNothing);\n"""
+          if old not in s:
+              raise SystemExit('Arabic meal test finder marker missing')
+          p.write_text(s.replace(old, new, 1))
           PY
       - name: Generate localization and Drift code
         working-directory: frontend
