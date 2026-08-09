@@ -647,4 +647,157 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get profileMedicalSectionHint => 'أكمل المعلومات أو راجعها';
+
+  @override
+  String get journalAddTitle => 'قياس جديد';
+
+  @override
+  String get journalAddSubtitle => 'سجّل ما حدث للتو.';
+
+  @override
+  String get journalGlucose => 'سكر الدم';
+
+  @override
+  String get journalNoGlucoseAssumption => 'لن نفترض أي قيمة قبل إدخالك.';
+
+  @override
+  String get journalLowGlucoseDetected =>
+      'تم رصد قيمة منخفضة — تحقّق من القياس؛ وستظهر رسالة الأمان عند الحفظ.';
+
+  @override
+  String get journalTargetNotInferred =>
+      'لا يتم استنتاج هدفك الشخصي من هذه القيمة وحدها.';
+
+  @override
+  String get journalMeasurementContext => 'سياق القياس';
+
+  @override
+  String get journalContextHint => 'اختياري — اختر فقط إذا كنت تعرف السياق.';
+
+  @override
+  String get journalContextFasting => 'على الريق';
+
+  @override
+  String get journalContextPreMeal => 'قبل الوجبة';
+
+  @override
+  String get journalContextPostMeal => 'بعد الوجبة';
+
+  @override
+  String get journalContextOther => 'سياق آخر';
+
+  @override
+  String get journalAddMeal => 'إضافة وجبة';
+
+  @override
+  String get journalMealOptional => 'الوجبة (اختيارية)';
+
+  @override
+  String get journalMealBreakfast => 'الفطور';
+
+  @override
+  String get journalMealLunch => 'الغداء';
+
+  @override
+  String get journalMealDinner => 'العشاء';
+
+  @override
+  String get journalMealSnack => 'وجبة خفيفة';
+
+  @override
+  String get journalMealNoteLabel => 'ما تناولته (اختياري)';
+
+  @override
+  String get journalMealNoteHint => 'مثال: طاجين، خبز، سلطة…';
+
+  @override
+  String get journalRemoveMeal => 'إزالة الوجبة';
+
+  @override
+  String get journalDetailsButton =>
+      'تفاصيل: الوقت، الإنسولين المأخوذ، السياق…';
+
+  @override
+  String get journalToday => 'اليوم';
+
+  @override
+  String get journalInsulinTaken => 'الإنسولين المأخوذ';
+
+  @override
+  String get journalInsulinExplanation =>
+      'أدخل فقط جرعة أخذتها بالفعل. لا يحسب IAmina الجرعة ولا يقيّمها هنا.';
+
+  @override
+  String get journalDoseTaken => 'الجرعة التي أخذتها';
+
+  @override
+  String get journalOptional => 'اختياري';
+
+  @override
+  String get journalAdditionalContext => 'سياق إضافي (اختياري)';
+
+  @override
+  String get journalSick => 'مريض';
+
+  @override
+  String get journalUnusualStress => 'توتر غير معتاد';
+
+  @override
+  String get journalPhysicalActivity => 'نشاط بدني';
+
+  @override
+  String get journalPoorSleep => 'نوم سيئ';
+
+  @override
+  String get journalSave => 'حفظ القياس';
+
+  @override
+  String get journalSaving => 'جارٍ الحفظ…';
+
+  @override
+  String get journalVeryLowTitle => 'تم رصد قيمة منخفضة جدًا';
+
+  @override
+  String get journalLowTitle => 'تم رصد قيمة منخفضة';
+
+  @override
+  String get journalVeryLowSafety =>
+      'تفعّل هذه القيمة مسار الأمان ذي الأولوية لانخفاض سكر الدم. تحقّق من القياس واتبع خطة التعامل مع انخفاض السكر المتفق عليها مع فريقك المعالج.';
+
+  @override
+  String get journalLowSafety =>
+      'تفعّل هذه القيمة مسار الأمان لانخفاض سكر الدم. تحقّق من القياس واتبع خطة التعامل مع انخفاض السكر المتفق عليها مع فريقك المعالج.';
+
+  @override
+  String get journalBackToEntry => 'العودة إلى الإدخال';
+
+  @override
+  String get journalSaveAnyway => 'الحفظ على أي حال';
+
+  @override
+  String get journalInvalidGlucose => 'أدخل قيمة صحيحة لسكر الدم.';
+
+  @override
+  String get journalInvalidInsulin => 'قيمة جرعة الإنسولين المدخلة غير صحيحة.';
+
+  @override
+  String get journalSaved => 'تم حفظ القياس.';
+
+  @override
+  String get journalDiscardTitle => 'هل تريد إلغاء الإدخال؟';
+
+  @override
+  String get journalDiscardBody => 'ستفقد البيانات التي لم تُحفظ.';
+
+  @override
+  String get journalContinueEditing => 'متابعة الإدخال';
+
+  @override
+  String get journalDiscard => 'إلغاء';
+
+  @override
+  String get journalBack => 'رجوع';
+
+  @override
+  String get journalDetailsTitle => 'تفاصيل اختيارية';
 }
