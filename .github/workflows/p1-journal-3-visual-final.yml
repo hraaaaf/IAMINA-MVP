@@ -54,20 +54,21 @@ jobs:
               p.on('console',m=>{if(m.type()==='error'&&!String(m.text()).includes('ERR_CONNECTION_REFUSED')) consoleErrors.push(m.text())});
               await p.goto(`http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#/ajouter`,{waitUntil:'domcontentloaded',timeout:30000});
               await p.waitForTimeout(4500);
-              const candidates=lang==='ar'?['إضافة وجبة','إضافة وجبة · اختياري']:['Ajouter un repas','Ajouter un repas · Facultatif'];
-              let expanded=false;
-              for(const text of candidates){
-                const loc=p.getByText(text,{exact:false}).first();
-                if(await loc.count()){await loc.click({force:true}).catch(()=>{});await p.waitForTimeout(800);expanded=true;break;}
-              }
-              if(!expanded){
-                const selector=lang==='ar'?'[aria-label*="وجبة"]':'[aria-label*="repas"]';
-                const loc=p.locator(selector).first();
-                if(await loc.count()){await loc.click({force:true}).catch(()=>{});await p.waitForTimeout(800);expanded=true;}
-              }
-              const file=`${vp}-${lang}__meal-expanded.png`;
-              await p.screenshot({path:path.join('/tmp/p1journal3visualfinal',file),fullPage:true});
-              report.push({vp,lang,w,h,url:p.url(),expanded,flutterViews:await p.locator('flutter-view').count(),pageErrors,consoleErrors,screenshot:file});
+              const click = vp==='desktop' ? [400,394] : vp==='tablet' ? [384,394] : [Math.floor(w/2),436];
+              const clip={x:Math.max(0,Math.floor(w*.03)),y:350,width:Math.floor(w*.94),height:Math.min(130,h-350)};
+              const before=await p.screenshot({clip});
+              await p.mouse.click(click[0],click[1]);
+              await p.waitForTimeout(900);
+              const after=await p.screenshot({clip});
+              const expanded=!before.equals(after);
+              const topFile=`${vp}-${lang}__meal-top.png`;
+              await p.screenshot({path:path.join('/tmp/p1journal3visualfinal',topFile)});
+              await p.mouse.move(Math.floor(w/2),Math.floor(h*.65));
+              await p.mouse.wheel(0,700);
+              await p.waitForTimeout(700);
+              const lowerFile=`${vp}-${lang}__meal-lower.png`;
+              await p.screenshot({path:path.join('/tmp/p1journal3visualfinal',lowerFile)});
+              report.push({vp,lang,w,h,url:p.url(),click,expanded,flutterViews:await p.locator('flutter-view').count(),pageErrors,consoleErrors,topFile,lowerFile});
               await c.close();
             }
             await b.close();
