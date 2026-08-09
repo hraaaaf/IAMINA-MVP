@@ -7,6 +7,7 @@ import '../../data/drift/database.dart';
 import '../../core/data/meal_food_catalog.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
+import 'widgets/insulin_logging.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
@@ -535,7 +536,7 @@ class _JournalScreenState extends State<JournalScreen> {
                               ),
                             ),
                             child: Text(
-                              '+ ${log.insulinUnits!.toInt()} U',
+                              '${formatTakenInsulinUnits(log.insulinUnits!)} U',
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w900,

@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-09 — P1-JOURNAL-3 is merged; P1-JOURNAL-4 Nutrition Data v2 is the active merge unit in PR #71.
+> **Last updated:** 2026-08-09 — P1-JOURNAL-4 is merged; P1-JOURNAL-5 Insulin logging v2 is the active merge unit in PR #72.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,7 +29,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
-| Journal metabolic-event redesign | 44% | 🔵 P1-JOURNAL-4 merge unit | P0-JOURNAL-1/2 + P1-JOURNAL-3 merged; PR #71 Nutrition Data v2; exact-code visual recertification 9.3/10; final docs/head gates + merge/post-merge required |
+| Journal metabolic-event redesign | 44% | 🔵 P1-JOURNAL-5 merge unit | P0-JOURNAL-1/2 + P1-JOURNAL-3/4 merged; PR #72 Insulin logging v2; factual nullable decimal dose, safe edit/sync semantics, exact-head UX 9.2/10; reviewer/certifier + merge/post-merge required |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -109,8 +109,8 @@ Each Journal LOT is a separate branch/PR. Clinical/safety, UX/UI, privacy/egress
 | P0-JOURNAL-1 | Clinical truthfulness | ✅ Closed | PR #67 merged as `e8e94f1940d4fca14f6e022f1dac70fb3f161e64`; post-merge CI #1215 + drift #1031 green; no fabricated glucose/nutrition/insulin precision |
 | P0-JOURNAL-2 | Express metabolic event | ✅ Closed | PR #68 merged as `9dd5cbe67522f4c8109debb2f831a99ffc268067`; post-merge CI #1239 + drift #1055 green; UX 9.2/10 |
 | P1-JOURNAL-3 | Meal capture | ✅ Closed | PR #69 merged as `1fb3882b8a6b6c671348414dae119ea06c88ce9b`; structured recent/habitual/search + governed photo proposal; explicit confirmation; FR/EN/AR + RTL; Drift v6→v7; UX 9.2/10 |
-| P1-JOURNAL-4 | Nutrition data v2 | 🔵 PR #71 merge unit | sourced food/portion model, provenance and uncertainty; fail-closed unsupported foods; Drift v7→v8; Arabic range bidi fix; exact-code UX 9.3/10; final head gates + merge/post-merge pending |
-| P1-JOURNAL-5 | Insulin logging v2 | ⬜ Planned | actual administered dose/context only; no calculator, scoring, optimization or suggested units |
+| P1-JOURNAL-4 | Nutrition data v2 | ✅ Closed | PR #71 merged as `9811a3eaf497aa2ee53f53598c1069c478bf8990`; post-merge CI #1323 + drift #1135 green; sourced food/portion model, provenance/uncertainty, Drift v7→v8, Arabic range bidi fix; UX 9.3/10 |
+| P1-JOURNAL-5 | Insulin logging v2 | 🔵 PR #72 merge unit | actual administered dose only; nullable decimal entry/edit; no presets, calculator, scoring, optimization or suggested units; same-patient `client_uuid` edits sync as idempotent snapshots; cross-patient collision rejected; exact-head UX 9.2/10 |
 | P1-JOURNAL-6 | Context intelligence | ⬜ Planned | optional illness/stress/activity/sleep context; avoid repeatedly asking low-value information |
 | P1-JOURNAL-7 | Ramadan mode v2 | ⬜ Planned | Ramadan becomes a profile/period context; meal vocabulary adapts automatically; no per-log pseudo-clinical toggle |
 | P2-JOURNAL-8 | Personal metabolic response | ⬜ Planned | repeated-event associations with explicit evidence count/confidence; observational wording only; no invented causality/treatment advice |
@@ -140,7 +140,15 @@ P1-JOURNAL-3 is **closed** through PR #69, merged as `1fb3882b8a6b6c671348414dae
 
 PR #71 is the merge unit for Nutrition Data v2. Numeric carbohydrate output is permitted only when the food/preparation and portion are traceable to an explicit versioned nutrition source. Unsupported Moroccan/MENA foods remain loggable but numeric nutrition fails closed instead of being guessed. Patient-confirmed portions persist separately from derived nutrition; the API enforces that each portion belongs to a selected structured food and rejects duplicate/orphan portions. Drift v7→v8 adds nullable `meal_portions_json` while preserving legacy logs and `client_uuid`. No glycaemic-index score, meal-impact score, insulin recommendation, dose calculation or treatment optimization is introduced.
 
-The first Arabic visual review was rejected because a numeric range could render high→low under RTL. The final implementation isolates the numeric span at runtime without embedding invisible bidi controls in generated localization source. Exact-code visual run `31320713710` on `f909fac3cc57af81955fdee9bbaee4f87689734c` passed the full FR/AR desktop/tablet/390×844/360×560 matrix plus real-font Chromium captures; artifact `9040098902`, digest `sha256:b1b1919c3d329ca13ac77064e0f187dab36ecf4b16ef02ff36be0d30239736ae`; UX Auditor **9.3/10 PASS**. Final documentation changes invalidate earlier exact-head CI anchors, so exact-final-head CI + migration drift, Reviewer/Release-Certifier re-anchoring, expected-head merge and post-merge CI + drift remain mandatory before P1-JOURNAL-4 may be declared 100% closed.
+The first Arabic visual review was rejected because a numeric range could render high→low under RTL. The final implementation isolates the numeric span at runtime without embedding invisible bidi controls in generated localization source. Exact-code visual run `31320713710` on `f909fac3cc57af81955fdee9bbaee4f87689734c` passed the full FR/AR desktop/tablet/390×844/360×560 matrix plus real-font Chromium captures; artifact `9040098902`, digest `sha256:b1b1919c3d329ca13ac77064e0f187dab36ecf4b16ef02ff36be0d30239736ae`; UX Auditor **9.3/10 PASS**. P1-JOURNAL-4 is **100% closed** through PR #71, merged as `9811a3eaf497aa2ee53f53598c1069c478bf8990`; post-merge CI #1323 and migration drift #1135 both passed. P1-JOURNAL-5 branched from that verified main.
+
+### P1-JOURNAL-5 durable merge-unit contract
+
+PR #72 is the merge unit for factual insulin logging. `insulin_units` represents only a dose the patient says was already administered; it is nullable and decimal-preserving in create, edit and history surfaces. The patient-facing flow offers no suggested units, presets, dose calculator, dose score, correction advice or treatment optimization. Empty/zero client input is stored as no administered dose, while negative API input is rejected. Editing insulin does not rewrite meal context or the legacy Ramadan field.
+
+Offline/server reconciliation remains keyed by `client_uuid`: a later snapshot for the same patient updates the existing log rather than being acknowledged as a no-op, while a UUID collision owned by another patient is rejected. This makes post-sync insulin corrections durable without weakening patient isolation. No schema migration or new external egress is introduced.
+
+**Pre-closeout evidence on product head `506e33acd455978a962eb36d4aa4e2e90c640dd7`:** CI #1326 SUCCESS; migration drift #1138 SUCCESS; exact-head visual run `31323080266` SUCCESS; artifact `9040740915`, digest `sha256:2b45a9a30d6bc088aefe2d8b4e3eab114453b9fe178ca64fcf93ec0424f57746`; Add + Edit across FR/AR desktop/tablet/390×844/360×560; UX **9.2/10 PASS**. Reviewer re-anchoring, Release Certifier, expected-head merge and post-merge CI + drift remain mandatory before this LOT is 100% closed.
 
 ---
 

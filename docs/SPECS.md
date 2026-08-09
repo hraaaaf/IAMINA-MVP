@@ -57,6 +57,16 @@ Media-assisted meal/glucose capture and voice-assisted notes may exist elsewhere
 
 The existence of an input field does not authorize IAmina to advise a dose or modify treatment.
 
+### Insulin logging v2 contract
+
+- `insulin_units` is patient-entered historical fact: the quantity the patient reports having already administered;
+- the field is nullable and decimal-preserving across create, edit, history and sync; the client does not coerce an absent dose to `0`;
+- the patient-facing client treats blank or zero input as no administered dose, while negative API input is invalid;
+- no preset units, increment/decrement stepper, dose score, calculator, correction suggestion or treatment optimization is exposed by Journal;
+- editing the insulin value must preserve unrelated meal/context data and legacy Ramadan state;
+- batch synchronization treats a later snapshot with the same `client_uuid` and same patient as an idempotent update, not a silent no-op; a `client_uuid` owned by another patient must fail closed;
+- no insulin log may be transformed into autonomous dosing advice.
+
 ### Nutrition Data v2 contract
 
 - patient-facing numeric carbohydrate information requires an explicit versioned source and a defensible food/preparation match;

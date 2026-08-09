@@ -787,6 +787,24 @@ class AppLocalizationsFr extends AppLocalizations {
   String get journalSaveAnyway => 'Enregistrer quand même';
 
   @override
+  String get journalEditTitle => 'Modifier la mesure';
+
+  @override
+  String get journalEditSubtitle =>
+      'Corrige uniquement les faits réellement enregistrés.';
+
+  @override
+  String get journalEditContextPreserved =>
+      'Le repas, le contexte glycémique, l’heure et les autres détails restent inchangés dans cet écran.';
+
+  @override
+  String get journalNoInsulinTakenHint =>
+      'Laisse vide si aucune insuline n’a été prise pour cette entrée.';
+
+  @override
+  String get journalUpdated => 'Mesure mise à jour.';
+
+  @override
   String get journalInvalidGlucose => 'Saisis une glycémie valide.';
 
   @override
