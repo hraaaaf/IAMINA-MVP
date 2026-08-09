@@ -17,7 +17,10 @@ Widget _sheet(AppDatabase db, Locale locale) => MaterialApp(
         Provider<AppDatabase>.value(value: db),
         Provider<PatientProfileData?>.value(value: null),
       ],
-      child: const AddLogSheet(isPage: true),
+      child: const RepaintBoundary(
+        key: Key('visual-audit-boundary'),
+        child: AddLogSheet(isPage: true),
+      ),
     ),
   ),
 );
@@ -70,7 +73,7 @@ void main() {
       expect(find.textContaining('26.5'), findsOneWidget);
       expect(nutritionProfileFor('banana'), isNotNull);
       await expectLater(
-        find.byType(MaterialApp),
+        find.byKey(const Key('visual-audit-boundary')),
         matchesGoldenFile('goldens/${item.$1}.png'),
       );
     });
