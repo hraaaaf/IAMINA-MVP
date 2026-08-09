@@ -1,0 +1,45 @@
+name: P0-JOURNAL-2 compatibility patch
+
+on:
+  push:
+    branches: [feat/p0-journal-express-event]
+    paths: [.github/workflows/p0-journal-2-compat-patch.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-commit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p0-journal-express-event
+          fetch-depth: 0
+      - name: Localize stable Journal keys while preserving legacy values
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('frontend/lib/features/journal/journal_screen.dart')
+          s=p.read_text()
+          needle="""  Widget _buildEntryCapsule(LogEntryData log, String unit, double low, double high) {\n"""
+          helper="""  String _entryContextLabel(LogEntryData log, AppLocalizations l10n) {\n    final meal = log.mealType;\n    switch (meal) {\n      case 'breakfast':\n        return l10n.journalMealBreakfast;\n      case 'lunch':\n        return l10n.journalMealLunch;\n      case 'dinner':\n        return l10n.journalMealDinner;\n      case 'snack':\n        return l10n.journalMealSnack;\n      case null:\n      case '':\n        break;\n      default:\n        return meal;\n    }\n\n    switch (log.glycemicContext) {\n      case 'fasting':\n        return l10n.journalContextFasting;\n      case 'pre_meal':\n        return l10n.journalContextPreMeal;\n      case 'post_meal':\n        return l10n.journalContextPostMeal;\n      case 'other':\n        return l10n.journalContextOther;\n      default:\n        return l10n.freeMeasurement;\n    }\n  }\n\n"""
+          if '_entryContextLabel(' not in s:
+              if needle not in s: raise SystemExit('capsule marker missing')
+              s=s.replace(needle,helper+needle)
+          old="log.mealType ?? AppLocalizations.of(context)!.freeMeasurement"
+          new="_entryContextLabel(log, AppLocalizations.of(context)!)"
+          if old not in s: raise SystemExit('display marker missing')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          dart format frontend/lib/features/journal/journal_screen.dart || true
+      - name: Commit compatibility patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/lib/features/journal/journal_screen.dart
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix(journal): localize stable event keys in history'
+          git push origin HEAD:feat/p0-journal-express-event
