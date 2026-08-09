@@ -178,6 +178,7 @@ void main() {
       expect(find.textContaining('Dose standard'), findsNothing);
       expect(find.textContaining('Dose critique'), findsNothing);
       expect(find.textContaining('Analyse IAmina'), findsNothing);
+      expect(find.textContaining('g glucides'), findsNothing);
     });
   });
 }

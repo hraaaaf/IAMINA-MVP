@@ -31,7 +31,9 @@ class ProviderApiException implements Exception {
     }
     return ProviderApiException(
       code: error['code'] as String? ?? 'provider_unknown_failure',
-      message: error['message'] as String? ?? 'The AI request could not be completed safely.',
+      message:
+          error['message'] as String? ??
+          'The AI request could not be completed safely.',
       retryable: error['retryable'] as bool? ?? false,
       statusCode: statusCode,
     );
@@ -64,7 +66,8 @@ class ProviderApiException implements Exception {
   }
 
   @override
-  String toString() => 'ProviderApiException(code: $code, retryable: $retryable)';
+  String toString() =>
+      'ProviderApiException(code: $code, retryable: $retryable)';
 }
 
 class AuthInterceptor implements Interceptor {
@@ -72,11 +75,18 @@ class AuthInterceptor implements Interceptor {
   AuthInterceptor(this.authService);
 
   @override
-  FutureOr<Response<BodyType>> intercept<BodyType>(Chain<BodyType> chain) async {
+  FutureOr<Response<BodyType>> intercept<BodyType>(
+    Chain<BodyType> chain,
+  ) async {
     final token = await authService.getIdToken();
     Request request = chain.request;
     if (token != null && token.isNotEmpty) {
-      request = applyHeader(request, 'Authorization', 'Bearer $token', override: true);
+      request = applyHeader(
+        request,
+        'Authorization',
+        'Bearer $token',
+        override: true,
+      );
     }
     return chain.proceed(request);
   }
@@ -102,7 +112,9 @@ class RetryInterceptor implements Interceptor {
   RetryInterceptor(this.authService);
 
   @override
-  FutureOr<Response<BodyType>> intercept<BodyType>(Chain<BodyType> chain) async {
+  FutureOr<Response<BodyType>> intercept<BodyType>(
+    Chain<BodyType> chain,
+  ) async {
     Response<BodyType> response = await chain.proceed(chain.request);
 
     // 401 — refresh token and retry once
@@ -110,7 +122,10 @@ class RetryInterceptor implements Interceptor {
       final newToken = await authService.refreshToken();
       if (newToken != null && newToken.isNotEmpty) {
         final retryRequest = applyHeader(
-          chain.request, 'Authorization', 'Bearer $newToken', override: true,
+          chain.request,
+          'Authorization',
+          'Bearer $newToken',
+          override: true,
         );
         response = await chain.proceed(retryRequest);
       }
@@ -139,16 +154,14 @@ const String kBaseUrl = String.fromEnvironment(
 class ApiClient {
   final String baseUrl;
   final AuthService _authService;
-  
-  ApiClient({
-    this.baseUrl = kBaseUrl,
-    AuthService? authService,
-  }) : _authService = authService ?? AuthService();
+
+  ApiClient({this.baseUrl = kBaseUrl, AuthService? authService})
+    : _authService = authService ?? AuthService();
 
   late final ChopperClient _client = ChopperClient(
     baseUrl: Uri.parse(baseUrl),
     interceptors: [
-      TimeoutInterceptor(),   // 30 s hard cap — before auth so it covers all latency
+      TimeoutInterceptor(), // 30 s hard cap — before auth so it covers all latency
       AuthInterceptor(_authService),
       RetryInterceptor(_authService),
       CurlInterceptor(),
@@ -161,10 +174,7 @@ class ApiClient {
   /// Envoie un log unique au backend.
   Future<bool> syncLogEntry(Map<String, dynamic> log) async {
     try {
-      final response = await _client.post(
-        Uri.parse('/api/v1/logs'),
-        body: log,
-      );
+      final response = await _client.post(Uri.parse('/api/v1/logs'), body: log);
       return response.isSuccessful;
     } catch (_) {
       return false;
@@ -178,7 +188,7 @@ class ApiClient {
         Uri.parse('/api/v1/logs/batch'),
         body: logs,
       );
-      
+
       if (response.isSuccessful && response.body != null) {
         final data = response.body as Map<String, dynamic>;
         final syncedIds = List<String>.from(data['synced_ids'] ?? []);
@@ -197,7 +207,7 @@ class ApiClient {
         Uri.parse('/api/v1/ai/summary'),
         body: {'days': days},
       );
-      
+
       if (response.isSuccessful && response.body != null) {
         return SummaryResponse.fromJson(response.body as Map<String, dynamic>);
       }
@@ -208,10 +218,16 @@ class ApiClient {
   }
 
   /// Récupère les KPIs canoniques depuis l'endpoint SQL-first.
-  Future<KpisResponse?> getKpis({int days = 21, double targetLow = 70.0, double targetHigh = 180.0}) async {
+  Future<KpisResponse?> getKpis({
+    int days = 21,
+    double targetLow = 70.0,
+    double targetHigh = 180.0,
+  }) async {
     try {
       final response = await _client.get(
-        Uri.parse('/api/v1/kpis/?days=$days&target_low=$targetLow&target_high=$targetHigh'),
+        Uri.parse(
+          '/api/v1/kpis/?days=$days&target_low=$targetLow&target_high=$targetHigh',
+        ),
       );
 
       if (response.isSuccessful && response.body != null) {
@@ -226,8 +242,9 @@ class ApiClient {
   /// Streaming SSE chat — yields token strings as they arrive.
   Stream<String> chatStream(String message) async* {
     final token = await _authService.getIdToken();
-    final uri = Uri.parse('$baseUrl/api/v1/ai/chat/stream')
-        .replace(queryParameters: {'message': message});
+    final uri = Uri.parse(
+      '$baseUrl/api/v1/ai/chat/stream',
+    ).replace(queryParameters: {'message': message});
 
     final request = http.Request('GET', uri);
     if (token != null && token.isNotEmpty) {
@@ -307,7 +324,10 @@ class ApiClient {
   }
 
   /// Discute avec l'assistant IAmina.
-  Future<ChatResponse?> chatWithAmina(String message, {String contextType = 'general'}) async {
+  Future<ChatResponse?> chatWithAmina(
+    String message, {
+    String contextType = 'general',
+  }) async {
     try {
       final response = await _client.post(
         Uri.parse('/api/v1/ai/chat'),
@@ -338,7 +358,9 @@ class ApiClient {
   }) async {
     try {
       final token = await _authService.getIdToken();
-      final uri   = Uri.parse('$baseUrl/api/v1/ai/voice?context_days=$contextDays');
+      final uri = Uri.parse(
+        '$baseUrl/api/v1/ai/voice?context_days=$contextDays',
+      );
 
       final request = http.MultipartRequest('POST', uri);
       if (token != null && token.isNotEmpty) {
@@ -350,13 +372,13 @@ class ApiClient {
         http.MultipartFile.fromBytes(
           'audio',
           audioBytes,
-          filename:    'voice.${_extFromMime(mimeType)}',
+          filename: 'voice.${_extFromMime(mimeType)}',
           contentType: MediaType.parse(mimeType),
         ),
       );
 
       final streamed = await request.send();
-      final body     = await streamed.stream.bytesToString();
+      final body = await streamed.stream.bytesToString();
 
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
         final json = jsonDecode(body) as Map<String, dynamic>;
@@ -379,14 +401,19 @@ class ApiClient {
       final uri = Uri.parse('$baseUrl/api/v1/ai/analyze-glucometer-image');
       final req = http.Request('POST', uri)
         ..headers['Content-Type'] = 'application/json'
-        ..body = jsonEncode({'image_base64': base64Image, 'mime_type': mimeType});
+        ..body = jsonEncode({
+          'image_base64': base64Image,
+          'mime_type': mimeType,
+        });
       if (token != null && token.isNotEmpty) {
         req.headers['Authorization'] = 'Bearer $token';
       }
       final streamed = await req.send();
       final body = await streamed.stream.bytesToString();
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
-        return GlucometerOcrResponse.fromJson(jsonDecode(body) as Map<String, dynamic>);
+        return GlucometerOcrResponse.fromJson(
+          jsonDecode(body) as Map<String, dynamic>,
+        );
       }
       return null;
     } catch (_) {
@@ -399,16 +426,19 @@ class ApiClient {
   Future<String?> transcribeAudio(Uint8List audioBytes, String mimeType) async {
     try {
       final token = await _authService.getIdToken();
-      final uri   = Uri.parse('$baseUrl/api/v1/ai/transcribe');
+      final uri = Uri.parse('$baseUrl/api/v1/ai/transcribe');
       final request = http.MultipartRequest('POST', uri);
       if (token != null && token.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $token';
       }
-      request.files.add(http.MultipartFile.fromBytes(
-        'audio', audioBytes,
-        filename: 'note.${_extFromMime(mimeType)}',
-        contentType: MediaType.parse(mimeType),
-      ));
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'audio',
+          audioBytes,
+          filename: 'note.${_extFromMime(mimeType)}',
+          contentType: MediaType.parse(mimeType),
+        ),
+      );
       final streamed = await request.send();
       final body = await streamed.stream.bytesToString();
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
@@ -452,7 +482,9 @@ class ApiClient {
   /// Withdraw AI consent — AI features disabled until re-consent.
   Future<bool> withdrawConsent() async {
     try {
-      final response = await _client.delete(Uri.parse('/api/v1/account/consent'));
+      final response = await _client.delete(
+        Uri.parse('/api/v1/account/consent'),
+      );
       return response.isSuccessful;
     } catch (_) {
       return false;
@@ -468,9 +500,7 @@ class ApiClient {
       if (response.isSuccessful && response.body != null) {
         final body = response.body as Map<String, dynamic>;
         final mods = (body['modules'] as List?) ?? const [];
-        return mods
-            .map((m) => (m as Map)['name'] as String)
-            .toList();
+        return mods.map((m) => (m as Map)['name'] as String).toList();
       }
       return null;
     } catch (_) {
@@ -512,7 +542,9 @@ class ApiClient {
         body: {'image_base64': b64, 'mime_type': mimeType},
       );
       if (response.isSuccessful && response.body != null) {
-        return MealAnalysisResult.fromJson(response.body as Map<String, dynamic>);
+        return MealAnalysisResult.fromJson(
+          response.body as Map<String, dynamic>,
+        );
       }
       return null;
     } catch (_) {
@@ -531,7 +563,7 @@ class ApiClient {
   ) async {
     try {
       final token = await _authService.getIdToken();
-      final uri   = Uri.parse('$baseUrl/api/v1/documents/ingest?confirm=false');
+      final uri = Uri.parse('$baseUrl/api/v1/documents/ingest?confirm=false');
 
       final request = http.MultipartRequest('POST', uri);
       if (token != null && token.isNotEmpty) {
@@ -541,13 +573,14 @@ class ApiClient {
         http.MultipartFile.fromBytes(
           'file',
           fileBytes,
-          filename:    filename,
+          filename: filename,
           contentType: MediaType.parse(mimeType),
         ),
       );
 
-      final streamed = await request.send()
-          .timeout(const Duration(seconds: 60));   // extraction can take time
+      final streamed = await request.send().timeout(
+        const Duration(seconds: 60),
+      ); // extraction can take time
       final body = await streamed.stream.bytesToString();
 
       if (streamed.statusCode >= 200 && streamed.statusCode < 300) {
@@ -568,7 +601,9 @@ class ApiClient {
         body: <String, dynamic>{},
       );
       if (response.isSuccessful && response.body != null) {
-        return PulperConfirmResult.fromJson(response.body as Map<String, dynamic>);
+        return PulperConfirmResult.fromJson(
+          response.body as Map<String, dynamic>,
+        );
       }
       return null;
     } catch (_) {
@@ -597,10 +632,10 @@ class ApiClient {
   String _extFromMime(String mime) {
     const map = {
       'audio/webm': 'webm',
-      'audio/mp4':  'm4a',
+      'audio/mp4': 'm4a',
       'audio/mpeg': 'mp3',
-      'audio/wav':  'wav',
-      'audio/ogg':  'ogg',
+      'audio/wav': 'wav',
+      'audio/ogg': 'ogg',
     };
     return map[mime] ?? 'bin';
   }

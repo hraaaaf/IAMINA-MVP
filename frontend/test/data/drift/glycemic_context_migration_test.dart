@@ -6,8 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
-  test('Drift v5 to v6 adds glycemic_context without rewriting existing logs',
-      () async {
+  test('Drift v5 to latest keeps context and existing logs', () async {
     final dir = await Directory.systemTemp.createTemp('iamina-journal-v5-');
     final file = File('${dir.path}/amina.sqlite');
 
@@ -53,13 +52,10 @@ void main() {
       expect(logs.single.bloodSugar, 126);
       expect(logs.single.mealType, 'Déjeuner');
       expect(logs.single.glycemicContext, isNull);
-      expect(
-        logs.single.clientUuid,
-        '55555555-5555-5555-5555-555555555555',
-      );
+      expect(logs.single.clientUuid, '55555555-5555-5555-5555-555555555555');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 6);
+      expect(version.data['user_version'], 7);
     } finally {
       await db.close();
       await dir.delete(recursive: true);

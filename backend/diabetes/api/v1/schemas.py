@@ -9,6 +9,7 @@ from pydantic import Field
 # Physiological range accepted at the API boundary (30–600 mg/dL).
 # Values outside this range are clinically implausible at the sensor/manual level.
 _BloodSugar = Annotated[float, Field(ge=30.0, le=600.0)]
+_MealItem = Annotated[str, Field(min_length=1, max_length=80)]
 
 
 class PatientProfileSchema(Schema):
@@ -32,6 +33,7 @@ class LogEntrySchema(Schema):
     meal_type: str
     blood_sugar: float
     meal_description: str = ""
+    meal_items: List[str] = Field(default_factory=list)
     insulin_units: Optional[float] = None
     exercised: str = "no"
     sleep_quality: str = "good"
@@ -49,6 +51,7 @@ class LogEntryCreateSchema(Schema):
     meal_type: str = ""
     blood_sugar: _BloodSugar
     meal_description: str = ""
+    meal_items: List[_MealItem] = Field(default_factory=list, max_length=20)
     insulin_units: Optional[float] = None
     exercised: str = "no"
     sleep_quality: str = "good"
@@ -67,6 +70,7 @@ class LogEntryUpdateSchema(Schema):
     meal_type: Optional[str] = None
     blood_sugar: Optional[_BloodSugar] = None
     meal_description: Optional[str] = None
+    meal_items: Optional[List[_MealItem]] = Field(default=None, max_length=20)
     insulin_units: Optional[float] = None
     exercised: Optional[str] = None
     sleep_quality: Optional[str] = None

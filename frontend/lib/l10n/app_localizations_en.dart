@@ -707,10 +707,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get journalMealSnack => 'Snack';
 
   @override
-  String get journalMealNoteLabel => 'What you ate (optional)';
+  String get journalMealNoteLabel => 'Optional note';
 
   @override
-  String get journalMealNoteHint => 'e.g. tagine, bread, salad…';
+  String get journalMealNoteHint => 'Preparation or another useful detail…';
 
   @override
   String get journalRemoveMeal => 'Remove meal';
@@ -801,4 +801,62 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get journalDetailsTitle => 'Optional details';
+
+  @override
+  String get journalMealCaptureTitle => 'WHAT YOU ATE';
+
+  @override
+  String get journalMealCaptureHint =>
+      'Add only what you actually ate. IAmina does not label foods as good or bad.';
+
+  @override
+  String get journalMealSelected => 'Added';
+
+  @override
+  String get journalMealRecent => 'Recent';
+
+  @override
+  String get journalMealHabitual => 'Frequent';
+
+  @override
+  String get journalMealNoRecent =>
+      'Your recent foods will appear here after your next meals.';
+
+  @override
+  String get journalMealNoHabitual =>
+      'Your frequent foods will appear here as you use the journal.';
+
+  @override
+  String get journalMealSearch => 'Search for a food';
+
+  @override
+  String get journalMealSearchHint => 'Bread, eggs, couscous…';
+
+  @override
+  String get journalMealSearchEmpty => 'Type at least 2 characters to search.';
+
+  @override
+  String get journalMealPhoto => 'Recognize a meal photo';
+
+  @override
+  String get journalMealPhotoHint =>
+      'The photo is analyzed only after your action and requires AI-processing consent. Nothing is added without your confirmation.';
+
+  @override
+  String get journalMealPhotoProposal => 'Proposal to review';
+
+  @override
+  String get journalMealPhotoProposalHint =>
+      'Select what is correct, then confirm. Use search to correct or complete the meal.';
+
+  @override
+  String get journalMealPhotoConfirm => 'Confirm selection';
+
+  @override
+  String get journalMealPhotoUnavailable =>
+      'No food could be recognized. Add it with search instead.';
+
+  @override
+  String get journalMealPhotoConsent =>
+      'Photo recognition requires AI-processing consent. Manual entry remains available.';
 }

@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/data/meal_food_catalog.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/drift/database.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../journal/widgets/meal_capture_panel.dart';
 
 /// Deterministic entry-safety classification for a single normalized reading.
 ///
@@ -42,6 +44,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
   final TextEditingController _glucoseController = TextEditingController();
   final TextEditingController _insulinController = TextEditingController();
   final TextEditingController _mealNoteController = TextEditingController();
+  final List<String> _selectedMealItemIds = <String>[];
 
   String? _glycemicContext;
   String? _mealType;
@@ -76,9 +79,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
     super.dispose();
   }
 
-  double? _displayGlucose() => double.tryParse(
-        _glucoseController.text.trim().replaceAll(',', '.'),
-      );
+  double? _displayGlucose() =>
+      double.tryParse(_glucoseController.text.trim().replaceAll(',', '.'));
 
   double? _mgdlGlucose(String unit) {
     final value = _displayGlucose();
@@ -91,6 +93,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
       _insulinController.text.trim().isNotEmpty ||
       _glycemicContext != null ||
       _mealType != null ||
+      _selectedMealItemIds.isNotEmpty ||
       _mealNoteController.text.trim().isNotEmpty ||
       _isSick ||
       _isStressed ||
@@ -132,17 +135,22 @@ class _AddLogSheetState extends State<AddLogSheet> {
                             children: <Widget>[
                               Expanded(
                                 flex: 6,
-                                child: _primaryEvent(l10n, unit),
+                                child: _primaryEvent(
+                                  l10n,
+                                  unit,
+                                  profile?.aiConsentGivenAt != null,
+                                ),
                               ),
                               const SizedBox(width: 28),
-                              Expanded(
-                                flex: 4,
-                                child: _detailsCard(l10n),
-                              ),
+                              Expanded(flex: 4, child: _detailsCard(l10n)),
                             ],
                           )
                         else ...<Widget>[
-                          _primaryEvent(l10n, unit),
+                          _primaryEvent(
+                            l10n,
+                            unit,
+                            profile?.aiConsentGivenAt != null,
+                          ),
                           const SizedBox(height: 18),
                           if (!_detailsExpanded)
                             _detailsButton(l10n)
@@ -168,51 +176,55 @@ class _AddLogSheetState extends State<AddLogSheet> {
   }
 
   Widget _header(AppLocalizations l10n) => Row(
-        children: <Widget>[
-          IconButton(
-            tooltip: l10n.journalBack,
-            onPressed: () async {
-              if (await _confirmLeave(l10n) && mounted) _close();
-            },
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  l10n.journalAddTitle,
-                  style: TextStyle(
-                    color: AminaTheme.textPrimary(context),
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  l10n.journalAddSubtitle,
-                  style: TextStyle(
-                    color: AminaTheme.textSecondary(context),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
+    children: <Widget>[
+      IconButton(
+        tooltip: l10n.journalBack,
+        onPressed: () async {
+          if (await _confirmLeave(l10n) && mounted) _close();
+        },
+        icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+      ),
+      const SizedBox(width: 6),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              l10n.journalAddTitle,
+              style: TextStyle(
+                color: AminaTheme.textPrimary(context),
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-        ],
-      );
+            const SizedBox(height: 3),
+            Text(
+              l10n.journalAddSubtitle,
+              style: TextStyle(
+                color: AminaTheme.textSecondary(context),
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
 
-  Widget _primaryEvent(AppLocalizations l10n, String unit) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          _glucoseCard(l10n, unit),
-          const SizedBox(height: 22),
-          _measurementContext(l10n),
-          const SizedBox(height: 22),
-          _mealCapture(l10n),
-        ],
-      );
+  Widget _primaryEvent(
+    AppLocalizations l10n,
+    String unit,
+    bool canUsePhotoRecognition,
+  ) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: <Widget>[
+      _glucoseCard(l10n, unit),
+      const SizedBox(height: 22),
+      _measurementContext(l10n),
+      const SizedBox(height: 22),
+      _mealCapture(l10n, canUsePhotoRecognition),
+    ],
+  );
 
   Widget _glucoseCard(AppLocalizations l10n, String unit) {
     final mgdl = _mgdlGlucose(unit);
@@ -224,9 +236,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isLow
-              ? const Color(0xFFFFF7ED)
-              : AminaTheme.subtleBg(context),
+          color: isLow ? const Color(0xFFFFF7ED) : AminaTheme.subtleBg(context),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isLow
@@ -246,8 +256,9 @@ class _AddLogSheetState extends State<AddLogSheet> {
                   child: TextField(
                     key: const Key('glucose-input'),
                     controller: _glucoseController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: <TextInputFormatter>[
                       FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
                     ],
@@ -277,10 +288,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
               ],
             ),
             if (mgdl == null)
-              Text(
-                l10n.journalNoGlucoseAssumption,
-                style: _helperStyle(),
-              )
+              Text(l10n.journalNoGlucoseAssumption, style: _helperStyle())
             else if (isLow)
               Text(
                 l10n.journalLowGlucoseDetected,
@@ -292,10 +300,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
                 ),
               )
             else
-              Text(
-                l10n.journalTargetNotInferred,
-                style: _helperStyle(),
-              ),
+              Text(l10n.journalTargetNotInferred, style: _helperStyle()),
           ],
         ),
       ),
@@ -303,30 +308,30 @@ class _AddLogSheetState extends State<AddLogSheet> {
   }
 
   Widget _measurementContext(AppLocalizations l10n) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          _sectionLabel(l10n.journalMeasurementContext),
-          const SizedBox(height: 5),
-          Text(l10n.journalContextHint, style: _helperStyle()),
-          const SizedBox(height: 11),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _glycemicContexts.map((value) {
-              return ChoiceChip(
-                key: Key('glycemic-context-$value'),
-                label: Text(_contextLabel(l10n, value)),
-                selected: _glycemicContext == value,
-                onSelected: (selected) => setState(() {
-                  _glycemicContext = selected ? value : null;
-                }),
-              );
-            }).toList(),
-          ),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      _sectionLabel(l10n.journalMeasurementContext),
+      const SizedBox(height: 5),
+      Text(l10n.journalContextHint, style: _helperStyle()),
+      const SizedBox(height: 11),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: _glycemicContexts.map((value) {
+          return ChoiceChip(
+            key: Key('glycemic-context-$value'),
+            label: Text(_contextLabel(l10n, value)),
+            selected: _glycemicContext == value,
+            onSelected: (selected) => setState(() {
+              _glycemicContext = selected ? value : null;
+            }),
+          );
+        }).toList(),
+      ),
+    ],
+  );
 
-  Widget _mealCapture(AppLocalizations l10n) {
+  Widget _mealCapture(AppLocalizations l10n, bool canUsePhotoRecognition) {
     if (!_mealExpanded) {
       return OutlinedButton.icon(
         key: const Key('add-meal-button'),
@@ -361,6 +366,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
                 onPressed: () => setState(() {
                   _mealExpanded = false;
                   _mealType = null;
+                  _selectedMealItemIds.clear();
                   _mealNoteController.clear();
                 }),
                 child: Text(l10n.journalRemoveMeal),
@@ -382,7 +388,17 @@ class _AddLogSheetState extends State<AddLogSheet> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
+          MealCapturePanel(
+            selectedIds: _selectedMealItemIds,
+            canUsePhotoRecognition: canUsePhotoRecognition,
+            onChanged: (ids) => setState(() {
+              _selectedMealItemIds
+                ..clear()
+                ..addAll(ids);
+            }),
+          ),
+          const SizedBox(height: 16),
           TextField(
             key: const Key('meal-note-input'),
             controller: _mealNoteController,
@@ -400,158 +416,158 @@ class _AddLogSheetState extends State<AddLogSheet> {
   }
 
   Widget _detailsButton(AppLocalizations l10n) => OutlinedButton.icon(
-        key: const Key('journal-details-button'),
-        onPressed: () => setState(() => _detailsExpanded = true),
-        icon: const Icon(Icons.tune_rounded, size: 18),
-        label: Text(l10n.journalDetailsButton),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(50),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-      );
+    key: const Key('journal-details-button'),
+    onPressed: () => setState(() => _detailsExpanded = true),
+    icon: const Icon(Icons.tune_rounded, size: 18),
+    label: Text(l10n.journalDetailsButton),
+    style: OutlinedButton.styleFrom(
+      minimumSize: const Size.fromHeight(50),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
+  );
 
   Widget _detailsCard(AppLocalizations l10n) => Container(
-        key: const Key('journal-details-card'),
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AminaTheme.subtleBg(context),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AminaTheme.divider(context)),
+    key: const Key('journal-details-card'),
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: AminaTheme.subtleBg(context),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: AminaTheme.divider(context)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Text(
+          l10n.journalDetailsTitle,
+          style: TextStyle(
+            color: AminaTheme.textPrimary(context),
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Text(
-              l10n.journalDetailsTitle,
-              style: TextStyle(
-                color: AminaTheme.textPrimary(context),
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _timeRow(l10n),
-            const SizedBox(height: 20),
-            _insulinSection(l10n),
-            const SizedBox(height: 20),
-            _healthContext(l10n),
-          ],
-        ),
-      );
+        const SizedBox(height: 16),
+        _timeRow(l10n),
+        const SizedBox(height: 20),
+        _insulinSection(l10n),
+        const SizedBox(height: 20),
+        _healthContext(l10n),
+      ],
+    ),
+  );
 
   Widget _timeRow(AppLocalizations l10n) => InkWell(
+    borderRadius: BorderRadius.circular(14),
+    onTap: _pickDateTime,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      decoration: BoxDecoration(
+        color: AminaTheme.bg(context),
         borderRadius: BorderRadius.circular(14),
-        onTap: _pickDateTime,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-          decoration: BoxDecoration(
-            color: AminaTheme.bg(context),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AminaTheme.divider(context)),
-          ),
-          child: Row(
-            children: <Widget>[
-              const Icon(Icons.schedule_outlined, size: 18),
-              const SizedBox(width: 10),
-              Expanded(child: Text(_timeLabel(l10n))),
-              const Icon(Icons.edit_outlined, size: 16),
-            ],
-          ),
-        ),
-      );
+        border: Border.all(color: AminaTheme.divider(context)),
+      ),
+      child: Row(
+        children: <Widget>[
+          const Icon(Icons.schedule_outlined, size: 18),
+          const SizedBox(width: 10),
+          Expanded(child: Text(_timeLabel(l10n))),
+          const Icon(Icons.edit_outlined, size: 16),
+        ],
+      ),
+    ),
+  );
 
   Widget _insulinSection(AppLocalizations l10n) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          _sectionLabel(l10n.journalInsulinTaken),
-          const SizedBox(height: 5),
-          Text(l10n.journalInsulinExplanation, style: _helperStyle()),
-          const SizedBox(height: 10),
-          TextField(
-            key: const Key('insulin-taken-input'),
-            controller: _insulinController,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: <TextInputFormatter>[
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
-            ],
-            decoration: InputDecoration(
-              labelText: l10n.journalDoseTaken,
-              suffixText: 'U',
-              hintText: l10n.journalOptional,
-              border: const OutlineInputBorder(),
-            ),
-          ),
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      _sectionLabel(l10n.journalInsulinTaken),
+      const SizedBox(height: 5),
+      Text(l10n.journalInsulinExplanation, style: _helperStyle()),
+      const SizedBox(height: 10),
+      TextField(
+        key: const Key('insulin-taken-input'),
+        controller: _insulinController,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: <TextInputFormatter>[
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
         ],
-      );
+        decoration: InputDecoration(
+          labelText: l10n.journalDoseTaken,
+          suffixText: 'U',
+          hintText: l10n.journalOptional,
+          border: const OutlineInputBorder(),
+        ),
+      ),
+    ],
+  );
 
   Widget _healthContext(AppLocalizations l10n) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      _sectionLabel(l10n.journalAdditionalContext),
+      const SizedBox(height: 10),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
         children: <Widget>[
-          _sectionLabel(l10n.journalAdditionalContext),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: <Widget>[
-              FilterChip(
-                label: Text(l10n.journalSick),
-                selected: _isSick,
-                onSelected: (value) => setState(() => _isSick = value),
-              ),
-              FilterChip(
-                label: Text(l10n.journalUnusualStress),
-                selected: _isStressed,
-                onSelected: (value) => setState(() => _isStressed = value),
-              ),
-              FilterChip(
-                label: Text(l10n.journalPhysicalActivity),
-                selected: _isActive,
-                onSelected: (value) => setState(() => _isActive = value),
-              ),
-              FilterChip(
-                label: Text(l10n.journalPoorSleep),
-                selected: _badSleep,
-                onSelected: (value) => setState(() => _badSleep = value),
-              ),
-            ],
+          FilterChip(
+            label: Text(l10n.journalSick),
+            selected: _isSick,
+            onSelected: (value) => setState(() => _isSick = value),
+          ),
+          FilterChip(
+            label: Text(l10n.journalUnusualStress),
+            selected: _isStressed,
+            onSelected: (value) => setState(() => _isStressed = value),
+          ),
+          FilterChip(
+            label: Text(l10n.journalPhysicalActivity),
+            selected: _isActive,
+            onSelected: (value) => setState(() => _isActive = value),
+          ),
+          FilterChip(
+            label: Text(l10n.journalPoorSleep),
+            selected: _badSleep,
+            onSelected: (value) => setState(() => _badSleep = value),
           ),
         ],
-      );
+      ),
+    ],
+  );
 
   Widget _sectionLabel(String text) => Text(
-        text,
-        style: TextStyle(
-          color: AminaTheme.textSecondary(context),
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          letterSpacing: .55,
-        ),
-      );
+    text,
+    style: TextStyle(
+      color: AminaTheme.textSecondary(context),
+      fontSize: 11,
+      fontWeight: FontWeight.w800,
+      letterSpacing: .55,
+    ),
+  );
 
   TextStyle _helperStyle() => TextStyle(
-        color: AminaTheme.textSecondary(context),
-        fontSize: 12,
-        height: 1.4,
-      );
+    color: AminaTheme.textSecondary(context),
+    fontSize: 12,
+    height: 1.4,
+  );
 
   String _contextLabel(AppLocalizations l10n, String value) => switch (value) {
-        'fasting' => l10n.journalContextFasting,
-        'pre_meal' => l10n.journalContextPreMeal,
-        'post_meal' => l10n.journalContextPostMeal,
-        _ => l10n.journalContextOther,
-      };
+    'fasting' => l10n.journalContextFasting,
+    'pre_meal' => l10n.journalContextPreMeal,
+    'post_meal' => l10n.journalContextPostMeal,
+    _ => l10n.journalContextOther,
+  };
 
   String _mealLabel(AppLocalizations l10n, String value) => switch (value) {
-        'breakfast' => l10n.journalMealBreakfast,
-        'lunch' => l10n.journalMealLunch,
-        'dinner' => l10n.journalMealDinner,
-        _ => l10n.journalMealSnack,
-      };
+    'breakfast' => l10n.journalMealBreakfast,
+    'lunch' => l10n.journalMealLunch,
+    'dinner' => l10n.journalMealDinner,
+    _ => l10n.journalMealSnack,
+  };
 
   String _timeLabel(AppLocalizations l10n) {
     final now = DateTime.now();
-    final sameDay = _selectedTime.year == now.year &&
+    final sameDay =
+        _selectedTime.year == now.year &&
         _selectedTime.month == now.month &&
         _selectedTime.day == now.day;
     final hh = _selectedTime.hour.toString().padLeft(2, '0');
@@ -619,10 +635,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
         ),
       );
 
-  Future<bool> _confirmLowGlucose(
-    double mgdl,
-    AppLocalizations l10n,
-  ) async {
+  Future<bool> _confirmLowGlucose(double mgdl, AppLocalizations l10n) async {
     final level = classifyGlucoseEntrySafety(mgdl);
     if (level == GlucoseEntrySafety.nonLow) return true;
 
@@ -675,24 +688,29 @@ class _AddLogSheetState extends State<AddLogSheet> {
     setState(() => _saving = true);
     try {
       final note = _mealNoteController.text.trim();
-      await db.into(db.logEntries).insert(
-        LogEntriesCompanion.insert(
-          createdAt: DateTime.now(),
-          bloodSugar: mgdl,
-          insulinUnits: drift.Value(insulin),
-          glycemicContext: drift.Value(_glycemicContext),
-          mealType: drift.Value(_mealType),
-          mealDescription: drift.Value(note.isEmpty ? null : note),
-          clientUuid: const Uuid().v4(),
-          loggedAt: drift.Value(_selectedTime),
-          isSick: drift.Value(_isSick),
-          isStressed: drift.Value(_isStressed),
-          isTired: const drift.Value(false),
-          isActive: drift.Value(_isActive),
-          sleepQuality: drift.Value(_badSleep ? 'bad' : null),
-          fatigueLevel: const drift.Value(null),
-        ),
-      );
+      await db
+          .into(db.logEntries)
+          .insert(
+            LogEntriesCompanion.insert(
+              createdAt: DateTime.now(),
+              bloodSugar: mgdl,
+              insulinUnits: drift.Value(insulin),
+              glycemicContext: drift.Value(_glycemicContext),
+              mealType: drift.Value(_mealType),
+              mealDescription: drift.Value(note.isEmpty ? null : note),
+              mealItemsJson: drift.Value(
+                encodeMealItemIds(_selectedMealItemIds),
+              ),
+              clientUuid: const Uuid().v4(),
+              loggedAt: drift.Value(_selectedTime),
+              isSick: drift.Value(_isSick),
+              isStressed: drift.Value(_isStressed),
+              isTired: const drift.Value(false),
+              isActive: drift.Value(_isActive),
+              sleepQuality: drift.Value(_badSleep ? 'bad' : null),
+              fatigueLevel: const drift.Value(null),
+            ),
+          );
 
       if (!mounted) return;
       HapticFeedback.mediumImpact();

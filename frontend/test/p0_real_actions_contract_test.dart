@@ -42,7 +42,11 @@ void main() {
 
     expect(module, contains("path: '/ajouter'"));
     expect(module, contains("path: '/journal/:id/edit'"));
-    expect(add, contains('db.into(db.logEntries).insert'));
+    expect(
+      RegExp(r'db\s*\.\s*into\(db\.logEntries\)\s*\.\s*insert\s*\(')
+          .hasMatch(add),
+      isTrue,
+    );
     expect(journal, contains("context.push('/journal/\${log.id}/edit')"));
     expect(journal, contains('db.deleteLog(log.id)'));
   });
@@ -64,7 +68,7 @@ void main() {
     final adapter = _read('lib/l10n/audited_page_copy.dart');
 
     expect(import, isNot(contains('Notifiez-moi')));
-    expect(import, isNot(contains('rejoignez la liste d\'attente')));
+    expect(import, isNot(contains("rejoignez la liste d'attente")));
     expect(import, contains('AuditedPageCopy.of(context).unavailable'));
     expect(import, contains('AuditedPageCopy.of(context).dexcomDescription'));
     expect(import, contains('AuditedPageCopy.of(context).libreDescription'));
@@ -82,14 +86,18 @@ void main() {
       'Diviser la dose repas glucidique',
       'Fractionner bolus avant et après le repas',
       'Basale nocturne −15 %',
-      'PLAN D\'ACTION',
+      "PLAN D'ACTION",
       'Recommandation :',
       'notifications_none',
       'class _ActionBtn',
     ];
 
     for (final phrase in forbidden) {
-      expect(summary, isNot(contains(phrase)), reason: 'Forbidden UI contract: $phrase');
+      expect(
+        summary,
+        isNot(contains(phrase)),
+        reason: 'Forbidden UI contract: $phrase',
+      );
     }
     expect(summary, contains('POINTS À DISCUTER'));
     expect(summary, contains('Piste à discuter :'));
