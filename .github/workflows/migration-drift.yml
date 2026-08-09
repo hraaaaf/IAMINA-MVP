@@ -38,7 +38,7 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/feat/p1-journal-meal-capture' &&
-      github.event.head_commit.message == 'ci(temp): invoke P1-JOURNAL-3 builder'
+      github.event.head_commit.message == 'ci(temp): diagnose P1-JOURNAL-3 builder'
     name: P1-JOURNAL-3 branch-only builder
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -69,7 +69,9 @@ jobs:
           channel: stable
           cache: true
       - name: Apply source patch stored in branch workflow
+        shell: bash
         run: |
+          set -o pipefail
           python3 - <<'PY'
           from pathlib import Path
           import textwrap
@@ -78,8 +80,14 @@ jobs:
           end = source.index("\n          PY\n", start)
           code = textwrap.dedent(source[start:end])
           Path('/tmp/p1j3_apply.py').write_text(code)
+          print(f'extracted {len(code)} bytes')
           PY
-          python3 /tmp/p1j3_apply.py
+          if ! python3 /tmp/p1j3_apply.py > /tmp/p1j3.log 2>&1; then
+            cat /tmp/p1j3.log
+            MSG=$(tail -n 8 /tmp/p1j3.log | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g')
+            echo "::error title=P1-JOURNAL-3 patch failure::$MSG"
+            exit 1
+          fi
       - name: Generate localization and Drift code
         working-directory: frontend
         run: |
