@@ -132,35 +132,40 @@ class LogEntry(models.Model):
     exercised = models.CharField(
         max_length=3,
         choices=EXERCISE_CHOICES,
-        default='no',
+        default='',
+        blank=True,
         help_text="Exercice aujourd'hui ?"
     )
 
     sleep_quality = models.CharField(
         max_length=4,
         choices=SLEEP_CHOICES,
-        default='good',
+        default='',
+        blank=True,
         help_text="Qualite du sommeil"
     )
 
     stressed = models.CharField(
         max_length=3,
         choices=STRESS_CHOICES,
-        default='no',
+        default='',
+        blank=True,
         help_text="Niveau de stress"
     )
 
     fatigue_level = models.CharField(
         max_length=5,
         choices=FATIGUE_CHOICES,
-        default='ok',
+        default='',
+        blank=True,
         help_text="Niveau de fatigue aujourd'hui"
     )
 
     is_sick = models.CharField(
         max_length=3,
         choices=SICK_CHOICES,
-        default='no',
+        default='',
+        blank=True,
         help_text="Malade ou pas bien aujourd'hui"
     )
 

@@ -57,6 +57,16 @@ Media-assisted meal/glucose capture and voice-assisted notes may exist elsewhere
 
 The existence of an input field does not authorize IAmina to advise a dose or modify treatment.
 
+### Context intelligence v2 contract
+
+- illness, unusual stress, physical activity and poor sleep are optional patient-entered observations;
+- absence of a context selection means unknown/not reported and must not be converted into `no`, `good` or `ok`;
+- Add Log exposes context progressively rather than repeatedly asking all context questions;
+- Edit Log may correct these observations without rewriting unrelated meal, time or insulin facts;
+- offline sync transmits only explicitly recorded context; legacy explicit fatigue remains compatible, while unreported fatigue does not become fabricated `ok`;
+- Journal history may display a context only when it was actually recorded;
+- context data does not authorize causal inference, clinical scoring, treatment optimization or insulin-dose advice.
+
 ### Insulin logging v2 contract
 
 - `insulin_units` is patient-entered historical fact: the quantity the patient reports having already administered;
