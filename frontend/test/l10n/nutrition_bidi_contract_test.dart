@@ -10,7 +10,7 @@ void main() {
       MaterialApp(
         home: Builder(
           builder: (context) {
-            rendered = debugNutritionCarbRangeForTest(
+            rendered = formatLocalizedCarbRange(
               AppLocalizationsAr(),
               const Locale('ar'),
               '22.1',
