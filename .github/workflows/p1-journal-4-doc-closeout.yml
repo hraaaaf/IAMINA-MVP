@@ -1,0 +1,80 @@
+name: P1-JOURNAL-4 docs closeout
+
+on:
+  push:
+    branches: [audit/p1-journal-4-visual]
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Update canonical Journal documentation on exact product head
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin feat/p1-journal-nutrition-v2
+          test "$(git rev-parse origin/feat/p1-journal-nutrition-v2)" = "f909fac3cc57af81955fdee9bbaee4f87689734c"
+          git checkout --detach f909fac3cc57af81955fdee9bbaee4f87689734c
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('docs/ROADMAP.md')
+          text = p.read_text()
+          text = text.replace(
+              '> **Last updated:** 2026-08-09 — P0-JOURNAL-2 is merged and post-merge certified; P1-JOURNAL-3 confirmed meal capture is certified pre-merge in PR #69.',
+              '> **Last updated:** 2026-08-09 — P1-JOURNAL-3 is merged; P1-JOURNAL-4 Nutrition Data v2 is the active merge unit in PR #71.'
+          )
+          text = text.replace(
+              '| Journal metabolic-event redesign | 33% | 🔵 P1-JOURNAL-3 merge unit | P0-JOURNAL-1/2 closed; PR #69 exact-head CI/drift green; UX 9.2/10 after remediation; merge/post-merge still required |',
+              '| Journal metabolic-event redesign | 44% | 🔵 P1-JOURNAL-4 merge unit | P0-JOURNAL-1/2 + P1-JOURNAL-3 merged; PR #71 Nutrition Data v2; exact-code visual recertification 9.3/10; final docs/head gates + merge/post-merge required |'
+          )
+          text = text.replace(
+              '| P1-JOURNAL-3 | Meal capture | 🔵 PR #69 merge unit | structured recent/habitual/search + governed photo proposal; explicit user confirmation; FR/EN/AR + RTL; Drift v6→v7; exact-head UX 9.2/10; merge/post-merge pending |',
+              '| P1-JOURNAL-3 | Meal capture | ✅ Closed | PR #69 merged as `1fb3882b8a6b6c671348414dae119ea06c88ce9b`; structured recent/habitual/search + governed photo proposal; explicit confirmation; FR/EN/AR + RTL; Drift v6→v7; UX 9.2/10 |'
+          )
+          text = text.replace(
+              '| P1-JOURNAL-4 | Nutrition data v2 | ⬜ Planned | sourced food/portion model, provenance and uncertainty; Morocco/MENA portions; no patient-facing nutrition number without defensible source |',
+              '| P1-JOURNAL-4 | Nutrition data v2 | 🔵 PR #71 merge unit | sourced food/portion model, provenance and uncertainty; fail-closed unsupported foods; Drift v7→v8; Arabic range bidi fix; exact-code UX 9.3/10; final head gates + merge/post-merge pending |'
+          )
+          old = 'P1-JOURNAL-3 is **not 100% closed yet**: this closeout documentation changes the head and therefore invalidates the preceding exact-head anchors. Final CI + migration drift, exact-head visual recertification, Reviewer/Release-Certifier re-anchoring, expected-head merge and post-merge CI + drift remain mandatory. P1-JOURNAL-4 stays separate.'
+          new = 'P1-JOURNAL-3 is **closed** through PR #69, merged as `1fb3882b8a6b6c671348414dae119ea06c88ce9b`. P1-JOURNAL-4 remains a separate merge unit.'
+          if old not in text:
+              raise SystemExit('ROADMAP P1-JOURNAL-3 closeout marker missing')
+          text = text.replace(old, new)
+          anchor = new + '\n\n---'
+          j4 = '''P1-JOURNAL-3 is **closed** through PR #69, merged as `1fb3882b8a6b6c671348414dae119ea06c88ce9b`. P1-JOURNAL-4 remains a separate merge unit.\n\n### P1-JOURNAL-4 durable closeout contract\n\nPR #71 is the merge unit for Nutrition Data v2. Numeric carbohydrate output is permitted only when the food/preparation and portion are traceable to an explicit versioned nutrition source. Unsupported Moroccan/MENA foods remain loggable but numeric nutrition fails closed instead of being guessed. Patient-confirmed portions persist separately from derived nutrition; the API enforces that each portion belongs to a selected structured food and rejects duplicate/orphan portions. Drift v7→v8 adds nullable `meal_portions_json` while preserving legacy logs and `client_uuid`. No glycaemic-index score, meal-impact score, insulin recommendation, dose calculation or treatment optimization is introduced.\n\nThe first Arabic visual review was rejected because a numeric range could render high→low under RTL. The final implementation isolates the numeric span at runtime without embedding invisible bidi controls in generated localization source. Exact-code visual run `31320713710` on `f909fac3cc57af81955fdee9bbaee4f87689734c` passed the full FR/AR desktop/tablet/390×844/360×560 matrix plus real-font Chromium captures; artifact `9040098902`, digest `sha256:b1b1919c3d329ca13ac77064e0f187dab36ecf4b16ef02ff36be0d30239736ae`; UX Auditor **9.3/10 PASS**. Final documentation changes invalidate earlier exact-head CI anchors, so exact-final-head CI + migration drift, Reviewer/Release-Certifier re-anchoring, expected-head merge and post-merge CI + drift remain mandatory before P1-JOURNAL-4 may be declared 100% closed.\n\n---'''
+          if anchor not in text:
+              raise SystemExit('ROADMAP insertion anchor missing')
+          text = text.replace(anchor, j4, 1)
+          p.write_text(text)
+
+          p = Path('docs/SPECS.md')
+          text = p.read_text()
+          anchor = 'The existence of an input field does not authorize IAmina to advise a dose or modify treatment.\n'
+          addition = '''The existence of an input field does not authorize IAmina to advise a dose or modify treatment.\n\n### Nutrition Data v2 contract\n\n- patient-facing numeric carbohydrate information requires an explicit versioned source and a defensible food/preparation match;\n- unsupported foods remain loggable while numeric nutrition fails closed;\n- patient-confirmed natural portions or grams are stored as observations, while derived nutrition is recalculated from the versioned catalogue rather than persisted as immutable truth;\n- each persisted portion must reference a selected structured meal item; duplicate or orphan portion records are rejected at the API boundary;\n- natural household portions are never silently converted to grams unless a compatible source-backed weight exists;\n- uncertainty is shown as a range when the authoritative source set supports a range rather than a defensible exact value;\n- Arabic numeric ranges preserve low-to-high order under RTL;\n- nutrition output does not produce glycaemic-index scoring, meal-impact scoring, treatment changes or insulin-dose recommendations.\n\nCurrent curated source/provenance details live in `docs/NUTRITION_DATA_SOURCES.md`.\n'''
+          if anchor not in text:
+              raise SystemExit('SPECS nutrition anchor missing')
+          text = text.replace(anchor, addition, 1)
+          p.write_text(text)
+
+          p = Path('docs/MEDICAL_DATA_PLAN.md')
+          text = p.read_text()
+          anchor = 'Do not hide insufficient data behind confident prose.\n'
+          addition = '''Do not hide insufficient data behind confident prose.\n\n### Nutrition-derived observations\n\nNutrition values are deterministic derived data, not treatment authority. A patient-facing number requires source/version provenance, compatible food identity/preparation and an explicit portion basis. If those requirements are not met, numeric nutrition must fail closed. Patient-entered portion observations may be stored, but derived carbohydrate values remain recalculable from the versioned catalogue and must not be treated as immutable clinical facts. Uncertainty must remain visible when the source supports only a range. Nutrition-derived output must not be converted into an insulin dose, treatment adjustment, diagnosis or autonomous recommendation.\n'''
+          if anchor not in text:
+              raise SystemExit('MEDICAL_DATA_PLAN nutrition anchor missing')
+          text = text.replace(anchor, addition, 1)
+          p.write_text(text)
+          PY
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/ROADMAP.md docs/SPECS.md docs/MEDICAL_DATA_PLAN.md
+          git commit -m 'docs(journal): close out Nutrition Data v2 contract'
+          git push --force-with-lease=refs/heads/feat/p1-journal-nutrition-v2:f909fac3cc57af81955fdee9bbaee4f87689734c origin HEAD:refs/heads/feat/p1-journal-nutrition-v2
