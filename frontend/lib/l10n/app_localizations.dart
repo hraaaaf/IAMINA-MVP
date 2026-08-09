@@ -1773,6 +1773,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Source: {source}'**
   String journalNutritionSource(String source);
+
+  /// No description provided for @ramadanProfileSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Ramadan period'**
+  String get ramadanProfileSection;
+
+  /// No description provided for @ramadanProfileHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. This period adapts meal names in the journal. IAmina does not infer that you are fasting.'**
+  String get ramadanProfileHint;
+
+  /// No description provided for @ramadanNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Not configured'**
+  String get ramadanNotConfigured;
+
+  /// No description provided for @ramadanStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get ramadanStartDate;
+
+  /// No description provided for @ramadanEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'End'**
+  String get ramadanEndDate;
+
+  /// No description provided for @ramadanChooseDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a date'**
+  String get ramadanChooseDate;
+
+  /// No description provided for @ramadanClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear period'**
+  String get ramadanClear;
+
+  /// No description provided for @ramadanSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get ramadanSave;
+
+  /// No description provided for @ramadanSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Ramadan period saved.'**
+  String get ramadanSaved;
+
+  /// No description provided for @ramadanSavedLocalOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on this device. The server was not updated.'**
+  String get ramadanSavedLocalOnly;
+
+  /// No description provided for @ramadanNeedsBothDates.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose both a start and end date, or clear both.'**
+  String get ramadanNeedsBothDates;
+
+  /// No description provided for @ramadanDateOrderError.
+  ///
+  /// In en, this message translates to:
+  /// **'The start date must be on or before the end date.'**
+  String get ramadanDateOrderError;
+
+  /// No description provided for @journalRamadanMealVocabularyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal names follow the period saved in your profile. Fasting is not assumed.'**
+  String get journalRamadanMealVocabularyHint;
+
+  /// No description provided for @journalMealSuhoor.
+  ///
+  /// In en, this message translates to:
+  /// **'Suhoor'**
+  String get journalMealSuhoor;
+
+  /// No description provided for @journalMealIftar.
+  ///
+  /// In en, this message translates to:
+  /// **'Iftar'**
+  String get journalMealIftar;
+
+  /// No description provided for @journalMealOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get journalMealOther;
 }
 
 class _AppLocalizationsDelegate

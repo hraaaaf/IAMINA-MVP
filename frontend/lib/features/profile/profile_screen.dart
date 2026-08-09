@@ -26,6 +26,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _treatment = 'insulin';
   String _unit = 'mg/dL';
   bool _hasPersistedProfile = false;
+  DateTime? _ramadanStartDate;
+  DateTime? _ramadanEndDate;
+  bool _savingRamadan = false;
 
   @override
   void initState() {
@@ -44,6 +47,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _unit = profile.unitPreference;
         _targetLowController.text = profile.targetRangeLow.toStringAsFixed(0);
         _targetHighController.text = profile.targetRangeHigh.toStringAsFixed(0);
+        _ramadanStartDate = profile.ramadanStartDate;
+        _ramadanEndDate = profile.ramadanEndDate;
       });
     }
   }
@@ -63,6 +68,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildMedicalSection(l10n),
+                  const SizedBox(height: 14),
+                  _buildRamadanSection(l10n),
                   const SizedBox(height: 14),
                   _buildProfileSection(
                     key: const ValueKey('profile-iamina-section'),
@@ -186,6 +193,191 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildRamadanSection(AppLocalizations l10n) {
+    final configured = _ramadanStartDate != null && _ramadanEndDate != null;
+    return _buildProfileSection(
+      key: const ValueKey('profile-ramadan-section'),
+      icon: Icons.nightlight_round,
+      title: l10n.ramadanProfileSection,
+      subtitle: configured
+          ? '${_dateLabel(_ramadanStartDate!)} → ${_dateLabel(_ramadanEndDate!)}'
+          : l10n.ramadanNotConfigured,
+      initiallyExpanded: false,
+      children: [
+        Text(
+          l10n.ramadanProfileHint,
+          style: const TextStyle(
+            color: AminaTheme.ink500,
+            fontSize: 13,
+            height: 1.45,
+          ),
+        ),
+        const SizedBox(height: 16),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 460;
+            final start = _ramadanDateButton(
+              key: const Key('ramadan-start-date'),
+              label: l10n.ramadanStartDate,
+              value: _ramadanStartDate,
+              onTap: () => _pickRamadanDate(start: true),
+            );
+            final end = _ramadanDateButton(
+              key: const Key('ramadan-end-date'),
+              label: l10n.ramadanEndDate,
+              value: _ramadanEndDate,
+              onTap: () => _pickRamadanDate(start: false),
+            );
+            if (compact) {
+              return Column(children: [start, const SizedBox(height: 10), end]);
+            }
+            return Row(
+              children: [
+                Expanded(child: start),
+                const SizedBox(width: 12),
+                Expanded(child: end),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            if (configured)
+              TextButton(
+                key: const Key('ramadan-clear-period'),
+                onPressed: _savingRamadan
+                    ? null
+                    : () => setState(() {
+                        _ramadanStartDate = null;
+                        _ramadanEndDate = null;
+                      }),
+                child: Text(l10n.ramadanClear),
+              ),
+            const Spacer(),
+            FilledButton(
+              key: const Key('ramadan-save-period'),
+              onPressed: _savingRamadan ? null : () => _saveRamadanPeriod(l10n),
+              child: Text(
+                _savingRamadan ? l10n.journalSaving : l10n.ramadanSave,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _ramadanDateButton({
+    required Key key,
+    required String label,
+    required DateTime? value,
+    required VoidCallback onTap,
+  }) {
+    return OutlinedButton(
+      key: key,
+      onPressed: _savingRamadan ? null : onTap,
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(52),
+        alignment: AlignmentDirectional.centerStart,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value == null
+                ? AppLocalizations.of(context)!.ramadanChooseDate
+                : _dateLabel(value),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AminaTheme.ink900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickRamadanDate({required bool start}) async {
+    final initial = start
+        ? (_ramadanStartDate ?? DateTime.now())
+        : (_ramadanEndDate ?? _ramadanStartDate ?? DateTime.now());
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035, 12, 31),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      if (start) {
+        _ramadanStartDate = DateTime(picked.year, picked.month, picked.day);
+      } else {
+        _ramadanEndDate = DateTime(picked.year, picked.month, picked.day);
+      }
+    });
+  }
+
+  Future<void> _saveRamadanPeriod(AppLocalizations l10n) async {
+    final start = _ramadanStartDate;
+    final end = _ramadanEndDate;
+    if ((start == null) != (end == null)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.ramadanNeedsBothDates)));
+      return;
+    }
+    if (start != null && end != null && start.isAfter(end)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.ramadanDateOrderError)));
+      return;
+    }
+
+    setState(() => _savingRamadan = true);
+    try {
+      final db = context.read<AppDatabase>();
+      final api = context.read<ApiClient>();
+      await db.setRamadanPeriod(start: start, end: end);
+      final serverSaved = await api.patchProfile({
+        'ramadan_start_date': start == null ? null : _apiDate(start),
+        'ramadan_end_date': end == null ? null : _apiDate(end),
+      });
+      if (!mounted) return;
+      setState(() => _hasPersistedProfile = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            serverSaved ? l10n.ramadanSaved : l10n.ramadanSavedLocalOnly,
+          ),
+          backgroundColor: serverSaved
+              ? AminaTheme.successEmerald
+              : AminaTheme.warningOrange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _savingRamadan = false);
+    }
+  }
+
+  String _dateLabel(DateTime value) {
+    final dd = value.day.toString().padLeft(2, '0');
+    final mm = value.month.toString().padLeft(2, '0');
+    return '$dd/$mm/${value.year}';
+  }
+
+  String _apiDate(DateTime value) {
+    final mm = value.month.toString().padLeft(2, '0');
+    final dd = value.day.toString().padLeft(2, '0');
+    return '${value.year}-$mm-$dd';
   }
 
   Widget _buildAccountSection(AppLocalizations l10n) {
