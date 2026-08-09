@@ -1,0 +1,93 @@
+name: P1 JOURNAL 7 rescue builder
+
+on:
+  push:
+    branches:
+      - agent/p1-journal-ramadan-v2
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p1-journal-ramadan-v2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Apply deterministic Ramadan v2 patch safely
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          raw = Path('.github/workflows/p1-journal7-builder.yml').read_text()
+          start_marker = "          python - <<'PY'\n"
+          end_marker = "\n          PY\n"
+          start = raw.index(start_marker) + len(start_marker)
+          end = raw.index(end_marker, start)
+          block = raw[start:end]
+          source = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in block.splitlines()
+          ) + '\n'
+
+          opening = "legacy.execute('''"
+          closing = "    ''');\\n"
+          if source.count(opening) != 4 or source.count(closing) != 4:
+              raise SystemExit(
+                  f'unexpected migration quoting shape: '
+                  f'open={source.count(opening)} close={source.count(closing)}'
+              )
+          source = source.replace(opening, 'legacy.execute("""')
+          source = source.replace(closing, '    """);\\n')
+          compile(source, '<p1-journal7-builder>', 'exec')
+          exec(source, {})
+          PY
+
+      - name: Backend focused validation and OpenAPI
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: amina.settings
+          SECRET_KEY: journal7-builder
+          DEBUG: 'True'
+          DATABASE_URL: sqlite:///journal7-builder.db
+        run: |
+          pip install -r requirements.txt ruff==0.15.17
+          ruff check diabetes/models/patient.py diabetes/api/v1/profile.py diabetes/api/v1/schemas.py diabetes/tests/test_ramadan_profile_period.py
+          python manage.py makemigrations --check --dry-run
+          pytest diabetes/tests/test_ramadan_profile_period.py -q
+          python manage.py export_openapi > ../docs/api/openapi.json
+
+      - name: Frontend codegen and focused validation
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          dart run build_runner build --delete-conflicting-outputs
+          dart format lib/core/data/ramadan_context.dart lib/data/drift/database.dart lib/features/profile/profile_screen.dart lib/features/dashboard/widgets/add_log_sheet.dart lib/features/journal/journal_screen.dart lib/services/api_client.dart test/core/data/ramadan_context_test.dart test/features/ramadan_mode_v2_test.dart test/data/drift/ramadan_period_migration_test.dart
+          flutter analyze --no-fatal-infos
+          flutter test --no-pub test/core/data/ramadan_context_test.dart test/data/drift/ramadan_period_migration_test.dart test/features/ramadan_mode_v2_test.dart test/features/add_log_sheet_test.dart
+
+      - name: Commit clean product patch
+        run: |
+          rm -f .github/workflows/p1-journal7-builder.yml .github/workflows/p1-journal7-rescue.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "feat(journal): add explicit Ramadan profile context"
+          git push origin HEAD:agent/p1-journal-ramadan-v2
