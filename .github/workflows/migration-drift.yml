@@ -38,7 +38,7 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/feat/p1-journal-meal-capture' &&
-      github.event.head_commit.message == 'ci(temp): run split P1-JOURNAL-3 gates on shared runner'
+      github.event.head_commit.message == 'ci(temp): fix P1-JOURNAL-3 history lifecycle'
     name: P1-JOURNAL-3 branch-only builder
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -87,10 +87,12 @@ jobs:
           Path('/tmp/p1j3_apply.py').write_text(code)
           PY
           python3 /tmp/p1j3_apply.py
-      - name: Apply compile and compatibility fixes
+      - name: Apply compatibility and lifecycle fixes
         run: |
           python3 - <<'PY'
           from pathlib import Path
+
+          # Reuse the existing governed frontend meal-vision method.
           p = Path('frontend/lib/services/api_client.dart')
           s = p.read_text()
           a = s.find('  /// Identify visible foods in a meal photo. The server enforces the\n')
@@ -102,18 +104,52 @@ jobs:
           s = p.read_text().replace("import 'dart:convert';\n\n", '', 1)
           old = "return ApiClient().analyzeMealImage(base64Encode(bytes), mime);"
           if old not in s: raise SystemExit('meal photo call marker missing')
-          p.write_text(s.replace(old, "return ApiClient().analyzeMealImage(bytes, mimeType: mime);", 1))
+          s = s.replace(old, "return ApiClient().analyzeMealImage(bytes, mimeType: mime);", 1)
+          s = s.replace(
+              "  final Set<String> _proposalSelection = <String>{};\n\n",
+              "  final Set<String> _proposalSelection = <String>{};\n  Future<List<LogEntryData>>? _historyFuture;\n\n  @override\n  void didChangeDependencies() {\n    super.didChangeDependencies();\n    _historyFuture ??= context.read<AppDatabase>().getRecentLogs(limit: 100);\n  }\n\n",
+              1,
+          )
+          s = s.replace("    final db = context.read<AppDatabase>();\n", '', 1)
+          s = s.replace(
+              "        StreamBuilder<List<LogEntryData>>(\n          stream: db.watchRecentLogs(limit: 100),",
+              "        FutureBuilder<List<LogEntryData>>(\n          future: _historyFuture,",
+              1,
+          )
+          p.write_text(s)
 
+          # Add a one-shot read API; meal capture does not need a live DB subscription.
           p = Path('frontend/lib/data/drift/database.dart')
           s = p.read_text()
           old = "TextColumn get mealItemsJson => text().withDefault(const Constant('[]'))();"
           if old not in s: raise SystemExit('mealItemsJson marker missing')
-          p.write_text(s.replace(old, 'TextColumn get mealItemsJson => text().nullable()();', 1))
+          s = s.replace(old, 'TextColumn get mealItemsJson => text().nullable()();', 1)
+          watcher = """  Stream<List<LogEntryData>> watchRecentLogs({int limit = 20}) {\n    return (select(logEntries)\n          ..orderBy([\n            (t) =>\n                OrderingTerm(expression: t.loggedAt, mode: OrderingMode.desc),\n          ])\n          ..limit(limit))\n        .watch();\n  }\n\n"""
+          query = watcher + """  Future<List<LogEntryData>> getRecentLogs({int limit = 100}) {\n    return (select(logEntries)\n          ..orderBy([\n            (t) =>\n                OrderingTerm(expression: t.loggedAt, mode: OrderingMode.desc),\n          ])\n          ..limit(limit))\n        .get();\n  }\n\n"""
+          if watcher not in s: raise SystemExit('recent logs watcher marker missing')
+          p.write_text(s.replace(watcher, query, 1))
 
           p = Path('frontend/lib/services/sync_service.dart')
           s = p.read_text().replace(
               '  List<String> _mealItems(String raw) {\n    try {',
               "  List<String> _mealItems(String? raw) {\n    if (raw == null || raw.trim().isEmpty) return const <String>[];\n    try {", 1)
+          p.write_text(s)
+
+          # Keep response permissive enough for legacy rows; constrain new writes only.
+          p = Path('backend/diabetes/api/v1/schemas.py')
+          s = p.read_text()
+          old = '    meal_items: List[_MealItem] = Field(default_factory=list, max_length=20)\n'
+          if old not in s: raise SystemExit('meal response marker missing')
+          p.write_text(s.replace(old, '    meal_items: List[str] = Field(default_factory=list)\n', 1))
+
+          # Arabic search must preserve the Arabic Unicode block.
+          p = Path('frontend/lib/core/data/meal_food_catalog.dart')
+          s = p.read_text()
+          s = s.replace(
+              r"RegExp(r'[^a-z0-9\\u0600-\\u06ff]+')",
+              r"RegExp(r'[^a-z0-9\u0600-\u06ff]+')",
+              1,
+          )
           p.write_text(s)
 
           p = Path('frontend/test/data/drift/meal_items_migration_test.dart')
@@ -127,7 +163,8 @@ jobs:
           s = p.read_text()
           if "package:drift/drift.dart" not in s:
               s = s.replace("import 'package:amina/l10n/app_localizations.dart';\n", "import 'package:amina/l10n/app_localizations.dart';\nimport 'package:drift/drift.dart';\n", 1)
-          p.write_text(s.replace('bloodSugar: 120 + i,', 'bloodSugar: 120.0 + i,', 1))
+          s = s.replace('bloodSugar: 120 + i,', 'bloodSugar: 120.0 + i,', 1)
+          p.write_text(s)
           PY
       - name: Generate localization and Drift code
         working-directory: frontend
@@ -135,7 +172,7 @@ jobs:
           flutter pub get
           flutter gen-l10n
           dart run build_runner build --delete-conflicting-outputs
-          dart format lib/core/data/meal_food_catalog.dart lib/features/journal/widgets/meal_capture_panel.dart lib/features/dashboard/widgets/add_log_sheet.dart lib/features/journal/journal_screen.dart lib/services/api_client.dart lib/services/sync_service.dart test/features/meal_capture_panel_test.dart test/data/drift/meal_items_migration_test.dart test/data/drift/glycemic_context_migration_test.dart
+          dart format lib/core/data/meal_food_catalog.dart lib/features/journal/widgets/meal_capture_panel.dart lib/features/dashboard/widgets/add_log_sheet.dart lib/features/journal/journal_screen.dart lib/services/api_client.dart lib/services/sync_service.dart lib/data/drift/database.dart test/features/meal_capture_panel_test.dart test/data/drift/meal_items_migration_test.dart test/data/drift/glycemic_context_migration_test.dart
       - name: Regenerate OpenAPI
         working-directory: backend
         run: |
