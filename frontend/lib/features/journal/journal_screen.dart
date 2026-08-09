@@ -557,6 +557,8 @@ class _JournalScreenState extends State<JournalScreen> {
                         if (log.isStressed) const _LifeIcon(icon: '⚡'),
                         if (log.isTired) const _LifeIcon(icon: '🥱'),
                         if (log.isActive) const _LifeIcon(icon: '🏃‍♂️'),
+                        if (log.sleepQuality == 'bad')
+                          const _LifeIcon(icon: '🌙'),
                       ],
                     ),
                   ],

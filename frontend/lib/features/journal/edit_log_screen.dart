@@ -23,6 +23,10 @@ class _EditLogScreenState extends State<EditLogScreen> {
   final TextEditingController _insulinController = TextEditingController();
   bool _loading = true;
   bool _saving = false;
+  bool _isSick = false;
+  bool _isStressed = false;
+  bool _isActive = false;
+  bool _badSleep = false;
 
   @override
   void initState() {
@@ -52,6 +56,10 @@ class _EditLogScreenState extends State<EditLogScreen> {
     _insulinController.text = log.insulinUnits == null
         ? ''
         : formatTakenInsulinUnits(log.insulinUnits!);
+    _isSick = log.isSick;
+    _isStressed = log.isStressed;
+    _isActive = log.isActive;
+    _badSleep = log.sleepQuality == 'bad';
     setState(() => _loading = false);
   }
 
@@ -102,40 +110,20 @@ class _EditLogScreenState extends State<EditLogScreen> {
                         const SizedBox(height: 18),
                         _insulinCard(l10n),
                         const SizedBox(height: 14),
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: AminaTheme.subtleBg(context),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AminaTheme.divider(context)),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              const Icon(Icons.lock_outline_rounded, size: 17),
-                              const SizedBox(width: 9),
-                              Expanded(
-                                child: Text(
-                                  l10n.journalEditContextPreserved,
-                                  style: TextStyle(
-                                    color: AminaTheme.textSecondary(context),
-                                    fontSize: 12,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        _contextCard(l10n),
                         const SizedBox(height: 24),
                         FilledButton.icon(
                           key: const Key('save-edit-log-button'),
-                          onPressed: _saving ? null : () => _saveChanges(unit, l10n),
+                          onPressed: _saving
+                              ? null
+                              : () => _saveChanges(unit, l10n),
                           icon: _saving
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 )
                               : const Icon(Icons.check_rounded),
                           label: Text(_saving ? l10n.journalSaving : l10n.save),
@@ -242,6 +230,61 @@ class _EditLogScreenState extends State<EditLogScreen> {
     ),
   );
 
+  Widget _contextCard(AppLocalizations l10n) => Container(
+    key: const Key('edit-context-card'),
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: AminaTheme.subtleBg(context),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: AminaTheme.divider(context)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          l10n.journalAdditionalContext,
+          style: TextStyle(
+            color: AminaTheme.textSecondary(context),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: .55,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: <Widget>[
+            FilterChip(
+              key: const Key('edit-context-illness'),
+              label: Text(l10n.journalSick),
+              selected: _isSick,
+              onSelected: (v) => setState(() => _isSick = v),
+            ),
+            FilterChip(
+              key: const Key('edit-context-stress'),
+              label: Text(l10n.journalUnusualStress),
+              selected: _isStressed,
+              onSelected: (v) => setState(() => _isStressed = v),
+            ),
+            FilterChip(
+              key: const Key('edit-context-activity'),
+              label: Text(l10n.journalPhysicalActivity),
+              selected: _isActive,
+              onSelected: (v) => setState(() => _isActive = v),
+            ),
+            FilterChip(
+              key: const Key('edit-context-poor-sleep'),
+              label: Text(l10n.journalPoorSleep),
+              selected: _badSleep,
+              onSelected: (v) => setState(() => _badSleep = v),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+
   Future<bool> _confirmLowGlucose(double mgdl, AppLocalizations l10n) async {
     final level = classifyGlucoseEntrySafety(mgdl);
     if (level == GlucoseEntrySafety.nonLow) return true;
@@ -251,7 +294,9 @@ class _EditLogScreenState extends State<EditLogScreen> {
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
         title: Text(level2 ? l10n.journalVeryLowTitle : l10n.journalLowTitle),
-        content: Text(level2 ? l10n.journalVeryLowSafety : l10n.journalLowSafety),
+        content: Text(
+          level2 ? l10n.journalVeryLowSafety : l10n.journalLowSafety,
+        ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -290,6 +335,10 @@ class _EditLogScreenState extends State<EditLogScreen> {
           insulinUnits: drift.Value(
             parseTakenInsulinUnits(_insulinController.text),
           ),
+          isSick: drift.Value(_isSick),
+          isStressed: drift.Value(_isStressed),
+          isActive: drift.Value(_isActive),
+          sleepQuality: drift.Value(_badSleep ? 'bad' : null),
           syncStatus: const drift.Value('pending'),
           syncAttempts: const drift.Value(0),
           errorSync: const drift.Value(false),
