@@ -28,6 +28,7 @@ class PatientProfileSchema(Schema):
 class LogEntrySchema(Schema):
     id: int
     logged_at: Optional[datetime]
+    glycemic_context: str = ""
     meal_type: str
     blood_sugar: float
     meal_description: str = ""
@@ -44,6 +45,7 @@ class LogEntrySchema(Schema):
 
 class LogEntryCreateSchema(Schema):
     logged_at: Optional[datetime] = None
+    glycemic_context: str = ""
     meal_type: str = ""
     blood_sugar: _BloodSugar
     meal_description: str = ""
@@ -61,6 +63,7 @@ class LogEntryUpdateSchema(Schema):
     """Partial update — all fields optional. Only supplied fields are written."""
 
     logged_at: Optional[datetime] = None
+    glycemic_context: Optional[str] = None
     meal_type: Optional[str] = None
     blood_sugar: Optional[_BloodSugar] = None
     meal_description: Optional[str] = None
