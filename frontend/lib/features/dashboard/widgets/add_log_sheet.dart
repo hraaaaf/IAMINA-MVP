@@ -12,6 +12,7 @@ import '../../../data/drift/database.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../journal/widgets/meal_capture_panel.dart';
 import '../../journal/widgets/nutrition_portion_editor.dart';
+import '../../journal/widgets/insulin_logging.dart';
 
 /// Deterministic entry-safety classification for a single normalized reading.
 ///
@@ -698,12 +699,12 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
     if (!await _confirmLowGlucose(mgdl, l10n) || !mounted) return;
 
-    final insulinRaw = _insulinController.text.trim().replaceAll(',', '.');
-    final insulin = insulinRaw.isEmpty ? null : double.tryParse(insulinRaw);
-    if (insulinRaw.isNotEmpty && (insulin == null || insulin < 0)) {
+    final insulinRaw = _insulinController.text;
+    if (!isValidTakenInsulinInput(insulinRaw)) {
       _message(l10n.journalInvalidInsulin);
       return;
     }
+    final insulin = parseTakenInsulinUnits(insulinRaw);
 
     setState(() => _saving = true);
     try {
