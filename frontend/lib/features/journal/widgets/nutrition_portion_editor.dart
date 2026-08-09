@@ -177,7 +177,9 @@ class _FoodPortionCardState extends State<_FoodPortionCard> {
             child: TextField(
               key: Key('nutrition-grams-${widget.foodId}'),
               controller: _gramsController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: InputDecoration(
                 labelText: l10n.journalNutritionGrams,
                 suffixText: 'g',
@@ -210,7 +212,9 @@ class _FoodPortionCardState extends State<_FoodPortionCard> {
           else ...<Widget>[
             Text(
               estimate.isExact
-                  ? l10n.journalNutritionCarbsExact(estimate.low.toStringAsFixed(1))
+                  ? l10n.journalNutritionCarbsExact(
+                      estimate.low.toStringAsFixed(1),
+                    )
                   : l10n.journalNutritionCarbsRange(
                       estimate.low.toStringAsFixed(1),
                       estimate.high.toStringAsFixed(1),
@@ -225,7 +229,8 @@ class _FoodPortionCardState extends State<_FoodPortionCard> {
             const SizedBox(height: 3),
             Text(
               l10n.journalNutritionSource(
-                nutritionSourceFor(estimate.sourceId)?.publisher ?? estimate.sourceId,
+                nutritionSourceFor(estimate.sourceId)?.publisher ??
+                    estimate.sourceId,
               ),
               style: TextStyle(
                 color: AminaTheme.textSecondary(context),

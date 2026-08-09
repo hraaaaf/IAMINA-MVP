@@ -2068,6 +2068,13 @@
             "title": "Meal Items",
             "type": "array"
           },
+          "meal_portions": {
+            "items": {
+              "$ref": "#/components/schemas/MealPortionSchema"
+            },
+            "title": "Meal Portions",
+            "type": "array"
+          },
           "insulin_units": {
             "anyOf": [
               {
@@ -2135,6 +2142,48 @@
           "created_at"
         ],
         "title": "LogEntrySchema",
+        "type": "object"
+      },
+      "MealPortionSchema": {
+        "description": "Patient-confirmed portion input; never a server-authored nutrition claim.",
+        "properties": {
+          "food_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Food Id",
+            "type": "string"
+          },
+          "portion_id": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portion Id"
+          },
+          "grams": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 3000.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grams"
+          }
+        },
+        "required": [
+          "food_id"
+        ],
+        "title": "MealPortionSchema",
         "type": "object"
       },
       "PaginatedLogsResponse": {
@@ -2212,6 +2261,14 @@
             },
             "maxItems": 20,
             "title": "Meal Items",
+            "type": "array"
+          },
+          "meal_portions": {
+            "items": {
+              "$ref": "#/components/schemas/MealPortionSchema"
+            },
+            "maxItems": 20,
+            "title": "Meal Portions",
             "type": "array"
           },
           "insulin_units": {
@@ -2376,6 +2433,21 @@
               }
             ],
             "title": "Meal Items"
+          },
+          "meal_portions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MealPortionSchema"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Portions"
           },
           "insulin_units": {
             "anyOf": [

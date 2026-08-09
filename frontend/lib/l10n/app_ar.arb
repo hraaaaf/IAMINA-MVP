@@ -321,5 +321,36 @@
   "journalMealPhotoProposalHint": "اختر العناصر الصحيحة ثم أكّدها. استخدم البحث للتصحيح أو الإضافة.",
   "journalMealPhotoConfirm": "تأكيد الاختيار",
   "journalMealPhotoUnavailable": "لم نتمكن من التعرّف على طعام. أضفه عبر البحث.",
-  "journalMealPhotoConsent": "يتطلب التعرّف على الصورة موافقتك على معالجة الذكاء الاصطناعي. الإدخال اليدوي متاح دائماً."
+  "journalMealPhotoConsent": "يتطلب التعرّف على الصورة موافقتك على معالجة الذكاء الاصطناعي. الإدخال اليدوي متاح دائماً.",
+  "journalNutritionPortionTitle": "الكمية",
+  "journalNutritionPortionHint": "اختر حصة مألوفة أو أدخل الوزن بالغرام إذا كنت تعرفه. لا يعرض IAmina رقماً غذائياً مخمناً.",
+  "journalNutritionGrams": "غرام",
+  "journalNutritionUnavailable": "لا توجد قيمة غذائية رقمية معروضة: الطعام أو الحصة غير موثقين بما يكفي بعد.",
+  "journalNutritionCarbsExact": "≈ {value} غ كربوهيدرات",
+  "journalNutritionCarbsRange": "≈ {low}–{high} غ كربوهيدرات",
+  "journalNutritionSource": "المصدر: {source}",
+  "@journalNutritionCarbsExact": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "@journalNutritionCarbsRange": {
+    "placeholders": {
+      "low": {
+        "type": "String"
+      },
+      "high": {
+        "type": "String"
+      }
+    }
+  },
+  "@journalNutritionSource": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  }
 }

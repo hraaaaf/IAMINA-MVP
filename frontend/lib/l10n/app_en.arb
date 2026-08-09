@@ -321,5 +321,36 @@
   "journalMealPhotoProposalHint": "Select what is correct, then confirm. Use search to correct or complete the meal.",
   "journalMealPhotoConfirm": "Confirm selection",
   "journalMealPhotoUnavailable": "No food could be recognized. Add it with search instead.",
-  "journalMealPhotoConsent": "Photo recognition requires AI-processing consent. Manual entry remains available."
+  "journalMealPhotoConsent": "Photo recognition requires AI-processing consent. Manual entry remains available.",
+  "journalNutritionPortionTitle": "PORTIONS",
+  "journalNutritionPortionHint": "Choose a natural portion or enter grams if you know them. No nutrition number is invented.",
+  "journalNutritionGrams": "Grams",
+  "journalNutritionUnavailable": "No numeric nutrition shown: the food or portion is not documented well enough yet.",
+  "journalNutritionCarbsExact": "≈ {value} g carbohydrates",
+  "journalNutritionCarbsRange": "≈ {low}–{high} g carbohydrates",
+  "journalNutritionSource": "Source: {source}",
+  "@journalNutritionCarbsExact": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "@journalNutritionCarbsRange": {
+    "placeholders": {
+      "low": {
+        "type": "String"
+      },
+      "high": {
+        "type": "String"
+      }
+    }
+  },
+  "@journalNutritionSource": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -99,6 +99,17 @@ class $LogEntriesTable extends LogEntries
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _mealPortionsJsonMeta = const VerificationMeta(
+    'mealPortionsJson',
+  );
+  @override
+  late final GeneratedColumn<String> mealPortionsJson = GeneratedColumn<String>(
+    'meal_portions_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _sourceMeta = const VerificationMeta('source');
   @override
   late final GeneratedColumn<String> source = GeneratedColumn<String>(
@@ -276,6 +287,7 @@ class $LogEntriesTable extends LogEntries
     mealType,
     mealDescription,
     mealItemsJson,
+    mealPortionsJson,
     source,
     syncStatus,
     clientUuid,
@@ -360,6 +372,15 @@ class $LogEntriesTable extends LogEntries
         mealItemsJson.isAcceptableOrUnknown(
           data['meal_items_json']!,
           _mealItemsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('meal_portions_json')) {
+      context.handle(
+        _mealPortionsJsonMeta,
+        mealPortionsJson.isAcceptableOrUnknown(
+          data['meal_portions_json']!,
+          _mealPortionsJsonMeta,
         ),
       );
     }
@@ -496,6 +517,10 @@ class $LogEntriesTable extends LogEntries
         DriftSqlType.string,
         data['${effectivePrefix}meal_items_json'],
       ),
+      mealPortionsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meal_portions_json'],
+      ),
       source: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}source'],
@@ -566,6 +591,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
   final String? mealType;
   final String? mealDescription;
   final String? mealItemsJson;
+  final String? mealPortionsJson;
   final String source;
   final String syncStatus;
   final String clientUuid;
@@ -588,6 +614,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
     this.mealType,
     this.mealDescription,
     this.mealItemsJson,
+    this.mealPortionsJson,
     required this.source,
     required this.syncStatus,
     required this.clientUuid,
@@ -622,6 +649,9 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
     }
     if (!nullToAbsent || mealItemsJson != null) {
       map['meal_items_json'] = Variable<String>(mealItemsJson);
+    }
+    if (!nullToAbsent || mealPortionsJson != null) {
+      map['meal_portions_json'] = Variable<String>(mealPortionsJson);
     }
     map['source'] = Variable<String>(source);
     map['sync_status'] = Variable<String>(syncStatus);
@@ -665,6 +695,9 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
       mealItemsJson: mealItemsJson == null && nullToAbsent
           ? const Value.absent()
           : Value(mealItemsJson),
+      mealPortionsJson: mealPortionsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mealPortionsJson),
       source: Value(source),
       syncStatus: Value(syncStatus),
       clientUuid: Value(clientUuid),
@@ -701,6 +734,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
       mealType: serializer.fromJson<String?>(json['mealType']),
       mealDescription: serializer.fromJson<String?>(json['mealDescription']),
       mealItemsJson: serializer.fromJson<String?>(json['mealItemsJson']),
+      mealPortionsJson: serializer.fromJson<String?>(json['mealPortionsJson']),
       source: serializer.fromJson<String>(json['source']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
       clientUuid: serializer.fromJson<String>(json['clientUuid']),
@@ -728,6 +762,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
       'mealType': serializer.toJson<String?>(mealType),
       'mealDescription': serializer.toJson<String?>(mealDescription),
       'mealItemsJson': serializer.toJson<String?>(mealItemsJson),
+      'mealPortionsJson': serializer.toJson<String?>(mealPortionsJson),
       'source': serializer.toJson<String>(source),
       'syncStatus': serializer.toJson<String>(syncStatus),
       'clientUuid': serializer.toJson<String>(clientUuid),
@@ -753,6 +788,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
     Value<String?> mealType = const Value.absent(),
     Value<String?> mealDescription = const Value.absent(),
     Value<String?> mealItemsJson = const Value.absent(),
+    Value<String?> mealPortionsJson = const Value.absent(),
     String? source,
     String? syncStatus,
     String? clientUuid,
@@ -781,6 +817,9 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
     mealItemsJson: mealItemsJson.present
         ? mealItemsJson.value
         : this.mealItemsJson,
+    mealPortionsJson: mealPortionsJson.present
+        ? mealPortionsJson.value
+        : this.mealPortionsJson,
     source: source ?? this.source,
     syncStatus: syncStatus ?? this.syncStatus,
     clientUuid: clientUuid ?? this.clientUuid,
@@ -815,6 +854,9 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
       mealItemsJson: data.mealItemsJson.present
           ? data.mealItemsJson.value
           : this.mealItemsJson,
+      mealPortionsJson: data.mealPortionsJson.present
+          ? data.mealPortionsJson.value
+          : this.mealPortionsJson,
       source: data.source.present ? data.source.value : this.source,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
@@ -856,6 +898,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
           ..write('mealType: $mealType, ')
           ..write('mealDescription: $mealDescription, ')
           ..write('mealItemsJson: $mealItemsJson, ')
+          ..write('mealPortionsJson: $mealPortionsJson, ')
           ..write('source: $source, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('clientUuid: $clientUuid, ')
@@ -883,6 +926,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
     mealType,
     mealDescription,
     mealItemsJson,
+    mealPortionsJson,
     source,
     syncStatus,
     clientUuid,
@@ -909,6 +953,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
           other.mealType == this.mealType &&
           other.mealDescription == this.mealDescription &&
           other.mealItemsJson == this.mealItemsJson &&
+          other.mealPortionsJson == this.mealPortionsJson &&
           other.source == this.source &&
           other.syncStatus == this.syncStatus &&
           other.clientUuid == this.clientUuid &&
@@ -933,6 +978,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
   final Value<String?> mealType;
   final Value<String?> mealDescription;
   final Value<String?> mealItemsJson;
+  final Value<String?> mealPortionsJson;
   final Value<String> source;
   final Value<String> syncStatus;
   final Value<String> clientUuid;
@@ -955,6 +1001,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
     this.mealType = const Value.absent(),
     this.mealDescription = const Value.absent(),
     this.mealItemsJson = const Value.absent(),
+    this.mealPortionsJson = const Value.absent(),
     this.source = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.clientUuid = const Value.absent(),
@@ -978,6 +1025,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
     this.mealType = const Value.absent(),
     this.mealDescription = const Value.absent(),
     this.mealItemsJson = const Value.absent(),
+    this.mealPortionsJson = const Value.absent(),
     this.source = const Value.absent(),
     this.syncStatus = const Value.absent(),
     required String clientUuid,
@@ -1003,6 +1051,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
     Expression<String>? mealType,
     Expression<String>? mealDescription,
     Expression<String>? mealItemsJson,
+    Expression<String>? mealPortionsJson,
     Expression<String>? source,
     Expression<String>? syncStatus,
     Expression<String>? clientUuid,
@@ -1026,6 +1075,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
       if (mealType != null) 'meal_type': mealType,
       if (mealDescription != null) 'meal_description': mealDescription,
       if (mealItemsJson != null) 'meal_items_json': mealItemsJson,
+      if (mealPortionsJson != null) 'meal_portions_json': mealPortionsJson,
       if (source != null) 'source': source,
       if (syncStatus != null) 'sync_status': syncStatus,
       if (clientUuid != null) 'client_uuid': clientUuid,
@@ -1051,6 +1101,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
     Value<String?>? mealType,
     Value<String?>? mealDescription,
     Value<String?>? mealItemsJson,
+    Value<String?>? mealPortionsJson,
     Value<String>? source,
     Value<String>? syncStatus,
     Value<String>? clientUuid,
@@ -1074,6 +1125,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
       mealType: mealType ?? this.mealType,
       mealDescription: mealDescription ?? this.mealDescription,
       mealItemsJson: mealItemsJson ?? this.mealItemsJson,
+      mealPortionsJson: mealPortionsJson ?? this.mealPortionsJson,
       source: source ?? this.source,
       syncStatus: syncStatus ?? this.syncStatus,
       clientUuid: clientUuid ?? this.clientUuid,
@@ -1116,6 +1168,9 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
     }
     if (mealItemsJson.present) {
       map['meal_items_json'] = Variable<String>(mealItemsJson.value);
+    }
+    if (mealPortionsJson.present) {
+      map['meal_portions_json'] = Variable<String>(mealPortionsJson.value);
     }
     if (source.present) {
       map['source'] = Variable<String>(source.value);
@@ -1170,6 +1225,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
           ..write('mealType: $mealType, ')
           ..write('mealDescription: $mealDescription, ')
           ..write('mealItemsJson: $mealItemsJson, ')
+          ..write('mealPortionsJson: $mealPortionsJson, ')
           ..write('source: $source, ')
           ..write('syncStatus: $syncStatus, ')
           ..write('clientUuid: $clientUuid, ')
@@ -2158,6 +2214,7 @@ typedef $$LogEntriesTableCreateCompanionBuilder =
       Value<String?> mealType,
       Value<String?> mealDescription,
       Value<String?> mealItemsJson,
+      Value<String?> mealPortionsJson,
       Value<String> source,
       Value<String> syncStatus,
       required String clientUuid,
@@ -2182,6 +2239,7 @@ typedef $$LogEntriesTableUpdateCompanionBuilder =
       Value<String?> mealType,
       Value<String?> mealDescription,
       Value<String?> mealItemsJson,
+      Value<String?> mealPortionsJson,
       Value<String> source,
       Value<String> syncStatus,
       Value<String> clientUuid,
@@ -2243,6 +2301,11 @@ class $$LogEntriesTableFilterComposer
 
   ColumnFilters<String> get mealItemsJson => $composableBuilder(
     column: $table.mealItemsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mealPortionsJson => $composableBuilder(
+    column: $table.mealPortionsJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2361,6 +2424,11 @@ class $$LogEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get mealPortionsJson => $composableBuilder(
+    column: $table.mealPortionsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get source => $composableBuilder(
     column: $table.source,
     builder: (column) => ColumnOrderings(column),
@@ -2470,6 +2538,11 @@ class $$LogEntriesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get mealPortionsJson => $composableBuilder(
+    column: $table.mealPortionsJson,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
 
@@ -2563,6 +2636,7 @@ class $$LogEntriesTableTableManager
                 Value<String?> mealType = const Value.absent(),
                 Value<String?> mealDescription = const Value.absent(),
                 Value<String?> mealItemsJson = const Value.absent(),
+                Value<String?> mealPortionsJson = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 Value<String> syncStatus = const Value.absent(),
                 Value<String> clientUuid = const Value.absent(),
@@ -2585,6 +2659,7 @@ class $$LogEntriesTableTableManager
                 mealType: mealType,
                 mealDescription: mealDescription,
                 mealItemsJson: mealItemsJson,
+                mealPortionsJson: mealPortionsJson,
                 source: source,
                 syncStatus: syncStatus,
                 clientUuid: clientUuid,
@@ -2609,6 +2684,7 @@ class $$LogEntriesTableTableManager
                 Value<String?> mealType = const Value.absent(),
                 Value<String?> mealDescription = const Value.absent(),
                 Value<String?> mealItemsJson = const Value.absent(),
+                Value<String?> mealPortionsJson = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 Value<String> syncStatus = const Value.absent(),
                 required String clientUuid,
@@ -2631,6 +2707,7 @@ class $$LogEntriesTableTableManager
                 mealType: mealType,
                 mealDescription: mealDescription,
                 mealItemsJson: mealItemsJson,
+                mealPortionsJson: mealPortionsJson,
                 source: source,
                 syncStatus: syncStatus,
                 clientUuid: clientUuid,

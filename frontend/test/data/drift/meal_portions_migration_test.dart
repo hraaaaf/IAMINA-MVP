@@ -60,7 +60,9 @@ void main() {
         expect(logs.single.mealItemsJson, '["couscous"]');
         expect(logs.single.mealPortionsJson, isNull);
         expect(logs.single.clientUuid, '88888888-8888-8888-8888-888888888888');
-        final version = await db.customSelect('PRAGMA user_version').getSingle();
+        final version = await db
+            .customSelect('PRAGMA user_version')
+            .getSingle();
         expect(version.data['user_version'], 8);
       } finally {
         await db.close();
