@@ -82,7 +82,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                padding: const EdgeInsetsDirectional.fromSTEB(20, 12, 20, 32),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 680),
@@ -107,9 +107,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
                           decoration: BoxDecoration(
                             color: AminaTheme.subtleBg(context),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: AminaTheme.divider(context),
-                            ),
+                            border: Border.all(color: AminaTheme.divider(context)),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,16 +130,12 @@ class _EditLogScreenState extends State<EditLogScreen> {
                         const SizedBox(height: 24),
                         FilledButton.icon(
                           key: const Key('save-edit-log-button'),
-                          onPressed: _saving
-                              ? null
-                              : () => _saveChanges(unit, l10n),
+                          onPressed: _saving ? null : () => _saveChanges(unit, l10n),
                           icon: _saving
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
+                                  child: CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Icon(Icons.check_rounded),
                           label: Text(_saving ? l10n.journalSaving : l10n.save),
@@ -257,9 +251,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
         title: Text(level2 ? l10n.journalVeryLowTitle : l10n.journalLowTitle),
-        content: Text(
-          level2 ? l10n.journalVeryLowSafety : l10n.journalLowSafety,
-        ),
+        content: Text(level2 ? l10n.journalVeryLowSafety : l10n.journalLowSafety),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
