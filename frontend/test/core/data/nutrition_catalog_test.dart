@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:iamina/core/data/nutrition_catalog.dart';
+import 'package:amina/core/data/nutrition_catalog.dart';
 
 void main() {
   group('Nutrition Data v2 truthfulness contract', () {
@@ -64,6 +64,25 @@ void main() {
       expect(nutritionSourceFor('morocco_fct_2020'), isNotNull);
       expect(nutritionSourceFor('ciqual_2025'), isNotNull);
       expect(nutritionSourceFor('usda_fdc_2026'), isNotNull);
+    });
+
+    test('portion selections encode and decode without derived nutrients', () {
+      const selection = MealPortionSelection(
+        foodId: 'msemen',
+        portionId: 'one_piece',
+      );
+      final raw = encodeMealPortionSelections(const [selection]);
+      expect(raw, contains('food_id'));
+      expect(raw, contains('portion_id'));
+      expect(raw, isNot(contains('carbs')));
+      expect(raw, isNot(contains('calories')));
+      expect(raw, isNot(contains('glycemic_index')));
+
+      final decoded = decodeMealPortionSelections(raw);
+      expect(decoded, hasLength(1));
+      expect(decoded.single.foodId, 'msemen');
+      expect(decoded.single.portionId, 'one_piece');
+      expect(decoded.single.grams, isNull);
     });
   });
 }
