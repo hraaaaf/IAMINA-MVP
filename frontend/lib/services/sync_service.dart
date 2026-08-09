@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -6,14 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../data/drift/database.dart';
 import 'api_client.dart';
 
-enum SyncUiState {
-  checking,
-  upToDate,
-  pending,
-  syncing,
-  offline,
-  error,
-}
+enum SyncUiState { checking, upToDate, pending, syncing, offline, error }
 
 class SyncService {
   final AppDatabase _db;
@@ -26,14 +20,17 @@ class SyncService {
 
   /// Authoritative patient-facing state. UI must never infer synchronization
   /// from a decorative icon or from local data existing on the device.
-  final ValueNotifier<SyncUiState> state =
-      ValueNotifier<SyncUiState>(SyncUiState.checking);
+  final ValueNotifier<SyncUiState> state = ValueNotifier<SyncUiState>(
+    SyncUiState.checking,
+  );
 
   SyncService(this._db, this._apiClient);
 
   void init() {
     unawaited(refreshState());
-    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((results) {
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
+      results,
+    ) {
       if (_isOffline(results)) {
         state.value = SyncUiState.offline;
         return;
@@ -88,6 +85,7 @@ class SyncService {
           'glycemic_context': log.glycemicContext ?? '',
           'meal_type': log.mealType ?? '',
           'meal_description': log.mealDescription ?? '',
+          'meal_items': _mealItems(log.mealItemsJson),
           'logged_at': (log.loggedAt ?? log.createdAt).toIso8601String(),
           'source': log.source,
           'client_uuid': log.clientUuid,
@@ -126,6 +124,17 @@ class SyncService {
       if (!hadFailure && state.value == SyncUiState.syncing) {
         state.value = SyncUiState.upToDate;
       }
+    }
+  }
+
+  List<String> _mealItems(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return const <String>[];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const <String>[];
+      return decoded.whereType<String>().toList(growable: false);
+    } catch (_) {
+      return const <String>[];
     }
   }
 

@@ -717,10 +717,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get journalMealSnack => 'Collation';
 
   @override
-  String get journalMealNoteLabel => 'Ce que tu as mangé (facultatif)';
+  String get journalMealNoteLabel => 'Note facultative';
 
   @override
-  String get journalMealNoteHint => 'Ex. tajine, pain, salade…';
+  String get journalMealNoteHint => 'Préparation, détail utile…';
 
   @override
   String get journalRemoveMeal => 'Retirer le repas';
@@ -814,4 +814,63 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get journalDetailsTitle => 'Détails facultatifs';
+
+  @override
+  String get journalMealCaptureTitle => 'CE QUE TU AS MANGÉ';
+
+  @override
+  String get journalMealCaptureHint =>
+      'Ajoute uniquement ce que tu as réellement mangé. IAmina ne classe pas les aliments comme bons ou mauvais.';
+
+  @override
+  String get journalMealSelected => 'Ajoutés';
+
+  @override
+  String get journalMealRecent => 'Récents';
+
+  @override
+  String get journalMealHabitual => 'Habituels';
+
+  @override
+  String get journalMealNoRecent =>
+      'Tes aliments récents apparaîtront ici après tes prochains repas.';
+
+  @override
+  String get journalMealNoHabitual =>
+      'Tes aliments habituels apparaîtront ici avec l’usage.';
+
+  @override
+  String get journalMealSearch => 'Rechercher un aliment';
+
+  @override
+  String get journalMealSearchHint => 'Pain, œufs, couscous…';
+
+  @override
+  String get journalMealSearchEmpty =>
+      'Tape au moins 2 caractères pour rechercher.';
+
+  @override
+  String get journalMealPhoto => 'Reconnaître une photo';
+
+  @override
+  String get journalMealPhotoHint =>
+      'La photo est analysée uniquement après ton action et nécessite le consentement IA. Rien n’est ajouté sans ta confirmation.';
+
+  @override
+  String get journalMealPhotoProposal => 'Proposition à vérifier';
+
+  @override
+  String get journalMealPhotoProposalHint =>
+      'Sélectionne ce qui est correct, puis confirme. Utilise la recherche pour corriger ou compléter.';
+
+  @override
+  String get journalMealPhotoConfirm => 'Confirmer la sélection';
+
+  @override
+  String get journalMealPhotoUnavailable =>
+      'Aucun aliment n’a pu être reconnu. Ajoute-les avec la recherche.';
+
+  @override
+  String get journalMealPhotoConsent =>
+      'La reconnaissance photo nécessite le consentement IA. La saisie manuelle reste disponible.';
 }

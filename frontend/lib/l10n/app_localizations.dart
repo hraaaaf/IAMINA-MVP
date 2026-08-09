@@ -1417,13 +1417,13 @@ abstract class AppLocalizations {
   /// No description provided for @journalMealNoteLabel.
   ///
   /// In en, this message translates to:
-  /// **'What you ate (optional)'**
+  /// **'Optional note'**
   String get journalMealNoteLabel;
 
   /// No description provided for @journalMealNoteHint.
   ///
   /// In en, this message translates to:
-  /// **'e.g. tagine, bread, salad…'**
+  /// **'Preparation or another useful detail…'**
   String get journalMealNoteHint;
 
   /// No description provided for @journalRemoveMeal.
@@ -1599,6 +1599,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Optional details'**
   String get journalDetailsTitle;
+
+  /// No description provided for @journalMealCaptureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'WHAT YOU ATE'**
+  String get journalMealCaptureTitle;
+
+  /// No description provided for @journalMealCaptureHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add only what you actually ate. IAmina does not label foods as good or bad.'**
+  String get journalMealCaptureHint;
+
+  /// No description provided for @journalMealSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get journalMealSelected;
+
+  /// No description provided for @journalMealRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get journalMealRecent;
+
+  /// No description provided for @journalMealHabitual.
+  ///
+  /// In en, this message translates to:
+  /// **'Frequent'**
+  String get journalMealHabitual;
+
+  /// No description provided for @journalMealNoRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your recent foods will appear here after your next meals.'**
+  String get journalMealNoRecent;
+
+  /// No description provided for @journalMealNoHabitual.
+  ///
+  /// In en, this message translates to:
+  /// **'Your frequent foods will appear here as you use the journal.'**
+  String get journalMealNoHabitual;
+
+  /// No description provided for @journalMealSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for a food'**
+  String get journalMealSearch;
+
+  /// No description provided for @journalMealSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Bread, eggs, couscous…'**
+  String get journalMealSearchHint;
+
+  /// No description provided for @journalMealSearchEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Type at least 2 characters to search.'**
+  String get journalMealSearchEmpty;
+
+  /// No description provided for @journalMealPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Recognize a meal photo'**
+  String get journalMealPhoto;
+
+  /// No description provided for @journalMealPhotoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The photo is analyzed only after your action and requires AI-processing consent. Nothing is added without your confirmation.'**
+  String get journalMealPhotoHint;
+
+  /// No description provided for @journalMealPhotoProposal.
+  ///
+  /// In en, this message translates to:
+  /// **'Proposal to review'**
+  String get journalMealPhotoProposal;
+
+  /// No description provided for @journalMealPhotoProposalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select what is correct, then confirm. Use search to correct or complete the meal.'**
+  String get journalMealPhotoProposalHint;
+
+  /// No description provided for @journalMealPhotoConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm selection'**
+  String get journalMealPhotoConfirm;
+
+  /// No description provided for @journalMealPhotoUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No food could be recognized. Add it with search instead.'**
+  String get journalMealPhotoUnavailable;
+
+  /// No description provided for @journalMealPhotoConsent.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo recognition requires AI-processing consent. Manual entry remains available.'**
+  String get journalMealPhotoConsent;
 }
 
 class _AppLocalizationsDelegate

@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-09 — P0-JOURNAL-1 is merged and post-merge certified; P0-JOURNAL-2 express metabolic event is certified pre-merge in PR #68.
+> **Last updated:** 2026-08-09 — P0-JOURNAL-2 is merged and post-merge certified; P1-JOURNAL-3 confirmed meal capture is certified pre-merge in PR #69.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,7 +29,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
-| Journal metabolic-event redesign | 22% | 🔵 P0-JOURNAL-2 merge unit | P0-JOURNAL-1 closed via PR #67; PR #68 exact-head CI/drift green; UX 9.2/10; merge/post-merge still required |
+| Journal metabolic-event redesign | 33% | 🔵 P1-JOURNAL-3 merge unit | P0-JOURNAL-1/2 closed; PR #69 exact-head CI/drift green; UX 9.2/10 after remediation; merge/post-merge still required |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -107,8 +107,8 @@ Each Journal LOT is a separate branch/PR. Clinical/safety, UX/UI, privacy/egress
 | LOT | Scope | Status | Acceptance boundary |
 |---|---|---|---|
 | P0-JOURNAL-1 | Clinical truthfulness | ✅ Closed | PR #67 merged as `e8e94f1940d4fca14f6e022f1dac70fb3f161e64`; post-merge CI #1215 + drift #1031 green; no fabricated glucose/nutrition/insulin precision |
-| P0-JOURNAL-2 | Express metabolic event | 🔵 PR #68 merge unit | `glycaemia → context → optional meal → save`; context separate from meal; Sport removed; additive Django + Drift persistence; FR/EN/AR + RTL; exact-head UX 9.2/10; merge/post-merge pending |
-| P1-JOURNAL-3 | Meal capture | ⬜ Planned | recent/habitual/search + confirmed photo recognition; no “food recommendation” implication; user confirms/corrects media recognition |
+| P0-JOURNAL-2 | Express metabolic event | ✅ Closed | PR #68 merged as `9dd5cbe67522f4c8109debb2f831a99ffc268067`; post-merge CI #1239 + drift #1055 green; UX 9.2/10 |
+| P1-JOURNAL-3 | Meal capture | 🔵 PR #69 merge unit | structured recent/habitual/search + governed photo proposal; explicit user confirmation; FR/EN/AR + RTL; Drift v6→v7; exact-head UX 9.2/10; merge/post-merge pending |
 | P1-JOURNAL-4 | Nutrition data v2 | ⬜ Planned | sourced food/portion model, provenance and uncertainty; Morocco/MENA portions; no patient-facing nutrition number without defensible source |
 | P1-JOURNAL-5 | Insulin logging v2 | ⬜ Planned | actual administered dose/context only; no calculator, scoring, optimization or suggested units |
 | P1-JOURNAL-6 | Context intelligence | ⬜ Planned | optional illness/stress/activity/sleep context; avoid repeatedly asking low-value information |
@@ -124,11 +124,17 @@ P0-JOURNAL-1 is **100% closed**: PR #67 merged at `e8e94f1940d4fca14f6e022f1dac7
 
 ### P0-JOURNAL-2 durable closeout contract
 
-PR #68 is the merge unit for the express metabolic-event LOT. The reachable add-log path is now `glycaemia → optional measurement context → optional meal → save`; measurement context and meal taxonomy are persisted separately and neither is inferred when unknown. `Sport` is no longer a meal, treatment details are secondary, insulin remains already-taken logging only, and fabricated nutrition/impact semantics do not return. Django migration `0020` and Drift schema 5→6 add `glycemic_context` without destructive backfill; a real legacy SQLite upgrade test preserves the existing row, legacy meal value and `client_uuid`. FR/EN/AR and RTL were recertified on desktop, tablet, mobile and 360×560.
+PR #68 delivered the express metabolic-event flow and is **100% closed**. It merged as `9dd5cbe67522f4c8109debb2f831a99ffc268067`; post-merge CI #1239 and migration drift #1055 both passed. The reachable path is `glycaemia → optional measurement context → optional meal → save`, with measurement context distinct from meal type, no inferred defaults, already-taken insulin logging only, additive persistence and certified FR/EN/AR RTL behavior at **9.2/10**.
 
-**Pre-merge evidence on product head `63d789fd89bf90a161ddf3bd52312d0f9c37673a`:** PR CI #1233 SUCCESS, PR migration drift #1049 SUCCESS; exact-head visual run `31307687092`, artifact `9036468515`, digest `sha256:6d8b2deab841b92772d13e62aff06d25bc287c6630473d9ae30b2b1900626f4e`; UX Auditor **9.2/10 PASS**; Clinical Safety Reviewer PASS; Database Migration Reviewer PASS.
+### P1-JOURNAL-3 durable closeout contract
 
-P0-JOURNAL-2 is **not 100% closed yet**: this documentation commit intentionally invalidates the preceding exact-head anchors. Final CI + migration drift and Reviewer/Release-Certifier re-anchoring must run on the documentation-final head, followed by expected-head merge and post-merge CI + drift.
+PR #69 is the merge unit for confirmed meal capture. Foods are stored as stable structured IDs only after explicit user action. Recent and habitual foods derive only from previously confirmed structured history; legacy free text is never parsed into invented meal history. Search is trilingual FR/EN/AR, including Arabic RTL. Meal-photo recognition reuses the existing governed `meal_vision` image-egress path; provider output is presented only as an unselected proposal and nothing is added until the user selects and confirms it. No carbohydrate, GI, nutrition score, insulin-dose, Ramadan or personalization behavior is introduced by this LOT.
+
+Persistence remains additive: the server already had `meal_items`; API create/update/batch now expose it, while Drift v6→v7 adds nullable `meal_items_json`. The migration proof preserves legacy glucose, context, note and `client_uuid` without fabricating structured history. The first rendered UX pass scored **8.9/10 and was rejected**; first-use density was remediated by hiding empty Recent/Habitual sections, then the full desktop/tablet/390×844/360×560 FR/AR matrix recertified at **9.2/10**.
+
+**Pre-closeout evidence on product head `2e30e1c2d6056bb10fd4af1c76727248b74c5056`:** CI #1273 SUCCESS; migration drift #1086 SUCCESS; visual run `31311731261` SUCCESS; artifact `9037609098`, digest `sha256:06104d1f84b37b72cb923ad4e25b45c5a092250160ff0f1a71524849e42570d6`; 8/8 FR/AR expanded meal views with zero page/console errors; UX Auditor **9.2/10 PASS**; Clinical Safety Reviewer PASS; Security Auditor PASS; Database Migration Reviewer PASS.
+
+P1-JOURNAL-3 is **not 100% closed yet**: this closeout documentation changes the head and therefore invalidates the preceding exact-head anchors. Final CI + migration drift, exact-head visual recertification, Reviewer/Release-Certifier re-anchoring, expected-head merge and post-merge CI + drift remain mandatory. P1-JOURNAL-4 stays separate.
 
 ---
 
