@@ -776,6 +776,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get journalSaveAnyway => 'Save anyway';
 
   @override
+  String get journalEditTitle => 'Edit measurement';
+
+  @override
+  String get journalEditSubtitle =>
+      'Correct only the facts that were actually recorded.';
+
+  @override
+  String get journalEditContextPreserved =>
+      'Meal, glucose context, time and other details stay unchanged on this screen.';
+
+  @override
+  String get journalNoInsulinTakenHint =>
+      'Leave blank if no insulin was taken for this entry.';
+
+  @override
+  String get journalUpdated => 'Measurement updated.';
+
+  @override
   String get journalInvalidGlucose => 'Enter a valid glucose value.';
 
   @override

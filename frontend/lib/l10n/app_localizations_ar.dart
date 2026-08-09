@@ -775,6 +775,23 @@ class AppLocalizationsAr extends AppLocalizations {
   String get journalSaveAnyway => 'الحفظ على أي حال';
 
   @override
+  String get journalEditTitle => 'تعديل القياس';
+
+  @override
+  String get journalEditSubtitle => 'صحّح فقط المعلومات التي تم تسجيلها فعلاً.';
+
+  @override
+  String get journalEditContextPreserved =>
+      'يبقى الطعام وسياق قياس السكر والوقت وباقي التفاصيل دون تغيير في هذه الشاشة.';
+
+  @override
+  String get journalNoInsulinTakenHint =>
+      'اترك الحقل فارغاً إذا لم يتم أخذ إنسولين لهذا التسجيل.';
+
+  @override
+  String get journalUpdated => 'تم تحديث القياس.';
+
+  @override
   String get journalInvalidGlucose => 'أدخل قيمة صحيحة لسكر الدم.';
 
   @override
