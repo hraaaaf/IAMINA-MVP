@@ -880,7 +880,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String journalNutritionCarbsRange(String low, String high) {
-    return '≈ $low–$high غ كربوهيدرات';
+    return '≈ ⁦$low–$high⁩ غ كربوهيدرات';
   }
 
   @override
