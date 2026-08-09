@@ -57,6 +57,19 @@ Media-assisted meal/glucose capture and voice-assisted notes may exist elsewhere
 
 The existence of an input field does not authorize IAmina to advise a dose or modify treatment.
 
+### Nutrition Data v2 contract
+
+- patient-facing numeric carbohydrate information requires an explicit versioned source and a defensible food/preparation match;
+- unsupported foods remain loggable while numeric nutrition fails closed;
+- patient-confirmed natural portions or grams are stored as observations, while derived nutrition is recalculated from the versioned catalogue rather than persisted as immutable truth;
+- each persisted portion must reference a selected structured meal item; duplicate or orphan portion records are rejected at the API boundary;
+- natural household portions are never silently converted to grams unless a compatible source-backed weight exists;
+- uncertainty is shown as a range when the authoritative source set supports a range rather than a defensible exact value;
+- Arabic numeric ranges preserve low-to-high order under RTL;
+- nutrition output does not produce glycaemic-index scoring, meal-impact scoring, treatment changes or insulin-dose recommendations.
+
+Current curated source/provenance details live in `docs/NUTRITION_DATA_SOURCES.md`.
+
 ## 3. Locale contract
 
 ### Current legacy representation

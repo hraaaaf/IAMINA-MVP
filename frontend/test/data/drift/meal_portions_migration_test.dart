@@ -8,9 +8,9 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
   test(
-    'Drift v6 to latest preserves meal_items migration and existing logs',
+    'Drift v7 to v8 adds meal_portions_json without rewriting existing logs',
     () async {
-      final dir = await Directory.systemTemp.createTemp('iamina-journal-v6-');
+      final dir = await Directory.systemTemp.createTemp('iamina-journal-v7-');
       final file = File('${dir.path}/amina.sqlite');
       final legacy = sqlite.sqlite3.open(file.path);
       legacy.execute('''
@@ -22,6 +22,7 @@ void main() {
         glycemic_context TEXT,
         meal_type TEXT,
         meal_description TEXT,
+        meal_items_json TEXT,
         source TEXT NOT NULL DEFAULT 'manual',
         sync_status TEXT NOT NULL DEFAULT 'pending',
         client_uuid TEXT NOT NULL UNIQUE,
@@ -40,13 +41,14 @@ void main() {
       legacy.execute('''
       INSERT INTO log_entries (
         created_at, blood_sugar, glycemic_context, meal_type,
-        meal_description, source, sync_status, client_uuid
+        meal_description, meal_items_json, source, sync_status, client_uuid
       ) VALUES (
         1723200000, 126.0, 'pre_meal', 'lunch', 'ancienne note',
-        'manual', 'pending', '77777777-7777-7777-7777-777777777777'
+        '["couscous"]', 'manual', 'pending',
+        '88888888-8888-8888-8888-888888888888'
       );
     ''');
-      legacy.execute('PRAGMA user_version = 6;');
+      legacy.execute('PRAGMA user_version = 7;');
       legacy.dispose();
 
       final db = AppDatabase(NativeDatabase(file));
@@ -55,9 +57,9 @@ void main() {
         expect(logs, hasLength(1));
         expect(logs.single.mealDescription, 'ancienne note');
         expect(logs.single.glycemicContext, 'pre_meal');
-        expect(logs.single.mealItemsJson, isNull);
+        expect(logs.single.mealItemsJson, '["couscous"]');
         expect(logs.single.mealPortionsJson, isNull);
-        expect(logs.single.clientUuid, '77777777-7777-7777-7777-777777777777');
+        expect(logs.single.clientUuid, '88888888-8888-8888-8888-888888888888');
         final version = await db
             .customSelect('PRAGMA user_version')
             .getSingle();
