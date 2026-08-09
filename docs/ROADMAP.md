@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-09 — P1-JOURNAL-5 is closed; P1-JOURNAL-6 Context intelligence is the active merge unit in PR #73.
+> **Last updated:** 2026-08-09 — P1-JOURNAL-6 Context intelligence is 100% closed; P1-JOURNAL-7 Ramadan mode v2 is next.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,7 +29,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
-| Journal metabolic-event redesign | 67% | 🔵 P1-JOURNAL-6 merge unit | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5 merged; PR #73 Context intelligence; unknown-by-default context, progressive capture, explicit sync, UX 9.2/10; final head certification + merge/post-merge required |
+| Journal metabolic-event redesign | 67% | 🟢 P1-JOURNAL-6 closed; P1-JOURNAL-7 next | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6 merged; PR #73; merge `95cf4d75226720386d7e8e55acc30c39fdd5017c`; post-merge CI #1342 + drift #1154 green; UX 9.2/10 |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -111,7 +111,7 @@ Each Journal LOT is a separate branch/PR. Clinical/safety, UX/UI, privacy/egress
 | P1-JOURNAL-3 | Meal capture | ✅ Closed | PR #69 merged as `1fb3882b8a6b6c671348414dae119ea06c88ce9b`; structured recent/habitual/search + governed photo proposal; explicit confirmation; FR/EN/AR + RTL; Drift v6→v7; UX 9.2/10 |
 | P1-JOURNAL-4 | Nutrition data v2 | ✅ Closed | PR #71 merged as `9811a3eaf497aa2ee53f53598c1069c478bf8990`; post-merge CI #1323 + drift #1135 green; sourced food/portion model, provenance/uncertainty, Drift v7→v8, Arabic range bidi fix; UX 9.3/10 |
 | P1-JOURNAL-5 | Insulin logging v2 | ✅ Closed | PR #72 merged as `72a248671e5115055c9bc6fc219d0007078906f8`; post-merge CI #1330 + drift #1142 green; actual administered dose only; nullable decimal entry/edit; no presets/calculator/scoring/optimization; safe `client_uuid` snapshot sync; UX 9.2/10 |
-| P1-JOURNAL-6 | Context intelligence | 🔵 PR #73 merge unit | illness/stress/activity/poor sleep are optional positive observations; absence means unknown/not reported; progressive Add + correctable Edit; explicit legacy fatigue remains sync-compatible; UX 9.2/10 |
+| P1-JOURNAL-6 | Context intelligence | ✅ Closed | PR #73 merged as `95cf4d75226720386d7e8e55acc30c39fdd5017c`; post-merge CI #1342 + drift #1154 green; optional positive context, unknown-by-default omission, progressive Add + correctable Edit, legacy fatigue sync-compatible; UX 9.2/10 |
 | P1-JOURNAL-7 | Ramadan mode v2 | ⬜ Planned | Ramadan becomes a profile/period context; meal vocabulary adapts automatically; no per-log pseudo-clinical toggle |
 | P2-JOURNAL-8 | Personal metabolic response | ⬜ Planned | repeated-event associations with explicit evidence count/confidence; observational wording only; no invented causality/treatment advice |
 | P2-JOURNAL-9 | Post-save experience | ⬜ Planned | immediate factual confirmation only; longitudinal insights appear separately only when evidence requirements are met |
@@ -156,7 +156,7 @@ PR #73 is the merge unit for Context intelligence. Illness, unusual stress, phys
 
 The Add flow keeps these signals behind one progressive optional action instead of repeatedly presenting four low-value questions. Edit Log can add or remove the same observations without rewriting meal, time or insulin data. Sync transmits only explicit positive context; legacy explicit fatigue (`tired`) remains compatible while an unreported fatigue state no longer becomes fabricated `ok`. Journal history surfaces only context actually recorded. This LOT does not infer causes from glucose, meals or time and adds no treatment advice, clinical score or AI/provider egress.
 
-**Pre-closeout evidence on product head `e9634dc8974e37e8f87fdb1b07b8062a006caddc`:** CI #1338 SUCCESS; migration drift #1150 SUCCESS; visual audit run `31326091108` SUCCESS on Add/Edit FR/AR desktop/tablet/390×844/360×560; UX Auditor **9.2/10 PASS**. Final documentation changes make these anchors stale, so exact-final-head CI + drift + visual recertification, Reviewer/Release-Certifier re-anchoring, expected-head merge and post-merge gates remain required before the LOT is 100% closed.
+**Final certification evidence:** final product head `fccbdf5bf69bd72c2cf079091b96cd52dcdf3d0c`; CI #1341 SUCCESS; migration drift #1153 SUCCESS; exact-final-head visual audit run `31326260406` SUCCESS on Add/Edit FR/AR desktop/tablet/390×844/360×560; UX Auditor **9.2/10 PASS**; Clinical Safety, Persistence/Migration, Security/Privacy and UX/UI reviewers PASS; Release Certifier CERTIFIED; PR #73 merged with expected-head locking as `95cf4d75226720386d7e8e55acc30c39fdd5017c`; post-merge CI #1342 and migration drift #1154 SUCCESS. P1-JOURNAL-6 is **100% closed**. P1-JOURNAL-7 is next.
 
 
 ---
