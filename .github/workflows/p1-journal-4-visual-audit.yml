@@ -11,7 +11,7 @@ permissions:
 jobs:
   visual-audit:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: frontend
@@ -26,9 +26,25 @@ jobs:
         run: flutter pub get
       - name: Render exact product matrix
         run: flutter test --update-goldens test/audit/p1_journal_4_visual_audit_test.dart
+      - name: Build real-font audit surface
+        run: flutter build web --release -t lib/audit/p1_journal_4_visual_main.dart
+      - name: Capture Chromium FR/AR typography and RTL
+        run: |
+          python3 -m http.server 8080 -d build/web >/tmp/iamina-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          sleep 2
+          npx --yes playwright@1.55.0 install chromium
+          mkdir -p test/audit/web-captures
+          for LANG in fr ar; do
+            npx --yes playwright@1.55.0 screenshot --browser chromium --viewport-size "720,900" --wait-for-timeout 2500 "http://127.0.0.1:8080/?lang=$LANG" "test/audit/web-captures/${LANG}-720x900.png"
+            npx --yes playwright@1.55.0 screenshot --browser chromium --viewport-size "360,560" --wait-for-timeout 2500 "http://127.0.0.1:8080/?lang=$LANG" "test/audit/web-captures/${LANG}-360x560.png"
+          done
       - name: Upload rendered matrix
         uses: actions/upload-artifact@v4
         with:
           name: p1-journal-4-visual-matrix
-          path: frontend/test/audit/goldens/*.png
+          path: |
+            frontend/test/audit/goldens/*.png
+            frontend/test/audit/web-captures/*.png
           if-no-files-found: error
