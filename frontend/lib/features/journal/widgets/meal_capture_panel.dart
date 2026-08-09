@@ -172,22 +172,28 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
             final logs = snapshot.data ?? const <LogEntryData>[];
             final recent = _recentItems(logs);
             final habitual = _habitualItems(logs);
+            if (recent.isEmpty && habitual.isEmpty) {
+              return const SizedBox.shrink();
+            }
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                _historySection(
-                  title: l10n.journalMealRecent,
-                  empty: l10n.journalMealNoRecent,
-                  items: recent,
-                  locale: locale,
-                ),
-                const SizedBox(height: 12),
-                _historySection(
-                  title: l10n.journalMealHabitual,
-                  empty: l10n.journalMealNoHabitual,
-                  items: habitual,
-                  locale: locale,
-                ),
+                if (recent.isNotEmpty)
+                  _historySection(
+                    title: l10n.journalMealRecent,
+                    empty: l10n.journalMealNoRecent,
+                    items: recent,
+                    locale: locale,
+                  ),
+                if (recent.isNotEmpty && habitual.isNotEmpty)
+                  const SizedBox(height: 12),
+                if (habitual.isNotEmpty)
+                  _historySection(
+                    title: l10n.journalMealHabitual,
+                    empty: l10n.journalMealNoHabitual,
+                    items: habitual,
+                    locale: locale,
+                  ),
               ],
             );
           },
