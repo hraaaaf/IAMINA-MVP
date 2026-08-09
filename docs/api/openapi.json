@@ -2043,6 +2043,11 @@
             ],
             "title": "Logged At"
           },
+          "glycemic_context": {
+            "default": "",
+            "title": "Glycemic Context",
+            "type": "string"
+          },
           "meal_type": {
             "title": "Meal Type",
             "type": "string"
@@ -2171,6 +2176,11 @@
             ],
             "title": "Logged At"
           },
+          "glycemic_context": {
+            "default": "",
+            "title": "Glycemic Context",
+            "type": "string"
+          },
           "meal_type": {
             "default": "",
             "title": "Meal Type",
@@ -2286,6 +2296,17 @@
               }
             ],
             "title": "Logged At"
+          },
+          "glycemic_context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glycemic Context"
           },
           "meal_type": {
             "anyOf": [

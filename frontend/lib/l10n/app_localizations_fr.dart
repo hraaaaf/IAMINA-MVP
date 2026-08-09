@@ -657,4 +657,161 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get profileMedicalSectionHint => 'À compléter ou vérifier';
+
+  @override
+  String get journalAddTitle => 'Nouvelle mesure';
+
+  @override
+  String get journalAddSubtitle => 'Enregistre ce qui vient de se passer.';
+
+  @override
+  String get journalGlucose => 'GLYCÉMIE';
+
+  @override
+  String get journalNoGlucoseAssumption =>
+      'Aucune valeur n’est supposée avant ta saisie.';
+
+  @override
+  String get journalLowGlucoseDetected =>
+      'Valeur basse détectée — vérifie la mesure ; le message de sécurité apparaîtra à l’enregistrement.';
+
+  @override
+  String get journalTargetNotInferred =>
+      'Ta cible personnelle n’est pas déduite de cette valeur seule.';
+
+  @override
+  String get journalMeasurementContext => 'CONTEXTE DE LA MESURE';
+
+  @override
+  String get journalContextHint =>
+      'Facultatif — choisis seulement si tu connais le contexte.';
+
+  @override
+  String get journalContextFasting => 'À jeun';
+
+  @override
+  String get journalContextPreMeal => 'Avant repas';
+
+  @override
+  String get journalContextPostMeal => 'Après repas';
+
+  @override
+  String get journalContextOther => 'Autre';
+
+  @override
+  String get journalAddMeal => 'Ajouter un repas';
+
+  @override
+  String get journalMealOptional => 'REPAS (FACULTATIF)';
+
+  @override
+  String get journalMealBreakfast => 'Petit-déjeuner';
+
+  @override
+  String get journalMealLunch => 'Déjeuner';
+
+  @override
+  String get journalMealDinner => 'Dîner';
+
+  @override
+  String get journalMealSnack => 'Collation';
+
+  @override
+  String get journalMealNoteLabel => 'Ce que tu as mangé (facultatif)';
+
+  @override
+  String get journalMealNoteHint => 'Ex. tajine, pain, salade…';
+
+  @override
+  String get journalRemoveMeal => 'Retirer le repas';
+
+  @override
+  String get journalDetailsButton =>
+      'Détails : heure, insuline prise, contexte…';
+
+  @override
+  String get journalToday => 'Aujourd’hui';
+
+  @override
+  String get journalInsulinTaken => 'INSULINE PRISE';
+
+  @override
+  String get journalInsulinExplanation =>
+      'Renseigne uniquement une dose déjà administrée. IAmina ne calcule ni ne juge la dose ici.';
+
+  @override
+  String get journalDoseTaken => 'Dose réellement prise';
+
+  @override
+  String get journalOptional => 'Facultatif';
+
+  @override
+  String get journalAdditionalContext => 'CONTEXTE COMPLÉMENTAIRE (FACULTATIF)';
+
+  @override
+  String get journalSick => 'Malade';
+
+  @override
+  String get journalUnusualStress => 'Stress inhabituel';
+
+  @override
+  String get journalPhysicalActivity => 'Activité physique';
+
+  @override
+  String get journalPoorSleep => 'Mauvais sommeil';
+
+  @override
+  String get journalSave => 'Enregistrer la mesure';
+
+  @override
+  String get journalSaving => 'Enregistrement…';
+
+  @override
+  String get journalVeryLowTitle => 'Valeur très basse détectée';
+
+  @override
+  String get journalLowTitle => 'Valeur basse détectée';
+
+  @override
+  String get journalVeryLowSafety =>
+      'Cette valeur déclenche le niveau de sécurité prioritaire pour une glycémie basse. Vérifie la mesure et suis le plan d’hypoglycémie établi avec ton équipe soignante.';
+
+  @override
+  String get journalLowSafety =>
+      'Cette valeur déclenche le parcours de sécurité pour une glycémie basse. Vérifie la mesure et suis le plan d’hypoglycémie établi avec ton équipe soignante.';
+
+  @override
+  String get journalBackToEntry => 'Revenir à la saisie';
+
+  @override
+  String get journalSaveAnyway => 'Enregistrer quand même';
+
+  @override
+  String get journalInvalidGlucose => 'Saisis une glycémie valide.';
+
+  @override
+  String get journalInvalidInsulin =>
+      'La dose d’insuline saisie n’est pas valide.';
+
+  @override
+  String get journalSaved => 'Mesure enregistrée.';
+
+  @override
+  String get journalDiscardTitle => 'Abandonner la saisie ?';
+
+  @override
+  String get journalDiscardBody =>
+      'Les données non enregistrées seront perdues.';
+
+  @override
+  String get journalContinueEditing => 'Continuer';
+
+  @override
+  String get journalDiscard => 'Abandonner';
+
+  @override
+  String get journalBack => 'Retour';
+
+  @override
+  String get journalDetailsTitle => 'Détails facultatifs';
 }

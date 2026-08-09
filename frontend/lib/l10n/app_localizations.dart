@@ -1305,6 +1305,300 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Complete or review'**
   String get profileMedicalSectionHint;
+
+  /// No description provided for @journalAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New reading'**
+  String get journalAddTitle;
+
+  /// No description provided for @journalAddSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Record what just happened.'**
+  String get journalAddSubtitle;
+
+  /// No description provided for @journalGlucose.
+  ///
+  /// In en, this message translates to:
+  /// **'GLUCOSE'**
+  String get journalGlucose;
+
+  /// No description provided for @journalNoGlucoseAssumption.
+  ///
+  /// In en, this message translates to:
+  /// **'No value is assumed before you enter one.'**
+  String get journalNoGlucoseAssumption;
+
+  /// No description provided for @journalLowGlucoseDetected.
+  ///
+  /// In en, this message translates to:
+  /// **'Low value detected — verify the reading; the safety message will appear when you save.'**
+  String get journalLowGlucoseDetected;
+
+  /// No description provided for @journalTargetNotInferred.
+  ///
+  /// In en, this message translates to:
+  /// **'Your personal target is not inferred from this value alone.'**
+  String get journalTargetNotInferred;
+
+  /// No description provided for @journalMeasurementContext.
+  ///
+  /// In en, this message translates to:
+  /// **'MEASUREMENT CONTEXT'**
+  String get journalMeasurementContext;
+
+  /// No description provided for @journalContextHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional — choose only if you know the context.'**
+  String get journalContextHint;
+
+  /// No description provided for @journalContextFasting.
+  ///
+  /// In en, this message translates to:
+  /// **'Fasting'**
+  String get journalContextFasting;
+
+  /// No description provided for @journalContextPreMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Before meal'**
+  String get journalContextPreMeal;
+
+  /// No description provided for @journalContextPostMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'After meal'**
+  String get journalContextPostMeal;
+
+  /// No description provided for @journalContextOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get journalContextOther;
+
+  /// No description provided for @journalAddMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a meal'**
+  String get journalAddMeal;
+
+  /// No description provided for @journalMealOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'MEAL (OPTIONAL)'**
+  String get journalMealOptional;
+
+  /// No description provided for @journalMealBreakfast.
+  ///
+  /// In en, this message translates to:
+  /// **'Breakfast'**
+  String get journalMealBreakfast;
+
+  /// No description provided for @journalMealLunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Lunch'**
+  String get journalMealLunch;
+
+  /// No description provided for @journalMealDinner.
+  ///
+  /// In en, this message translates to:
+  /// **'Dinner'**
+  String get journalMealDinner;
+
+  /// No description provided for @journalMealSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Snack'**
+  String get journalMealSnack;
+
+  /// No description provided for @journalMealNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'What you ate (optional)'**
+  String get journalMealNoteLabel;
+
+  /// No description provided for @journalMealNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. tagine, bread, salad…'**
+  String get journalMealNoteHint;
+
+  /// No description provided for @journalRemoveMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove meal'**
+  String get journalRemoveMeal;
+
+  /// No description provided for @journalDetailsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Details: time, insulin taken, context…'**
+  String get journalDetailsButton;
+
+  /// No description provided for @journalToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get journalToday;
+
+  /// No description provided for @journalInsulinTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'INSULIN TAKEN'**
+  String get journalInsulinTaken;
+
+  /// No description provided for @journalInsulinExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter only a dose you already took. IAmina does not calculate or judge the dose here.'**
+  String get journalInsulinExplanation;
+
+  /// No description provided for @journalDoseTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Dose actually taken'**
+  String get journalDoseTaken;
+
+  /// No description provided for @journalOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get journalOptional;
+
+  /// No description provided for @journalAdditionalContext.
+  ///
+  /// In en, this message translates to:
+  /// **'ADDITIONAL CONTEXT (OPTIONAL)'**
+  String get journalAdditionalContext;
+
+  /// No description provided for @journalSick.
+  ///
+  /// In en, this message translates to:
+  /// **'Sick'**
+  String get journalSick;
+
+  /// No description provided for @journalUnusualStress.
+  ///
+  /// In en, this message translates to:
+  /// **'Unusual stress'**
+  String get journalUnusualStress;
+
+  /// No description provided for @journalPhysicalActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Physical activity'**
+  String get journalPhysicalActivity;
+
+  /// No description provided for @journalPoorSleep.
+  ///
+  /// In en, this message translates to:
+  /// **'Poor sleep'**
+  String get journalPoorSleep;
+
+  /// No description provided for @journalSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save reading'**
+  String get journalSave;
+
+  /// No description provided for @journalSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving…'**
+  String get journalSaving;
+
+  /// No description provided for @journalVeryLowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Very low value detected'**
+  String get journalVeryLowTitle;
+
+  /// No description provided for @journalLowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Low value detected'**
+  String get journalLowTitle;
+
+  /// No description provided for @journalVeryLowSafety.
+  ///
+  /// In en, this message translates to:
+  /// **'This value triggers the priority low-glucose safety path. Verify the reading and follow the hypoglycaemia plan agreed with your care team.'**
+  String get journalVeryLowSafety;
+
+  /// No description provided for @journalLowSafety.
+  ///
+  /// In en, this message translates to:
+  /// **'This value triggers the low-glucose safety path. Verify the reading and follow the hypoglycaemia plan agreed with your care team.'**
+  String get journalLowSafety;
+
+  /// No description provided for @journalBackToEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to entry'**
+  String get journalBackToEntry;
+
+  /// No description provided for @journalSaveAnyway.
+  ///
+  /// In en, this message translates to:
+  /// **'Save anyway'**
+  String get journalSaveAnyway;
+
+  /// No description provided for @journalInvalidGlucose.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid glucose value.'**
+  String get journalInvalidGlucose;
+
+  /// No description provided for @journalInvalidInsulin.
+  ///
+  /// In en, this message translates to:
+  /// **'The insulin dose entered is not valid.'**
+  String get journalInvalidInsulin;
+
+  /// No description provided for @journalSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading saved.'**
+  String get journalSaved;
+
+  /// No description provided for @journalDiscardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard this entry?'**
+  String get journalDiscardTitle;
+
+  /// No description provided for @journalDiscardBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved data will be lost.'**
+  String get journalDiscardBody;
+
+  /// No description provided for @journalContinueEditing.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get journalContinueEditing;
+
+  /// No description provided for @journalDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get journalDiscard;
+
+  /// No description provided for @journalBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get journalBack;
+
+  /// No description provided for @journalDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional details'**
+  String get journalDetailsTitle;
 }
 
 class _AppLocalizationsDelegate

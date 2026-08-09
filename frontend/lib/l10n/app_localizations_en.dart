@@ -647,4 +647,158 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileMedicalSectionHint => 'Complete or review';
+
+  @override
+  String get journalAddTitle => 'New reading';
+
+  @override
+  String get journalAddSubtitle => 'Record what just happened.';
+
+  @override
+  String get journalGlucose => 'GLUCOSE';
+
+  @override
+  String get journalNoGlucoseAssumption =>
+      'No value is assumed before you enter one.';
+
+  @override
+  String get journalLowGlucoseDetected =>
+      'Low value detected — verify the reading; the safety message will appear when you save.';
+
+  @override
+  String get journalTargetNotInferred =>
+      'Your personal target is not inferred from this value alone.';
+
+  @override
+  String get journalMeasurementContext => 'MEASUREMENT CONTEXT';
+
+  @override
+  String get journalContextHint =>
+      'Optional — choose only if you know the context.';
+
+  @override
+  String get journalContextFasting => 'Fasting';
+
+  @override
+  String get journalContextPreMeal => 'Before meal';
+
+  @override
+  String get journalContextPostMeal => 'After meal';
+
+  @override
+  String get journalContextOther => 'Other';
+
+  @override
+  String get journalAddMeal => 'Add a meal';
+
+  @override
+  String get journalMealOptional => 'MEAL (OPTIONAL)';
+
+  @override
+  String get journalMealBreakfast => 'Breakfast';
+
+  @override
+  String get journalMealLunch => 'Lunch';
+
+  @override
+  String get journalMealDinner => 'Dinner';
+
+  @override
+  String get journalMealSnack => 'Snack';
+
+  @override
+  String get journalMealNoteLabel => 'What you ate (optional)';
+
+  @override
+  String get journalMealNoteHint => 'e.g. tagine, bread, salad…';
+
+  @override
+  String get journalRemoveMeal => 'Remove meal';
+
+  @override
+  String get journalDetailsButton => 'Details: time, insulin taken, context…';
+
+  @override
+  String get journalToday => 'Today';
+
+  @override
+  String get journalInsulinTaken => 'INSULIN TAKEN';
+
+  @override
+  String get journalInsulinExplanation =>
+      'Enter only a dose you already took. IAmina does not calculate or judge the dose here.';
+
+  @override
+  String get journalDoseTaken => 'Dose actually taken';
+
+  @override
+  String get journalOptional => 'Optional';
+
+  @override
+  String get journalAdditionalContext => 'ADDITIONAL CONTEXT (OPTIONAL)';
+
+  @override
+  String get journalSick => 'Sick';
+
+  @override
+  String get journalUnusualStress => 'Unusual stress';
+
+  @override
+  String get journalPhysicalActivity => 'Physical activity';
+
+  @override
+  String get journalPoorSleep => 'Poor sleep';
+
+  @override
+  String get journalSave => 'Save reading';
+
+  @override
+  String get journalSaving => 'Saving…';
+
+  @override
+  String get journalVeryLowTitle => 'Very low value detected';
+
+  @override
+  String get journalLowTitle => 'Low value detected';
+
+  @override
+  String get journalVeryLowSafety =>
+      'This value triggers the priority low-glucose safety path. Verify the reading and follow the hypoglycaemia plan agreed with your care team.';
+
+  @override
+  String get journalLowSafety =>
+      'This value triggers the low-glucose safety path. Verify the reading and follow the hypoglycaemia plan agreed with your care team.';
+
+  @override
+  String get journalBackToEntry => 'Back to entry';
+
+  @override
+  String get journalSaveAnyway => 'Save anyway';
+
+  @override
+  String get journalInvalidGlucose => 'Enter a valid glucose value.';
+
+  @override
+  String get journalInvalidInsulin => 'The insulin dose entered is not valid.';
+
+  @override
+  String get journalSaved => 'Reading saved.';
+
+  @override
+  String get journalDiscardTitle => 'Discard this entry?';
+
+  @override
+  String get journalDiscardBody => 'Unsaved data will be lost.';
+
+  @override
+  String get journalContinueEditing => 'Keep editing';
+
+  @override
+  String get journalDiscard => 'Discard';
+
+  @override
+  String get journalBack => 'Back';
+
+  @override
+  String get journalDetailsTitle => 'Optional details';
 }
