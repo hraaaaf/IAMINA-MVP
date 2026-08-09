@@ -38,7 +38,7 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/feat/p1-journal-meal-capture' &&
-      github.event.head_commit.message == 'ci(temp): fix P1-JOURNAL-3 patch extraction'
+      github.event.head_commit.message == 'ci(temp): resolve P1-JOURNAL-3 nested test quoting'
     name: P1-JOURNAL-3 branch-only builder
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -83,6 +83,16 @@ jobs:
               line[10:] if line.startswith('          ') else line
               for line in raw.splitlines()
           ) + '\n'
+          code = code.replace(
+              "Path('frontend/test/data/drift/meal_items_migration_test.dart').write_text(r'''import 'dart:io';",
+              "Path('frontend/test/data/drift/meal_items_migration_test.dart').write_text(r\"\"\"import 'dart:io';",
+              1,
+          )
+          code = code.replace(
+              "\n}\n''')\n\nPath('frontend/test/features/meal_capture_panel_test.dart')",
+              "\n}\n\"\"\")\n\nPath('frontend/test/features/meal_capture_panel_test.dart')",
+              1,
+          )
           Path('/tmp/p1j3_apply.py').write_text(code)
           print(f'extracted {len(code)} bytes')
           PY
@@ -97,7 +107,6 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          # Test helper uses Drift Value explicitly.
           p = Path('frontend/test/features/meal_capture_panel_test.dart')
           s = p.read_text()
           if "package:drift/drift.dart" not in s:
@@ -107,7 +116,6 @@ jobs:
             )
           p.write_text(s)
 
-          # Ensure the one-shot HTTP client used for photo recognition is closed.
           p = Path('frontend/lib/services/api_client.dart')
           s = p.read_text()
           old = """      final streamed = await http.Client()\n          .send(req)\n          .timeout(TimeoutInterceptor._kTimeout);\n      final body = await streamed.stream.bytesToString();\n      if (streamed.statusCode >= 200 && streamed.statusCode < 300) {\n        return MealAnalysisResult.fromJson(\n          jsonDecode(body) as Map<String, dynamic>,\n        );\n      }\n      return null;\n"""
