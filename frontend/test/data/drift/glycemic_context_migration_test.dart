@@ -52,10 +52,12 @@ void main() {
       expect(logs.single.bloodSugar, 126);
       expect(logs.single.mealType, 'Déjeuner');
       expect(logs.single.glycemicContext, isNull);
+      expect(logs.single.mealItemsJson, isNull);
+      expect(logs.single.mealPortionsJson, isNull);
       expect(logs.single.clientUuid, '55555555-5555-5555-5555-555555555555');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 7);
+      expect(version.data['user_version'], 8);
     } finally {
       await db.close();
       await dir.delete(recursive: true);
