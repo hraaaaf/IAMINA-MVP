@@ -9,6 +9,20 @@ import 'api_client.dart';
 
 enum SyncUiState { checking, upToDate, pending, syncing, offline, error }
 
+Map<String, Object> journalContextFieldsForSync({
+  required bool isSick,
+  required bool isStressed,
+  required bool isActive,
+  required String? sleepQuality,
+}) {
+  return <String, Object>{
+    if (isSick) 'is_sick': 'yes',
+    if (isStressed) 'stressed': 'yes',
+    if (isActive) 'exercised': 'yes',
+    if (sleepQuality == 'bad') 'sleep_quality': 'bad',
+  };
+}
+
 class SyncService {
   final AppDatabase _db;
   final ApiClient _apiClient;
@@ -90,11 +104,12 @@ class SyncService {
           'logged_at': (log.loggedAt ?? log.createdAt).toIso8601String(),
           'source': log.source,
           'client_uuid': log.clientUuid,
-          'fatigue_level': (log.fatigueLevel ?? 0) > 0 ? 'tired' : 'ok',
-          'is_sick': log.isSick ? 'yes' : 'no',
-          'stressed': log.isStressed ? 'yes' : 'no',
-          'sleep_quality': log.sleepQuality ?? 'good',
-          'exercised': log.isActive ? 'yes' : 'no',
+          ...journalContextFieldsForSync(
+            isSick: log.isSick,
+            isStressed: log.isStressed,
+            isActive: log.isActive,
+            sleepQuality: log.sleepQuality,
+          ),
         };
       }).toList();
 
@@ -154,7 +169,8 @@ class SyncService {
         final gramsRaw = value['grams'];
         final grams = gramsRaw is num ? gramsRaw.toDouble() : null;
         if (foodId is! String || foodId.trim().isEmpty) continue;
-        if (portionId is! String? || (portionId != null && portionId.trim().isEmpty)) {
+        if (portionId is! String? ||
+            (portionId != null && portionId.trim().isEmpty)) {
           continue;
         }
         if (grams != null && (!grams.isFinite || grams <= 0 || grams > 3000)) {
