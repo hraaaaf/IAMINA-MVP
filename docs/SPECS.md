@@ -39,6 +39,22 @@ Core capabilities already represented in the application include:
 - IAmina companion/chat surfaces;
 - document/import and image/audio-assisted flows where currently wired.
 
+### Metabolic-event logging contract
+
+The add-log surface records **observed or patient-entered facts**. It does not convert a single reading, meal category or entered insulin quantity into autonomous clinical advice.
+
+Current invariants:
+
+- no glucose value is fabricated before the patient enters one;
+- a single non-low reading is not labeled as being inside a personal target unless an authoritative personalized target contract exists;
+- low-glucose entry safety distinguishes `<54 mg/dL` from `54–69 mg/dL` deterministically before persistence;
+- meal logging does not manufacture carbohydrate grams, exact glycaemic-index values or a meal-impact score from categorical food metadata;
+- insulin on this surface is the quantity the patient says was already taken, not a suggested, scored or optimized dose;
+- saving a log does not automatically request a generative clinical verdict about that reading;
+- `client_uuid` remains the offline-sync idempotency key.
+
+Media-assisted meal/glucose capture and voice-assisted notes may exist elsewhere in the codebase, but they are not a license to bypass the outbound AI/media authorization contract. If re-exposed on metabolic-event capture, the user must retain confirmation/correction control and any external egress must pass the sanctioned patient/purpose/modality/consent and minimization boundary.
+
 The existence of an input field does not authorize IAmina to advise a dose or modify treatment.
 
 ## 3. Locale contract
