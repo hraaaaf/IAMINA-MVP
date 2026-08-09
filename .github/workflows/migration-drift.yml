@@ -39,7 +39,7 @@ jobs:
 
   journal-4-builder:
     name: P1-JOURNAL-4 builder
-    if: github.event_name == 'push' && github.event.head_commit.message == 'activate P1-JOURNAL-4 builder'
+    if: github.event_name == 'push' && github.event.head_commit.message == 'activate P1-JOURNAL-4 builder v2'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
