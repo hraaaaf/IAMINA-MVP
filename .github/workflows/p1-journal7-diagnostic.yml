@@ -46,10 +46,42 @@ jobs:
           start = raw.index(start_marker) + len(start_marker)
           end = raw.index(end_marker, start)
           block = raw[start:end]
-          source = '\n'.join(
-              line[10:] if line.startswith('          ') else line
-              for line in block.splitlines()
-          ) + '\n'
+
+          # Only remove the YAML step indentation from Python code. Physical lines
+          # inside Python triple-quoted Dart strings already carry their intended
+          # source indentation and must be preserved verbatim.
+          output = []
+          triple = None
+          for raw_line in block.splitlines():
+              line = raw_line
+              if triple is None and line.startswith('          '):
+                  line = line[10:]
+              output.append(line)
+
+              cursor = 0
+              while cursor < len(line):
+                  if triple is not None:
+                      close = line.find(triple, cursor)
+                      if close < 0:
+                          break
+                      cursor = close + 3
+                      triple = None
+                      continue
+
+                  single = line.find("'''", cursor)
+                  double = line.find('"""', cursor)
+                  candidates = [
+                      (pos, marker)
+                      for pos, marker in ((single, "'''"), (double, '"""'))
+                      if pos >= 0
+                  ]
+                  if not candidates:
+                      break
+                  pos, triple = min(candidates, key=lambda item: item[0])
+                  cursor = pos + 3
+
+          source = '\n'.join(output) + '\n'
+          compile(source, '<journal7-extracted>', 'exec')
           Path('journal7-extracted.py').write_text(source)
           PY
 
