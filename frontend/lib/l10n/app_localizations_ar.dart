@@ -904,4 +904,57 @@ class AppLocalizationsAr extends AppLocalizations {
   String journalNutritionSource(String source) {
     return 'المصدر: $source';
   }
+
+  @override
+  String get ramadanProfileSection => 'فترة رمضان';
+
+  @override
+  String get ramadanProfileHint =>
+      'اختياري. تُكيّف هذه الفترة أسماء الوجبات في السجل. لا تفترض IAmina أنك صائم.';
+
+  @override
+  String get ramadanNotConfigured => 'غير محددة';
+
+  @override
+  String get ramadanStartDate => 'البداية';
+
+  @override
+  String get ramadanEndDate => 'النهاية';
+
+  @override
+  String get ramadanChooseDate => 'اختر تاريخًا';
+
+  @override
+  String get ramadanClear => 'مسح الفترة';
+
+  @override
+  String get ramadanSave => 'حفظ';
+
+  @override
+  String get ramadanSaved => 'تم حفظ فترة رمضان.';
+
+  @override
+  String get ramadanSavedLocalOnly =>
+      'تم الحفظ على هذا الجهاز. لم يتم تحديث الخادم.';
+
+  @override
+  String get ramadanNeedsBothDates =>
+      'اختر تاريخ البداية وتاريخ النهاية معًا، أو امسحهما معًا.';
+
+  @override
+  String get ramadanDateOrderError =>
+      'يجب أن يكون تاريخ البداية قبل تاريخ النهاية أو مساويًا له.';
+
+  @override
+  String get journalRamadanMealVocabularyHint =>
+      'تتكيف أسماء الوجبات مع الفترة المحفوظة في ملفك. لا يُفترض أنك صائم.';
+
+  @override
+  String get journalMealSuhoor => 'السحور';
+
+  @override
+  String get journalMealIftar => 'الإفطار';
+
+  @override
+  String get journalMealOther => 'أخرى';
 }

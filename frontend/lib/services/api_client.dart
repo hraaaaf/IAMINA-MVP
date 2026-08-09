@@ -171,6 +171,18 @@ class ApiClient {
 
   ChopperClient get client => _client;
 
+  Future<bool> patchProfile(Map<String, dynamic> patch) async {
+    try {
+      final response = await _client.patch(
+        Uri.parse('/api/v1/profile'),
+        body: patch,
+      );
+      return response.isSuccessful;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Envoie un log unique au backend.
   Future<bool> syncLogEntry(Map<String, dynamic> log) async {
     try {

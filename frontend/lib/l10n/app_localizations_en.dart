@@ -906,4 +906,57 @@ class AppLocalizationsEn extends AppLocalizations {
   String journalNutritionSource(String source) {
     return 'Source: $source';
   }
+
+  @override
+  String get ramadanProfileSection => 'Ramadan period';
+
+  @override
+  String get ramadanProfileHint =>
+      'Optional. This period adapts meal names in the journal. IAmina does not infer that you are fasting.';
+
+  @override
+  String get ramadanNotConfigured => 'Not configured';
+
+  @override
+  String get ramadanStartDate => 'Start';
+
+  @override
+  String get ramadanEndDate => 'End';
+
+  @override
+  String get ramadanChooseDate => 'Choose a date';
+
+  @override
+  String get ramadanClear => 'Clear period';
+
+  @override
+  String get ramadanSave => 'Save';
+
+  @override
+  String get ramadanSaved => 'Ramadan period saved.';
+
+  @override
+  String get ramadanSavedLocalOnly =>
+      'Saved on this device. The server was not updated.';
+
+  @override
+  String get ramadanNeedsBothDates =>
+      'Choose both a start and end date, or clear both.';
+
+  @override
+  String get ramadanDateOrderError =>
+      'The start date must be on or before the end date.';
+
+  @override
+  String get journalRamadanMealVocabularyHint =>
+      'Meal names follow the period saved in your profile. Fasting is not assumed.';
+
+  @override
+  String get journalMealSuhoor => 'Suhoor';
+
+  @override
+  String get journalMealIftar => 'Iftar';
+
+  @override
+  String get journalMealOther => 'Other';
 }
