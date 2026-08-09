@@ -1,14 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart';
 
 /// Evidence tier for one patient-facing nutrition value.
 ///
 /// A value may be shown only when it has a source and an explicit evidence
 /// tier. Missing or weakly mapped values fail closed instead of being guessed.
-enum NutritionEvidenceTier {
-  analytical,
-  compiled,
-  label,
-}
+enum NutritionEvidenceTier { analytical, compiled, label }
 
 class NutritionSourceRef {
   final String id;
@@ -105,6 +103,24 @@ class MealNutritionProfile {
   });
 
   bool get hasDocumentedCarbohydrate => carbohydrate != null;
+}
+
+class MealPortionSelection {
+  final String foodId;
+  final String? portionId;
+  final double? grams;
+
+  const MealPortionSelection({
+    required this.foodId,
+    this.portionId,
+    this.grams,
+  }) : assert(portionId != null || grams != null);
+
+  Map<String, Object> toJson() => <String, Object>{
+    'food_id': foodId,
+    if (portionId != null) 'portion_id': portionId!,
+    if (grams != null) 'grams': grams!,
+  };
 }
 
 class CarbEstimate {
@@ -272,6 +288,43 @@ MealNutritionProfile? nutritionProfileFor(String foodId) =>
 
 NutritionSourceRef? nutritionSourceFor(String sourceId) =>
     nutritionSources[sourceId];
+
+String encodeMealPortionSelections(Iterable<MealPortionSelection> selections) =>
+    jsonEncode(selections.map((selection) => selection.toJson()).toList());
+
+List<MealPortionSelection> decodeMealPortionSelections(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return const <MealPortionSelection>[];
+  try {
+    final decoded = jsonDecode(raw);
+    if (decoded is! List) return const <MealPortionSelection>[];
+    final result = <MealPortionSelection>[];
+    for (final value in decoded) {
+      if (value is! Map) continue;
+      final foodId = value['food_id'];
+      final portionId = value['portion_id'];
+      final gramsRaw = value['grams'];
+      final grams = gramsRaw is num ? gramsRaw.toDouble() : null;
+      if (foodId is! String || foodId.trim().isEmpty) continue;
+      if (portionId is! String? || (portionId != null && portionId.trim().isEmpty)) {
+        continue;
+      }
+      if (grams != null && (!grams.isFinite || grams <= 0 || grams > 3000)) {
+        continue;
+      }
+      if (portionId == null && grams == null) continue;
+      result.add(
+        MealPortionSelection(
+          foodId: foodId,
+          portionId: portionId,
+          grams: grams,
+        ),
+      );
+    }
+    return result;
+  } catch (_) {
+    return const <MealPortionSelection>[];
+  }
+}
 
 CarbEstimate? estimateCarbsForGrams(String foodId, double grams) {
   if (!grams.isFinite || grams <= 0) return null;
