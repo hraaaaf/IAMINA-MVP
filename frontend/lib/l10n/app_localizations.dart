@@ -1546,6 +1546,36 @@ abstract class AppLocalizations {
   /// **'Save anyway'**
   String get journalSaveAnyway;
 
+  /// No description provided for @journalEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit measurement'**
+  String get journalEditTitle;
+
+  /// No description provided for @journalEditSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct only the facts that were actually recorded.'**
+  String get journalEditSubtitle;
+
+  /// No description provided for @journalEditContextPreserved.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal, glucose context, time and other details stay unchanged on this screen.'**
+  String get journalEditContextPreserved;
+
+  /// No description provided for @journalNoInsulinTakenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave blank if no insulin was taken for this entry.'**
+  String get journalNoInsulinTakenHint;
+
+  /// No description provided for @journalUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Measurement updated.'**
+  String get journalUpdated;
+
   /// No description provided for @journalInvalidGlucose.
   ///
   /// In en, this message translates to:

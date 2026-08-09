@@ -70,19 +70,29 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
                 errors.append("Missing client_uuid for one entry")
                 continue
 
-            # Idempotence : Skip if already exists (success but no-op)
-            if LogEntry.objects.filter(client_uuid=entry_data.client_uuid).exists():
-                synced_uuids.append(entry_data.client_uuid)
-                continue
+            existing = LogEntry.objects.filter(client_uuid=entry_data.client_uuid).first()
 
             try:
-                LogEntry.objects.create(patient=request.user, **entry_data.dict())
+                if existing is not None:
+                    # Batch sync is a full local snapshot. Replaying the same UUID is
+                    # idempotent, while an edited local snapshot must update the same
+                    # patient's server row rather than being silently treated as a no-op.
+                    if existing.patient_id != request.user.id:
+                        errors.append("client_uuid is already owned by another patient")
+                        continue
+                    snapshot = entry_data.dict()
+                    snapshot.pop("client_uuid", None)
+                    for field, value in snapshot.items():
+                        setattr(existing, field, value)
+                    existing.save()
+                else:
+                    LogEntry.objects.create(patient=request.user, **entry_data.dict())
+                    track(
+                        EVT_LOG_CREATED,
+                        patient_id=request.user.id,
+                        props={"client_uuid": str(entry_data.client_uuid)},
+                    )
                 synced_uuids.append(entry_data.client_uuid)
-                track(
-                    EVT_LOG_CREATED,
-                    patient_id=request.user.id,
-                    props={"client_uuid": str(entry_data.client_uuid)},
-                )
             except Exception as e:
                 errors.append(f"Error syncing {entry_data.client_uuid}: {str(e)}")
 
