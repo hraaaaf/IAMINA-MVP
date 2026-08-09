@@ -1,4 +1,4 @@
-name: P1-JOURNAL-3 visual certification final
+name: P1-JOURNAL-3 closeout docs
 
 on:
   push:
@@ -6,85 +6,143 @@ on:
     paths: [.github/workflows/p1-journal-3-visual-final.yml]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  capture:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 35
+  closeout:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 2e30e1c2d6056bb10fd4af1c76727248b74c5056
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.41.0'
-          channel: stable
-          cache: true
-      - name: Build
-        working-directory: frontend
+          ref: feat/p1-journal-meal-capture
+          fetch-depth: 0
+      - name: Update canonical roadmap and handoffs
         run: |
-          flutter pub get
-          flutter build web --release --dart-define=IAMINA_AUDIT_ACCESS=true
-      - name: Install capture runtime
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('docs/ROADMAP.md')
+          s = p.read_text()
+          s = s.replace(
+            '> **Last updated:** 2026-08-09 — P0-JOURNAL-1 is merged and post-merge certified; P0-JOURNAL-2 express metabolic event is certified pre-merge in PR #68.',
+            '> **Last updated:** 2026-08-09 — P0-JOURNAL-2 is merged and post-merge certified; P1-JOURNAL-3 confirmed meal capture is certified pre-merge in PR #69.'
+          )
+          s = s.replace(
+            '| Journal metabolic-event redesign | 22% | 🔵 P0-JOURNAL-2 merge unit | P0-JOURNAL-1 closed via PR #67; PR #68 exact-head CI/drift green; UX 9.2/10; merge/post-merge still required |',
+            '| Journal metabolic-event redesign | 33% | 🔵 P1-JOURNAL-3 merge unit | P0-JOURNAL-1/2 closed; PR #69 exact-head CI/drift green; UX 9.2/10 after remediation; merge/post-merge still required |'
+          )
+          s = s.replace(
+            '| P0-JOURNAL-2 | Express metabolic event | 🔵 PR #68 merge unit | `glycaemia → context → optional meal → save`; context separate from meal; Sport removed; additive Django + Drift persistence; FR/EN/AR + RTL; exact-head UX 9.2/10; merge/post-merge pending |',
+            '| P0-JOURNAL-2 | Express metabolic event | ✅ Closed | PR #68 merged as `9dd5cbe67522f4c8109debb2f831a99ffc268067`; post-merge CI #1239 + drift #1055 green; UX 9.2/10 |'
+          )
+          s = s.replace(
+            '| P1-JOURNAL-3 | Meal capture | ⬜ Planned | recent/habitual/search + confirmed photo recognition; no “food recommendation” implication; user confirms/corrects media recognition |',
+            '| P1-JOURNAL-3 | Meal capture | 🔵 PR #69 merge unit | structured recent/habitual/search + governed photo proposal; explicit user confirmation; FR/EN/AR + RTL; Drift v6→v7; exact-head UX 9.2/10; merge/post-merge pending |'
+          )
+          start = s.index('### P0-JOURNAL-2 durable closeout contract')
+          end = s.index('\n---\n\n# P0 visual UX remediation', start)
+          replacement = '''### P0-JOURNAL-2 durable closeout contract
+
+PR #68 delivered the express metabolic-event flow and is **100% closed**. It merged as `9dd5cbe67522f4c8109debb2f831a99ffc268067`; post-merge CI #1239 and migration drift #1055 both passed. The reachable path is `glycaemia → optional measurement context → optional meal → save`, with measurement context distinct from meal type, no inferred defaults, already-taken insulin logging only, additive persistence and certified FR/EN/AR RTL behavior at **9.2/10**.
+
+### P1-JOURNAL-3 durable closeout contract
+
+PR #69 is the merge unit for confirmed meal capture. Foods are stored as stable structured IDs only after explicit user action. Recent and habitual foods derive only from previously confirmed structured history; legacy free text is never parsed into invented meal history. Search is trilingual FR/EN/AR, including Arabic RTL. Meal-photo recognition reuses the existing governed `meal_vision` image-egress path; provider output is presented only as an unselected proposal and nothing is added until the user selects and confirms it. No carbohydrate, GI, nutrition score, insulin-dose, Ramadan or personalization behavior is introduced by this LOT.
+
+Persistence remains additive: the server already had `meal_items`; API create/update/batch now expose it, while Drift v6→v7 adds nullable `meal_items_json`. The migration proof preserves legacy glucose, context, note and `client_uuid` without fabricating structured history. The first rendered UX pass scored **8.9/10 and was rejected**; first-use density was remediated by hiding empty Recent/Habitual sections, then the full desktop/tablet/390×844/360×560 FR/AR matrix recertified at **9.2/10**.
+
+**Pre-closeout evidence on product head `2e30e1c2d6056bb10fd4af1c76727248b74c5056`:** CI #1273 SUCCESS; migration drift #1086 SUCCESS; visual run `31311731261` SUCCESS; artifact `9037609098`, digest `sha256:06104d1f84b37b72cb923ad4e25b45c5a092250160ff0f1a71524849e42570d6`; 8/8 FR/AR expanded meal views with zero page/console errors; UX Auditor **9.2/10 PASS**; Clinical Safety Reviewer PASS; Security Auditor PASS; Database Migration Reviewer PASS.
+
+P1-JOURNAL-3 is **not 100% closed yet**: this closeout documentation changes the head and therefore invalidates the preceding exact-head anchors. Final CI + migration drift, exact-head visual recertification, Reviewer/Release-Certifier re-anchoring, expected-head merge and post-merge CI + drift remain mandatory. P1-JOURNAL-4 stays separate.
+'''
+          s = s[:start] + replacement + s[end:]
+          p.write_text(s)
+
+          Path('status-Achraf.md').write_text('''# IAmina — Current Status for Achraf
+
+> **Updated:** 2026-08-09
+> **Authority:** `docs/ROADMAP.md` is the single forward tracker; this file is a concise handoff only.
+
+## Current LOT
+
+**P1-JOURNAL-3 — Confirmed meal capture**
+
+- Branch: `feat/p1-journal-meal-capture`
+- PR: #69
+- Base includes P0-JOURNAL-2 merged and post-merge certified at `9dd5cbe67522f4c8109debb2f831a99ffc268067`.
+- Pre-closeout product head: `2e30e1c2d6056bb10fd4af1c76727248b74c5056`
+- CI #1273: SUCCESS
+- Migration drift #1086: SUCCESS
+- Visual run `31311731261`: SUCCESS
+- Artifact `9037609098`, 8/8 FR/AR desktop/tablet/mobile/small renders, zero runtime errors
+- UX Auditor: **9.2/10 PASS** after an 8.9/10 first pass was remediated
+- Clinical Safety Reviewer: PASS
+- Security Auditor: PASS
+- Database Migration Reviewer: PASS
+
+## Delivered
+
+- Structured confirmed food IDs with FR/EN/AR labels and Arabic search/RTL.
+- Recent and habitual foods derive only from confirmed structured history.
+- First-use hides empty history instead of adding noise before search.
+- Photo recognition reuses the governed meal-vision egress path and requires existing AI consent.
+- Recognition output is an unselected proposal; explicit selection + confirmation is mandatory before meal data changes.
+- Free meal note remains separate from structured foods.
+- Server `meal_items` API/sync contract exposed without a new Django migration.
+- Drift v6→v7 adds nullable `meal_items_json`; legacy rows and `client_uuid` are preserved.
+- No nutrition numbers, food recommendations, insulin advice, Ramadan or personalization were added.
+
+## Remaining before 100%
+
+This closeout-doc commit creates a new head. Rerun exact-head CI + drift and visual certification, re-anchor Clinical/Security/DB/UX reviewers, run Release Certifier, merge PR #69 with expected-head locking, then require post-merge CI + drift.
+
+## Next LOT after closure
+
+**P1-JOURNAL-4 — Nutrition data v2**: sourced food/portion model with provenance and uncertainty; Morocco/MENA portions; no patient-facing nutrition number without defensible source.
+''')
+
+          Path('status.md').write_text('''# IAmina — Session Status
+
+> **Updated:** 2026-08-09
+> **Authority:** `docs/ROADMAP.md` is canonical. This file exists only as a restart handoff.
+
+## Active work
+
+P1-JOURNAL-3 is in PR #69 on `feat/p1-journal-meal-capture`. P0-JOURNAL-2 is merged and post-merge certified at `9dd5cbe67522f4c8109debb2f831a99ffc268067`.
+
+## Verified pre-closeout state
+
+- Product SHA: `2e30e1c2d6056bb10fd4af1c76727248b74c5056`
+- CI #1273: SUCCESS
+- Drift #1086: SUCCESS
+- Visual run `31311731261`: SUCCESS
+- Artifact `9037609098`, 8/8 FR/AR desktop/tablet/390×844/360×560 renders, zero page/console errors
+- UX score: **9.2/10 PASS** after first-use density remediation
+- Clinical Safety: PASS
+- Security: PASS
+- Database Migration: PASS
+
+## Do next
+
+1. Treat this closeout documentation as a new head; previous exact-head evidence is stale.
+2. Run CI + migration drift on the exact documentation-final head.
+3. Recapture the FR/AR visual matrix on that exact head.
+4. Re-anchor UX/Clinical/Security/DB reviewer conclusions.
+5. Run Release Certifier.
+6. Merge PR #69 with `expected_head_sha`.
+7. Verify `main` equals the merge result and wait for post-merge CI + migration drift.
+8. Only then mark P1-JOURNAL-3 100% and move to P1-JOURNAL-4.
+
+## Scope guard
+
+Do not fold Nutrition data v2, insulin logging v2, Ramadan v2 or longitudinal personalization into P1-JOURNAL-3.
+''')
+          PY
+      - name: Commit closeout docs to feature branch
         run: |
-          npm init -y >/dev/null 2>&1
-          npm install playwright@1.54.2
-          npx playwright install --with-deps chromium
-      - name: Serve
-        working-directory: frontend/build/web
-        run: |
-          python3 -m http.server 8080 --bind 127.0.0.1 >/tmp/iamina-web.log 2>&1 &
-          for i in {1..30}; do curl -fsS http://127.0.0.1:8080/ >/dev/null && exit 0; sleep 1; done
-          exit 1
-      - name: Capture expanded meal matrix
-        run: |
-          mkdir -p /tmp/p1journal3visualfinal
-          cat >/tmp/p1journal3visualfinal/capture.cjs <<'EOF'
-          const { chromium } = require(process.cwd() + '/node_modules/playwright');
-          const fs=require('fs'); const path=require('path');
-          const views=[['desktop',1440,1000],['tablet',768,1024],['mobile',390,844],['small',360,560]];
-          const langs=[['fr','fr-FR'],['ar','ar-MA']];
-          (async()=>{
-            const b=await chromium.launch({headless:true}); const report=[];
-            for(const [vp,w,h] of views) for(const [lang,locale] of langs){
-              const c=await b.newContext({viewport:{width:w,height:h},locale,timezoneId:'Africa/Casablanca'}); const p=await c.newPage();
-              const pageErrors=[]; const consoleErrors=[];
-              p.on('pageerror',e=>pageErrors.push(String(e)));
-              p.on('console',m=>{if(m.type()==='error'&&!String(m.text()).includes('ERR_CONNECTION_REFUSED')) consoleErrors.push(m.text())});
-              await p.goto(`http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#/ajouter`,{waitUntil:'domcontentloaded',timeout:30000});
-              await p.waitForTimeout(4500);
-              let click;
-              if(vp==='desktop') click=lang==='ar'?[1040,394]:[400,394];
-              else if(vp==='tablet') click=[384,394];
-              else click=[Math.floor(w/2),436];
-              const before=await p.screenshot();
-              await p.mouse.click(click[0],click[1]);
-              await p.waitForTimeout(900);
-              const after=await p.screenshot();
-              const expanded=!before.equals(after);
-              const topFile=`${vp}-${lang}__meal-top.png`;
-              await p.screenshot({path:path.join('/tmp/p1journal3visualfinal',topFile)});
-              await p.mouse.move(Math.floor(w/2),Math.floor(h*.65));
-              await p.mouse.wheel(0,650);
-              await p.waitForTimeout(700);
-              const lowerFile=`${vp}-${lang}__meal-lower.png`;
-              await p.screenshot({path:path.join('/tmp/p1journal3visualfinal',lowerFile)});
-              report.push({vp,lang,w,h,url:p.url(),click,expanded,flutterViews:await p.locator('flutter-view').count(),pageErrors,consoleErrors,topFile,lowerFile});
-              await c.close();
-            }
-            await b.close();
-            fs.writeFileSync('/tmp/p1journal3visualfinal/report.json',JSON.stringify(report,null,2));
-            if(report.some(x=>!x.expanded||x.flutterViews!==1||x.pageErrors.length||x.consoleErrors.length)) process.exit(1);
-          })();
-          EOF
-          node /tmp/p1journal3visualfinal/capture.cjs
-      - name: Record source
-        if: always()
-        run: echo 2e30e1c2d6056bb10fd4af1c76727248b74c5056 >/tmp/p1journal3visualfinal/source-sha.txt
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: p1-journal-3-visual-final
-          path: /tmp/p1journal3visualfinal
-          retention-days: 14
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/ROADMAP.md status-Achraf.md status.md
+          git diff --cached --quiet && exit 0
+          git commit -m 'docs(journal): record P1-JOURNAL-3 certification state'
+          git push origin HEAD:feat/p1-journal-meal-capture
