@@ -100,6 +100,52 @@ class JournalMealPortionTests(TestCase):
         self.assertEqual(response.status_code, 422)
         self.assertEqual(LogEntry.objects.filter(patient=self.user).count(), 0)
 
+    def test_portion_for_unselected_food_is_rejected(self):
+        response = self.client.post(
+            "/api/v1/logs",
+            data={
+                "blood_sugar": 141,
+                "meal_items": ["apple"],
+                "meal_portions": [{"food_id": "banana", "grams": 120}],
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(LogEntry.objects.filter(patient=self.user).count(), 0)
+
+    def test_duplicate_portions_for_same_food_are_rejected(self):
+        response = self.client.post(
+            "/api/v1/logs",
+            data={
+                "blood_sugar": 141,
+                "meal_items": ["apple"],
+                "meal_portions": [
+                    {"food_id": "apple", "grams": 120},
+                    {"food_id": "apple", "grams": 140},
+                ],
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(LogEntry.objects.filter(patient=self.user).count(), 0)
+
+    def test_patch_cannot_orphan_existing_portion(self):
+        entry = LogEntry.objects.create(
+            patient=self.user,
+            blood_sugar=150,
+            meal_items=["apple"],
+            meal_portions=[{"food_id": "apple", "grams": 120.0}],
+        )
+        response = self.client.patch(
+            f"/api/v1/logs/{entry.id}",
+            data={"meal_items": ["banana"]},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 422)
+        entry.refresh_from_db()
+        self.assertEqual(entry.meal_items, ["apple"])
+        self.assertEqual(entry.meal_portions[0]["food_id"], "apple")
+
     def test_batch_sync_preserves_portions_and_client_uuid(self):
         uuid = "77777777-7777-7777-7777-777777777777"
         response = self.client.post(
