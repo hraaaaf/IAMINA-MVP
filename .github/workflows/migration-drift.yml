@@ -39,7 +39,7 @@ jobs:
 
   p1-journal-3-closeout:
     name: P1-JOURNAL-3 closeout
-    if: github.event_name == 'push' && github.event.head_commit.message == 'ci(temp): activate P1-JOURNAL-3 closeout'
+    if: github.event_name == 'push' && github.event.head_commit.message == 'activate P1-JOURNAL-3 closeout v2'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
