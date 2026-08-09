@@ -38,9 +38,9 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/feat/p1-journal-meal-capture' &&
-      github.event.head_commit.message == 'ci(temp): split P1-JOURNAL-3 focused gates'
+      github.event.head_commit.message == 'ci(temp): run split P1-JOURNAL-3 gates on shared runner'
     name: P1-JOURNAL-3 branch-only builder
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: write
