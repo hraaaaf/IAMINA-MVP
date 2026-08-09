@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact product SHA
         uses: actions/checkout@v4
         with:
-          ref: f909fac3cc57af81955fdee9bbaee4f87689734c
+          ref: 6293335446708c22a8b24df75e38caa299609953
           path: product
       - name: Overlay audit-only harness
         run: |
@@ -57,7 +57,7 @@ jobs:
       - name: Upload rendered matrix
         uses: actions/upload-artifact@v4
         with:
-          name: p1-journal-4-visual-matrix-f909fac
+          name: p1-journal-4-visual-matrix-6293335
           path: |
             product/frontend/test/audit/goldens/*.png
             product/frontend/test/audit/web-captures/*.png
