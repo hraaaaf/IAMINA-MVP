@@ -31,6 +31,13 @@ class LogEntry(models.Model):
         ('yes', 'Oui'),
     ]
 
+    GLYCEMIC_CONTEXT_CHOICES = [
+        ('fasting', 'À jeun'),
+        ('pre_meal', 'Avant repas'),
+        ('post_meal', 'Après repas'),
+        ('other', 'Autre contexte'),
+    ]
+
     MEAL_TYPE_CHOICES = [
         ('fasting', 'À jeun'),
         ('breakfast', 'Petit-déjeuner'),
@@ -67,7 +74,17 @@ class LogEntry(models.Model):
         help_text="Heure de la mesure (si differente de maintenant)"
     )
 
-    # Meal context
+    # Measurement context is distinct from the optional meal category.
+    glycemic_context = models.CharField(
+        max_length=12,
+        choices=GLYCEMIC_CONTEXT_CHOICES,
+        blank=True,
+        default='',
+        help_text="Contexte de la mesure: à jeun, avant/après repas ou autre"
+    )
+
+    # Meal category. Legacy choices remain readable for existing records; new
+    # Journal writes use breakfast/lunch/dinner/snack only until Ramadan v2.
     meal_type = models.CharField(
         max_length=10,
         choices=MEAL_TYPE_CHOICES,
