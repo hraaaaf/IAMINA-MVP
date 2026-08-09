@@ -5,14 +5,7 @@ import '../../../core/data/nutrition_catalog.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 
-String debugNutritionCarbRangeForTest(
-  AppLocalizations l10n,
-  Locale locale,
-  String low,
-  String high,
-) => _localizedCarbRange(l10n, locale, low, high);
-
-String _localizedCarbRange(
+String formatLocalizedCarbRange(
   AppLocalizations l10n,
   Locale locale,
   String low,
@@ -236,7 +229,7 @@ class _FoodPortionCardState extends State<_FoodPortionCard> {
                   ? l10n.journalNutritionCarbsExact(
                       estimate.low.toStringAsFixed(1),
                     )
-                  : _localizedCarbRange(
+                  : formatLocalizedCarbRange(
                       l10n,
                       widget.locale,
                       estimate.low.toStringAsFixed(1),
