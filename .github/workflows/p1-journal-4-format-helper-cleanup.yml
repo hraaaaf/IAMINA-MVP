@@ -1,58 +1,13 @@
 name: P1-JOURNAL-4 formatter cleanup
 
 on:
-  push:
-    branches: [audit/p1-journal-4-visual]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  cleanup:
+  provenance:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.41.0'
-          channel: stable
-          cache: true
-      - name: Rename test-facing helper into product formatter
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch origin feat/p1-journal-nutrition-v2
-          test "$(git rev-parse origin/feat/p1-journal-nutrition-v2)" = "adf3417595c2963204ca9a874122344c98adeb28"
-          git checkout --detach adf3417595c2963204ca9a874122344c98adeb28
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('frontend/lib/features/journal/widgets/nutrition_portion_editor.dart')
-          text = p.read_text()
-          text = text.replace('debugNutritionCarbRangeForTest', 'formatLocalizedCarbRange')
-          text = text.replace('=> _localizedCarbRange(l10n, locale, low, high);\n\nString _localizedCarbRange(', '{\n  if (locale.languageCode != \'ar\') {\n    return l10n.journalNutritionCarbsRange(low, high);\n  }\n  final lri = String.fromCharCode(0x2066);\n  final pdi = String.fromCharCode(0x2069);\n  return l10n.journalNutritionCarbsRange(\'$lri$low\', \'$high$pdi\');\n}\n\nString _removedLocalizedCarbRange(')
-          start = text.find('String _removedLocalizedCarbRange(')
-          if start != -1:
-              end = text.find('class NutritionPortionEditor', start)
-              if end == -1:
-                  raise SystemExit('class marker missing')
-              text = text[:start] + text[end:]
-          text = text.replace('_localizedCarbRange(\n                      l10n,', 'formatLocalizedCarbRange(\n                      l10n,')
-          p.write_text(text)
-          t = Path('frontend/test/l10n/nutrition_bidi_contract_test.dart')
-          t.write_text(t.read_text().replace('debugNutritionCarbRangeForTest', 'formatLocalizedCarbRange'))
-          PY
-          cd frontend
-          flutter pub get
-          dart format lib/features/journal/widgets/nutrition_portion_editor.dart test/l10n/nutrition_bidi_contract_test.dart
-          flutter analyze --no-fatal-infos
-          flutter test --no-pub test/l10n/nutrition_bidi_contract_test.dart test/core/data/nutrition_catalog_test.dart
-          cd ..
-          git diff --check
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add frontend/lib/features/journal/widgets/nutrition_portion_editor.dart frontend/test/l10n/nutrition_bidi_contract_test.dart
-          git commit -m 'refactor(journal): name nutrition range formatter explicitly'
-          git push --force-with-lease=refs/heads/feat/p1-journal-nutrition-v2:adf3417595c2963204ca9a874122344c98adeb28 origin HEAD:refs/heads/feat/p1-journal-nutrition-v2
+      - run: echo 'One-shot formatter cleanup completed; retained only for audit provenance.'
