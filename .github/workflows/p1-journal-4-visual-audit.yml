@@ -12,23 +12,37 @@ jobs:
   visual-audit:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
-    defaults:
-      run:
-        working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout audit harness
+        uses: actions/checkout@v4
+        with:
+          path: audit
+      - name: Checkout exact product SHA
+        uses: actions/checkout@v4
+        with:
+          ref: 95ee22e9d51fd7c85b75be79dca8db07e5b0c94e
+          path: product
+      - name: Overlay audit-only harness
+        run: |
+          mkdir -p product/frontend/test/audit product/frontend/lib/audit
+          cp audit/frontend/test/audit/p1_journal_4_visual_audit_test.dart product/frontend/test/audit/
+          cp audit/frontend/lib/audit/p1_journal_4_visual_main.dart product/frontend/lib/audit/
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.0'
           channel: stable
           cache: true
       - name: Resolve dependencies
+        working-directory: product/frontend
         run: flutter pub get
       - name: Render exact product matrix
+        working-directory: product/frontend
         run: flutter test --update-goldens test/audit/p1_journal_4_visual_audit_test.dart
       - name: Build real-font audit surface
+        working-directory: product/frontend
         run: flutter build web --release -t lib/audit/p1_journal_4_visual_main.dart
       - name: Capture Chromium FR/AR typography and RTL
+        working-directory: product/frontend
         run: |
           python3 -m http.server 8080 -d build/web >/tmp/iamina-http.log 2>&1 &
           SERVER_PID=$!
@@ -43,8 +57,8 @@ jobs:
       - name: Upload rendered matrix
         uses: actions/upload-artifact@v4
         with:
-          name: p1-journal-4-visual-matrix
+          name: p1-journal-4-visual-matrix-95ee22e
           path: |
-            frontend/test/audit/goldens/*.png
-            frontend/test/audit/web-captures/*.png
+            product/frontend/test/audit/goldens/*.png
+            product/frontend/test/audit/web-captures/*.png
           if-no-files-found: error
