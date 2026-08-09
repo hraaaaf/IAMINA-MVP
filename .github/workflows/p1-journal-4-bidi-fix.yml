@@ -1,8 +1,6 @@
 name: P1-JOURNAL-4 bidi repair
 
 on:
-  push:
-    branches: [audit/p1-journal-4-visual]
   workflow_dispatch:
 
 permissions:
@@ -12,52 +10,4 @@ jobs:
   repair:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.41.0'
-          channel: stable
-          cache: true
-      - name: Rebuild clean product head from certified parent
-        shell: bash
-        run: |
-          set -euo pipefail
-          git checkout --detach e1e5c96973f58f8daba81731339fa56776af5d2c
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('frontend/lib/l10n/app_ar.arb')
-          text = p.read_text()
-          old = '"journalNutritionCarbsRange": "≈ {low}–{high} غ كربوهيدرات"'
-          new = '"journalNutritionCarbsRange": "≈ ⁦{low}–{high}⁩ غ كربوهيدرات"'
-          if text.count(old) != 1:
-              raise SystemExit(f'expected exactly one nutrition range source, found {text.count(old)}')
-          p.write_text(text.replace(old, new))
-          PY
-          cd frontend
-          flutter pub get
-          flutter gen-l10n
-          mkdir -p test/l10n
-          cat > test/l10n/nutrition_bidi_contract_test.dart <<'DART'
-          import 'package:amina/l10n/app_localizations_ar.dart';
-          import 'package:flutter_test/flutter_test.dart';
-
-          void main() {
-            test('Arabic nutrition ranges isolate the numeric span in LTR order', () {
-              final text = AppLocalizationsAr().journalNutritionCarbsRange('22.1', '26.4');
-              expect(text, contains('\u206622.1–26.4\u2069'));
-              expect(text, isNot(contains('26.4–22.1')));
-            });
-          }
-          DART
-          flutter test --no-pub test/l10n/nutrition_bidi_contract_test.dart test/core/data/nutrition_catalog_test.dart
-          cd ..
-          git diff --check
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add frontend/lib/l10n/app_ar.arb frontend/lib/l10n/app_localizations_ar.dart frontend/test/l10n/nutrition_bidi_contract_test.dart
-          git commit -m 'fix(journal): preserve Arabic nutrition range order'
-          git fetch origin feat/p1-journal-nutrition-v2
-          test "$(git rev-parse origin/feat/p1-journal-nutrition-v2)" = "e7f2f52c794cb84df72f2ac9e40e8a193d9eefa2"
-          git push --force-with-lease=refs/heads/feat/p1-journal-nutrition-v2:e7f2f52c794cb84df72f2ac9e40e8a193d9eefa2 origin HEAD:refs/heads/feat/p1-journal-nutrition-v2
+      - run: echo 'One-shot repair completed; retained for audit provenance only.'
