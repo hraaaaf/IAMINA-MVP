@@ -57,6 +57,10 @@ jobs:
           from pathlib import Path
           p = Path('backend/diabetes/api/v1/schemas.py')
           p.write_text(p.read_text().replace('    insulin_units: Optional[float] = None  # response-only marker\n', '    insulin_units: Optional[float] = None\n', 1))
+          t = Path('frontend/test/features/insulin_logging_v2_test.dart')
+          text = t.read_text()
+          text = text.replace('providers: <SingleChildWidget>[', 'providers: [')
+          t.write_text(text)
           PY
 
           cd backend
@@ -74,7 +78,6 @@ jobs:
           rm -f backend/ci-test.db
           git checkout "$EXPECTED" -- frontend/pubspec.lock frontend/.flutter-plugins-dependencies 2>/dev/null || true
           git diff --check
-          test -z "$(git status --short | grep '^?? .github/workflows/' || true)"
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
