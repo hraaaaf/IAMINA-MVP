@@ -1,0 +1,86 @@
+name: P1-JOURNAL-5 docs closeout
+
+on:
+  push:
+    branches: [audit/p1-journal-5-docs-closeout]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  closeout-docs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p1-journal-insulin-v2
+          fetch-depth: 0
+      - name: Patch canonical docs on exact product head
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED=506e33acd455978a962eb36d4aa4e2e90c640dd7
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one anchor, got {count}: {old[:80]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          roadmap = 'docs/ROADMAP.md'
+          replace_once(
+              roadmap,
+              '> **Last updated:** 2026-08-09 — P1-JOURNAL-3 is merged; P1-JOURNAL-4 Nutrition Data v2 is the active merge unit in PR #71.',
+              '> **Last updated:** 2026-08-09 — P1-JOURNAL-4 is merged; P1-JOURNAL-5 Insulin logging v2 is the active merge unit in PR #72.',
+          )
+          replace_once(
+              roadmap,
+              '| Journal metabolic-event redesign | 44% | 🔵 P1-JOURNAL-4 merge unit | P0-JOURNAL-1/2 + P1-JOURNAL-3 merged; PR #71 Nutrition Data v2; exact-code visual recertification 9.3/10; final docs/head gates + merge/post-merge required |',
+              '| Journal metabolic-event redesign | 44% | 🔵 P1-JOURNAL-5 merge unit | P0-JOURNAL-1/2 + P1-JOURNAL-3/4 merged; PR #72 Insulin logging v2; factual nullable decimal dose, safe edit/sync semantics, exact-head UX 9.2/10; reviewer/certifier + merge/post-merge required |',
+          )
+          replace_once(
+              roadmap,
+              '| P1-JOURNAL-4 | Nutrition data v2 | 🔵 PR #71 merge unit | sourced food/portion model, provenance and uncertainty; fail-closed unsupported foods; Drift v7→v8; Arabic range bidi fix; exact-code UX 9.3/10; final head gates + merge/post-merge pending |',
+              '| P1-JOURNAL-4 | Nutrition data v2 | ✅ Closed | PR #71 merged as `9811a3eaf497aa2ee53f53598c1069c478bf8990`; post-merge CI #1323 + drift #1135 green; sourced food/portion model, provenance/uncertainty, Drift v7→v8, Arabic range bidi fix; UX 9.3/10 |',
+          )
+          replace_once(
+              roadmap,
+              '| P1-JOURNAL-5 | Insulin logging v2 | ⬜ Planned | actual administered dose/context only; no calculator, scoring, optimization or suggested units |',
+              '| P1-JOURNAL-5 | Insulin logging v2 | 🔵 PR #72 merge unit | actual administered dose only; nullable decimal entry/edit; no presets, calculator, scoring, optimization or suggested units; same-patient `client_uuid` edits sync as idempotent snapshots; cross-patient collision rejected; exact-head UX 9.2/10 |',
+          )
+          replace_once(
+              roadmap,
+              'Final documentation changes invalidate earlier exact-head CI anchors, so exact-final-head CI + migration drift, Reviewer/Release-Certifier re-anchoring, expected-head merge and post-merge CI + drift remain mandatory before P1-JOURNAL-4 may be declared 100% closed.',
+              'P1-JOURNAL-4 is **100% closed** through PR #71, merged as `9811a3eaf497aa2ee53f53598c1069c478bf8990`; post-merge CI #1323 and migration drift #1135 both passed. P1-JOURNAL-5 branched from that verified main.',
+          )
+          anchor = '\n---\n\n# P0 visual UX remediation — CLOSED'
+          section = '''\n### P1-JOURNAL-5 durable merge-unit contract\n\nPR #72 is the merge unit for factual insulin logging. `insulin_units` represents only a dose the patient says was already administered; it is nullable and decimal-preserving in create, edit and history surfaces. The patient-facing flow offers no suggested units, presets, dose calculator, dose score, correction advice or treatment optimization. Empty/zero client input is stored as no administered dose, while negative API input is rejected. Editing insulin does not rewrite meal context or the legacy Ramadan field.\n\nOffline/server reconciliation remains keyed by `client_uuid`: a later snapshot for the same patient updates the existing log rather than being acknowledged as a no-op, while a UUID collision owned by another patient is rejected. This makes post-sync insulin corrections durable without weakening patient isolation. No schema migration or new external egress is introduced.\n\n**Pre-closeout evidence on product head `506e33acd455978a962eb36d4aa4e2e90c640dd7`:** CI #1326 SUCCESS; migration drift #1138 SUCCESS; exact-head visual run `31323080266` SUCCESS; artifact `9040740915`, digest `sha256:2b45a9a30d6bc088aefe2d8b4e3eab114453b9fe178ca64fcf93ec0424f57746`; Add + Edit across FR/AR desktop/tablet/390×844/360×560; UX **9.2/10 PASS**. Reviewer re-anchoring, Release Certifier, expected-head merge and post-merge CI + drift remain mandatory before this LOT is 100% closed.\n'''
+          p = Path(roadmap)
+          text = p.read_text()
+          if text.count(anchor) != 1:
+              raise SystemExit('ROADMAP insertion anchor mismatch')
+          p.write_text(text.replace(anchor, section + anchor, 1))
+
+          specs = 'docs/SPECS.md'
+          specs_anchor = 'The existence of an input field does not authorize IAmina to advise a dose or modify treatment.\n\n### Nutrition Data v2 contract'
+          specs_insert = '''The existence of an input field does not authorize IAmina to advise a dose or modify treatment.\n\n### Insulin logging v2 contract\n\n- `insulin_units` is patient-entered historical fact: the quantity the patient reports having already administered;\n- the field is nullable and decimal-preserving across create, edit, history and sync; the client does not coerce an absent dose to `0`;\n- the patient-facing client treats blank or zero input as no administered dose, while negative API input is invalid;\n- no preset units, increment/decrement stepper, dose score, calculator, correction suggestion or treatment optimization is exposed by Journal;\n- editing the insulin value must preserve unrelated meal/context data and legacy Ramadan state;\n- batch synchronization treats a later snapshot with the same `client_uuid` and same patient as an idempotent update, not a silent no-op; a `client_uuid` owned by another patient must fail closed;\n- no insulin log may be transformed into autonomous dosing advice.\n\n### Nutrition Data v2 contract'''
+          replace_once(specs, specs_anchor, specs_insert)
+
+          medical = 'docs/MEDICAL_DATA_PLAN.md'
+          old = '''## 6. Treatment and insulin data\n\nIAmina may store patient-entered treatment/insulin context when needed for logging and interpretation.\n\nThat data must not be used to generate autonomous dose recommendations or treatment changes.\n\nRequests asking IAmina to decide or adjust dosing/treatment must follow deterministic refusal/safety behavior and appropriate professional follow-up guidance defined by the product safety policy.'''
+          new = '''## 6. Treatment and insulin data\n\nIAmina may store patient-entered treatment/insulin context when needed for logging and interpretation. In Journal, an insulin quantity is an **observed historical fact**: the amount the patient reports was already administered. It is not a recommendation, target, correction factor or optimization output.\n\nDurable insulin-data requirements:\n\n- absence of a reported dose remains null rather than being fabricated as `0`;\n- decimal patient-entered quantities must not be silently rounded in create, edit, history or sync;\n- negative administered-dose input is invalid;\n- editing an insulin quantity must not rewrite unrelated meal/context observations;\n- offline reconciliation may update the same patient's log through its stable `client_uuid`, but cross-patient UUID ownership must fail closed;\n- no preset, score, calculator, suggested unit or treatment-adjustment logic may be inferred from logged insulin data.\n\nThat data must not be used to generate autonomous dose recommendations or treatment changes.\n\nRequests asking IAmina to decide or adjust dosing/treatment must follow deterministic refusal/safety behavior and appropriate professional follow-up guidance defined by the product safety policy.'''
+          replace_once(medical, old, new)
+          PY
+          git diff --check
+          git diff -- docs/ROADMAP.md docs/SPECS.md docs/MEDICAL_DATA_PLAN.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/ROADMAP.md docs/SPECS.md docs/MEDICAL_DATA_PLAN.md
+          git commit -m 'docs(journal): document insulin logging v2 contract'
+          git push --force-with-lease=refs/heads/feat/p1-journal-insulin-v2:$EXPECTED origin HEAD:refs/heads/feat/p1-journal-insulin-v2
