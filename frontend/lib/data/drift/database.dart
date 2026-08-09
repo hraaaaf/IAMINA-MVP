@@ -13,21 +13,22 @@ part 'database.g.dart';
 class LogEntries extends Table {
   IntColumn get id => integer().autoIncrement()();
   DateTimeColumn get createdAt => dateTime()();
-  RealColumn get bloodSugar => real()(); 
+  RealColumn get bloodSugar => real()();
   RealColumn get insulinUnits => real().nullable()();
+  TextColumn get glycemicContext => text().nullable()();
   TextColumn get mealType => text().nullable()();
   TextColumn get mealDescription => text().nullable()();
-  TextColumn get source => text().withDefault(const Constant('manual'))(); 
-  TextColumn get syncStatus => text().withDefault(const Constant('pending'))(); 
-  TextColumn get clientUuid => text().unique()(); 
-  DateTimeColumn get loggedAt => dateTime().nullable()(); 
+  TextColumn get source => text().withDefault(const Constant('manual'))();
+  TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
+  TextColumn get clientUuid => text().unique()();
+  DateTimeColumn get loggedAt => dateTime().nullable()();
   IntColumn get fatigueLevel => integer().nullable()();
-  BoolColumn get isSick => boolean().withDefault(const Constant(false))(); 
-  BoolColumn get isStressed => boolean().withDefault(const Constant(false))(); 
+  BoolColumn get isSick => boolean().withDefault(const Constant(false))();
+  BoolColumn get isStressed => boolean().withDefault(const Constant(false))();
   BoolColumn get isTired => boolean().withDefault(const Constant(false))();
   BoolColumn get isActive => boolean().withDefault(const Constant(false))();
   BoolColumn get ramadanMode => boolean().withDefault(const Constant(false))();
-  TextColumn get sleepQuality => text().nullable()(); 
+  TextColumn get sleepQuality => text().nullable()();
   IntColumn get syncAttempts => integer().withDefault(const Constant(0))();
   BoolColumn get errorSync => boolean().withDefault(const Constant(false))();
 }
@@ -37,14 +38,18 @@ class PatientProfiles extends Table {
   IntColumn get userId => integer()();
   @override
   Set<Column> get primaryKey => {userId};
-  TextColumn get preferredLanguage => text().withDefault(const Constant('fr'))();
+  TextColumn get preferredLanguage =>
+      text().withDefault(const Constant('fr'))();
   DateTimeColumn get updatedAt => dateTime()();
   TextColumn get diabetesType => text().nullable()();
   RealColumn get targetRangeLow => real().withDefault(const Constant(70.0))();
   RealColumn get targetRangeHigh => real().withDefault(const Constant(180.0))();
-  TextColumn get unitPreference => text().withDefault(const Constant('mg/dL'))();
+  TextColumn get unitPreference =>
+      text().withDefault(const Constant('mg/dL'))();
+
   /// Treatment modality: 'insulin' | 'tablets' | 'lifestyle'
   TextColumn get treatment => text().nullable()();
+
   /// RGPD Art. 7 — explicit AI processing consent timestamp.
   /// null = no consent given or withdrawn.
   DateTimeColumn get aiConsentGivenAt => dateTime().nullable()();
@@ -69,16 +74,19 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   // Default constructor using drift_flutter's recommended setup
-  AppDatabase.defaults() : super(driftDatabase(
-    name: 'amina',
-    web: DriftWebOptions(
-      sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-      driftWorker: Uri.parse('drift_worker.js'),
-    ),
-  ));
+  AppDatabase.defaults()
+    : super(
+        driftDatabase(
+          name: 'amina',
+          web: DriftWebOptions(
+            sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+            driftWorker: Uri.parse('drift_worker.js'),
+          ),
+        ),
+      );
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -106,13 +114,19 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5) {
         await m.addColumn(patientProfiles, patientProfiles.aiConsentGivenAt);
       }
+      if (from < 6) {
+        await m.addColumn(logEntries, logEntries.glycemicContext);
+      }
     },
   );
 
   // Watchers
   Stream<List<LogEntryData>> watchRecentLogs({int limit = 20}) {
     return (select(logEntries)
-          ..orderBy([(t) => OrderingTerm(expression: t.loggedAt, mode: OrderingMode.desc)])
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.loggedAt, mode: OrderingMode.desc),
+          ])
           ..limit(limit))
         .watch();
   }
@@ -120,7 +134,10 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<LogEntryData>> watchLogsInRange(DateTime start, DateTime end) {
     return (select(logEntries)
           ..where((t) => t.loggedAt.isBetweenValues(start, end))
-          ..orderBy([(t) => OrderingTerm(expression: t.loggedAt, mode: OrderingMode.desc)]))
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.loggedAt, mode: OrderingMode.desc),
+          ]))
         .watch();
   }
 
@@ -131,10 +148,10 @@ class AppDatabase extends _$AppDatabase {
   // Queries
   Future<List<LogEntryData>> getPendingLogs() {
     return (select(logEntries)
-      ..where((t) => t.syncStatus.equals('pending'))
-      ..where((t) => t.errorSync.equals(false))
-      ..where((t) => t.syncAttempts.isSmallerThanValue(3))
-    ).get();
+          ..where((t) => t.syncStatus.equals('pending'))
+          ..where((t) => t.errorSync.equals(false))
+          ..where((t) => t.syncAttempts.isSmallerThanValue(3)))
+        .get();
   }
 
   Future<void> markLogAsSynced(int id) {
@@ -160,7 +177,9 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<LogEntryData?> getLogById(int id) {
-    return (select(logEntries)..where((t) => t.id.equals(id))).getSingleOrNull();
+    return (select(
+      logEntries,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   Future<void> updateLog(int id, LogEntriesCompanion data) {
@@ -175,9 +194,12 @@ class AppDatabase extends _$AppDatabase {
   /// [granted] true = consent given, false = consent withdrawn.
   Future<void> setAiConsent({required bool granted}) async {
     final ts = granted ? DateTime.now() : null;
-    final existing = await (select(patientProfiles)..limit(1)).getSingleOrNull();
+    final existing = await (select(
+      patientProfiles,
+    )..limit(1)).getSingleOrNull();
     if (existing != null) {
-      await (update(patientProfiles)..where((t) => t.userId.equals(existing.userId)))
+      await (update(patientProfiles)
+            ..where((t) => t.userId.equals(existing.userId)))
           .write(PatientProfilesCompanion(aiConsentGivenAt: Value(ts)));
     }
   }
@@ -188,20 +210,20 @@ class AppDatabase extends _$AppDatabase {
     // Delete all existing log entries — demo data must be fresh (relative to now).
     await delete(logEntries).go();
 
-    final rng  = math.Random(42);
+    final rng = math.Random(42);
     const uuid = Uuid();
-    final now  = DateTime.now();
+    final now = DateTime.now();
 
     final mealSlots = [
-      // (hour, minute, mealType, baseGlucose, insulinBase)
-      (7,  15, 'À jeun',      95.0, 0.0),
-      (8,  30, 'Avant repas', 100.0, 0.0),
-      (9,  45, 'Après repas', 145.0, 0.0),
-      (13,  0, 'Avant repas', 110.0, 4.0),
-      (14, 30, 'Après repas', 170.0, 0.0),
-      (19,  0, 'Avant repas', 105.0, 6.0),
-      (20, 30, 'Après repas', 160.0, 0.0),
-      (23,  0, 'Nuit',        115.0, 0.0),
+      // (hour, minute, glycemicContext, mealType, baseGlucose, insulinBase)
+      (7, 15, 'fasting', null, 95.0, 0.0),
+      (8, 30, 'pre_meal', 'breakfast', 100.0, 0.0),
+      (9, 45, 'post_meal', 'breakfast', 145.0, 0.0),
+      (13, 0, 'pre_meal', 'lunch', 110.0, 4.0),
+      (14, 30, 'post_meal', 'lunch', 170.0, 0.0),
+      (19, 0, 'pre_meal', 'dinner', 105.0, 6.0),
+      (20, 30, 'post_meal', 'dinner', 160.0, 0.0),
+      (23, 0, 'other', null, 115.0, 0.0),
     ];
 
     for (int day = 20; day >= 0; day--) {
@@ -212,7 +234,8 @@ class AppDatabase extends _$AppDatabase {
       final slots = (mealSlots.toList()..shuffle(rng)).take(slotCount).toList();
 
       for (final slot in slots) {
-        final (hour, minute, mealType, base, insulinBase) = slot;
+        final (hour, minute, glycemicContext, mealType, base, insulinBase) =
+            slot;
 
         // Add realistic noise: ±25 mg/dL normal, occasional spikes
         double noise = (rng.nextDouble() - 0.5) * 50;
@@ -220,15 +243,24 @@ class AppDatabase extends _$AppDatabase {
         if (rng.nextDouble() < 0.10) noise += rng.nextBool() ? 60 : -40;
 
         final glucose = (base + noise).clamp(55.0, 300.0);
-        final insulin = insulinBase > 0 ? insulinBase + rng.nextInt(3).toDouble() : 0.0;
+        final insulin = insulinBase > 0
+            ? insulinBase + rng.nextInt(3).toDouble()
+            : 0.0;
 
-        final loggedAt = DateTime(date.year, date.month, date.day, hour, minute + rng.nextInt(15));
+        final loggedAt = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          hour,
+          minute + rng.nextInt(15),
+        );
 
         await into(logEntries).insert(
           LogEntriesCompanion.insert(
             createdAt: loggedAt,
             bloodSugar: glucose,
             insulinUnits: Value(insulin > 0 ? insulin : null),
+            glycemicContext: Value(glycemicContext),
             mealType: Value(mealType),
             clientUuid: uuid.v4(),
             loggedAt: Value(loggedAt),
@@ -245,7 +277,8 @@ class AppDatabase extends _$AppDatabase {
         createdAt: liveEntry,
         bloodSugar: 142.0,
         insulinUnits: const Value(null),
-        mealType: const Value('Après repas'),
+        glycemicContext: const Value('post_meal'),
+        mealType: const Value('dinner'),
         clientUuid: uuid.v4(),
         loggedAt: Value(liveEntry),
         syncStatus: const Value('synced'),
@@ -253,7 +286,9 @@ class AppDatabase extends _$AppDatabase {
     );
 
     // Ensure profile exists
-    final existing = await (select(patientProfiles)..limit(1)).getSingleOrNull();
+    final existing = await (select(
+      patientProfiles,
+    )..limit(1)).getSingleOrNull();
     if (existing == null) {
       await into(patientProfiles).insert(
         PatientProfilesCompanion.insert(
