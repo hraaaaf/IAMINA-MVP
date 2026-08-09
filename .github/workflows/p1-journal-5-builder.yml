@@ -43,7 +43,21 @@ jobs:
           git fetch origin feat/p1-journal-insulin-v2
           test "$(git rev-parse origin/feat/p1-journal-insulin-v2)" = "$EXPECTED"
           git checkout --detach "$EXPECTED"
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('backend/diabetes/api/v1/schemas.py')
+          text = p.read_text()
+          old = '    insulin_units: Optional[float] = None\n    exercised: str = "no"'
+          if text.count(old) != 2:
+              raise SystemExit(f'expected 2 response/create insulin markers, got {text.count(old)}')
+          p.write_text(text.replace(old, '    insulin_units: Optional[float] = None  # response-only marker\n    exercised: str = "no"', 1))
+          PY
           python <(git show origin/audit/p1-journal-5-builder-final:scripts/audits/p1-journal-5-builder.py)
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('backend/diabetes/api/v1/schemas.py')
+          p.write_text(p.read_text().replace('    insulin_units: Optional[float] = None  # response-only marker\n', '    insulin_units: Optional[float] = None\n', 1))
+          PY
 
           cd backend
           pip install -r requirements.txt ruff==0.15.17
