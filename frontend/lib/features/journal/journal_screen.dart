@@ -261,6 +261,38 @@ class _JournalScreenState extends State<JournalScreen> {
     );
   }
 
+  String _entryContextLabel(LogEntryData log, AppLocalizations l10n) {
+    final meal = log.mealType;
+    switch (meal) {
+      case 'breakfast':
+        return l10n.journalMealBreakfast;
+      case 'lunch':
+        return l10n.journalMealLunch;
+      case 'dinner':
+        return l10n.journalMealDinner;
+      case 'snack':
+        return l10n.journalMealSnack;
+      case null:
+      case '':
+        break;
+      default:
+        return meal;
+    }
+
+    switch (log.glycemicContext) {
+      case 'fasting':
+        return l10n.journalContextFasting;
+      case 'pre_meal':
+        return l10n.journalContextPreMeal;
+      case 'post_meal':
+        return l10n.journalContextPostMeal;
+      case 'other':
+        return l10n.journalContextOther;
+      default:
+        return l10n.freeMeasurement;
+    }
+  }
+
   Widget _buildEntryCapsule(LogEntryData log, String unit, double low, double high) {
     final val = log.bloodSugar;
     Color color = AminaTheme.successEmerald;
@@ -343,7 +375,7 @@ class _JournalScreenState extends State<JournalScreen> {
                   Row(
                     children: [
                       Text(
-                        log.mealType ?? AppLocalizations.of(context)!.freeMeasurement,
+                        _entryContextLabel(log, AppLocalizations.of(context)!),
                         style: const TextStyle(
                           fontSize: 14, 
                           fontWeight: FontWeight.w700, 

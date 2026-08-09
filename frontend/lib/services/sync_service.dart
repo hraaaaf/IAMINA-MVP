@@ -85,6 +85,7 @@ class SyncService {
         return {
           'blood_sugar': log.bloodSugar,
           'insulin_units': log.insulinUnits,
+          'glycemic_context': log.glycemicContext ?? '',
           'meal_type': log.mealType ?? '',
           'meal_description': log.mealDescription ?? '',
           'logged_at': (log.loggedAt ?? log.createdAt).toIso8601String(),

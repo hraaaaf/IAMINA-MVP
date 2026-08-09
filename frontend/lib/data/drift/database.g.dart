@@ -55,6 +55,17 @@ class $LogEntriesTable extends LogEntries
     type: DriftSqlType.double,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _glycemicContextMeta = const VerificationMeta(
+    'glycemicContext',
+  );
+  @override
+  late final GeneratedColumn<String> glycemicContext = GeneratedColumn<String>(
+    'glycemic_context',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _mealTypeMeta = const VerificationMeta(
     'mealType',
   );
@@ -250,6 +261,7 @@ class $LogEntriesTable extends LogEntries
     createdAt,
     bloodSugar,
     insulinUnits,
+    glycemicContext,
     mealType,
     mealDescription,
     source,
@@ -303,6 +315,15 @@ class $LogEntriesTable extends LogEntries
         insulinUnits.isAcceptableOrUnknown(
           data['insulin_units']!,
           _insulinUnitsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('glycemic_context')) {
+      context.handle(
+        _glycemicContextMeta,
+        glycemicContext.isAcceptableOrUnknown(
+          data['glycemic_context']!,
+          _glycemicContextMeta,
         ),
       );
     }
@@ -438,6 +459,10 @@ class $LogEntriesTable extends LogEntries
         DriftSqlType.double,
         data['${effectivePrefix}insulin_units'],
       ),
+      glycemicContext: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}glycemic_context'],
+      ),
       mealType: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}meal_type'],
@@ -512,6 +537,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
   final DateTime createdAt;
   final double bloodSugar;
   final double? insulinUnits;
+  final String? glycemicContext;
   final String? mealType;
   final String? mealDescription;
   final String source;
@@ -532,6 +558,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
     required this.createdAt,
     required this.bloodSugar,
     this.insulinUnits,
+    this.glycemicContext,
     this.mealType,
     this.mealDescription,
     required this.source,
@@ -556,6 +583,9 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
     map['blood_sugar'] = Variable<double>(bloodSugar);
     if (!nullToAbsent || insulinUnits != null) {
       map['insulin_units'] = Variable<double>(insulinUnits);
+    }
+    if (!nullToAbsent || glycemicContext != null) {
+      map['glycemic_context'] = Variable<String>(glycemicContext);
     }
     if (!nullToAbsent || mealType != null) {
       map['meal_type'] = Variable<String>(mealType);
@@ -593,6 +623,9 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
       insulinUnits: insulinUnits == null && nullToAbsent
           ? const Value.absent()
           : Value(insulinUnits),
+      glycemicContext: glycemicContext == null && nullToAbsent
+          ? const Value.absent()
+          : Value(glycemicContext),
       mealType: mealType == null && nullToAbsent
           ? const Value.absent()
           : Value(mealType),
@@ -631,6 +664,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       bloodSugar: serializer.fromJson<double>(json['bloodSugar']),
       insulinUnits: serializer.fromJson<double?>(json['insulinUnits']),
+      glycemicContext: serializer.fromJson<String?>(json['glycemicContext']),
       mealType: serializer.fromJson<String?>(json['mealType']),
       mealDescription: serializer.fromJson<String?>(json['mealDescription']),
       source: serializer.fromJson<String>(json['source']),
@@ -656,6 +690,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'bloodSugar': serializer.toJson<double>(bloodSugar),
       'insulinUnits': serializer.toJson<double?>(insulinUnits),
+      'glycemicContext': serializer.toJson<String?>(glycemicContext),
       'mealType': serializer.toJson<String?>(mealType),
       'mealDescription': serializer.toJson<String?>(mealDescription),
       'source': serializer.toJson<String>(source),
@@ -679,6 +714,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
     DateTime? createdAt,
     double? bloodSugar,
     Value<double?> insulinUnits = const Value.absent(),
+    Value<String?> glycemicContext = const Value.absent(),
     Value<String?> mealType = const Value.absent(),
     Value<String?> mealDescription = const Value.absent(),
     String? source,
@@ -699,6 +735,9 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
     createdAt: createdAt ?? this.createdAt,
     bloodSugar: bloodSugar ?? this.bloodSugar,
     insulinUnits: insulinUnits.present ? insulinUnits.value : this.insulinUnits,
+    glycemicContext: glycemicContext.present
+        ? glycemicContext.value
+        : this.glycemicContext,
     mealType: mealType.present ? mealType.value : this.mealType,
     mealDescription: mealDescription.present
         ? mealDescription.value
@@ -727,6 +766,9 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
       insulinUnits: data.insulinUnits.present
           ? data.insulinUnits.value
           : this.insulinUnits,
+      glycemicContext: data.glycemicContext.present
+          ? data.glycemicContext.value
+          : this.glycemicContext,
       mealType: data.mealType.present ? data.mealType.value : this.mealType,
       mealDescription: data.mealDescription.present
           ? data.mealDescription.value
@@ -768,6 +810,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
           ..write('createdAt: $createdAt, ')
           ..write('bloodSugar: $bloodSugar, ')
           ..write('insulinUnits: $insulinUnits, ')
+          ..write('glycemicContext: $glycemicContext, ')
           ..write('mealType: $mealType, ')
           ..write('mealDescription: $mealDescription, ')
           ..write('source: $source, ')
@@ -793,6 +836,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
     createdAt,
     bloodSugar,
     insulinUnits,
+    glycemicContext,
     mealType,
     mealDescription,
     source,
@@ -817,6 +861,7 @@ class LogEntryData extends DataClass implements Insertable<LogEntryData> {
           other.createdAt == this.createdAt &&
           other.bloodSugar == this.bloodSugar &&
           other.insulinUnits == this.insulinUnits &&
+          other.glycemicContext == this.glycemicContext &&
           other.mealType == this.mealType &&
           other.mealDescription == this.mealDescription &&
           other.source == this.source &&
@@ -839,6 +884,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
   final Value<DateTime> createdAt;
   final Value<double> bloodSugar;
   final Value<double?> insulinUnits;
+  final Value<String?> glycemicContext;
   final Value<String?> mealType;
   final Value<String?> mealDescription;
   final Value<String> source;
@@ -859,6 +905,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
     this.createdAt = const Value.absent(),
     this.bloodSugar = const Value.absent(),
     this.insulinUnits = const Value.absent(),
+    this.glycemicContext = const Value.absent(),
     this.mealType = const Value.absent(),
     this.mealDescription = const Value.absent(),
     this.source = const Value.absent(),
@@ -880,6 +927,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
     required DateTime createdAt,
     required double bloodSugar,
     this.insulinUnits = const Value.absent(),
+    this.glycemicContext = const Value.absent(),
     this.mealType = const Value.absent(),
     this.mealDescription = const Value.absent(),
     this.source = const Value.absent(),
@@ -903,6 +951,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
     Expression<DateTime>? createdAt,
     Expression<double>? bloodSugar,
     Expression<double>? insulinUnits,
+    Expression<String>? glycemicContext,
     Expression<String>? mealType,
     Expression<String>? mealDescription,
     Expression<String>? source,
@@ -924,6 +973,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
       if (createdAt != null) 'created_at': createdAt,
       if (bloodSugar != null) 'blood_sugar': bloodSugar,
       if (insulinUnits != null) 'insulin_units': insulinUnits,
+      if (glycemicContext != null) 'glycemic_context': glycemicContext,
       if (mealType != null) 'meal_type': mealType,
       if (mealDescription != null) 'meal_description': mealDescription,
       if (source != null) 'source': source,
@@ -947,6 +997,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
     Value<DateTime>? createdAt,
     Value<double>? bloodSugar,
     Value<double?>? insulinUnits,
+    Value<String?>? glycemicContext,
     Value<String?>? mealType,
     Value<String?>? mealDescription,
     Value<String>? source,
@@ -968,6 +1019,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
       createdAt: createdAt ?? this.createdAt,
       bloodSugar: bloodSugar ?? this.bloodSugar,
       insulinUnits: insulinUnits ?? this.insulinUnits,
+      glycemicContext: glycemicContext ?? this.glycemicContext,
       mealType: mealType ?? this.mealType,
       mealDescription: mealDescription ?? this.mealDescription,
       source: source ?? this.source,
@@ -1000,6 +1052,9 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
     }
     if (insulinUnits.present) {
       map['insulin_units'] = Variable<double>(insulinUnits.value);
+    }
+    if (glycemicContext.present) {
+      map['glycemic_context'] = Variable<String>(glycemicContext.value);
     }
     if (mealType.present) {
       map['meal_type'] = Variable<String>(mealType.value);
@@ -1056,6 +1111,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntryData> {
           ..write('createdAt: $createdAt, ')
           ..write('bloodSugar: $bloodSugar, ')
           ..write('insulinUnits: $insulinUnits, ')
+          ..write('glycemicContext: $glycemicContext, ')
           ..write('mealType: $mealType, ')
           ..write('mealDescription: $mealDescription, ')
           ..write('source: $source, ')
@@ -2042,6 +2098,7 @@ typedef $$LogEntriesTableCreateCompanionBuilder =
       required DateTime createdAt,
       required double bloodSugar,
       Value<double?> insulinUnits,
+      Value<String?> glycemicContext,
       Value<String?> mealType,
       Value<String?> mealDescription,
       Value<String> source,
@@ -2064,6 +2121,7 @@ typedef $$LogEntriesTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<double> bloodSugar,
       Value<double?> insulinUnits,
+      Value<String?> glycemicContext,
       Value<String?> mealType,
       Value<String?> mealDescription,
       Value<String> source,
@@ -2107,6 +2165,11 @@ class $$LogEntriesTableFilterComposer
 
   ColumnFilters<double> get insulinUnits => $composableBuilder(
     column: $table.insulinUnits,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get glycemicContext => $composableBuilder(
+    column: $table.glycemicContext,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2215,6 +2278,11 @@ class $$LogEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get glycemicContext => $composableBuilder(
+    column: $table.glycemicContext,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get mealType => $composableBuilder(
     column: $table.mealType,
     builder: (column) => ColumnOrderings(column),
@@ -2316,6 +2384,11 @@ class $$LogEntriesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get glycemicContext => $composableBuilder(
+    column: $table.glycemicContext,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get mealType =>
       $composableBuilder(column: $table.mealType, builder: (column) => column);
 
@@ -2413,6 +2486,7 @@ class $$LogEntriesTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<double> bloodSugar = const Value.absent(),
                 Value<double?> insulinUnits = const Value.absent(),
+                Value<String?> glycemicContext = const Value.absent(),
                 Value<String?> mealType = const Value.absent(),
                 Value<String?> mealDescription = const Value.absent(),
                 Value<String> source = const Value.absent(),
@@ -2433,6 +2507,7 @@ class $$LogEntriesTableTableManager
                 createdAt: createdAt,
                 bloodSugar: bloodSugar,
                 insulinUnits: insulinUnits,
+                glycemicContext: glycemicContext,
                 mealType: mealType,
                 mealDescription: mealDescription,
                 source: source,
@@ -2455,6 +2530,7 @@ class $$LogEntriesTableTableManager
                 required DateTime createdAt,
                 required double bloodSugar,
                 Value<double?> insulinUnits = const Value.absent(),
+                Value<String?> glycemicContext = const Value.absent(),
                 Value<String?> mealType = const Value.absent(),
                 Value<String?> mealDescription = const Value.absent(),
                 Value<String> source = const Value.absent(),
@@ -2475,6 +2551,7 @@ class $$LogEntriesTableTableManager
                 createdAt: createdAt,
                 bloodSugar: bloodSugar,
                 insulinUnits: insulinUnits,
+                glycemicContext: glycemicContext,
                 mealType: mealType,
                 mealDescription: mealDescription,
                 source: source,
