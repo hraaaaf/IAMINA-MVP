@@ -705,10 +705,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get journalMealSnack => 'وجبة خفيفة';
 
   @override
-  String get journalMealNoteLabel => 'ما تناولته (اختياري)';
+  String get journalMealNoteLabel => 'ملاحظة اختيارية';
 
   @override
-  String get journalMealNoteHint => 'مثال: طاجين، خبز، سلطة…';
+  String get journalMealNoteHint => 'طريقة التحضير أو تفصيل مفيد…';
 
   @override
   String get journalRemoveMeal => 'إزالة الوجبة';
@@ -800,4 +800,62 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get journalDetailsTitle => 'تفاصيل اختيارية';
+
+  @override
+  String get journalMealCaptureTitle => 'ما الذي أكلته';
+
+  @override
+  String get journalMealCaptureHint =>
+      'أضف فقط ما أكلته فعلاً. لا تصنّف IAmina الأطعمة إلى جيدة أو سيئة.';
+
+  @override
+  String get journalMealSelected => 'المضاف';
+
+  @override
+  String get journalMealRecent => 'الأخيرة';
+
+  @override
+  String get journalMealHabitual => 'المعتادة';
+
+  @override
+  String get journalMealNoRecent =>
+      'ستظهر أطعمتك الأخيرة هنا بعد تسجيل وجباتك القادمة.';
+
+  @override
+  String get journalMealNoHabitual =>
+      'ستظهر أطعمتك المعتادة هنا مع استخدام اليوميات.';
+
+  @override
+  String get journalMealSearch => 'ابحث عن طعام';
+
+  @override
+  String get journalMealSearchHint => 'خبز، بيض، كسكس…';
+
+  @override
+  String get journalMealSearchEmpty => 'اكتب حرفين على الأقل للبحث.';
+
+  @override
+  String get journalMealPhoto => 'التعرّف على الطعام من صورة';
+
+  @override
+  String get journalMealPhotoHint =>
+      'تُحلَّل الصورة فقط بعد اختيارك وتتطلب موافقتك على معالجة الذكاء الاصطناعي. لن يُضاف أي شيء دون تأكيدك.';
+
+  @override
+  String get journalMealPhotoProposal => 'اقتراح يحتاج إلى مراجعة';
+
+  @override
+  String get journalMealPhotoProposalHint =>
+      'اختر العناصر الصحيحة ثم أكّدها. استخدم البحث للتصحيح أو الإضافة.';
+
+  @override
+  String get journalMealPhotoConfirm => 'تأكيد الاختيار';
+
+  @override
+  String get journalMealPhotoUnavailable =>
+      'لم نتمكن من التعرّف على طعام. أضفه عبر البحث.';
+
+  @override
+  String get journalMealPhotoConsent =>
+      'يتطلب التعرّف على الصورة موافقتك على معالجة الذكاء الاصطناعي. الإدخال اليدوي متاح دائماً.';
 }

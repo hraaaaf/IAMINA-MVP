@@ -81,3 +81,43 @@ class JournalGlycemicContextTests(TestCase):
         entry = LogEntry.objects.get(client_uuid=uuid)
         self.assertEqual(entry.glycemic_context, "post_meal")
         self.assertEqual(entry.meal_type, "dinner")
+
+    def test_structured_meal_items_are_preserved_without_inference(self):
+        response = self.client.post(
+            "/api/v1/logs",
+            data={
+                "blood_sugar": 128,
+                "meal_type": "breakfast",
+                "meal_items": ["moroccan_bread", "egg", "mint_tea"],
+                "meal_description": "sans sucre",
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = loads(response.content)
+        self.assertEqual(
+            payload["meal_items"],
+            ["moroccan_bread", "egg", "mint_tea"],
+        )
+        entry = LogEntry.objects.get(patient=self.user)
+        self.assertEqual(
+            entry.meal_items,
+            ["moroccan_bread", "egg", "mint_tea"],
+        )
+        self.assertEqual(entry.meal_description, "sans sucre")
+
+    def test_batch_sync_preserves_structured_meal_items(self):
+        uuid = "66666666-6666-6666-6666-666666666666"
+        response = self.client.post(
+            "/api/v1/logs/batch",
+            data=[{
+                "blood_sugar": 154,
+                "meal_type": "lunch",
+                "meal_items": ["couscous", "vegetables"],
+                "client_uuid": uuid,
+            }],
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        entry = LogEntry.objects.get(client_uuid=uuid)
+        self.assertEqual(entry.meal_items, ["couscous", "vegetables"])

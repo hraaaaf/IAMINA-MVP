@@ -2061,6 +2061,13 @@
             "title": "Meal Description",
             "type": "string"
           },
+          "meal_items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Meal Items",
+            "type": "array"
+          },
           "insulin_units": {
             "anyOf": [
               {
@@ -2196,6 +2203,16 @@
             "default": "",
             "title": "Meal Description",
             "type": "string"
+          },
+          "meal_items": {
+            "items": {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Meal Items",
+            "type": "array"
           },
           "insulin_units": {
             "anyOf": [
@@ -2342,6 +2359,23 @@
               }
             ],
             "title": "Meal Description"
+          },
+          "meal_items": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 80,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Items"
           },
           "insulin_units": {
             "anyOf": [
