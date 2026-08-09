@@ -1,0 +1,71 @@
+name: P1-JOURNAL-6 docs closeout
+
+on:
+  push:
+    branches: [audit/p1-journal-6-docs-closeout]
+
+permissions:
+  contents: write
+
+jobs:
+  closeout-docs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p1-journal-context-intelligence
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      - name: Assert product head and patch canonical docs
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess
+
+          expected = 'e9634dc8974e37e8f87fdb1b07b8062a006caddc'
+          head = subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip()
+          if head != expected:
+              raise SystemExit(f'stale product head: {head}')
+
+          roadmap = Path('docs/ROADMAP.md')
+          text = roadmap.read_text()
+          text = text.replace(
+              '> **Last updated:** 2026-08-09 — P1-JOURNAL-5 Insulin logging v2 is merged and closed; P1-JOURNAL-6 Context intelligence is next.',
+              '> **Last updated:** 2026-08-09 — P1-JOURNAL-5 is closed; P1-JOURNAL-6 Context intelligence is the active merge unit in PR #73.'
+          )
+          text = text.replace(
+              '| Journal metabolic-event redesign | 56% | 🟢 P1-JOURNAL-5 closed; P1-JOURNAL-6 next | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5 merged; PR #72; factual nullable decimal insulin logging, safe edit/sync semantics, UX 9.2/10; post-merge CI #1330 + drift #1142 green |',
+              '| Journal metabolic-event redesign | 67% | 🔵 P1-JOURNAL-6 merge unit | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5 merged; PR #73 Context intelligence; unknown-by-default context, progressive capture, explicit sync, UX 9.2/10; final head certification + merge/post-merge required |'
+          )
+          text = text.replace(
+              '| P1-JOURNAL-6 | Context intelligence | ⬜ Planned | optional illness/stress/activity/sleep context; avoid repeatedly asking low-value information |',
+              '| P1-JOURNAL-6 | Context intelligence | 🔵 PR #73 merge unit | illness/stress/activity/poor sleep are optional positive observations; absence means unknown/not reported; progressive Add + correctable Edit; explicit legacy fatigue remains sync-compatible; UX 9.2/10 |'
+          )
+          anchor = '### P1-JOURNAL-5 durable merge-unit contract'
+          idx = text.index(anchor)
+          next_sep = text.index('\n---\n', idx)
+          insert = '''\n### P1-JOURNAL-6 durable merge-unit contract\n\nPR #73 is the merge unit for Context intelligence. Illness, unusual stress, physical activity and poor sleep are recorded only when the patient explicitly selects them. Omission means **unknown / not reported**; new server writes no longer fabricate `no`, `good` or `ok` defaults. Existing historical rows are preserved unchanged by migration `0022_context_unknown_defaults`.\n\nThe Add flow keeps these signals behind one progressive optional action instead of repeatedly presenting four low-value questions. Edit Log can add or remove the same observations without rewriting meal, time or insulin data. Sync transmits only explicit positive context; legacy explicit fatigue (`tired`) remains compatible while an unreported fatigue state no longer becomes fabricated `ok`. Journal history surfaces only context actually recorded. This LOT does not infer causes from glucose, meals or time and adds no treatment advice, clinical score or AI/provider egress.\n\n**Pre-closeout evidence on product head `e9634dc8974e37e8f87fdb1b07b8062a006caddc`:** CI #1338 SUCCESS; migration drift #1150 SUCCESS; visual audit run `31326091108` SUCCESS on Add/Edit FR/AR desktop/tablet/390×844/360×560; UX Auditor **9.2/10 PASS**. Final documentation changes make these anchors stale, so exact-final-head CI + drift + visual recertification, Reviewer/Release-Certifier re-anchoring, expected-head merge and post-merge gates remain required before the LOT is 100% closed.\n\n'''
+          text = text[:next_sep] + insert + text[next_sep:]
+          roadmap.write_text(text)
+
+          specs = Path('docs/SPECS.md')
+          text = specs.read_text()
+          anchor = '### Insulin logging v2 contract\n'
+          idx = text.index(anchor)
+          context_contract = '''### Context intelligence v2 contract\n\n- illness, unusual stress, physical activity and poor sleep are optional patient-entered observations;\n- absence of a context selection means unknown/not reported and must not be converted into `no`, `good` or `ok`;\n- Add Log exposes context progressively rather than repeatedly asking all context questions;\n- Edit Log may correct these observations without rewriting unrelated meal, time or insulin facts;\n- offline sync transmits only explicitly recorded context; legacy explicit fatigue remains compatible, while unreported fatigue does not become fabricated `ok`;\n- Journal history may display a context only when it was actually recorded;\n- context data does not authorize causal inference, clinical scoring, treatment optimization or insulin-dose advice.\n\n'''
+          text = text[:idx] + context_contract + text[idx:]
+          specs.write_text(text)
+
+          med = Path('docs/MEDICAL_DATA_PLAN.md')
+          text = med.read_text()
+          anchor = '### Nutrition-derived observations\n'
+          idx = text.index(anchor)
+          context_plan = '''### Context observations\n\nIllness, stress, activity, sleep and fatigue context are observational patient-entered data. Missing context is **unknown**, not evidence of a negative/normal state. New logging paths must therefore avoid manufacturing `no`, `good` or `ok` values when the patient did not report them. Existing historical rows are not retrospectively rewritten to guess intent. Context may later support explicitly governed observational pattern detection, but it must not be presented as a proven cause of a glucose change or converted into treatment/dose advice.\n\n'''
+          text = text[:idx] + context_plan + text[idx:]
+          med.write_text(text)
+      - name: Commit docs to product branch
+        run: |
+          git add docs/ROADMAP.md docs/SPECS.md docs/MEDICAL_DATA_PLAN.md
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'docs(journal): close context intelligence contract'
+          git push origin HEAD:feat/p1-journal-context-intelligence
