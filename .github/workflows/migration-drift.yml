@@ -38,7 +38,7 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/feat/p1-journal-meal-capture' &&
-      github.event.head_commit.message == 'ci(temp): diagnose P1-JOURNAL-3 builder'
+      github.event.head_commit.message == 'ci(temp): fix P1-JOURNAL-3 patch extraction'
     name: P1-JOURNAL-3 branch-only builder
     runs-on: ubuntu-24.04
     timeout-minutes: 40
@@ -74,11 +74,15 @@ jobs:
           set -o pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import textwrap
           source = Path('.github/workflows/p1-journal-3-builder.yml').read_text()
-          start = source.index("          python3 - <<'PY'\n") + len("          python3 - <<'PY'\n")
+          marker = "          python3 - <<'PY'\n"
+          start = source.index(marker) + len(marker)
           end = source.index("\n          PY\n", start)
-          code = textwrap.dedent(source[start:end])
+          raw = source[start:end]
+          code = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in raw.splitlines()
+          ) + '\n'
           Path('/tmp/p1j3_apply.py').write_text(code)
           print(f'extracted {len(code)} bytes')
           PY
@@ -88,6 +92,30 @@ jobs:
             echo "::error title=P1-JOURNAL-3 patch failure::$MSG"
             exit 1
           fi
+      - name: Apply builder pre-review fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # Test helper uses Drift Value explicitly.
+          p = Path('frontend/test/features/meal_capture_panel_test.dart')
+          s = p.read_text()
+          if "package:drift/drift.dart" not in s:
+            s = s.replace(
+              "import 'package:amina/l10n/app_localizations.dart';\n",
+              "import 'package:amina/l10n/app_localizations.dart';\nimport 'package:drift/drift.dart';\n",
+            )
+          p.write_text(s)
+
+          # Ensure the one-shot HTTP client used for photo recognition is closed.
+          p = Path('frontend/lib/services/api_client.dart')
+          s = p.read_text()
+          old = """      final streamed = await http.Client()\n          .send(req)\n          .timeout(TimeoutInterceptor._kTimeout);\n      final body = await streamed.stream.bytesToString();\n      if (streamed.statusCode >= 200 && streamed.statusCode < 300) {\n        return MealAnalysisResult.fromJson(\n          jsonDecode(body) as Map<String, dynamic>,\n        );\n      }\n      return null;\n"""
+          new = """      final client = http.Client();\n      try {\n        final streamed = await client\n            .send(req)\n            .timeout(TimeoutInterceptor._kTimeout);\n        final body = await streamed.stream.bytesToString();\n        if (streamed.statusCode >= 200 && streamed.statusCode < 300) {\n          return MealAnalysisResult.fromJson(\n            jsonDecode(body) as Map<String, dynamic>,\n          );\n        }\n        return null;\n      } finally {\n        client.close();\n      }\n"""
+          if old not in s:
+            raise SystemExit('meal HTTP client marker missing')
+          p.write_text(s.replace(old, new, 1))
+          PY
       - name: Generate localization and Drift code
         working-directory: frontend
         run: |
