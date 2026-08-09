@@ -108,7 +108,16 @@ Do not add treatment-adjustment logic to pattern detectors.
 
 ## 6. Treatment and insulin data
 
-IAmina may store patient-entered treatment/insulin context when needed for logging and interpretation.
+IAmina may store patient-entered treatment/insulin context when needed for logging and interpretation. In Journal, an insulin quantity is an **observed historical fact**: the amount the patient reports was already administered. It is not a recommendation, target, correction factor or optimization output.
+
+Durable insulin-data requirements:
+
+- absence of a reported dose remains null rather than being fabricated as `0`;
+- decimal patient-entered quantities must not be silently rounded in create, edit, history or sync;
+- negative administered-dose input is invalid;
+- editing an insulin quantity must not rewrite unrelated meal/context observations;
+- offline reconciliation may update the same patient's log through its stable `client_uuid`, but cross-patient UUID ownership must fail closed;
+- no preset, score, calculator, suggested unit or treatment-adjustment logic may be inferred from logged insulin data.
 
 That data must not be used to generate autonomous dose recommendations or treatment changes.
 
