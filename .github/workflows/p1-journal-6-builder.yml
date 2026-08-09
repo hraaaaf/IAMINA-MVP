@@ -1,0 +1,153 @@
+name: P1-JOURNAL-6 builder
+
+on:
+  push:
+    branches: [audit/p1-journal-6-builder]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-secret-key-not-for-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      DATABASE_URL: sqlite:///ci-test.db
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p1-journal-context-intelligence
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      - name: Assert expected base
+        run: test "$(git rev-parse HEAD)" = "c08e9ccf919e7db1c18498d3d92cbb9e451876ed"
+      - name: Apply focused context-intelligence patch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"missing replacement in {path}: {old[:80]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          # Backend: blank means unknown/not reported for new Journal writes.
+          p = Path('backend/diabetes/models/entry.py')
+          text = p.read_text()
+          for field, maxlen, old_default in [
+              ('exercised', 3, "'no'"),
+              ('sleep_quality', 4, "'good'"),
+              ('stressed', 3, "'no'"),
+              ('fatigue_level', 5, "'ok'"),
+              ('is_sick', 3, "'no'"),
+          ]:
+              marker = f"    {field} = models.CharField(\n"
+              start = text.index(marker)
+              end = text.index("    )", start) + 5
+              block = text[start:end]
+              block2 = block.replace(f"default={old_default}", "default=''", 1)
+              if "blank=True" not in block2:
+                  block2 = block2.replace("default='',", "default='',\n        blank=True,", 1)
+              text = text[:start] + block2 + text[end:]
+          p.write_text(text)
+
+          p = Path('backend/diabetes/api/v1/schemas.py')
+          text = p.read_text()
+          for old, new in [
+              ('exercised: str = "no"', 'exercised: str = ""'),
+              ('sleep_quality: str = "good"', 'sleep_quality: str = ""'),
+              ('stressed: str = "no"', 'stressed: str = ""'),
+              ('fatigue_level: str = "ok"', 'fatigue_level: str = ""'),
+              ('is_sick: str = "no"', 'is_sick: str = ""'),
+          ]:
+              text = text.replace(old, new)
+          p.write_text(text)
+
+          Path('backend/diabetes/migrations/0022_context_unknown_defaults.py').write_text('''from django.db import migrations, models\n\n\nclass Migration(migrations.Migration):\n    dependencies = [("diabetes", "0021_logentry_meal_portions")]\n\n    operations = [\n        migrations.AlterField(model_name="logentry", name="exercised", field=models.CharField(blank=True, choices=[("yes", "Oui"), ("no", "Non")], default="", help_text="Exercice aujourd\\'hui ?", max_length=3)),\n        migrations.AlterField(model_name="logentry", name="sleep_quality", field=models.CharField(blank=True, choices=[("good", "Bonne"), ("bad", "Mauvaise")], default="", help_text="Qualite du sommeil", max_length=4)),\n        migrations.AlterField(model_name="logentry", name="stressed", field=models.CharField(blank=True, choices=[("yes", "Oui"), ("no", "Non")], default="", help_text="Niveau de stress", max_length=3)),\n        migrations.AlterField(model_name="logentry", name="fatigue_level", field=models.CharField(blank=True, choices=[("ok", "Bien"), ("tired", "Fatigué(e)")], default="", help_text="Niveau de fatigue aujourd\\'hui", max_length=5)),\n        migrations.AlterField(model_name="logentry", name="is_sick", field=models.CharField(blank=True, choices=[("no", "Non"), ("yes", "Oui")], default="", help_text="Malade ou pas bien aujourd\\'hui", max_length=3)),\n    ]\n''')
+
+          # Sync: send only explicitly selected positive context facts.
+          p = Path('frontend/lib/services/sync_service.dart')
+          text = p.read_text()
+          insert = '''\nMap<String, Object> journalContextFieldsForSync({\n  required bool isSick,\n  required bool isStressed,\n  required bool isActive,\n  required String? sleepQuality,\n}) {\n  return <String, Object>{\n    if (isSick) 'is_sick': 'yes',\n    if (isStressed) 'stressed': 'yes',\n    if (isActive) 'exercised': 'yes',\n    if (sleepQuality == 'bad') 'sleep_quality': 'bad',\n  };\n}\n\n'''
+          text = text.replace('enum SyncUiState { checking, upToDate, pending, syncing, offline, error }\n', 'enum SyncUiState { checking, upToDate, pending, syncing, offline, error }\n' + insert, 1)
+          old = '''          'fatigue_level': (log.fatigueLevel ?? 0) > 0 ? 'tired' : 'ok',\n          'is_sick': log.isSick ? 'yes' : 'no',\n          'stressed': log.isStressed ? 'yes' : 'no',\n          'sleep_quality': log.sleepQuality ?? 'good',\n          'exercised': log.isActive ? 'yes' : 'no',\n'''
+          new = '''          ...journalContextFieldsForSync(\n            isSick: log.isSick,\n            isStressed: log.isStressed,\n            isActive: log.isActive,\n            sleepQuality: log.sleepQuality,\n          ),\n'''
+          if old not in text: raise SystemExit('sync context block missing')
+          p.write_text(text.replace(old, new, 1))
+
+          # Add Log: one progressive CTA instead of four recurring questions.
+          p = Path('frontend/lib/features/dashboard/widgets/add_log_sheet.dart')
+          text = p.read_text()
+          text = text.replace('  bool _detailsExpanded = false;\n', '  bool _detailsExpanded = false;\n  bool _contextExpanded = false;\n', 1)
+          start = text.index('  Widget _healthContext(AppLocalizations l10n) => Column(')
+          end = text.index('\n  Widget _sectionLabel', start)
+          new_health = '''  Widget _healthContext(AppLocalizations l10n) {\n    final hasContext = _isSick || _isStressed || _isActive || _badSleep;\n    if (!_contextExpanded && !hasContext) {\n      return OutlinedButton.icon(\n        key: const Key('journal-context-button'),\n        onPressed: () => setState(() => _contextExpanded = true),\n        icon: const Icon(Icons.add_circle_outline_rounded, size: 18),\n        label: Text('${l10n.journalAdditionalContext} · ${l10n.journalOptional}'),\n        style: OutlinedButton.styleFrom(\n          minimumSize: const Size.fromHeight(48),\n          alignment: AlignmentDirectional.centerStart,\n          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),\n        ),\n      );\n    }\n    return Column(\n      key: const Key('journal-context-selector'),\n      crossAxisAlignment: CrossAxisAlignment.start,\n      children: <Widget>[\n        Row(\n          children: <Widget>[\n            Expanded(child: _sectionLabel(l10n.journalAdditionalContext)),\n            if (!hasContext)\n              TextButton(\n                onPressed: () => setState(() => _contextExpanded = false),\n                child: Text(l10n.cancel),\n              ),\n          ],\n        ),\n        const SizedBox(height: 10),\n        Wrap(\n          spacing: 8,\n          runSpacing: 8,\n          children: <Widget>[\n            FilterChip(\n              key: const Key('context-illness'),\n              label: Text(l10n.journalSick),\n              selected: _isSick,\n              onSelected: (value) => setState(() => _isSick = value),\n            ),\n            FilterChip(\n              key: const Key('context-stress'),\n              label: Text(l10n.journalUnusualStress),\n              selected: _isStressed,\n              onSelected: (value) => setState(() => _isStressed = value),\n            ),\n            FilterChip(\n              key: const Key('context-activity'),\n              label: Text(l10n.journalPhysicalActivity),\n              selected: _isActive,\n              onSelected: (value) => setState(() => _isActive = value),\n            ),\n            FilterChip(\n              key: const Key('context-poor-sleep'),\n              label: Text(l10n.journalPoorSleep),\n              selected: _badSleep,\n              onSelected: (value) => setState(() => _badSleep = value),\n            ),\n          ],\n        ),\n      ],\n    );\n  }\n'''
+          text = text[:start] + new_health + text[end:]
+          p.write_text(text)
+
+          # History: poor sleep becomes visible when it was explicitly logged.
+          replace('frontend/lib/features/journal/journal_screen.dart',
+              "                        if (log.isActive) const _LifeIcon(icon: '🏃‍♂️'),\n",
+              "                        if (log.isActive) const _LifeIcon(icon: '🏃‍♂️'),\n                        if (log.sleepQuality == 'bad') const _LifeIcon(icon: '🌙'),\n")
+
+          # Edit: context is correctable and no unrelated meal/time fields are touched.
+          p = Path('frontend/lib/features/journal/edit_log_screen.dart')
+          text = p.read_text()
+          text = text.replace('  bool _saving = false;\n', '  bool _saving = false;\n  bool _isSick = false;\n  bool _isStressed = false;\n  bool _isActive = false;\n  bool _badSleep = false;\n', 1)
+          text = text.replace('    _insulinController.text = log.insulinUnits == null\n        ? \'\'\n        : formatTakenInsulinUnits(log.insulinUnits!);\n', "    _insulinController.text = log.insulinUnits == null\n        ? ''\n        : formatTakenInsulinUnits(log.insulinUnits!);\n    _isSick = log.isSick;\n    _isStressed = log.isStressed;\n    _isActive = log.isActive;\n    _badSleep = log.sleepQuality == 'bad';\n", 1)
+          old_card_start = text.index('                        Container(\n                          padding: const EdgeInsets.all(14),')
+          old_card_end = text.index('                        const SizedBox(height: 24),', old_card_start)
+          text = text[:old_card_start] + '                        _contextCard(l10n),\n                        const SizedBox(height: 24),\n' + text[old_card_end + len('                        const SizedBox(height: 24),\n'):]
+          anchor = '  Future<bool> _confirmLowGlucose(double mgdl, AppLocalizations l10n) async {'
+          context_method = '''  Widget _contextCard(AppLocalizations l10n) => Container(\n    key: const Key('edit-context-card'),\n    padding: const EdgeInsets.all(18),\n    decoration: BoxDecoration(\n      color: AminaTheme.subtleBg(context),\n      borderRadius: BorderRadius.circular(18),\n      border: Border.all(color: AminaTheme.divider(context)),\n    ),\n    child: Column(\n      crossAxisAlignment: CrossAxisAlignment.start,\n      children: <Widget>[\n        Text(\n          l10n.journalAdditionalContext,\n          style: TextStyle(\n            color: AminaTheme.textSecondary(context),\n            fontSize: 11,\n            fontWeight: FontWeight.w800,\n            letterSpacing: .55,\n          ),\n        ),\n        const SizedBox(height: 10),\n        Wrap(\n          spacing: 8,\n          runSpacing: 8,\n          children: <Widget>[\n            FilterChip(key: const Key('edit-context-illness'), label: Text(l10n.journalSick), selected: _isSick, onSelected: (v) => setState(() => _isSick = v)),\n            FilterChip(key: const Key('edit-context-stress'), label: Text(l10n.journalUnusualStress), selected: _isStressed, onSelected: (v) => setState(() => _isStressed = v)),\n            FilterChip(key: const Key('edit-context-activity'), label: Text(l10n.journalPhysicalActivity), selected: _isActive, onSelected: (v) => setState(() => _isActive = v)),\n            FilterChip(key: const Key('edit-context-poor-sleep'), label: Text(l10n.journalPoorSleep), selected: _badSleep, onSelected: (v) => setState(() => _badSleep = v)),\n          ],\n        ),\n      ],\n    ),\n  );\n\n'''
+          text = text.replace(anchor, context_method + anchor, 1)
+          save_anchor = "          insulinUnits: drift.Value(\n            parseTakenInsulinUnits(_insulinController.text),\n          ),\n"
+          save_add = save_anchor + "          isSick: drift.Value(_isSick),\n          isStressed: drift.Value(_isStressed),\n          isActive: drift.Value(_isActive),\n          sleepQuality: drift.Value(_badSleep ? 'bad' : null),\n"
+          if save_anchor not in text: raise SystemExit('edit save anchor missing')
+          text = text.replace(save_anchor, save_add, 1)
+          p.write_text(text)
+
+          Path('backend/diabetes/tests/test_journal_context_intelligence.py').write_text('''from datetime import date\nfrom json import loads\n\nfrom django.contrib.auth.models import User\nfrom django.test import Client, TestCase\n\nfrom core.models import BasePatientProfile\nfrom diabetes.models import DiabetesProfile, LogEntry\n\n\ndef patient():\n    user = User.objects.create_user(username="context_v2", email="context@test.com")\n    base = BasePatientProfile.objects.create(patient=user, date_of_birth=date(1990, 1, 1))\n    DiabetesProfile.objects.create(base_profile=base, diabetes_type="type2", treatment_type="lifestyle", target_range_low=70, target_range_high=180)\n    return user\n\n\nclass JournalContextIntelligenceTests(TestCase):\n    def setUp(self):\n        self.user = patient()\n        self.client = Client()\n        self.client.force_login(self.user)\n\n    def test_omitted_context_remains_unknown_instead_of_fabricated_negative(self):\n        response = self.client.post('/api/v1/logs', data={"blood_sugar": 121}, content_type='application/json')\n        self.assertEqual(response.status_code, 200)\n        entry = LogEntry.objects.get(patient=self.user)\n        self.assertEqual(entry.is_sick, '')\n        self.assertEqual(entry.stressed, '')\n        self.assertEqual(entry.exercised, '')\n        self.assertEqual(entry.sleep_quality, '')\n        self.assertEqual(entry.fatigue_level, '')\n\n    def test_explicit_positive_context_is_persisted_without_inference(self):\n        payload = {"blood_sugar": 121, "is_sick": "yes", "stressed": "yes", "exercised": "yes", "sleep_quality": "bad"}\n        response = self.client.post('/api/v1/logs', data=payload, content_type='application/json')\n        self.assertEqual(response.status_code, 200)\n        body = loads(response.content)\n        self.assertEqual(body['is_sick'], 'yes')\n        self.assertEqual(body['stressed'], 'yes')\n        self.assertEqual(body['exercised'], 'yes')\n        self.assertEqual(body['sleep_quality'], 'bad')\n''')
+
+          Path('frontend/test/services/context_intelligence_sync_test.dart').write_text('''import 'package:flutter_test/flutter_test.dart';\nimport 'package:amina/services/sync_service.dart';\n\nvoid main() {\n  test('omitted context does not fabricate negative or good states', () {\n    final fields = journalContextFieldsForSync(\n      isSick: false,\n      isStressed: false,\n      isActive: false,\n      sleepQuality: null,\n    );\n    expect(fields, isEmpty);\n  });\n\n  test('only explicitly selected positive context is synchronized', () {\n    final fields = journalContextFieldsForSync(\n      isSick: true,\n      isStressed: false,\n      isActive: true,\n      sleepQuality: 'bad',\n    );\n    expect(fields, {\n      'is_sick': 'yes',\n      'exercised': 'yes',\n      'sleep_quality': 'bad',\n    });\n    expect(fields.containsKey('stressed'), isFalse);\n  });\n}\n''')
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Backend gates and OpenAPI
+        run: |
+          pip install -r backend/requirements.txt ruff==0.15.17
+          cd backend
+          ruff check diabetes/api/v1 diabetes/models/entry.py diabetes/tests/test_journal_context_intelligence.py
+          python manage.py makemigrations --check --dry-run
+          pytest diabetes/tests/test_journal_context_intelligence.py diabetes/tests/test_journal_insulin_logging.py -q
+          python manage.py export_openapi > ../docs/api/openapi.json
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+      - name: Frontend gates
+        working-directory: frontend
+        run: |
+          flutter pub get
+          dart format lib/features/dashboard/widgets/add_log_sheet.dart lib/features/journal/edit_log_screen.dart lib/features/journal/journal_screen.dart lib/services/sync_service.dart test/services/context_intelligence_sync_test.dart
+          flutter analyze --no-fatal-infos
+          flutter test --no-pub test/services/context_intelligence_sync_test.dart test/features/insulin_logging_v2_test.dart test/features/add_log_sheet_test.dart
+      - name: Restore dependency noise and commit product patch
+        run: |
+          git checkout c08e9ccf919e7db1c18498d3d92cbb9e451876ed -- frontend/pubspec.lock frontend/.flutter-plugins-dependencies 2>/dev/null || true
+          git status --short
+          git add backend frontend docs/api/openapi.json
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'feat(journal): add context intelligence v2'
+          git push origin HEAD:feat/p1-journal-context-intelligence
