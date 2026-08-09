@@ -18,6 +18,7 @@ class LogEntries extends Table {
   TextColumn get glycemicContext => text().nullable()();
   TextColumn get mealType => text().nullable()();
   TextColumn get mealDescription => text().nullable()();
+  TextColumn get mealItemsJson => text().nullable()();
   TextColumn get source => text().withDefault(const Constant('manual'))();
   TextColumn get syncStatus => text().withDefault(const Constant('pending'))();
   TextColumn get clientUuid => text().unique()();
@@ -86,7 +87,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -117,6 +118,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 6) {
         await m.addColumn(logEntries, logEntries.glycemicContext);
       }
+      if (from < 7) {
+        await m.addColumn(logEntries, logEntries.mealItemsJson);
+      }
     },
   );
 
@@ -129,6 +133,16 @@ class AppDatabase extends _$AppDatabase {
           ])
           ..limit(limit))
         .watch();
+  }
+
+  Future<List<LogEntryData>> getRecentLogs({int limit = 100}) {
+    return (select(logEntries)
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.loggedAt, mode: OrderingMode.desc),
+          ])
+          ..limit(limit))
+        .get();
   }
 
   Stream<List<LogEntryData>> watchLogsInRange(DateTime start, DateTime end) {
