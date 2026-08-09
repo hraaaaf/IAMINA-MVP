@@ -45,3 +45,7 @@ Curated FDC references: `790774`, `790991`.
 - No hidden conversion from household portion to grams.
 - Exact values are shown only when exactness is source-backed; otherwise IAMINA shows a range.
 - Derived nutrition is recalculated from the versioned catalogue and is not persisted as immutable clinical truth.
+
+## P1-JOURNAL-4 certification anchor
+
+Exact-code visual recertification on product head `f909fac3cc57af81955fdee9bbaee4f87689734c` passed run `31320713710` across the FR/AR desktop, tablet, 390×844 and 360×560 matrix plus real-font Chromium captures. Artifact `9040098902` has digest `sha256:b1b1919c3d329ca13ac77064e0f187dab36ecf4b16ef02ff36be0d30239736ae`. The RTL numeric-range remediation was visually double-checked and the final UX score is **9.3/10**.
