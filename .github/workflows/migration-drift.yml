@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main, dev]
 
-permissions:
-  contents: write
-
 jobs:
   migration-drift:
     name: Django model/migration drift
@@ -36,42 +33,3 @@ jobs:
         run: pip install -q -r requirements.txt
       - name: Reject model/migration drift
         run: python manage.py makemigrations --check --dry-run
-
-  journal-4-seed-cleanup:
-    name: P1-JOURNAL-4 verified seed cleanup
-    if: github.event_name == 'push' && github.event.head_commit.message == 'activate P1-JOURNAL-4 seed cleanup'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 35
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: feat/p1-journal-nutrition-v2
-          fetch-depth: 0
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.41.0'
-          channel: stable
-          cache: true
-      - name: Apply verified USDA seed
-        run: python3 .github/scripts/p1_journal_4_seed_cleanup.py
-      - name: Restore runner-only artifacts
-        run: |
-          git fetch origin main
-          git checkout origin/main -- frontend/pubspec.lock frontend/.flutter-plugins-dependencies
-          rm -f backend/ci-test.db
-      - name: Format and validate focused frontend contract
-        working-directory: frontend
-        run: |
-          flutter pub get --offline || flutter pub get
-          dart format lib/core/data/nutrition_catalog.dart test/core/data/nutrition_catalog_test.dart
-          flutter analyze --no-fatal-infos
-          flutter test --no-pub test/core/data/nutrition_catalog_test.dart test/data/drift/meal_portions_migration_test.dart test/features/add_log_sheet_test.dart test/features/meal_capture_panel_test.dart
-      - name: Remove temporary plumbing and push clean head
-        run: |
-          git checkout origin/main -- .github/workflows/migration-drift.yml
-          git rm .github/scripts/p1_journal_4_seed_cleanup.py
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .
-          git commit -m 'feat(journal): add verified USDA nutrition seed'
-          git push origin HEAD:feat/p1-journal-nutrition-v2

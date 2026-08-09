@@ -75,6 +75,30 @@ void main() {
       expect(nutritionSourceFor('usda_fdc_2026'), isNotNull);
     });
 
+    test('USDA seed retains analytical ranges instead of false precision', () {
+      final apple = nutritionProfileFor('apple')!;
+      final banana = nutritionProfileFor('banana')!;
+
+      expect(apple.carbohydrate!.carbsPer100gLow, 14.2);
+      expect(apple.carbohydrate!.carbsPer100gHigh, 15.7);
+      expect(apple.carbohydrate!.sourceFoodRef, contains('1105664'));
+      expect(apple.carbohydrate!.sourceFoodRef, contains('1105897'));
+
+      expect(banana.carbohydrate!.carbsPer100gLow, 20.1);
+      expect(banana.carbohydrate!.carbsPer100gHigh, 23.0);
+      expect(banana.carbohydrate!.sourceFoodRef, contains('790774'));
+      expect(banana.carbohydrate!.sourceFoodRef, contains('790991'));
+      final oneBanana = banana.portions.single;
+      expect(oneBanana.id, 'one_peeled');
+      expect(oneBanana.gramsLow, 110);
+      expect(oneBanana.gramsHigh, 115);
+
+      final estimate = estimateCarbsForPortion('banana', oneBanana)!;
+      expect(estimate.isExact, isFalse);
+      expect(estimate.low, closeTo(22.11, 0.01));
+      expect(estimate.high, closeTo(26.45, 0.01));
+    });
+
     test('portion selections encode and decode without derived nutrients', () {
       const selection = MealPortionSelection(
         foodId: 'msemen',
