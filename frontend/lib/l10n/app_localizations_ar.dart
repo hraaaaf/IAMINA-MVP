@@ -858,4 +858,33 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get journalMealPhotoConsent =>
       'يتطلب التعرّف على الصورة موافقتك على معالجة الذكاء الاصطناعي. الإدخال اليدوي متاح دائماً.';
+
+  @override
+  String get journalNutritionPortionTitle => 'الكمية';
+
+  @override
+  String get journalNutritionPortionHint =>
+      'اختر حصة مألوفة أو أدخل الوزن بالغرام إذا كنت تعرفه. لا يعرض IAmina رقماً غذائياً مخمناً.';
+
+  @override
+  String get journalNutritionGrams => 'غرام';
+
+  @override
+  String get journalNutritionUnavailable =>
+      'لا توجد قيمة غذائية رقمية معروضة: الطعام أو الحصة غير موثقين بما يكفي بعد.';
+
+  @override
+  String journalNutritionCarbsExact(String value) {
+    return '≈ $value غ كربوهيدرات';
+  }
+
+  @override
+  String journalNutritionCarbsRange(String low, String high) {
+    return '≈ $low–$high غ كربوهيدرات';
+  }
+
+  @override
+  String journalNutritionSource(String source) {
+    return 'المصدر: $source';
+  }
 }

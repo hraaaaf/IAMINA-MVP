@@ -7,6 +7,7 @@ from typing import List
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from ninja import Router, Status
+from ninja.errors import HttpError
 
 from core.observability import EVT_LOG_CREATED, track
 from diabetes.models import LogEntry
@@ -19,7 +20,9 @@ from .schemas import (
     LogEntryCreateSchema,
     LogEntrySchema,
     LogEntryUpdateSchema,
+    MealPortionSchema,
     PaginatedLogsResponse,
+    validate_meal_portion_links,
 )
 
 router = Router(tags=["logs"])
@@ -32,11 +35,11 @@ def list_logs(request, page: int = 1, page_size: int = 50):
     page_size is clamped to [1, 200] to prevent runaway queries.
     """
     page_size = max(1, min(page_size, 200))
-    page      = max(1, page)
-    qs        = LogEntry.objects.filter(patient=request.user).order_by("-created_at")
-    total     = qs.count()
-    offset    = (page - 1) * page_size
-    items     = list(qs[offset : offset + page_size])
+    page = max(1, page)
+    qs = LogEntry.objects.filter(patient=request.user).order_by("-created_at")
+    total = qs.count()
+    offset = (page - 1) * page_size
+    items = list(qs[offset : offset + page_size])
     return {"total": total, "page": page, "page_size": page_size, "items": items}
 
 
@@ -45,7 +48,11 @@ def create_log(request, data: LogEntryCreateSchema):
     log = LogEntry.objects.create(patient=request.user, **data.dict())
     _invalidate_ctx(request.user.id)
     _invalidate_kpis(request.user.id)
-    track(EVT_LOG_CREATED, patient_id=request.user.id, props={"log_id": log.id, "meal_type": log.meal_type or ""})
+    track(
+        EVT_LOG_CREATED,
+        patient_id=request.user.id,
+        props={"log_id": log.id, "meal_type": log.meal_type or ""},
+    )
     return log
 
 
@@ -71,7 +78,11 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
             try:
                 LogEntry.objects.create(patient=request.user, **entry_data.dict())
                 synced_uuids.append(entry_data.client_uuid)
-                track(EVT_LOG_CREATED, patient_id=request.user.id, props={"client_uuid": str(entry_data.client_uuid)})
+                track(
+                    EVT_LOG_CREATED,
+                    patient_id=request.user.id,
+                    props={"client_uuid": str(entry_data.client_uuid)},
+                )
             except Exception as e:
                 errors.append(f"Error syncing {entry_data.client_uuid}: {str(e)}")
 
@@ -86,10 +97,29 @@ def get_log(request, log_id: int):
     return get_object_or_404(LogEntry, id=log_id, patient=request.user)
 
 
+def _validate_patch_portion_links(log: LogEntry, data: LogEntryUpdateSchema) -> None:
+    if data.meal_items is None and data.meal_portions is None:
+        return
+
+    effective_items = data.meal_items if data.meal_items is not None else log.meal_items
+    if data.meal_portions is not None:
+        effective_portions = data.meal_portions
+    else:
+        effective_portions = [
+            MealPortionSchema.model_validate(portion) for portion in log.meal_portions
+        ]
+
+    try:
+        validate_meal_portion_links(effective_items or [], effective_portions)
+    except ValueError as exc:
+        raise HttpError(422, str(exc)) from exc
+
+
 @router.patch("/logs/{log_id}", response=LogEntrySchema)
 def update_log(request, log_id: int, data: LogEntryUpdateSchema):
     """Partial update — only supplied fields are written.  404 on cross-patient access."""
     log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
+    _validate_patch_portion_links(log, data)
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(log, field, value)
     log.save()

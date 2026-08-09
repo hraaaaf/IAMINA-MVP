@@ -86,6 +86,7 @@ class SyncService {
           'meal_type': log.mealType ?? '',
           'meal_description': log.mealDescription ?? '',
           'meal_items': _mealItems(log.mealItemsJson),
+          'meal_portions': _mealPortions(log.mealPortionsJson),
           'logged_at': (log.loggedAt ?? log.createdAt).toIso8601String(),
           'source': log.source,
           'client_uuid': log.clientUuid,
@@ -135,6 +136,40 @@ class SyncService {
       return decoded.whereType<String>().toList(growable: false);
     } catch (_) {
       return const <String>[];
+    }
+  }
+
+  List<Map<String, Object>> _mealPortions(String? raw) {
+    if (raw == null || raw.trim().isEmpty) {
+      return const <Map<String, Object>>[];
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const <Map<String, Object>>[];
+      final result = <Map<String, Object>>[];
+      for (final value in decoded) {
+        if (value is! Map) continue;
+        final foodId = value['food_id'];
+        final portionId = value['portion_id'];
+        final gramsRaw = value['grams'];
+        final grams = gramsRaw is num ? gramsRaw.toDouble() : null;
+        if (foodId is! String || foodId.trim().isEmpty) continue;
+        if (portionId is! String? || (portionId != null && portionId.trim().isEmpty)) {
+          continue;
+        }
+        if (grams != null && (!grams.isFinite || grams <= 0 || grams > 3000)) {
+          continue;
+        }
+        if (portionId == null && grams == null) continue;
+        result.add(<String, Object>{
+          'food_id': foodId,
+          if (portionId != null) 'portion_id': portionId,
+          if (grams != null) 'grams': grams,
+        });
+      }
+      return result;
+    } catch (_) {
+      return const <Map<String, Object>>[];
     }
   }
 

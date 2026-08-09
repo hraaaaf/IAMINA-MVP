@@ -6,10 +6,12 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/data/meal_food_catalog.dart';
+import '../../../core/data/nutrition_catalog.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/drift/database.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../journal/widgets/meal_capture_panel.dart';
+import '../../journal/widgets/nutrition_portion_editor.dart';
 
 /// Deterministic entry-safety classification for a single normalized reading.
 ///
@@ -45,6 +47,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
   final TextEditingController _insulinController = TextEditingController();
   final TextEditingController _mealNoteController = TextEditingController();
   final List<String> _selectedMealItemIds = <String>[];
+  final Map<String, MealPortionSelection> _mealPortionSelections =
+      <String, MealPortionSelection>{};
 
   String? _glycemicContext;
   String? _mealType;
@@ -367,6 +371,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
                   _mealExpanded = false;
                   _mealType = null;
                   _selectedMealItemIds.clear();
+                  _mealPortionSelections.clear();
                   _mealNoteController.clear();
                 }),
                 child: Text(l10n.journalRemoveMeal),
@@ -396,8 +401,23 @@ class _AddLogSheetState extends State<AddLogSheet> {
               _selectedMealItemIds
                 ..clear()
                 ..addAll(ids);
+              _mealPortionSelections.removeWhere(
+                (foodId, _) => !ids.contains(foodId),
+              );
             }),
           ),
+          if (_selectedMealItemIds.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 16),
+            NutritionPortionEditor(
+              selectedFoodIds: _selectedMealItemIds,
+              selections: _mealPortionSelections,
+              onChanged: (next) => setState(() {
+                _mealPortionSelections
+                  ..clear()
+                  ..addAll(next);
+              }),
+            ),
+          ],
           const SizedBox(height: 16),
           TextField(
             key: const Key('meal-note-input'),
@@ -700,6 +720,9 @@ class _AddLogSheetState extends State<AddLogSheet> {
               mealDescription: drift.Value(note.isEmpty ? null : note),
               mealItemsJson: drift.Value(
                 encodeMealItemIds(_selectedMealItemIds),
+              ),
+              mealPortionsJson: drift.Value(
+                encodeMealPortionSelections(_mealPortionSelections.values),
               ),
               clientUuid: const Uuid().v4(),
               loggedAt: drift.Value(_selectedTime),

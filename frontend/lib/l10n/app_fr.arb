@@ -321,5 +321,36 @@
   "journalMealPhotoProposalHint": "Sélectionne ce qui est correct, puis confirme. Utilise la recherche pour corriger ou compléter.",
   "journalMealPhotoConfirm": "Confirmer la sélection",
   "journalMealPhotoUnavailable": "Aucun aliment n’a pu être reconnu. Ajoute-les avec la recherche.",
-  "journalMealPhotoConsent": "La reconnaissance photo nécessite le consentement IA. La saisie manuelle reste disponible."
+  "journalMealPhotoConsent": "La reconnaissance photo nécessite le consentement IA. La saisie manuelle reste disponible.",
+  "journalNutritionPortionTitle": "PORTIONS",
+  "journalNutritionPortionHint": "Choisis une portion naturelle ou indique les grammes si tu les connais. Aucun chiffre nutritionnel n’est inventé.",
+  "journalNutritionGrams": "Grammes",
+  "journalNutritionUnavailable": "Nutrition non chiffrée : donnée ou portion pas encore assez documentée.",
+  "journalNutritionCarbsExact": "≈ {value} g de glucides",
+  "journalNutritionCarbsRange": "≈ {low}–{high} g de glucides",
+  "journalNutritionSource": "Source : {source}",
+  "@journalNutritionCarbsExact": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "@journalNutritionCarbsRange": {
+    "placeholders": {
+      "low": {
+        "type": "String"
+      },
+      "high": {
+        "type": "String"
+      }
+    }
+  },
+  "@journalNutritionSource": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  }
 }

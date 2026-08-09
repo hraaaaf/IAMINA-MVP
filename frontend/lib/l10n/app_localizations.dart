@@ -1701,6 +1701,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Photo recognition requires AI-processing consent. Manual entry remains available.'**
   String get journalMealPhotoConsent;
+
+  /// No description provided for @journalNutritionPortionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'PORTIONS'**
+  String get journalNutritionPortionTitle;
+
+  /// No description provided for @journalNutritionPortionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a natural portion or enter grams if you know them. No nutrition number is invented.'**
+  String get journalNutritionPortionHint;
+
+  /// No description provided for @journalNutritionGrams.
+  ///
+  /// In en, this message translates to:
+  /// **'Grams'**
+  String get journalNutritionGrams;
+
+  /// No description provided for @journalNutritionUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No numeric nutrition shown: the food or portion is not documented well enough yet.'**
+  String get journalNutritionUnavailable;
+
+  /// No description provided for @journalNutritionCarbsExact.
+  ///
+  /// In en, this message translates to:
+  /// **'≈ {value} g carbohydrates'**
+  String journalNutritionCarbsExact(String value);
+
+  /// No description provided for @journalNutritionCarbsRange.
+  ///
+  /// In en, this message translates to:
+  /// **'≈ {low}–{high} g carbohydrates'**
+  String journalNutritionCarbsRange(String low, String high);
+
+  /// No description provided for @journalNutritionSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source: {source}'**
+  String journalNutritionSource(String source);
 }
 
 class _AppLocalizationsDelegate

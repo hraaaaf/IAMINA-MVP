@@ -859,4 +859,33 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get journalMealPhotoConsent =>
       'Photo recognition requires AI-processing consent. Manual entry remains available.';
+
+  @override
+  String get journalNutritionPortionTitle => 'PORTIONS';
+
+  @override
+  String get journalNutritionPortionHint =>
+      'Choose a natural portion or enter grams if you know them. No nutrition number is invented.';
+
+  @override
+  String get journalNutritionGrams => 'Grams';
+
+  @override
+  String get journalNutritionUnavailable =>
+      'No numeric nutrition shown: the food or portion is not documented well enough yet.';
+
+  @override
+  String journalNutritionCarbsExact(String value) {
+    return '≈ $value g carbohydrates';
+  }
+
+  @override
+  String journalNutritionCarbsRange(String low, String high) {
+    return '≈ $low–$high g carbohydrates';
+  }
+
+  @override
+  String journalNutritionSource(String source) {
+    return 'Source: $source';
+  }
 }
