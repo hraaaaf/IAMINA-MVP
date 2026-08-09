@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-08 — P2-UX-14 density/polish certified at 9.2/10 in PR #66 after a rejected 8.5/10 baseline; final visual UX remediation matrix is complete.
+> **Last updated:** 2026-08-09 — metabolic-event Journal redesign registered; P0-JOURNAL-1 clinical truthfulness is the first merge unit and P0-JOURNAL-2 is next.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,6 +29,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
+| Journal metabolic-event redesign | 11% | 🔵 P0-JOURNAL-1 merge unit | PR #67; truthful glucose/nutrition/insulin capture; P0-JOURNAL-2 next |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -36,6 +37,8 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | Pilot safety/compliance gate | 69% | 🟡 Automated procedures complete; external security/legal/human gates remain | 9 of 13 explicit gates complete; PRs #34–#35 prepare approval gates; PR #38 prepares secret-history remediation; issue #30 remains blocking |
 
 **MENA critical-path completion:** 32 of 41 explicit roadmap tasks closed, approximately **78%**.
+
+The Journal redesign is a separate product-quality workstream and does not change the MENA critical-path numerator.
 
 Preparation work does not close a live benchmark, legal/privacy approval, native-review task or external credential-remediation task and does not increase the critical-path numerator.
 
@@ -93,7 +96,35 @@ Preparation work does not close a live benchmark, legal/privacy approval, native
 
 ---
 
-# P0 visual UX remediation — ACTIVE
+# Journal metabolic-event redesign — ACTIVE
+
+**Goal:** turn the add-log surface into a fast, truthful metabolic-event journal that records what happened, keeps treatment decisions out of the UI, and can later support evidence-backed personal response patterns without fabricated precision.
+
+## Mandatory execution rule
+
+Each Journal LOT is a separate branch/PR. Clinical/safety, UX/UI, privacy/egress and persistence reviewers are routed according to the touched surface. UX/UI LOTs require the repository UX certification procedure and a final score strictly above 9.0/10. A clinical safety LOT may not be expanded merely to chase visual polish; its visible behavior must remain usable and non-regressive, while the dedicated UX LOT owns full visual certification.
+
+| LOT | Scope | Status | Acceptance boundary |
+|---|---|---|---|
+| P0-JOURNAL-1 | Clinical truthfulness | 🔵 PR #67 merge unit | no fabricated default glucose/target verdict; no fabricated carbs/IG/meal-impact score; insulin is already-taken logging only; deterministic `<54` vs `54–69` low-glucose safety; no automatic generative post-save verdict |
+| P0-JOURNAL-2 | Express metabolic event | ⏭️ Next | `glycaemia → context → optional meal → save`; glycaemic context separate from meal type; Sport removed from meal taxonomy; FR/EN/AR + RTL/responsive certification >9.0 |
+| P1-JOURNAL-3 | Meal capture | ⬜ Planned | recent/habitual/search + confirmed photo recognition; no “food recommendation” implication; user confirms/corrects media recognition |
+| P1-JOURNAL-4 | Nutrition data v2 | ⬜ Planned | sourced food/portion model, provenance and uncertainty; Morocco/MENA portions; no patient-facing nutrition number without defensible source |
+| P1-JOURNAL-5 | Insulin logging v2 | ⬜ Planned | actual administered dose/context only; no calculator, scoring, optimization or suggested units |
+| P1-JOURNAL-6 | Context intelligence | ⬜ Planned | optional illness/stress/activity/sleep context; avoid repeatedly asking low-value information |
+| P1-JOURNAL-7 | Ramadan mode v2 | ⬜ Planned | Ramadan becomes a profile/period context; meal vocabulary adapts automatically; no per-log pseudo-clinical toggle |
+| P2-JOURNAL-8 | Personal metabolic response | ⬜ Planned | repeated-event associations with explicit evidence count/confidence; observational wording only; no invented causality/treatment advice |
+| P2-JOURNAL-9 | Post-save experience | ⬜ Planned | immediate factual confirmation only; longitudinal insights appear separately only when evidence requirements are met |
+
+### P0-JOURNAL-1 durable closeout contract
+
+PR #67 is the merge unit for the first Journal LOT. Its code removes fabricated clinical/nutritional precision from the reachable add-log surface, preserves Drift persistence and `client_uuid`, distinguishes ADA 2026 level-2 `<54 mg/dL` from level-1 `54–69 mg/dL` before persistence, and removes the automatic post-save generative opinion. OCR, meal-photo recognition, voice dictation, richer nutrition, profile-level Ramadan behavior and longitudinal personalization are intentionally not claimed by this LOT; they return only through their dedicated units and existing egress/safety contracts.
+
+P0-JOURNAL-1 is not declared 100% merely by this roadmap entry: expected-head merge plus post-merge CI and migration drift remain mandatory. P0-JOURNAL-2 must branch from the verified merged main.
+
+---
+
+# P0 visual UX remediation — CLOSED
 
 Canonical defect register and acceptance criteria: `docs/ux/P0_CERT_4_VISUAL_AUDIT.md`.
 
@@ -123,125 +154,9 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 | P0-UX-11 | Dashboard premier utilisateur | 100% | **9.3/10** after second post-patch visual double-check; PR #62; truthful loading/error/empty/offline states; 8-view FR/AR recertification run `31248641421`, artifact `9019314222`, zero page errors | ✅ |
 | P1-UX-12 | Profil progressif | 100% | **9.4/10** after Reviewer double-check; PR #64; three truthful progressive sections; 8-view FR/AR recertification run `31258575687`, artifact `9022145295`, zero page errors | ✅ |
 | P1-UX-13 | Wording médical et produit | 100% | **9.3/10** after second visual recertification; PR #65; plain-language CGM/AGP + privacy wording; 32-view FR/AR run `31263898750`, artifact `9023631718`, zero page errors | ✅ |
-| P2-UX-14 | Densité et polish | 100% | **9.2/10** after Reviewer double-check; PR #66; 40-view FR/AR final matrix run `31267173791`, artifact `9024558783`, zero page errors | ✅ |
+| P2-UX-14 | Densité et polish | 100% | **9.2/10** after Reviewer double-check; 40-view FR/AR final matrix run `31267173791`, artifact `9024558783`, zero page errors | ✅ |
 
-### P0-UX-7 delivered work
-
-- Routed pages receive the true post-sidebar viewport instead of the full window width.
-- Dashboard first-use content keeps a readable width while data views may use more space.
-- Journal long-history content is constrained to a readable desktop measure.
-- Importer uses a two-column desktop composition for direct connection cards when space permits.
-- Profile and Pulper use bounded, centered desktop surfaces without shrinking tablet layouts.
-- A shared responsive surface and permanent Flutter non-regression contract were added.
-- Desktop FR `1440×1000` and tablet AR/RTL `768×1024` were recaptured across Dashboard, Journal, Importer, Pulper and Profile.
-- Visual comparison found the desktop composition materially improved and tablet RTL stable, with no new runtime/page error.
-- Product head `bf633bc1524f7d52c179f0edc33150d93c5d8431` passed the full pre-merge CI and migration gates; post-merge `main` at `0a098d8b157c8d030e4d2ed8a6b4b8fcd895cccb` also passed CI #1062 and migration drift #878.
-
-**Final P0-UX-7 score: 9.3/10 — PASS.** The score is above the mandatory 9.0 threshold, so no additional remediation iteration is required for this LOT.
-
-### P0-UX-8 delivered work
-
-- The existing Material `NavigationBar` is retained because inspection showed that P0-UX-6.4 had already delivered the required permanent labels and explicit active indicator; no cosmetic rewrite was introduced without evidence.
-- A permanent real-widget contract now mounts the actual `MainShell` at `390×844` in French and Arabic.
-- All five destinations remain visible and labelled: Dashboard, IAmina, Journal, Importer and Settings.
-- The contract proves route-derived active state, real taps to Importer and Journal, Arabic RTL direction, touch targets of at least 48 px and screen-reader semantics containing each localized destination label.
-- The complete frontend suite passed after the semantics contract was corrected to match Flutter's composite semantics labels and to dispose its test handle before end-of-test verification.
-- Mobile FR and AR were visually recaptured at `390×844` across Dashboard, Summary, Journal, Importer and Profile: 10 views, one Flutter view per capture and zero page errors.
-- Visual double-check found permanent labels legible, selected-state pills unambiguous, RTL ordering correctly mirrored and no navigation overlap at the certified viewport.
-- Visual artifact: `8995273847`, digest `sha256:ce0fb1cb2f46855e30c0ed8c4eb9dd22fc67375a646ed3ef55ff91afdf4de607`.
-- Certified pre-roadmap test head `dc70dbcedc56300f811087d0f75312b3460e9232` passed CI #1075 and migration drift #891.
-
-**Final P0-UX-8 score: 9.4/10 — PASS.** No critical or high-severity navigation defect remains in the certified 390×844 FR/AR scope. P0-UX-9 remains separate and will certify the harsher `360×560` viewport and transient overlays.
-
-### P0-UX-9 delivered work
-
-- The five certified user journeys were audited at the harsher `360×560` viewport in both French and Arabic/RTL before remediation.
-- The first visual pass scored only **8.6/10** and was explicitly rejected rather than closed: Dashboard CTA crowding, an under-designed Summary error state, a redundant IAmina FAB, French residue in Arabic Summary, cramped Arabic period chips and excessive Profile emphasis remained.
-- Dashboard first-use composition now adapts to short heights: illustration, spacing and CTA padding compact without hiding the secondary import action behind mobile navigation.
-- Summary mobile now uses a localized IAmina header instead of a desktop breadcrumb, removes the redundant IAmina FAB, localizes loaded-state greeting/observation and presents failure as a deliberate bounded product card with a 48 px retry action.
-- Arabic period labels no longer collapse into forms such as `7ي`; the compact label uses the readable `يوم` token and the Summary capture contains no French residue.
-- Profile reduces the promotional elevation of the IAmina configuration card and displays completion percentage only once.
-- The Profile sign-out sheet remains scroll-controlled and safe-area aware for short screens; a permanent `p0_ux_9_small_screen_contract_test.dart` prevents regression of the certified small-screen contracts.
-- The second FR/AR `360×560` matrix covers Dashboard, Summary, Journal, Importer and Profile: **10/10 rendered views, zero page errors**, no observed overlap or RTL regression.
-- Certified product head `0d421f2dc36fd295a4d69f302c7596a5950a9f50` passed CI #1092 and migration drift #908. Visual evidence: run `31208830202`, artifact `9005910951`, digest `sha256:eeeda5f517eaf0c6d0f6a3a6124335bc1250fc2942cb6e7636712a3563a91a14`.
-
-**Final P0-UX-9 score: 9.2/10 — PASS.** The score was assigned only after the rejected 8.6/10 pass was corrected and recaptured. No critical/high small-screen defect remains in the certified FR/AR `360×560` scope. PR #60 is the merge unit for this LOT; P0-UX-10 is next.
-
-### P0-UX-10 delivered work
-
-- Code inspection established that Importer and the historical Pulper screen are not competing acquisition products: `/importer` is the sole primary acquisition hub, while `/pulper` is a subordinate document workflow that performs pick → ingest → preview → explicit confirmation.
-- The technical `/pulper` route and internal `PulperPreview` / `PulperConfirmResult` model names remain implementation details; no backend, persistence or confirmation semantics were changed.
-- User-facing `Pulper IAmina` branding was removed. The Importer hub now presents the localized task **Importer un document**, and the document screen uses the same task-first title without duplicating it in the hero.
-- UI implementation names were aligned to the product model (`DocumentImportCard`, `DocumentFormatChip`, `DocumentImportIcon`) while preserving the historical internal route to avoid an unnecessary navigation migration.
-- A permanent `p0_ux_10_importer_document_entry_contract_test.dart` proves that Importer is the only primary navigation entry, the document workflow remains subordinate and no user-facing Pulper branding returns.
-- The first 16-view visual pass was explicitly rejected: the French `360×560` document screen partially clipped the primary **Choisir un document** CTA at the bottom.
-- The same LOT was corrected with a short-height layout contract (`≤600 px`) that reduces only vertical spacing, icon size and CTA padding while preserving the complete privacy notice and all document-format choices.
-- The second matrix covers Importer plus document import in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **16/16 rendered views, zero page errors**, no visible Pulper branding, clean RTL and a fully visible primary CTA at the harshest viewport.
-- Certified product head `14e7a6d605aeb31d6c1813c614f9b72bbbf71d53`; visual evidence: run `31224557639`, artifact `9011673527`, digest `sha256:8e064f44d31f5422d8662cb8f88a962d74fcc8a676a6139cf5906110f2893710`.
-
-**Final P0-UX-10 score: 9.4/10 — PASS.** The LOT was not closed on the first successful implementation: the clipped 360×560 French CTA forced a second remediation and complete recertification. PR #61 is the merge unit; P0-UX-11 is next.
-
-
-### P0-UX-11 delivered work
-
-- The existing first-use Dashboard was audited before modification across FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`. The baseline scored **8.4/10** and was rejected: desktop was under-composed, the empty state could appear while local streams were still loading, and feature pills such as real-time AGP / AI analysis could imply capabilities before any patient data existed.
-- Local data states are now explicit and truthful: loading and local-read error are distinct from an actually empty Dashboard, with a localized retry action for errors; offline state remains derived from the real `SyncService` state.
-- The empty state presents no fabricated KPI, graph or sample patient value. The primary action is the real **add first measurement** route and document import remains a real secondary action.
-- Ambiguous feature-promise pills and the emoji illustration were removed. A clinical Material icon and factual FR/AR/EN copy explain that the Dashboard is built only from real recorded data.
-- Wide layouts use a two-zone first-use composition instead of a narrow mobile block stretched across desktop; mobile and RTL use a single directional column with 48 px actions.
-- The first post-patch visual pass was also rejected because the French truth-note card was partially obscured by the bottom navigation at `360×560`. The same LOT was corrected so short-height screens prioritize the factual body and both acquisition actions without hiding content.
-- The final matrix covers the Dashboard in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **8/8 rendered views, zero page errors**, stable RTL and fully visible primary/secondary actions. Baseline local API connection-refused console noise remains unchanged and is not presented as a new runtime regression.
-- Certified product head `2b65e9c4357b59bbc2d53cdde2e6a3271e65911c` passed CI #1128 and migration drift #944. Visual evidence: run `31248641421`, artifact `9019314222`, digest `sha256:b1846c10a68a918ad0ea5484fe50726da3ae69710944b072bf88e947eb45dd03`.
-
-**Final P0-UX-11 score: 9.3/10 — PASS.** The LOT exceeded the mandatory threshold only after the baseline and the first post-patch small-screen result were both rejected and remediated. PR #62 is the merge unit; P1-UX-12 is next.
-
-### P1-UX-12 delivered work
-
-- The existing Profile was inspected before modification and found to mix medical configuration, IAmina preferences, account/privacy actions and a fabricated completion percentage in one long surface.
-- The Profile is now organized into three explicit progressive sections: **Suivi médical**, **IAmina & préférences**, and **Confidentialité & compte**, all collapsed by default for fast scanning on narrow screens.
-- The former completion percentage was removed because default values could make an unconfigured profile look partially complete.
-- Empty medical state is fail-closed and truthful: it shows a neutral “À compléter ou vérifier” summary until a persisted profile actually exists; real diabetes/treatment/unit values are summarized only after persisted data is loaded or successfully saved.
-- Medical target inputs stack on compact widths, account/consent actions remain isolated with 48 px controls, and existing safe-area/scroll behavior is preserved.
-- FR/EN/AR localization owns all new section labels and hints; Arabic RTL remained visually coherent across the certified matrix.
-- A permanent `p1_ux_12_progressive_profile_contract_test.dart` locks the progressive structure, collapsed defaults, truthful persisted-profile summary and sensitive-action grouping.
-- Builder/Reviewer remediation run `31254691325` passed `flutter analyze --no-fatal-infos` and **8/8 targeted tests**.
-- Final full CI then caught a real non-regression: P1-UX-12 had narrowed the Profile surface from the P0-UX-7 certified `1040` px contract to `920` px. The LOT stayed open; run `31258415090` restored `maxWidth: 1040` and passed the P1-UX-12, P0-UX-7 and P0-UX-9 targeted contracts before commit.
-- Exact product head `322be3bf82e3f112e4ebf89aea732353a0c72d59` was visually recertified in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **8/8 rendered views, one Flutter view each, zero page errors**. Expected local API `ERR_CONNECTION_REFUSED` console noise is unchanged and not treated as a page/runtime regression.
-- Visual evidence: run `31258575687`, artifact `9022145295`, digest `sha256:091faa01cb4c4b7004844a0eb29e3f6bf3328f2588dbf6e6ebbed1a5048fb996`.
-- Independent visual Reviewer found no critical/high defect after remediation and scored the final Profile **9.4/10**.
-
-**Final P1-UX-12 score: 9.4/10 — PASS.** PR #64 is the merge unit; P1-UX-13 is next.
-
-### P1-UX-13 delivered work
-
-- Baseline audit covered Summary, Importer, document import and consent in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **32/32 rendered views, zero page errors**. The baseline scored **7.9/10** and was rejected because expert/internal wording such as `Export CGM` and `Traitement externe contrôlé` required unnecessary domain knowledge.
-- CGM is now expanded in patient-facing acquisition copy, while the acronym remains as the complementary medical term. The former `AGP en temps réel` wording was removed because AGP is a standardized summary/report concept rather than a truthful real-time capability label; the UI now uses a plain-language sensor-trend summary with `(AGP)` in complement.
-- Reading coverage copy now explicitly distinguishes the proportion of recorded readings from CGM time in range, avoiding a clinically misleading equivalence.
-- External-processing copy was simplified to task-first language while retaining the already-certified privacy conditions: consent, provider authorization, hosting region, retention period and fail-closed behavior when approval is missing.
-- The permanent `p0_privacy_truthfulness_contract_test.dart` was migrated rather than weakened: it continues to require deployment/provider evidence and reject unsupported privacy claims, while no longer forcing the obsolete internal phrase `Traitement externe contrôlé`.
-- Permanent `p1_ux_13_wording_contract_test.dart` and `p1_ux_13_compact_consent_contract_test.dart` lock the new terminology and harsh small-screen behavior.
-- The first post-patch visual recertification was **rejected at 8.8/10**: on `360×560` FR/AR the longer, safer consent copy pushed both user choices below the initial viewport. The LOT remained open.
-- Compact-height consent remediation (`≤600 px`) reduces only layout density and typography; it does **not** remove consent conditions. Builder validation run `31263759746` passed Flutter analyze, P1-UX-13 wording, compact-consent, privacy-truthfulness and P0-UX-9 small-screen contracts.
-- Final exact product head `6b283650d055fbb073273734b91ae79eb68fcfe4` was recaptured across the complete 32-view FR/AR matrix. Both **Accept & continue** and **Continue without AI** are visible at `360×560` in FR and AR, RTL remains coherent, and no other audited surface regressed.
-- Final visual evidence: run `31263898750`, artifact `9023631718`, digest `sha256:8cfe6334d10e555d9fc407ff4a82789ebc377dace9e7d5986865e0b7b19ef3e6`; `source-sha.txt` matches the product head, all 32 entries have exactly one Flutter view and zero page errors.
-- Clinical Safety Reviewer PASS: no diagnostic, treatment, dose, clinical threshold or calculation behavior changed; wording remains non-prescriptive and privacy egress conditions remain fail-closed.
-
-**Final P1-UX-13 score: 9.3/10 — PASS.** The LOT exceeded the mandatory threshold only after the 7.9 baseline and 8.8 first recertification were both rejected and remediated. PR #65 is the merge unit; P2-UX-14 is next.
-
-### P2-UX-14 delivered work
-
-- The canonical UX-A09/UX-A10 baseline covered Dashboard, Summary, Journal, Importer and Profile in FR/AR at `1440×1000`, `768×1024`, `390×844` and `360×560`: **40/40 rendered views**, one Flutter view per capture and zero page errors. Baseline evidence: run `31266321341`, artifact `9024312935`, digest `sha256:6f402c09185e5fcde6be8bbd09f856ecf072a7bd390c115884375491e5958ef1`.
-- The baseline scored **8.5/10 — CHANGES_REQUIRED**. Wide layouts still felt under-structured: the Summary error state was too small for desktop, Journal empty state floated in excessive whitespace, and Profile lacked a sufficiently coherent clinical grouping.
-- Remediation stayed deliberately cosmetic/structural: no business logic, clinical calculation, privacy behavior, persistence, route contract or patient-facing medical meaning changed.
-- Summary now uses a proportionate wide error composition while preserving the compact `360×560` state and 48 px retry action. Journal wide empty state is anchored to the readable content region rather than centered in unused canvas. Profile progressive sections gain a coherent desktop grouping with shared clinical radii and shadows.
-- Existing Dashboard and Importer layouts were intentionally left unchanged after review showed they already met the density objective. P0 desktop/tablet width contracts, mobile navigation, small-screen behavior and RTL remained stable.
-- Builder double-check caught and removed generated Flutter metadata/lockfile noise plus broad formatter churn before review; the final product diff contains only the three targeted screens and permanent `p2_ux_14_density_polish_contract_test.dart`.
-- Final exact visual product head `b6f42319207fff380b634f0d390dd3c8b45221b4` was recaptured across the complete **40-view** matrix. `source-sha.txt` matches; all 40 report rows have one Flutter view and zero page errors. Final evidence: run `31267173791`, artifact `9024558783`, digest `sha256:fcb730b7c32b8b2a8435072109f6a879170414f81e39ec8f139c28b421d5e902`.
-- Independent UX Reviewer PASS review `4889215432`: no critical/high defect observed; final score **9.2/10**. Pre-ROADMAP PR-head gates on the reviewed SHA were green: CI `31267596592` and migration drift `31267596575`.
-
-**Final P2-UX-14 score: 9.2/10 — PASS.** PR #66 is the merge unit. The visual UX remediation workstream has now completed all canonical P0-CERT-4 defect lots; merge still requires exact-final-head CI/drift, Release Certifier GO and post-merge verification.
-
-This UX remediation workstream is separate from the MENA critical-path numerator.
+The visual UX remediation workstream is complete. Detailed implementation history and rejected-baseline narratives remain available in git and PRs #53–#66 rather than being expanded further in this forward tracker.
 
 ---
 
@@ -381,3 +296,4 @@ These units close procedures and executable controls. They do not imply native-l
 3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals, then run the PR #34 and PR #35 `--require-approved` gates.
 4. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
 5. Run the deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
+6. In the product-quality lane, close P0-JOURNAL-1 through expected-head merge/post-merge verification, then execute P0-JOURNAL-2 as the next Journal LOT without changing the MENA critical-path numerator.
