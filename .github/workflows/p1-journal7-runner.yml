@@ -17,7 +17,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: agent/p1-journal-ramadan-v2
-          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -31,16 +30,18 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Apply frontend patch from prior commit
+      - name: Apply frontend patch from exact prior commit
         run: |
           python - <<'PY'
-          import subprocess
+          from urllib.request import urlopen
 
           source_commit = 'fc6faada2b6958e74469e0fcfa87daa5e130b7ce'
-          raw = subprocess.check_output(
-              ['git', 'show', f'{source_commit}:.github/workflows/p1-journal7-frontend.yml'],
-              text=True,
+          url = (
+              'https://raw.githubusercontent.com/hraaaaf/IAMINA-MVP/'
+              f'{source_commit}/.github/workflows/p1-journal7-frontend.yml'
           )
+          with urlopen(url, timeout=30) as response:
+              raw = response.read().decode('utf-8')
           start_marker = "          python - <<'PY'\n"
           end_marker = "\n          PY\n"
           start = raw.index(start_marker) + len(start_marker)
