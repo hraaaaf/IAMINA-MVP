@@ -26,6 +26,22 @@ class MealPortionSchema(Schema):
         return self
 
 
+def validate_meal_portion_links(
+    meal_items: List[str],
+    meal_portions: List[MealPortionSchema],
+) -> None:
+    """Keep confirmed portion rows one-to-one with selected structured foods."""
+
+    selected = set(meal_items)
+    seen: set[str] = set()
+    for portion in meal_portions:
+        if portion.food_id not in selected:
+            raise ValueError("meal portion food_id must exist in meal_items")
+        if portion.food_id in seen:
+            raise ValueError("only one meal portion is allowed per food_id")
+        seen.add(portion.food_id)
+
+
 class PatientProfileSchema(Schema):
     diabetes_type: Optional[str] = None
     treatment_type: Optional[str] = None
@@ -77,6 +93,11 @@ class LogEntryCreateSchema(Schema):
     source: str = "manual"
     client_uuid: Optional[UUID] = None
 
+    @model_validator(mode="after")
+    def validate_portion_links(self):
+        validate_meal_portion_links(self.meal_items, self.meal_portions)
+        return self
+
 
 class LogEntryUpdateSchema(Schema):
     """Partial update — all fields optional. Only supplied fields are written."""
@@ -94,6 +115,12 @@ class LogEntryUpdateSchema(Schema):
     stressed: Optional[str] = None
     fatigue_level: Optional[str] = None
     is_sick: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_portion_links_when_complete(self):
+        if self.meal_items is not None and self.meal_portions is not None:
+            validate_meal_portion_links(self.meal_items, self.meal_portions)
+        return self
 
 
 class PaginatedLogsResponse(Schema):
