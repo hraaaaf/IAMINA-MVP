@@ -9,6 +9,20 @@ import '../../../core/data/culinary_data.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/drift/database.dart';
 
+/// Deterministic entry-safety classification for a single normalized reading.
+///
+/// Threshold source: American Diabetes Association, Standards of Care in
+/// Diabetes—2026, Section 6: level 1 hypoglycemia is <70 and >=54 mg/dL;
+/// level 2 hypoglycemia is <54 mg/dL. This function does not diagnose, prescribe,
+/// or calculate treatment.
+enum GlucoseEntrySafety { level2Low, level1Low, nonLow }
+
+GlucoseEntrySafety classifyGlucoseEntrySafety(double mgdl) {
+  if (mgdl < 54) return GlucoseEntrySafety.level2Low;
+  if (mgdl < 70) return GlucoseEntrySafety.level1Low;
+  return GlucoseEntrySafety.nonLow;
+}
+
 /// Truthful metabolic-event capture.
 ///
 /// This surface records what happened. It intentionally does not calculate an
@@ -50,7 +64,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
     'Collation',
     'Sport',
   ];
-
   static const List<String> _mealTypesRamadan = <String>[
     'Iftar',
     'Suhoor',
@@ -68,10 +81,9 @@ class _AddLogSheetState extends State<AddLogSheet> {
     super.dispose();
   }
 
-  double? _displayGlucose() {
-    final raw = _glucoseController.text.trim().replaceAll(',', '.');
-    return double.tryParse(raw);
-  }
+  double? _displayGlucose() => double.tryParse(
+        _glucoseController.text.trim().replaceAll(',', '.'),
+      );
 
   double? _mgdlGlucose(String unit) {
     final value = _displayGlucose();
@@ -201,47 +213,50 @@ class _AddLogSheetState extends State<AddLogSheet> {
     );
   }
 
-  Widget _header() {
-    return Row(
-      children: <Widget>[
-        IconButton(
-          tooltip: 'Retour',
-          onPressed: () async {
-            if (await _confirmLeave() && mounted) _close();
-          },
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                'Nouvelle mesure',
-                style: TextStyle(
-                  color: AminaTheme.textPrimary(context),
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Enregistre ce qui vient de se passer.',
-                style: TextStyle(
-                  color: AminaTheme.textSecondary(context),
-                  fontSize: 13,
-                ),
-              ),
-            ],
+  Widget _header() => Row(
+        children: <Widget>[
+          IconButton(
+            tooltip: 'Retour',
+            onPressed: () async {
+              if (await _confirmLeave() && mounted) _close();
+            },
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
           ),
-        ),
-      ],
-    );
-  }
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Nouvelle mesure',
+                  style: TextStyle(
+                    color: AminaTheme.textPrimary(context),
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Enregistre ce qui vient de se passer.',
+                  style: TextStyle(
+                    color: AminaTheme.textSecondary(context),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
 
   Widget _glucoseCard(String unit) {
     final mgdl = _mgdlGlucose(unit);
-    final isLow = mgdl != null && mgdl < 70;
+    final safety = mgdl == null
+        ? GlucoseEntrySafety.nonLow
+        : classifyGlucoseEntrySafety(mgdl);
+    final isLow = safety != GlucoseEntrySafety.nonLow;
+    final level2 = safety == GlucoseEntrySafety.level2Low;
+    final lowColor = level2 ? const Color(0xFFB91C1C) : const Color(0xFFC2410C);
 
     return Semantics(
       container: true,
@@ -249,14 +264,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isLow
-              ? const Color(0xFFFFF7ED)
-              : AminaTheme.subtleBg(context),
+          color: isLow ? const Color(0xFFFFF7ED) : AminaTheme.subtleBg(context),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isLow
-                ? const Color(0xFFF97316)
-                : AminaTheme.divider(context),
+            color: isLow ? lowColor : AminaTheme.divider(context),
           ),
         ),
         child: Column(
@@ -316,11 +327,22 @@ class _AddLogSheetState extends State<AddLogSheet> {
                   fontSize: 12,
                 ),
               )
-            else if (isLow)
-              const Text(
-                'Valeur basse détectée — vérifie la mesure et suis le message de sécurité lors de l’enregistrement.',
+            else if (level2)
+              Text(
+                'Valeur très basse détectée — un message de sécurité prioritaire sera affiché avant l’enregistrement.',
+                key: const Key('level2-low-message'),
                 style: TextStyle(
-                  color: Color(0xFFC2410C),
+                  color: lowColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              )
+            else if (isLow)
+              Text(
+                'Valeur basse détectée — un message de sécurité sera affiché avant l’enregistrement.',
+                key: const Key('level1-low-message'),
+                style: TextStyle(
+                  color: lowColor,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -367,40 +389,36 @@ class _AddLogSheetState extends State<AddLogSheet> {
     );
   }
 
-  Widget _detailsButton() {
-    return OutlinedButton.icon(
-      onPressed: () => setState(() => _detailsExpanded = true),
-      icon: const Icon(Icons.expand_more_rounded),
-      label: const Text('+ Détails : repas, insuline prise, contexte…'),
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(50),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      ),
-    );
-  }
+  Widget _detailsButton() => OutlinedButton.icon(
+        onPressed: () => setState(() => _detailsExpanded = true),
+        icon: const Icon(Icons.expand_more_rounded),
+        label: const Text('+ Détails : repas, insuline prise, contexte…'),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(50),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      );
 
-  Widget _timeRow() {
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: _pickDateTime,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: AminaTheme.subtleBg(context),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AminaTheme.divider(context)),
+  Widget _timeRow() => InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: _pickDateTime,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: AminaTheme.subtleBg(context),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AminaTheme.divider(context)),
+          ),
+          child: Row(
+            children: <Widget>[
+              const Icon(Icons.schedule_outlined, size: 18),
+              const SizedBox(width: 10),
+              Expanded(child: Text(_timeLabel())),
+              const Icon(Icons.edit_outlined, size: 16),
+            ],
+          ),
         ),
-        child: Row(
-          children: <Widget>[
-            const Icon(Icons.schedule_outlined, size: 18),
-            const SizedBox(width: 10),
-            Expanded(child: Text(_timeLabel())),
-            const Icon(Icons.edit_outlined, size: 16),
-          ],
-        ),
-      ),
-    );
-  }
+      );
 
   Future<void> _pickDateTime() async {
     final date = await showDatePicker(
@@ -430,9 +448,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
     final source = _foodSearch.isEmpty
         ? foodsForMeal(_mealType)
         : universalFoods
-            .where((item) => item.label
-                .toLowerCase()
-                .contains(_foodSearch.toLowerCase()))
+            .where((item) => item.label.toLowerCase().contains(_foodSearch.toLowerCase()))
             .toList();
     final visible = source.take(20).toList();
 
@@ -508,133 +524,154 @@ class _AddLogSheetState extends State<AddLogSheet> {
     );
   }
 
-  Widget _insulinSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        _sectionLabel('INSULINE PRISE'),
-        const SizedBox(height: 6),
-        Text(
-          'Renseigne uniquement une dose déjà administrée. IAmina ne calcule ni ne juge la dose ici.',
-          style: TextStyle(
-            color: AminaTheme.textSecondary(context),
-            fontSize: 12,
-            height: 1.35,
+  Widget _insulinSection() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          _sectionLabel('INSULINE PRISE'),
+          const SizedBox(height: 6),
+          Text(
+            'Renseigne uniquement une dose déjà administrée. IAmina ne calcule ni ne juge la dose ici.',
+            style: TextStyle(
+              color: AminaTheme.textSecondary(context),
+              fontSize: 12,
+              height: 1.35,
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          key: const Key('insulin-taken-input'),
-          controller: _insulinController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: <TextInputFormatter>[
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
-          ],
-          decoration: const InputDecoration(
-            labelText: 'Dose réellement prise',
-            suffixText: 'U',
-            hintText: 'Facultatif',
-            border: OutlineInputBorder(),
+          const SizedBox(height: 10),
+          TextField(
+            key: const Key('insulin-taken-input'),
+            controller: _insulinController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: <TextInputFormatter>[
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
+            ],
+            decoration: const InputDecoration(
+              labelText: 'Dose réellement prise',
+              suffixText: 'U',
+              hintText: 'Facultatif',
+              border: OutlineInputBorder(),
+            ),
           ),
+        ],
+      );
+
+  Widget _contextSection() => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          _sectionLabel('CONTEXTE FACULTATIF'),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              FilterChip(
+                label: const Text('Malade'),
+                selected: _isSick,
+                onSelected: (v) => setState(() => _isSick = v),
+              ),
+              FilterChip(
+                label: const Text('Stress inhabituel'),
+                selected: _isStressed,
+                onSelected: (v) => setState(() => _isStressed = v),
+              ),
+              FilterChip(
+                label: const Text('Activité physique'),
+                selected: _isActive,
+                onSelected: (v) => setState(() => _isActive = v),
+              ),
+              FilterChip(
+                label: const Text('Mauvais sommeil'),
+                selected: _badSleep,
+                onSelected: (v) => setState(() => _badSleep = v),
+              ),
+            ],
+          ),
+        ],
+      );
+
+  Widget _ramadanSection() => SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Mode Ramadan'),
+        subtitle: const Text('Adapte uniquement les libellés de repas pour cette saisie.'),
+        value: _isRamadanMode,
+        onChanged: (value) => setState(() {
+          _isRamadanMode = value;
+          _mealType = value ? 'Iftar' : 'À jeun';
+          _selectedFoods.clear();
+        }),
+      );
+
+  Widget _sectionLabel(String label) => Text(
+        label,
+        style: TextStyle(
+          color: AminaTheme.textSecondary(context),
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: .7,
         ),
-      ],
-    );
-  }
+      );
 
-  Widget _contextSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        _sectionLabel('CONTEXTE FACULTATIF'),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: <Widget>[
-            FilterChip(
-              label: const Text('Malade'),
-              selected: _isSick,
-              onSelected: (v) => setState(() => _isSick = v),
-            ),
-            FilterChip(
-              label: const Text('Stress inhabituel'),
-              selected: _isStressed,
-              onSelected: (v) => setState(() => _isStressed = v),
-            ),
-            FilterChip(
-              label: const Text('Activité physique'),
-              selected: _isActive,
-              onSelected: (v) => setState(() => _isActive = v),
-            ),
-            FilterChip(
-              label: const Text('Mauvais sommeil'),
-              selected: _badSleep,
-              onSelected: (v) => setState(() => _badSleep = v),
-            ),
-          ],
+  Widget _saveBar(AppDatabase db, String unit) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+        decoration: BoxDecoration(
+          color: AminaTheme.bg(context),
+          border: Border(top: BorderSide(color: AminaTheme.divider(context))),
         ),
-      ],
-    );
-  }
-
-  Widget _ramadanSection() {
-    return SwitchListTile.adaptive(
-      contentPadding: EdgeInsets.zero,
-      title: const Text('Mode Ramadan'),
-      subtitle: const Text('Adapte uniquement les libellés de repas pour cette saisie.'),
-      value: _isRamadanMode,
-      onChanged: (value) => setState(() {
-        _isRamadanMode = value;
-        _mealType = value ? 'Iftar' : 'À jeun';
-        _selectedFoods.clear();
-      }),
-    );
-  }
-
-  Widget _sectionLabel(String label) {
-    return Text(
-      label,
-      style: TextStyle(
-        color: AminaTheme.textSecondary(context),
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        letterSpacing: .7,
-      ),
-    );
-  }
-
-  Widget _saveBar(AppDatabase db, String unit) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
-      decoration: BoxDecoration(
-        color: AminaTheme.bg(context),
-        border: Border(top: BorderSide(color: AminaTheme.divider(context))),
-      ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 820),
-          child: FilledButton.icon(
-            onPressed: _saving ? null : () => _saveLog(db, unit),
-            icon: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.check_rounded),
-            label: Text(_saving ? 'Enregistrement…' : 'Enregistrer la mesure'),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(54),
-              backgroundColor: AminaTheme.teal600,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 820),
+            child: FilledButton.icon(
+              onPressed: _saving ? null : () => _saveLog(db, unit),
+              icon: _saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check_rounded),
+              label: Text(_saving ? 'Enregistrement…' : 'Enregistrer la mesure'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(54),
+                backgroundColor: AminaTheme.teal600,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
           ),
         ),
+      );
+
+  Future<bool> _confirmLowGlucose(double mgdl) async {
+    final level = classifyGlucoseEntrySafety(mgdl);
+    if (level == GlucoseEntrySafety.nonLow) return true;
+
+    final level2 = level == GlucoseEntrySafety.level2Low;
+    final proceed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        key: Key(level2 ? 'level2-low-dialog' : 'level1-low-dialog'),
+        title: Text(level2 ? 'Valeur très basse détectée' : 'Valeur basse détectée'),
+        content: Text(
+          level2
+              ? 'Cette valeur déclenche le niveau de sécurité prioritaire. Vérifie la mesure et applique immédiatement le plan d’hypoglycémie établi avec ton équipe soignante.'
+              : 'Cette valeur déclenche le niveau de sécurité hypoglycémie. Vérifie la mesure et applique le plan d’hypoglycémie établi avec ton équipe soignante.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Revenir à la saisie'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Enregistrer quand même'),
+          ),
+        ],
       ),
     );
+    return proceed == true;
   }
 
   Future<void> _saveLog(AppDatabase db, String unit) async {
@@ -650,32 +687,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
       return;
     }
 
-    // Preserve the existing deterministic low-glucose gate. It runs before
-    // persistence and never delegates the safety decision to a generative model.
-    if (mgdl < 70) {
-      final proceed = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Valeur basse détectée'),
-          content: Text(
-            'La mesure enregistrée correspond à ${mgdl.toInt()} mg/dL. '
-            'Vérifie la mesure et applique le plan de sécurité qui t’a été donné par ton équipe soignante.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Revenir à la saisie'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Enregistrer quand même'),
-            ),
-          ],
-        ),
-      );
-      if (proceed != true || !mounted) return;
-    }
+    if (!await _confirmLowGlucose(mgdl) || !mounted) return;
 
     final insulinRaw = _insulinController.text.trim().replaceAll(',', '.');
     final insulin = insulinRaw.isEmpty ? 0.0 : double.tryParse(insulinRaw);
@@ -703,8 +715,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
           bloodSugar: mgdl,
           insulinUnits: drift.Value(insulin),
           mealType: drift.Value(_mealType),
-          mealDescription:
-              drift.Value(description.isEmpty ? null : description),
+          mealDescription: drift.Value(description.isEmpty ? null : description),
           clientUuid: const Uuid().v4(),
           loggedAt: drift.Value(_selectedTime),
           ramadanMode: drift.Value(_isRamadanMode),
