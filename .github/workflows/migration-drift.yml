@@ -38,7 +38,7 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/feat/p1-journal-meal-capture' &&
-      github.event.head_commit.message == 'ci(temp): fix P1-JOURNAL-3 history lifecycle'
+      github.event.head_commit.message == 'ci(temp): enforce P1-JOURNAL-3 one-shot history'
     name: P1-JOURNAL-3 branch-only builder
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -92,77 +92,103 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
 
-          # Reuse the existing governed frontend meal-vision method.
           p = Path('frontend/lib/services/api_client.dart')
           s = p.read_text()
           a = s.find('  /// Identify visible foods in a meal photo. The server enforces the\n')
           b = s.find('  /// Web OCR: extract glucose value from a glucometer photo via Gemini Vision.\n', a)
-          if a < 0 or b < 0: raise SystemExit('duplicate meal method markers missing')
+          if a < 0 or b < 0:
+              raise SystemExit('duplicate meal method markers missing')
           p.write_text(s[:a] + s[b:])
 
           p = Path('frontend/lib/features/journal/widgets/meal_capture_panel.dart')
           s = p.read_text().replace("import 'dart:convert';\n\n", '', 1)
           old = "return ApiClient().analyzeMealImage(base64Encode(bytes), mime);"
-          if old not in s: raise SystemExit('meal photo call marker missing')
+          if old not in s:
+              raise SystemExit('meal photo call marker missing')
           s = s.replace(old, "return ApiClient().analyzeMealImage(bytes, mimeType: mime);", 1)
+          marker = "  final Set<String> _proposalSelection = <String>{};\n\n"
+          if marker not in s:
+              raise SystemExit('history future state marker missing')
           s = s.replace(
-              "  final Set<String> _proposalSelection = <String>{};\n\n",
+              marker,
               "  final Set<String> _proposalSelection = <String>{};\n  Future<List<LogEntryData>>? _historyFuture;\n\n  @override\n  void didChangeDependencies() {\n    super.didChangeDependencies();\n    _historyFuture ??= context.read<AppDatabase>().getRecentLogs(limit: 100);\n  }\n\n",
               1,
           )
-          s = s.replace("    final db = context.read<AppDatabase>();\n", '', 1)
+          if 'StreamBuilder<List<LogEntryData>>(' not in s:
+              raise SystemExit('meal history StreamBuilder marker missing')
           s = s.replace(
-              "        StreamBuilder<List<LogEntryData>>(\n          stream: db.watchRecentLogs(limit: 100),",
-              "        FutureBuilder<List<LogEntryData>>(\n          future: _historyFuture,",
+              'StreamBuilder<List<LogEntryData>>(',
+              'FutureBuilder<List<LogEntryData>>(',
               1,
           )
+          if 'stream: db.watchRecentLogs(limit: 100),' not in s:
+              raise SystemExit('meal history stream marker missing')
+          s = s.replace(
+              'stream: db.watchRecentLogs(limit: 100),',
+              'future: _historyFuture,',
+              1,
+          )
+          if 'db.watchRecentLogs' in s or 'StreamBuilder<List<LogEntryData>>' in s:
+              raise SystemExit('live meal-history subscription survived replacement')
+          s = s.replace("    final db = context.read<AppDatabase>();\n", '', 1)
+          if 'db.' in s:
+              raise SystemExit('unexpected local db reference survived meal panel rewrite')
           p.write_text(s)
 
-          # Add a one-shot read API; meal capture does not need a live DB subscription.
           p = Path('frontend/lib/data/drift/database.dart')
           s = p.read_text()
           old = "TextColumn get mealItemsJson => text().withDefault(const Constant('[]'))();"
-          if old not in s: raise SystemExit('mealItemsJson marker missing')
+          if old not in s:
+              raise SystemExit('mealItemsJson marker missing')
           s = s.replace(old, 'TextColumn get mealItemsJson => text().nullable()();', 1)
           watcher = """  Stream<List<LogEntryData>> watchRecentLogs({int limit = 20}) {\n    return (select(logEntries)\n          ..orderBy([\n            (t) =>\n                OrderingTerm(expression: t.loggedAt, mode: OrderingMode.desc),\n          ])\n          ..limit(limit))\n        .watch();\n  }\n\n"""
           query = watcher + """  Future<List<LogEntryData>> getRecentLogs({int limit = 100}) {\n    return (select(logEntries)\n          ..orderBy([\n            (t) =>\n                OrderingTerm(expression: t.loggedAt, mode: OrderingMode.desc),\n          ])\n          ..limit(limit))\n        .get();\n  }\n\n"""
-          if watcher not in s: raise SystemExit('recent logs watcher marker missing')
+          if watcher not in s:
+              raise SystemExit('recent logs watcher marker missing')
           p.write_text(s.replace(watcher, query, 1))
 
           p = Path('frontend/lib/services/sync_service.dart')
           s = p.read_text().replace(
               '  List<String> _mealItems(String raw) {\n    try {',
-              "  List<String> _mealItems(String? raw) {\n    if (raw == null || raw.trim().isEmpty) return const <String>[];\n    try {", 1)
+              "  List<String> _mealItems(String? raw) {\n    if (raw == null || raw.trim().isEmpty) return const <String>[];\n    try {",
+              1,
+          )
           p.write_text(s)
 
-          # Keep response permissive enough for legacy rows; constrain new writes only.
           p = Path('backend/diabetes/api/v1/schemas.py')
           s = p.read_text()
           old = '    meal_items: List[_MealItem] = Field(default_factory=list, max_length=20)\n'
-          if old not in s: raise SystemExit('meal response marker missing')
+          if old not in s:
+              raise SystemExit('meal response marker missing')
           p.write_text(s.replace(old, '    meal_items: List[str] = Field(default_factory=list)\n', 1))
 
-          # Arabic search must preserve the Arabic Unicode block.
           p = Path('frontend/lib/core/data/meal_food_catalog.dart')
           s = p.read_text()
-          s = s.replace(
-              r"RegExp(r'[^a-z0-9\\u0600-\\u06ff]+')",
-              r"RegExp(r'[^a-z0-9\u0600-\u06ff]+')",
-              1,
-          )
+          bad = r"RegExp(r'[^a-z0-9\\u0600-\\u06ff]+')"
+          good = r"RegExp(r'[^a-z0-9\u0600-\u06ff]+')"
+          if bad in s:
+              s = s.replace(bad, good, 1)
+          if r"\\u0600" in s or r"\\u06ff" in s:
+              raise SystemExit('Arabic search regex still double-escaped')
           p.write_text(s)
 
           p = Path('frontend/test/data/drift/meal_items_migration_test.dart')
           s = p.read_text().replace(
               "import 'package:sqlite3/sqlite3.dart' as sqlite;",
-              "// ignore: depend_on_referenced_packages\nimport 'package:sqlite3/sqlite3.dart' as sqlite;", 1)
+              "// ignore: depend_on_referenced_packages\nimport 'package:sqlite3/sqlite3.dart' as sqlite;",
+              1,
+          )
           s = s.replace("expect(logs.single.mealItemsJson, '[]');", 'expect(logs.single.mealItemsJson, isNull);', 1)
           p.write_text(s)
 
           p = Path('frontend/test/features/meal_capture_panel_test.dart')
           s = p.read_text()
           if "package:drift/drift.dart" not in s:
-              s = s.replace("import 'package:amina/l10n/app_localizations.dart';\n", "import 'package:amina/l10n/app_localizations.dart';\nimport 'package:drift/drift.dart';\n", 1)
+              s = s.replace(
+                  "import 'package:amina/l10n/app_localizations.dart';\n",
+                  "import 'package:amina/l10n/app_localizations.dart';\nimport 'package:drift/drift.dart';\n",
+                  1,
+              )
           s = s.replace('bloodSugar: 120 + i,', 'bloodSugar: 120.0 + i,', 1)
           p.write_text(s)
           PY
