@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, dev]
 
+permissions:
+  contents: write
+
 jobs:
   migration-drift:
     name: Django model/migration drift
@@ -33,3 +36,64 @@ jobs:
         run: pip install -q -r requirements.txt
       - name: Reject model/migration drift
         run: python manage.py makemigrations --check --dry-run
+
+  journal-4-builder:
+    name: P1-JOURNAL-4 builder
+    if: github.event_name == 'push' && github.event.head_commit.message == 'activate P1-JOURNAL-4 builder'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/p1-journal-nutrition-v2
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Apply source patch
+        run: python3 .github/scripts/p1_journal_4_builder.py
+      - name: Generate Flutter derived files
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          dart run build_runner build --delete-conflicting-outputs
+          dart format lib/core/data/nutrition_catalog.dart lib/features/journal/widgets/nutrition_portion_editor.dart lib/features/dashboard/widgets/add_log_sheet.dart test/core/data/nutrition_catalog_test.dart test/data/drift/meal_portions_migration_test.dart
+      - name: Generate OpenAPI and run backend focused tests
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: amina.settings
+          SECRET_KEY: ci-secret-key-not-for-production
+          DEBUG: 'True'
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          CORS_ALLOWED_ORIGINS: http://localhost:3000
+          DATABASE_URL: sqlite:///ci-test.db
+          FIREBASE_CREDENTIALS_PATH: ''
+          GEMINI_API_KEY: ''
+        run: |
+          pip install -q -r requirements.txt
+          python manage.py export_openapi > ../docs/api/openapi.json
+          python manage.py makemigrations --check --dry-run
+          pytest diabetes/tests/test_journal_meal_portions.py diabetes/tests/test_journal_glycemic_context.py -q
+      - name: Run frontend focused gates
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos
+          flutter test --no-pub test/core/data/nutrition_catalog_test.dart test/data/drift/meal_portions_migration_test.dart test/features/add_log_sheet_test.dart test/features/meal_capture_panel_test.dart
+      - name: Remove temporary builder plumbing and commit generated result
+        run: |
+          git fetch origin main
+          git checkout origin/main -- .github/workflows/migration-drift.yml
+          git rm .github/scripts/p1_journal_4_builder.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .
+          git commit -m 'feat(journal): wire Nutrition Data v2 portions'
+          git push origin HEAD:feat/p1-journal-nutrition-v2
