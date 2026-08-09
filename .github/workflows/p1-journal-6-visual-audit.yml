@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact product SHA
         uses: actions/checkout@v4
         with:
-          ref: e9634dc8974e37e8f87fdb1b07b8062a006caddc
+          ref: fccbdf5bf69bd72c2cf079091b96cd52dcdf3d0c
           path: product
       - name: Overlay audit-only harness
         run: |
@@ -40,6 +40,6 @@ jobs:
       - name: Upload rendered matrix
         uses: actions/upload-artifact@v4
         with:
-          name: p1-journal-6-visual-matrix-e9634dc
+          name: p1-journal-6-visual-matrix-fccbdf5
           path: product/frontend/test/audit/goldens/*.png
           if-no-files-found: error
