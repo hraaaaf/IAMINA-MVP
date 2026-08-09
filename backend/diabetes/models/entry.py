@@ -109,6 +109,15 @@ class LogEntry(models.Model):
         blank=True,
         help_text="IDs structurés des plats sélectionnés via le dictionnaire culinaire."
     )
+    meal_portions = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "Portions confirmées par le patient. Contient uniquement la saisie "
+            "utilisateur (food_id, portion_id et/ou grammes), jamais un calcul "
+            "nutritionnel présenté comme vérité persistée."
+        ),
+    )
 
     # Lifestyle tracking
     insulin_units = models.DecimalField(
