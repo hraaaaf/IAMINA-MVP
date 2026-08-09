@@ -266,6 +266,38 @@ const List<MealNutritionProfile> mealNutritionProfiles = [
     ],
   ),
   MealNutritionProfile(foodId: 'tajine'),
+  MealNutritionProfile(
+    foodId: 'apple',
+    carbohydrate: NutritionReferenceValue(
+      carbsPer100gLow: 14.2,
+      carbsPer100gHigh: 15.7,
+      sourceId: 'usda_fdc_2026',
+      sourceFoodRef: 'FDC 1105664, 1105547, 1105781, 1105430, 1105897',
+      evidenceTier: NutritionEvidenceTier.analytical,
+    ),
+  ),
+  MealNutritionProfile(
+    foodId: 'banana',
+    carbohydrate: NutritionReferenceValue(
+      carbsPer100gLow: 20.1,
+      carbsPer100gHigh: 23.0,
+      sourceId: 'usda_fdc_2026',
+      sourceFoodRef: 'FDC 790774 and 790991',
+      evidenceTier: NutritionEvidenceTier.analytical,
+    ),
+    portions: [
+      NutritionPortion(
+        id: 'one_peeled',
+        label: LocalizedPortionLabel(
+          fr: '1 banane pelée',
+          en: '1 peeled banana',
+          ar: 'موزة مقشرة واحدة',
+        ),
+        gramsLow: 110,
+        gramsHigh: 115,
+      ),
+    ],
+  ),
 ];
 
 final Map<String, MealNutritionProfile> _nutritionByFoodId = {
