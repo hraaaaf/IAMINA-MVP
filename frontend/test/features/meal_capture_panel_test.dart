@@ -95,6 +95,20 @@ void main() {
   });
 
   testWidgets(
+    'first use hides empty history and keeps capture actions immediately available',
+    (tester) async {
+      await tester.pumpWidget(
+        harness(selected: const <String>[], onChanged: (_) {}),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Récents'), findsNothing);
+      expect(find.text('Habituels'), findsNothing);
+      expect(find.byKey(const Key('meal-food-search')), findsOneWidget);
+      expect(find.byKey(const Key('meal-photo-button')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'recent and habitual foods come only from confirmed structured history',
     (tester) async {
       for (var i = 0; i < 3; i++) {
