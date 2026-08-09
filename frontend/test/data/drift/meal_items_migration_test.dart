@@ -8,7 +8,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
   test(
-    'Drift v6 to v7 adds meal_items_json without rewriting existing logs',
+    'Drift v6 to latest preserves meal_items migration and existing logs',
     () async {
       final dir = await Directory.systemTemp.createTemp('iamina-journal-v6-');
       final file = File('${dir.path}/amina.sqlite');
@@ -56,11 +56,12 @@ void main() {
         expect(logs.single.mealDescription, 'ancienne note');
         expect(logs.single.glycemicContext, 'pre_meal');
         expect(logs.single.mealItemsJson, isNull);
+        expect(logs.single.mealPortionsJson, isNull);
         expect(logs.single.clientUuid, '77777777-7777-7777-7777-777777777777');
         final version = await db
             .customSelect('PRAGMA user_version')
             .getSingle();
-        expect(version.data['user_version'], 7);
+        expect(version.data['user_version'], 8);
       } finally {
         await db.close();
         await dir.delete(recursive: true);
