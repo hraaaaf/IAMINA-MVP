@@ -110,11 +110,8 @@ class MealPortionSelection {
   final String? portionId;
   final double? grams;
 
-  const MealPortionSelection({
-    required this.foodId,
-    this.portionId,
-    this.grams,
-  }) : assert(portionId != null || grams != null);
+  const MealPortionSelection({required this.foodId, this.portionId, this.grams})
+    : assert(portionId != null || grams != null);
 
   Map<String, Object> toJson() => <String, Object>{
     'food_id': foodId,
@@ -173,19 +170,11 @@ const List<MealNutritionProfile> mealNutritionProfiles = [
     portions: [
       NutritionPortion(
         id: 'quarter',
-        label: LocalizedPortionLabel(
-          fr: '¼ pain',
-          en: '¼ loaf',
-          ar: '¼ خبزة',
-        ),
+        label: LocalizedPortionLabel(fr: '¼ pain', en: '¼ loaf', ar: '¼ خبزة'),
       ),
       NutritionPortion(
         id: 'half',
-        label: LocalizedPortionLabel(
-          fr: '½ pain',
-          en: '½ loaf',
-          ar: '½ خبزة',
-        ),
+        label: LocalizedPortionLabel(fr: '½ pain', en: '½ loaf', ar: '½ خبزة'),
       ),
       NutritionPortion(
         id: 'whole',
@@ -305,7 +294,8 @@ List<MealPortionSelection> decodeMealPortionSelections(String? raw) {
       final gramsRaw = value['grams'];
       final grams = gramsRaw is num ? gramsRaw.toDouble() : null;
       if (foodId is! String || foodId.trim().isEmpty) continue;
-      if (portionId is! String? || (portionId != null && portionId.trim().isEmpty)) {
+      if (portionId is! String? ||
+          (portionId != null && portionId.trim().isEmpty)) {
         continue;
       }
       if (grams != null && (!grams.isFinite || grams <= 0 || grams > 3000)) {
@@ -339,10 +329,7 @@ CarbEstimate? estimateCarbsForGrams(String foodId, double grams) {
   );
 }
 
-CarbEstimate? estimateCarbsForPortion(
-  String foodId,
-  NutritionPortion portion,
-) {
+CarbEstimate? estimateCarbsForPortion(String foodId, NutritionPortion portion) {
   final profile = nutritionProfileFor(foodId);
   final ref = profile?.carbohydrate;
   if (ref == null) return null;

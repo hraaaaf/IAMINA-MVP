@@ -15,37 +15,46 @@ void main() {
       }
     });
 
-    test('Morocco-first natural portions are available without fake weights', () {
-      final msemen = nutritionProfileFor('msemen');
-      final bread = nutritionProfileFor('moroccan_bread');
-      final couscous = nutritionProfileFor('couscous');
-      final harira = nutritionProfileFor('harira');
+    test(
+      'Morocco-first natural portions are available without fake weights',
+      () {
+        final msemen = nutritionProfileFor('msemen');
+        final bread = nutritionProfileFor('moroccan_bread');
+        final couscous = nutritionProfileFor('couscous');
+        final harira = nutritionProfileFor('harira');
 
-      expect(msemen, isNotNull);
-      expect(bread, isNotNull);
-      expect(couscous, isNotNull);
-      expect(harira, isNotNull);
+        expect(msemen, isNotNull);
+        expect(bread, isNotNull);
+        expect(couscous, isNotNull);
+        expect(harira, isNotNull);
 
-      expect(msemen!.portions.map((p) => p.id), contains('one_piece'));
-      expect(bread!.portions.map((p) => p.id), contains('quarter'));
-      expect(couscous!.portions.map((p) => p.id), contains('medium_plate'));
-      expect(harira!.portions.map((p) => p.id), contains('medium_bowl'));
+        expect(msemen!.portions.map((p) => p.id), contains('one_piece'));
+        expect(bread!.portions.map((p) => p.id), contains('quarter'));
+        expect(couscous!.portions.map((p) => p.id), contains('medium_plate'));
+        expect(harira!.portions.map((p) => p.id), contains('medium_bowl'));
 
-      for (final profile in [msemen, bread, couscous, harira]) {
-        for (final portion in profile.portions) {
-          expect(portion.grams, isNull);
-          expect(portion.gramsLow, isNull);
-          expect(portion.gramsHigh, isNull);
+        for (final profile in [msemen, bread, couscous, harira]) {
+          for (final portion in profile.portions) {
+            expect(portion.grams, isNull);
+            expect(portion.gramsLow, isNull);
+            expect(portion.gramsHigh, isNull);
+          }
         }
-      }
-    });
+      },
+    );
 
-    test('unsupported Moroccan portions fail closed instead of inventing carbs', () {
-      final msemen = nutritionProfileFor('msemen')!;
-      expect(msemen.hasDocumentedCarbohydrate, isFalse);
-      expect(estimateCarbsForGrams('msemen', 100), isNull);
-      expect(estimateCarbsForPortion('msemen', msemen.portions.first), isNull);
-    });
+    test(
+      'unsupported Moroccan portions fail closed instead of inventing carbs',
+      () {
+        final msemen = nutritionProfileFor('msemen')!;
+        expect(msemen.hasDocumentedCarbohydrate, isFalse);
+        expect(estimateCarbsForGrams('msemen', 100), isNull);
+        expect(
+          estimateCarbsForPortion('msemen', msemen.portions.first),
+          isNull,
+        );
+      },
+    );
 
     test('invalid gram quantities never produce an estimate', () {
       expect(estimateCarbsForGrams('msemen', 0), isNull);
