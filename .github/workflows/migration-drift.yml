@@ -33,3 +33,103 @@ jobs:
         run: pip install -q -r requirements.txt
       - name: Reject model/migration drift
         run: python manage.py makemigrations --check --dry-run
+
+  usda-audit:
+    name: P1-JOURNAL-4 USDA source audit
+    if: github.event_name == 'push' && github.event.head_commit.message == 'audit P1-JOURNAL-4 USDA'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download official April 2026 Foundation Foods CSV
+        run: |
+          curl -fL --retry 3 -o /tmp/fdc.zip https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_csv_2026-04-30.zip
+          mkdir -p /tmp/fdc
+          unzip -q /tmp/fdc.zip -d /tmp/fdc
+          find /tmp/fdc -maxdepth 3 -type f -printf '%f\n' | sort
+      - name: Extract candidate foods with carbohydrate and published portions
+        run: |
+          python3 - <<'PY'
+          import csv, json, pathlib, re
+
+          root = pathlib.Path('/tmp/fdc')
+          def find(name):
+              matches = list(root.rglob(name))
+              if not matches:
+                  raise SystemExit(f'missing {name}')
+              return matches[0]
+
+          food_path = find('food.csv')
+          nutrient_path = find('nutrient.csv')
+          food_nutrient_path = find('food_nutrient.csv')
+          portion_matches = list(root.rglob('food_portion.csv'))
+          portion_path = portion_matches[0] if portion_matches else None
+
+          with nutrient_path.open(newline='', encoding='utf-8-sig') as f:
+              nutrients = list(csv.DictReader(f))
+          carb_rows = [r for r in nutrients if 'carbohydrate' in (r.get('name') or '').lower() and 'difference' in (r.get('name') or '').lower()]
+          if not carb_rows:
+              raise SystemExit('carbohydrate by difference nutrient not found')
+          carb_id = carb_rows[0]['id']
+
+          with food_path.open(newline='', encoding='utf-8-sig') as f:
+              foods = list(csv.DictReader(f))
+
+          targets = {
+              'apple': [r'apples?, .*with skin, raw', r'apples?, raw'],
+              'banana': [r'bananas?, .*raw'],
+              'whole_wheat_bread': [r'bread, 100% whole wheat, commercial'],
+              'white_bread': [r'bread, white, commercial'],
+              'milk': [r'milk, .*whole'],
+              'oats': [r'oats?', r'oatmeal'],
+              'lentils': [r'lentils?, .*cooked', r'lentils?'],
+          }
+          selected = {}
+          for key, patterns in targets.items():
+              matches=[]
+              for row in foods:
+                  desc=(row.get('description') or '').strip()
+                  if any(re.search(p, desc, re.I) for p in patterns):
+                      matches.append({'fdc_id': row.get('fdc_id'), 'description': desc, 'data_type': row.get('data_type')})
+              selected[key]=matches[:20]
+
+          ids={m['fdc_id'] for values in selected.values() for m in values if m.get('fdc_id')}
+          carbs={}
+          with food_nutrient_path.open(newline='', encoding='utf-8-sig') as f:
+              for row in csv.DictReader(f):
+                  if row.get('fdc_id') in ids and row.get('nutrient_id') == carb_id:
+                      try: amount=float(row['amount'])
+                      except (ValueError, TypeError): continue
+                      carbs.setdefault(row['fdc_id'], []).append(amount)
+
+          portions={}
+          if portion_path:
+              with portion_path.open(newline='', encoding='utf-8-sig') as f:
+                  for row in csv.DictReader(f):
+                      if row.get('fdc_id') in ids:
+                          portions.setdefault(row['fdc_id'], []).append({
+                              'amount': row.get('amount'),
+                              'measure_unit_id': row.get('measure_unit_id'),
+                              'modifier': row.get('modifier'),
+                              'gram_weight': row.get('gram_weight'),
+                              'sequence_number': row.get('sequence_number'),
+                          })
+
+          out=[]
+          for key, matches in selected.items():
+              for match in matches:
+                  fdc_id=match['fdc_id']
+                  out.append({
+                      'app_candidate': key,
+                      **match,
+                      'carbohydrate_by_difference_g_per_100g': carbs.get(fdc_id, []),
+                      'published_portions': portions.get(fdc_id, []),
+                  })
+          pathlib.Path('usda_seed_candidates.json').write_text(json.dumps(out, indent=2, ensure_ascii=False))
+          print(json.dumps(out, indent=2, ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p1-journal-4-usda-seed-candidates
+          path: usda_seed_candidates.json
+          if-no-files-found: error
