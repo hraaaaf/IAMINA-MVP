@@ -56,6 +56,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
   DateTime _selectedTime = DateTime.now();
   bool _mealExpanded = false;
   bool _detailsExpanded = false;
+  bool _contextExpanded = false;
   bool _saving = false;
   bool _isSick = false;
   bool _isStressed = false;
@@ -521,39 +522,73 @@ class _AddLogSheetState extends State<AddLogSheet> {
     ],
   );
 
-  Widget _healthContext(AppLocalizations l10n) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: <Widget>[
-      _sectionLabel(l10n.journalAdditionalContext),
-      const SizedBox(height: 10),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: <Widget>[
-          FilterChip(
-            label: Text(l10n.journalSick),
-            selected: _isSick,
-            onSelected: (value) => setState(() => _isSick = value),
+  Widget _healthContext(AppLocalizations l10n) {
+    final hasContext = _isSick || _isStressed || _isActive || _badSleep;
+    if (!_contextExpanded && !hasContext) {
+      return OutlinedButton.icon(
+        key: const Key('journal-context-button'),
+        onPressed: () => setState(() => _contextExpanded = true),
+        icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
+        label: Text(
+          '${l10n.journalAdditionalContext} · ${l10n.journalOptional}',
+        ),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(48),
+          alignment: AlignmentDirectional.centerStart,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
           ),
-          FilterChip(
-            label: Text(l10n.journalUnusualStress),
-            selected: _isStressed,
-            onSelected: (value) => setState(() => _isStressed = value),
-          ),
-          FilterChip(
-            label: Text(l10n.journalPhysicalActivity),
-            selected: _isActive,
-            onSelected: (value) => setState(() => _isActive = value),
-          ),
-          FilterChip(
-            label: Text(l10n.journalPoorSleep),
-            selected: _badSleep,
-            onSelected: (value) => setState(() => _badSleep = value),
-          ),
-        ],
-      ),
-    ],
-  );
+        ),
+      );
+    }
+    return Column(
+      key: const Key('journal-context-selector'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(child: _sectionLabel(l10n.journalAdditionalContext)),
+            if (!hasContext)
+              TextButton(
+                onPressed: () => setState(() => _contextExpanded = false),
+                child: Text(l10n.cancel),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: <Widget>[
+            FilterChip(
+              key: const Key('context-illness'),
+              label: Text(l10n.journalSick),
+              selected: _isSick,
+              onSelected: (value) => setState(() => _isSick = value),
+            ),
+            FilterChip(
+              key: const Key('context-stress'),
+              label: Text(l10n.journalUnusualStress),
+              selected: _isStressed,
+              onSelected: (value) => setState(() => _isStressed = value),
+            ),
+            FilterChip(
+              key: const Key('context-activity'),
+              label: Text(l10n.journalPhysicalActivity),
+              selected: _isActive,
+              onSelected: (value) => setState(() => _isActive = value),
+            ),
+            FilterChip(
+              key: const Key('context-poor-sleep'),
+              label: Text(l10n.journalPoorSleep),
+              selected: _badSleep,
+              onSelected: (value) => setState(() => _badSleep = value),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
   Widget _sectionLabel(String text) => Text(
     text,

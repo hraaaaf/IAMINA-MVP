@@ -67,11 +67,11 @@ class LogEntrySchema(Schema):
     meal_items: List[str] = Field(default_factory=list)
     meal_portions: List[MealPortionSchema] = Field(default_factory=list)
     insulin_units: Optional[float] = None
-    exercised: str = "no"
-    sleep_quality: str = "good"
-    stressed: str = "no"
-    fatigue_level: str = "ok"
-    is_sick: str = "no"
+    exercised: str = ""
+    sleep_quality: str = ""
+    stressed: str = ""
+    fatigue_level: str = ""
+    is_sick: str = ""
     source: str = "manual"
     client_uuid: Optional[UUID] = None
     created_at: datetime
@@ -86,11 +86,11 @@ class LogEntryCreateSchema(Schema):
     meal_items: List[_MealItem] = Field(default_factory=list, max_length=20)
     meal_portions: List[MealPortionSchema] = Field(default_factory=list, max_length=20)
     insulin_units: Optional[_InsulinUnits] = None
-    exercised: str = "no"
-    sleep_quality: str = "good"
-    stressed: str = "no"
-    fatigue_level: str = "ok"
-    is_sick: str = "no"
+    exercised: str = ""
+    sleep_quality: str = ""
+    stressed: str = ""
+    fatigue_level: str = ""
+    is_sick: str = ""
     source: str = "manual"
     client_uuid: Optional[UUID] = None
 

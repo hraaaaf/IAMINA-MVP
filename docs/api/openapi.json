@@ -2087,27 +2087,27 @@
             "title": "Insulin Units"
           },
           "exercised": {
-            "default": "no",
+            "default": "",
             "title": "Exercised",
             "type": "string"
           },
           "sleep_quality": {
-            "default": "good",
+            "default": "",
             "title": "Sleep Quality",
             "type": "string"
           },
           "stressed": {
-            "default": "no",
+            "default": "",
             "title": "Stressed",
             "type": "string"
           },
           "fatigue_level": {
-            "default": "ok",
+            "default": "",
             "title": "Fatigue Level",
             "type": "string"
           },
           "is_sick": {
-            "default": "no",
+            "default": "",
             "title": "Is Sick",
             "type": "string"
           },
@@ -2284,27 +2284,27 @@
             "title": "Insulin Units"
           },
           "exercised": {
-            "default": "no",
+            "default": "",
             "title": "Exercised",
             "type": "string"
           },
           "sleep_quality": {
-            "default": "good",
+            "default": "",
             "title": "Sleep Quality",
             "type": "string"
           },
           "stressed": {
-            "default": "no",
+            "default": "",
             "title": "Stressed",
             "type": "string"
           },
           "fatigue_level": {
-            "default": "ok",
+            "default": "",
             "title": "Fatigue Level",
             "type": "string"
           },
           "is_sick": {
-            "default": "no",
+            "default": "",
             "title": "Is Sick",
             "type": "string"
           },
