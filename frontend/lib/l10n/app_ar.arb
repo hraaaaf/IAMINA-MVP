@@ -429,5 +429,14 @@
   "personalResponseSnack": "بعد وجبة خفيفة",
   "personalResponseSuhoor": "بعد السحور",
   "personalResponseIftar": "بعد الإفطار",
-  "personalResponseObservedPattern": "نمط ملحوظ"
+  "personalResponseObservedPattern": "نمط ملحوظ",
+  "personalResponseShowMore": "عرض {count} أنماط إضافية",
+  "@personalResponseShowMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "personalResponseShowLess": "عرض أنماط أقل"
 }

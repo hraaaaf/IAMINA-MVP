@@ -30,6 +30,50 @@ PersonalResponseResult _readyResult() {
   );
 }
 
+PersonalResponseResult _multiPatternResult() {
+  return const PersonalResponseResult(
+    status: 'ready',
+    dataScope: 'server_synced_logs',
+    windowDays: 90,
+    totalReadings: 18,
+    distinctDays: 10,
+    windowMedianGlucoseMgDl: 142,
+    minimumObservations: 3,
+    minimumDistinctDays: 2,
+    confidenceDefinition: 'descriptive only',
+    causalityNotice: 'no causality',
+    patterns: [
+      PersonalResponsePattern(
+        key: 'context:stress',
+        kind: 'context',
+        observations: 8,
+        distinctDays: 6,
+        medianGlucoseMgDl: 158,
+        windowMedianGlucoseMgDl: 142,
+        confidence: 'strong',
+      ),
+      PersonalResponsePattern(
+        key: 'meal:lunch',
+        kind: 'meal',
+        observations: 6,
+        distinctDays: 4,
+        medianGlucoseMgDl: 151,
+        windowMedianGlucoseMgDl: 142,
+        confidence: 'moderate',
+      ),
+      PersonalResponsePattern(
+        key: 'context:poor_sleep',
+        kind: 'context',
+        observations: 3,
+        distinctDays: 2,
+        medianGlucoseMgDl: 149,
+        windowMedianGlucoseMgDl: 142,
+        confidence: 'limited',
+      ),
+    ],
+  );
+}
+
 PersonalResponseResult _insufficientResult() {
   return const PersonalResponseResult(
     status: 'insufficient_data',
@@ -90,6 +134,34 @@ void main() {
     expect(find.textContaining('données synchronisées'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'secondary patterns are collapsed by default and explicitly expandable',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 560);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        _host(locale: const Locale('fr'), result: _multiPatternResult()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Stress signalé'), findsOneWidget);
+      expect(find.text('Après déjeuner'), findsNothing);
+      expect(find.text('Mauvais sommeil signalé'), findsNothing);
+      expect(find.text('Afficher 2 autres motifs'), findsOneWidget);
+
+      await tester.tap(find.text('Afficher 2 autres motifs'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Après déjeuner'), findsOneWidget);
+      expect(find.text('Mauvais sommeil signalé'), findsOneWidget);
+      expect(find.text('Réduire les motifs'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('AR ready state keeps RTL hierarchy without overflow', (
     tester,

@@ -429,5 +429,14 @@
   "personalResponseSnack": "After snack",
   "personalResponseSuhoor": "After Suhoor",
   "personalResponseIftar": "After Iftar",
-  "personalResponseObservedPattern": "Observed pattern"
+  "personalResponseObservedPattern": "Observed pattern",
+  "personalResponseShowMore": "Show {count} more patterns",
+  "@personalResponseShowMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "personalResponseShowLess": "Show fewer patterns"
 }
