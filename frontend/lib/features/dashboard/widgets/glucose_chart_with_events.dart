@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/clinical_card.dart';
 import '../../../data/drift/database.dart';
+import '../../../l10n/audited_page_copy.dart';
 import 'agp_chart.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ class _GlucoseChartWithEventsState extends State<GlucoseChartWithEvents> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AuditedPageCopy.of(context).l10n;
     final logs = _filteredLogs;
 
     if (widget.logs.isEmpty) {
@@ -57,11 +59,14 @@ class _GlucoseChartWithEventsState extends State<GlucoseChartWithEvents> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            CardHead(title: 'Profil glycémique ambulatoire', meta: widget.unit),
+            CardHead(title: l10n.dashboardAgpTitle, meta: widget.unit),
             const SizedBox(height: 40),
             const Icon(Icons.show_chart, color: AminaTheme.ink300, size: 40),
             const SizedBox(height: 8),
-            const Text('Aucune donnée', style: TextStyle(color: AminaTheme.ink400, fontSize: 13)),
+            Text(
+              l10n.noData,
+              style: const TextStyle(color: AminaTheme.ink400, fontSize: 13),
+            ),
             const SizedBox(height: 40),
           ],
         ),
@@ -78,7 +83,7 @@ class _GlucoseChartWithEventsState extends State<GlucoseChartWithEvents> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
               children: [
-                Expanded(child: CardHead(title: 'Profil glycémique ambulatoire', meta: widget.unit)),
+                Expanded(child: CardHead(title: l10n.dashboardAgpTitle, meta: widget.unit)),
                 // Live badge
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -93,7 +98,14 @@ class _GlucoseChartWithEventsState extends State<GlucoseChartWithEvents> {
                         decoration: const BoxDecoration(color: AminaTheme.teal500, shape: BoxShape.circle),
                       ),
                       const SizedBox(width: 4),
-                      const Text('en direct', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AminaTheme.goodFg)),
+                      Text(
+                        l10n.dashboardLive,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: AminaTheme.goodFg,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -108,15 +120,15 @@ class _GlucoseChartWithEventsState extends State<GlucoseChartWithEvents> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _TimeChip(label: 'Tout', value: 0,  selected: _hoursFilter == 0,  onTap: () => setState(() => _hoursFilter = 0)),
+                _TimeChip(label: l10n.dashboardAll, value: 0,  selected: _hoursFilter == 0,  onTap: () => setState(() => _hoursFilter = 0)),
                 const SizedBox(width: 6),
-                _TimeChip(label: '24h',  value: 24, selected: _hoursFilter == 24, onTap: () => setState(() => _hoursFilter = 24)),
+                _TimeChip(label: l10n.dashboardHoursShort(24),  value: 24, selected: _hoursFilter == 24, onTap: () => setState(() => _hoursFilter = 24)),
                 const SizedBox(width: 6),
-                _TimeChip(label: '12h',  value: 12, selected: _hoursFilter == 12, onTap: () => setState(() => _hoursFilter = 12)),
+                _TimeChip(label: l10n.dashboardHoursShort(12),  value: 12, selected: _hoursFilter == 12, onTap: () => setState(() => _hoursFilter = 12)),
                 const SizedBox(width: 6),
-                _TimeChip(label: '6h',   value: 6,  selected: _hoursFilter == 6,  onTap: () => setState(() => _hoursFilter = 6)),
+                _TimeChip(label: l10n.dashboardHoursShort(6),  value: 6,  selected: _hoursFilter == 6,  onTap: () => setState(() => _hoursFilter = 6)),
                 const SizedBox(width: 6),
-                _TimeChip(label: '3h',   value: 3,  selected: _hoursFilter == 3,  onTap: () => setState(() => _hoursFilter = 3)),
+                _TimeChip(label: l10n.dashboardHoursShort(3),  value: 3,  selected: _hoursFilter == 3,  onTap: () => setState(() => _hoursFilter = 3)),
               ],
             ),
           ),
@@ -128,15 +140,15 @@ class _GlucoseChartWithEventsState extends State<GlucoseChartWithEvents> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _MealChip(label: 'Tous',             value: null,             selected: _mealFilter == null,             onTap: () => setState(() => _mealFilter = null)),
+                _MealChip(label: l10n.dashboardAll,             value: null,             selected: _mealFilter == null,             onTap: () => setState(() => _mealFilter = null)),
                 const SizedBox(width: 6),
-                _MealChip(label: 'À jeun',           value: 'À jeun',         selected: _mealFilter == 'À jeun',         onTap: () => setState(() => _mealFilter = 'À jeun')),
+                _MealChip(label: l10n.journalContextFasting,           value: 'À jeun',         selected: _mealFilter == 'À jeun',         onTap: () => setState(() => _mealFilter = 'À jeun')),
                 const SizedBox(width: 6),
-                _MealChip(label: 'Post-prandial',    value: 'Post-prandial',  selected: _mealFilter == 'Post-prandial',  onTap: () => setState(() => _mealFilter = 'Post-prandial')),
+                _MealChip(label: l10n.journalContextPostMeal,    value: 'Post-prandial',  selected: _mealFilter == 'Post-prandial',  onTap: () => setState(() => _mealFilter = 'Post-prandial')),
                 const SizedBox(width: 6),
-                _MealChip(label: 'Avant le coucher', value: 'Avant le coucher', selected: _mealFilter == 'Avant le coucher', onTap: () => setState(() => _mealFilter = 'Avant le coucher')),
+                _MealChip(label: l10n.dashboardBeforeBed, value: 'Avant le coucher', selected: _mealFilter == 'Avant le coucher', onTap: () => setState(() => _mealFilter = 'Avant le coucher')),
                 const SizedBox(width: 6),
-                _MealChip(label: 'En-cas',           value: 'En-cas',         selected: _mealFilter == 'En-cas',         onTap: () => setState(() => _mealFilter = 'En-cas')),
+                _MealChip(label: l10n.journalMealSnack,           value: 'En-cas',         selected: _mealFilter == 'En-cas',         onTap: () => setState(() => _mealFilter = 'En-cas')),
               ],
             ),
           ),
@@ -158,9 +170,17 @@ class _GlucoseChartWithEventsState extends State<GlucoseChartWithEvents> {
               ),
             )
           else
-            const SizedBox(
+            SizedBox(
               height: 220,
-              child: Center(child: Text('Données insuffisantes pour le profil AGP', style: TextStyle(fontSize: 12, color: AminaTheme.ink400))),
+              child: Center(
+                child: Text(
+                  l10n.dashboardAgpInsufficient,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AminaTheme.ink400,
+                  ),
+                ),
+              ),
             ),
 
           // Event overlays legend
@@ -170,15 +190,31 @@ class _GlucoseChartWithEventsState extends State<GlucoseChartWithEvents> {
           ),
 
           // AGP legend
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: Wrap(
-              spacing: 16, runSpacing: 6,
+              spacing: 16,
+              runSpacing: 6,
               children: [
-                _LegendItem(color: Color(0xFF1A3A2E), label: 'Médiane'),
-                _LegendItem(color: Color(0xFF3CC3A0), label: '25–75%', opacity: 0.5),
-                _LegendItem(color: Color(0xFF3CC3A0), label: '5–95%',  opacity: 0.2),
-                _LegendItem(color: Color(0xFFE4A85B), label: 'Cible 70–180', dashed: true),
+                _LegendItem(
+                  color: const Color(0xFF1A3A2E),
+                  label: l10n.dashboardMedian,
+                ),
+                const _LegendItem(
+                  color: Color(0xFF3CC3A0),
+                  label: '25–75%',
+                  opacity: 0.5,
+                ),
+                const _LegendItem(
+                  color: Color(0xFF3CC3A0),
+                  label: '5–95%',
+                  opacity: 0.2,
+                ),
+                _LegendItem(
+                  color: const Color(0xFFE4A85B),
+                  label: l10n.dashboardTargetLegend,
+                  dashed: true,
+                ),
               ],
             ),
           ),
@@ -385,6 +421,7 @@ class _EventLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AuditedPageCopy.of(context).l10n;
     final mealCount    = logs.where((l) => l.mealType != null && l.mealType!.isNotEmpty).length;
     final insulinCount = logs.where((l) => (l.insulinUnits ?? 0) > 0).length;
 
@@ -393,13 +430,19 @@ class _EventLegend extends StatelessWidget {
         if (mealCount > 0) ...[
           const Text('🍽', style: TextStyle(fontSize: 13)),
           const SizedBox(width: 4),
-          Text('$mealCount repas', style: const TextStyle(fontSize: 11, color: AminaTheme.ink500)),
+          Text(
+            l10n.dashboardMealEvents(mealCount),
+            style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
+          ),
           const SizedBox(width: 16),
         ],
         if (insulinCount > 0) ...[
           const Text('💉', style: TextStyle(fontSize: 13)),
           const SizedBox(width: 4),
-          Text('$insulinCount insuline', style: const TextStyle(fontSize: 11, color: AminaTheme.ink500)),
+          Text(
+            l10n.dashboardInsulinEvents(insulinCount),
+            style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
+          ),
         ],
       ],
     );

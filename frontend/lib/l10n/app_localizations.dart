@@ -2097,6 +2097,292 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Done'**
   String get journalPostSaveDone;
+
+  /// No description provided for @dashboardTrendPer30Minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} / 30 min'**
+  String dashboardTrendPer30Minutes(String value);
+
+  /// No description provided for @dashboardRapidInsulin.
+  ///
+  /// In en, this message translates to:
+  /// **'{dose} u rapid-acting'**
+  String dashboardRapidInsulin(String dose);
+
+  /// No description provided for @dashboardIntelligenceBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'IAMINA INTELLIGENCE'**
+  String get dashboardIntelligenceBadge;
+
+  /// No description provided for @dashboardInsightStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start logging to discover your trends.'**
+  String get dashboardInsightStart;
+
+  /// No description provided for @dashboardInsightStrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Excellent control — {percentage}% in range over {range} days.'**
+  String dashboardInsightStrong(int percentage, int range);
+
+  /// No description provided for @dashboardInsightProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Your balance is improving — {percentage}% in range, average {mean} mg/dL.'**
+  String dashboardInsightProgress(int percentage, int mean);
+
+  /// No description provided for @dashboardInsightNeedsFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'IAmina identified areas to improve over your last {range} days.'**
+  String dashboardInsightNeedsFocus(int range);
+
+  /// No description provided for @dashboardInsightFirstMeasurement.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your first reading to activate IAmina insights.'**
+  String get dashboardInsightFirstMeasurement;
+
+  /// No description provided for @dashboardVariabilityStable.
+  ///
+  /// In en, this message translates to:
+  /// **'variability under control'**
+  String get dashboardVariabilityStable;
+
+  /// No description provided for @dashboardVariabilityWatch.
+  ///
+  /// In en, this message translates to:
+  /// **'variability to watch'**
+  String get dashboardVariabilityWatch;
+
+  /// No description provided for @dashboardInsightSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Discoveries: {discoveries} · {stability} · {measurements} readings.'**
+  String dashboardInsightSummary(
+    int discoveries,
+    String stability,
+    int measurements,
+  );
+
+  /// No description provided for @dashboardViewDiscoveries.
+  ///
+  /// In en, this message translates to:
+  /// **'View my discoveries'**
+  String get dashboardViewDiscoveries;
+
+  /// No description provided for @dashboardGmiEstimated.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated GMI'**
+  String get dashboardGmiEstimated;
+
+  /// No description provided for @dashboardGmiCoverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Average {mean} mg/dL · {measurements} readings · {days} days of data'**
+  String dashboardGmiCoverage(String mean, int measurements, int days);
+
+  /// No description provided for @dashboardGmiLimitedCoverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Limited coverage: fewer than 14 days or 50 readings. Result is indicative.'**
+  String get dashboardGmiLimitedCoverage;
+
+  /// No description provided for @dashboardGmiCalculated.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculated from the available average glucose.'**
+  String get dashboardGmiCalculated;
+
+  /// No description provided for @dashboardGmiDisclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'This estimate does not replace a laboratory HbA1c.'**
+  String get dashboardGmiDisclaimer;
+
+  /// No description provided for @dashboardInsufficientData.
+  ///
+  /// In en, this message translates to:
+  /// **'Insufficient data'**
+  String get dashboardInsufficientData;
+
+  /// No description provided for @dashboardCvTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Variability (CV)'**
+  String get dashboardCvTitle;
+
+  /// No description provided for @dashboardCvReferenceShort.
+  ///
+  /// In en, this message translates to:
+  /// **'General reference <36%'**
+  String get dashboardCvReferenceShort;
+
+  /// No description provided for @dashboardMeasurementCoverage.
+  ///
+  /// In en, this message translates to:
+  /// **'{measurements} readings over {days} days'**
+  String dashboardMeasurementCoverage(int measurements, int days);
+
+  /// No description provided for @dashboardCvBelowReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Below the general reference'**
+  String get dashboardCvBelowReference;
+
+  /// No description provided for @dashboardCvAboveReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Above the general reference'**
+  String get dashboardCvAboveReference;
+
+  /// No description provided for @dashboardCvReferenceExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'General reference CV <36%. Your personal target may differ.'**
+  String get dashboardCvReferenceExplanation;
+
+  /// No description provided for @dashboardAgpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ambulatory glucose profile (AGP)'**
+  String get dashboardAgpTitle;
+
+  /// No description provided for @dashboardLive.
+  ///
+  /// In en, this message translates to:
+  /// **'live'**
+  String get dashboardLive;
+
+  /// No description provided for @dashboardAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get dashboardAll;
+
+  /// No description provided for @dashboardHoursShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h'**
+  String dashboardHoursShort(int hours);
+
+  /// No description provided for @dashboardBeforeBed.
+  ///
+  /// In en, this message translates to:
+  /// **'Before bed'**
+  String get dashboardBeforeBed;
+
+  /// No description provided for @dashboardAgpInsufficient.
+  ///
+  /// In en, this message translates to:
+  /// **'Insufficient data for the AGP profile'**
+  String get dashboardAgpInsufficient;
+
+  /// No description provided for @dashboardMedian.
+  ///
+  /// In en, this message translates to:
+  /// **'Median'**
+  String get dashboardMedian;
+
+  /// No description provided for @dashboardTargetLegend.
+  ///
+  /// In en, this message translates to:
+  /// **'Target 70–180'**
+  String get dashboardTargetLegend;
+
+  /// No description provided for @dashboardMealEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Meals: {count}'**
+  String dashboardMealEvents(int count);
+
+  /// No description provided for @dashboardInsulinEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Insulin: {count}'**
+  String dashboardInsulinEvents(int count);
+
+  /// No description provided for @dashboardAgpSufficiency.
+  ///
+  /// In en, this message translates to:
+  /// **'AGP based on {days} days · ADA recommends ≥ 14 days for a reliable analysis.'**
+  String dashboardAgpSufficiency(int days);
+
+  /// No description provided for @dashboardKeyEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Key events'**
+  String get dashboardKeyEvents;
+
+  /// No description provided for @dashboardInTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'In target'**
+  String get dashboardInTarget;
+
+  /// No description provided for @dashboardHyperglycemia.
+  ///
+  /// In en, this message translates to:
+  /// **'High-glucose events'**
+  String get dashboardHyperglycemia;
+
+  /// No description provided for @dashboardHypoglycemia.
+  ///
+  /// In en, this message translates to:
+  /// **'Low-glucose events'**
+  String get dashboardHypoglycemia;
+
+  /// No description provided for @dashboardTotalMeasurements.
+  ///
+  /// In en, this message translates to:
+  /// **'Total readings'**
+  String get dashboardTotalMeasurements;
+
+  /// No description provided for @dashboardDiscoveriesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'IAMINA DISCOVERIES'**
+  String get dashboardDiscoveriesTitle;
+
+  /// No description provided for @dashboardWaitingForData.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for data…'**
+  String get dashboardWaitingForData;
+
+  /// No description provided for @dashboardDiscoveryCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Discoveries: {count}'**
+  String dashboardDiscoveryCount(int count);
+
+  /// No description provided for @dashboardViewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'View all →'**
+  String get dashboardViewAll;
+
+  /// No description provided for @dashboardAiDegraded.
+  ///
+  /// In en, this message translates to:
+  /// **'AI analysis is temporarily limited · Your data is still recorded.'**
+  String get dashboardAiDegraded;
+
+  /// No description provided for @dashboardAnalyzingPatterns.
+  ///
+  /// In en, this message translates to:
+  /// **'IAmina is analyzing your data to identify patterns…'**
+  String get dashboardAnalyzingPatterns;
+
+  /// No description provided for @dashboardMeasurement.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading'**
+  String get dashboardMeasurement;
 }
 
 class _AppLocalizationsDelegate
