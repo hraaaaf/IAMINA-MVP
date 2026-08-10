@@ -75,6 +75,8 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - no Ramadan meal is preselected, and selecting or displaying Suhoor/Iftar does not imply that the patient fasted or completed a fast;
 - the profile period is context only: it does not change glucose thresholds, calculate medication/insulin doses, optimize treatment, diagnose, or generate autonomous treatment advice;
 - Django persistence adds nullable profile dates through migration `0023`; Drift v8→v9 adds the same nullable local profile dates without rewriting existing Journal rows or their `client_uuid` values;
+- local Ramadan persistence is update-only: if no local medical profile exists, configuring Ramadan must not create one or materialize default diabetes type, treatment, unit or glucose-target values; existing clinical profile fields must remain unchanged when the Ramadan period is updated;
+- save feedback distinguishes local+server success, local-only persistence, server-only persistence and total failure instead of claiming a storage state that did not occur;
 - the legacy per-log `ramadan_mode` field is preserved for compatibility and is not retrospectively promoted into authoritative fasting evidence;
 - FR/EN/AR localization is supported for this capability, with Arabic governed by the application's RTL contract.
 
