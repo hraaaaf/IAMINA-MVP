@@ -1,5 +1,5 @@
 """
-core.observability.retention_sql — staff-only pilot retention & engagement KPIs.
+core.observability.retention_sql — staff-only retention & engagement evidence.
 
 Computes rolling cohort retention rates (D1/D7/D30/D90), event funnel counts,
 and companion engagement ratio using raw SQL against core_observabilityevent.
@@ -14,11 +14,14 @@ Design decisions:
 - Horizon denominators contain only patients old enough to reach that horizon.
 - Snapshot queries are bounded by one explicit ``as_of`` timestamp so the same
   evidence cut can be reproduced later.
+- Product-wide metrics remain available, while an explicit patient roster can
+  scope all retention, funnel and engagement evidence to an approved cohort.
 - Staff-only: caller must enforce is_staff before calling this module.
 """
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Optional
@@ -31,30 +34,28 @@ logger = logging.getLogger(__name__)
 
 RETENTION_CONTRACT_VERSION = "2.0"
 RETENTION_SEMANTICS = "rolling_return_on_or_after_horizon"
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# 1. RESULT STRUCTURE
-# ──────────────────────────────────────────────────────────────────────────────
+COHORT_SCOPE_PRODUCT = "all_acquired_patients"
+COHORT_SCOPE_EXPLICIT = "explicit_patient_roster"
 
 
 @dataclass(frozen=True)
 class RetentionMetrics:
     """Immutable, auditable retention + engagement snapshot.
 
-    ``cohort_size`` is the number of patients whose acquisition event happened
-    on or before ``as_of``. ``eligible_dN`` is the denominator for that horizon:
-    patients whose acquisition is at least N days old at ``as_of``.
+    ``cohort_size`` is the number of in-scope patients whose acquisition event
+    happened on or before ``as_of``. ``eligible_dN`` is the denominator for that
+    horizon: in-scope patients whose acquisition is at least N days old.
 
     Retention rates are rolling fractions in [0.0, 1.0] or ``None`` when no
     patient is yet eligible for that horizon. ``cohort_ready_dN`` is therefore
     exactly equivalent to ``eligible_dN > 0``.
 
-    ``funnel_*`` fields count distinct patients who fired each event type at
-    least once on or before ``as_of``. Missing event types default to 0.
+    ``cohort_scope`` distinguishes product-wide evidence from an explicitly
+    supplied patient roster. ``roster_size`` is present only for explicit scope;
+    it is the count of unique validated patient IDs supplied to the computation.
 
-    ``chat_per_active_patient`` retains its historical product-engagement
-    contract and is not a clinical metric.
+    Funnel fields are bounded by the same scope and ``as_of`` cutoff. The
+    engagement ratio remains a product metric, not a clinical metric.
     """
 
     cohort_size: int
@@ -77,17 +78,12 @@ class RetentionMetrics:
     chat_per_active_patient: Optional[float]
     retention_contract_version: str
     retention_semantics: str
+    cohort_scope: str
+    roster_size: Optional[int]
     as_of: datetime
     computed_at: datetime
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 2. SQL STRINGS
-# ──────────────────────────────────────────────────────────────────────────────
-
-# PostgreSQL: one bound as_of timestamp drives acquisition eligibility, horizon
-# maturity and return-event cutoff. AVG ignores NULL, so immature patients never
-# enter a horizon denominator.
 _RETENTION_SQL_PG = """
 WITH params AS (
     SELECT %s::timestamptz AS as_of
@@ -100,6 +96,7 @@ first_log AS (
     CROSS JOIN params p
     WHERE e.event_type = '{acq}'
       AND e.timestamp <= p.as_of
+      {scope_filter}
     GROUP BY e.patient_id
 ),
 cohort AS (
@@ -154,8 +151,6 @@ SELECT
 FROM cohort
 """
 
-# SQLite: same contract using julianday() arithmetic. The as_of value is bound
-# once through the params CTE, matching the PostgreSQL query shape.
 _RETENTION_SQL_SQLITE = """
 WITH params AS (
     SELECT %s AS as_of
@@ -168,6 +163,7 @@ first_log AS (
     CROSS JOIN params p
     WHERE e.event_type = '{acq}'
       AND julianday(e.timestamp) <= julianday(p.as_of)
+      {scope_filter}
     GROUP BY e.patient_id
 ),
 cohort AS (
@@ -210,11 +206,11 @@ cohort AS (
     CROSS JOIN params p
 )
 SELECT
-    COUNT(*)                AS cohort_size,
-    COUNT(retained_d1)      AS eligible_d1,
-    COUNT(retained_d7)      AS eligible_d7,
-    COUNT(retained_d30)     AS eligible_d30,
-    COUNT(retained_d90)     AS eligible_d90,
+    COUNT(*)                           AS cohort_size,
+    COUNT(retained_d1)                 AS eligible_d1,
+    COUNT(retained_d7)                 AS eligible_d7,
+    COUNT(retained_d30)                AS eligible_d30,
+    COUNT(retained_d90)                AS eligible_d90,
     ROUND(AVG(retained_d1 * 1.0), 4)  AS retention_d1,
     ROUND(AVG(retained_d7 * 1.0), 4)  AS retention_d7,
     ROUND(AVG(retained_d30 * 1.0), 4) AS retention_d30,
@@ -222,71 +218,81 @@ SELECT
 FROM cohort
 """
 
-# Funnel query: count DISTINCT patients per event type, bounded by the same
-# snapshot cutoff as retention.
 _FUNNEL_SQL = """
 SELECT
-    event_type,
-    COUNT(DISTINCT patient_id) AS cnt
-FROM core_observabilityevent
-WHERE event_type IN ('session_start', '{acq}', 'chat_message', 'summary_viewed')
-  AND timestamp <= %s
-GROUP BY event_type
+    e.event_type,
+    COUNT(DISTINCT e.patient_id) AS cnt
+FROM core_observabilityevent e
+WHERE e.event_type IN ('session_start', '{acq}', 'chat_message', 'summary_viewed')
+  AND e.timestamp <= %s
+  {scope_filter}
+GROUP BY e.event_type
 """
 
-# Historical engagement query, now also bounded by as_of for reproducibility.
 _ENGAGEMENT_SQL = """
 SELECT
     COUNT(*) AS total_chat_messages,
-    COUNT(DISTINCT patient_id) AS active_patients
-FROM core_observabilityevent
-WHERE event_type = 'chat_message'
-  AND timestamp <= %s
+    COUNT(DISTINCT e.patient_id) AS active_patients
+FROM core_observabilityevent e
+WHERE e.event_type = 'chat_message'
+  AND e.timestamp <= %s
+  {scope_filter}
 """
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 3. HELPER ACCESSORS (testable individually)
-# ──────────────────────────────────────────────────────────────────────────────
-
 def _retention_sql_pg() -> str:
-    """Return the PostgreSQL retention CTE query string."""
     return _RETENTION_SQL_PG
 
 
 def _retention_sql_sqlite() -> str:
-    """Return the SQLite retention CTE query string."""
     return _RETENTION_SQL_SQLITE
 
 
 def _funnel_sql() -> str:
-    """Return the funnel GROUP BY query string."""
     return _FUNNEL_SQL
 
 
 def _engagement_sql() -> str:
-    """Return the engagement ratio query string."""
     return _ENGAGEMENT_SQL
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 4. MAIN COMPUTATION
-# ──────────────────────────────────────────────────────────────────────────────
+def _validated_patient_scope(
+    patient_ids: Sequence[int] | None,
+) -> tuple[str, Optional[int], str, list[int]]:
+    """Return auditable scope metadata plus a parameterized SQL predicate."""
+    if patient_ids is None:
+        return COHORT_SCOPE_PRODUCT, None, "", []
+
+    materialized = list(patient_ids)
+    if any(type(patient_id) is not int or patient_id <= 0 for patient_id in materialized):
+        raise ValueError("patient_ids must contain only positive integer IDs")
+
+    unique_ids = sorted(set(materialized))
+    if not unique_ids:
+        return COHORT_SCOPE_EXPLICIT, 0, "AND 1 = 0", []
+
+    placeholders = ", ".join(["%s"] * len(unique_ids))
+    return (
+        COHORT_SCOPE_EXPLICIT,
+        len(unique_ids),
+        f"AND e.patient_id IN ({placeholders})",
+        unique_ids,
+    )
+
 
 def compute_retention_metrics(
     acquisition_event: str = EVT_LOG_CREATED,
     *,
     as_of: datetime | None = None,
+    patient_ids: Sequence[int] | None = None,
 ) -> RetentionMetrics:
     """Return one reproducible retention/engagement evidence snapshot.
 
-    Caller must enforce ``is_staff`` before calling this function. SQL errors are
-    logged and re-raised for the caller to convert to an appropriate failure.
-
-    Args:
-        acquisition_event: event type used as the cohort acquisition anchor.
-        as_of: timezone-aware evidence cutoff. Defaults to the current UTC time.
-            Events after this timestamp cannot affect the returned snapshot.
+    ``patient_ids=None`` preserves the product-wide acquisition cohort. Passing
+    an explicit roster scopes every query in the snapshot to those patient IDs;
+    an empty explicit roster intentionally yields an empty cohort. This function
+    does not decide who belongs in a pilot: the caller must supply an approved
+    roster from the pilot-governance process.
     """
     if not acquisition_event or "'" in acquisition_event:
         raise ValueError(
@@ -299,14 +305,19 @@ def compute_retention_metrics(
         raise ValueError("as_of must be timezone-aware")
     snapshot_at = snapshot_at.astimezone(UTC)
 
+    cohort_scope, roster_size, scope_filter, scope_params = _validated_patient_scope(
+        patient_ids
+    )
+    query_params: list[object] = [snapshot_at, *scope_params]
+
     try:
         retention_sql = (
             _RETENTION_SQL_PG
             if connection.vendor == "postgresql"
             else _RETENTION_SQL_SQLITE
-        ).format(acq=acquisition_event)
+        ).format(acq=acquisition_event, scope_filter=scope_filter)
         with connection.cursor() as cursor:
-            cursor.execute(retention_sql, [snapshot_at])
+            cursor.execute(retention_sql, query_params)
             row = cursor.fetchone()
 
         if row is None:
@@ -329,8 +340,12 @@ def compute_retention_metrics(
         cohort_ready_d30 = eligible_d30 > 0
         cohort_ready_d90 = eligible_d90 > 0
 
+        funnel_sql = _FUNNEL_SQL.format(
+            acq=acquisition_event,
+            scope_filter=scope_filter,
+        )
         with connection.cursor() as cursor:
-            cursor.execute(_FUNNEL_SQL.format(acq=acquisition_event), [snapshot_at])
+            cursor.execute(funnel_sql, query_params)
             funnel_rows = cursor.fetchall()
 
         funnel: dict[str, int] = {
@@ -343,8 +358,9 @@ def compute_retention_metrics(
             if event_type in funnel:
                 funnel[event_type] = int(cnt)
 
+        engagement_sql = _ENGAGEMENT_SQL.format(scope_filter=scope_filter)
         with connection.cursor() as cursor:
-            cursor.execute(_ENGAGEMENT_SQL, [snapshot_at])
+            cursor.execute(engagement_sql, query_params)
             eng_row = cursor.fetchone()
 
         chat_per_active: Optional[float] = None
@@ -374,6 +390,8 @@ def compute_retention_metrics(
             chat_per_active_patient=chat_per_active,
             retention_contract_version=RETENTION_CONTRACT_VERSION,
             retention_semantics=RETENTION_SEMANTICS,
+            cohort_scope=cohort_scope,
+            roster_size=roster_size,
             as_of=snapshot_at,
             computed_at=datetime.now(UTC),
         )
