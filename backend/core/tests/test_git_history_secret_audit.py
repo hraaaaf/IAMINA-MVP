@@ -80,7 +80,7 @@ def test_historical_forbidden_env_path_fails_even_without_token(tmp_path):
     assert "SYNTHETIC_CONFIGURATION" not in result.stderr
 
 
-def test_firebase_client_google_identifier_exception_is_path_scoped(tmp_path):
+def test_current_firebase_client_identifier_is_allowed_in_compiled_artifact(tmp_path):
     repo = _init_repo(tmp_path)
     identifier = "AIza" + ("A" * 35)
     allowed = repo / "frontend" / "lib"
@@ -88,15 +88,81 @@ def test_firebase_client_google_identifier_exception_is_path_scoped(tmp_path):
     (allowed / "firebase_options.dart").write_text(f"apiKey: '{identifier}'\n")
     _commit_all(repo, "add synthetic firebase client config")
 
+    compiled = repo / "main.dart.js"
+    compiled.write_text(f"compiledFirebaseConfig='{identifier}'\n")
+    _commit_all(repo, "add compiled client config")
+
     assert _audit(repo).returncode == 0
 
-    other = repo / "backend.txt"
-    other.write_text(f"api_key={identifier}\n")
-    _commit_all(repo, "reuse identifier outside allowed path")
+
+def test_known_firebase_identifier_outside_compiled_artifact_still_fails(tmp_path):
+    repo = _init_repo(tmp_path)
+    identifier = "AIza" + ("A" * 35)
+    allowed = repo / "frontend" / "lib"
+    allowed.mkdir(parents=True)
+    (allowed / "firebase_options.dart").write_text(f"apiKey: '{identifier}'\n")
+    (repo / "backend.txt").write_text(f"api_key={identifier}\n")
+    _commit_all(repo, "reuse known client identifier outside compiled artifact")
+
     result = _audit(repo)
     assert result.returncode == 1
     assert "Google API key" in result.stderr
     assert identifier not in result.stderr
+
+
+def test_unknown_google_identifier_in_compiled_artifact_still_fails(tmp_path):
+    repo = _init_repo(tmp_path)
+    known_identifier = "AIza" + ("A" * 35)
+    unknown_identifier = "AIza" + ("B" * 35)
+    allowed = repo / "frontend" / "lib"
+    allowed.mkdir(parents=True)
+    (allowed / "firebase_options.dart").write_text(f"apiKey: '{known_identifier}'\n")
+    (repo / "main.dart.js").write_text(f"otherKey='{unknown_identifier}'\n")
+    _commit_all(repo, "add known and unknown Google-format identifiers")
+
+    result = _audit(repo)
+    assert result.returncode == 1
+    assert "Google API key" in result.stderr
+    assert unknown_identifier not in result.stderr
+
+
+def test_known_synthetic_sk_fixture_is_ignored_in_reachable_history(tmp_path):
+    repo = _init_repo(tmp_path)
+    fixture = "sk-" + "this-must-never-be-in-the-manifest"
+    fixture_path = repo / "test_fixture.py"
+    fixture_path.write_text(f"api_key = '{fixture}'\n")
+    _commit_all(repo, "add known synthetic fixture")
+    fixture_path.unlink()
+    _commit_all(repo, "remove known synthetic fixture")
+
+    assert _audit(repo).returncode == 0
+
+
+def test_known_synthetic_sk_fixture_exception_is_exact(tmp_path):
+    repo = _init_repo(tmp_path)
+    fixture_like_value = "sk-" + "this-must-never-be-in-the-manifest-extra"
+    path = repo / "fixture_like.txt"
+    path.write_text(f"api_key = '{fixture_like_value}'\n")
+    _commit_all(repo, "add fixture-like token")
+
+    result = _audit(repo)
+    assert result.returncode == 1
+    assert "generic sk token" in result.stderr
+    assert fixture_like_value not in result.stderr
+
+
+def test_safe_sk_example_cannot_hide_another_credential_on_same_line(tmp_path):
+    repo = _init_repo(tmp_path)
+    safe_example = "sk-" + "example-" + ("A" * 20)
+    aws_identifier = "AKIA" + ("B" * 16)
+    path = repo / "mixed.txt"
+    path.write_text(f"EXAMPLE={safe_example} AWS={aws_identifier}\n")
+    _commit_all(repo, "add mixed synthetic line")
+
+    result = _audit(repo)
+    assert result.returncode == 1
+    assert "AWS access key" in result.stderr
+    assert aws_identifier not in result.stderr
 
 
 def test_shallow_repository_is_rejected(tmp_path):
