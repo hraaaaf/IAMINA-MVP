@@ -51,13 +51,13 @@ Preparation work does not close a live provider benchmark, legal/privacy approva
 
 Canonical evidence and acceptance details: [`docs/BENCHMARK_REMEDIATION.md`](BENCHMARK_REMEDIATION.md).
 
-A proof-only 50-criterion benchmark against Glooko, Dexcom, FreeStyle Libre and mySugr identified the material remaining gaps as **device/data ecosystem, clinician workflows, caregiver sharing, interoperability and real-world evidence**. It did not identify the deterministic diabetes core or internally certified UX as the main bottlenecks.
+A proof-only evidence review against current Glooko, Dexcom, FreeStyle Libre and mySugr documentation, combined with the checked IAmina repository state, supports the following remediation priorities: **pilot outcome evidence, device/data ecosystem, clinician workflows, caregiver sharing, interoperability, MENA safety parity and external operational assurance**.
 
-The benchmark baseline is a prioritization instrument, not a clinical score or a claim of medical superiority.
+No global competitive score is canonical yet. A score may be added only after a versioned criterion-by-criterion matrix records the IAmina proof or `NON PROUVÉ`, the official competitor source, the scoring rule and observation date for every scored item.
 
 | LOT | Responsibility | Priority | Status | Closure boundary |
 |---|---|---|---|---|
-| **P0-BENCH-1** | Pilot evidence & retention contract | P0 | 🔄 Current LOT — PR #94 | auditable/versioned rolling D1/D7/D30/D90; mature denominators; explicit `as_of`; SQLite/PostgreSQL proof; no invented success threshold |
+| **P0-BENCH-1** | Pilot evidence & retention contract | P0 | 🔄 Current LOT — PR #94 | auditable/versioned rolling D1/D7/D30/D90; mature denominators; explicit `as_of`; explicit approved-roster scope; SQLite/PostgreSQL proof; no invented success threshold |
 | **P1-BENCH-2** | Device/Data Integration Foundation | P1 | ⏳ Queued | canonical provenance-aware ingestion contract + prioritized MENA source/device matrix before vendor-specific expansion |
 | **P1-BENCH-3** | IAmina Clinician Connect | P1 | ⏳ Queued | invitation + explicit patient consent + bounded clinician read access + report + revocation/audit; no prescribing authority |
 | **P1-BENCH-4** | Care Circle | P1 | ⏳ Queued | granular patient-controlled caregiver/family scopes + revocation without exposing the complete record by default |
@@ -68,12 +68,13 @@ The benchmark baseline is a prioritization instrument, not a clinical score or a
 
 ### Reproduced defect
 
-The pre-LOT SQL retention implementation was inconsistent across horizons:
+The pre-LOT SQL retention implementation was inconsistent across horizons and insufficiently scoped for pilot evidence:
 
 - D1 and D7 were declared ready as soon as any acquired patient existed, so a patient younger than one or seven days could enter the denominator as a false non-retained result.
 - D30 and D90 already excluded patients too young to reach the horizon.
 - rolling-return semantics existed implicitly but were not named in the evidence contract.
 - retention and funnel snapshots depended on database current time and exposed no common evidence cutoff, so later events could change a historical evidence cut.
+- the computation was product-wide only, so a future pilot cohort could be contaminated by unrelated patients with observability events.
 
 ### Acceptance criteria
 
@@ -83,8 +84,9 @@ The pre-LOT SQL retention implementation was inconsistent across horizons:
 - [x] Define `cohort_ready_dN` as `eligible_dN > 0` for every horizon.
 - [x] Use one timezone-aware `as_of` timestamp to bound acquisition, return, funnel and engagement evidence.
 - [x] Reject naive `as_of` timestamps.
-- [x] Expose retention-contract version, semantics and evidence cutoff in the immutable result.
-- [x] Add permanent regressions for immature D1/D7, mixed-age denominators, rolling D7, future-event exclusion, future-acquisition exclusion and immutable output.
+- [x] Support an explicit validated patient roster that scopes retention, funnel and engagement evidence consistently; an empty explicit roster fails closed to empty evidence.
+- [x] Expose retention-contract version, semantics, cohort scope, roster size and evidence cutoff in the immutable result.
+- [x] Add permanent regressions for immature D1/D7, mixed-age denominators, rolling D7, future-event/acquisition exclusion, roster isolation/validation and immutable output.
 - [ ] Exact-head canonical CI including PostgreSQL source-of-truth is green.
 - [ ] Exact-head migration drift is green.
 - [ ] Database & Migration Reviewer FINAL PASS on the final diff/evidence.
