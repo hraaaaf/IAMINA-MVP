@@ -11,7 +11,10 @@ void main() {
     expect(source, contains('AppLocalizations.of(context)!.appTitle'));
     expect(source, contains('AppLocalizations.of(context)!.appSubtitle'));
     expect(source, isNot(contains('AppLocalizations.of(context)!.brandName')));
-    expect(source, isNot(contains('AppLocalizations.of(context)!.brandTagShort')));
+    expect(
+      source,
+      isNot(contains('AppLocalizations.of(context)!.brandTagShort')),
+    );
   });
 
   test('canonical shell identity already exists in FR EN AR catalogs', () {
