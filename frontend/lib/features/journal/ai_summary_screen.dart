@@ -190,7 +190,7 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
         );
         final message = Text(
           l10n.analysisLoadError,
-          textAlign: isWide ? TextAlign.start : TextAlign.center,
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: isWide ? 16 : 15,
             height: 1.35,
@@ -210,41 +210,38 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
           ),
         );
         return Align(
-          alignment: Alignment.topCenter,
+          alignment: isWide ? const Alignment(0, -0.30) : Alignment.topCenter,
           child: Padding(
-            padding: EdgeInsetsDirectional.fromSTEB(20, isWide ? 48 : 32, 20, 24),
+            padding: EdgeInsetsDirectional.fromSTEB(
+              20,
+              isWide ? 24 : 32,
+              20,
+              24,
+            ),
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: isWide ? 680 : 420),
+              constraints: BoxConstraints(maxWidth: isWide ? 480 : 420),
               child: Container(
                 width: double.infinity,
-                padding: EdgeInsets.all(isWide ? 28 : 24),
+                padding: EdgeInsets.all(isWide ? 32 : 24),
                 decoration: BoxDecoration(
                   color: AminaTheme.surface(context),
                   borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
                   border: Border.all(color: AminaTheme.divider(context)),
                   boxShadow: AminaTheme.shadowClinical,
                 ),
-                child: isWide
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          icon,
-                          const SizedBox(width: 20),
-                          Expanded(child: message),
-                          const SizedBox(width: 24),
-                          SizedBox(width: 190, child: retry),
-                        ],
-                      )
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          icon,
-                          const SizedBox(height: 16),
-                          message,
-                          const SizedBox(height: 18),
-                          SizedBox(width: double.infinity, child: retry),
-                        ],
-                      ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    icon,
+                    SizedBox(height: isWide ? 18 : 16),
+                    message,
+                    SizedBox(height: isWide ? 22 : 18),
+                    if (isWide)
+                      SizedBox(width: 220, child: retry)
+                    else
+                      SizedBox(width: double.infinity, child: retry),
+                  ],
+                ),
               ),
             ),
           ),
