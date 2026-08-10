@@ -175,9 +175,10 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 720;
+        final periodLabel = '$_periodDays ${l10n.dayShort}';
         final icon = Container(
-          width: isWide ? 56 : 48,
-          height: isWide ? 56 : 48,
+          width: isWide ? 58 : 50,
+          height: isWide ? 58 : 50,
           decoration: BoxDecoration(
             color: AminaTheme.dangerBg,
             borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
@@ -188,14 +189,31 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
             size: isWide ? 28 : 24,
           ),
         );
-        final message = Text(
-          l10n.analysisLoadError,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: isWide ? 16 : 15,
-            height: 1.35,
-            fontWeight: FontWeight.w800,
-            color: AminaTheme.textPrimary(context),
+        final periodChip = Container(
+          padding: const EdgeInsetsDirectional.fromSTEB(10, 6, 10, 6),
+          decoration: BoxDecoration(
+            color: AminaTheme.bg(context),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: AminaTheme.divider(context)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.calendar_today_outlined,
+                size: 13,
+                color: AminaTheme.textSecondary(context),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                periodLabel,
+                style: TextStyle(
+                  color: AminaTheme.textSecondary(context),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         );
         final retry = FilledButton.icon(
@@ -209,39 +227,95 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
             ),
           ),
         );
-        return Align(
-          alignment: isWide ? const Alignment(0, -0.30) : Alignment.topCenter,
-          child: Padding(
-            padding: EdgeInsetsDirectional.fromSTEB(
-              20,
-              isWide ? 24 : 32,
-              20,
-              24,
+        final copy = Column(
+          crossAxisAlignment: isWide
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.center,
+          children: [
+            Text(
+              l10n.navIamina,
+              textAlign: isWide ? TextAlign.start : TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.2,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.18,
+                color: AminaTheme.textSecondary(context),
+              ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.analysisLoadError,
+              textAlign: isWide ? TextAlign.start : TextAlign.center,
+              style: TextStyle(
+                fontSize: isWide ? 20 : 16,
+                height: 1.35,
+                fontWeight: FontWeight.w800,
+                color: AminaTheme.textPrimary(context),
+              ),
+            ),
+            const SizedBox(height: 14),
+            periodChip,
+          ],
+        );
+
+        return SingleChildScrollView(
+          padding: EdgeInsetsDirectional.fromSTEB(
+            isWide ? 28 : 20,
+            isWide ? 22 : 28,
+            isWide ? 28 : 20,
+            28,
+          ),
+          child: Align(
+            alignment: AlignmentDirectional.topStart,
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: isWide ? 480 : 420),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(isWide ? 32 : 24),
-                decoration: BoxDecoration(
-                  color: AminaTheme.surface(context),
-                  borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
-                  border: Border.all(color: AminaTheme.divider(context)),
-                  boxShadow: AminaTheme.shadowClinical,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    icon,
-                    SizedBox(height: isWide ? 18 : 16),
-                    message,
-                    SizedBox(height: isWide ? 22 : 18),
-                    if (isWide)
-                      SizedBox(width: 220, child: retry)
-                    else
-                      SizedBox(width: double.infinity, child: retry),
+              constraints: BoxConstraints(maxWidth: isWide ? 960 : 520),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (isWide) ...[
+                    _GreetingHeader(periodDays: _periodDays),
+                    const SizedBox(height: 18),
                   ],
-                ),
+                  Semantics(
+                    container: true,
+                    liveRegion: true,
+                    label: l10n.analysisLoadError,
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(isWide ? 28 : 24),
+                      decoration: BoxDecoration(
+                        color: AminaTheme.surface(context),
+                        borderRadius: BorderRadius.circular(
+                          AminaTheme.radius2XL,
+                        ),
+                        border: Border.all(color: AminaTheme.divider(context)),
+                        boxShadow: AminaTheme.shadowClinical,
+                      ),
+                      child: isWide
+                          ? Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                icon,
+                                const SizedBox(width: 20),
+                                Expanded(child: copy),
+                                const SizedBox(width: 28),
+                                SizedBox(width: 190, child: retry),
+                              ],
+                            )
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                icon,
+                                const SizedBox(height: 16),
+                                copy,
+                                const SizedBox(height: 20),
+                                SizedBox(width: double.infinity, child: retry),
+                              ],
+                            ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
