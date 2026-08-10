@@ -127,17 +127,37 @@ void main() {
   ];
 
   for (final item in cases) {
-    testWidgets('ready max-density ${item.$1}', (tester) async {
+    testWidgets('ready compact ${item.$1}', (tester) async {
       await _setSize(tester, item.$3);
       await tester.pumpWidget(_host(locale: item.$2, result: _ready()));
       await tester.pumpAndSettle();
 
       expect(find.byType(PersonalResponseSection), findsOneWidget);
       expect(find.textContaining('158'), findsOneWidget);
+      expect(find.textContaining('151'), findsNothing);
+      expect(find.byType(TextButton), findsOneWidget);
       expect(tester.takeException(), isNull);
       await expectLater(
         find.byKey(_boundaryKey),
-        matchesGoldenFile('goldens/p2j8-ready-${item.$1}.png'),
+        matchesGoldenFile('goldens/p2j8-compact-${item.$1}.png'),
+      );
+    });
+
+    testWidgets('ready expanded ${item.$1}', (tester) async {
+      await _setSize(tester, item.$3);
+      await tester.pumpWidget(_host(locale: item.$2, result: _ready()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(TextButton));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('158'), findsOneWidget);
+      expect(find.textContaining('151'), findsOneWidget);
+      expect(find.textContaining('149'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await expectLater(
+        find.byKey(_boundaryKey),
+        matchesGoldenFile('goldens/p2j8-expanded-${item.$1}.png'),
       );
     });
 
@@ -147,6 +167,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(PersonalResponseSection), findsOneWidget);
+      expect(find.byType(TextButton), findsNothing);
       expect(tester.takeException(), isNull);
       await expectLater(
         find.byKey(_boundaryKey),
