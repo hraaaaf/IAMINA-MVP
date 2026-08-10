@@ -1,0 +1,87 @@
+name: UX-1 final 27ee visual
+
+on:
+  push:
+    branches:
+      - audit/ux-1-final-27ee
+    paths:
+      - .github/workflows/ux-1-final-27ee-visual.yml
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add audit-only synthetic seed locally
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('frontend/lib/main.dart')
+          s=p.read_text()
+          old="  final auditAllowed = AuditAccessPolicy.isAllowed(Uri.base);\n  final authService = AuthService();"
+          new="  final auditAllowed = AuditAccessPolicy.isAllowed(Uri.base);\n  if (auditAllowed && await db.countLogs() == 0) {\n    await db.seedDemoData();\n  }\n  final authService = AuthService();"
+          if s.count(old)!=1: raise SystemExit(f'marker count={s.count(old)}')
+          p.write_text(s.replace(old,new))
+          PY
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build web
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter build web --release --dart-define=IAMINA_AUDIT_ACCESS=true
+      - name: Install Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.54.2
+          npx playwright install --with-deps chromium
+      - name: Serve
+        working-directory: frontend/build/web
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 >/tmp/iamina-web.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8080/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Capture final matrix
+        run: |
+          mkdir -p /tmp/ux1-final-27ee
+          cat >/tmp/ux1-final-27ee/capture.cjs <<'EOF'
+          const { chromium } = require(process.cwd() + '/node_modules/playwright');
+          const fs=require('fs'); const path=require('path');
+          const views=[['desktop',1440,1000],['tablet',768,1024],['mobile',390,844],['small',360,560]];
+          const langs=[['fr','fr-FR'],['ar','ar-MA']];
+          (async()=>{const b=await chromium.launch({headless:true}); const report=[];
+            for(const [vp,w,h] of views) for(const [lang,locale] of langs){
+              const c=await b.newContext({viewport:{width:w,height:h},locale,timezoneId:'Africa/Casablanca'}); const p=await c.newPage();
+              const pageErrors=[]; p.on('pageerror',e=>pageErrors.push(String(e)));
+              await p.goto(`http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#/dashboard`,{waitUntil:'domcontentloaded',timeout:30000});
+              await p.waitForTimeout(8000); const flutterViews=await p.locator('flutter-view').count();
+              for(const [stage,delta] of [['top',0],['mid',Math.round(h*0.75)],['lower',Math.round(h*1.15)]]){
+                if(delta){await p.mouse.move(Math.round(w/2),Math.round(h/2));await p.mouse.wheel(0,delta);await p.waitForTimeout(900);}
+                const file=`${vp}-${lang}__dashboard-rich-${stage}.png`; await p.screenshot({path:path.join('/tmp/ux1-final-27ee',file),fullPage:false});
+                report.push({vp,lang,w,h,stage,url:p.url(),flutterViews,pageErrors:[...pageErrors],screenshot:file});
+              }
+              await c.close();
+            }
+            await b.close();fs.writeFileSync('/tmp/ux1-final-27ee/report.json',JSON.stringify(report,null,2));
+            if(report.length!==24||report.some(x=>x.flutterViews!==1||x.pageErrors.length))process.exit(1);
+          })();
+          EOF
+          node /tmp/ux1-final-27ee/capture.cjs
+      - name: Record sources
+        if: always()
+        run: |
+          echo "$GITHUB_SHA" >/tmp/ux1-final-27ee/audit-source-sha.txt
+          echo "27ee9b00c2326add7642bb0f544f5658ebf4d949" >/tmp/ux1-final-27ee/product-source-sha.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ux-1-final-27ee-visual
+          path: /tmp/ux1-final-27ee
+          retention-days: 14
