@@ -1,0 +1,62 @@
+name: P1-JOURNAL-7 postmerge closeout
+
+on:
+  push:
+    branches: [audit/p1-journal-7-postmerge-closeout]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Finalize ROADMAP on verified merge commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED=5c70e5aeb67274767e56d0eb80f882ea52a45511
+          test "$(git rev-parse HEAD)" = "$EXPECTED"
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('docs/ROADMAP.md')
+          text = p.read_text()
+          replacements = [
+              (
+                  '> **Last updated:** 2026-08-10 — P1-JOURNAL-7 Ramadan mode v2 is certified pre-merge in PR #75; expected-head merge and post-merge CI/drift remain before closure.',
+                  '> **Last updated:** 2026-08-10 — P1-JOURNAL-7 Ramadan mode v2 is merged and 100% closed; P2-JOURNAL-8 Personal metabolic response is next.',
+              ),
+              (
+                  '| Journal metabolic-event redesign | 78% | 🟢 P1-JOURNAL-7 certified pre-merge | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6 merged; PR #75 exact product head `2aacc83` certified: CI #1367 + drift #1179 + PostgreSQL green; exact-head visual run #19; UX 9.3/10; Clinical Safety, Database/Migration and UX reviewers PASS; merge/post-merge remain |',
+                  '| Journal metabolic-event redesign | 78% | 🟢 P1-JOURNAL-7 closed; P2-JOURNAL-8 next | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 merged; PR #75; explicit Ramadan profile context, no fasting inference or fabricated medical defaults; UX 9.3/10; post-merge CI #1372 + drift #1184 green |',
+              ),
+              (
+                  '| P1-JOURNAL-7 | Ramadan mode v2 | 🟢 Certified pre-merge | PR #75 product head `2aacc83`; explicit nullable profile period; no fasting inference/meal preselection; update-only local Ramadan persistence prevents fabricated medical defaults; CI #1367 + drift #1179 + PostgreSQL green; exact-head visual run #19; UX 9.3/10; three independent reviewers PASS |',
+                  '| P1-JOURNAL-7 | Ramadan mode v2 | ✅ Closed | PR #75 merged as `5c70e5aeb67274767e56d0eb80f882ea52a45511`; post-merge CI #1372 + drift #1184 green; explicit nullable profile period; no fasting inference/meal preselection; update-only local persistence prevents fabricated medical defaults; UX 9.3/10 |',
+              ),
+              (
+                  '**Certified pre-merge evidence on product head `2aacc83cdfb49a42f447172ae73cf1c0ea01303e`:** canonical CI #1367 SUCCESS; migration drift #1179 SUCCESS; PostgreSQL migration validation + full source-of-truth suite SUCCESS; exact-head visual audit run `31376668264` (#19) SUCCESS with 24/24 FR/AR Profile + Add Log renders across `1440×1000`, `768×1024`, `390×844` and hostile `360×560`; artifact `9058221105`, digest `sha256:be00632945a35aaa9f8ed7e84b73d4af76268d31142debefce97574bd9315018`; UX Auditor **9.3/10 PASS**; Clinical Safety Reviewer PASS; Database & Migration Reviewer PASS.\n\nThe independent clinical review found and blocked a fresh-local-profile path that could create a medical profile row with default clinical targets when only Ramadan was being configured. The remediation makes local Ramadan persistence update-only, refuses to manufacture a profile when none exists, preserves existing clinical profile values, reports local/server/degraded/failure save states truthfully in FR/EN/AR, and is protected by permanent regressions. Temporary remediation/audit scaffolding is absent from the PR net diff.\n\nP1-JOURNAL-7 is **certified pre-merge, not closed**. Release Certifier verdict, expected-head merge and post-merge CI + migration drift remain mandatory before it may be declared 100% closed.',
+                  '**Final certification evidence:** final pre-merge head `3458667a76472829aba5f79b05c74346bf7bbb95`; CI #1371 SUCCESS; migration drift #1183 SUCCESS; PostgreSQL migration validation + full source-of-truth suite SUCCESS; exact-final-head visual audit run `31377323425` (#20) SUCCESS with 24/24 FR/AR Profile + Add Log renders across `1440×1000`, `768×1024`, `390×844` and hostile `360×560`; artifact `9058462463`, digest `sha256:94c6c4f6980b1ff025d56498e2e984be8de05d6949e4ccde86e0d66a4fdde474`; UX Auditor **9.3/10 PASS**; Clinical Safety Reviewer FINAL PASS; Database & Migration Reviewer FINAL PASS; UX Auditor FINAL PASS; Release Certifier CERTIFIED; PR #75 merged with expected-head locking as `5c70e5aeb67274767e56d0eb80f882ea52a45511`; `main` verified on that merge; post-merge CI #1372 and migration drift #1184 SUCCESS.\n\nThe independent clinical review found and blocked a fresh-local-profile path that could create a medical profile row with default clinical targets when only Ramadan was being configured. The remediation makes local Ramadan persistence update-only, refuses to manufacture a profile when none exists, preserves existing clinical profile values, reports local/server/degraded/failure save states truthfully in FR/EN/AR, and is protected by permanent regressions. Temporary remediation/audit scaffolding is absent from the merge diff. P1-JOURNAL-7 is **100% closed**.',
+              ),
+          ]
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected one ROADMAP anchor, got {count}: {old[:110]!r}')
+              text = text.replace(old, new, 1)
+          p.write_text(text)
+          PY
+          git diff --check
+          git diff -- docs/ROADMAP.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/ROADMAP.md
+          git commit -m 'docs(journal): close P1-JOURNAL-7 after merge'
+          git push --force-with-lease=refs/heads/main:$EXPECTED origin HEAD:refs/heads/main
