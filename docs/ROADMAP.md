@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-10 — fresh exact-main UX evidence reopened one narrow surface: UX-2 rebalances the Summary load-error desktop state from 8.1/10 to 9.3/10 and is in final exact-head certification before merge.
+> **Last updated:** 2026-08-10 — UX visual rebase is closed: UX-2 fixed the freshly observed Summary load-error desktop composition from 8.1/10 to 9.3/10 with exact-head and post-merge certification.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,7 +29,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
-| UX visual rebase | 95% | 🟡 UX-2 final certification | UX-0/1 remain closed; fresh exact-main density audit opened only Summary error-state desktop; baseline **8.1/10** → remediated **9.3/10** on PR #86 |
+| UX visual rebase | 100% | ✅ Closed | UX-0/1 remain closed; UX-2 PR #86 fixed the fresh Summary error-state finding **8.1/10 → 9.3/10**; post-merge CI #1464 + drift #1276 green |
 | Journal metabolic-event redesign | 100% | ✅ Closed | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 + P2-JOURNAL-8/9 merged; PR #77 merged as `d841d926d1b7fe076827a3086306daa09399e38d`; UX 9.3/10; post-merge CI #1390 + drift #1202 green |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
@@ -344,7 +344,7 @@ This UX remediation workstream is separate from the MENA critical-path numerator
 
 ---
 
-# UX visual rebase — ACTIVE
+# UX visual rebase — CLOSED
 
 **Goal:** re-audit only product states not covered by the historical global matrix, preserve already certified surfaces, and open remediation LOTs only when fresh rendered evidence requires them.
 
@@ -354,7 +354,7 @@ Canonical visual rules and evidence hierarchy: `docs/ux/UX_VISUAL_CONSTITUTION.m
 |---|---|---:|---|---|
 | UX-0 | Baseline + visual constitution | 100% | PR #83 merged as `0a9e026638021ea3e565d5cf870da7ed9ec1c5ee`; post-merge CI #1447 + drift #1259 green; fresh populated Dashboard baseline **8.4/10** established without reopening already certified surfaces | ✅ Closed |
 | UX-1 | Populated Dashboard locale parity + hierarchy | 100% | PR #84 merged as `0c2e0ee18da003ccc413ffeffef18334a77c6ad9`; exact-head CI #1452 + drift #1264 + visual run `31409668306` green; UX **9.2/10**; post-merge CI #1453 + drift #1265 green | ✅ Closed |
-| UX-2 | Summary load-error desktop composition | 90% | Fresh exact-main baseline run `31413385769` isolated Summary desktop at **8.1/10** while Profile/Importer stayed >=9; product head `97df55865a13916c9bdf7f01796a60ba2d827ee2` remediated to **9.3/10**, CI #1458 + drift #1270 + visual run `31414604776` green; final docs-head recertification, Certifier, merge and post-merge gates pending | 🟡 |
+| UX-2 | Summary load-error desktop composition | 100% | PR #86 merged as `7a7e3be0553d44d1879b0f898ad4d7682838521e`; exact final head `92a0378c746eba2232b3ca0b4c2efbf2e566955f`, CI #1463 + drift #1275 + final visual run `31415470505`, UX **9.3/10**; post-merge CI #1464 + drift #1276 green | ✅ Closed |
 
 UX-1 was intentionally narrower than the historical UX plan. A fresh exact-main audit later found one new <=9.0 state: Summary load-error desktop composition. UX-2 is limited to that evidence; Dashboard, Journal, Profile, Importer and post-save surfaces stay protected by their existing rendered certifications.
 
@@ -373,7 +373,7 @@ UX-1 was intentionally narrower than the historical UX plan. A fresh exact-main 
 - Product Design baseline kept Profile (~9.1–9.2) and Importer (~9.0–9.1) closed; only Summary load-error desktop was reopened at **8.1/10** because the horizontal error strip was visually stranded in a large empty canvas.
 - UX-2 changes presentation only: a compact focal error card on wide layouts, preserving localized copy, `_fetchData`, period controls, mobile behavior, clinical/data semantics, persistence, API and egress boundaries.
 - Product head `97df55865a13916c9bdf7f01796a60ba2d827ee2`: canonical PR CI #1458 and migration drift #1270 passed. Exact-product visual run `31414604776`, artifact `9072965994`, digest `sha256:ada98ce81842ce59354a09ba7dd3158f43d5711517d5fce6eab2b3dfe3d66e2a`: 8/8 Summary FR/AR renders, one Flutter view each, zero page errors. UX Auditor / Product Design **PASS — 9.3/10**; no critical/high visual finding; mobile and RTL remain stable.
-- UX-2 remains open until the final documentation head is revalidated, Release Certifier authorizes expected-head merge, PR #86 merges and post-merge CI/drift pass.
+- Exact final head `92a0378c746eba2232b3ca0b4c2efbf2e566955f` passed CI #1463 and migration drift #1275. Final exact-head visual run `31415470505`, artifact `9073307734`, digest `sha256:2bc8c9a7887e8fd6ebefd6e238f19f3087e7e6da1ce8ff517cfdd46105319a36` rendered 8/8 FR/AR Summary views with one Flutter view each and zero page errors. UX Auditor FINAL PASS **9.3/10** and Release Certifier CERTIFIED. PR #86 merged with expected-head locking as `7a7e3be0553d44d1879b0f898ad4d7682838521e`; post-merge CI #1464 and drift #1276 passed. **UX-2 is 100% closed.**
 
 ---
 
