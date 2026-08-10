@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-10 — P2-JOURNAL-8 Personal metabolic response is merged and 100% closed; P2-JOURNAL-9 Post-save experience is next.
+> **Last updated:** 2026-08-10 — P2-JOURNAL-9 Post-save experience is certified pre-merge in PR #77; Journal metabolic-event redesign is at its final merge unit.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,7 +29,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
-| Journal metabolic-event redesign | 89% | 🟢 P2-JOURNAL-8 closed; P2-JOURNAL-9 next | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 + P2-JOURNAL-8 merged; PR #76 deterministic personal-response patterns; UX 9.3/10; post-merge CI #1383 + drift #1195 green |
+| Journal metabolic-event redesign | 100% pre-merge | 🟢 P2-JOURNAL-9 certified; merge/post-merge pending | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 + P2-JOURNAL-8 merged; PR #77 factual post-save receipt; exact-code CI #1387 + drift #1199 green; 16-view FR/AR UX 9.3/10; four specialist reviewer PASSes |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -114,7 +114,7 @@ Each Journal LOT is a separate branch/PR. Clinical/safety, UX/UI, privacy/egress
 | P1-JOURNAL-6 | Context intelligence | ✅ Closed | PR #73 merged as `95cf4d75226720386d7e8e55acc30c39fdd5017c`; post-merge CI #1342 + drift #1154 green; optional positive context, unknown-by-default omission, progressive Add + correctable Edit, legacy fatigue sync-compatible; UX 9.2/10 |
 | P1-JOURNAL-7 | Ramadan mode v2 | ✅ Closed | PR #75 merged as `5c70e5aeb67274767e56d0eb80f882ea52a45511`; post-merge CI #1372 + drift #1184 green; explicit nullable profile period; no fasting inference/meal preselection; update-only local persistence prevents fabricated medical defaults; UX 9.3/10 |
 | P2-JOURNAL-8 | Personal metabolic response | ✅ Closed | PR #76 merged as `a8ff01b9298f49133b3201d72086ade2643a9167`; post-merge CI #1383 + drift #1195 green; deterministic repeated observations, explicit evidence basis, 90-day synced scope, no causal/statistical/treatment claim; UX 9.3/10 |
-| P2-JOURNAL-9 | Post-save experience | ⬜ Planned | immediate factual confirmation only; longitudinal insights appear separately only when evidence requirements are met |
+| P2-JOURNAL-9 | Post-save experience | 🟢 PR #77 merge unit | persistent factual local receipt after successful save; no instant interpretation/advice; mobile next actions remain reachable; longitudinal insights stay separate behind J8 evidence requirements; UX 9.3/10 |
 
 ### P0-JOURNAL-1 durable closeout contract
 
@@ -180,6 +180,17 @@ The first real FR/AR max-density visual pass was rejected at **8.8/10** because 
 
 **Final certification evidence:** final pre-merge head `7f4003c4511c5eb27e9d01528a71269cc9511548`; canonical CI #1382 SUCCESS including PostgreSQL source-of-truth; migration drift #1194 SUCCESS; exact-final-head visual audit run `31384539082` SUCCESS with 24/24 FR/AR compact/expanded/insufficient renders across `1440×1000`, `768×1024`, `390×844` and `360×560`; artifact `9061180931`, digest `sha256:d9dbf85b7df8785b0af139a5a1ee63f6a98f55362d3575db3f1a9482bf66e006`; UX Auditor **9.3/10 PASS** after an initial 8.8/10 density rejection and remediation; Clinical Safety, Security, Database/Migration and UX reviewers FINAL PASS; Release Certifier CERTIFIED; PR #76 merged with expected-head locking as `a8ff01b9298f49133b3201d72086ade2643a9167`; post-merge CI #1383 and migration drift #1195 SUCCESS. P2-JOURNAL-8 is **100% closed**. P2-JOURNAL-9 is next.
 
+
+
+### P2-JOURNAL-9 durable merge-unit contract
+
+PR #77 is the merge unit for the post-save experience. After the existing Drift insertion succeeds, the Add Log flow now remains on a persistent factual receipt instead of showing a transient snackbar and immediately redirecting away. The receipt restates only the facts just recorded: glucose, timestamp and any explicitly entered measurement context, meal, already-taken insulin and additional context observations. It states only that the entry was saved on the device; it does not claim server synchronization or external persistence.
+
+The receipt does not classify a non-low glucose value as good/bad or inside a personal target, does not call AI, and does not generate prediction, diagnosis, causal explanation, treatment optimization or dose advice. Longitudinal personal-response patterns remain a separate Journal surface governed by P2-JOURNAL-8 evidence requirements. The existing deterministic low-glucose safety classification continues to execute before persistence and is unchanged by this LOT.
+
+After a successful save, the prior draft is cleared before another entry can begin, preventing previous meal/context/insulin facts from being silently reused. The next actions are explicit: **View in Journal / Add another reading / Done**. The first real FR/AR visual pass scored **8.9/10 and was rejected** because a rich receipt on `360×560` pushed all next actions below the fold. The same LOT was remediated so the receipt body scrolls independently while the action panel remains persistently reachable on mobile; Arabic numeric insulin values remain LTR.
+
+**Pre-closeout evidence on product head `ec701826a2f2be6edc075742d3c6d349564b77db`:** canonical CI #1387 SUCCESS; migration drift #1199 SUCCESS; focused FR persistence→render/reset and AR/RTL tests PASS; exact-code visual audit run `31389858816` SUCCESS with 16/16 FR/AR minimal/rich receipt renders across `1440×1000`, `768×1024`, `390×844` and `360×560`; artifact `9063210662`, digest `sha256:62b67588d47b0f5a441f38ebb11cbc362d6e7e56b4e3b8deef0e22213bba77f6`; UX Auditor **9.3/10 PASS**; Clinical Safety, Security/Privacy, Persistence/Database and UX reviewers FINAL PASS; unresolved review threads 0. Canonical documentation changes make these anchors pre-closeout evidence, so exact-final-head recertification, Release Certifier, expected-head merge and post-merge gates remain mandatory before Journal is declared 100% closed.
 
 
 ---
