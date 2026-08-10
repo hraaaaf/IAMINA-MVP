@@ -1,0 +1,77 @@
+name: UX-1 rich dashboard visual final
+
+on:
+  push:
+    branches: [audit/ux-1-rich-dashboard-visual-final]
+    paths: [.github/workflows/ux-1-rich-dashboard-visual-final.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build audit-only web bundle
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter build web --release --dart-define=IAMINA_AUDIT_ACCESS=true
+      - name: Install capture runtime
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.54.2
+          npx playwright install --with-deps chromium
+      - name: Serve
+        working-directory: frontend/build/web
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 >/tmp/iamina-web.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8080/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Capture top middle lower matrix
+        run: |
+          mkdir -p /tmp/ux1-rich-dashboard-final
+          cat >/tmp/ux1-rich-dashboard-final/capture.cjs <<'EOF'
+          const { chromium } = require(process.cwd() + '/node_modules/playwright');
+          const fs = require('fs'); const path = require('path');
+          const views=[['desktop',1440,1000],['tablet',768,1024],['mobile',390,844],['small',360,560]];
+          const langs=[['fr','fr-FR'],['ar','ar-MA']];
+          (async()=>{const b=await chromium.launch({headless:true}); const report=[];
+            for(const [vp,w,h] of views) for(const [lang,locale] of langs){
+              const c=await b.newContext({viewport:{width:w,height:h},locale,timezoneId:'Africa/Casablanca'}); const p=await c.newPage();
+              const pageErrors=[]; p.on('pageerror',e=>pageErrors.push(String(e)));
+              await p.goto(`http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#/dashboard`,{waitUntil:'domcontentloaded',timeout:30000});
+              await p.waitForTimeout(8000);
+              const flutterViews=await p.locator('flutter-view').count();
+              const stages=[['top',0],['mid',Math.round(h*0.75)],['lower',Math.round(h*1.15)]];
+              for(const [stage,delta] of stages){
+                if(delta){await p.mouse.move(Math.round(w/2),Math.round(h/2)); await p.mouse.wheel(0,delta); await p.waitForTimeout(900);}
+                const file=`${vp}-${lang}__dashboard-rich-${stage}.png`;
+                await p.screenshot({path:path.join('/tmp/ux1-rich-dashboard-final',file),fullPage:false});
+                report.push({vp,lang,w,h,stage,url:p.url(),flutterViews,pageErrors:[...pageErrors],screenshot:file});
+              }
+              await c.close();
+            }
+            await b.close(); fs.writeFileSync('/tmp/ux1-rich-dashboard-final/report.json',JSON.stringify(report,null,2));
+            if(report.length!==24||report.some(x=>x.flutterViews!==1||x.pageErrors.length)) process.exit(1);
+          })();
+          EOF
+          node /tmp/ux1-rich-dashboard-final/capture.cjs
+      - name: Record exact sources
+        if: always()
+        run: |
+          echo "$GITHUB_SHA" >/tmp/ux1-rich-dashboard-final/audit-source-sha.txt
+          echo "1f4cb1c34e8b4eb47e3bdaef1f22a693bc61753d" >/tmp/ux1-rich-dashboard-final/product-source-sha.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ux-1-rich-dashboard-visual-final
+          path: /tmp/ux1-rich-dashboard-final
+          retention-days: 14
