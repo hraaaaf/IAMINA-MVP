@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact product SHA
         uses: actions/checkout@v4
         with:
-          ref: d32e9fe6ff93b32f7c054bdf67609a4018fdecb3
+          ref: 29a1c570d4e599f562b47f8d6621e89ae877383d
           path: product
       - name: Overlay audit-only harness
         run: |
@@ -43,7 +43,7 @@ jobs:
           mkdir -p product/frontend/test/audit/goldens
           cat > product/frontend/test/audit/goldens/manifest.txt <<'EOF'
           lot=P1-JOURNAL-7
-          product_sha=d32e9fe6ff93b32f7c054bdf67609a4018fdecb3
+          product_sha=29a1c570d4e599f562b47f8d6621e89ae877383d
           locales=fr,ar
           sizes=1440x1000,768x1024,390x844,360x560
           surfaces=profile-top,profile-controls,add-log-active-period
@@ -53,6 +53,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: p1-journal-7-visual-matrix-d32e9fe
+          name: p1-journal-7-visual-matrix-29a1c57
           path: product/frontend/test/audit/goldens/*
           if-no-files-found: error
