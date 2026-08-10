@@ -60,7 +60,7 @@ jobs:
           sizes=1440x1000,768x1024,390x844,360x560
           surfaces=ready-compact,ready-expanded,insufficient-data
           expected_images=24
-          font_fixture=DejaVuSans loaded as AuditSans and Roboto
+          font_fixture=DejaVuSans loaded as AuditSans, Roboto and Ahem
           EOF
 
       - name: Upload rendered matrix
