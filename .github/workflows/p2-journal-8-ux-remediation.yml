@@ -28,7 +28,7 @@ jobs:
           path: product
 
       - name: Apply density remediation
-        run: python audit-tools/.github/scripts/p2_journal_8_ux_remediate.py product
+        run: python audit-tools/.github/scripts/p2_journal_8_ux_remediate_v2.py product
 
       - uses: subosito/flutter-action@v2
         with:
