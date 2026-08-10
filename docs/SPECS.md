@@ -76,7 +76,7 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - the profile period is context only: it does not change glucose thresholds, calculate medication/insulin doses, optimize treatment, diagnose, or generate autonomous treatment advice;
 - Django persistence adds nullable profile dates through migration `0023`; Drift v8→v9 adds the same nullable local profile dates without rewriting existing Journal rows or their `client_uuid` values;
 - the legacy per-log `ramadan_mode` field is preserved for compatibility and is not retrospectively promoted into authoritative fasting evidence;
-- FR/EN/AR localization is supported for this capability and Arabic follows the application RTL contract.
+- FR/EN/AR localization is supported for this capability, with Arabic governed by the application's RTL contract.
 
 ### Insulin logging v2 contract
 
