@@ -36,7 +36,12 @@ jobs:
         run: flutter pub get
       - name: Render FR/AR Profile + Add Log Ramadan matrix
         working-directory: product/frontend
-        run: flutter test --update-goldens test/audit/p1_journal_7_visual_audit_test.dart
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p test/audit/goldens
+          flutter test --update-goldens test/audit/p1_journal_7_visual_audit_test.dart 2>&1 \
+            | tee test/audit/goldens/test-output.txt
       - name: Write audit manifest
         if: always()
         run: |
