@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-10 — UX visual rebase remains closed: UX-3 unified the wide-shell brand from a cross-product 8.7/10 inconsistency to a canonical IAmina signature at 9.4/10 with exact-head and post-merge certification.
+> **Last updated:** 2026-08-10 — UX visual rebase remains closed through UX-5: UX-4 restored Summary degraded-state continuity to 9.3/10; UX-5 added the certified floating glass mobile navigation at 9.4/10, with exact-head and post-merge gates green.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,7 +29,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
-| UX visual rebase | 100% | ✅ Closed | UX-0/1/2 remain closed; UX-3 PR #89 unified the desktop shell brand **8.7/10 → 9.4/10**; post-merge CI #1472 + drift #1284 green |
+| UX visual rebase | 100% | ✅ Closed | UX-0/1/2/3 remain closed; UX-4 PR #91 restored Summary degraded-state continuity to **9.3/10** (merge `57f2a672`); UX-5 PR #92 added the floating glass mobile nav at **9.4/10** (merge `76daf3ad`); post-merge CI #1492 + drift #1304 green |
 | Journal metabolic-event redesign | 100% | ✅ Closed | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 + P2-JOURNAL-8/9 merged; PR #77 merged as `d841d926d1b7fe076827a3086306daa09399e38d`; UX 9.3/10; post-merge CI #1390 + drift #1202 green |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
@@ -40,6 +40,8 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 **MENA critical-path completion:** 32 of 41 explicit roadmap tasks closed, approximately **78%**.
 
 The Journal redesign and UX visual rebase are separate product-quality workstreams and do not change the MENA critical-path numerator.
+
+**UX-4/UX-5 closeout:** PR #91 fixed only the Summary degraded/error composition without fabricating patient metrics or insights. PR #92 replaced the stock mobile navigation presentation with a route-preserving glass rail, 240 ms selected-state glide, haptic feedback, dark-mode support, >=48 px targets and certified FR/AR RTL behavior. UX-5 final rendered evidence: run `31436069213`, artifact `9081084594`, digest `sha256:337e4a4ccac714418de269abc69104eebfc086cd6665c24df7aaa0a29c2372a9`, 8/8 real 390×844/360×560 FR/AR Dashboard/Journal captures, one Flutter view and zero page errors.
 
 Preparation work does not close a live benchmark, legal/privacy approval, native-review task or external credential-remediation task and does not increase the critical-path numerator.
 
