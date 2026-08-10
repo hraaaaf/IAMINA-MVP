@@ -1,0 +1,42 @@
+name: Journal final roadmap consistency
+
+on:
+  push:
+    branches: [audit/journal-final-roadmap-consistency]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-roadmap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout audit tools
+        uses: actions/checkout@v4
+        with:
+          path: audit
+
+      - name: Checkout final main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: product
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Patch stale Journal sequence
+        run: python audit/.github/scripts/journal_final_roadmap_consistency.py product
+
+      - name: Verify ROADMAP-only patch and push
+        working-directory: product
+        shell: bash
+        run: |
+          CHANGED="$(git status --porcelain | awk '{print $2}')"
+          test "$CHANGED" = "docs/ROADMAP.md"
+          git diff --check
+          git add docs/ROADMAP.md
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "docs(roadmap): remove stale Journal next-step"
+          git push origin HEAD:main
