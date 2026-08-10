@@ -1,0 +1,28 @@
+name: UX-2 final docs closeout
+
+on:
+  push:
+    branches: [docs/ux-2-closeout]
+    paths: [.github/workflows/ux-2-final-closeout.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/ux-2-closeout
+      - name: Update canonical roadmap to merged truth
+        run: python3 .github/ux-2-final-closeout.py
+      - name: Remove temporary closeout machinery and commit
+        run: |
+          git rm .github/workflows/ux-2-final-closeout.yml .github/ux-2-final-closeout.py
+          git add docs/ROADMAP.md
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs(ux): close UX-2 after post-merge verification'
+          git push origin HEAD:docs/ux-2-closeout
