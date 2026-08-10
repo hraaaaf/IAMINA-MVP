@@ -81,7 +81,7 @@ def test_gateway_gate_rejects_unauthorized_tracked_callsite(tmp_path):
     assert "client =" not in result.stderr
 
 
-def test_egress_gate_rejects_callsite_without_central_assertion(tmp_path):
+def test_egress_gate_rejects_callsite_without_central_authorization(tmp_path):
     repo = _init_repo(tmp_path)
     _write(repo, "backend/ai/api/v1/ai.py", "client = genai.Client()\n")
     _commit(repo)
@@ -93,7 +93,7 @@ def test_egress_gate_rejects_callsite_without_central_assertion(tmp_path):
     assert "client =" not in result.stderr
 
 
-def test_egress_gate_accepts_callsite_with_central_assertion(tmp_path):
+def test_egress_gate_accepts_callsite_with_direct_central_assertion(tmp_path):
     repo = _init_repo(tmp_path)
     _write(
         repo,
@@ -104,6 +104,36 @@ def test_egress_gate_accepts_callsite_with_central_assertion(tmp_path):
 
     result = _run(repo, "egress")
     assert result.returncode == 0
+
+
+def test_egress_gate_accepts_callsite_using_central_runtime_wrapper(tmp_path):
+    repo = _init_repo(tmp_path)
+    _write(
+        repo,
+        "backend/media/vision.py",
+        "client = genai.Client()\n"
+        "execute_external_provider_call('gemini', 'image', 'vision', lambda: client.run())\n",
+    )
+    _commit(repo)
+
+    result = _run(repo, "egress")
+    assert result.returncode == 0
+
+
+def test_import_or_comment_cannot_impersonate_runtime_authorization(tmp_path):
+    repo = _init_repo(tmp_path)
+    _write(
+        repo,
+        "backend/media/vision.py",
+        "from llm.runtime import execute_external_provider_call\n"
+        "# assert_ai_egress_allowed() and execute_external_provider_call() would be safe\n"
+        "client = genai.Client()\n",
+    )
+    _commit(repo)
+
+    result = _run(repo, "egress")
+    assert result.returncode == 1
+    assert "media/vision.py" in result.stderr
 
 
 def test_egress_gate_detects_whitespace_before_call_parenthesis(tmp_path):
@@ -139,6 +169,17 @@ def test_untracked_local_file_cannot_change_gate_result(tmp_path):
 
     assert _run(repo, "gateway").returncode == 0
     assert _run(repo, "egress").returncode == 0
+
+
+def test_tracked_python_syntax_error_fails_egress_gate_closed(tmp_path):
+    repo = _init_repo(tmp_path)
+    _write(repo, "backend/broken.py", "def broken(:\n")
+    _commit(repo)
+
+    result = _run(repo, "egress")
+    assert result.returncode == 2
+    assert "AI boundary gate ERROR" in result.stderr
+    assert "broken.py" in result.stderr
 
 
 def test_gate_fails_closed_when_repo_cannot_be_enumerated(tmp_path):
