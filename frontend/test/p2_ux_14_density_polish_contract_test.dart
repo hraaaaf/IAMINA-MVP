@@ -10,8 +10,11 @@ void main() {
     () {
       final source = _read('lib/features/journal/ai_summary_screen.dart');
       expect(source, contains('constraints.maxWidth >= 720'));
-      expect(source, contains('maxWidth: isWide ? 680 : 420'));
-      expect(source, contains('SizedBox(width: 190, child: retry)'));
+      expect(source, contains('BoxConstraints(maxWidth: 820)'));
+      expect(source, contains('SizedBox(width: 210, child: retry)'));
+      expect(source, contains('return Center('));
+      expect(source, contains('alignment: Alignment.topCenter'));
+      expect(source, contains('BoxConstraints(maxWidth: 420)'));
       expect(source, contains('minimumSize: const Size.fromHeight(48)'));
     },
   );
@@ -34,6 +37,8 @@ void main() {
       final source = _read('lib/features/profile/profile_screen.dart');
       expect(source, contains('maxWidth: 1040'));
       expect(source, contains('constraints.maxWidth < 900'));
+      expect(source, contains("ValueKey('profile-desktop-health-column')"));
+      expect(source, contains("ValueKey('profile-desktop-account-column')"));
       expect(source, contains('BorderRadius.circular(AminaTheme.radius3XL)'));
       expect(source, contains('BorderRadius.circular(AminaTheme.radius2XL)'));
       expect(source, contains('boxShadow: AminaTheme.shadowClinical'));
