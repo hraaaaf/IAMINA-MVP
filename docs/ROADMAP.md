@@ -483,4 +483,4 @@ These units close procedures and executable controls. They do not imply native-l
 3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals, then run the PR #34 and PR #35 `--require-approved` gates.
 4. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
 5. Run the deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
-6. In the product-quality lane, complete P1-JOURNAL-7 exact-final-head certification and expected-head merge/post-merge verification, then execute P2-JOURNAL-8 as the next Journal LOT without changing the MENA critical-path numerator.
+6. **Journal product-quality lane is closed.** Do not reopen it without a new evidence-backed roadmap decision; after blockers 1–5 are cleared, move to the real-patient pilot go/no-go and cohort execution gates.
