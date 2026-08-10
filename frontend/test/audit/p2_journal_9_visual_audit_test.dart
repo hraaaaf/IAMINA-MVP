@@ -21,42 +21,42 @@ Future<void> _loadAuditFont() async {
   }
 }
 
-const _minimal = PostSaveReceiptData(
-  glucose: 126,
-  unit: 'mg/dL',
-  timeLabel: '10 août 2026 · 13:05',
-);
-
-const _rich = PostSaveReceiptData(
-  glucose: 126,
-  unit: 'mg/dL',
-  timeLabel: '10 août 2026 · 13:05',
-  measurementContextLabel: 'Après repas',
-  mealTypeLabel: 'Déjeuner',
-  insulinUnits: 2.5,
-  additionalContextLabels: <String>[
-    'Stress inhabituel',
-    'Activité physique',
-    'Mauvais sommeil',
-  ],
-);
-
-Widget _host({required Locale locale, required PostSaveReceiptData data}) {
+Widget _host({required Locale locale, required bool rich}) {
   return MaterialApp(
     locale: locale,
     theme: ThemeData(fontFamily: _auditFontFamily),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(
-      body: RepaintBoundary(
-        key: _boundaryKey,
-        child: PostSaveReceipt(
-          data: data,
-          onViewJournal: () {},
-          onAddAnother: () {},
-          onDone: () {},
-        ),
-      ),
+    home: Builder(
+      builder: (context) {
+        final l10n = AppLocalizations.of(context)!;
+        final data = PostSaveReceiptData(
+          glucose: 126,
+          unit: 'mg/dL',
+          timeLabel: '${l10n.journalToday} · 13:05',
+          measurementContextLabel: rich ? l10n.journalContextPostMeal : null,
+          mealTypeLabel: rich ? l10n.journalMealLunch : null,
+          insulinUnits: rich ? 2.5 : null,
+          additionalContextLabels: rich
+              ? <String>[
+                  l10n.journalUnusualStress,
+                  l10n.journalPhysicalActivity,
+                  l10n.journalPoorSleep,
+                ]
+              : const <String>[],
+        );
+        return Scaffold(
+          body: RepaintBoundary(
+            key: _boundaryKey,
+            child: PostSaveReceipt(
+              data: data,
+              onViewJournal: () {},
+              onAddAnother: () {},
+              onDone: () {},
+            ),
+          ),
+        );
+      },
     ),
   );
 }
@@ -87,7 +87,7 @@ void main() {
   for (final item in cases) {
     testWidgets('minimal receipt ${item.$1}', (tester) async {
       await _setSize(tester, item.$3);
-      await tester.pumpWidget(_host(locale: item.$2, data: _minimal));
+      await tester.pumpWidget(_host(locale: item.$2, rich: false));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('post-save-view-journal')), findsOneWidget);
@@ -101,7 +101,7 @@ void main() {
 
     testWidgets('rich receipt ${item.$1}', (tester) async {
       await _setSize(tester, item.$3);
-      await tester.pumpWidget(_host(locale: item.$2, data: _rich));
+      await tester.pumpWidget(_host(locale: item.$2, rich: true));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('post-save-add-another')), findsOneWidget);
