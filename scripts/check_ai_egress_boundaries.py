@@ -34,6 +34,15 @@ DIRECT_EGRESS_CALLS = frozenset({"get_llm", "genai.Client", "GenerativeModel"})
 CENTRAL_AUTHORIZATION_CALLS = frozenset(
     {"assert_ai_egress_allowed", "execute_external_provider_call"}
 )
+
+# `GatewayLLM.__init__` only acquires the provider object. It performs no provider
+# request; complete/stream/think are separately guarded at the gateway boundary.
+# Keep this exemption symbol- and scope-specific so another get_llm callsite cannot
+# inherit it by sharing the file or class.
+GET_LLM_FACTORY_ONLY_SCOPES = frozenset(
+    {("core/llm_gateway.py", ("GatewayLLM", "__init__"))}
+)
+
 CENTRAL_RUNTIME_RELATIVE = "llm/runtime.py"
 CENTRAL_RUNTIME_FUNCTION = "execute_external_provider_call"
 CENTRAL_RUNTIME_REQUIRED_CONTROLS = frozenset(
@@ -133,10 +142,12 @@ def _authorization_symbol(symbol: str | None) -> bool:
 class _LexicalEgressVisitor(ast.NodeVisitor):
     """Track egress and authorization calls independently per lexical scope."""
 
-    def __init__(self) -> None:
+    def __init__(self, relative_path: str) -> None:
+        self.relative_path = relative_path
         self._scope_stack: list[dict[str, bool]] = [
             {"egress": False, "authorization": False}
         ]
+        self._scope_names: list[str] = []
         self.unsafe_scope_found = False
         self.central_wrapper_used = False
 
@@ -144,20 +155,32 @@ class _LexicalEgressVisitor(ast.NodeVisitor):
     def _scope(self) -> dict[str, bool]:
         return self._scope_stack[-1]
 
-    def _enter_scope(self, body: list[ast.stmt] | ast.expr) -> None:
+    def _enter_scope(self, body: list[ast.stmt] | ast.expr, name: str) -> None:
         self._scope_stack.append({"egress": False, "authorization": False})
+        self._scope_names.append(name)
         if isinstance(body, list):
             for statement in body:
                 self.visit(statement)
         else:
             self.visit(body)
+        self._scope_names.pop()
         scope = self._scope_stack.pop()
         if scope["egress"] and not scope["authorization"]:
             self.unsafe_scope_found = True
 
+    def _factory_only_get_llm_allowed(self, symbol: str | None) -> bool:
+        if symbol != "get_llm":
+            return False
+        return (
+            self.relative_path,
+            tuple(self._scope_names),
+        ) in GET_LLM_FACTORY_ONLY_SCOPES
+
     def visit_Call(self, node: ast.Call) -> None:  # noqa: N802 - ast API name
         symbol = _dotted_name(node.func)
-        if _is_direct_egress_symbol(symbol):
+        if _is_direct_egress_symbol(symbol) and not self._factory_only_get_llm_allowed(
+            symbol
+        ):
             self._scope["egress"] = True
         if _authorization_symbol(symbol):
             self._scope["authorization"] = True
@@ -173,7 +196,7 @@ class _LexicalEgressVisitor(ast.NodeVisitor):
         for default in (*node.args.defaults, *node.args.kw_defaults):
             if default is not None:
                 self.visit(default)
-        self._enter_scope(node.body)
+        self._enter_scope(node.body, node.name)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:  # noqa: N802
         self.visit_FunctionDef(node)
@@ -182,7 +205,7 @@ class _LexicalEgressVisitor(ast.NodeVisitor):
         for default in (*node.args.defaults, *node.args.kw_defaults):
             if default is not None:
                 self.visit(default)
-        self._enter_scope(node.body)
+        self._enter_scope(node.body, "<lambda>")
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:  # noqa: N802
         # Bases, keywords and decorators execute in the enclosing scope. The class
@@ -193,7 +216,7 @@ class _LexicalEgressVisitor(ast.NodeVisitor):
             self.visit(base)
         for keyword in node.keywords:
             self.visit(keyword.value)
-        self._enter_scope(node.body)
+        self._enter_scope(node.body, node.name)
 
     def finalize(self) -> tuple[bool, bool]:
         module_scope = self._scope_stack[0]
@@ -202,7 +225,7 @@ class _LexicalEgressVisitor(ast.NodeVisitor):
         return self.unsafe_scope_found, self.central_wrapper_used
 
 
-def _analyze_egress_scopes(path: Path, text: str) -> tuple[bool, bool]:
+def _analyze_egress_scopes(path: Path, relative: str, text: str) -> tuple[bool, bool]:
     try:
         tree = ast.parse(text, filename=str(path))
     except SyntaxError as exc:
@@ -210,35 +233,36 @@ def _analyze_egress_scopes(path: Path, text: str) -> tuple[bool, bool]:
             f"cannot parse tracked Python file {path.as_posix()}: line {exc.lineno}"
         ) from exc
 
-    visitor = _LexicalEgressVisitor()
+    visitor = _LexicalEgressVisitor(relative)
     visitor.visit(tree)
     return visitor.finalize()
 
 
-def _calls_in_function_scope(function: ast.FunctionDef | ast.AsyncFunctionDef) -> list[ast.Call]:
+def _top_level_expression(statement: ast.stmt) -> ast.expr | None:
+    if isinstance(statement, ast.Expr):
+        return statement.value
+    if isinstance(statement, ast.Assign):
+        return statement.value
+    if isinstance(statement, ast.AnnAssign):
+        return statement.value
+    if isinstance(statement, ast.Return):
+        return statement.value
+    return None
+
+
+def _calls_in_expression(expression: ast.expr) -> list[ast.Call]:
     calls: list[ast.Call] = []
 
-    class FunctionBodyVisitor(ast.NodeVisitor):
+    class ExpressionVisitor(ast.NodeVisitor):
         def visit_Call(self, node: ast.Call) -> None:  # noqa: N802
             calls.append(node)
             self.generic_visit(node)
 
-        def visit_FunctionDef(self, node: ast.FunctionDef) -> None:  # noqa: N802
-            # Nested functions are independent scopes and cannot satisfy the wrapper.
-            return
-
-        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:  # noqa: N802
-            return
-
         def visit_Lambda(self, node: ast.Lambda) -> None:  # noqa: N802
+            # A deferred lambda body is not executed before provider submission.
             return
 
-        def visit_ClassDef(self, node: ast.ClassDef) -> None:  # noqa: N802
-            return
-
-    visitor = FunctionBodyVisitor()
-    for statement in function.body:
-        visitor.visit(statement)
+    ExpressionVisitor().visit(expression)
     return calls
 
 
@@ -262,20 +286,30 @@ def _central_runtime_wrapper_valid(path: Path, text: str) -> bool:
     if wrapper is None:
         return False
 
-    control_lines: dict[str, int] = {}
-    submit_lines: list[int] = []
-    for call in _calls_in_function_scope(wrapper):
-        symbol = _dotted_name(call.func)
-        if symbol in CENTRAL_RUNTIME_REQUIRED_CONTROLS:
-            control_lines.setdefault(symbol, call.lineno)
-        if symbol is not None and symbol.endswith(".submit"):
-            submit_lines.append(call.lineno)
+    control_indices: dict[str, int] = {}
+    submit_indices: list[int] = []
+    for index, statement in enumerate(wrapper.body):
+        expression = _top_level_expression(statement)
+        if expression is None:
+            continue
 
-    if set(control_lines) != CENTRAL_RUNTIME_REQUIRED_CONTROLS:
+        # Required controls must be unconditional top-level call statements or
+        # assignments, not calls hidden in a branch/try/nested function.
+        if isinstance(expression, ast.Call):
+            direct_symbol = _dotted_name(expression.func)
+            if direct_symbol in CENTRAL_RUNTIME_REQUIRED_CONTROLS:
+                control_indices.setdefault(direct_symbol, index)
+
+        for call in _calls_in_expression(expression):
+            symbol = _dotted_name(call.func)
+            if symbol is not None and symbol.endswith(".submit"):
+                submit_indices.append(index)
+
+    if set(control_indices) != CENTRAL_RUNTIME_REQUIRED_CONTROLS:
         return False
-    if not submit_lines:
+    if not submit_indices:
         return False
-    return max(control_lines.values()) < min(submit_lines)
+    return max(control_indices.values()) < min(submit_indices)
 
 
 def egress_authorization_findings(repo: Path) -> list[str]:
@@ -290,7 +324,7 @@ def egress_authorization_findings(repo: Path) -> list[str]:
         text = _read_text(path)
         if text is None:
             continue
-        unsafe_scope, wrapper_used = _analyze_egress_scopes(path, text)
+        unsafe_scope, wrapper_used = _analyze_egress_scopes(path, relative, text)
         central_wrapper_used |= wrapper_used
         if unsafe_scope:
             findings.append(relative)
