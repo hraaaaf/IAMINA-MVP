@@ -206,32 +206,47 @@ class _PersonalResponseSectionState extends State<PersonalResponseSection> {
                 if (snapshot.data!.patterns.length > 1)
                   Align(
                     alignment: AlignmentDirectional.centerStart,
-                    child: TextButton.icon(
-                      onPressed: () {
-                        setState(() => _showAllPatterns = !_showAllPatterns);
-                      },
-                      icon: Icon(
-                        _showAllPatterns
-                            ? Icons.expand_less
-                            : Icons.expand_more,
-                        size: 18,
-                      ),
-                      label: Text(
-                        _showAllPatterns
-                            ? l10n.personalResponseShowLess
-                            : l10n.personalResponseShowMore(
-                                snapshot.data!.patterns.length - 1,
+                    child: Semantics(
+                      button: true,
+                      child: InkWell(
+                        key: const Key('personal-response-disclosure'),
+                        onTap: () {
+                          setState(() => _showAllPatterns = !_showAllPatterns);
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _showAllPatterns
+                                    ? Icons.expand_less
+                                    : Icons.expand_more,
+                                size: 18,
+                                color: AminaTheme.primaryTeal,
                               ),
-                      ),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AminaTheme.primaryTeal,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 6,
-                        ),
-                        textStyle: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  _showAllPatterns
+                                      ? l10n.personalResponseShowLess
+                                      : l10n.personalResponseShowMore(
+                                          snapshot.data!.patterns.length - 1,
+                                        ),
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    height: 1.25,
+                                    fontWeight: FontWeight.w700,
+                                    color: AminaTheme.primaryTeal,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
