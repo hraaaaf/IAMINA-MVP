@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 const _boundaryKey = Key('p2-j9-visual-boundary');
 const _auditFontFamily = 'AuditSans';
 
-Future<void> _loadAuditFont() async {
+Future<void> _loadAuditFonts() async {
   final bytes = await File(
     '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
   ).readAsBytes();
@@ -19,6 +19,19 @@ Future<void> _loadAuditFont() async {
     loader.addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
     await loader.load();
   }
+
+  final flutterRoot = Platform.environment['FLUTTER_ROOT'];
+  if (flutterRoot == null) {
+    throw StateError('FLUTTER_ROOT is required for Material icon audit font');
+  }
+  final iconBytes = await File(
+    '$flutterRoot/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
+  ).readAsBytes();
+  final iconLoader = FontLoader('MaterialIcons');
+  iconLoader.addFont(
+    Future<ByteData>.value(ByteData.sublistView(iconBytes)),
+  );
+  await iconLoader.load();
 }
 
 Widget _host({required Locale locale, required bool rich}) {
@@ -71,7 +84,7 @@ Future<void> _setSize(WidgetTester tester, Size size) async {
 }
 
 void main() {
-  setUpAll(_loadAuditFont);
+  setUpAll(_loadAuditFonts);
 
   final cases = <(String, Locale, Size)>[
     ('fr-desktop-1440x1000', const Locale('fr'), const Size(1440, 1000)),
