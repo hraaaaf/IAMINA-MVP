@@ -77,6 +77,13 @@ Context-derived patterns may use only explicit positive observations. Missing co
 
 Patient-facing evidence may include observation count, distinct-day count, the median for matching observations and the median across all eligible synchronized readings in the same window. A product repetition grade may summarize evidence density, but it must be described as neither a probability nor statistical/clinical confidence. Comparing those descriptive medians must not be presented as a causal effect, treatment response estimate or predicted future glucose. No detector output may be converted into diagnosis, dose calculation, treatment optimization or autonomous advice. Insufficient evidence must fail closed.
 
+
+### Immediate post-save presentation
+
+The immediate post-save surface belongs to the **observed / patient-entered data presentation layer**. It may confirm that a local Journal write succeeded and restate the facts just stored, but that success event does not create new clinical meaning. A single saved glucose reading, meal/context label or already-taken insulin quantity must not be turned into a good/bad judgment, causal interpretation, prediction, treatment response estimate, dose recommendation or treatment adjustment.
+
+The storage statement must match the evidence available at that moment. A successful local Drift insertion may be described as saved on the device; it must not be upgraded into a server-sync, cloud-backup or external-processing claim without separate proof. Longitudinal associations remain a different deterministic pattern layer and may surface only through the P2-JOURNAL-8 sufficiency and wording contract. Draft clearing after a successful write is a data-integrity behavior: a subsequent entry starts without silently carrying forward the prior meal/context/insulin observations.
+
 ### Ramadan profile context
 
 Ramadan is represented only as an **explicit patient-configured profile period**, not as an inferred fasting state. The period is valid only when both start and end dates are present and ordered; absent, partial or inverted data must fail closed instead of being completed from the calendar, location, time of day, meal timing or cultural assumptions.

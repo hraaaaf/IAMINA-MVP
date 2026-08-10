@@ -438,5 +438,12 @@
       }
     }
   },
-  "personalResponseShowLess": "Show fewer patterns"
+  "personalResponseShowLess": "Show fewer patterns",
+  "journalPostSaveDeviceStatus": "Saved on this device.",
+  "journalPostSaveSummaryTitle": "Entry summary",
+  "journalPostSaveMeal": "Meal",
+  "journalPostSaveNotice": "This confirmation only describes what was saved. It does not interpret the reading. Personal patterns appear separately in Journal when there is enough data.",
+  "journalPostSaveViewJournal": "View in Journal",
+  "journalPostSaveAddAnother": "Add another reading",
+  "journalPostSaveDone": "Done"
 }
