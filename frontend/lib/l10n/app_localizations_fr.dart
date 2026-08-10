@@ -954,6 +954,14 @@ class AppLocalizationsFr extends AppLocalizations {
       'Enregistrée sur cet appareil. Le serveur n’a pas été mis à jour.';
 
   @override
+  String get ramadanSavedServerOnly =>
+      'Enregistrée sur ton compte. Aucun profil local n’était disponible sur cet appareil.';
+
+  @override
+  String get ramadanSaveFailed =>
+      'Impossible d’enregistrer la période. Réessaie lorsque ton profil est disponible ou que la connexion est rétablie.';
+
+  @override
   String get ramadanNeedsBothDates =>
       'Choisis une date de début et une date de fin, ou efface les deux.';
 

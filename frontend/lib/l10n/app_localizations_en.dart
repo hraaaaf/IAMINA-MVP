@@ -940,6 +940,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Saved on this device. The server was not updated.';
 
   @override
+  String get ramadanSavedServerOnly =>
+      'Saved to your account. No local profile was available on this device.';
+
+  @override
+  String get ramadanSaveFailed =>
+      'The Ramadan period was not saved. Retry after your profile is available or your connection is restored.';
+
+  @override
   String get ramadanNeedsBothDates =>
       'Choose both a start and end date, or clear both.';
 

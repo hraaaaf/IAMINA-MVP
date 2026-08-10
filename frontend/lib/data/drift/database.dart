@@ -135,7 +135,7 @@ class AppDatabase extends _$AppDatabase {
     },
   );
 
-  Future<void> setRamadanPeriod({DateTime? start, DateTime? end}) async {
+  Future<bool> setRamadanPeriod({DateTime? start, DateTime? end}) async {
     if ((start == null) != (end == null)) {
       throw ArgumentError('Ramadan period requires both dates or neither');
     }
@@ -145,15 +145,19 @@ class AppDatabase extends _$AppDatabase {
     final existing = await (select(
       patientProfiles,
     )..limit(1)).getSingleOrNull();
-    final userId = existing?.userId ?? 1;
-    await into(patientProfiles).insertOnConflictUpdate(
-      PatientProfilesCompanion.insert(
-        userId: Value(userId),
-        updatedAt: DateTime.now(),
-        ramadanStartDate: Value(start),
-        ramadanEndDate: Value(end),
-      ),
-    );
+    if (existing == null) return false;
+
+    final updated =
+        await (update(
+          patientProfiles,
+        )..where((row) => row.userId.equals(existing.userId))).write(
+          PatientProfilesCompanion(
+            updatedAt: Value(DateTime.now()),
+            ramadanStartDate: Value(start),
+            ramadanEndDate: Value(end),
+          ),
+        );
+    return updated == 1;
   }
 
   // Watchers

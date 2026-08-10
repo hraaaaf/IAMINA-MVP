@@ -938,6 +938,14 @@ class AppLocalizationsAr extends AppLocalizations {
       'تم الحفظ على هذا الجهاز. لم يتم تحديث الخادم.';
 
   @override
+  String get ramadanSavedServerOnly =>
+      'تم الحفظ في حسابك. لم يكن هناك ملف محلي متاح على هذا الجهاز.';
+
+  @override
+  String get ramadanSaveFailed =>
+      'تعذر حفظ فترة رمضان. أعد المحاولة عندما يصبح ملفك متاحًا أو يعود الاتصال.';
+
+  @override
   String get ramadanNeedsBothDates =>
       'اختر تاريخ البداية وتاريخ النهاية معًا، أو امسحهما معًا.';
 
