@@ -176,8 +176,8 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 720;
         final icon = Container(
-          width: isWide ? 56 : 48,
-          height: isWide ? 56 : 48,
+          width: isWide ? 60 : 48,
+          height: isWide ? 60 : 48,
           decoration: BoxDecoration(
             color: AminaTheme.dangerBg,
             borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
@@ -185,14 +185,14 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
           child: Icon(
             Icons.cloud_off_outlined,
             color: AminaTheme.dangerFg,
-            size: isWide ? 28 : 24,
+            size: isWide ? 30 : 24,
           ),
         );
         final message = Text(
           l10n.analysisLoadError,
           textAlign: isWide ? TextAlign.start : TextAlign.center,
           style: TextStyle(
-            fontSize: isWide ? 16 : 15,
+            fontSize: isWide ? 17 : 15,
             height: 1.35,
             fontWeight: FontWeight.w800,
             color: AminaTheme.textPrimary(context),
@@ -209,43 +209,57 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
             ),
           ),
         );
-        return Align(
-          alignment: Alignment.topCenter,
-          child: Padding(
-            padding: EdgeInsetsDirectional.fromSTEB(20, isWide ? 48 : 32, 20, 24),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: isWide ? 680 : 420),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(isWide ? 28 : 24),
-                decoration: BoxDecoration(
-                  color: AminaTheme.surface(context),
-                  borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
-                  border: Border.all(color: AminaTheme.divider(context)),
-                  boxShadow: AminaTheme.shadowClinical,
+        final card = Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(isWide ? 32 : 24),
+          decoration: BoxDecoration(
+            color: AminaTheme.surface(context),
+            borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
+            border: Border.all(color: AminaTheme.divider(context)),
+            boxShadow: AminaTheme.shadowClinical,
+          ),
+          child: isWide
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    icon,
+                    const SizedBox(width: 22),
+                    Expanded(child: message),
+                    const SizedBox(width: 28),
+                    SizedBox(width: 210, child: retry),
+                  ],
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    icon,
+                    const SizedBox(height: 16),
+                    message,
+                    const SizedBox(height: 18),
+                    SizedBox(width: double.infinity, child: retry),
+                  ],
                 ),
-                child: isWide
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          icon,
-                          const SizedBox(width: 20),
-                          Expanded(child: message),
-                          const SizedBox(width: 24),
-                          SizedBox(width: 190, child: retry),
-                        ],
-                      )
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          icon,
-                          const SizedBox(height: 16),
-                          message,
-                          const SizedBox(height: 18),
-                          SizedBox(width: double.infinity, child: retry),
-                        ],
-                      ),
+        );
+
+        if (!isWide) {
+          return Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(20, 32, 20, 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: card,
               ),
+            ),
+          );
+        }
+
+        return Center(
+          child: Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(28, 24, 28, 56),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 820),
+              child: card,
             ),
           ),
         );
