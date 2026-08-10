@@ -1,7 +1,7 @@
 """Deterministic personal-response patterns for the Journal.
 
 This module intentionally does not perform causal inference, prediction, treatment
-recommendation or statistical significance testing.  It summarizes repeated,
+recommendation or statistical significance testing. It summarizes repeated,
 explicitly recorded observations and exposes their evidence basis.
 """
 
@@ -23,6 +23,7 @@ PatternKind = Literal["context", "meal"]
 MIN_OBSERVATIONS = 3
 MIN_DISTINCT_DAYS = 2
 DEFAULT_WINDOW_DAYS = 90
+MAX_WINDOW_DAYS = 90
 MAX_PATTERNS = 5
 
 # Only positive/explicit states are eligible. Historical negative/neutral values
@@ -133,9 +134,10 @@ def compute_personal_response(
     - context patterns use only explicit positive observations;
     - meal patterns require an explicit ``post_meal`` measurement context;
     - demo entries are excluded;
-    - no negative/neutral context is ever treated as a control cohort.
+    - no negative/neutral context is ever treated as a control cohort;
+    - analysis is bounded to 90 days to keep patient-scoped reads predictable.
     """
-    window_days = max(7, min(int(window_days), 365))
+    window_days = max(7, min(int(window_days), MAX_WINDOW_DAYS))
     entries = list(_window_queryset(patient_id, window_days))
     distinct_days = len({_event_at(entry).date() for entry in entries})
 
