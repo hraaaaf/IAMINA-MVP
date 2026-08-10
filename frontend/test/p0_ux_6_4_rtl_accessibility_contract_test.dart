@@ -21,10 +21,13 @@ void main() {
   });
 
   test('mobile navigation labels remain permanently visible', () {
+    expect(source, contains('class _GlassNavDestination'));
     expect(
       source,
-      contains('NavigationDestinationLabelBehavior.alwaysShow'),
+      contains('final label = entry.label(AppLocalizations.of(context)!);'),
     );
+    expect(source, contains('child: Text('));
+    expect(source, contains('maxLines: 1'));
     expect(
       source,
       isNot(contains('NavigationDestinationLabelBehavior.onlyShowSelected')),
@@ -32,10 +35,7 @@ void main() {
   });
 
   test('navigation copy comes from canonical localizations', () {
-    expect(
-      source,
-      contains('AppLocalizations.of(context)!.addEntry'),
-    );
+    expect(source, contains('AppLocalizations.of(context)!.addEntry'));
     expect(source, isNot(contains("'Ajouter'")));
     expect(source, isNot(contains("'Utilisateur'")));
   });
