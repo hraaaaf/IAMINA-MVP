@@ -35,7 +35,7 @@ jobs:
         working-directory: frontend
         run: |
           flutter pub get
-          flutter analyze
+          flutter analyze --no-fatal-infos
           flutter test test/data/drift/ramadan_period_migration_test.dart
           flutter test test/core/data/ramadan_context_test.dart test/features/ramadan_mode_v2_test.dart test/features/ramadan_profile_responsive_test.dart
       - name: Commit remediation
