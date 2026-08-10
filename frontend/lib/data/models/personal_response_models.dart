@@ -5,8 +5,6 @@ class PersonalResponsePattern {
   final int distinctDays;
   final double medianGlucoseMgDl;
   final double windowMedianGlucoseMgDl;
-  final DateTime firstObservedAt;
-  final DateTime lastObservedAt;
   final String confidence;
 
   const PersonalResponsePattern({
@@ -16,8 +14,6 @@ class PersonalResponsePattern {
     required this.distinctDays,
     required this.medianGlucoseMgDl,
     required this.windowMedianGlucoseMgDl,
-    required this.firstObservedAt,
-    required this.lastObservedAt,
     required this.confidence,
   });
 
@@ -30,8 +26,6 @@ class PersonalResponsePattern {
       medianGlucoseMgDl: (json['median_glucose_mg_dl'] as num).toDouble(),
       windowMedianGlucoseMgDl:
           (json['window_median_glucose_mg_dl'] as num).toDouble(),
-      firstObservedAt: DateTime.parse(json['first_observed_at'] as String),
-      lastObservedAt: DateTime.parse(json['last_observed_at'] as String),
       confidence: json['confidence'] as String,
     );
   }
@@ -39,6 +33,7 @@ class PersonalResponsePattern {
 
 class PersonalResponseResult {
   final String status;
+  final String dataScope;
   final int windowDays;
   final int totalReadings;
   final int distinctDays;
@@ -51,6 +46,7 @@ class PersonalResponseResult {
 
   const PersonalResponseResult({
     required this.status,
+    required this.dataScope,
     required this.windowDays,
     required this.totalReadings,
     required this.distinctDays,
@@ -68,6 +64,7 @@ class PersonalResponseResult {
     final rawPatterns = json['patterns'] as List<dynamic>? ?? const [];
     return PersonalResponseResult(
       status: json['status'] as String,
+      dataScope: json['data_scope'] as String,
       windowDays: json['window_days'] as int,
       totalReadings: json['total_readings'] as int,
       distinctDays: json['distinct_days'] as int,
