@@ -2,14 +2,15 @@
 """Fail closed on direct LLM/provider callsites outside sanctioned boundaries.
 
 The gate intentionally scans only tracked backend files so generated caches and
-local artifacts cannot change CI behavior. Findings report file paths and rule
-names only; source contents are never printed.
+local artifacts cannot change CI behavior. Egress checks use Python AST nodes so
+comments/imports cannot impersonate an authorization call. Findings report file
+paths and rule names only; source contents are never printed.
 """
 
 from __future__ import annotations
 
 import argparse
-import re
+import ast
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
@@ -28,10 +29,10 @@ LLM_GATEWAY_ALLOWED_EXACT = frozenset(
 )
 LLM_GATEWAY_ALLOWED_PREFIXES = ("llm/tests/", "core/tests/")
 
-EGRESS_CALL_PATTERN = re.compile(
-    r"(?:get_llm\s*\(|genai\.Client\s*\(|GenerativeModel\s*\()"
+DIRECT_EGRESS_CALLS = frozenset({"get_llm", "genai.Client", "GenerativeModel"})
+CENTRAL_AUTHORIZATION_CALLS = frozenset(
+    {"assert_ai_egress_allowed", "execute_external_provider_call"}
 )
-EGRESS_ASSERTION = "assert_ai_egress_allowed"
 
 
 def _git(repo: Path, *args: str) -> bytes:
@@ -100,16 +101,65 @@ def _egress_path_excluded(relative: str) -> bool:
     return "tests" in posix.parts or "migrations" in posix.parts
 
 
+def _dotted_name(node: ast.expr) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        parent = _dotted_name(node.value)
+        return f"{parent}.{node.attr}" if parent else node.attr
+    return None
+
+
+def _is_direct_egress_symbol(symbol: str | None) -> bool:
+    if symbol is None:
+        return False
+    if symbol in DIRECT_EGRESS_CALLS:
+        return True
+    return symbol.endswith(".GenerativeModel")
+
+
+def _authorization_symbol(symbol: str | None) -> bool:
+    if symbol is None:
+        return False
+    return symbol in CENTRAL_AUTHORIZATION_CALLS
+
+
+def _ast_call_symbols(path: Path, text: str) -> tuple[set[str], set[str]]:
+    try:
+        tree = ast.parse(text, filename=str(path))
+    except SyntaxError as exc:
+        raise RuntimeError(
+            f"cannot parse tracked Python file {path.as_posix()}: line {exc.lineno}"
+        ) from exc
+
+    egress_calls: set[str] = set()
+    authorization_calls: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        symbol = _dotted_name(node.func)
+        if _is_direct_egress_symbol(symbol):
+            assert symbol is not None
+            egress_calls.add(symbol)
+        if _authorization_symbol(symbol):
+            assert symbol is not None
+            authorization_calls.add(symbol)
+    return egress_calls, authorization_calls
+
+
 def egress_authorization_findings(repo: Path) -> list[str]:
     findings: list[str] = []
     for path in _tracked_backend_files(repo):
         relative = _backend_relative(repo, path)
-        if _egress_path_excluded(relative):
+        if _egress_path_excluded(relative) or path.suffix != ".py":
             continue
         text = _read_text(path)
-        if text is None or not EGRESS_CALL_PATTERN.search(text):
+        if text is None:
             continue
-        if EGRESS_ASSERTION not in text:
+        egress_calls, authorization_calls = _ast_call_symbols(path, text)
+        if not egress_calls:
+            continue
+        if not authorization_calls:
             findings.append(relative)
     return sorted(findings)
 
