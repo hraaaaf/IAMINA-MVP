@@ -95,7 +95,22 @@ def test_current_firebase_client_identifier_is_allowed_in_compiled_artifact(tmp_
     assert _audit(repo).returncode == 0
 
 
-def test_unknown_google_identifier_outside_firebase_options_still_fails(tmp_path):
+def test_known_firebase_identifier_outside_compiled_artifact_still_fails(tmp_path):
+    repo = _init_repo(tmp_path)
+    identifier = "AIza" + ("A" * 35)
+    allowed = repo / "frontend" / "lib"
+    allowed.mkdir(parents=True)
+    (allowed / "firebase_options.dart").write_text(f"apiKey: '{identifier}'\n")
+    (repo / "backend.txt").write_text(f"api_key={identifier}\n")
+    _commit_all(repo, "reuse known client identifier outside compiled artifact")
+
+    result = _audit(repo)
+    assert result.returncode == 1
+    assert "Google API key" in result.stderr
+    assert identifier not in result.stderr
+
+
+def test_unknown_google_identifier_in_compiled_artifact_still_fails(tmp_path):
     repo = _init_repo(tmp_path)
     known_identifier = "AIza" + ("A" * 35)
     unknown_identifier = "AIza" + ("B" * 35)
@@ -121,6 +136,19 @@ def test_known_synthetic_sk_fixture_is_ignored_in_reachable_history(tmp_path):
     _commit_all(repo, "remove known synthetic fixture")
 
     assert _audit(repo).returncode == 0
+
+
+def test_known_synthetic_sk_fixture_exception_is_exact(tmp_path):
+    repo = _init_repo(tmp_path)
+    fixture_like_value = "sk-" + "this-must-never-be-in-the-manifest-extra"
+    path = repo / "fixture_like.txt"
+    path.write_text(f"api_key = '{fixture_like_value}'\n")
+    _commit_all(repo, "add fixture-like token")
+
+    result = _audit(repo)
+    assert result.returncode == 1
+    assert "generic sk token" in result.stderr
+    assert fixture_like_value not in result.stderr
 
 
 def test_safe_sk_example_cannot_hide_another_credential_on_same_line(tmp_path):
