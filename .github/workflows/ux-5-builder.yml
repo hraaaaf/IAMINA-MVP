@@ -1,0 +1,44 @@
+name: UX-5 builder
+
+on:
+  push:
+    branches:
+      - ux/ux-5-glass-mobile-nav
+    paths:
+      - .github/workflows/ux-5-builder.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build-ux5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ux/ux-5-glass-mobile-nav
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Apply bounded UX-5 patch
+        run: |
+          python3 .github/ux5_patch.py
+          dart format frontend/lib/features/navigation/main_shell.dart frontend/test/ux_5_glass_mobile_nav_contract_test.dart
+      - name: Validate UX-5
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos
+          flutter test test/ux_5_glass_mobile_nav_contract_test.dart
+      - name: Commit product patch and remove builder
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/ux-5-builder.yml .github/ux5_patch.py
+          git add frontend/lib/features/navigation/main_shell.dart frontend/test/ux_5_glass_mobile_nav_contract_test.dart
+          git commit -m 'fix(ux): add glass mobile navigation'
+          git push origin HEAD:ux/ux-5-glass-mobile-nav
