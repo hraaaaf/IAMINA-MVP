@@ -19,6 +19,7 @@ class PersonalResponseSection extends StatefulWidget {
 
 class _PersonalResponseSectionState extends State<PersonalResponseSection> {
   late Future<PersonalResponseResult?> _future;
+  bool _showAllPatterns = false;
 
   @override
   void initState() {
@@ -172,7 +173,7 @@ class _PersonalResponseSectionState extends State<PersonalResponseSection> {
                 )
               else ...[
                 ...snapshot.data!.patterns
-                    .take(3)
+                    .take(_showAllPatterns ? 3 : 1)
                     .map(
                       (pattern) => Padding(
                         padding: const EdgeInsets.only(bottom: 10),
@@ -202,6 +203,39 @@ class _PersonalResponseSectionState extends State<PersonalResponseSection> {
                         ),
                       ),
                     ),
+                if (snapshot.data!.patterns.length > 1)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        setState(() => _showAllPatterns = !_showAllPatterns);
+                      },
+                      icon: Icon(
+                        _showAllPatterns
+                            ? Icons.expand_less
+                            : Icons.expand_more,
+                        size: 18,
+                      ),
+                      label: Text(
+                        _showAllPatterns
+                            ? l10n.personalResponseShowLess
+                            : l10n.personalResponseShowMore(
+                                snapshot.data!.patterns.length - 1,
+                              ),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AminaTheme.primaryTeal,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),

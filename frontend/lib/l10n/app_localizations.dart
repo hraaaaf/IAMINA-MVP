@@ -2043,6 +2043,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Observed pattern'**
   String get personalResponseObservedPattern;
+
+  /// No description provided for @personalResponseShowMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show {count} more patterns'**
+  String personalResponseShowMore(int count);
+
+  /// No description provided for @personalResponseShowLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show fewer patterns'**
+  String get personalResponseShowLess;
 }
 
 class _AppLocalizationsDelegate

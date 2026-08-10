@@ -1059,4 +1059,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get personalResponseObservedPattern => 'Observed pattern';
+
+  @override
+  String personalResponseShowMore(int count) {
+    return 'Show $count more patterns';
+  }
+
+  @override
+  String get personalResponseShowLess => 'Show fewer patterns';
 }

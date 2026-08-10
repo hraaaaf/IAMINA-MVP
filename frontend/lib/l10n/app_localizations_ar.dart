@@ -1056,4 +1056,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get personalResponseObservedPattern => 'نمط ملحوظ';
+
+  @override
+  String personalResponseShowMore(int count) {
+    return 'عرض $count أنماط إضافية';
+  }
+
+  @override
+  String get personalResponseShowLess => 'عرض أنماط أقل';
 }

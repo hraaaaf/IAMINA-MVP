@@ -1074,4 +1074,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get personalResponseObservedPattern => 'Motif observé';
+
+  @override
+  String personalResponseShowMore(int count) {
+    return 'Afficher $count autres motifs';
+  }
+
+  @override
+  String get personalResponseShowLess => 'Réduire les motifs';
 }

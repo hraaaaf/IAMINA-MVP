@@ -429,5 +429,14 @@
   "personalResponseSnack": "Après collation",
   "personalResponseSuhoor": "Après Suhoor",
   "personalResponseIftar": "Après Iftar",
-  "personalResponseObservedPattern": "Motif observé"
+  "personalResponseObservedPattern": "Motif observé",
+  "personalResponseShowMore": "Afficher {count} autres motifs",
+  "@personalResponseShowMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "personalResponseShowLess": "Réduire les motifs"
 }
