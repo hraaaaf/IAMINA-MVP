@@ -7,6 +7,7 @@ import '../../data/drift/database.dart';
 import '../../core/data/meal_food_catalog.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
+import '../../core/widgets/mobile_page_header.dart';
 import 'widgets/insulin_logging.dart';
 import 'widgets/personal_response_section.dart';
 
@@ -206,7 +207,21 @@ class _JournalScreenState extends State<JournalScreen> {
   }
 
   Widget _buildSliverAppBar(BuildContext context) {
-    final topPad = MediaQuery.of(context).padding.top + 16;
+    final l10n = AppLocalizations.of(context)!;
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
+    if (isMobile) {
+      return SliverToBoxAdapter(
+        child: AminaMobilePageHeader(
+          title: l10n.navJournal,
+          subtitle: l10n.journalSubtitle,
+          trailing: _buildFilterBadge(
+            iconColor: AminaTheme.textSecondary(context),
+          ),
+        ),
+      );
+    }
+
+    final topPad = MediaQuery.paddingOf(context).top + 16;
     return SliverAppBar(
       expandedHeight: 140,
       pinned: true,
@@ -224,32 +239,27 @@ class _JournalScreenState extends State<JournalScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Builder(
-                builder: (ctx) {
-                  final l10n = AppLocalizations.of(ctx)!;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.navJournal,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      Text(
-                        l10n.journalSubtitle,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  );
-                },
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.navJournal,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  Text(
+                    l10n.journalSubtitle,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
               _buildFilterBadge(),
             ],
@@ -259,12 +269,12 @@ class _JournalScreenState extends State<JournalScreen> {
     );
   }
 
-  Widget _buildFilterBadge() {
+  Widget _buildFilterBadge({Color? iconColor}) {
     return Builder(
       builder: (context) {
         final l10n = AppLocalizations.of(context)!;
         return PopupMenuButton<int>(
-          icon: const Icon(Icons.tune, color: Colors.white),
+          icon: Icon(Icons.tune, color: iconColor ?? Colors.white),
           onSelected: (days) => setState(() => _selectedFilterDays = days),
           itemBuilder: (_) => [
             PopupMenuItem(value: 7, child: Text(l10n.last7Days)),

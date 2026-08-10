@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/drift/database.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
+import '../../core/widgets/mobile_page_header.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../services/sync_service.dart';
 import 'clinical_engine.dart';
@@ -21,17 +22,17 @@ import '../../services/api_client.dart';
 // All share the imports above via the Dart library part mechanism.
 part 'widgets/top_bar.dart';
 // Hero section split into focused part-files
-part 'widgets/hero_section.dart';   // PageHead + HeroContextual orchestrator
-part 'widgets/hero_ecg.dart';        // ECG painter + AnimatedEcg
-part 'widgets/hero_atoms.dart';      // Badge / Chip / Btn / DotsPainter atoms
-part 'widgets/hero_live.dart';       // HeroLive — post-meal <90 min card
-part 'widgets/hero_insight.dart';    // HeroInsight — morning / default card
-part 'widgets/hero_tir.dart';        // HeroTIR — midday TIR card
+part 'widgets/hero_section.dart'; // PageHead + HeroContextual orchestrator
+part 'widgets/hero_ecg.dart'; // ECG painter + AnimatedEcg
+part 'widgets/hero_atoms.dart'; // Badge / Chip / Btn / DotsPainter atoms
+part 'widgets/hero_live.dart'; // HeroLive — post-meal <90 min card
+part 'widgets/hero_insight.dart'; // HeroInsight — morning / default card
+part 'widgets/hero_tir.dart'; // HeroTIR — midday TIR card
 // KPI cards split into focused part-files
-part 'widgets/kpi_cards.dart';       // MetricRow layout + DeltaChip + LegendDot
-part 'widgets/kpi_tir_card.dart';    // TIRCard
-part 'widgets/kpi_gmi_card.dart';    // GMICard + GmiConfidenceBadge
-part 'widgets/kpi_cv_card.dart';     // CVCard
+part 'widgets/kpi_cards.dart'; // MetricRow layout + DeltaChip + LegendDot
+part 'widgets/kpi_tir_card.dart'; // TIRCard
+part 'widgets/kpi_gmi_card.dart'; // GMICard + GmiConfidenceBadge
+part 'widgets/kpi_cv_card.dart'; // CVCard
 part 'widgets/chart_section.dart';
 part 'widgets/insights_section.dart';
 part 'widgets/recent_entries.dart';
@@ -47,7 +48,8 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with TickerProviderStateMixin {
+class _DashboardScreenState extends State<DashboardScreen>
+    with TickerProviderStateMixin {
   int _range = 21;
   late AnimationController _staggerCtrl;
   final List<Animation<double>> _fadeAnims = [];
@@ -59,7 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   // C1: last known logs cached so _openChat can build a context message
   List<LogEntryData> _cachedLogs = [];
-  String?            _cachedUnit;
+  String? _cachedUnit;
 
   @override
   void initState() {
@@ -71,12 +73,22 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     for (int i = 0; i < _itemCount; i++) {
       final start = (i * 0.12).clamp(0.0, 0.7);
       final end = (start + 0.4).clamp(0.0, 1.0);
-      _fadeAnims.add(Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(parent: _staggerCtrl, curve: Interval(start, end, curve: Curves.easeOut)),
-      ));
-      _slideAnims.add(Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(
-        CurvedAnimation(parent: _staggerCtrl, curve: Interval(start, end, curve: Curves.easeOutCubic)),
-      ));
+      _fadeAnims.add(
+        Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(
+            parent: _staggerCtrl,
+            curve: Interval(start, end, curve: Curves.easeOut),
+          ),
+        ),
+      );
+      _slideAnims.add(
+        Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _staggerCtrl,
+            curve: Interval(start, end, curve: Curves.easeOutCubic),
+          ),
+        ),
+      );
     }
     _staggerCtrl.forward();
 
@@ -157,7 +169,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final db  = context.read<AppDatabase>();
+    final db = context.read<AppDatabase>();
     final now = DateTime.now();
     final start = now.subtract(Duration(days: _range));
 
@@ -165,9 +177,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       stream: db.watchProfile(),
       builder: (context, profileSnap) {
         final profile = profileSnap.data;
-        final unit   = profile?.unitPreference ?? 'mg/dL';
-        final low    = profile?.targetRangeLow ?? 70.0;
-        final high   = profile?.targetRangeHigh ?? 180.0;
+        final unit = profile?.unitPreference ?? 'mg/dL';
+        final low = profile?.targetRangeLow ?? 70.0;
+        final high = profile?.targetRangeHigh ?? 180.0;
 
         return StreamBuilder<List<LogEntryData>>(
           stream: db.watchLogsInRange(start, now),
@@ -190,9 +202,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 final prevLogs = prevSnap.data ?? [];
 
                 final screenW = MediaQuery.of(context).size.width;
-                final hPad = screenW >= 1400 ? (screenW - 1200) / 2
-                           : screenW >= 900  ? 48.0
-                           : 16.0;
+                final hPad = screenW >= 1400
+                    ? (screenW - 1200) / 2
+                    : screenW >= 900
+                    ? 48.0
+                    : 16.0;
 
                 return Scaffold(
                   backgroundColor: AminaTheme.bg(context),
@@ -216,7 +230,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         ),
                       ),
                       SliverPadding(
-                        padding: EdgeInsetsDirectional.fromSTEB(hPad, 0, hPad, 120),
+                        padding: EdgeInsetsDirectional.fromSTEB(
+                          hPad,
+                          0,
+                          hPad,
+                          120,
+                        ),
                         sliver: SliverList(
                           delegate: SliverChildListDelegate([
                             if (localDataError) ...[
@@ -231,25 +250,78 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                               Align(
                                 alignment: AlignmentDirectional.topCenter,
                                 child: ConstrainedBox(
-                                  constraints: const BoxConstraints(maxWidth: 900),
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 900,
+                                  ),
                                   child: _EmptyDashboard(
-                                    onAddTap: () => GoRouter.of(context).go('/ajouter'),
-                                    onImportTap: () => GoRouter.of(context).go('/importer'),
+                                    onAddTap: () =>
+                                        GoRouter.of(context).go('/ajouter'),
+                                    onImportTap: () =>
+                                        GoRouter.of(context).go('/importer'),
                                   ),
                                 ),
                               ),
                             ] else ...[
-                              _staggered(0, _PageHead(logCount: logs.length, range: _range, isDesktop: screenW >= 900)),
+                              _staggered(
+                                0,
+                                _PageHead(
+                                  logCount: logs.length,
+                                  range: _range,
+                                  isDesktop: screenW >= 900,
+                                ),
+                              ),
                               const SizedBox(height: 14),
-                              _staggered(1, _HeroContextual(logs: logs, unit: unit, low: low, high: high, range: _range)),
+                              _staggered(
+                                1,
+                                _HeroContextual(
+                                  logs: logs,
+                                  unit: unit,
+                                  low: low,
+                                  high: high,
+                                  range: _range,
+                                ),
+                              ),
                               const SizedBox(height: 18),
-                              _staggered(2, _MetricRow(logs: logs, prevLogs: prevLogs, low: low, high: high, range: _range)),
+                              _staggered(
+                                2,
+                                _MetricRow(
+                                  logs: logs,
+                                  prevLogs: prevLogs,
+                                  low: low,
+                                  high: high,
+                                  range: _range,
+                                ),
+                              ),
                               const SizedBox(height: 18),
-                              _staggered(3, _ChartSection(logs: logs, low: low, high: high, unit: unit)),
+                              _staggered(
+                                3,
+                                _ChartSection(
+                                  logs: logs,
+                                  low: low,
+                                  high: high,
+                                  unit: unit,
+                                ),
+                              ),
                               const SizedBox(height: 18),
-                              _staggered(4, _InsightsSection(logs: logs, summary: _aiSummary, isLoading: _isLoadingSummary)),
+                              _staggered(
+                                4,
+                                _InsightsSection(
+                                  logs: logs,
+                                  summary: _aiSummary,
+                                  isLoading: _isLoadingSummary,
+                                ),
+                              ),
                               const SizedBox(height: 18),
-                              _staggered(5, _RecentEntries(logs: logs, unit: unit, low: low, high: high, isDesktop: screenW >= 900)),
+                              _staggered(
+                                5,
+                                _RecentEntries(
+                                  logs: logs,
+                                  unit: unit,
+                                  low: low,
+                                  high: high,
+                                  isDesktop: screenW >= 900,
+                                ),
+                              ),
                             ],
                           ]),
                         ),
@@ -288,29 +360,53 @@ class _SeedBannerState extends State<_SeedBanner> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AminaTheme.warnFg.withValues(alpha: 0.25)),
       ),
-      child: Row(children: [
-        const Icon(Icons.science_outlined, size: 15, color: AminaTheme.warnFg),
-        const SizedBox(width: 10),
-        const Expanded(
-          child: Text(
-            'Mode dev — aucune donnée patient.',
-            style: TextStyle(fontSize: 12, color: AminaTheme.warnFg, fontWeight: FontWeight.w500),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.science_outlined,
+            size: 15,
+            color: AminaTheme.warnFg,
           ),
-        ),
-        GestureDetector(
-          onTap: _loading ? null : _seed,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: AminaTheme.warnFg,
-              borderRadius: BorderRadius.circular(8),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Mode dev — aucune donnée patient.',
+              style: TextStyle(
+                fontSize: 12,
+                color: AminaTheme.warnFg,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-            child: _loading
-                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('Charger démo', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
           ),
-        ),
-      ]),
+          GestureDetector(
+            onTap: _loading ? null : _seed,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: AminaTheme.warnFg,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: _loading
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Charger démo',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -366,7 +462,9 @@ class _DashboardLocalState extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isError ? l10n.dashboardLoadErrorTitle : l10n.dashboardLoadingTitle,
+                    isError
+                        ? l10n.dashboardLoadErrorTitle
+                        : l10n.dashboardLoadingTitle,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
@@ -375,7 +473,9 @@ class _DashboardLocalState extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    isError ? l10n.dashboardLoadErrorBody : l10n.dashboardLoadingBody,
+                    isError
+                        ? l10n.dashboardLoadErrorBody
+                        : l10n.dashboardLoadingBody,
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.45,
@@ -409,7 +509,11 @@ class _EmptyDashboard extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wideFirstUse = constraints.maxWidth >= 720 && !compactHeight;
-        final padding = compactHeight ? 16.0 : wideFirstUse ? 30.0 : 24.0;
+        final padding = compactHeight
+            ? 16.0
+            : wideFirstUse
+            ? 30.0
+            : 24.0;
 
         final intro = Column(
           crossAxisAlignment: wideFirstUse
@@ -460,22 +564,34 @@ class _EmptyDashboard extends StatelessWidget {
             ValueListenableBuilder<SyncUiState>(
               valueListenable: context.read<SyncService>().state,
               builder: (context, state, _) {
-                if (state != SyncUiState.offline) return const SizedBox.shrink();
+                if (state != SyncUiState.offline)
+                  return const SizedBox.shrink();
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: AminaTheme.ink50,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.cloud_off_outlined, size: 17, color: AminaTheme.ink500),
+                      const Icon(
+                        Icons.cloud_off_outlined,
+                        size: 17,
+                        color: AminaTheme.ink500,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           AuditedPageCopy.of(context).sync('offline'),
-                          style: const TextStyle(fontSize: 12, height: 1.35, color: AminaTheme.ink600),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            height: 1.35,
+                            color: AminaTheme.ink600,
+                          ),
                         ),
                       ),
                     ],
@@ -488,12 +604,17 @@ class _EmptyDashboard extends StatelessWidget {
               icon: const Icon(Icons.add_circle_outline, size: 18),
               label: Text(
                 l10n.addFirstMeasurement,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               style: FilledButton.styleFrom(
                 backgroundColor: AminaTheme.teal500,
                 minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -502,13 +623,18 @@ class _EmptyDashboard extends StatelessWidget {
               icon: const Icon(Icons.upload_file_outlined, size: 18),
               label: Text(
                 l10n.importDocument,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AminaTheme.teal600,
                 minimumSize: const Size.fromHeight(48),
                 side: const BorderSide(color: AminaTheme.teal200),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
             if (!compactHeight) ...[
@@ -523,12 +649,20 @@ class _EmptyDashboard extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.verified_user_outlined, size: 17, color: AminaTheme.teal700),
+                    const Icon(
+                      Icons.verified_user_outlined,
+                      size: 17,
+                      color: AminaTheme.teal700,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         l10n.firstUseTruthNote,
-                        style: const TextStyle(fontSize: 12, height: 1.4, color: AminaTheme.teal700),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          height: 1.4,
+                          color: AminaTheme.teal700,
+                        ),
                       ),
                     ),
                   ],
@@ -557,7 +691,11 @@ class _EmptyDashboard extends StatelessWidget {
                     children: [
                       Expanded(flex: 5, child: intro),
                       const SizedBox(width: 34),
-                      Container(width: 1, height: 210, color: AminaTheme.divider(context)),
+                      Container(
+                        width: 1,
+                        height: 210,
+                        color: AminaTheme.divider(context),
+                      ),
                       const SizedBox(width: 34),
                       Expanded(flex: 5, child: actions),
                     ],
@@ -575,4 +713,3 @@ class _EmptyDashboard extends StatelessWidget {
     );
   }
 }
-
