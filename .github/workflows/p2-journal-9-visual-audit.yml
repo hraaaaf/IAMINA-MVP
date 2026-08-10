@@ -21,7 +21,7 @@ jobs:
       - name: Checkout exact product SHA
         uses: actions/checkout@v4
         with:
-          ref: 8e73da6a594b96f06b365a2bd55cff0a3ddae963
+          ref: ec701826a2f2be6edc075742d3c6d349564b77db
           path: product
 
       - name: Overlay audit-only harness
@@ -54,18 +54,18 @@ jobs:
           mkdir -p product/frontend/test/audit/goldens
           cat > product/frontend/test/audit/goldens/manifest.txt <<'EOF'
           lot=P2-JOURNAL-9
-          product_sha=8e73da6a594b96f06b365a2bd55cff0a3ddae963
+          product_sha=ec701826a2f2be6edc075742d3c6d349564b77db
           locales=fr,ar
           sizes=1440x1000,768x1024,390x844,360x560
           surfaces=minimal-receipt,rich-receipt
           expected_images=16
-          font_fixture=DejaVuSans loaded as AuditSans, Roboto and Ahem
+          font_fixture=DejaVuSans + Flutter MaterialIcons
           EOF
 
       - name: Upload rendered matrix
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: p2-journal-9-visual-matrix-8e73da6
+          name: p2-journal-9-visual-matrix-ec70182
           path: product/frontend/test/audit/goldens/*
           if-no-files-found: error
