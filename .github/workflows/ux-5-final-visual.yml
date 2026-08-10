@@ -75,7 +75,8 @@ jobs:
                   const pageErrors = [];
                   page.on('pageerror', error => pageErrors.push(String(error)));
                   const url = `http://127.0.0.1:8080/?audit=visual-cert&lang=${lang.name}#/${route}`;
-                  await page.goto(url, {waitUntil:'networkidle', timeout:90000});
+                  await page.goto(url, {waitUntil:'domcontentloaded', timeout:30000});
+                  await page.locator('flutter-view').waitFor({state:'attached', timeout:30000});
                   await page.waitForTimeout(5000);
                   const flutterViews = await page.locator('flutter-view').count();
                   if (flutterViews !== 1) {
