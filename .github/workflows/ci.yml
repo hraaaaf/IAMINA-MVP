@@ -65,37 +65,14 @@ jobs:
         run: lint-imports
 
       - name: LLM gateway anti-bypass
-        # Temporary debt allow-list during pilot hardening. Companion paths are
-        # already unified and must not regress; remaining direct structured callsites
-        # must additionally pass the AI egress authorization gate below.
-        run: |
-          if rg -n "get_llm" . \
-            -g '!core/llm_gateway.py' \
-            -g '!llm/factory.py' \
-            -g '!llm/pipeline.py' \
-            -g '!llm/tests/**' \
-            -g '!diabetes/tests/test_llm_factory.py' \
-            -g '!core/tests/**' \
-            -g '!ai/api/v1/ai.py' \
-            -g '!diabetes/services/summary.py' \
-            -g '!diabetes/services/clinical/engine.py' \
-            -g '!media/documents/pulper.py'; then
-            echo "::error::Unauthorized get_llm usage found outside sanctioned gateway/internal paths."
-            exit 1
-          fi
+        # Dependency-free tracked-file gate. Fails closed if Git/file enumeration
+        # itself is unavailable; no missing search binary can silently turn this green.
+        run: python ../scripts/check_ai_egress_boundaries.py --check gateway
 
       - name: AI egress authorization anti-bypass
         # Any network-capable model callsite outside provider adapters must prove it
         # passes through the central patient/purpose/modality authorization boundary.
-        run: |
-          FILES=$(rg -l 'get_llm\(|genai\.Client\(|GenerativeModel\(' . \
-            -g '!llm/**' -g '!**/tests/**' -g '!**/migrations/**' || true)
-          for FILE in $FILES; do
-            if ! rg -q 'assert_ai_egress_allowed' "$FILE"; then
-              echo "::error file=$FILE::External AI callsite lacks central egress authorization assertion."
-              exit 1
-            fi
-          done
+        run: python ../scripts/check_ai_egress_boundaries.py --check egress
 
       - name: SAST (bandit)
         # HIGH severity only — skip B101 (assert) and B311 (random) which are dev-only patterns
