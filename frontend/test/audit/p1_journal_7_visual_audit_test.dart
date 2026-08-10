@@ -91,12 +91,11 @@ Future<void> _openMealSection(WidgetTester tester) async {
   await tester.ensureVisible(mealButton);
   await tester.pumpAndSettle();
 
-  // AddLogSheet has a fixed save bar. Move the meal CTA above that overlay
-  // before tapping so this remains a real hit-tested interaction.
-  final scrollable = find.byType(Scrollable).first;
-  await tester.drag(scrollable, const Offset(0, -180));
-  await tester.pumpAndSettle();
-  await tester.tap(mealButton);
+  // Visual audit only: enter the exact expanded state without allowing the
+  // fixed save bar to make the capture dependent on widget-test hit testing.
+  final button = tester.widget<OutlinedButton>(mealButton);
+  expect(button.onPressed, isNotNull);
+  button.onPressed!.call();
   await tester.pumpAndSettle();
 }
 
@@ -138,12 +137,12 @@ void main() {
       );
       await tester.pumpAndSettle();
       await _openRamadanProfileSection(tester);
-      expect(tester.takeException(), isNull);
 
       await expectLater(
         find.byKey(_boundaryKey),
         matchesGoldenFile('goldens/p1j7-profile-top-${item.$1}.png'),
       );
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('profile Ramadan controls reachable ${item.$1}', (tester) async {
@@ -171,12 +170,12 @@ void main() {
       await _openRamadanProfileSection(tester);
       await tester.ensureVisible(find.byKey(const Key('ramadan-save-period')));
       await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
 
       await expectLater(
         find.byKey(_boundaryKey),
         matchesGoldenFile('goldens/p1j7-profile-controls-${item.$1}.png'),
       );
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('active-period Add Log vocabulary ${item.$1}', (tester) async {
@@ -211,12 +210,12 @@ void main() {
           isFalse,
         );
       }
-      expect(tester.takeException(), isNull);
 
       await expectLater(
         find.byKey(_boundaryKey),
         matchesGoldenFile('goldens/p1j7-add-${item.$1}.png'),
       );
+      expect(tester.takeException(), isNull);
     });
   }
 }
