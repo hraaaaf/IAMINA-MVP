@@ -34,6 +34,11 @@ DIRECT_EGRESS_CALLS = frozenset({"get_llm", "genai.Client", "GenerativeModel"})
 CENTRAL_AUTHORIZATION_CALLS = frozenset(
     {"assert_ai_egress_allowed", "execute_external_provider_call"}
 )
+CENTRAL_RUNTIME_RELATIVE = "llm/runtime.py"
+CENTRAL_RUNTIME_FUNCTION = "execute_external_provider_call"
+CENTRAL_RUNTIME_REQUIRED_CONTROLS = frozenset(
+    {"assert_ai_egress_allowed", "authorize_processor_policy"}
+)
 
 
 def _git(repo: Path, *args: str) -> bytes:
@@ -133,6 +138,7 @@ class _LexicalEgressVisitor(ast.NodeVisitor):
             {"egress": False, "authorization": False}
         ]
         self.unsafe_scope_found = False
+        self.central_wrapper_used = False
 
     @property
     def _scope(self) -> dict[str, bool]:
@@ -155,6 +161,8 @@ class _LexicalEgressVisitor(ast.NodeVisitor):
             self._scope["egress"] = True
         if _authorization_symbol(symbol):
             self._scope["authorization"] = True
+        if symbol == CENTRAL_RUNTIME_FUNCTION:
+            self.central_wrapper_used = True
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:  # noqa: N802
@@ -178,7 +186,7 @@ class _LexicalEgressVisitor(ast.NodeVisitor):
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:  # noqa: N802
         # Bases, keywords and decorators execute in the enclosing scope. The class
-        # body gets its own scope; methods will create nested scopes from there.
+        # body gets its own scope; methods create nested scopes from there.
         for decorator in node.decorator_list:
             self.visit(decorator)
         for base in node.bases:
@@ -187,14 +195,14 @@ class _LexicalEgressVisitor(ast.NodeVisitor):
             self.visit(keyword.value)
         self._enter_scope(node.body)
 
-    def finalize(self) -> bool:
+    def finalize(self) -> tuple[bool, bool]:
         module_scope = self._scope_stack[0]
         if module_scope["egress"] and not module_scope["authorization"]:
             self.unsafe_scope_found = True
-        return self.unsafe_scope_found
+        return self.unsafe_scope_found, self.central_wrapper_used
 
 
-def _has_unauthorized_egress_scope(path: Path, text: str) -> bool:
+def _analyze_egress_scopes(path: Path, text: str) -> tuple[bool, bool]:
     try:
         tree = ast.parse(text, filename=str(path))
     except SyntaxError as exc:
@@ -207,18 +215,98 @@ def _has_unauthorized_egress_scope(path: Path, text: str) -> bool:
     return visitor.finalize()
 
 
+def _calls_in_function_scope(function: ast.FunctionDef | ast.AsyncFunctionDef) -> list[ast.Call]:
+    calls: list[ast.Call] = []
+
+    class FunctionBodyVisitor(ast.NodeVisitor):
+        def visit_Call(self, node: ast.Call) -> None:  # noqa: N802
+            calls.append(node)
+            self.generic_visit(node)
+
+        def visit_FunctionDef(self, node: ast.FunctionDef) -> None:  # noqa: N802
+            # Nested functions are independent scopes and cannot satisfy the wrapper.
+            return
+
+        def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:  # noqa: N802
+            return
+
+        def visit_Lambda(self, node: ast.Lambda) -> None:  # noqa: N802
+            return
+
+        def visit_ClassDef(self, node: ast.ClassDef) -> None:  # noqa: N802
+            return
+
+    visitor = FunctionBodyVisitor()
+    for statement in function.body:
+        visitor.visit(statement)
+    return calls
+
+
+def _central_runtime_wrapper_valid(path: Path, text: str) -> bool:
+    try:
+        tree = ast.parse(text, filename=str(path))
+    except SyntaxError as exc:
+        raise RuntimeError(
+            f"cannot parse central runtime {path.as_posix()}: line {exc.lineno}"
+        ) from exc
+
+    wrapper = next(
+        (
+            node
+            for node in tree.body
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == CENTRAL_RUNTIME_FUNCTION
+        ),
+        None,
+    )
+    if wrapper is None:
+        return False
+
+    control_lines: dict[str, int] = {}
+    submit_lines: list[int] = []
+    for call in _calls_in_function_scope(wrapper):
+        symbol = _dotted_name(call.func)
+        if symbol in CENTRAL_RUNTIME_REQUIRED_CONTROLS:
+            control_lines.setdefault(symbol, call.lineno)
+        if symbol is not None and symbol.endswith(".submit"):
+            submit_lines.append(call.lineno)
+
+    if set(control_lines) != CENTRAL_RUNTIME_REQUIRED_CONTROLS:
+        return False
+    if not submit_lines:
+        return False
+    return max(control_lines.values()) < min(submit_lines)
+
+
 def egress_authorization_findings(repo: Path) -> list[str]:
+    tracked_files = _tracked_backend_files(repo)
     findings: list[str] = []
-    for path in _tracked_backend_files(repo):
+    central_wrapper_used = False
+
+    for path in tracked_files:
         relative = _backend_relative(repo, path)
         if _egress_path_excluded(relative) or path.suffix != ".py":
             continue
         text = _read_text(path)
         if text is None:
             continue
-        if _has_unauthorized_egress_scope(path, text):
+        unsafe_scope, wrapper_used = _analyze_egress_scopes(path, text)
+        central_wrapper_used |= wrapper_used
+        if unsafe_scope:
             findings.append(relative)
-    return sorted(findings)
+
+    if central_wrapper_used:
+        runtime_path = repo / "backend" / CENTRAL_RUNTIME_RELATIVE
+        tracked_runtime = any(path == runtime_path for path in tracked_files)
+        runtime_text = _read_text(runtime_path) if tracked_runtime else None
+        if (
+            not tracked_runtime
+            or runtime_text is None
+            or not _central_runtime_wrapper_valid(runtime_path, runtime_text)
+        ):
+            findings.append(CENTRAL_RUNTIME_RELATIVE)
+
+    return sorted(set(findings))
 
 
 def _report(rule: str, findings: list[str]) -> int:
