@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-10 — P2-JOURNAL-9 Post-save experience is merged and 100% closed; the Journal metabolic-event redesign is fully closed. The active critical path returns to MENA launch blockers.
+> **Last updated:** 2026-08-10 — UX-0 visual rebase found a previously untested populated-Dashboard locale-parity defect; the historical visual and Journal workstreams remain closed, while a narrowly scoped UX-1 remediation is now queued.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,6 +29,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
+| UX visual rebase | 50% | 🔴 UX-1 required | UX-0 rich-state audit run `31403179971`; 8/8 FR/AR renders; populated Dashboard baseline 8.4/10 due mixed-language rich-state content |
 | Journal metabolic-event redesign | 100% | ✅ Closed | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 + P2-JOURNAL-8/9 merged; PR #77 merged as `d841d926d1b7fe076827a3086306daa09399e38d`; UX 9.3/10; post-merge CI #1390 + drift #1202 green |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
@@ -38,7 +39,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 
 **MENA critical-path completion:** 32 of 41 explicit roadmap tasks closed, approximately **78%**.
 
-The Journal redesign is a separate product-quality workstream and does not change the MENA critical-path numerator.
+The Journal redesign and UX visual rebase are separate product-quality workstreams and do not change the MENA critical-path numerator.
 
 Preparation work does not close a live benchmark, legal/privacy approval, native-review task or external credential-remediation task and does not increase the critical-path numerator.
 
@@ -180,8 +181,6 @@ The first real FR/AR max-density visual pass was rejected at **8.8/10** because 
 
 **Final certification evidence:** final pre-merge head `7f4003c4511c5eb27e9d01528a71269cc9511548`; canonical CI #1382 SUCCESS including PostgreSQL source-of-truth; migration drift #1194 SUCCESS; exact-final-head visual audit run `31384539082` SUCCESS with 24/24 FR/AR compact/expanded/insufficient renders across `1440×1000`, `768×1024`, `390×844` and `360×560`; artifact `9061180931`, digest `sha256:d9dbf85b7df8785b0af139a5a1ee63f6a98f55362d3575db3f1a9482bf66e006`; UX Auditor **9.3/10 PASS** after an initial 8.8/10 density rejection and remediation; Clinical Safety, Security, Database/Migration and UX reviewers FINAL PASS; Release Certifier CERTIFIED; PR #76 merged with expected-head locking as `a8ff01b9298f49133b3201d72086ade2643a9167`; post-merge CI #1383 and migration drift #1195 SUCCESS. P2-JOURNAL-8 is **100% closed**. P2-JOURNAL-9 is next.
 
-
-
 ### P2-JOURNAL-9 durable merge-unit contract
 
 PR #77 is the merge unit for the post-save experience. After the existing Drift insertion succeeds, the Add Log flow now remains on a persistent factual receipt instead of showing a transient snackbar and immediately redirecting away. The receipt restates only the facts just recorded: glucose, timestamp and any explicitly entered measurement context, meal, already-taken insulin and additional context observations. It states only that the entry was saved on the device; it does not claim server synchronization or external persistence.
@@ -191,7 +190,6 @@ The receipt does not classify a non-low glucose value as good/bad or inside a pe
 After a successful save, the prior draft is cleared before another entry can begin, preventing previous meal/context/insulin facts from being silently reused. The next actions are explicit: **View in Journal / Add another reading / Done**. The first real FR/AR visual pass scored **8.9/10 and was rejected** because a rich receipt on `360×560` pushed all next actions below the fold. The same LOT was remediated so the receipt body scrolls independently while the action panel remains persistently reachable on mobile; Arabic numeric insulin values remain LTR.
 
 **Pre-closeout evidence on product head `ec701826a2f2be6edc075742d3c6d349564b77db`:** canonical CI #1387 SUCCESS; migration drift #1199 SUCCESS; focused FR persistence→render/reset and AR/RTL tests PASS; exact-code visual audit run `31389858816` SUCCESS with 16/16 FR/AR minimal/rich receipt renders across `1440×1000`, `768×1024`, `390×844` and `360×560`; artifact `9063210662`, digest `sha256:62b67588d47b0f5a441f38ebb11cbc362d6e7e56b4e3b8deef0e22213bba77f6`; UX Auditor **9.3/10 PASS**; Clinical Safety, Security/Privacy, Persistence/Database and UX reviewers FINAL PASS; unresolved review threads 0. Canonical documentation changed the pre-merge head to `cc529c378eea7cb4908a57fdad2e85db5bde75bd`; exact-final-head CI #1389, drift #1201 and visual audit #4 all passed, the four specialist reviewers re-anchored FINAL PASS, and Release Certifier authorized the expected-head merge. PR #77 merged as `d841d926d1b7fe076827a3086306daa09399e38d`; post-merge CI #1390 and migration drift #1202 passed. **P2-JOURNAL-9 and the complete Journal metabolic-event redesign are 100% closed.**
-
 
 ---
 
@@ -267,7 +265,7 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 - The second FR/AR `360×560` matrix covers Dashboard, Summary, Journal, Importer and Profile: **10/10 rendered views, zero page errors**, no observed overlap or RTL regression.
 - Certified product head `0d421f2dc36fd295a4d69f302c7596a5950a9f50` passed CI #1092 and migration drift #908. Visual evidence: run `31208830202`, artifact `9005910951`, digest `sha256:eeeda5f517eaf0c6d0f6a3a6124335bc1250fc2942cb6e7636712a3563a91a14`.
 
-**Final P0-UX-9 score: 9.2/10 — PASS.** The score was assigned only after the rejected 8.6/10 pass was corrected and recaptured. No critical/high small-screen defect remains in the certified FR/AR `360×560` scope. PR #60 is the merge unit for this LOT; P0-UX-10 is next.
+**Final P0-UX-9 score: 9.2/10 — PASS.** The score was assigned only after the rejected 8.6/10 pass was corrected and recaptured. No critical/high small-screen defect remains in the certified FR/AR `360×560` scope. PR #60 is the merge unit; P0-UX-10 is next.
 
 ### P0-UX-10 delivered work
 
@@ -282,7 +280,6 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 - Certified product head `14e7a6d605aeb31d6c1813c614f9b72bbbf71d53`; visual evidence: run `31224557639`, artifact `9011673527`, digest `sha256:8e064f44d31f5422d8662cb8f88a962d74fcc8a676a6139cf5906110f2893710`.
 
 **Final P0-UX-10 score: 9.4/10 — PASS.** The LOT was not closed on the first successful implementation: the clipped 360×560 French CTA forced a second remediation and complete recertification. PR #61 is the merge unit; P0-UX-11 is next.
-
 
 ### P0-UX-11 delivered work
 
@@ -344,6 +341,21 @@ A critical or high-severity unresolved defect prevents a score above 9/10 regard
 **Final P2-UX-14 score: 9.2/10 — PASS.** PR #66 is the merge unit. The visual UX remediation workstream has now completed all canonical P0-CERT-4 defect lots; merge still requires exact-final-head CI/drift, Release Certifier GO and post-merge verification.
 
 This UX remediation workstream is separate from the MENA critical-path numerator.
+
+---
+
+# UX visual rebase — ACTIVE
+
+**Goal:** re-audit only product states not covered by the historical global matrix, preserve already certified surfaces, and open remediation LOTs only when fresh rendered evidence requires them.
+
+Canonical visual rules and evidence hierarchy: `docs/ux/UX_VISUAL_CONSTITUTION.md`.
+
+| LOT | Scope | Progress | Evidence / acceptance | Status |
+|---|---|---:|---|---|
+| UX-0 | Baseline + visual constitution | 90% | Fresh populated Dashboard matrix run `31403179971`, artifact `9068596037`, 8/8 FR/AR renders, zero page errors; cross-locale rich-state baseline **8.4/10**; docs/review/certification still pending | 🟡 |
+| UX-1 | Populated Dashboard locale parity + hierarchy | 0% | Localize all rich-state patient-facing KPI/chart/insight/event copy and canonical meal labels; preserve clinical calculations/data semantics; exact-final-head FR/AR matrix must score **>9.0/10** with no critical/high finding | 🔴 Next |
+
+UX-1 is intentionally narrower than the historical UX plan: the empty/first-use Dashboard, Journal, Profile, Importer and post-save surfaces remain protected by their existing rendered certifications. Further UX LOTs are created only if new rendered evidence exposes a sub-9 state.
 
 ---
 
@@ -483,4 +495,5 @@ These units close procedures and executable controls. They do not imply native-l
 3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals, then run the PR #34 and PR #35 `--require-approved` gates.
 4. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
 5. Run the deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
-6. **Journal product-quality lane is closed.** Do not reopen it without a new evidence-backed roadmap decision; after blockers 1–5 are cleared, move to the real-patient pilot go/no-go and cohort execution gates.
+6. **UX product-quality lane:** close UX-0 governance, then execute UX-1 populated-Dashboard locale parity + hierarchy to >9.0/10; do not broaden beyond fresh evidence.
+7. **Journal product-quality lane is closed.** Do not reopen it without a new evidence-backed roadmap decision; after blockers 1–5 are cleared, move to the real-patient pilot go/no-go and cohort execution gates.
