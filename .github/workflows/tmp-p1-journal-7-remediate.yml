@@ -1,0 +1,217 @@
+name: P1-JOURNAL-7 temporary remediation
+
+on:
+  push:
+    branches: [agent/p1-journal-ramadan-v2]
+    paths: [.github/workflows/tmp-p1-journal-7-remediate.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  remediate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p1-journal-ramadan-v2
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Apply fail-closed local profile remediation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          db_path = Path('frontend/lib/data/drift/database.dart')
+          text = db_path.read_text()
+          old = '''  Future<void> setRamadanPeriod({DateTime? start, DateTime? end}) async {
+            if ((start == null) != (end == null)) {
+              throw ArgumentError('Ramadan period requires both dates or neither');
+            }
+            if (start != null && end != null && start.isAfter(end)) {
+              throw ArgumentError('Ramadan period start must not be after end');
+            }
+            final existing = await (select(
+              patientProfiles,
+            )..limit(1)).getSingleOrNull();
+            final userId = existing?.userId ?? 1;
+            await into(patientProfiles).insertOnConflictUpdate(
+              PatientProfilesCompanion.insert(
+                userId: Value(userId),
+                updatedAt: DateTime.now(),
+                ramadanStartDate: Value(start),
+                ramadanEndDate: Value(end),
+              ),
+            );
+          }
+          '''
+          new = '''  Future<bool> setRamadanPeriod({DateTime? start, DateTime? end}) async {
+            if ((start == null) != (end == null)) {
+              throw ArgumentError('Ramadan period requires both dates or neither');
+            }
+            if (start != null && end != null && start.isAfter(end)) {
+              throw ArgumentError('Ramadan period start must not be after end');
+            }
+            final existing = await (select(
+              patientProfiles,
+            )..limit(1)).getSingleOrNull();
+            if (existing == null) return false;
+
+            final updated = await (update(
+              patientProfiles,
+            )..where((row) => row.userId.equals(existing.userId))).write(
+              PatientProfilesCompanion(
+                updatedAt: Value(DateTime.now()),
+                ramadanStartDate: Value(start),
+                ramadanEndDate: Value(end),
+              ),
+            );
+            return updated == 1;
+          }
+          '''
+          if old not in text:
+              raise SystemExit('database.dart target block not found')
+          db_path.write_text(text.replace(old, new, 1))
+
+          profile_path = Path('frontend/lib/features/profile/profile_screen.dart')
+          text = profile_path.read_text()
+          old = '''      await db.setRamadanPeriod(start: start, end: end);
+              final serverSaved = await api.patchProfile({
+                'ramadan_start_date': start == null ? null : _apiDate(start),
+                'ramadan_end_date': end == null ? null : _apiDate(end),
+              });
+              if (!mounted) return;
+              setState(() => _hasPersistedProfile = true);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    serverSaved ? l10n.ramadanSaved : l10n.ramadanSavedLocalOnly,
+                  ),
+                  backgroundColor: serverSaved
+                      ? AminaTheme.successEmerald
+                      : AminaTheme.warningOrange,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+          '''
+          new = '''      final localSaved = await db.setRamadanPeriod(start: start, end: end);
+              final serverSaved = await api.patchProfile({
+                'ramadan_start_date': start == null ? null : _apiDate(start),
+                'ramadan_end_date': end == null ? null : _apiDate(end),
+              });
+              if (!mounted) return;
+              final saveMessage = serverSaved
+                  ? l10n.ramadanSaved
+                  : localSaved
+                  ? l10n.ramadanSavedLocalOnly
+                  : l10n.error;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(saveMessage),
+                  backgroundColor: serverSaved
+                      ? AminaTheme.successEmerald
+                      : localSaved
+                      ? AminaTheme.warningOrange
+                      : AminaTheme.dangerFg,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+          '''
+          if old not in text:
+              raise SystemExit('profile_screen.dart target block not found')
+          profile_path.write_text(text.replace(old, new, 1))
+
+          test_path = Path('frontend/test/data/drift/ramadan_period_migration_test.dart')
+          text = test_path.read_text()
+          import_old = "import 'package:amina/data/drift/database.dart';\nimport 'package:drift/native.dart';"
+          import_new = "import 'package:amina/data/drift/database.dart';\nimport 'package:drift/drift.dart' as drift;\nimport 'package:drift/native.dart';"
+          if import_old not in text:
+              raise SystemExit('migration test import target not found')
+          text = text.replace(import_old, import_new, 1)
+          insertion = r'''
+
+  test('Ramadan save never manufactures a fresh medical profile', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    try {
+      final saved = await db.setRamadanPeriod(
+        start: DateTime(2026, 2, 18),
+        end: DateTime(2026, 3, 20),
+      );
+      expect(saved, isFalse);
+      expect(await db.select(db.patientProfiles).getSingleOrNull(), isNull);
+    } finally {
+      await db.close();
+    }
+  });
+
+  test('Ramadan save preserves existing clinical profile values', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    try {
+      await db.into(db.patientProfiles).insert(
+        PatientProfilesCompanion.insert(
+          userId: const drift.Value(7),
+          updatedAt: DateTime(2026, 8, 10),
+          diabetesType: const drift.Value('type2'),
+          targetRangeLow: const drift.Value(82),
+          targetRangeHigh: const drift.Value(155),
+          unitPreference: const drift.Value('mmol/L'),
+          treatment: const drift.Value('lifestyle'),
+        ),
+      );
+
+      final saved = await db.setRamadanPeriod(
+        start: DateTime(2026, 2, 18),
+        end: DateTime(2026, 3, 20),
+      );
+      final profile = await db.select(db.patientProfiles).getSingle();
+
+      expect(saved, isTrue);
+      expect(profile.userId, 7);
+      expect(profile.diabetesType, 'type2');
+      expect(profile.targetRangeLow, 82);
+      expect(profile.targetRangeHigh, 155);
+      expect(profile.unitPreference, 'mmol/L');
+      expect(profile.treatment, 'lifestyle');
+      expect(profile.ramadanStartDate, DateTime(2026, 2, 18));
+      expect(profile.ramadanEndDate, DateTime(2026, 3, 20));
+    } finally {
+      await db.close();
+    }
+  });
+'''
+          closing = '\n}\n'
+          pos = text.rfind(closing)
+          if pos < 0:
+              raise SystemExit('migration test closing brace not found')
+          test_path.write_text(text[:pos] + insertion + text[pos:])
+          PY
+
+          dart format frontend/lib/data/drift/database.dart \
+            frontend/lib/features/profile/profile_screen.dart \
+            frontend/test/data/drift/ramadan_period_migration_test.dart
+
+      - name: Focused regression gates
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test test/data/drift/ramadan_period_migration_test.dart
+          flutter test test/core/data/ramadan_context_test.dart test/features/ramadan_mode_v2_test.dart test/features/ramadan_profile_responsive_test.dart
+
+      - name: Commit remediation
+        shell: bash
+        run: |
+          git config user.name 'hraaaaf'
+          git config user.email '123034021+hraaaaf@users.noreply.github.com'
+          git add frontend/lib/data/drift/database.dart \
+            frontend/lib/features/profile/profile_screen.dart \
+            frontend/test/data/drift/ramadan_period_migration_test.dart
+          git diff --cached --check
+          git commit -m 'fix(profile): avoid fabricated defaults in Ramadan save'
+          git push origin HEAD:agent/p1-journal-ramadan-v2
