@@ -36,9 +36,6 @@ Future<void> main() async {
     ..attachStream(db.watchProfile());
 
   final auditAllowed = AuditAccessPolicy.isAllowed(Uri.base);
-  if (auditAllowed && await db.countLogs() == 0) {
-    await db.seedDemoData();
-  }
   final authService = AuthService();
   await authService.initialize();
   if (auditAllowed) {
