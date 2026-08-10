@@ -1,7 +1,6 @@
 """Patient-scoped deterministic personal-response endpoint."""
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Literal
 
 from ninja import Router
@@ -19,13 +18,12 @@ class PersonalResponsePatternOut(BaseModel):
     distinct_days: int
     median_glucose_mg_dl: float
     window_median_glucose_mg_dl: float
-    first_observed_at: datetime
-    last_observed_at: datetime
     confidence: Literal["limited", "moderate", "strong"]
 
 
 class PersonalResponseOut(BaseModel):
     status: Literal["ready", "insufficient_data"]
+    data_scope: Literal["server_synced_logs"]
     window_days: int
     total_readings: int
     distinct_days: int
@@ -46,6 +44,7 @@ def get_personal_response(request, days: int = 90):
     )
     return {
         "status": result.status,
+        "data_scope": "server_synced_logs",
         "window_days": result.window_days,
         "total_readings": result.total_readings,
         "distinct_days": result.distinct_days,
@@ -69,8 +68,6 @@ def get_personal_response(request, days: int = 90):
                 "distinct_days": item.distinct_days,
                 "median_glucose_mg_dl": item.median_glucose_mg_dl,
                 "window_median_glucose_mg_dl": item.window_median_glucose_mg_dl,
-                "first_observed_at": item.first_observed_at,
-                "last_observed_at": item.last_observed_at,
                 "confidence": item.confidence,
             }
             for item in result.patterns
