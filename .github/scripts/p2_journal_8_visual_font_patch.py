@@ -15,4 +15,9 @@ new = '''  for (final family in <String>[_auditFontFamily, 'Roboto', 'Ahem']) {
 '''
 if text.count(old) != 1:
     raise SystemExit('font loader anchor mismatch')
-path.write_text(text.replace(old, new, 1))
+text = text.replace(old, new, 1)
+text = text.replace(
+    'find.byType(TextButton)',
+    "find.byKey(const Key('personal-response-disclosure'))",
+)
+path.write_text(text)
