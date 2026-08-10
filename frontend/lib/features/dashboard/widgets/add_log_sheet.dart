@@ -14,6 +14,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../journal/widgets/meal_capture_panel.dart';
 import '../../journal/widgets/nutrition_portion_editor.dart';
 import '../../journal/widgets/insulin_logging.dart';
+import '../../journal/widgets/post_save_receipt.dart';
 
 /// Deterministic entry-safety classification for a single normalized reading.
 ///
@@ -63,6 +64,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
   bool _isStressed = false;
   bool _isActive = false;
   bool _badSleep = false;
+  PostSaveReceiptData? _savedReceipt;
 
   static const List<String> _glycemicContexts = <String>[
     'fasting',
@@ -107,6 +109,17 @@ class _AddLogSheetState extends State<AddLogSheet> {
     final unit = profile?.unitPreference ?? 'mg/dL';
     final l10n = AppLocalizations.of(context)!;
     final isDesktop = MediaQuery.sizeOf(context).width >= 1000;
+
+    final savedReceipt = _savedReceipt;
+    if (savedReceipt != null) {
+      return PostSaveReceipt(
+        key: const Key('post-save-receipt'),
+        data: savedReceipt,
+        onViewJournal: _openJournal,
+        onAddAnother: () => setState(() => _savedReceipt = null),
+        onDone: _close,
+      );
+    }
 
     return PopScope(
       canPop: false,
@@ -802,13 +815,56 @@ class _AddLogSheetState extends State<AddLogSheet> {
             ),
           );
 
+      final receipt = PostSaveReceiptData(
+        glucose: glucose,
+        unit: unit,
+        timeLabel: _timeLabel(l10n),
+        measurementContextLabel: _glycemicContext == null
+            ? null
+            : _contextLabel(l10n, _glycemicContext!),
+        mealTypeLabel: _mealType == null ? null : _mealLabel(l10n, _mealType!),
+        insulinUnits: insulin,
+        additionalContextLabels: <String>[
+          if (_isSick) l10n.journalSick,
+          if (_isStressed) l10n.journalUnusualStress,
+          if (_isActive) l10n.journalPhysicalActivity,
+          if (_badSleep) l10n.journalPoorSleep,
+        ],
+      );
+
       if (!mounted) return;
       HapticFeedback.mediumImpact();
-      _message(l10n.journalSaved);
-      _close();
+      _clearDraftForNextEntry();
+      setState(() => _savedReceipt = receipt);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  void _clearDraftForNextEntry() {
+    _glucoseController.clear();
+    _insulinController.clear();
+    _mealNoteController.clear();
+    _selectedMealItemIds.clear();
+    _mealPortionSelections.clear();
+    _glycemicContext = null;
+    _mealType = null;
+    _selectedTime = DateTime.now();
+    _mealExpanded = false;
+    _detailsExpanded = false;
+    _contextExpanded = false;
+    _isSick = false;
+    _isStressed = false;
+    _isActive = false;
+    _badSleep = false;
+  }
+
+  Future<void> _openJournal() async {
+    final router = GoRouter.of(context);
+    if (!widget.isPage) {
+      await Navigator.maybePop(context);
+    }
+    router.go('/journal');
   }
 
   void _message(String text) {

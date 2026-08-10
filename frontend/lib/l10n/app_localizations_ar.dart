@@ -1064,4 +1064,26 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get personalResponseShowLess => 'عرض أنماط أقل';
+
+  @override
+  String get journalPostSaveDeviceStatus => 'تم الحفظ على هذا الجهاز.';
+
+  @override
+  String get journalPostSaveSummaryTitle => 'ملخص التسجيل';
+
+  @override
+  String get journalPostSaveMeal => 'الوجبة';
+
+  @override
+  String get journalPostSaveNotice =>
+      'هذا التأكيد يصف فقط ما تم تسجيله ولا يفسّر القياس. تظهر الأنماط الشخصية بشكل منفصل في السجل عندما تتوفر بيانات كافية.';
+
+  @override
+  String get journalPostSaveViewJournal => 'عرض في السجل';
+
+  @override
+  String get journalPostSaveAddAnother => 'إضافة قياس آخر';
+
+  @override
+  String get journalPostSaveDone => 'تم';
 }

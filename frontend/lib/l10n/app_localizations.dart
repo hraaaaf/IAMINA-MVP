@@ -2055,6 +2055,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show fewer patterns'**
   String get personalResponseShowLess;
+
+  /// No description provided for @journalPostSaveDeviceStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on this device.'**
+  String get journalPostSaveDeviceStatus;
+
+  /// No description provided for @journalPostSaveSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Entry summary'**
+  String get journalPostSaveSummaryTitle;
+
+  /// No description provided for @journalPostSaveMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal'**
+  String get journalPostSaveMeal;
+
+  /// No description provided for @journalPostSaveNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'This confirmation only describes what was saved. It does not interpret the reading. Personal patterns appear separately in Journal when there is enough data.'**
+  String get journalPostSaveNotice;
+
+  /// No description provided for @journalPostSaveViewJournal.
+  ///
+  /// In en, this message translates to:
+  /// **'View in Journal'**
+  String get journalPostSaveViewJournal;
+
+  /// No description provided for @journalPostSaveAddAnother.
+  ///
+  /// In en, this message translates to:
+  /// **'Add another reading'**
+  String get journalPostSaveAddAnother;
+
+  /// No description provided for @journalPostSaveDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get journalPostSaveDone;
 }
 
 class _AppLocalizationsDelegate
