@@ -7,7 +7,7 @@ old = '''  final loader = FontLoader(_auditFontFamily);
   loader.addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
   await loader.load();
 '''
-new = '''  for (final family in <String>[_auditFontFamily, 'Roboto']) {
+new = '''  for (final family in <String>[_auditFontFamily, 'Roboto', 'Ahem']) {
     final loader = FontLoader(family);
     loader.addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
     await loader.load();
