@@ -1,0 +1,113 @@
+from pathlib import Path
+
+screen = Path('frontend/lib/features/journal/ai_summary_screen.dart')
+text = screen.read_text()
+start = text.index('  Widget _buildError() {')
+end = text.index('  Widget _buildContent() {', start)
+replacement = '''  Widget _buildError() {
+    final l10n = AppLocalizations.of(context)!;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 720;
+        final icon = Container(
+          width: isWide ? 56 : 48,
+          height: isWide ? 56 : 48,
+          decoration: BoxDecoration(
+            color: AminaTheme.dangerBg,
+            borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
+          ),
+          child: Icon(
+            Icons.cloud_off_outlined,
+            color: AminaTheme.dangerFg,
+            size: isWide ? 28 : 24,
+          ),
+        );
+        final message = Text(
+          l10n.analysisLoadError,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: isWide ? 16 : 15,
+            height: 1.35,
+            fontWeight: FontWeight.w800,
+            color: AminaTheme.textPrimary(context),
+          ),
+        );
+        final retry = FilledButton.icon(
+          onPressed: _fetchData,
+          icon: const Icon(Icons.refresh, size: 17),
+          label: Text(l10n.retry),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
+            ),
+          ),
+        );
+        return Align(
+          alignment: isWide ? const Alignment(0, -0.30) : Alignment.topCenter,
+          child: Padding(
+            padding: EdgeInsetsDirectional.fromSTEB(
+              20,
+              isWide ? 24 : 32,
+              20,
+              24,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: isWide ? 480 : 420),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(isWide ? 32 : 24),
+                decoration: BoxDecoration(
+                  color: AminaTheme.surface(context),
+                  borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
+                  border: Border.all(color: AminaTheme.divider(context)),
+                  boxShadow: AminaTheme.shadowClinical,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    icon,
+                    SizedBox(height: isWide ? 18 : 16),
+                    message,
+                    SizedBox(height: isWide ? 22 : 18),
+                    if (isWide)
+                      SizedBox(width: 220, child: retry)
+                    else
+                      SizedBox(width: double.infinity, child: retry),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+'''
+screen.write_text(text[:start] + replacement + text[end:])
+
+test = Path('frontend/test/p2_ux_14_density_polish_contract_test.dart')
+t = test.read_text()
+t = t.replace(
+    'summary error uses a proportionate wide composition without harming mobile',
+    'summary error uses a focal wide composition without harming mobile',
+)
+t = t.replace(
+    "expect(source, contains('maxWidth: isWide ? 680 : 420'));",
+    "expect(source, contains('maxWidth: isWide ? 480 : 420'));",
+)
+t = t.replace(
+    "expect(source, contains('SizedBox(width: 190, child: retry)'));",
+    "expect(source, contains('SizedBox(width: 220, child: retry)'));",
+)
+marker = "      expect(source, contains('constraints.maxWidth >= 720'));\n"
+addition = (
+    marker
+    + "      expect(source, contains('const Alignment(0, -0.30)'));\n"
+    + "      expect(source, contains('textAlign: TextAlign.center'));\n"
+)
+if marker not in t:
+    raise SystemExit('summary contract marker missing')
+t = t.replace(marker, addition, 1)
+test.write_text(t)
