@@ -64,26 +64,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 24, 40),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final sections = Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildMedicalSection(l10n),
-                  const SizedBox(height: 14),
-                  _buildRamadanSection(l10n),
-                  const SizedBox(height: 14),
-                  _buildProfileSection(
-                    key: const ValueKey('profile-iamina-section'),
-                    icon: Icons.auto_awesome_outlined,
-                    title: l10n.profileIaminaSection,
-                    subtitle: l10n.profileIaminaSectionHint,
-                    initiallyExpanded: false,
-                    children: [_buildIASetupCard(l10n)],
-                  ),
-                  const SizedBox(height: 14),
-                  _buildAccountSection(l10n),
-                ],
+              final medicalSection = _buildMedicalSection(l10n);
+              final ramadanSection = _buildRamadanSection(l10n);
+              final iaminaSection = _buildProfileSection(
+                key: const ValueKey('profile-iamina-section'),
+                icon: Icons.auto_awesome_outlined,
+                title: l10n.profileIaminaSection,
+                subtitle: l10n.profileIaminaSectionHint,
+                initiallyExpanded: false,
+                children: [_buildIASetupCard(l10n)],
               );
-              if (constraints.maxWidth < 900) return sections;
+              final accountSection = _buildAccountSection(l10n);
+
+              if (constraints.maxWidth < 900) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    medicalSection,
+                    const SizedBox(height: 14),
+                    ramadanSection,
+                    const SizedBox(height: 14),
+                    iaminaSection,
+                    const SizedBox(height: 14),
+                    accountSection,
+                  ],
+                );
+              }
+
               return Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -91,7 +98,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(AminaTheme.radius3XL),
                   border: Border.all(color: AminaTheme.ink100),
                 ),
-                child: sections,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        key: const ValueKey('profile-desktop-health-column'),
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          medicalSection,
+                          const SizedBox(height: 14),
+                          ramadanSection,
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        key: const ValueKey('profile-desktop-account-column'),
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          iaminaSection,
+                          const SizedBox(height: 14),
+                          accountSection,
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               );
             },
           ),
