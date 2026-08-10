@@ -17,8 +17,9 @@ jobs:
           ref: agent/p1-journal-ramadan-v2
           fetch-depth: 0
       - name: Patch canonical roadmap exactly
-        shell: python
+        shell: bash
         run: |
+          python - <<'PY'
           from pathlib import Path
 
           path = Path('docs/ROADMAP.md')
@@ -61,12 +62,16 @@ These canonical documentation changes intentionally make the pre-closeout anchor
 """
           text = text.replace(anchor, anchor + block)
           path.write_text(text)
+          PY
       - name: Commit and push only ROADMAP
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/ROADMAP.md
           git diff --cached --check
-          git diff --cached --exit-code && { echo 'No roadmap change produced'; exit 1; } || true
+          if git diff --cached --quiet; then
+            echo 'No roadmap change produced'
+            exit 1
+          fi
           git commit -m "docs(journal): record Ramadan v2 pre-closeout"
           git push origin HEAD:agent/p1-journal-ramadan-v2
