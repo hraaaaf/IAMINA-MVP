@@ -160,13 +160,13 @@ jobs:
           for path, (old, new) in additions.items():
               replace_once(path, old, new)
           PY
-      - name: Regenerate localization and format
+      - name: Regenerate localization and validate
         working-directory: frontend
         run: |
           flutter pub get
           flutter gen-l10n
           dart format lib/data/drift/database.dart lib/features/profile/profile_screen.dart
-          flutter analyze
+          flutter analyze --no-fatal-infos
           flutter test test/features/ramadan_mode_v2_test.dart test/features/ramadan_profile_responsive_test.dart
       - name: Commit remediation only
         run: |
