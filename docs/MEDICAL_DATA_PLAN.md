@@ -69,6 +69,14 @@ Do not hide insufficient data behind confident prose.
 
 Illness, stress, activity, sleep and fatigue context are observational patient-entered data. Missing context is **unknown**, not evidence of a negative/normal state. New logging paths must therefore avoid manufacturing `no`, `good` or `ok` values when the patient did not report them. Existing historical rows are not retrospectively rewritten to guess intent. Context may later support explicitly governed observational pattern detection, but it must not be presented as a proven cause of a glucose change or converted into treatment/dose advice.
 
+### Ramadan profile context
+
+Ramadan is represented only as an **explicit patient-configured profile period**, not as an inferred fasting state. The period is valid only when both start and end dates are present and ordered; absent, partial or inverted data must fail closed instead of being completed from the calendar, location, time of day, meal timing or cultural assumptions.
+
+Within an explicitly configured period, Journal may adapt meal vocabulary to **Suhoor / Iftar / Snack / Other** for an event whose logged date falls inside that period. This vocabulary change is organizational context only: no meal is preselected, and Suhoor/Iftar labels do not prove that the patient fasted, completed a fast, skipped a meal or followed any treatment plan. Outside the configured period, or when no valid period is available, Ramadan-specific vocabulary must not be activated.
+
+Ramadan context must not trigger diagnosis, medication or insulin-dose calculation, treatment optimization, causal inference or autonomous advice. The Django and Drift schema changes are additive and nullable; historical logs and stable `client_uuid` values are preserved, and the legacy per-log `ramadan_mode` field is not retrospectively rewritten or reinterpreted as authoritative fasting evidence.
+
 ### Nutrition-derived observations
 
 Nutrition values are deterministic derived data, not treatment authority. A patient-facing number requires source/version provenance, compatible food identity/preparation and an explicit portion basis. If those requirements are not met, numeric nutrition must fail closed. Patient-entered portion observations may be stored, but derived carbohydrate values remain recalculable from the versioned catalogue and must not be treated as immutable clinical facts. Uncertainty must remain visible when the source supports only a range. Nutrition-derived output must not be converted into an insulin dose, treatment adjustment, diagnosis or autonomous recommendation.
