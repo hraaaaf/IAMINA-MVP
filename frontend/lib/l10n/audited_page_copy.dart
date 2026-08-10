@@ -55,11 +55,7 @@ class AuditedPageCopy {
   String meal(String? value) {
     if (value == null || value.trim().isEmpty) return '';
     final normalized = value.trim().toLowerCase();
-    if ({
-      'breakfast',
-      'petit-déjeuner',
-      'petit dejeuner',
-    }.contains(normalized)) {
+    if ({'breakfast', 'petit-déjeuner', 'petit dejeuner'}.contains(normalized)) {
       return l10n.journalMealBreakfast;
     }
     if ({'lunch', 'déjeuner', 'dejeuner'}.contains(normalized)) {

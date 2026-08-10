@@ -48,8 +48,8 @@ class _HeroLive extends StatelessWidget {
         ? latest!.mealType!
         : null;
     final mealLabel = rawMealLabel == null ? null : copy.meal(rawMealLabel);
-    final insulin =
-        latest?.insulinUnits != null && (latest!.insulinUnits ?? 0) > 0
+    final insulin = latest?.insulinUnits != null &&
+            (latest!.insulinUnits ?? 0) > 0
         ? AuditedPageCopy.of(context).l10n.dashboardRapidInsulin(
             '\u2066${latest.insulinUnits!.toStringAsFixed(latest.insulinUnits! == latest.insulinUnits!.truncateToDouble() ? 0 : 1)}\u2069',
           )
@@ -119,9 +119,7 @@ class _HeroLive extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      minutesAgo == 0
-                          ? copy.justNow
-                          : copy.minutesAgo(minutesAgo),
+                      minutesAgo == 0 ? copy.justNow : copy.minutesAgo(minutesAgo),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.65),
                         fontSize: 12,
