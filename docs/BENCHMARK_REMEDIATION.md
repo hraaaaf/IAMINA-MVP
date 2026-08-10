@@ -5,27 +5,29 @@
 
 ## Why this track exists
 
-A proof-only comparison against current diabetes leaders found that IAmina's largest remaining product gaps are not its deterministic diabetes core or its internally certified UX. The material gaps are ecosystem depth and real-world evidence: device/data connectivity, clinician workflows, caregiver sharing, interoperability, and a mature real-patient pilot.
+A proof-only comparison against current diabetes leaders found that IAmina's largest remaining product gaps are not its deterministic diabetes core or its internally certified UX. The material gaps supported by the checked repository and official competitor evidence are ecosystem depth and real-world evidence: device/data connectivity, clinician workflows, caregiver sharing, interoperability, and a mature real-patient pilot.
 
 This track must not weaken or bypass the existing MENA safety/compliance critical path. No benchmark LOT authorizes a first real patient before the existing pilot safety/compliance gate is fully closed.
 
-## Scoring baseline
+## Evidence rule
 
-The benchmark uses 50 binary/evidence-backed criteria grouped into eight weighted domains totaling 100 points. Credit is granted only for a capability demonstrated in the current repository or in official current competitor documentation; planned or plausible capability receives no implementation credit.
+No global competitive score is canonical in this file yet. A numeric score may be versioned only after the complete criterion-by-criterion matrix is stored with, for every criterion, the IAmina repository proof or `NON PROUVÉ`, the current official competitor source, the scoring rule and the observation date.
 
-| Domain | Weight | IAmina baseline | Primary gap |
-|---|---:|---:|---|
-| Clinical safety | 15 | 13 | external/field validation rather than architecture |
-| Diabetes core + analytics | 18 | 16 | minor evidence/coverage gaps |
-| Devices + imports + interoperability | 15 | 4 | broad normalized device/data ecosystem |
-| Clinician + caregiver sharing | 12 | 4 | durable care-team workflows |
-| MENA localization/context | 12 | 9 | remaining human safety-parity approvals |
-| Privacy + sovereignty | 10 | 8 | external assurance / operational proof |
-| UX + offline + engagement | 10 | 8 | real-world use evidence |
-| Real-world validation/maturity | 8 | 2 | first cohort + D7/D30/D90 evidence |
-| **Total** | **100** | **64** | ecosystem + field evidence |
+Until that matrix exists, this track records only gaps that are already evidenced strongly enough to justify engineering order. Planned or plausible capability receives no implementation credit, and absence of proof is written as `NON PROUVÉ` rather than converted into an invented zero or a fabricated precise score.
 
-The numeric baseline is a prioritization instrument, not a clinical score and not a claim of medical superiority.
+### Evidence-backed gap order
+
+| Area | Current evidence state | Why it matters |
+|---|---|---|
+| Pilot outcome evidence | implemented measurement foundations, no real D90 cohort evidence yet | must be trustworthy before product expansion decisions |
+| Device/data ecosystem | materially behind current diabetes platform leaders in checked evidence | limits automatic data depth and longitudinal usefulness |
+| Clinician workflow | comparable durable clinician-sharing workflow not yet proven in checked IAmina evidence | limits care-team utility |
+| Caregiver/family sharing | comparable granular caregiver workflow not yet proven in checked IAmina evidence | limits family-supported use cases |
+| Standards interoperability | comparable FHIR/EHR interoperability not yet proven in checked IAmina evidence | limits portable clinical integration |
+| MENA safety parity | strong technical groundwork; remaining native/human gates explicitly open | blocks safe country/locale pilot activation |
+| Privacy/sovereignty | strong internal controls; external operational approvals remain open | blocks production pilot assurance |
+
+This ordering is a remediation priority, not a clinical ranking or claim of medical superiority.
 
 ## Remediation order
 
