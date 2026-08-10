@@ -119,6 +119,57 @@ def test_egress_gate_accepts_callsite_with_direct_central_assertion(tmp_path):
     assert result.returncode == 0
 
 
+def test_gateway_constructor_get_llm_acquisition_is_exactly_exempt(tmp_path):
+    repo = _init_repo(tmp_path)
+    _write(
+        repo,
+        "backend/core/llm_gateway.py",
+        "class GatewayLLM:\n"
+        "    def __init__(self):\n"
+        "        self._provider = get_llm()\n",
+    )
+    _commit(repo)
+
+    result = _run(repo, "egress")
+    assert result.returncode == 0
+
+
+def test_gateway_constructor_exemption_does_not_cover_sibling_scope(tmp_path):
+    repo = _init_repo(tmp_path)
+    _write(
+        repo,
+        "backend/core/llm_gateway.py",
+        "class GatewayLLM:\n"
+        "    def __init__(self):\n"
+        "        self._provider = get_llm()\n"
+        "\n"
+        "    def rogue(self):\n"
+        "        return get_llm()\n",
+    )
+    _commit(repo)
+
+    result = _run(repo, "egress")
+    assert result.returncode == 1
+    assert "core/llm_gateway.py" in result.stderr
+
+
+def test_gateway_constructor_exemption_is_get_llm_only(tmp_path):
+    repo = _init_repo(tmp_path)
+    _write(
+        repo,
+        "backend/core/llm_gateway.py",
+        "class GatewayLLM:\n"
+        "    def __init__(self):\n"
+        "        self._provider = get_llm()\n"
+        "        self._client = genai.Client()\n",
+    )
+    _commit(repo)
+
+    result = _run(repo, "egress")
+    assert result.returncode == 1
+    assert "core/llm_gateway.py" in result.stderr
+
+
 def test_egress_gate_accepts_callsite_using_validated_central_runtime_wrapper(tmp_path):
     repo = _init_repo(tmp_path)
     _write_safe_runtime(repo)
@@ -170,6 +221,32 @@ def test_central_runtime_controls_must_precede_provider_submission(tmp_path):
         "    context = assert_ai_egress_allowed(modality)\n"
         "    authorize_processor_policy(provider, context.purpose, modality)\n"
         "    return future.result()\n",
+    )
+    _write(
+        repo,
+        "backend/media/vision.py",
+        "def analyze():\n"
+        "    client = genai.Client()\n"
+        "    return execute_external_provider_call('gemini', 'image', 'vision', lambda: client.run())\n",
+    )
+    _commit(repo)
+
+    result = _run(repo, "egress")
+    assert result.returncode == 1
+    assert "llm/runtime.py" in result.stderr
+
+
+def test_central_runtime_controls_cannot_be_hidden_in_conditionals(tmp_path):
+    repo = _init_repo(tmp_path)
+    _write(
+        repo,
+        "backend/llm/runtime.py",
+        "def execute_external_provider_call(provider, modality, operation, call):\n"
+        "    if modality:\n"
+        "        context = assert_ai_egress_allowed(modality)\n"
+        "        authorize_processor_policy(provider, context.purpose, modality)\n"
+        "    executor = ThreadPoolExecutor(max_workers=1)\n"
+        "    return executor.submit(call).result()\n",
     )
     _write(
         repo,
