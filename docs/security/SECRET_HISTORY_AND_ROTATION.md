@@ -21,6 +21,8 @@ A full non-shallow scan performed on 2026-08-02 found:
 - six generic service-token findings in one reachable blob;
 - referenced service host in the deleted configuration: `aiapiv2.pekpik.com`.
 
+The scheduled full-history preflight on 2026-08-10 reconfirmed the tracked-tree pass and reachable-history failure. It also surfaced two classifier-only findings: a deliberately public Firebase client identifier emitted into a compiled Flutter web artifact and a known synthetic `sk-` fixture from a security test. Neither changes the six PekPik credentials that require external rotation. SECURITY-30A narrows classification of those non-secret cases without weakening detection of unknown Google-format identifiers or arbitrary service tokens.
+
 Credential values are intentionally absent from this document, issues, PRs and logs.
 
 The remediation tracker is issue #30.
@@ -41,14 +43,18 @@ Covered categories include:
 
 - generic `sk-` service tokens;
 - Anthropic-style API keys;
-- Google API keys, except the deliberately public Firebase client identifier at its exact generated-client path;
+- Google API keys, except deliberately public Firebase client identifiers at the exact generated-client path and exact copies anchored in the canonical generated Firebase configuration at `HEAD`;
 - AWS access keys;
 - GitHub tokens;
 - Slack tokens;
 - private-key material;
 - forbidden `.env`, service-account and local-credential paths.
 
-The scanner is high-signal rather than mathematically exhaustive. A pass proves that no covered pattern exists in reachable blobs; it does not prove that every unknown credential format has been detected.
+Known Firebase client identifiers are derived from `HEAD:frontend/lib/firebase_options.dart`. If that canonical generated configuration is unavailable, the derived allow-set is empty and the scanner fails closed. An unknown Google-format identifier outside the exact generated-client path therefore remains a finding even when a different Firebase client identifier is approved.
+
+Known synthetic `sk-` examples are ignored only at the individual regex match. They do not suppress other credential categories on the same line, and arbitrary `sk-` values remain findings.
+
+The scanner is high-signal rather than mathematically exhaustive. A pass proves that no covered non-exempt pattern exists in reachable blobs; it does not prove that every unknown credential format has been detected.
 
 ## 4. Two-phase rollout
 
