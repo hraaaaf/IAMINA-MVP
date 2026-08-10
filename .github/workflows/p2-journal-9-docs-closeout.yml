@@ -1,0 +1,43 @@
+name: P2-JOURNAL-9 docs closeout
+
+on:
+  push:
+    branches: [audit/p2-journal-9-docs-closeout]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  closeout-docs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout audit tools
+        uses: actions/checkout@v4
+        with:
+          path: audit
+
+      - name: Checkout exact product branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/p2-journal-post-save
+          path: product
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Patch canonical docs
+        run: python audit/.github/scripts/p2_journal_9_docs_closeout.py product
+
+      - name: Verify and push docs-only closeout
+        working-directory: product
+        shell: bash
+        run: |
+          CHANGED="$(git status --porcelain | awk '{print $2}' | sort)"
+          EXPECTED="$(printf '%s\n' docs/MEDICAL_DATA_PLAN.md docs/ROADMAP.md docs/SPECS.md | sort)"
+          test "$CHANGED" = "$EXPECTED"
+          git diff --check
+          git add docs/ROADMAP.md docs/SPECS.md docs/MEDICAL_DATA_PLAN.md
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "docs(journal): certify post-save experience pre-merge"
+          git push origin HEAD:agent/p2-journal-post-save
