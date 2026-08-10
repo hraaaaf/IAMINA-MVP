@@ -2,9 +2,10 @@
 """Fail closed on direct LLM/provider callsites outside sanctioned boundaries.
 
 The gate intentionally scans only tracked backend files so generated caches and
-local artifacts cannot change CI behavior. Egress checks use Python AST nodes so
-comments/imports cannot impersonate an authorization call. Findings report file
-paths and rule names only; source contents are never printed.
+local artifacts cannot change CI behavior. Egress checks use Python AST nodes and
+lexical scopes so comments, imports, or an authorized sibling function cannot
+impersonate authorization for a direct provider call. Findings report file paths
+and rule names only; source contents are never printed.
 """
 
 from __future__ import annotations
@@ -124,7 +125,76 @@ def _authorization_symbol(symbol: str | None) -> bool:
     return symbol in CENTRAL_AUTHORIZATION_CALLS
 
 
-def _ast_call_symbols(path: Path, text: str) -> tuple[set[str], set[str]]:
+class _LexicalEgressVisitor(ast.NodeVisitor):
+    """Track egress and authorization calls independently per lexical scope."""
+
+    def __init__(self) -> None:
+        self._scope_stack: list[dict[str, bool]] = [
+            {"egress": False, "authorization": False}
+        ]
+        self.unsafe_scope_found = False
+
+    @property
+    def _scope(self) -> dict[str, bool]:
+        return self._scope_stack[-1]
+
+    def _enter_scope(self, body: list[ast.stmt] | ast.expr) -> None:
+        self._scope_stack.append({"egress": False, "authorization": False})
+        if isinstance(body, list):
+            for statement in body:
+                self.visit(statement)
+        else:
+            self.visit(body)
+        scope = self._scope_stack.pop()
+        if scope["egress"] and not scope["authorization"]:
+            self.unsafe_scope_found = True
+
+    def visit_Call(self, node: ast.Call) -> None:  # noqa: N802 - ast API name
+        symbol = _dotted_name(node.func)
+        if _is_direct_egress_symbol(symbol):
+            self._scope["egress"] = True
+        if _authorization_symbol(symbol):
+            self._scope["authorization"] = True
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:  # noqa: N802
+        # Decorators/defaults execute in the enclosing scope; the function body is a
+        # separate lexical scope.
+        for decorator in node.decorator_list:
+            self.visit(decorator)
+        for default in (*node.args.defaults, *node.args.kw_defaults):
+            if default is not None:
+                self.visit(default)
+        self._enter_scope(node.body)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:  # noqa: N802
+        self.visit_FunctionDef(node)
+
+    def visit_Lambda(self, node: ast.Lambda) -> None:  # noqa: N802
+        for default in (*node.args.defaults, *node.args.kw_defaults):
+            if default is not None:
+                self.visit(default)
+        self._enter_scope(node.body)
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:  # noqa: N802
+        # Bases, keywords and decorators execute in the enclosing scope. The class
+        # body gets its own scope; methods will create nested scopes from there.
+        for decorator in node.decorator_list:
+            self.visit(decorator)
+        for base in node.bases:
+            self.visit(base)
+        for keyword in node.keywords:
+            self.visit(keyword.value)
+        self._enter_scope(node.body)
+
+    def finalize(self) -> bool:
+        module_scope = self._scope_stack[0]
+        if module_scope["egress"] and not module_scope["authorization"]:
+            self.unsafe_scope_found = True
+        return self.unsafe_scope_found
+
+
+def _has_unauthorized_egress_scope(path: Path, text: str) -> bool:
     try:
         tree = ast.parse(text, filename=str(path))
     except SyntaxError as exc:
@@ -132,19 +202,9 @@ def _ast_call_symbols(path: Path, text: str) -> tuple[set[str], set[str]]:
             f"cannot parse tracked Python file {path.as_posix()}: line {exc.lineno}"
         ) from exc
 
-    egress_calls: set[str] = set()
-    authorization_calls: set[str] = set()
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        symbol = _dotted_name(node.func)
-        if _is_direct_egress_symbol(symbol):
-            assert symbol is not None
-            egress_calls.add(symbol)
-        if _authorization_symbol(symbol):
-            assert symbol is not None
-            authorization_calls.add(symbol)
-    return egress_calls, authorization_calls
+    visitor = _LexicalEgressVisitor()
+    visitor.visit(tree)
+    return visitor.finalize()
 
 
 def egress_authorization_findings(repo: Path) -> list[str]:
@@ -156,10 +216,7 @@ def egress_authorization_findings(repo: Path) -> list[str]:
         text = _read_text(path)
         if text is None:
             continue
-        egress_calls, authorization_calls = _ast_call_symbols(path, text)
-        if not egress_calls:
-            continue
-        if not authorization_calls:
+        if _has_unauthorized_egress_scope(path, text):
             findings.append(relative)
     return sorted(findings)
 
