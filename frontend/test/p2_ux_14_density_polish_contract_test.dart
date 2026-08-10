@@ -6,12 +6,14 @@ String _read(String path) => File(path).readAsStringSync();
 
 void main() {
   test(
-    'summary error uses a proportionate wide composition without harming mobile',
+    'summary error uses a focal wide composition without harming mobile',
     () {
       final source = _read('lib/features/journal/ai_summary_screen.dart');
       expect(source, contains('constraints.maxWidth >= 720'));
-      expect(source, contains('maxWidth: isWide ? 680 : 420'));
-      expect(source, contains('SizedBox(width: 190, child: retry)'));
+      expect(source, contains('const Alignment(0, -0.30)'));
+      expect(source, contains('textAlign: TextAlign.center'));
+      expect(source, contains('maxWidth: isWide ? 480 : 420'));
+      expect(source, contains('SizedBox(width: 220, child: retry)'));
       expect(source, contains('minimumSize: const Size.fromHeight(48)'));
     },
   );
