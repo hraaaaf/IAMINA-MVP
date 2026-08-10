@@ -94,6 +94,18 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - no pattern detector may produce treatment optimization, insulin-dose advice, diagnosis or autonomous clinical recommendation;
 - the Journal shows one strongest pattern by default and makes secondary patterns explicitly expandable so longitudinal context does not crowd out the primary history task.
 
+
+### Post-save experience contract
+
+- a successful Add Log write transitions to a persistent factual receipt only after the local Drift insertion has completed successfully;
+- the receipt may restate only the facts from that saved entry: glucose, timestamp and explicitly entered measurement context, meal, already-taken insulin and additional context observations;
+- local persistence is described narrowly as saved on the device; this receipt does not imply server synchronization, external backup or provider processing;
+- one saved reading must not trigger a good/bad glucose verdict, personal-target claim, prediction, causal explanation, AI analysis, diagnosis, treatment optimization or insulin-dose advice;
+- P2-JOURNAL-8 longitudinal personal-response patterns remain separate from the immediate receipt and retain their own minimum-evidence contract;
+- after successful insertion, the previous draft is cleared before another entry is started so prior meal/context/insulin facts cannot be silently reused;
+- the user can explicitly view the saved entry in Journal, start another reading, or finish; on compact screens those actions remain persistently reachable while receipt detail may scroll;
+- FR/EN/AR copy follows the application localization contract and numeric insulin values remain LTR under Arabic RTL.
+
 ### Insulin logging v2 contract
 
 - `insulin_units` is patient-entered historical fact: the quantity the patient reports having already administered;
