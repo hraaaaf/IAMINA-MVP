@@ -18,6 +18,7 @@ class _CVCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AuditedPageCopy.of(context).l10n;
     final cv = ClinicalEngine.calcCV(logs);
     final isBelowGeneralReference = cv > 0 && cv < 36;
     final daysWithData = _daysWithData(logs);
@@ -57,9 +58,9 @@ class _CVCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const CardHead(
-            title: 'Variabilité (CV)',
-            meta: 'Repère général <36 %',
+          CardHead(
+            title: l10n.dashboardCvTitle,
+            meta: l10n.dashboardCvReferenceShort,
           ),
           const SizedBox(height: 16),
           Builder(
@@ -105,7 +106,7 @@ class _CVCard extends StatelessWidget {
           if (logs.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              '${logs.length} mesures sur $daysWithData jour${daysWithData > 1 ? 's' : ''}',
+              l10n.dashboardMeasurementCoverage(logs.length, daysWithData),
               style: TextStyle(
                 fontSize: 11,
                 color: AminaTheme.textSecondary(context),
@@ -179,10 +180,10 @@ class _CVCard extends StatelessWidget {
                   children: [
                     Text(
                       cv == 0
-                          ? 'Données insuffisantes'
+                          ? l10n.dashboardInsufficientData
                           : isBelowGeneralReference
-                          ? 'Sous le repère général'
-                          : 'Au-dessus du repère général',
+                          ? l10n.dashboardCvBelowReference
+                          : l10n.dashboardCvAboveReference,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
@@ -193,7 +194,7 @@ class _CVCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      'Repère général CV <36 %. Votre objectif personnel peut être différent.',
+                      l10n.dashboardCvReferenceExplanation,
                       style: TextStyle(
                         fontSize: 11,
                         color: AminaTheme.textSecondary(context),

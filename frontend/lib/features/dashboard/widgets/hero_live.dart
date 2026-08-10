@@ -14,7 +14,7 @@ class _HeroLive extends StatelessWidget {
   });
 
   /// Calcule la tendance réelle : delta mg/dL sur 30 min entre les 2 dernières mesures.
-  String? _trend() {
+  String? _trend(BuildContext context) {
     if (logs.length < 2) return null;
     final latest = logs[0];
     final previous = logs[1];
@@ -25,7 +25,8 @@ class _HeroLive extends StatelessWidget {
     final delta = latest.bloodSugar - previous.bloodSugar;
     if (delta.abs() < 5) return null;
     final per30 = (delta / elapsedMinutes * 30).round();
-    return '${per30 >= 0 ? '+' : ''}$per30 / 30 min';
+    final signed = '${per30 >= 0 ? '+' : ''}$per30';
+    return AuditedPageCopy.of(context).l10n.dashboardTrendPer30Minutes(signed);
   }
 
   bool _isTrendUp() {
@@ -47,11 +48,13 @@ class _HeroLive extends StatelessWidget {
         ? latest!.mealType!
         : null;
     final mealLabel = rawMealLabel == null ? null : copy.meal(rawMealLabel);
-    final insulin = latest?.insulinUnits != null &&
-            (latest!.insulinUnits ?? 0) > 0
-        ? '${latest.insulinUnits!.toStringAsFixed(latest.insulinUnits! == latest.insulinUnits!.truncateToDouble() ? 0 : 1)}u rapide'
+    final insulin =
+        latest?.insulinUnits != null && (latest!.insulinUnits ?? 0) > 0
+        ? AuditedPageCopy.of(context).l10n.dashboardRapidInsulin(
+            '\u2066${latest.insulinUnits!.toStringAsFixed(latest.insulinUnits! == latest.insulinUnits!.truncateToDouble() ? 0 : 1)}\u2069',
+          )
         : null;
-    final trend = _trend();
+    final trend = _trend(context);
     final trendUp = _isTrendUp();
 
     return ClipRRect(
@@ -116,7 +119,9 @@ class _HeroLive extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      minutesAgo == 0 ? copy.justNow : copy.minutesAgo(minutesAgo),
+                      minutesAgo == 0
+                          ? copy.justNow
+                          : copy.minutesAgo(minutesAgo),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.65),
                         fontSize: 12,
