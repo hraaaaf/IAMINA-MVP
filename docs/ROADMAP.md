@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-10 — P1-JOURNAL-7 Ramadan mode v2 is merged and 100% closed; P2-JOURNAL-8 Personal metabolic response is next.
+> **Last updated:** 2026-08-10 — P1-JOURNAL-7 is closed; P2-JOURNAL-8 Personal metabolic response is the active merge unit in PR #76.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,7 +29,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
-| Journal metabolic-event redesign | 78% | 🟢 P1-JOURNAL-7 closed; P2-JOURNAL-8 next | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 merged; PR #75; explicit Ramadan profile context, no fasting inference or fabricated medical defaults; UX 9.3/10; post-merge CI #1372 + drift #1184 green |
+| Journal metabolic-event redesign | 89% | 🟢 P2-JOURNAL-8 certified pre-merge | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 merged; PR #76 deterministic personal-response patterns; exact-head CI #1380 + drift #1192 + PostgreSQL green; 24-view FR/AR UX 9.3/10; four specialist reviewers PASS; final docs-head recertification + merge/post-merge remain |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -113,7 +113,7 @@ Each Journal LOT is a separate branch/PR. Clinical/safety, UX/UI, privacy/egress
 | P1-JOURNAL-5 | Insulin logging v2 | ✅ Closed | PR #72 merged as `72a248671e5115055c9bc6fc219d0007078906f8`; post-merge CI #1330 + drift #1142 green; actual administered dose only; nullable decimal entry/edit; no presets/calculator/scoring/optimization; safe `client_uuid` snapshot sync; UX 9.2/10 |
 | P1-JOURNAL-6 | Context intelligence | ✅ Closed | PR #73 merged as `95cf4d75226720386d7e8e55acc30c39fdd5017c`; post-merge CI #1342 + drift #1154 green; optional positive context, unknown-by-default omission, progressive Add + correctable Edit, legacy fatigue sync-compatible; UX 9.2/10 |
 | P1-JOURNAL-7 | Ramadan mode v2 | ✅ Closed | PR #75 merged as `5c70e5aeb67274767e56d0eb80f882ea52a45511`; post-merge CI #1372 + drift #1184 green; explicit nullable profile period; no fasting inference/meal preselection; update-only local persistence prevents fabricated medical defaults; UX 9.3/10 |
-| P2-JOURNAL-8 | Personal metabolic response | ⬜ Planned | repeated-event associations with explicit evidence count/confidence; observational wording only; no invented causality/treatment advice |
+| P2-JOURNAL-8 | Personal metabolic response | 🟢 PR #76 merge unit | deterministic repeated observations only; explicit evidence count + distinct days + descriptive repetition grade; explicit positive context and post-meal facts only; 90-day synced scope; no causal/statistical/treatment claim; UX 9.3/10 |
 | P2-JOURNAL-9 | Post-save experience | ⬜ Planned | immediate factual confirmation only; longitudinal insights appear separately only when evidence requirements are met |
 
 ### P0-JOURNAL-1 durable closeout contract
@@ -169,6 +169,16 @@ Persistence is additive: Django migration `0023` adds nullable profile dates and
 **Final certification evidence:** final pre-merge head `3458667a76472829aba5f79b05c74346bf7bbb95`; CI #1371 SUCCESS; migration drift #1183 SUCCESS; PostgreSQL migration validation + full source-of-truth suite SUCCESS; exact-final-head visual audit run `31377323425` (#20) SUCCESS with 24/24 FR/AR Profile + Add Log renders across `1440×1000`, `768×1024`, `390×844` and hostile `360×560`; artifact `9058462463`, digest `sha256:94c6c4f6980b1ff025d56498e2e984be8de05d6949e4ccde86e0d66a4fdde474`; UX Auditor **9.3/10 PASS**; Clinical Safety Reviewer FINAL PASS; Database & Migration Reviewer FINAL PASS; UX Auditor FINAL PASS; Release Certifier CERTIFIED; PR #75 merged with expected-head locking as `5c70e5aeb67274767e56d0eb80f882ea52a45511`; `main` verified on that merge; post-merge CI #1372 and migration drift #1184 SUCCESS.
 
 The independent clinical review found and blocked a fresh-local-profile path that could create a medical profile row with default clinical targets when only Ramadan was being configured. The remediation makes local Ramadan persistence update-only, refuses to manufacture a profile when none exists, preserves existing clinical profile values, reports local/server/degraded/failure save states truthfully in FR/EN/AR, and is protected by permanent regressions. Temporary remediation/audit scaffolding is absent from the merge diff. P1-JOURNAL-7 is **100% closed**.
+
+### P2-JOURNAL-8 durable merge-unit contract
+
+PR #76 is the merge unit for Personal metabolic response. The Journal now computes deterministic, patient-scoped repeated-observation patterns from already-synchronized source logs; no derived pattern is persisted. Context patterns are eligible only from explicit positive patient-entered states (`stress=yes`, `activity=yes`, `illness=yes`, `sleep=bad`, explicit fatigue), and meal patterns require an explicit `post_meal` glycaemic context plus meal type. Historical `no/good/ok` values are never treated as a control cohort because older schemas may have materialized such defaults. Demo rows are excluded, the analysis window is bounded to 90 days, and insufficient repetition fails closed.
+
+Each visible pattern exposes its observation count, distinct-day count, pattern median, whole synced-window median and a **descriptive repetition grade**. That grade is product evidence density, not a probability, statistical significance test or clinical confidence score. The patient-facing contract explicitly states that an observed association does not establish cause and must not guide treatment or dosing. No predicted glucose, diagnosis, causal delta, treatment optimization, dose calculation or new AI/provider egress is introduced. API scope derives only from the authenticated `request.user.id`, and the UI states that only server-synchronized readings are analyzed.
+
+The first real FR/AR max-density visual pass was rejected at **8.8/10** because three simultaneous pattern cards displaced Journal history too aggressively on `360×560`. The same LOT was remediated to show one strongest pattern by default with an explicit accessible disclosure for secondary patterns.
+
+**Pre-closeout evidence on product head `5f7fafd96adcf16b2ed16572910e9a23509696d1`:** canonical CI #1380 SUCCESS including PostgreSQL source-of-truth; migration drift #1192 SUCCESS; exact-head visual audit run `31384006870` SUCCESS with 24/24 FR/AR compact/expanded/insufficient renders across `1440×1000`, `768×1024`, `390×844` and `360×560`; artifact `9060989847`, digest `sha256:8a2db26d548f68e75f3938d793bde980ee865d0988770bc96b2e6dafae7514e3`; UX Auditor **9.3/10 PASS**; Clinical Safety, Security, Database/Migration and UX reviewers PASS. Canonical documentation changes make these anchors pre-closeout evidence, so exact-final-head CI + drift + visual recertification, reviewer re-anchoring, Release Certifier, expected-head merge and post-merge gates remain mandatory before the LOT is 100% closed.
 
 
 
