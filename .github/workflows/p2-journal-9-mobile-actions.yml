@@ -1,0 +1,57 @@
+name: P2-JOURNAL-9 mobile actions remediation
+
+on:
+  push:
+    branches: [audit/p2-journal-9-mobile-actions]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  remediate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout remediation source
+        uses: actions/checkout@v4
+        with:
+          path: audit
+
+      - name: Checkout product branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/p2-journal-post-save
+          path: product
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply receipt remediation
+        run: |
+          cp audit/frontend/lib/features/journal/widgets/post_save_receipt.dart \
+             product/frontend/lib/features/journal/widgets/post_save_receipt.dart
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Verify focused frontend
+        working-directory: product/frontend
+        run: |
+          flutter pub get
+          dart format lib/features/journal/widgets/post_save_receipt.dart
+          flutter analyze --no-fatal-infos
+          flutter test test/features/add_log_sheet_test.dart
+
+      - name: Restore dependency artifacts and push product commit
+        working-directory: product
+        run: |
+          git checkout HEAD -- frontend/pubspec.lock frontend/.flutter-plugins-dependencies 2>/dev/null || true
+          git add frontend/lib/features/journal/widgets/post_save_receipt.dart
+          git diff --cached --check
+          test -z "$(git status --porcelain | grep -E '(^|/)(.*\.db|.*\.sqlite|pubspec\.lock|\.flutter-plugins-dependencies)$' || true)"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "fix(journal): keep post-save actions reachable on mobile"
+          git push origin HEAD:agent/p2-journal-post-save
