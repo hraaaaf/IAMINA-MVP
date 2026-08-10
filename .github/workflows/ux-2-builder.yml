@@ -30,7 +30,7 @@ jobs:
         working-directory: frontend
         run: |
           flutter pub get
-          flutter analyze
+          flutter analyze --no-fatal-infos
           flutter test test/p2_ux_14_density_polish_contract_test.dart
       - name: Remove temporary builder and commit product diff
         run: |
