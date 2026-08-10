@@ -54,6 +54,19 @@ def _run(repo: Path, check: str):
     )
 
 
+def _write_safe_runtime(repo: Path) -> None:
+    _write(
+        repo,
+        "backend/llm/runtime.py",
+        "def execute_external_provider_call(provider, modality, operation, call):\n"
+        "    context = assert_ai_egress_allowed(modality)\n"
+        "    authorize_processor_policy(provider, context.purpose, modality)\n"
+        "    executor = ThreadPoolExecutor(max_workers=1)\n"
+        "    future = executor.submit(call)\n"
+        "    return future.result()\n",
+    )
+
+
 def test_gateway_gate_allows_only_sanctioned_paths(tmp_path):
     repo = _init_repo(tmp_path)
     _write(
@@ -106,8 +119,9 @@ def test_egress_gate_accepts_callsite_with_direct_central_assertion(tmp_path):
     assert result.returncode == 0
 
 
-def test_egress_gate_accepts_callsite_using_central_runtime_wrapper(tmp_path):
+def test_egress_gate_accepts_callsite_using_validated_central_runtime_wrapper(tmp_path):
     repo = _init_repo(tmp_path)
+    _write_safe_runtime(repo)
     _write(
         repo,
         "backend/media/vision.py",
@@ -121,8 +135,59 @@ def test_egress_gate_accepts_callsite_using_central_runtime_wrapper(tmp_path):
     assert result.returncode == 0
 
 
+def test_central_runtime_wrapper_without_required_control_fails(tmp_path):
+    repo = _init_repo(tmp_path)
+    _write(
+        repo,
+        "backend/llm/runtime.py",
+        "def execute_external_provider_call(provider, modality, operation, call):\n"
+        "    authorize_processor_policy(provider, 'purpose', modality)\n"
+        "    executor = ThreadPoolExecutor(max_workers=1)\n"
+        "    return executor.submit(call).result()\n",
+    )
+    _write(
+        repo,
+        "backend/media/vision.py",
+        "def analyze():\n"
+        "    client = genai.Client()\n"
+        "    return execute_external_provider_call('gemini', 'image', 'vision', lambda: client.run())\n",
+    )
+    _commit(repo)
+
+    result = _run(repo, "egress")
+    assert result.returncode == 1
+    assert "llm/runtime.py" in result.stderr
+
+
+def test_central_runtime_controls_must_precede_provider_submission(tmp_path):
+    repo = _init_repo(tmp_path)
+    _write(
+        repo,
+        "backend/llm/runtime.py",
+        "def execute_external_provider_call(provider, modality, operation, call):\n"
+        "    executor = ThreadPoolExecutor(max_workers=1)\n"
+        "    future = executor.submit(call)\n"
+        "    context = assert_ai_egress_allowed(modality)\n"
+        "    authorize_processor_policy(provider, context.purpose, modality)\n"
+        "    return future.result()\n",
+    )
+    _write(
+        repo,
+        "backend/media/vision.py",
+        "def analyze():\n"
+        "    client = genai.Client()\n"
+        "    return execute_external_provider_call('gemini', 'image', 'vision', lambda: client.run())\n",
+    )
+    _commit(repo)
+
+    result = _run(repo, "egress")
+    assert result.returncode == 1
+    assert "llm/runtime.py" in result.stderr
+
+
 def test_authorized_sibling_scope_cannot_hide_unauthorized_egress(tmp_path):
     repo = _init_repo(tmp_path)
+    _write_safe_runtime(repo)
     _write(
         repo,
         "backend/media/vision.py",
