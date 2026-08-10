@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
 import 'package:amina/features/profile/profile_screen.dart';
@@ -6,11 +9,22 @@ import 'package:amina/services/consent_service.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
 const _boundaryKey = Key('visual-audit-boundary');
+const _auditFontFamily = 'AuditSans';
+
+Future<void> _loadAuditFont() async {
+  final bytes = await File(
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+  ).readAsBytes();
+  final loader = FontLoader(_auditFontFamily);
+  loader.addFont(Future<ByteData>.value(ByteData.sublistView(bytes)));
+  await loader.load();
+}
 
 Widget _localizedHome({
   required Locale locale,
@@ -19,6 +33,7 @@ Widget _localizedHome({
 }) {
   return MaterialApp(
     locale: locale,
+    theme: ThemeData(fontFamily: _auditFontFamily),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: MultiProvider(
@@ -59,6 +74,8 @@ Future<PatientProfileData> _configuredProfile(
 Future<void> _openRamadanProfileSection(WidgetTester tester) async {
   final section = find.byKey(const ValueKey('profile-ramadan-section'));
   expect(section, findsOneWidget);
+  await tester.ensureVisible(section);
+  await tester.pumpAndSettle();
   final tile = find.descendant(of: section, matching: find.byType(ExpansionTile));
   expect(tile, findsOneWidget);
   await tester.tap(tile);
@@ -68,7 +85,24 @@ Future<void> _openRamadanProfileSection(WidgetTester tester) async {
   expect(find.byKey(const Key('ramadan-save-period')), findsOneWidget);
 }
 
+Future<void> _openMealSection(WidgetTester tester) async {
+  final mealButton = find.byKey(const Key('add-meal-button'));
+  expect(mealButton, findsOneWidget);
+  await tester.ensureVisible(mealButton);
+  await tester.pumpAndSettle();
+
+  // AddLogSheet has a fixed save bar. Move the meal CTA above that overlay
+  // before tapping so this remains a real hit-tested interaction.
+  final scrollable = find.byType(Scrollable).first;
+  await tester.drag(scrollable, const Offset(0, -180));
+  await tester.pumpAndSettle();
+  await tester.tap(mealButton);
+  await tester.pumpAndSettle();
+}
+
 void main() {
+  setUpAll(_loadAuditFont);
+
   final cases = <(String, Locale, Size)>[
     ('fr-desktop-1440x1000', const Locale('fr'), const Size(1440, 1000)),
     ('fr-tablet-768x1024', const Locale('fr'), const Size(768, 1024)),
@@ -166,10 +200,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final mealButton = find.byKey(const Key('add-meal-button'));
-      await tester.ensureVisible(mealButton);
-      await tester.tap(mealButton);
-      await tester.pumpAndSettle();
+      await _openMealSection(tester);
 
       expect(find.byKey(const Key('ramadan-meal-vocabulary-hint')), findsOneWidget);
       expect(find.byKey(const Key('meal-type-suhoor')), findsOneWidget);
