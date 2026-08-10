@@ -1,0 +1,76 @@
+name: UX-3 exact-head visual
+
+on:
+  push:
+    branches:
+      - audit/ux-3-final-896f413
+    paths:
+      - .github/workflows/ux-3-final-visual.yml
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 896f4134e5bc9c26ae0f4ffa43b6d4c5779be73e
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter build web --release --dart-define=IAMINA_AUDIT_ACCESS=true
+      - name: Install capture runtime
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.54.2
+          npx playwright install --with-deps chromium
+      - name: Serve
+        working-directory: frontend/build/web
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 >/tmp/iamina-web.log 2>&1 &
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8080/ >/dev/null && exit 0; sleep 1; done
+          exit 1
+      - name: Capture exact-head brand matrix
+        run: |
+          mkdir -p /tmp/ux3final
+          cat >/tmp/ux3final/capture.cjs <<'EOF'
+          const { chromium } = require(process.cwd() + '/node_modules/playwright');
+          const fs = require('fs'); const path = require('path');
+          const desktopScreens=[['dashboard','/dashboard'],['summary','/summary'],['journal','/journal'],['importer','/importer'],['profile','/profile']];
+          const mobileScreens=[['dashboard','/dashboard'],['profile','/profile']];
+          const langs=[['fr','fr-FR'],['ar','ar-MA']];
+          const cases=[];
+          for(const [screen,route] of desktopScreens) for(const [lang,locale] of langs) cases.push(['desktop',1440,1000,screen,route,lang,locale]);
+          for(const [screen,route] of mobileScreens) for(const [lang,locale] of langs) cases.push(['mobile',390,844,screen,route,lang,locale]);
+          (async()=>{const b=await chromium.launch({headless:true}); const report=[];
+            for(const [vp,w,h,screen,route,lang,locale] of cases){
+              const c=await b.newContext({viewport:{width:w,height:h},locale,timezoneId:'Africa/Casablanca'}); const p=await c.newPage();
+              const pageErrors=[]; p.on('pageerror',e=>pageErrors.push(String(e)));
+              await p.goto(`http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#${route}`,{waitUntil:'domcontentloaded',timeout:30000});
+              await p.waitForTimeout(5000);
+              const file=`${vp}-${lang}__${screen}.png`; await p.screenshot({path:path.join('/tmp/ux3final',file),fullPage:true});
+              report.push({vp,screen,lang,w,h,url:p.url(),flutterViews:await p.locator('flutter-view').count(),pageErrors,screenshot:file}); await c.close();
+            }
+            await b.close(); fs.writeFileSync('/tmp/ux3final/report.json',JSON.stringify(report,null,2));
+            if(report.some(x=>x.flutterViews!==1||x.pageErrors.length)) process.exit(1);
+          })();
+          EOF
+          node /tmp/ux3final/capture.cjs
+      - name: Record source
+        if: always()
+        run: echo 896f4134e5bc9c26ae0f4ffa43b6d4c5779be73e >/tmp/ux3final/source-sha.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ux-3-final-visual
+          path: /tmp/ux3final
+          retention-days: 14
