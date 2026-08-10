@@ -985,6 +985,48 @@
         ]
       }
     },
+    "/api/v1/personal-response/": {
+      "get": {
+        "operationId": "diabetes_api_v1_personal_response_get_personal_response",
+        "summary": "Get Personal Response",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "default": 90,
+              "title": "Days",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalResponseOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Summarize repeated observations without causal or treatment inference.",
+        "tags": [
+          "personal-response"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/account/consent": {
       "get": {
         "operationId": "core_api_v1_account_get_consent_status",
@@ -3120,6 +3162,136 @@
           "gri_label_fr"
         ],
         "title": "KPIsOut",
+        "type": "object"
+      },
+      "PersonalResponseOut": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ready",
+              "insufficient_data"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "data_scope": {
+            "const": "server_synced_logs",
+            "title": "Data Scope",
+            "type": "string"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": "integer"
+          },
+          "total_readings": {
+            "title": "Total Readings",
+            "type": "integer"
+          },
+          "distinct_days": {
+            "title": "Distinct Days",
+            "type": "integer"
+          },
+          "window_median_glucose_mg_dl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Median Glucose Mg Dl"
+          },
+          "minimum_observations": {
+            "title": "Minimum Observations",
+            "type": "integer"
+          },
+          "minimum_distinct_days": {
+            "title": "Minimum Distinct Days",
+            "type": "integer"
+          },
+          "confidence_definition": {
+            "title": "Confidence Definition",
+            "type": "string"
+          },
+          "causality_notice": {
+            "title": "Causality Notice",
+            "type": "string"
+          },
+          "patterns": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalResponsePatternOut"
+            },
+            "title": "Patterns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "status",
+          "data_scope",
+          "window_days",
+          "total_readings",
+          "distinct_days",
+          "window_median_glucose_mg_dl",
+          "minimum_observations",
+          "minimum_distinct_days",
+          "confidence_definition",
+          "causality_notice",
+          "patterns"
+        ],
+        "title": "PersonalResponseOut",
+        "type": "object"
+      },
+      "PersonalResponsePatternOut": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "context",
+              "meal"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "observations": {
+            "title": "Observations",
+            "type": "integer"
+          },
+          "distinct_days": {
+            "title": "Distinct Days",
+            "type": "integer"
+          },
+          "median_glucose_mg_dl": {
+            "title": "Median Glucose Mg Dl",
+            "type": "number"
+          },
+          "window_median_glucose_mg_dl": {
+            "title": "Window Median Glucose Mg Dl",
+            "type": "number"
+          },
+          "confidence": {
+            "enum": [
+              "limited",
+              "moderate",
+              "strong"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "kind",
+          "observations",
+          "distinct_days",
+          "median_glucose_mg_dl",
+          "window_median_glucose_mg_dl",
+          "confidence"
+        ],
+        "title": "PersonalResponsePatternOut",
         "type": "object"
       },
       "ConsentStatusSchema": {

@@ -24,8 +24,8 @@ class PersonalResponsePattern {
       observations: json['observations'] as int,
       distinctDays: json['distinct_days'] as int,
       medianGlucoseMgDl: (json['median_glucose_mg_dl'] as num).toDouble(),
-      windowMedianGlucoseMgDl:
-          (json['window_median_glucose_mg_dl'] as num).toDouble(),
+      windowMedianGlucoseMgDl: (json['window_median_glucose_mg_dl'] as num)
+          .toDouble(),
       confidence: json['confidence'] as String,
     );
   }
@@ -68,17 +68,16 @@ class PersonalResponseResult {
       windowDays: json['window_days'] as int,
       totalReadings: json['total_readings'] as int,
       distinctDays: json['distinct_days'] as int,
-      windowMedianGlucoseMgDl:
-          (json['window_median_glucose_mg_dl'] as num?)?.toDouble(),
+      windowMedianGlucoseMgDl: (json['window_median_glucose_mg_dl'] as num?)
+          ?.toDouble(),
       minimumObservations: json['minimum_observations'] as int,
       minimumDistinctDays: json['minimum_distinct_days'] as int,
       confidenceDefinition: json['confidence_definition'] as String,
       causalityNotice: json['causality_notice'] as String,
       patterns: rawPatterns
           .map(
-            (item) => PersonalResponsePattern.fromJson(
-              item as Map<String, dynamic>,
-            ),
+            (item) =>
+                PersonalResponsePattern.fromJson(item as Map<String, dynamic>),
           )
           .toList(growable: false),
     );

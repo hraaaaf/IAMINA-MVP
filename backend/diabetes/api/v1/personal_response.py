@@ -1,4 +1,5 @@
 """Patient-scoped deterministic personal-response endpoint."""
+
 from __future__ import annotations
 
 from typing import Literal

@@ -7,6 +7,7 @@ import 'package:http_parser/http_parser.dart';
 import 'auth_service.dart';
 import '../data/models/ai_models.dart';
 import '../data/models/document_models.dart';
+import '../data/models/personal_response_models.dart';
 
 class ProviderApiException implements Exception {
   final String code;
@@ -180,6 +181,21 @@ class ApiClient {
       return response.isSuccessful;
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<PersonalResponseResult?> getPersonalResponse({int days = 90}) async {
+    try {
+      final response = await _client.get(
+        Uri.parse('/api/v1/personal-response/?days=$days'),
+      );
+      final body = response.body;
+      if (response.isSuccessful && body is Map) {
+        return PersonalResponseResult.fromJson(Map<String, dynamic>.from(body));
+      }
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 

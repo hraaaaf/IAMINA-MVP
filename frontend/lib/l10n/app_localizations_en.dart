@@ -967,4 +967,96 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get journalMealOther => 'Other';
+
+  @override
+  String get personalResponseTitle => 'Personal responses';
+
+  @override
+  String get personalResponseSubtitle =>
+      'Repeated observations in your synced data.';
+
+  @override
+  String get personalResponseUnavailable => 'Analysis is unavailable for now';
+
+  @override
+  String get personalResponseUnavailableBody =>
+      'Your journal remains usable. Patterns will return when synced data is available.';
+
+  @override
+  String get personalResponseInsufficient => 'Not enough repetition yet';
+
+  @override
+  String personalResponseMinimumBasis(int observations, int days) {
+    return 'Product threshold: at least $observations observations across $days different days.';
+  }
+
+  @override
+  String personalResponseEvidenceBasis(int observations, int days) {
+    return 'Observations: $observations · Days: $days';
+  }
+
+  @override
+  String get personalResponsePatternMedian => 'Median for these observations';
+
+  @override
+  String personalResponseWindowMedian(int days) {
+    return 'Median of all synced readings ($days d)';
+  }
+
+  @override
+  String get personalResponseCausalityNotice =>
+      'Association observed in your journal. It does not prove a cause and must not guide treatment or dosing.';
+
+  @override
+  String get personalResponseConfidenceNotice =>
+      'The repetition level describes only the amount and spread of your data; it is not a probability or clinical confidence score.';
+
+  @override
+  String get personalResponseSyncedScope =>
+      'Based only on glucose readings synced to your account; demo data is excluded.';
+
+  @override
+  String get personalResponseEvidenceLimited => 'Limited repetition';
+
+  @override
+  String get personalResponseEvidenceModerate => 'Moderate repetition';
+
+  @override
+  String get personalResponseEvidenceStrong => 'Strong repetition';
+
+  @override
+  String get personalResponseStress => 'Reported stress';
+
+  @override
+  String get personalResponseActivity => 'Reported physical activity';
+
+  @override
+  String get personalResponseIllness => 'Reported illness';
+
+  @override
+  String get personalResponsePoorSleep => 'Reported poor sleep';
+
+  @override
+  String get personalResponseFatigue => 'Reported fatigue';
+
+  @override
+  String get personalResponseBreakfast => 'After breakfast';
+
+  @override
+  String get personalResponseLunch => 'After lunch';
+
+  @override
+  String get personalResponseDinner => 'After dinner';
+
+  @override
+  String get personalResponseSnack => 'After snack';
+
+  @override
+  String get personalResponseSuhoor => 'After Suhoor';
+
+  @override
+  String get personalResponseIftar => 'After Iftar';
+
+  @override
+  String get personalResponseObservedPattern => 'Observed pattern';
 }

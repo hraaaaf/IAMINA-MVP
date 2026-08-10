@@ -981,4 +981,97 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get journalMealOther => 'Autre';
+
+  @override
+  String get personalResponseTitle => 'Réponses personnelles';
+
+  @override
+  String get personalResponseSubtitle =>
+      'Répétitions observées dans vos données synchronisées.';
+
+  @override
+  String get personalResponseUnavailable =>
+      'Analyse indisponible pour le moment';
+
+  @override
+  String get personalResponseUnavailableBody =>
+      'Le journal reste utilisable. Les motifs réapparaîtront quand les données synchronisées seront accessibles.';
+
+  @override
+  String get personalResponseInsufficient => 'Pas encore assez de répétitions';
+
+  @override
+  String personalResponseMinimumBasis(int observations, int days) {
+    return 'Seuil produit : au moins $observations observations sur $days jours différents.';
+  }
+
+  @override
+  String personalResponseEvidenceBasis(int observations, int days) {
+    return 'Observations : $observations · Jours : $days';
+  }
+
+  @override
+  String get personalResponsePatternMedian => 'Médiane de ces observations';
+
+  @override
+  String personalResponseWindowMedian(int days) {
+    return 'Médiane de tous les relevés synchronisés ($days j)';
+  }
+
+  @override
+  String get personalResponseCausalityNotice =>
+      'Association observée dans votre journal. Elle ne prouve pas une cause et ne doit pas guider un traitement ou une dose.';
+
+  @override
+  String get personalResponseConfidenceNotice =>
+      'Le niveau de répétition décrit seulement la quantité et la répartition de vos données ; ce n’est ni une probabilité ni une confiance clinique.';
+
+  @override
+  String get personalResponseSyncedScope =>
+      'Basé uniquement sur vos glycémies synchronisées avec votre compte ; les données de démonstration sont exclues.';
+
+  @override
+  String get personalResponseEvidenceLimited => 'Répétition limitée';
+
+  @override
+  String get personalResponseEvidenceModerate => 'Répétition modérée';
+
+  @override
+  String get personalResponseEvidenceStrong => 'Répétition forte';
+
+  @override
+  String get personalResponseStress => 'Stress signalé';
+
+  @override
+  String get personalResponseActivity => 'Activité physique signalée';
+
+  @override
+  String get personalResponseIllness => 'Maladie signalée';
+
+  @override
+  String get personalResponsePoorSleep => 'Mauvais sommeil signalé';
+
+  @override
+  String get personalResponseFatigue => 'Fatigue signalée';
+
+  @override
+  String get personalResponseBreakfast => 'Après petit-déjeuner';
+
+  @override
+  String get personalResponseLunch => 'Après déjeuner';
+
+  @override
+  String get personalResponseDinner => 'Après dîner';
+
+  @override
+  String get personalResponseSnack => 'Après collation';
+
+  @override
+  String get personalResponseSuhoor => 'Après Suhoor';
+
+  @override
+  String get personalResponseIftar => 'Après Iftar';
+
+  @override
+  String get personalResponseObservedPattern => 'Motif observé';
 }
