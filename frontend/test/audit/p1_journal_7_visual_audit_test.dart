@@ -195,7 +195,7 @@ void main() {
             Provider<AppDatabase>.value(value: db),
             Provider<PatientProfileData?>.value(value: profile),
           ],
-          child: const AddLogSheet(isPage: true),
+          child: const Scaffold(body: AddLogSheet(isPage: true)),
         ),
       );
       await tester.pumpAndSettle();
