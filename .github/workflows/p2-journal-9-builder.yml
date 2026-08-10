@@ -31,6 +31,7 @@ jobs:
           cp audit/frontend/lib/features/journal/widgets/post_save_receipt.dart \
              product/frontend/lib/features/journal/widgets/post_save_receipt.dart
           python audit/.github/scripts/p2_journal_9_patch.py product
+          python audit/.github/scripts/p2_journal_9_scroll_test_fix.py product
 
       - uses: subosito/flutter-action@v2
         with:
