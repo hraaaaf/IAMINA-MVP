@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
+import '../../core/widgets/mobile_page_header.dart';
 import '../../services/api_client.dart';
 import '../../data/models/ai_models.dart';
 import '../../l10n/app_localizations.dart';
@@ -503,10 +504,46 @@ class _SummaryTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isCompact = MediaQuery.sizeOf(context).width < 600;
+    final periods = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _PeriodTab(
+          label: '7 ${l10n.dayShort}',
+          days: 7,
+          selected: periodDays == 7,
+          onTap: onPeriodChange,
+        ),
+        const SizedBox(width: 4),
+        _PeriodTab(
+          label: '21 ${l10n.dayShort}',
+          days: 21,
+          selected: periodDays == 21,
+          onTap: onPeriodChange,
+        ),
+        const SizedBox(width: 4),
+        _PeriodTab(
+          label: '90 ${l10n.dayShort}',
+          days: 90,
+          selected: periodDays == 90,
+          onTap: onPeriodChange,
+        ),
+      ],
+    );
+
+    if (isCompact) {
+      return AminaMobilePageHeader(
+        title: l10n.navIamina,
+        bottom: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: periods,
+        ),
+      );
+    }
+
     return Container(
       padding: EdgeInsetsDirectional.fromSTEB(
         16,
-        MediaQuery.of(context).padding.top + 10,
+        MediaQuery.paddingOf(context).top + 10,
         16,
         0,
       ),
@@ -521,40 +558,17 @@ class _SummaryTopBar extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  isCompact ? l10n.navIamina : l10n.breadcrumb,
+                  l10n.breadcrumb,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: isCompact ? 15 : 13,
-                    fontWeight: isCompact ? FontWeight.w800 : FontWeight.w600,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                     color: AminaTheme.textPrimary(context),
                   ),
                 ),
               ),
-              Row(
-                children: [
-                  _PeriodTab(
-                    label: '7 ${l10n.dayShort}',
-                    days: 7,
-                    selected: periodDays == 7,
-                    onTap: onPeriodChange,
-                  ),
-                  const SizedBox(width: 4),
-                  _PeriodTab(
-                    label: '21 ${l10n.dayShort}',
-                    days: 21,
-                    selected: periodDays == 21,
-                    onTap: onPeriodChange,
-                  ),
-                  const SizedBox(width: 4),
-                  _PeriodTab(
-                    label: '90 ${l10n.dayShort}',
-                    days: 90,
-                    selected: periodDays == 90,
-                    onTap: onPeriodChange,
-                  ),
-                ],
-              ),
+              periods,
               const SizedBox(width: 4),
             ],
           ),

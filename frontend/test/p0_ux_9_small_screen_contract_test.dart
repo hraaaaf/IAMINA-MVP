@@ -8,23 +8,32 @@ void main() {
   test('360px dashboard removes redundant FAB on first-use state', () {
     final source = _read('lib/features/dashboard/dashboard_screen.dart');
     expect(source, contains('screenW >= 720 || logs.isEmpty'));
-    expect(source, contains('BoxConstraints(maxWidth: 900)'));
+    expect(
+      RegExp(r'BoxConstraints\(\s*maxWidth:\s*900,?\s*\)').hasMatch(source),
+      isTrue,
+    );
     expect(source, contains('emptyDashboardTitle'));
     expect(source, contains('emptyDashboardBody'));
-    expect(source, contains('compactHeight = MediaQuery.sizeOf(context).height <= 600'));
+    expect(
+      source,
+      contains('compactHeight = MediaQuery.sizeOf(context).height <= 600'),
+    );
     expect(source, isNot(contains("'Commencez votre suivi'")));
     expect(source, isNot(contains("'Ajouter ma première mesure'")));
   });
 
-  test('short-screen profile sign-out sheet is scroll controlled and safe-area aware', () {
-    final source = _read('lib/features/profile/profile_screen.dart');
-    final signOutStart = source.indexOf('void _confirmSignOut()');
-    final withdrawStart = source.indexOf('void _confirmWithdrawConsent');
-    final block = source.substring(signOutStart, withdrawStart);
-    expect(block, contains('isScrollControlled: true'));
-    expect(block, contains('useSafeArea: true'));
-    expect(block, contains('SingleChildScrollView'));
-  });
+  test(
+    'short-screen profile sign-out sheet is scroll controlled and safe-area aware',
+    () {
+      final source = _read('lib/features/profile/profile_screen.dart');
+      final signOutStart = source.indexOf('void _confirmSignOut()');
+      final withdrawStart = source.indexOf('void _confirmWithdrawConsent');
+      final block = source.substring(signOutStart, withdrawStart);
+      expect(block, contains('isScrollControlled: true'));
+      expect(block, contains('useSafeArea: true'));
+      expect(block, contains('SingleChildScrollView'));
+    },
+  );
 
   test('certified offline IAmina states are localized', () {
     final source = _read('lib/features/journal/ai_summary_screen.dart');
@@ -32,7 +41,13 @@ void main() {
     expect(source, contains('analysisLoading'));
     expect(source, contains('analysisLoadingWait'));
     expect(source, contains('.retry'));
-    expect(source, contains('isCompact ? l10n.navIamina : l10n.breadcrumb'));
+    expect(
+      source,
+      contains('final isCompact = MediaQuery.sizeOf(context).width < 600'),
+    );
+    expect(source, contains('AminaMobilePageHeader('));
+    expect(source, contains('title: l10n.navIamina'));
+    expect(source, contains('l10n.breadcrumb'));
     expect(source, isNot(contains('floatingActionButton: _ChatFab')));
     expect(source, contains('copy.greeting(hour, name)'));
     expect(source, contains('copy.observation(periodDays)'));

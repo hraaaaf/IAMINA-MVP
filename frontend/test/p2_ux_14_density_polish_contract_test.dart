@@ -38,7 +38,12 @@ void main() {
       final source = _read('lib/features/profile/profile_screen.dart');
       expect(source, contains('maxWidth: 1040'));
       expect(source, contains('constraints.maxWidth < 900'));
-      expect(source, contains('BorderRadius.circular(AminaTheme.radius3XL)'));
+      expect(
+        RegExp(
+          r'BorderRadius\.circular\(\s*AminaTheme\.radius3XL,?\s*\)',
+        ).hasMatch(source),
+        isTrue,
+      );
       expect(source, contains('BorderRadius.circular(AminaTheme.radius2XL)'));
       expect(source, contains('boxShadow: AminaTheme.shadowClinical'));
       expect(
