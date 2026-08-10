@@ -4,8 +4,9 @@ from pathlib import Path
 def replace_once(path: str, old: str, new: str) -> None:
     target = Path(path)
     text = target.read_text()
-    if old not in text:
-        raise SystemExit(f"target block not found in {path}")
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f"expected exactly one target in {path}, found {count}")
     target.write_text(text.replace(old, new, 1))
 
 
@@ -85,24 +86,57 @@ replace_once(
         'ramadan_end_date': end == null ? null : _apiDate(end),
       });
       if (!mounted) return;
-      final saveMessage = serverSaved
-          ? l10n.ramadanSaved
-          : localSaved
-          ? l10n.ramadanSavedLocalOnly
-          : l10n.error;
+      if (localSaved) setState(() => _hasPersistedProfile = true);
+
+      late final String message;
+      late final Color backgroundColor;
+      if (localSaved && serverSaved) {
+        message = l10n.ramadanSaved;
+        backgroundColor = AminaTheme.successEmerald;
+      } else if (localSaved) {
+        message = l10n.ramadanSavedLocalOnly;
+        backgroundColor = AminaTheme.warningOrange;
+      } else if (serverSaved) {
+        message = l10n.ramadanSavedServerOnly;
+        backgroundColor = AminaTheme.warningOrange;
+      } else {
+        message = l10n.ramadanSaveFailed;
+        backgroundColor = AminaTheme.dangerFg;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(saveMessage),
-          backgroundColor: serverSaved
-              ? AminaTheme.successEmerald
-              : localSaved
-              ? AminaTheme.warningOrange
-              : AminaTheme.dangerFg,
+          content: Text(message),
+          backgroundColor: backgroundColor,
           behavior: SnackBarBehavior.floating,
         ),
       );
 """,
 )
+
+for path, old, new in [
+    (
+        "frontend/lib/l10n/app_en.arb",
+        '  "ramadanSavedLocalOnly": "Saved on this device. The server was not updated.",\n',
+        '  "ramadanSavedLocalOnly": "Saved on this device. The server was not updated.",\n'
+        '  "ramadanSavedServerOnly": "Saved to your account. No local profile was available on this device.",\n'
+        '  "ramadanSaveFailed": "The Ramadan period was not saved. Retry after your profile is available or your connection is restored.",\n',
+    ),
+    (
+        "frontend/lib/l10n/app_fr.arb",
+        '  "ramadanSavedLocalOnly": "Enregistrée sur cet appareil. Le serveur n’a pas été mis à jour.",\n',
+        '  "ramadanSavedLocalOnly": "Enregistrée sur cet appareil. Le serveur n’a pas été mis à jour.",\n'
+        '  "ramadanSavedServerOnly": "Enregistrée sur ton compte. Aucun profil local n’était disponible sur cet appareil.",\n'
+        '  "ramadanSaveFailed": "Impossible d’enregistrer la période. Réessaie lorsque ton profil est disponible ou que la connexion est rétablie.",\n',
+    ),
+    (
+        "frontend/lib/l10n/app_ar.arb",
+        '  "ramadanSavedLocalOnly": "تم الحفظ على هذا الجهاز. لم يتم تحديث الخادم.",\n',
+        '  "ramadanSavedLocalOnly": "تم الحفظ على هذا الجهاز. لم يتم تحديث الخادم.",\n'
+        '  "ramadanSavedServerOnly": "تم الحفظ في حسابك. لم يكن هناك ملف محلي متاح على هذا الجهاز.",\n'
+        '  "ramadanSaveFailed": "تعذر حفظ فترة رمضان. أعد المحاولة عندما يصبح ملفك متاحًا أو يعود الاتصال.",\n',
+    ),
+]:
+    replace_once(path, old, new)
 
 migration_test = Path("frontend/test/data/drift/ramadan_period_migration_test.dart")
 text = migration_test.read_text()
