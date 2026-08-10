@@ -375,5 +375,59 @@
   "journalRamadanMealVocabularyHint": "Meal names follow the period saved in your profile. Fasting is not assumed.",
   "journalMealSuhoor": "Suhoor",
   "journalMealIftar": "Iftar",
-  "journalMealOther": "Other"
+  "journalMealOther": "Other",
+  "personalResponseTitle": "Personal responses",
+  "personalResponseSubtitle": "Repeated observations in your synced data.",
+  "personalResponseUnavailable": "Analysis is unavailable for now",
+  "personalResponseUnavailableBody": "Your journal remains usable. Patterns will return when synced data is available.",
+  "personalResponseInsufficient": "Not enough repetition yet",
+  "personalResponseMinimumBasis": "Product threshold: at least {observations} observations across {days} different days.",
+  "@personalResponseMinimumBasis": {
+    "placeholders": {
+      "observations": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "personalResponseEvidenceBasis": "Observations: {observations} · Days: {days}",
+  "@personalResponseEvidenceBasis": {
+    "placeholders": {
+      "observations": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "personalResponsePatternMedian": "Median for these observations",
+  "personalResponseWindowMedian": "Median of all synced readings ({days} d)",
+  "@personalResponseWindowMedian": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "personalResponseCausalityNotice": "Association observed in your journal. It does not prove a cause and must not guide treatment or dosing.",
+  "personalResponseConfidenceNotice": "The repetition level describes only the amount and spread of your data; it is not a probability or clinical confidence score.",
+  "personalResponseSyncedScope": "Based only on glucose readings synced to your account; demo data is excluded.",
+  "personalResponseEvidenceLimited": "Limited repetition",
+  "personalResponseEvidenceModerate": "Moderate repetition",
+  "personalResponseEvidenceStrong": "Strong repetition",
+  "personalResponseStress": "Reported stress",
+  "personalResponseActivity": "Reported physical activity",
+  "personalResponseIllness": "Reported illness",
+  "personalResponsePoorSleep": "Reported poor sleep",
+  "personalResponseFatigue": "Reported fatigue",
+  "personalResponseBreakfast": "After breakfast",
+  "personalResponseLunch": "After lunch",
+  "personalResponseDinner": "After dinner",
+  "personalResponseSnack": "After snack",
+  "personalResponseSuhoor": "After Suhoor",
+  "personalResponseIftar": "After Iftar",
+  "personalResponseObservedPattern": "Observed pattern"
 }

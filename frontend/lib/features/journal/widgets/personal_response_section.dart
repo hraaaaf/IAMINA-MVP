@@ -10,11 +10,7 @@ class PersonalResponseSection extends StatefulWidget {
   final String unit;
   final Future<PersonalResponseResult?> Function()? loader;
 
-  const PersonalResponseSection({
-    super.key,
-    required this.unit,
-    this.loader,
-  });
+  const PersonalResponseSection({super.key, required this.unit, this.loader});
 
   @override
   State<PersonalResponseSection> createState() =>
@@ -175,34 +171,37 @@ class _PersonalResponseSectionState extends State<PersonalResponseSection> {
                   ),
                 )
               else ...[
-                ...snapshot.data!.patterns.take(3).map(
-                  (pattern) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _PatternCard(
-                      title: _labelForPattern(pattern, l10n),
-                      evidenceBasis: l10n.personalResponseEvidenceBasis(
-                        pattern.observations,
-                        pattern.distinctDays,
+                ...snapshot.data!.patterns
+                    .take(3)
+                    .map(
+                      (pattern) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _PatternCard(
+                          title: _labelForPattern(pattern, l10n),
+                          evidenceBasis: l10n.personalResponseEvidenceBasis(
+                            pattern.observations,
+                            pattern.distinctDays,
+                          ),
+                          confidenceLabel: _confidenceLabel(
+                            pattern.confidence,
+                            l10n,
+                          ),
+                          confidenceColor: _confidenceColor(pattern.confidence),
+                          patternMedianLabel:
+                              l10n.personalResponsePatternMedian,
+                          patternMedian: _formatGlucose(
+                            pattern.medianGlucoseMgDl,
+                          ),
+                          windowMedianLabel: l10n.personalResponseWindowMedian(
+                            snapshot.data!.windowDays,
+                          ),
+                          windowMedian: _formatGlucose(
+                            pattern.windowMedianGlucoseMgDl,
+                          ),
+                          unit: widget.unit,
+                        ),
                       ),
-                      confidenceLabel: _confidenceLabel(
-                        pattern.confidence,
-                        l10n,
-                      ),
-                      confidenceColor: _confidenceColor(pattern.confidence),
-                      patternMedianLabel: l10n.personalResponsePatternMedian,
-                      patternMedian: _formatGlucose(
-                        pattern.medianGlucoseMgDl,
-                      ),
-                      windowMedianLabel: l10n.personalResponseWindowMedian(
-                        snapshot.data!.windowDays,
-                      ),
-                      windowMedian: _formatGlucose(
-                        pattern.windowMedianGlucoseMgDl,
-                      ),
-                      unit: widget.unit,
                     ),
-                  ),
-                ),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),

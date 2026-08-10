@@ -375,5 +375,59 @@
   "journalRamadanMealVocabularyHint": "Repas adaptés à la période enregistrée dans ton profil. Aucun jeûne n’est supposé.",
   "journalMealSuhoor": "Suhoor",
   "journalMealIftar": "Iftar",
-  "journalMealOther": "Autre"
+  "journalMealOther": "Autre",
+  "personalResponseTitle": "Réponses personnelles",
+  "personalResponseSubtitle": "Répétitions observées dans vos données synchronisées.",
+  "personalResponseUnavailable": "Analyse indisponible pour le moment",
+  "personalResponseUnavailableBody": "Le journal reste utilisable. Les motifs réapparaîtront quand les données synchronisées seront accessibles.",
+  "personalResponseInsufficient": "Pas encore assez de répétitions",
+  "personalResponseMinimumBasis": "Seuil produit : au moins {observations} observations sur {days} jours différents.",
+  "@personalResponseMinimumBasis": {
+    "placeholders": {
+      "observations": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "personalResponseEvidenceBasis": "Observations : {observations} · Jours : {days}",
+  "@personalResponseEvidenceBasis": {
+    "placeholders": {
+      "observations": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "personalResponsePatternMedian": "Médiane de ces observations",
+  "personalResponseWindowMedian": "Médiane de tous les relevés synchronisés ({days} j)",
+  "@personalResponseWindowMedian": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "personalResponseCausalityNotice": "Association observée dans votre journal. Elle ne prouve pas une cause et ne doit pas guider un traitement ou une dose.",
+  "personalResponseConfidenceNotice": "Le niveau de répétition décrit seulement la quantité et la répartition de vos données ; ce n’est ni une probabilité ni une confiance clinique.",
+  "personalResponseSyncedScope": "Basé uniquement sur vos glycémies synchronisées avec votre compte ; les données de démonstration sont exclues.",
+  "personalResponseEvidenceLimited": "Répétition limitée",
+  "personalResponseEvidenceModerate": "Répétition modérée",
+  "personalResponseEvidenceStrong": "Répétition forte",
+  "personalResponseStress": "Stress signalé",
+  "personalResponseActivity": "Activité physique signalée",
+  "personalResponseIllness": "Maladie signalée",
+  "personalResponsePoorSleep": "Mauvais sommeil signalé",
+  "personalResponseFatigue": "Fatigue signalée",
+  "personalResponseBreakfast": "Après petit-déjeuner",
+  "personalResponseLunch": "Après déjeuner",
+  "personalResponseDinner": "Après dîner",
+  "personalResponseSnack": "Après collation",
+  "personalResponseSuhoor": "Après Suhoor",
+  "personalResponseIftar": "Après Iftar",
+  "personalResponseObservedPattern": "Motif observé"
 }

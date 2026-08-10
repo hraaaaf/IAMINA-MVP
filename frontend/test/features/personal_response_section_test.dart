@@ -71,7 +71,9 @@ Widget _host({required Locale locale, required PersonalResponseResult result}) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('FR ready state is truthful and usable at 360x560', (tester) async {
+  testWidgets('FR ready state is truthful and usable at 360x560', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(360, 560);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -89,7 +91,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('AR ready state keeps RTL hierarchy without overflow', (tester) async {
+  testWidgets('AR ready state keeps RTL hierarchy without overflow', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(360, 560);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);

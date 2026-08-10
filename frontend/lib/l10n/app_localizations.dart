@@ -1881,6 +1881,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Other'**
   String get journalMealOther;
+
+  /// No description provided for @personalResponseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal responses'**
+  String get personalResponseTitle;
+
+  /// No description provided for @personalResponseSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeated observations in your synced data.'**
+  String get personalResponseSubtitle;
+
+  /// No description provided for @personalResponseUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Analysis is unavailable for now'**
+  String get personalResponseUnavailable;
+
+  /// No description provided for @personalResponseUnavailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your journal remains usable. Patterns will return when synced data is available.'**
+  String get personalResponseUnavailableBody;
+
+  /// No description provided for @personalResponseInsufficient.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough repetition yet'**
+  String get personalResponseInsufficient;
+
+  /// No description provided for @personalResponseMinimumBasis.
+  ///
+  /// In en, this message translates to:
+  /// **'Product threshold: at least {observations} observations across {days} different days.'**
+  String personalResponseMinimumBasis(int observations, int days);
+
+  /// No description provided for @personalResponseEvidenceBasis.
+  ///
+  /// In en, this message translates to:
+  /// **'Observations: {observations} · Days: {days}'**
+  String personalResponseEvidenceBasis(int observations, int days);
+
+  /// No description provided for @personalResponsePatternMedian.
+  ///
+  /// In en, this message translates to:
+  /// **'Median for these observations'**
+  String get personalResponsePatternMedian;
+
+  /// No description provided for @personalResponseWindowMedian.
+  ///
+  /// In en, this message translates to:
+  /// **'Median of all synced readings ({days} d)'**
+  String personalResponseWindowMedian(int days);
+
+  /// No description provided for @personalResponseCausalityNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Association observed in your journal. It does not prove a cause and must not guide treatment or dosing.'**
+  String get personalResponseCausalityNotice;
+
+  /// No description provided for @personalResponseConfidenceNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'The repetition level describes only the amount and spread of your data; it is not a probability or clinical confidence score.'**
+  String get personalResponseConfidenceNotice;
+
+  /// No description provided for @personalResponseSyncedScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Based only on glucose readings synced to your account; demo data is excluded.'**
+  String get personalResponseSyncedScope;
+
+  /// No description provided for @personalResponseEvidenceLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Limited repetition'**
+  String get personalResponseEvidenceLimited;
+
+  /// No description provided for @personalResponseEvidenceModerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate repetition'**
+  String get personalResponseEvidenceModerate;
+
+  /// No description provided for @personalResponseEvidenceStrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Strong repetition'**
+  String get personalResponseEvidenceStrong;
+
+  /// No description provided for @personalResponseStress.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported stress'**
+  String get personalResponseStress;
+
+  /// No description provided for @personalResponseActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported physical activity'**
+  String get personalResponseActivity;
+
+  /// No description provided for @personalResponseIllness.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported illness'**
+  String get personalResponseIllness;
+
+  /// No description provided for @personalResponsePoorSleep.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported poor sleep'**
+  String get personalResponsePoorSleep;
+
+  /// No description provided for @personalResponseFatigue.
+  ///
+  /// In en, this message translates to:
+  /// **'Reported fatigue'**
+  String get personalResponseFatigue;
+
+  /// No description provided for @personalResponseBreakfast.
+  ///
+  /// In en, this message translates to:
+  /// **'After breakfast'**
+  String get personalResponseBreakfast;
+
+  /// No description provided for @personalResponseLunch.
+  ///
+  /// In en, this message translates to:
+  /// **'After lunch'**
+  String get personalResponseLunch;
+
+  /// No description provided for @personalResponseDinner.
+  ///
+  /// In en, this message translates to:
+  /// **'After dinner'**
+  String get personalResponseDinner;
+
+  /// No description provided for @personalResponseSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'After snack'**
+  String get personalResponseSnack;
+
+  /// No description provided for @personalResponseSuhoor.
+  ///
+  /// In en, this message translates to:
+  /// **'After Suhoor'**
+  String get personalResponseSuhoor;
+
+  /// No description provided for @personalResponseIftar.
+  ///
+  /// In en, this message translates to:
+  /// **'After Iftar'**
+  String get personalResponseIftar;
+
+  /// No description provided for @personalResponseObservedPattern.
+  ///
+  /// In en, this message translates to:
+  /// **'Observed pattern'**
+  String get personalResponseObservedPattern;
 }
 
 class _AppLocalizationsDelegate

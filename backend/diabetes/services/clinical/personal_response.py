@@ -4,6 +4,7 @@ This module intentionally does not perform causal inference, prediction, treatme
 recommendation or statistical significance testing.  It summarizes repeated,
 explicitly recorded observations and exposes their evidence basis.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -114,10 +115,7 @@ def _window_queryset(patient_id: int, window_days: int) -> QuerySet[LogEntry]:
     return (
         LogEntry.objects.filter(patient_id=patient_id)
         .exclude(source="demo")
-        .filter(
-            Q(logged_at__gte=cutoff)
-            | Q(logged_at__isnull=True, created_at__gte=cutoff)
-        )
+        .filter(Q(logged_at__gte=cutoff) | Q(logged_at__isnull=True, created_at__gte=cutoff))
         .order_by("logged_at", "created_at", "id")
     )
 
@@ -157,11 +155,7 @@ def compute_personal_response(
     patterns: list[PersonalResponsePattern] = []
 
     for key, field_name, explicit_value in _CONTEXT_FACTORS:
-        matching = [
-            entry
-            for entry in entries
-            if getattr(entry, field_name) == explicit_value
-        ]
+        matching = [entry for entry in entries if getattr(entry, field_name) == explicit_value]
         pattern = _eligible_pattern(
             key=f"context:{key}",
             kind="context",
@@ -175,8 +169,7 @@ def compute_personal_response(
         matching = [
             entry
             for entry in entries
-            if entry.glycemic_context == "post_meal"
-            and entry.meal_type == meal_type
+            if entry.glycemic_context == "post_meal" and entry.meal_type == meal_type
         ]
         pattern = _eligible_pattern(
             key=f"meal:{meal_type}",
