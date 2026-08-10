@@ -1,0 +1,58 @@
+name: P1-JOURNAL-7 visual audit
+
+on:
+  push:
+    branches: [audit/p1-journal-7-visual]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  visual-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout audit harness
+        uses: actions/checkout@v4
+        with:
+          path: audit
+      - name: Checkout exact product SHA
+        uses: actions/checkout@v4
+        with:
+          ref: d32e9fe6ff93b32f7c054bdf67609a4018fdecb3
+          path: product
+      - name: Overlay audit-only harness
+        run: |
+          mkdir -p product/frontend/test/audit
+          cp audit/frontend/test/audit/p1_journal_7_visual_audit_test.dart product/frontend/test/audit/
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        working-directory: product/frontend
+        run: flutter pub get
+      - name: Render FR/AR Profile + Add Log Ramadan matrix
+        working-directory: product/frontend
+        run: flutter test --update-goldens test/audit/p1_journal_7_visual_audit_test.dart
+      - name: Write audit manifest
+        if: always()
+        run: |
+          mkdir -p product/frontend/test/audit/goldens
+          cat > product/frontend/test/audit/goldens/manifest.txt <<'EOF'
+          lot=P1-JOURNAL-7
+          product_sha=d32e9fe6ff93b32f7c054bdf67609a4018fdecb3
+          locales=fr,ar
+          sizes=1440x1000,768x1024,390x844,360x560
+          surfaces=profile-top,profile-controls,add-log-active-period
+          expected_images=24
+          EOF
+      - name: Upload rendered matrix
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-journal-7-visual-matrix-d32e9fe
+          path: product/frontend/test/audit/goldens/*
+          if-no-files-found: error
