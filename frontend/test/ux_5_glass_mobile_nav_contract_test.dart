@@ -20,6 +20,11 @@ void main() {
       expect(source, contains('selected: selected'));
       expect(source, contains('label: label'));
       expect(source, contains('GoRouter.of(context).go(entries[index].route)'));
+      expect(
+        source,
+        contains('EdgeInsets.symmetric(horizontal: 12).copyWith(bottom: 10)'),
+      );
+      expect(source, isNot(contains('EdgeInsets.fromLTRB')));
       expect(source, isNot(contains('child: NavigationBar(')));
     },
   );
