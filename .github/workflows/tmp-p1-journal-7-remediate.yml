@@ -26,15 +26,12 @@ jobs:
           cache: true
       - name: Apply fail-closed local profile remediation
         run: python3 .github/scripts/tmp_p1_j7_remediate.py
-      - name: Format touched Dart files
-        run: |
-          dart format frontend/lib/data/drift/database.dart
-          dart format frontend/lib/features/profile/profile_screen.dart
-          dart format frontend/test/data/drift/ramadan_period_migration_test.dart
-      - name: Focused regression gates
+      - name: Regenerate, format and validate
         working-directory: frontend
         run: |
           flutter pub get
+          flutter gen-l10n
+          dart format lib/data/drift/database.dart lib/features/profile/profile_screen.dart test/data/drift/ramadan_period_migration_test.dart
           flutter analyze --no-fatal-infos
           flutter test test/data/drift/ramadan_period_migration_test.dart
           flutter test test/core/data/ramadan_context_test.dart test/features/ramadan_mode_v2_test.dart test/features/ramadan_profile_responsive_test.dart
@@ -42,7 +39,21 @@ jobs:
         run: |
           git config user.name 'hraaaaf'
           git config user.email '123034021+hraaaaf@users.noreply.github.com'
-          git add frontend/lib/data/drift/database.dart frontend/lib/features/profile/profile_screen.dart frontend/test/data/drift/ramadan_period_migration_test.dart
+          git add \
+            frontend/lib/data/drift/database.dart \
+            frontend/lib/features/profile/profile_screen.dart \
+            frontend/lib/l10n/app_ar.arb \
+            frontend/lib/l10n/app_en.arb \
+            frontend/lib/l10n/app_fr.arb \
+            frontend/lib/l10n/app_localizations.dart \
+            frontend/lib/l10n/app_localizations_ar.dart \
+            frontend/lib/l10n/app_localizations_en.dart \
+            frontend/lib/l10n/app_localizations_fr.dart \
+            frontend/test/data/drift/ramadan_period_migration_test.dart
           git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'No remediation change produced'
+            exit 1
+          fi
           git commit -m 'fix(profile): avoid fabricated defaults in Ramadan save'
           git push origin HEAD:agent/p1-journal-ramadan-v2
