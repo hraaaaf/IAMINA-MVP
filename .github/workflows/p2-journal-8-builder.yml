@@ -1,0 +1,255 @@
+name: P2-JOURNAL-8 builder
+
+on:
+  push:
+    branches: [audit/p2-journal-8-builder]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: builder-secret-key-not-for-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      DATABASE_URL: sqlite:///builder-test.db
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2-journal-personal-response
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Assert product head and patch integration surfaces
+        shell: python
+        run: |
+          from pathlib import Path
+          import json
+          import subprocess
+
+          expected = "ffdb101edbf75ef0805e6247951f61ee23217468"
+          head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          if head != expected:
+              raise SystemExit(f"stale product head: {head}")
+
+          api = Path("frontend/lib/services/api_client.dart")
+          text = api.read_text()
+          old_import = "import '../data/models/document_models.dart';"
+          new_import = old_import + "\nimport '../data/models/personal_response_models.dart';"
+          if new_import not in text:
+              if text.count(old_import) != 1:
+                  raise SystemExit("api_client import anchor mismatch")
+              text = text.replace(old_import, new_import, 1)
+
+          anchor = "  /// Envoie un log unique au backend."
+          method = '''  Future<PersonalResponseResult?> getPersonalResponse({int days = 90}) async {
+            try {
+              final response = await _client.get(
+                Uri.parse('/api/v1/personal-response/?days=$days'),
+              );
+              final body = response.body;
+              if (response.isSuccessful && body is Map) {
+                return PersonalResponseResult.fromJson(
+                  Map<String, dynamic>.from(body),
+                );
+              }
+              return null;
+            } catch (_) {
+              return null;
+            }
+          }
+
+'''
+          if method not in text:
+              if text.count(anchor) != 1:
+                  raise SystemExit("api_client method anchor mismatch")
+              text = text.replace(anchor, method + anchor, 1)
+          api.write_text(text)
+
+          journal = Path("frontend/lib/features/journal/journal_screen.dart")
+          text = journal.read_text()
+          old_import = "import 'widgets/insulin_logging.dart';"
+          new_import = old_import + "\nimport 'widgets/personal_response_section.dart';"
+          if new_import not in text:
+              if text.count(old_import) != 1:
+                  raise SystemExit("journal import anchor mismatch")
+              text = text.replace(old_import, new_import, 1)
+
+          anchor = "          _buildSliverAppBar(context),\n          StreamBuilder<List<LogEntryData>>("
+          insertion = '''          _buildSliverAppBar(context),
+          SliverPadding(
+            padding: EdgeInsetsDirectional.fromSTEB(
+              horizontalPadding,
+              20,
+              horizontalPadding,
+              0,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: PersonalResponseSection(unit: unit),
+            ),
+          ),
+          StreamBuilder<List<LogEntryData>>('''
+          if insertion not in text:
+              if text.count(anchor) != 1:
+                  raise SystemExit("journal sliver anchor mismatch")
+              text = text.replace(anchor, insertion, 1)
+          journal.write_text(text)
+
+          translations = {
+            "fr": {
+              "personalResponseTitle": "Réponses personnelles",
+              "personalResponseSubtitle": "Répétitions observées dans vos données synchronisées.",
+              "personalResponseUnavailable": "Analyse indisponible pour le moment",
+              "personalResponseUnavailableBody": "Le journal reste utilisable. Les motifs réapparaîtront quand les données synchronisées seront accessibles.",
+              "personalResponseInsufficient": "Pas encore assez de répétitions",
+              "personalResponseMinimumBasis": "Seuil produit : au moins {observations} observations sur {days} jours différents.",
+              "@personalResponseMinimumBasis": {"placeholders": {"observations": {"type": "int"}, "days": {"type": "int"}}},
+              "personalResponseEvidenceBasis": "Observations : {observations} · Jours : {days}",
+              "@personalResponseEvidenceBasis": {"placeholders": {"observations": {"type": "int"}, "days": {"type": "int"}}},
+              "personalResponsePatternMedian": "Médiane de ces observations",
+              "personalResponseWindowMedian": "Médiane de tous les relevés synchronisés ({days} j)",
+              "@personalResponseWindowMedian": {"placeholders": {"days": {"type": "int"}}},
+              "personalResponseCausalityNotice": "Association observée dans votre journal. Elle ne prouve pas une cause et ne doit pas guider un traitement ou une dose.",
+              "personalResponseConfidenceNotice": "Le niveau de répétition décrit seulement la quantité et la répartition de vos données ; ce n’est ni une probabilité ni une confiance clinique.",
+              "personalResponseSyncedScope": "Basé uniquement sur vos glycémies synchronisées avec votre compte ; les données de démonstration sont exclues.",
+              "personalResponseEvidenceLimited": "Répétition limitée",
+              "personalResponseEvidenceModerate": "Répétition modérée",
+              "personalResponseEvidenceStrong": "Répétition forte",
+              "personalResponseStress": "Stress signalé",
+              "personalResponseActivity": "Activité physique signalée",
+              "personalResponseIllness": "Maladie signalée",
+              "personalResponsePoorSleep": "Mauvais sommeil signalé",
+              "personalResponseFatigue": "Fatigue signalée",
+              "personalResponseBreakfast": "Après petit-déjeuner",
+              "personalResponseLunch": "Après déjeuner",
+              "personalResponseDinner": "Après dîner",
+              "personalResponseSnack": "Après collation",
+              "personalResponseSuhoor": "Après Suhoor",
+              "personalResponseIftar": "Après Iftar",
+              "personalResponseObservedPattern": "Motif observé"
+            },
+            "en": {
+              "personalResponseTitle": "Personal responses",
+              "personalResponseSubtitle": "Repeated observations in your synced data.",
+              "personalResponseUnavailable": "Analysis is unavailable for now",
+              "personalResponseUnavailableBody": "Your journal remains usable. Patterns will return when synced data is available.",
+              "personalResponseInsufficient": "Not enough repetition yet",
+              "personalResponseMinimumBasis": "Product threshold: at least {observations} observations across {days} different days.",
+              "@personalResponseMinimumBasis": {"placeholders": {"observations": {"type": "int"}, "days": {"type": "int"}}},
+              "personalResponseEvidenceBasis": "Observations: {observations} · Days: {days}",
+              "@personalResponseEvidenceBasis": {"placeholders": {"observations": {"type": "int"}, "days": {"type": "int"}}},
+              "personalResponsePatternMedian": "Median for these observations",
+              "personalResponseWindowMedian": "Median of all synced readings ({days} d)",
+              "@personalResponseWindowMedian": {"placeholders": {"days": {"type": "int"}}},
+              "personalResponseCausalityNotice": "Association observed in your journal. It does not prove a cause and must not guide treatment or dosing.",
+              "personalResponseConfidenceNotice": "The repetition level describes only the amount and spread of your data; it is not a probability or clinical confidence score.",
+              "personalResponseSyncedScope": "Based only on glucose readings synced to your account; demo data is excluded.",
+              "personalResponseEvidenceLimited": "Limited repetition",
+              "personalResponseEvidenceModerate": "Moderate repetition",
+              "personalResponseEvidenceStrong": "Strong repetition",
+              "personalResponseStress": "Reported stress",
+              "personalResponseActivity": "Reported physical activity",
+              "personalResponseIllness": "Reported illness",
+              "personalResponsePoorSleep": "Reported poor sleep",
+              "personalResponseFatigue": "Reported fatigue",
+              "personalResponseBreakfast": "After breakfast",
+              "personalResponseLunch": "After lunch",
+              "personalResponseDinner": "After dinner",
+              "personalResponseSnack": "After snack",
+              "personalResponseSuhoor": "After Suhoor",
+              "personalResponseIftar": "After Iftar",
+              "personalResponseObservedPattern": "Observed pattern"
+            },
+            "ar": {
+              "personalResponseTitle": "استجابتك الشخصية",
+              "personalResponseSubtitle": "تكرارات لوحظت في بياناتك المتزامنة.",
+              "personalResponseUnavailable": "التحليل غير متاح حالياً",
+              "personalResponseUnavailableBody": "يبقى السجل قابلاً للاستخدام. ستظهر الأنماط مجدداً عندما تتوفر البيانات المتزامنة.",
+              "personalResponseInsufficient": "لا توجد تكرارات كافية بعد",
+              "personalResponseMinimumBasis": "حد العرض في المنتج: {observations} ملاحظات على الأقل موزعة على {days} أيام مختلفة.",
+              "@personalResponseMinimumBasis": {"placeholders": {"observations": {"type": "int"}, "days": {"type": "int"}}},
+              "personalResponseEvidenceBasis": "الملاحظات: {observations} · الأيام: {days}",
+              "@personalResponseEvidenceBasis": {"placeholders": {"observations": {"type": "int"}, "days": {"type": "int"}}},
+              "personalResponsePatternMedian": "وسيط هذه الملاحظات",
+              "personalResponseWindowMedian": "وسيط كل القياسات المتزامنة ({days} يومًا)",
+              "@personalResponseWindowMedian": {"placeholders": {"days": {"type": "int"}}},
+              "personalResponseCausalityNotice": "ارتباط لوحظ في سجلك فقط. لا يثبت سببًا ولا ينبغي استخدامه لتوجيه علاج أو جرعة.",
+              "personalResponseConfidenceNotice": "مستوى التكرار يصف فقط كمية بياناتك وتوزعها؛ وليس احتمالًا أو درجة ثقة سريرية.",
+              "personalResponseSyncedScope": "يعتمد فقط على قياسات السكر المتزامنة مع حسابك؛ وتُستبعد بيانات العرض التجريبي.",
+              "personalResponseEvidenceLimited": "تكرار محدود",
+              "personalResponseEvidenceModerate": "تكرار متوسط",
+              "personalResponseEvidenceStrong": "تكرار قوي",
+              "personalResponseStress": "الضغط النفسي المسجل",
+              "personalResponseActivity": "النشاط البدني المسجل",
+              "personalResponseIllness": "المرض المسجل",
+              "personalResponsePoorSleep": "سوء النوم المسجل",
+              "personalResponseFatigue": "التعب المسجل",
+              "personalResponseBreakfast": "بعد الإفطار الصباحي",
+              "personalResponseLunch": "بعد الغداء",
+              "personalResponseDinner": "بعد العشاء",
+              "personalResponseSnack": "بعد وجبة خفيفة",
+              "personalResponseSuhoor": "بعد السحور",
+              "personalResponseIftar": "بعد الإفطار",
+              "personalResponseObservedPattern": "نمط ملحوظ"
+            }
+          }
+
+          for locale, values in translations.items():
+              path = Path(f"frontend/lib/l10n/app_{locale}.arb")
+              data = json.loads(path.read_text())
+              for key in values:
+                  if key in data:
+                      raise SystemExit(f"duplicate localization key {key} in {path}")
+              data.update(values)
+              path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt ruff==0.15.17
+
+      - name: Format and test backend
+        working-directory: backend
+        run: |
+          ruff format diabetes/services/clinical/personal_response.py diabetes/api/v1/personal_response.py diabetes/api/main.py diabetes/tests/test_personal_response.py
+          ruff check diabetes/services/clinical/personal_response.py diabetes/api/v1/personal_response.py diabetes/api/main.py diabetes/tests/test_personal_response.py
+          pytest diabetes/tests/test_personal_response.py --tb=short -q
+          python manage.py export_openapi > ../docs/api/openapi.json
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+
+      - name: Generate localization and test frontend
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter gen-l10n
+          dart format lib/data/models/personal_response_models.dart lib/features/journal/widgets/personal_response_section.dart lib/features/journal/journal_screen.dart lib/services/api_client.dart test/features/personal_response_section_test.dart
+          flutter analyze --no-fatal-infos
+          flutter test test/features/personal_response_section_test.dart --no-pub
+
+      - name: Verify and commit product branch
+        run: |
+          git diff --check
+          test -z "$(git status --porcelain | grep -E '^.. (\.github/workflows/p2-journal-8-builder.yml|builder-test\.db)$' || true)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add backend frontend docs/api/openapi.json
+          git commit -m 'feat(journal): wire personal response experience'
+          git push origin HEAD:agent/p2-journal-personal-response
