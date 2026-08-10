@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  patch-and-generate:
+  minimize-and-validate:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -24,8 +24,27 @@ jobs:
           flutter-version: '3.41.0'
           channel: stable
           cache: true
-      - name: Apply scoped patch
+      - name: Rebuild product patch from main without formatter churn
         run: |
+          git fetch origin main
+          git checkout origin/main -- \
+            frontend/lib/features/dashboard/widgets/chart_section.dart \
+            frontend/lib/features/dashboard/widgets/glucose_chart_with_events.dart \
+            frontend/lib/features/dashboard/widgets/hero_insight.dart \
+            frontend/lib/features/dashboard/widgets/hero_live.dart \
+            frontend/lib/features/dashboard/widgets/insights_section.dart \
+            frontend/lib/features/dashboard/widgets/kpi_cv_card.dart \
+            frontend/lib/features/dashboard/widgets/kpi_gmi_card.dart \
+            frontend/lib/features/dashboard/widgets/recent_entries.dart \
+            frontend/lib/l10n/app_ar.arb \
+            frontend/lib/l10n/app_en.arb \
+            frontend/lib/l10n/app_fr.arb \
+            frontend/lib/l10n/app_localizations.dart \
+            frontend/lib/l10n/app_localizations_ar.dart \
+            frontend/lib/l10n/app_localizations_en.dart \
+            frontend/lib/l10n/app_localizations_fr.dart \
+            frontend/lib/l10n/audited_page_copy.dart
+          rm -f frontend/test/ux_1_dashboard_rich_locale_contract_test.dart
           sed -i "s/_TimeChip(label: '6h',   value: 6/_TimeChip(label: '6h',  value: 6/" frontend/lib/features/dashboard/widgets/glucose_chart_with_events.dart
           sed -i "s/_TimeChip(label: '3h',   value: 3/_TimeChip(label: '3h',  value: 3/" frontend/lib/features/dashboard/widgets/glucose_chart_with_events.dart
           python3 scripts/ux1_patch.py
@@ -41,23 +60,22 @@ jobs:
           text = text[:start] + text[start:].replace('const SizedBox(', 'SizedBox(', 1)
           p.write_text(text)
           PY
-      - name: Generate l10n and format
+      - name: Generate localization output
         working-directory: frontend
         run: |
           flutter pub get
           flutter gen-l10n
-          dart format lib/l10n/audited_page_copy.dart lib/features/dashboard/widgets/hero_live.dart lib/features/dashboard/widgets/hero_insight.dart lib/features/dashboard/widgets/kpi_gmi_card.dart lib/features/dashboard/widgets/kpi_cv_card.dart lib/features/dashboard/widgets/chart_section.dart lib/features/dashboard/widgets/glucose_chart_with_events.dart lib/features/dashboard/widgets/insights_section.dart lib/features/dashboard/widgets/recent_entries.dart test/ux_1_dashboard_rich_locale_contract_test.dart
-      - name: Validate
+      - name: Validate minimized patch
         working-directory: frontend
         run: |
           flutter analyze --no-fatal-infos
           flutter test test/ux_1_dashboard_rich_locale_contract_test.dart
           flutter test test/p0_dashboard_responsive_rtl_contract_test.dart test/p0_ux_11_first_use_dashboard_contract_test.dart
-      - name: Commit implementation
+      - name: Commit minimized implementation
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add frontend/lib frontend/test/ux_1_dashboard_rich_locale_contract_test.dart
           git diff --cached --check
-          git commit -m 'fix(ux): localize populated dashboard rich state'
+          git commit -m 'chore(ux): minimize dashboard locale parity diff'
           git push origin HEAD:ux/ux-1-dashboard-rich-locale-parity
