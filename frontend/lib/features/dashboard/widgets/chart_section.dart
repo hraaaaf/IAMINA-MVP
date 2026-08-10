@@ -55,6 +55,7 @@ class _AgpSufficiencyBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AuditedPageCopy.of(context).l10n;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -67,8 +68,7 @@ class _AgpSufficiencyBanner extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Text(
-            'AGP basé sur $daySpan jour${daySpan > 1 ? 's' : ''} · '
-            'L\'ADA recommande ≥ 14 jours pour une analyse fiable.',
+            l10n.dashboardAgpSufficiency(daySpan),
             style: const TextStyle(fontSize: 12, color: Color(0xFF6D4C00), height: 1.4),
           ),
         ),
@@ -84,6 +84,7 @@ class _EventsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AuditedPageCopy.of(context).l10n;
     final hypo  = logs.where((l) => l.bloodSugar < low).length;
     final hyper = logs.where((l) => l.bloodSugar > high).length;
     final inTgt = logs.where((l) => l.bloodSugar >= low && l.bloodSugar <= high).length;
@@ -91,18 +92,18 @@ class _EventsPanel extends StatelessWidget {
     return ClinicalCard(
       padding: const EdgeInsets.all(20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const CardHead(title: 'Événements clés'),
+        CardHead(title: l10n.dashboardKeyEvents),
         const SizedBox(height: 14),
-        _EventRow(icon: Icons.check_circle_outline, color: AminaTheme.goodFg,   bg: AminaTheme.goodBg,   label: 'En cible',       count: inTgt, total: logs.length),
+        _EventRow(icon: Icons.check_circle_outline, color: AminaTheme.goodFg,   bg: AminaTheme.goodBg,   label: l10n.dashboardInTarget,       count: inTgt, total: logs.length),
         const SizedBox(height: 10),
-        _EventRow(icon: Icons.arrow_upward,         color: AminaTheme.warnFg,   bg: AminaTheme.warnBg,   label: 'Hyperglycémies', count: hyper, total: logs.length),
+        _EventRow(icon: Icons.arrow_upward,         color: AminaTheme.warnFg,   bg: AminaTheme.warnBg,   label: l10n.dashboardHyperglycemia, count: hyper, total: logs.length),
         const SizedBox(height: 10),
-        _EventRow(icon: Icons.arrow_downward,       color: AminaTheme.dangerFg, bg: AminaTheme.dangerBg, label: 'Hypoglycémies',  count: hypo,  total: logs.length),
+        _EventRow(icon: Icons.arrow_downward,       color: AminaTheme.dangerFg, bg: AminaTheme.dangerBg, label: l10n.dashboardHypoglycemia,  count: hypo,  total: logs.length),
         const SizedBox(height: 14),
         Divider(color: AminaTheme.divider(context), height: 1),
         const SizedBox(height: 12),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('Total mesures', style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context))),
+          Text(l10n.dashboardTotalMeasurements, style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context))),
           Text('${logs.length}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AminaTheme.textPrimary(context))),
         ]),
       ]),

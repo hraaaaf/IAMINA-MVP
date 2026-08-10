@@ -13,45 +13,65 @@ class _HeroInsight extends StatelessWidget {
     if (user == null || user.isAnonymous) return '';
     final name = user.displayName ?? user.email ?? '';
     if (name.isEmpty) return '';
-    // Prend seulement le premier mot du displayName
-    return name.split(RegExp(r'[\s@.]')).firstWhere((p) => p.isNotEmpty, orElse: () => '');
+    return name
+        .split(RegExp(r'[\s@.]'))
+        .firstWhere((p) => p.isNotEmpty, orElse: () => '');
   }
 
-  String _headline() {
-    if (logs.isEmpty) return 'Commencez à enregistrer pour découvrir vos tendances.';
-    final tir  = ClinicalEngine.calcTIR(logs, 70, 180);
+  String _headline(BuildContext context) {
+    final l10n = AuditedPageCopy.of(context).l10n;
+    if (logs.isEmpty) return l10n.dashboardInsightStart;
+    final tir = ClinicalEngine.calcTIR(logs, 70, 180);
     final mean = ClinicalEngine.calcMean(logs);
-    if (tir >= 80) return 'Excellent contrôle\xa0— ${tir.round()}% en cible sur $range jours.';
-    if (tir >= 60) return 'Votre équilibre progresse\xa0— ${tir.round()}% en cible, moyenne ${mean.round()}\xa0mg/dL.';
-    return 'IAmina a repéré des axes d\'amélioration sur vos $range derniers jours.';
+    if (tir >= 80) return l10n.dashboardInsightStrong(tir.round(), range);
+    if (tir >= 60) {
+      return l10n.dashboardInsightProgress(tir.round(), mean.round());
+    }
+    return l10n.dashboardInsightNeedsFocus(range);
   }
 
-  String _subtitle() {
-    if (logs.isEmpty) return 'Ajoutez votre première mesure pour activer l\'intelligence IAmina.';
-    final cv           = ClinicalEngine.calcCV(logs);
-    final discoveries  = math.min(logs.length ~/ 20 + 1, 5);
-    final stability    = cv < 36 ? 'variabilité maîtrisée' : 'variabilité à surveiller';
-    return '$discoveries découvertes, $stability. Basé sur ${logs.length} mesures.';
+  String _subtitle(BuildContext context) {
+    final l10n = AuditedPageCopy.of(context).l10n;
+    if (logs.isEmpty) return l10n.dashboardInsightFirstMeasurement;
+    final cv = ClinicalEngine.calcCV(logs);
+    final discoveries = math.min(logs.length ~/ 20 + 1, 5);
+    final stability = cv < 36
+        ? l10n.dashboardVariabilityStable
+        : l10n.dashboardVariabilityWatch;
+    return l10n.dashboardInsightSummary(discoveries, stability, logs.length);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AuditedPageCopy.of(context).l10n;
     return ClipRRect(
       borderRadius: BorderRadius.circular(AminaTheme.radius3XL),
       child: Stack(
         children: [
-          Positioned.fill(child: Container(decoration: AminaTheme.heroCardDecoration())),
-          Positioned(top: -50, right: -50, child: Container(
-            width: 220, height: 220,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(colors: [Colors.white.withValues(alpha: 0.14), Colors.transparent]),
+          Positioned.fill(
+            child: Container(decoration: AminaTheme.heroCardDecoration()),
+          ),
+          PositionedDirectional(
+            top: -50,
+            end: -50,
+            child: Container(
+              width: 220,
+              height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.14),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
             ),
-          )),
+          ),
           Positioned.fill(child: CustomPaint(painter: _DotsPainter())),
-          // ECG animé en bas à droite (glow pulse)
-          Positioned(
-            right: -10, bottom: 4,
+          PositionedDirectional(
+            end: -10,
+            bottom: 4,
             child: ShaderMask(
               shaderCallback: (rect) => const LinearGradient(
                 colors: [Colors.transparent, Colors.white, Colors.transparent],
@@ -59,7 +79,8 @@ class _HeroInsight extends StatelessWidget {
               ).createShader(rect),
               child: _AnimatedEcg(
                 color: Colors.white.withValues(alpha: 0.22),
-                width: 260, height: 60,
+                width: 260,
+                height: 60,
               ),
             ),
           ),
@@ -68,26 +89,38 @@ class _HeroInsight extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const _HeroBadge(label: 'IAMINA INTELLIGENCE'),
+                _HeroBadge(label: l10n.dashboardIntelligenceBadge),
                 const SizedBox(height: 20),
                 Text(
-                  _headline(),
+                  _headline(context),
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
                     height: 1.25,
                     letterSpacing: -0.4,
-                    shadows: [Shadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8)],
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  _subtitle(),
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.78), fontSize: 13, height: 1.4),
+                  _subtitle(context),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.78),
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
                 ),
                 const SizedBox(height: 20),
-                _HeroFilledBtn(label: 'Voir mes découvertes', onTap: () => GoRouter.of(context).go('/summary')),
+                _HeroFilledBtn(
+                  label: l10n.dashboardViewDiscoveries,
+                  onTap: () => GoRouter.of(context).go('/summary'),
+                ),
               ],
             ),
           ),

@@ -17,6 +17,7 @@ class _InsightsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AuditedPageCopy.of(context).l10n;
     if (logs.length < 3) return const SizedBox.shrink();
 
     // If loading and no summary yet, show skeleton cards (no indefinite spinner)
@@ -56,13 +57,11 @@ class _InsightsSection extends StatelessWidget {
             child: const Icon(Icons.auto_awesome, size: 14, color: AminaTheme.teal600)),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('DÉCOUVERTES IAMINA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AminaTheme.ink500, letterSpacing: 0.6)),
+            Text(l10n.dashboardDiscoveriesTitle, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AminaTheme.ink500, letterSpacing: 0.6)),
             Text(
       discoveries == 0
-          ? 'En attente de données…'
-          : discoveries == 1
-              ? '1 découverte'
-              : '$discoveries découvertes',
+          ? l10n.dashboardWaitingForData
+          : l10n.dashboardDiscoveryCount(discoveries),
       style: TextStyle(fontSize: 12, color: AminaTheme.textSecondary(context)),
     ),
           ])),
@@ -71,7 +70,14 @@ class _InsightsSection extends StatelessWidget {
           else
             GestureDetector(
               onTap: () => GoRouter.of(context).go('/summary'),
-              child: const Text('Voir tout →', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AminaTheme.teal600)),
+              child: Text(
+              l10n.dashboardViewAll,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AminaTheme.teal600,
+              ),
+            ),
             ),
         ]),
         const SizedBox(height: 14),
@@ -85,13 +91,21 @@ class _InsightsSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: const Color(0xFFFFCC80)), // orange 200
             ),
-            child: const Row(children: [
-              Icon(Icons.cloud_off_outlined, size: 14, color: Color(0xFFE65100)),
-              SizedBox(width: 8),
+            child: Row(children: [
+              const Icon(
+                Icons.cloud_off_outlined,
+                size: 14,
+                color: Color(0xFFE65100),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Analyse IA temporairement limitée · Les données sont bien enregistrées.',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF5D2E00), height: 1.4),
+                  l10n.dashboardAiDegraded,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF5D2E00),
+                    height: 1.4,
+                  ),
                 ),
               ),
             ]),
@@ -112,7 +126,7 @@ class _InsightsSection extends StatelessWidget {
               const Icon(Icons.hourglass_top_rounded, size: 16, color: AminaTheme.teal400),
               const SizedBox(width: 10),
               Expanded(child: Text(
-                'IAmina analyse tes données pour identifier des schémas…',
+                l10n.dashboardAnalyzingPatterns,
                 style: TextStyle(fontSize: 13, color: AminaTheme.textSecondary(context), fontStyle: FontStyle.italic),
               )),
             ]),
