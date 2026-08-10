@@ -29,6 +29,7 @@ from diabetes.api.v1.documents import router as documents_router  # noqa: E402
 from diabetes.api.v1.imports import router as imports_router  # noqa: E402
 from diabetes.api.v1.kpis import router as kpis_router  # noqa: E402
 from diabetes.api.v1.logs import router as logs_router  # noqa: E402
+from diabetes.api.v1.personal_response import router as personal_response_router  # noqa: E402
 from diabetes.api.v1.profile import router as profile_router  # noqa: E402
 
 # Main API
@@ -70,17 +71,18 @@ api.add_router("/v1", demo_router)
 api.add_router("/v1", health_router)
 
 # v1 Protected routers — Bearer (mobile) OR session cookie (web/PWA)
-api.add_router("/v1", logs_router,      auth=_auth)
-api.add_router("/v1", profile_router,   auth=_auth)
-api.add_router("/v1", locale_router,    auth=_auth)
-api.add_router("/v1", kpis_router,      auth=_auth)
-api.add_router("/v1", account_router,   auth=_auth)
-api.add_router("/v1", modules_router,   auth=_auth)
-api.add_router("/v1", imports_router,   auth=_auth)
+api.add_router("/v1", logs_router, auth=_auth)
+api.add_router("/v1", profile_router, auth=_auth)
+api.add_router("/v1", locale_router, auth=_auth)
+api.add_router("/v1", kpis_router, auth=_auth)
+api.add_router("/v1", personal_response_router, auth=_auth)
+api.add_router("/v1", account_router, auth=_auth)
+api.add_router("/v1", modules_router, auth=_auth)
+api.add_router("/v1", imports_router, auth=_auth)
 api.add_router("/v1", documents_router, auth=_auth)
 
 # ── ai/ engine-shaped routes (Phase 5+) ──────────────────────────────────────
-api.add_router("/v1", ai_router,    auth=_auth)
+api.add_router("/v1", ai_router, auth=_auth)
 api.add_router("/v1", voice_router, auth=_auth)
 
 # ── analytics/ staff-only retention dashboard (S5 DA-03) ─────────────────────

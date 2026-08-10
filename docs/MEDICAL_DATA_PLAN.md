@@ -69,6 +69,14 @@ Do not hide insufficient data behind confident prose.
 
 Illness, stress, activity, sleep and fatigue context are observational patient-entered data. Missing context is **unknown**, not evidence of a negative/normal state. New logging paths must therefore avoid manufacturing `no`, `good` or `ok` values when the patient did not report them. Existing historical rows are not retrospectively rewritten to guess intent. Context may later support explicitly governed observational pattern detection, but it must not be presented as a proven cause of a glucose change or converted into treatment/dose advice.
 
+### Personal metabolic response patterns
+
+Personal metabolic response is a **deterministic detected-pattern layer**, not a diagnosis, prediction or treatment engine. Patterns are recalculated from source Journal logs and are not persisted as new clinical truth. Source edits/deletions therefore remain authoritative. Eligibility is deliberately conservative: at least 3 matching observations across at least 2 distinct days, within a maximum 90-day synchronized-data window. Demo rows are excluded.
+
+Context-derived patterns may use only explicit positive observations. Missing context remains unknown, and historical negative/neutral values such as `no`, `good` or `ok` must not become a synthetic control population because earlier schemas could materialize defaults. Meal patterns require an explicitly recorded `post_meal` measurement context and meal type.
+
+Patient-facing evidence may include observation count, distinct-day count, the median for matching observations and the median across all eligible synchronized readings in the same window. A product repetition grade may summarize evidence density, but it must be described as neither a probability nor statistical/clinical confidence. Comparing those descriptive medians must not be presented as a causal effect, treatment response estimate or predicted future glucose. No detector output may be converted into diagnosis, dose calculation, treatment optimization or autonomous advice. Insufficient evidence must fail closed.
+
 ### Ramadan profile context
 
 Ramadan is represented only as an **explicit patient-configured profile period**, not as an inferred fasting state. The period is valid only when both start and end dates are present and ordered; absent, partial or inverted data must fail closed instead of being completed from the calendar, location, time of day, meal timing or cultural assumptions.

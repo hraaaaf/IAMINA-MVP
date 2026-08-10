@@ -8,6 +8,7 @@ import '../../core/data/meal_food_catalog.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import 'widgets/insulin_logging.dart';
+import 'widgets/personal_response_section.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({super.key});
@@ -42,6 +43,17 @@ class _JournalScreenState extends State<JournalScreen> {
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
+          SliverPadding(
+            padding: EdgeInsetsDirectional.fromSTEB(
+              horizontalPadding,
+              20,
+              horizontalPadding,
+              0,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: PersonalResponseSection(unit: unit),
+            ),
+          ),
           StreamBuilder<List<LogEntryData>>(
             stream: db.watchLogsInRange(start, now),
             builder: (context, snapshot) {
