@@ -375,5 +375,68 @@
   "journalRamadanMealVocabularyHint": "تتكيف أسماء الوجبات مع الفترة المحفوظة في ملفك. لا يُفترض أنك صائم.",
   "journalMealSuhoor": "السحور",
   "journalMealIftar": "الإفطار",
-  "journalMealOther": "أخرى"
+  "journalMealOther": "أخرى",
+  "personalResponseTitle": "استجابتك الشخصية",
+  "personalResponseSubtitle": "تكرارات لوحظت في بياناتك المتزامنة.",
+  "personalResponseUnavailable": "التحليل غير متاح حالياً",
+  "personalResponseUnavailableBody": "يبقى السجل قابلاً للاستخدام. ستظهر الأنماط مجدداً عندما تتوفر البيانات المتزامنة.",
+  "personalResponseInsufficient": "لا توجد تكرارات كافية بعد",
+  "personalResponseMinimumBasis": "حد العرض في المنتج: {observations} ملاحظات على الأقل موزعة على {days} أيام مختلفة.",
+  "@personalResponseMinimumBasis": {
+    "placeholders": {
+      "observations": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "personalResponseEvidenceBasis": "الملاحظات: {observations} · الأيام: {days}",
+  "@personalResponseEvidenceBasis": {
+    "placeholders": {
+      "observations": {
+        "type": "int"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "personalResponsePatternMedian": "وسيط هذه الملاحظات",
+  "personalResponseWindowMedian": "وسيط كل القياسات المتزامنة ({days} يومًا)",
+  "@personalResponseWindowMedian": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "personalResponseCausalityNotice": "ارتباط لوحظ في سجلك فقط. لا يثبت سببًا ولا ينبغي استخدامه لتوجيه علاج أو جرعة.",
+  "personalResponseConfidenceNotice": "مستوى التكرار يصف فقط كمية بياناتك وتوزعها؛ وليس احتمالًا أو درجة ثقة سريرية.",
+  "personalResponseSyncedScope": "يعتمد فقط على قياسات السكر المتزامنة مع حسابك؛ وتُستبعد بيانات العرض التجريبي.",
+  "personalResponseEvidenceLimited": "تكرار محدود",
+  "personalResponseEvidenceModerate": "تكرار متوسط",
+  "personalResponseEvidenceStrong": "تكرار قوي",
+  "personalResponseStress": "الضغط النفسي المسجل",
+  "personalResponseActivity": "النشاط البدني المسجل",
+  "personalResponseIllness": "المرض المسجل",
+  "personalResponsePoorSleep": "سوء النوم المسجل",
+  "personalResponseFatigue": "التعب المسجل",
+  "personalResponseBreakfast": "بعد الإفطار الصباحي",
+  "personalResponseLunch": "بعد الغداء",
+  "personalResponseDinner": "بعد العشاء",
+  "personalResponseSnack": "بعد وجبة خفيفة",
+  "personalResponseSuhoor": "بعد السحور",
+  "personalResponseIftar": "بعد الإفطار",
+  "personalResponseObservedPattern": "نمط ملحوظ",
+  "personalResponseShowMore": "عرض {count} أنماط إضافية",
+  "@personalResponseShowMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "personalResponseShowLess": "عرض أنماط أقل"
 }

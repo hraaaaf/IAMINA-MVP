@@ -965,4 +965,103 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get journalMealOther => 'أخرى';
+
+  @override
+  String get personalResponseTitle => 'استجابتك الشخصية';
+
+  @override
+  String get personalResponseSubtitle => 'تكرارات لوحظت في بياناتك المتزامنة.';
+
+  @override
+  String get personalResponseUnavailable => 'التحليل غير متاح حالياً';
+
+  @override
+  String get personalResponseUnavailableBody =>
+      'يبقى السجل قابلاً للاستخدام. ستظهر الأنماط مجدداً عندما تتوفر البيانات المتزامنة.';
+
+  @override
+  String get personalResponseInsufficient => 'لا توجد تكرارات كافية بعد';
+
+  @override
+  String personalResponseMinimumBasis(int observations, int days) {
+    return 'حد العرض في المنتج: $observations ملاحظات على الأقل موزعة على $days أيام مختلفة.';
+  }
+
+  @override
+  String personalResponseEvidenceBasis(int observations, int days) {
+    return 'الملاحظات: $observations · الأيام: $days';
+  }
+
+  @override
+  String get personalResponsePatternMedian => 'وسيط هذه الملاحظات';
+
+  @override
+  String personalResponseWindowMedian(int days) {
+    return 'وسيط كل القياسات المتزامنة ($days يومًا)';
+  }
+
+  @override
+  String get personalResponseCausalityNotice =>
+      'ارتباط لوحظ في سجلك فقط. لا يثبت سببًا ولا ينبغي استخدامه لتوجيه علاج أو جرعة.';
+
+  @override
+  String get personalResponseConfidenceNotice =>
+      'مستوى التكرار يصف فقط كمية بياناتك وتوزعها؛ وليس احتمالًا أو درجة ثقة سريرية.';
+
+  @override
+  String get personalResponseSyncedScope =>
+      'يعتمد فقط على قياسات السكر المتزامنة مع حسابك؛ وتُستبعد بيانات العرض التجريبي.';
+
+  @override
+  String get personalResponseEvidenceLimited => 'تكرار محدود';
+
+  @override
+  String get personalResponseEvidenceModerate => 'تكرار متوسط';
+
+  @override
+  String get personalResponseEvidenceStrong => 'تكرار قوي';
+
+  @override
+  String get personalResponseStress => 'الضغط النفسي المسجل';
+
+  @override
+  String get personalResponseActivity => 'النشاط البدني المسجل';
+
+  @override
+  String get personalResponseIllness => 'المرض المسجل';
+
+  @override
+  String get personalResponsePoorSleep => 'سوء النوم المسجل';
+
+  @override
+  String get personalResponseFatigue => 'التعب المسجل';
+
+  @override
+  String get personalResponseBreakfast => 'بعد الإفطار الصباحي';
+
+  @override
+  String get personalResponseLunch => 'بعد الغداء';
+
+  @override
+  String get personalResponseDinner => 'بعد العشاء';
+
+  @override
+  String get personalResponseSnack => 'بعد وجبة خفيفة';
+
+  @override
+  String get personalResponseSuhoor => 'بعد السحور';
+
+  @override
+  String get personalResponseIftar => 'بعد الإفطار';
+
+  @override
+  String get personalResponseObservedPattern => 'نمط ملحوظ';
+
+  @override
+  String personalResponseShowMore(int count) {
+    return 'عرض $count أنماط إضافية';
+  }
+
+  @override
+  String get personalResponseShowLess => 'عرض أنماط أقل';
 }
