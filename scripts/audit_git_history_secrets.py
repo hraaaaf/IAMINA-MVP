@@ -23,10 +23,12 @@ FORBIDDEN_PATHS = (
     re.compile(r"(^|/)\.env(?:\..+)?$"),
 )
 
+GOOGLE_API_KEY_PATTERN = re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")
+
 SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("generic sk token", re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b")),
     ("Anthropic API key", re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}\b")),
-    ("Google API key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")),
+    ("Google API key", GOOGLE_API_KEY_PATTERN),
     ("AWS access key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
     ("GitHub token", re.compile(r"\bgh(?:p|o|u|s|r)_[A-Za-z0-9]{30,}\b")),
     ("Slack token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{20,}\b")),
@@ -40,10 +42,11 @@ PATTERN_PATH_EXCEPTIONS: dict[str, frozenset[str]] = {
     "Google API key": frozenset({"frontend/lib/firebase_options.dart"}),
 }
 
-SAFE_EXAMPLE_FRAGMENTS = (
+SAFE_GENERIC_SK_EXAMPLES = (
     "sk-example-",
     "sk-placeholder-",
     "sk-not-a-real-",
+    "sk-this-must-never-be-in-the-manifest",
 )
 
 
@@ -153,19 +156,51 @@ def _pattern_allowed_for_all_paths(label: str, paths: set[str]) -> bool:
     return bool(paths) and all(path in exceptions for path in paths)
 
 
-def scan_text(content: bytes, paths: set[str]) -> list[tuple[int, str]]:
+def _current_public_google_identifiers(repo: Path) -> frozenset[str]:
+    """Return deliberate Firebase client identifiers from the canonical HEAD config.
+
+    FlutterFire client API identifiers are public application metadata. Exact copies
+    emitted into compiled Flutter web artifacts may therefore be ignored, but only
+    when the value is anchored in the canonical generated Firebase options at HEAD.
+    Missing configuration produces an empty allow-set so the scanner fails closed.
+    """
+
+    try:
+        content = _git(repo, "show", "HEAD:frontend/lib/firebase_options.dart")
+    except RuntimeError:
+        return frozenset()
+    text = content.decode("utf-8", errors="replace")
+    return frozenset(match.group(0) for match in GOOGLE_API_KEY_PATTERN.finditer(text))
+
+
+def _match_is_known_safe_example(label: str, value: str) -> bool:
+    if label != "generic sk token":
+        return False
+    return any(value.startswith(prefix) for prefix in SAFE_GENERIC_SK_EXAMPLES)
+
+
+def scan_text(
+    content: bytes,
+    paths: set[str],
+    *,
+    public_google_identifiers: frozenset[str] = frozenset(),
+) -> list[tuple[int, str]]:
     if b"\x00" in content:
         return []
     text = content.decode("utf-8", errors="replace")
     findings: list[tuple[int, str]] = []
     for line_number, line in enumerate(text.splitlines(), start=1):
-        if any(fragment in line for fragment in SAFE_EXAMPLE_FRAGMENTS):
-            continue
         for label, pattern in SECRET_PATTERNS:
             if _pattern_allowed_for_all_paths(label, paths):
                 continue
-            if pattern.search(line):
+            for match in pattern.finditer(line):
+                value = match.group(0)
+                if _match_is_known_safe_example(label, value):
+                    continue
+                if label == "Google API key" and value in public_google_identifiers:
+                    continue
                 findings.append((line_number, label))
+                break
     return findings
 
 
@@ -176,6 +211,7 @@ def audit_repository(repo: Path) -> list[str]:
         raise RuntimeError("history secret audit requires a full, non-shallow checkout")
 
     blob_paths = _reachable_blob_paths(repo)
+    public_google_identifiers = _current_public_google_identifiers(repo)
     failures: list[str] = []
     forbidden_reported: set[tuple[str, str]] = set()
     for object_id, paths in sorted(blob_paths.items()):
@@ -191,7 +227,11 @@ def audit_repository(repo: Path) -> list[str]:
     for object_id, content in _read_blobs(repo, sorted(blob_paths)):
         paths = blob_paths[object_id]
         display_path = sorted(paths)[0] if paths else "<unknown>"
-        for line_number, label in scan_text(content, paths):
+        for line_number, label in scan_text(
+            content,
+            paths,
+            public_google_identifiers=public_google_identifiers,
+        ):
             failures.append(
                 f"blob {object_id[:12]} path {display_path}:{line_number}: likely {label}"
             )
