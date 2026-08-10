@@ -28,6 +28,7 @@ jobs:
         run: |
           mkdir -p product/frontend/test/audit
           cp audit/frontend/test/audit/p2_journal_8_visual_audit_test.dart product/frontend/test/audit/
+          python audit/.github/scripts/p2_journal_8_visual_font_patch.py product/frontend/test/audit/p2_journal_8_visual_audit_test.dart
 
       - uses: subosito/flutter-action@v2
         with:
@@ -59,12 +60,13 @@ jobs:
           sizes=1440x1000,768x1024,390x844,360x560
           surfaces=ready-compact,ready-expanded,insufficient-data
           expected_images=24
+          font_fixture=DejaVuSans loaded as AuditSans and Roboto
           EOF
 
       - name: Upload rendered matrix
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: p2-journal-8-visual-matrix-1b8fcda
+          name: p2-journal-8-visual-matrix-1b8fcda-fontfix
           path: product/frontend/test/audit/goldens/*
           if-no-files-found: error
