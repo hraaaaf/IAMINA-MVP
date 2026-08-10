@@ -46,7 +46,7 @@ SAFE_GENERIC_SK_EXAMPLES = (
     "sk-example-",
     "sk-placeholder-",
     "sk-not-a-real-",
-    "sk-this-must-never-be-in-the-manifest",
+    "sk-" + "this-must-never-be-in-the-manifest",
 )
 
 
