@@ -25,7 +25,10 @@ jobs:
           channel: stable
           cache: true
       - name: Apply scoped patch
-        run: python3 scripts/ux1_patch.py
+        run: |
+          sed -i "s/_TimeChip(label: '6h',   value: 6/_TimeChip(label: '6h',  value: 6/" frontend/lib/features/dashboard/widgets/glucose_chart_with_events.dart
+          sed -i "s/_TimeChip(label: '3h',   value: 3/_TimeChip(label: '3h',  value: 3/" frontend/lib/features/dashboard/widgets/glucose_chart_with_events.dart
+          python3 scripts/ux1_patch.py
       - name: Generate l10n and format
         working-directory: frontend
         run: |
