@@ -59,7 +59,7 @@ Future<PatientProfileData> _configuredProfile(
 Future<void> _openRamadanProfileSection(WidgetTester tester) async {
   final section = find.byKey(const ValueKey('profile-ramadan-section'));
   expect(section, findsOneWidget);
-  final tile = find.descendant(of: section, matching: find.byType(ListTile));
+  final tile = find.descendant(of: section, matching: find.byType(ExpansionTile));
   expect(tile, findsOneWidget);
   await tester.tap(tile);
   await tester.pumpAndSettle();
