@@ -1,8 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
 String _read(String path) => File(path).readAsStringSync();
+Map<String, dynamic> _arb(String locale) =>
+    jsonDecode(_read('lib/l10n/app_$locale.arb')) as Map<String, dynamic>;
 
 void main() {
   test(
@@ -101,12 +104,34 @@ void main() {
 
   test('GMI always discloses method, coverage and laboratory limitation', () {
     final source = _read('lib/features/dashboard/widgets/kpi_gmi_card.dart');
+    final fr = _arb('fr');
+    final en = _arb('en');
+    final ar = _arb('ar');
 
-    expect(source, contains('Moyenne'));
-    expect(source, contains(r'${logs.length} mesures'));
-    expect(source, contains('Couverture limitée'));
-    expect(source, contains('moins de 14 jours ou 50 mesures'));
-    expect(source, contains('ne remplace pas une HbA1c de laboratoire'));
+    for (final key in <String>[
+      'dashboardGmiCoverage',
+      'dashboardGmiLimitedCoverage',
+      'dashboardGmiCalculated',
+      'dashboardGmiDisclaimer',
+    ]) {
+      expect(
+        source,
+        contains('l10n.$key'),
+        reason: 'GMI must consume localized explainability key $key',
+      );
+    }
+
+    expect(fr['dashboardGmiCoverage'], contains('Moyenne'));
+    expect(fr['dashboardGmiLimitedCoverage'], contains('moins de 14 jours ou 50 mesures'));
+    expect(fr['dashboardGmiDisclaimer'], contains('ne remplace pas une HbA1c de laboratoire'));
+
+    expect(en['dashboardGmiCoverage'], contains('Average'));
+    expect(en['dashboardGmiLimitedCoverage'], contains('fewer than 14 days or 50 readings'));
+    expect(en['dashboardGmiDisclaimer'], contains('does not replace a laboratory HbA1c'));
+
+    expect(ar['dashboardGmiCoverage'], contains('المتوسط'));
+    expect(ar['dashboardGmiLimitedCoverage'], contains('أقل من 14 يومًا أو 50 قياسًا'));
+    expect(ar['dashboardGmiDisclaimer'], contains('لا يغني هذا التقدير عن فحص HbA1c المخبري'));
 
     for (final forbidden in <String>[
       '_confidence',
@@ -125,11 +150,37 @@ void main() {
 
   test('CV is a general reference, never a personalized success claim', () {
     final source = _read('lib/features/dashboard/widgets/kpi_cv_card.dart');
+    final fr = _arb('fr');
+    final en = _arb('en');
+    final ar = _arb('ar');
 
-    expect(source, contains('Repère général <36 %'));
-    expect(source, contains('Sous le repère général'));
-    expect(source, contains('Au-dessus du repère général'));
-    expect(source, contains('Votre objectif personnel peut être différent'));
+    for (final key in <String>[
+      'dashboardCvReferenceShort',
+      'dashboardCvBelowReference',
+      'dashboardCvAboveReference',
+      'dashboardCvReferenceExplanation',
+    ]) {
+      expect(
+        source,
+        contains('l10n.$key'),
+        reason: 'CV must consume localized reference key $key',
+      );
+    }
+
+    expect(fr['dashboardCvReferenceShort'], contains('Repère général <36 %'));
+    expect(fr['dashboardCvBelowReference'], contains('Sous le repère général'));
+    expect(fr['dashboardCvAboveReference'], contains('Au-dessus du repère général'));
+    expect(fr['dashboardCvReferenceExplanation'], contains('Votre objectif personnel peut être différent'));
+
+    expect(en['dashboardCvReferenceShort'], contains('General reference <36%'));
+    expect(en['dashboardCvBelowReference'], contains('Below the general reference'));
+    expect(en['dashboardCvAboveReference'], contains('Above the general reference'));
+    expect(en['dashboardCvReferenceExplanation'], contains('Your personal target may differ'));
+
+    expect(ar['dashboardCvReferenceShort'], contains('مرجع عام <36٪'));
+    expect(ar['dashboardCvBelowReference'], contains('أقل من المرجع العام'));
+    expect(ar['dashboardCvAboveReference'], contains('أعلى من المرجع العام'));
+    expect(ar['dashboardCvReferenceExplanation'], contains('قد يختلف هدفك الشخصي'));
 
     for (final forbidden in <String>[
       'Variabilité maîtrisée',
