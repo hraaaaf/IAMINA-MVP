@@ -1067,4 +1067,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get personalResponseShowLess => 'Show fewer patterns';
+
+  @override
+  String get journalPostSaveDeviceStatus => 'Saved on this device.';
+
+  @override
+  String get journalPostSaveSummaryTitle => 'Entry summary';
+
+  @override
+  String get journalPostSaveMeal => 'Meal';
+
+  @override
+  String get journalPostSaveNotice =>
+      'This confirmation only describes what was saved. It does not interpret the reading. Personal patterns appear separately in Journal when there is enough data.';
+
+  @override
+  String get journalPostSaveViewJournal => 'View in Journal';
+
+  @override
+  String get journalPostSaveAddAnother => 'Add another reading';
+
+  @override
+  String get journalPostSaveDone => 'Done';
 }

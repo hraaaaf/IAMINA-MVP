@@ -438,5 +438,12 @@
       }
     }
   },
-  "personalResponseShowLess": "Réduire les motifs"
+  "personalResponseShowLess": "Réduire les motifs",
+  "journalPostSaveDeviceStatus": "Enregistrée sur cet appareil.",
+  "journalPostSaveSummaryTitle": "Résumé de la saisie",
+  "journalPostSaveMeal": "Repas",
+  "journalPostSaveNotice": "Cette confirmation décrit uniquement ce qui a été enregistré. Elle n’interprète pas la mesure. Les tendances personnelles apparaissent séparément dans le Journal lorsque les données sont suffisantes.",
+  "journalPostSaveViewJournal": "Voir dans le journal",
+  "journalPostSaveAddAnother": "Ajouter une autre mesure",
+  "journalPostSaveDone": "Terminer"
 }

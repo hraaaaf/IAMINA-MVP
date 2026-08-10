@@ -438,5 +438,12 @@
       }
     }
   },
-  "personalResponseShowLess": "عرض أنماط أقل"
+  "personalResponseShowLess": "عرض أنماط أقل",
+  "journalPostSaveDeviceStatus": "تم الحفظ على هذا الجهاز.",
+  "journalPostSaveSummaryTitle": "ملخص التسجيل",
+  "journalPostSaveMeal": "الوجبة",
+  "journalPostSaveNotice": "هذا التأكيد يصف فقط ما تم تسجيله ولا يفسّر القياس. تظهر الأنماط الشخصية بشكل منفصل في السجل عندما تتوفر بيانات كافية.",
+  "journalPostSaveViewJournal": "عرض في السجل",
+  "journalPostSaveAddAnother": "إضافة قياس آخر",
+  "journalPostSaveDone": "تم"
 }

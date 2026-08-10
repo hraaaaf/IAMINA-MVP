@@ -1082,4 +1082,26 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get personalResponseShowLess => 'Réduire les motifs';
+
+  @override
+  String get journalPostSaveDeviceStatus => 'Enregistrée sur cet appareil.';
+
+  @override
+  String get journalPostSaveSummaryTitle => 'Résumé de la saisie';
+
+  @override
+  String get journalPostSaveMeal => 'Repas';
+
+  @override
+  String get journalPostSaveNotice =>
+      'Cette confirmation décrit uniquement ce qui a été enregistré. Elle n’interprète pas la mesure. Les tendances personnelles apparaissent séparément dans le Journal lorsque les données sont suffisantes.';
+
+  @override
+  String get journalPostSaveViewJournal => 'Voir dans le journal';
+
+  @override
+  String get journalPostSaveAddAnother => 'Ajouter une autre mesure';
+
+  @override
+  String get journalPostSaveDone => 'Terminer';
 }
