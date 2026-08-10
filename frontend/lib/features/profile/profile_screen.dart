@@ -243,28 +243,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
           },
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            if (configured)
-              TextButton(
-                key: const Key('ramadan-clear-period'),
-                onPressed: _savingRamadan
-                    ? null
-                    : () => setState(() {
-                        _ramadanStartDate = null;
-                        _ramadanEndDate = null;
-                      }),
-                child: Text(l10n.ramadanClear),
-              ),
-            const Spacer(),
-            FilledButton(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final clearButton = configured
+                ? TextButton(
+                    key: const Key('ramadan-clear-period'),
+                    onPressed: _savingRamadan
+                        ? null
+                        : () => setState(() {
+                            _ramadanStartDate = null;
+                            _ramadanEndDate = null;
+                          }),
+                    child: Text(l10n.ramadanClear),
+                  )
+                : null;
+            final saveButton = FilledButton(
               key: const Key('ramadan-save-period'),
               onPressed: _savingRamadan ? null : () => _saveRamadanPeriod(l10n),
               child: Text(
                 _savingRamadan ? l10n.journalSaving : l10n.ramadanSave,
               ),
-            ),
-          ],
+            );
+
+            if (constraints.maxWidth < 300) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (clearButton != null) ...[
+                    clearButton,
+                    const SizedBox(height: 8),
+                  ],
+                  saveButton,
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                if (clearButton != null) clearButton,
+                const Spacer(),
+                saveButton,
+              ],
+            );
+          },
         ),
       ],
     );
