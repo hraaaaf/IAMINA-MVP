@@ -151,8 +151,7 @@ class _EcgMarkPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_EcgMarkPainter oldDelegate) =>
-      oldDelegate.color != color;
+  bool shouldRepaint(_EcgMarkPainter oldDelegate) => oldDelegate.color != color;
 }
 
 class _Sidebar extends StatelessWidget {
@@ -351,7 +350,7 @@ class _BrandHeader extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    AppLocalizations.of(context)!.brandName,
+                    AppLocalizations.of(context)!.appTitle,
                     maxLines: 2,
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
@@ -360,7 +359,7 @@ class _BrandHeader extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    AppLocalizations.of(context)!.brandTagShort,
+                    AppLocalizations.of(context)!.appSubtitle,
                     maxLines: 2,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
