@@ -38,6 +38,24 @@ void main() {
       );
     ''');
       legacy.execute('''
+      CREATE TABLE patient_profiles (
+        user_id INTEGER NOT NULL PRIMARY KEY,
+        preferred_language TEXT NOT NULL DEFAULT 'fr',
+        updated_at INTEGER NOT NULL,
+        diabetes_type TEXT,
+        target_range_low REAL NOT NULL DEFAULT 70.0,
+        target_range_high REAL NOT NULL DEFAULT 180.0,
+        unit_preference TEXT NOT NULL DEFAULT 'mg/dL',
+        treatment TEXT,
+        ai_consent_given_at INTEGER
+      );
+    ''');
+      legacy.execute('''
+      INSERT INTO patient_profiles (
+        user_id, preferred_language, updated_at, diabetes_type, treatment
+      ) VALUES (1, 'ar', 1723200000, 'type2', 'lifestyle');
+    ''');
+      legacy.execute('''
       INSERT INTO log_entries (
         created_at, blood_sugar, glycemic_context, meal_type,
         meal_description, source, sync_status, client_uuid
@@ -58,10 +76,17 @@ void main() {
         expect(logs.single.mealItemsJson, isNull);
         expect(logs.single.mealPortionsJson, isNull);
         expect(logs.single.clientUuid, '77777777-7777-7777-7777-777777777777');
+
+        final profile = await db.select(db.patientProfiles).getSingle();
+        expect(profile.preferredLanguage, 'ar');
+        expect(profile.diabetesType, 'type2');
+        expect(profile.ramadanStartDate, isNull);
+        expect(profile.ramadanEndDate, isNull);
+
         final version = await db
             .customSelect('PRAGMA user_version')
             .getSingle();
-        expect(version.data['user_version'], 8);
+        expect(version.data['user_version'], 9);
       } finally {
         await db.close();
         await dir.delete(recursive: true);
