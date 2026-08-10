@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-10 — P1-JOURNAL-7 is closed; P2-JOURNAL-8 Personal metabolic response is the active merge unit in PR #76.
+> **Last updated:** 2026-08-10 — P2-JOURNAL-8 Personal metabolic response is merged and 100% closed; P2-JOURNAL-9 Post-save experience is next.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,7 +29,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
-| Journal metabolic-event redesign | 89% | 🟢 P2-JOURNAL-8 certified pre-merge | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 merged; PR #76 deterministic personal-response patterns; exact-head CI #1380 + drift #1192 + PostgreSQL green; 24-view FR/AR UX 9.3/10; four specialist reviewers PASS; final docs-head recertification + merge/post-merge remain |
+| Journal metabolic-event redesign | 89% | 🟢 P2-JOURNAL-8 closed; P2-JOURNAL-9 next | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 + P2-JOURNAL-8 merged; PR #76 deterministic personal-response patterns; UX 9.3/10; post-merge CI #1383 + drift #1195 green |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -113,7 +113,7 @@ Each Journal LOT is a separate branch/PR. Clinical/safety, UX/UI, privacy/egress
 | P1-JOURNAL-5 | Insulin logging v2 | ✅ Closed | PR #72 merged as `72a248671e5115055c9bc6fc219d0007078906f8`; post-merge CI #1330 + drift #1142 green; actual administered dose only; nullable decimal entry/edit; no presets/calculator/scoring/optimization; safe `client_uuid` snapshot sync; UX 9.2/10 |
 | P1-JOURNAL-6 | Context intelligence | ✅ Closed | PR #73 merged as `95cf4d75226720386d7e8e55acc30c39fdd5017c`; post-merge CI #1342 + drift #1154 green; optional positive context, unknown-by-default omission, progressive Add + correctable Edit, legacy fatigue sync-compatible; UX 9.2/10 |
 | P1-JOURNAL-7 | Ramadan mode v2 | ✅ Closed | PR #75 merged as `5c70e5aeb67274767e56d0eb80f882ea52a45511`; post-merge CI #1372 + drift #1184 green; explicit nullable profile period; no fasting inference/meal preselection; update-only local persistence prevents fabricated medical defaults; UX 9.3/10 |
-| P2-JOURNAL-8 | Personal metabolic response | 🟢 PR #76 merge unit | deterministic repeated observations only; explicit evidence count + distinct days + descriptive repetition grade; explicit positive context and post-meal facts only; 90-day synced scope; no causal/statistical/treatment claim; UX 9.3/10 |
+| P2-JOURNAL-8 | Personal metabolic response | ✅ Closed | PR #76 merged as `a8ff01b9298f49133b3201d72086ade2643a9167`; post-merge CI #1383 + drift #1195 green; deterministic repeated observations, explicit evidence basis, 90-day synced scope, no causal/statistical/treatment claim; UX 9.3/10 |
 | P2-JOURNAL-9 | Post-save experience | ⬜ Planned | immediate factual confirmation only; longitudinal insights appear separately only when evidence requirements are met |
 
 ### P0-JOURNAL-1 durable closeout contract
@@ -178,7 +178,7 @@ Each visible pattern exposes its observation count, distinct-day count, pattern 
 
 The first real FR/AR max-density visual pass was rejected at **8.8/10** because three simultaneous pattern cards displaced Journal history too aggressively on `360×560`. The same LOT was remediated to show one strongest pattern by default with an explicit accessible disclosure for secondary patterns.
 
-**Pre-closeout evidence on product head `5f7fafd96adcf16b2ed16572910e9a23509696d1`:** canonical CI #1380 SUCCESS including PostgreSQL source-of-truth; migration drift #1192 SUCCESS; exact-head visual audit run `31384006870` SUCCESS with 24/24 FR/AR compact/expanded/insufficient renders across `1440×1000`, `768×1024`, `390×844` and `360×560`; artifact `9060989847`, digest `sha256:8a2db26d548f68e75f3938d793bde980ee865d0988770bc96b2e6dafae7514e3`; UX Auditor **9.3/10 PASS**; Clinical Safety, Security, Database/Migration and UX reviewers PASS. Canonical documentation changes make these anchors pre-closeout evidence, so exact-final-head CI + drift + visual recertification, reviewer re-anchoring, Release Certifier, expected-head merge and post-merge gates remain mandatory before the LOT is 100% closed.
+**Final certification evidence:** final pre-merge head `7f4003c4511c5eb27e9d01528a71269cc9511548`; canonical CI #1382 SUCCESS including PostgreSQL source-of-truth; migration drift #1194 SUCCESS; exact-final-head visual audit run `31384539082` SUCCESS with 24/24 FR/AR compact/expanded/insufficient renders across `1440×1000`, `768×1024`, `390×844` and `360×560`; artifact `9061180931`, digest `sha256:d9dbf85b7df8785b0af139a5a1ee63f6a98f55362d3575db3f1a9482bf66e006`; UX Auditor **9.3/10 PASS** after an initial 8.8/10 density rejection and remediation; Clinical Safety, Security, Database/Migration and UX reviewers FINAL PASS; Release Certifier CERTIFIED; PR #76 merged with expected-head locking as `a8ff01b9298f49133b3201d72086ade2643a9167`; post-merge CI #1383 and migration drift #1195 SUCCESS. P2-JOURNAL-8 is **100% closed**. P2-JOURNAL-9 is next.
 
 
 
