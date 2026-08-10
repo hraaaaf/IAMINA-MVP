@@ -1,0 +1,42 @@
+name: P2-JOURNAL-9 postmerge closeout
+
+on:
+  push:
+    branches: [audit/p2-journal-9-postmerge-closeout]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout audit tools
+        uses: actions/checkout@v4
+        with:
+          path: audit
+
+      - name: Checkout verified main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: product
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Patch final ROADMAP
+        run: python audit/.github/scripts/p2_journal_9_postmerge_closeout.py product
+
+      - name: Verify and push ROADMAP-only closeout
+        working-directory: product
+        shell: bash
+        run: |
+          CHANGED="$(git status --porcelain | awk '{print $2}')"
+          test "$CHANGED" = "docs/ROADMAP.md"
+          git diff --check
+          git add docs/ROADMAP.md
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "docs(journal): close P2-JOURNAL-9 and Journal redesign"
+          git push origin HEAD:main
