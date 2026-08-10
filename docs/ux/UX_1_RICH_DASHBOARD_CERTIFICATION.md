@@ -72,12 +72,22 @@ The raw `dinner` leak and mixed-language Arabic rich-state defect are removed. H
 
 GMI and CV calculations are unchanged. GMI continues to disclose method/coverage and laboratory limitation; CV remains framed as a general reference rather than a personalized success target. No new diagnosis, prescription, dose logic, causal claim or treatment optimization is introduced. This technical review does not replace the separate native-language/safety-corpus gates tracked under P0-MENA-2.
 
-## Remaining closure gates
+## Final closure
 
-Before UX-1 may be declared closed:
+UX-1 is **100% closed**.
 
-1. exact-final-head CI and migration drift must pass;
-2. exact-final-head rendered FR/AR matrix must remain >9.0/10;
-3. UX and Clinical reviewers must re-anchor PASS to that exact final head;
-4. Release Certifier must authorize expected-head merge;
-5. PR #84 must merge and post-merge CI/drift must pass.
+- exact final PR head: `27ee9b00c2326add7642bb0f544f5658ebf4d949`;
+- CI #1452 — SUCCESS;
+- migration drift #1264 — SUCCESS;
+- final visual run `31409668306` — SUCCESS;
+- artifact `9071144760`;
+- digest `sha256:fb2490f8a4d293206917adbcfb56dbc57c24a49f67a61f27eea3a9db391e088f`;
+- 24/24 FR/AR rendered views, one Flutter view each, zero page errors;
+- UX Auditor FINAL PASS — **9.2/10**;
+- Clinical Safety Reviewer FINAL PASS;
+- Release Certifier — CERTIFIED;
+- PR #84 merged with expected-head locking as `0c2e0ee18da003ccc413ffeffef18334a77c6ad9`;
+- post-merge CI #1453 — SUCCESS;
+- post-merge migration drift #1265 — SUCCESS.
+
+No further visual remediation LOT is implied by this closeout. A new UX LOT requires fresh rendered evidence at <=9.0/10 or a new product requirement that changes a certified surface.
