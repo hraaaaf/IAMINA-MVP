@@ -6,6 +6,7 @@ on:
       - ux/ux-5-glass-mobile-nav
     paths:
       - .github/workflows/ux-5-builder.yml
+      - .github/ux5_patch.py
 
 permissions:
   contents: write
