@@ -675,7 +675,7 @@ class _BottomNav extends StatelessWidget {
 
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+      minimum: EdgeInsets.symmetric(horizontal: 12).copyWith(bottom: 10),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: BackdropFilter(
