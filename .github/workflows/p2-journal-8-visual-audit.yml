@@ -1,0 +1,70 @@
+name: P2-JOURNAL-8 visual audit
+
+on:
+  push:
+    branches: [audit/p2-journal-8-visual]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  visual-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout audit harness
+        uses: actions/checkout@v4
+        with:
+          path: audit
+
+      - name: Checkout exact product SHA
+        uses: actions/checkout@v4
+        with:
+          ref: 3fa616e48bface9ae376986ee8b224c1d9c70bb1
+          path: product
+
+      - name: Overlay audit-only harness
+        run: |
+          mkdir -p product/frontend/test/audit
+          cp audit/frontend/test/audit/p2_journal_8_visual_audit_test.dart product/frontend/test/audit/
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        working-directory: product/frontend
+        run: flutter pub get
+
+      - name: Render FR/AR personal-response matrix
+        working-directory: product/frontend
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p test/audit/goldens
+          flutter test --update-goldens test/audit/p2_journal_8_visual_audit_test.dart 2>&1 \
+            | tee test/audit/goldens/test-output.txt
+
+      - name: Write audit manifest
+        if: always()
+        run: |
+          mkdir -p product/frontend/test/audit/goldens
+          cat > product/frontend/test/audit/goldens/manifest.txt <<'EOF'
+          lot=P2-JOURNAL-8
+          product_sha=3fa616e48bface9ae376986ee8b224c1d9c70bb1
+          locales=fr,ar
+          sizes=1440x1000,768x1024,390x844,360x560
+          surfaces=ready-max-density,insufficient-data
+          expected_images=16
+          EOF
+
+      - name: Upload rendered matrix
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-journal-8-visual-matrix-3fa616e
+          path: product/frontend/test/audit/goldens/*
+          if-no-files-found: error
