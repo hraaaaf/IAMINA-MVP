@@ -1,0 +1,38 @@
+name: UX-4/5 docs closeout
+
+on:
+  push:
+    branches:
+      - docs/ux-4-5-closeout
+    paths:
+      - .github/workflows/ux-4-5-docs-closeout.yml
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs/ux-4-5-closeout
+          fetch-depth: 0
+      - name: Apply ROADMAP-only closeout
+        run: python3 .github/ux45_docs_closeout.py
+      - name: Verify scope and evidence strings
+        run: |
+          git diff --exit-code -- . ':(exclude)docs/ROADMAP.md' ':(exclude).github/ux45_docs_closeout.py' ':(exclude).github/workflows/ux-4-5-docs-closeout.yml'
+          grep -F 'UX-5 PR #92' docs/ROADMAP.md
+          grep -F 'post-merge CI #1492 + drift #1304 green' docs/ROADMAP.md
+          grep -F '31436069213' docs/ROADMAP.md
+          grep -F '9081084594' docs/ROADMAP.md
+      - name: Commit ROADMAP and remove temporary builder
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/ux45_docs_closeout.py .github/workflows/ux-4-5-docs-closeout.yml
+          git add docs/ROADMAP.md
+          git commit -m 'docs(ux): close UX-4 and UX-5 visual rebase'
+          git push origin HEAD:docs/ux-4-5-closeout
