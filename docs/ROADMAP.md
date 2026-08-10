@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-10 — UX-0 is merged and post-merge green. UX-1 has remediated the populated-Dashboard FR/AR locale-parity defect and is in final visual/reviewer certification before merge.
+> **Last updated:** 2026-08-10 — UX visual rebase is closed: UX-0 established the rendered baseline/constitution and UX-1 remediated the populated-Dashboard FR/AR rich-state defect to 9.2/10 with exact-head and post-merge certification.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,7 +29,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
-| UX visual rebase | 90% | 🟡 UX-1 final certification | UX-0 closed via PR #83; UX-1 baseline 8.4/10 → first post-fix rendered read ~9.2/10; exact final review/certifier/merge still required |
+| UX visual rebase | 100% | ✅ Closed | UX-0 PR #83 + UX-1 PR #84; populated Dashboard baseline 8.4/10 → final **9.2/10**; post-merge CI #1453 + drift #1265 green |
 | Journal metabolic-event redesign | 100% | ✅ Closed | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 + P2-JOURNAL-8/9 merged; PR #77 merged as `d841d926d1b7fe076827a3086306daa09399e38d`; UX 9.3/10; post-merge CI #1390 + drift #1202 green |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
@@ -353,7 +353,7 @@ Canonical visual rules and evidence hierarchy: `docs/ux/UX_VISUAL_CONSTITUTION.m
 | LOT | Scope | Progress | Evidence / acceptance | Status |
 |---|---|---:|---|---|
 | UX-0 | Baseline + visual constitution | 100% | PR #83 merged as `0a9e026638021ea3e565d5cf870da7ed9ec1c5ee`; post-merge CI #1447 + drift #1259 green; fresh populated Dashboard baseline **8.4/10** established without reopening already certified surfaces | ✅ Closed |
-| UX-1 | Populated Dashboard locale parity + hierarchy | 90% | Raw meal IDs and hard-coded rich-state French copy removed; FR/EN/AR GMI/CV/AGP/Hero/events/insights/recent-entry copy localized; clinical calculations unchanged; CI #1449 + drift #1261 green; first 32-view rendered matrix ~**9.2/10**; exact-final-head Reviewer + Certifier + merge pending | 🟡 |
+| UX-1 | Populated Dashboard locale parity + hierarchy | 100% | PR #84 merged as `0c2e0ee18da003ccc413ffeffef18334a77c6ad9`; exact-head CI #1452 + drift #1264 + visual run `31409668306` green; UX **9.2/10**; post-merge CI #1453 + drift #1265 green | ✅ Closed |
 
 UX-1 is intentionally narrower than the historical UX plan: the empty/first-use Dashboard, Journal, Profile, Importer and post-save surfaces remain protected by their existing rendered certifications. Further UX LOTs are created only if new rendered evidence exposes a sub-9 state.
 
@@ -364,7 +364,7 @@ UX-1 is intentionally narrower than the historical UX plan: the empty/first-use 
 - The clinical explainability contract was migrated rather than weakened: GMI method/coverage/laboratory limitation and CV general-reference/non-personalized wording are now asserted through the same l10n keys and explicit FR/EN/AR corpus.
 - Exact product head `2b1483fb89b6dcbb6885f017085a98b48d0d7e76` passed CI #1449 and migration drift #1261, including the complete Flutter suite and PostgreSQL source-of-truth.
 - First post-fix visual matrix run `31407376293`, artifact `9070305707`, digest `sha256:ea150de67056d74d6209ea3d862445d1235aaf9084e7f0b4ff971a23e604d`: 32 FR/AR top/mid/lower/full screenshots across `1440×1000`, `768×1024`, `390×844`, `360×560`, zero page errors; visual read approximately **9.2/10**. A second product-head render run `31408059463`, artifact `9070602793`, digest `sha256:13d13788927edd5e29cafe5915b6ed2a33cb7fdadc92599b8aac680abbc5e2b7` reproduced the same corrected runtime before the test-only contract migration.
-- UX-1 remains open until the final documentation head is re-rendered, isolated UX + Clinical reviewers pass, Release Certifier authorizes the exact expected head, PR #84 merges and post-merge CI/drift are green.
+- Exact final head `27ee9b00c2326add7642bb0f544f5658ebf4d949` passed CI #1452 and migration drift #1264. Final visual run `31409668306`, artifact `9071144760`, digest `sha256:fb2490f8a4d293206917adbcfb56dbc57c24a49f67a61f27eea3a9db391e088f` rendered 24/24 FR/AR top/mid/lower views with one Flutter view each and zero page errors. UX Auditor FINAL PASS **9.2/10**, Clinical Safety Reviewer FINAL PASS, Release Certifier CERTIFIED. PR #84 merged with expected-head locking as `0c2e0ee18da003ccc413ffeffef18334a77c6ad9`; post-merge CI #1453 and drift #1265 passed. **UX-1 is 100% closed.**
 
 ---
 
@@ -504,5 +504,5 @@ These units close procedures and executable controls. They do not imply native-l
 3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals, then run the PR #34 and PR #35 `--require-approved` gates.
 4. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
 5. Run the deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
-6. **UX product-quality lane:** complete UX-1 exact-final-head visual/reviewer certification, merge with expected-head locking and verify post-merge CI/drift; do not broaden beyond fresh evidence.
+6. **UX product-quality lane:** UX visual rebase is closed. Do not open another UX remediation LOT unless fresh rendered evidence exposes a new <=9.0 state or a new requirement changes a certified surface.
 7. **Journal product-quality lane is closed.** Do not reopen it without a new evidence-backed roadmap decision; after blockers 1–5 are cleared, move to the real-patient pilot go/no-go and cohort execution gates.
