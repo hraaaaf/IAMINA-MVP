@@ -368,6 +368,8 @@
   "ramadanSave": "Enregistrer",
   "ramadanSaved": "Période de Ramadan enregistrée.",
   "ramadanSavedLocalOnly": "Enregistrée sur cet appareil. Le serveur n’a pas été mis à jour.",
+  "ramadanSavedServerOnly": "Enregistrée sur ton compte. Aucun profil local n’était disponible sur cet appareil.",
+  "ramadanSaveFailed": "Impossible d’enregistrer la période. Réessaie lorsque ton profil est disponible ou que la connexion est rétablie.",
   "ramadanNeedsBothDates": "Choisis une date de début et une date de fin, ou efface les deux.",
   "ramadanDateOrderError": "La date de début doit précéder ou être égale à la date de fin.",
   "journalRamadanMealVocabularyHint": "Repas adaptés à la période enregistrée dans ton profil. Aucun jeûne n’est supposé.",

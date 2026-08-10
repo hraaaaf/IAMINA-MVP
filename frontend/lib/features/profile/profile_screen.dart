@@ -366,21 +366,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final db = context.read<AppDatabase>();
       final api = context.read<ApiClient>();
-      await db.setRamadanPeriod(start: start, end: end);
+      final localSaved = await db.setRamadanPeriod(start: start, end: end);
       final serverSaved = await api.patchProfile({
         'ramadan_start_date': start == null ? null : _apiDate(start),
         'ramadan_end_date': end == null ? null : _apiDate(end),
       });
       if (!mounted) return;
-      setState(() => _hasPersistedProfile = true);
+      if (localSaved) setState(() => _hasPersistedProfile = true);
+
+      late final String message;
+      late final Color backgroundColor;
+      if (localSaved && serverSaved) {
+        message = l10n.ramadanSaved;
+        backgroundColor = AminaTheme.successEmerald;
+      } else if (localSaved) {
+        message = l10n.ramadanSavedLocalOnly;
+        backgroundColor = AminaTheme.warningOrange;
+      } else if (serverSaved) {
+        message = l10n.ramadanSavedServerOnly;
+        backgroundColor = AminaTheme.warningOrange;
+      } else {
+        message = l10n.ramadanSaveFailed;
+        backgroundColor = AminaTheme.dangerFg;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            serverSaved ? l10n.ramadanSaved : l10n.ramadanSavedLocalOnly,
-          ),
-          backgroundColor: serverSaved
-              ? AminaTheme.successEmerald
-              : AminaTheme.warningOrange,
+          content: Text(message),
+          backgroundColor: backgroundColor,
           behavior: SnackBarBehavior.floating,
         ),
       );

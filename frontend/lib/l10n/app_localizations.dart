@@ -1834,6 +1834,18 @@ abstract class AppLocalizations {
   /// **'Saved on this device. The server was not updated.'**
   String get ramadanSavedLocalOnly;
 
+  /// No description provided for @ramadanSavedServerOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to your account. No local profile was available on this device.'**
+  String get ramadanSavedServerOnly;
+
+  /// No description provided for @ramadanSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The Ramadan period was not saved. Retry after your profile is available or your connection is restored.'**
+  String get ramadanSaveFailed;
+
   /// No description provided for @ramadanNeedsBothDates.
   ///
   /// In en, this message translates to:

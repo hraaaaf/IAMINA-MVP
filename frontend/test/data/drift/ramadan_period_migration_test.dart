@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:amina/data/drift/database.dart';
+import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 // ignore: depend_on_referenced_packages
@@ -86,4 +87,55 @@ void main() {
       }
     },
   );
+
+  test('Ramadan save never manufactures a fresh medical profile', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    try {
+      final saved = await db.setRamadanPeriod(
+        start: DateTime(2026, 2, 18),
+        end: DateTime(2026, 3, 20),
+      );
+      expect(saved, isFalse);
+      expect(await db.select(db.patientProfiles).getSingleOrNull(), isNull);
+    } finally {
+      await db.close();
+    }
+  });
+
+  test('Ramadan save preserves existing clinical profile values', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    try {
+      await db
+          .into(db.patientProfiles)
+          .insert(
+            PatientProfilesCompanion.insert(
+              userId: const drift.Value(7),
+              updatedAt: DateTime(2026, 8, 10),
+              diabetesType: const drift.Value('type2'),
+              targetRangeLow: const drift.Value(82),
+              targetRangeHigh: const drift.Value(155),
+              unitPreference: const drift.Value('mmol/L'),
+              treatment: const drift.Value('lifestyle'),
+            ),
+          );
+
+      final saved = await db.setRamadanPeriod(
+        start: DateTime(2026, 2, 18),
+        end: DateTime(2026, 3, 20),
+      );
+      final profile = await db.select(db.patientProfiles).getSingle();
+
+      expect(saved, isTrue);
+      expect(profile.userId, 7);
+      expect(profile.diabetesType, 'type2');
+      expect(profile.targetRangeLow, 82);
+      expect(profile.targetRangeHigh, 155);
+      expect(profile.unitPreference, 'mmol/L');
+      expect(profile.treatment, 'lifestyle');
+      expect(profile.ramadanStartDate, DateTime(2026, 2, 18));
+      expect(profile.ramadanEndDate, DateTime(2026, 3, 20));
+    } finally {
+      await db.close();
+    }
+  });
 }
