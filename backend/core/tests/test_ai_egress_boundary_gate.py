@@ -111,13 +111,51 @@ def test_egress_gate_accepts_callsite_using_central_runtime_wrapper(tmp_path):
     _write(
         repo,
         "backend/media/vision.py",
-        "client = genai.Client()\n"
-        "execute_external_provider_call('gemini', 'image', 'vision', lambda: client.run())\n",
+        "def analyze():\n"
+        "    client = genai.Client()\n"
+        "    return execute_external_provider_call('gemini', 'image', 'vision', lambda: client.run())\n",
     )
     _commit(repo)
 
     result = _run(repo, "egress")
     assert result.returncode == 0
+
+
+def test_authorized_sibling_scope_cannot_hide_unauthorized_egress(tmp_path):
+    repo = _init_repo(tmp_path)
+    _write(
+        repo,
+        "backend/media/vision.py",
+        "def safe():\n"
+        "    client = genai.Client()\n"
+        "    return execute_external_provider_call('gemini', 'image', 'vision', lambda: client.run())\n"
+        "\n"
+        "def rogue():\n"
+        "    return genai.Client()\n",
+    )
+    _commit(repo)
+
+    result = _run(repo, "egress")
+    assert result.returncode == 1
+    assert "media/vision.py" in result.stderr
+
+
+def test_authorized_outer_scope_cannot_hide_unauthorized_nested_scope(tmp_path):
+    repo = _init_repo(tmp_path)
+    _write(
+        repo,
+        "backend/media/vision.py",
+        "def outer():\n"
+        "    assert_ai_egress_allowed()\n"
+        "    def rogue():\n"
+        "        return GenerativeModel('x')\n"
+        "    return rogue\n",
+    )
+    _commit(repo)
+
+    result = _run(repo, "egress")
+    assert result.returncode == 1
+    assert "media/vision.py" in result.stderr
 
 
 def test_import_or_comment_cannot_impersonate_runtime_authorization(tmp_path):
