@@ -2624,6 +2624,30 @@
               }
             ],
             "title": "Height"
+          },
+          "ramadan_start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ramadan Start Date"
+          },
+          "ramadan_end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ramadan End Date"
           }
         },
         "required": [
@@ -2747,6 +2771,30 @@
               }
             ],
             "title": "Height"
+          },
+          "ramadan_start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ramadan Start Date"
+          },
+          "ramadan_end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ramadan End Date"
           }
         },
         "title": "ProfilePatchSchema",

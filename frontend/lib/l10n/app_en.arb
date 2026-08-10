@@ -357,5 +357,23 @@
         "type": "String"
       }
     }
-  }
+  },
+  "ramadanProfileSection": "Ramadan period",
+  "ramadanProfileHint": "Optional. This period adapts meal names in the journal. IAmina does not infer that you are fasting.",
+  "ramadanNotConfigured": "Not configured",
+  "ramadanStartDate": "Start",
+  "ramadanEndDate": "End",
+  "ramadanChooseDate": "Choose a date",
+  "ramadanClear": "Clear period",
+  "ramadanSave": "Save",
+  "ramadanSaved": "Ramadan period saved.",
+  "ramadanSavedLocalOnly": "Saved on this device. The server was not updated.",
+  "ramadanSavedServerOnly": "Saved to your account. No local profile was available on this device.",
+  "ramadanSaveFailed": "The Ramadan period was not saved. Retry after your profile is available or your connection is restored.",
+  "ramadanNeedsBothDates": "Choose both a start and end date, or clear both.",
+  "ramadanDateOrderError": "The start date must be on or before the end date.",
+  "journalRamadanMealVocabularyHint": "Meal names follow the period saved in your profile. Fasting is not assumed.",
+  "journalMealSuhoor": "Suhoor",
+  "journalMealIftar": "Iftar",
+  "journalMealOther": "Other"
 }

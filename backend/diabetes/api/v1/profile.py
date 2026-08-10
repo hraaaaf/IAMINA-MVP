@@ -61,6 +61,8 @@ class ProfilePatchSchema(BaseModel):
     date_of_birth: Optional[date] = None
     weight: Optional[float] = None
     height: Optional[int] = None
+    ramadan_start_date: Optional[date] = None
+    ramadan_end_date: Optional[date] = None
 
     @field_validator("preferred_language")
     @classmethod
@@ -121,6 +123,27 @@ class ProfilePatchSchema(BaseModel):
         )
         if invalid:
             raise ValueError(f"Fields cannot be null: {', '.join(invalid)}")
+        return self
+
+    @model_validator(mode="after")
+    def validate_ramadan_period_pair(self):
+        """Ramadan context is explicit: persist a complete pair or clear both."""
+        fields = {"ramadan_start_date", "ramadan_end_date"}
+        touched = fields & self.model_fields_set
+        if not touched:
+            return self
+        if touched != fields:
+            raise ValueError(
+                "ramadan_start_date and ramadan_end_date must be patched together"
+            )
+        start = self.ramadan_start_date
+        end = self.ramadan_end_date
+        if (start is None) != (end is None):
+            raise ValueError("Ramadan period must contain both dates or clear both")
+        if start is not None and end is not None and start > end:
+            raise ValueError(
+                "ramadan_start_date must be on or before ramadan_end_date"
+            )
         return self
 
 
@@ -193,6 +216,8 @@ def patch_profile(request, data: ProfilePatchSchema):
         "unit_preference",
         "target_range_low",
         "target_range_high",
+        "ramadan_start_date",
+        "ramadan_end_date",
     }
 
     base_changed: list[str] = []

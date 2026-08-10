@@ -308,6 +308,12 @@ class _JournalScreenState extends State<JournalScreen> {
         return l10n.journalMealDinner;
       case 'snack':
         return l10n.journalMealSnack;
+      case 'iftar':
+        return l10n.journalMealIftar;
+      case 'suhoor':
+        return l10n.journalMealSuhoor;
+      case 'other':
+        return l10n.journalMealOther;
       case null:
       case '':
         break;
