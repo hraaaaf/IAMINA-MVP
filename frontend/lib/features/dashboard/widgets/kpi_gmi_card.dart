@@ -23,6 +23,7 @@ class _GMICard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AuditedPageCopy.of(context).l10n;
     final gmi = ClinicalEngine.calcGMI(logs);
     final mean = ClinicalEngine.calcMean(logs);
     final daysCount = _daysWithData(logs);
@@ -40,7 +41,10 @@ class _GMICard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CardHead(title: 'GMI estimée', meta: '$range j'),
+          CardHead(
+            title: l10n.dashboardGmiEstimated,
+            meta: '$range ${l10n.dayShort}',
+          ),
           const SizedBox(height: 16),
           Builder(
             builder: (context) {
@@ -85,7 +89,11 @@ class _GMICard extends StatelessWidget {
           if (logs.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              'Moyenne ${mean.toStringAsFixed(0)} mg/dL · ${logs.length} mesures · $daysCount jour${daysCount > 1 ? 's' : ''} de données',
+              l10n.dashboardGmiCoverage(
+                mean.toStringAsFixed(0),
+                logs.length,
+                daysCount,
+              ),
               style: TextStyle(
                 fontSize: 11,
                 color: AminaTheme.textSecondary(context),
@@ -122,8 +130,8 @@ class _GMICard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       hasLimitedCoverage
-                          ? 'Couverture limitée : moins de 14 jours ou 50 mesures. Résultat indicatif.'
-                          : 'Calculée à partir de la moyenne glycémique disponible.',
+                          ? l10n.dashboardGmiLimitedCoverage
+                          : l10n.dashboardGmiCalculated,
                       style: TextStyle(
                         fontSize: 10.5,
                         color: hasLimitedCoverage
@@ -138,7 +146,7 @@ class _GMICard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Cette estimation ne remplace pas une HbA1c de laboratoire.',
+              l10n.dashboardGmiDisclaimer,
               style: TextStyle(
                 fontSize: 10.5,
                 color: AminaTheme.textSecondary(context),
@@ -185,7 +193,7 @@ class _GMICard extends StatelessWidget {
               height: 44,
               child: Center(
                 child: Text(
-                  'Données insuffisantes',
+                  l10n.dashboardInsufficientData,
                   style: TextStyle(
                     fontSize: 11,
                     color: AminaTheme.textSecondary(context),

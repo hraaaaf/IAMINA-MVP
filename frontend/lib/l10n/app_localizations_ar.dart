@@ -1086,4 +1086,181 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get journalPostSaveDone => 'تم';
+
+  @override
+  String dashboardTrendPer30Minutes(String value) {
+    return '$value / 30 دقيقة';
+  }
+
+  @override
+  String dashboardRapidInsulin(String dose) {
+    return '$dose وحدة سريع المفعول';
+  }
+
+  @override
+  String get dashboardIntelligenceBadge => 'ذكاء IAmina';
+
+  @override
+  String get dashboardInsightStart => 'ابدأ بتسجيل القياسات لاكتشاف اتجاهاتك.';
+
+  @override
+  String dashboardInsightStrong(int percentage, int range) {
+    return 'تحكم ممتاز — $percentage٪ ضمن النطاق خلال $range يومًا.';
+  }
+
+  @override
+  String dashboardInsightProgress(int percentage, int mean) {
+    return 'يتحسن توازن سكر الدم لديك — $percentage٪ ضمن النطاق، بمتوسط $mean mg/dL.';
+  }
+
+  @override
+  String dashboardInsightNeedsFocus(int range) {
+    return 'رصدت IAmina نقاطًا للتحسين خلال آخر $range يومًا.';
+  }
+
+  @override
+  String get dashboardInsightFirstMeasurement =>
+      'أضف أول قياس لتفعيل تحليلات IAmina.';
+
+  @override
+  String get dashboardVariabilityStable => 'تباين مستقر';
+
+  @override
+  String get dashboardVariabilityWatch => 'تباين يحتاج إلى متابعة';
+
+  @override
+  String dashboardInsightSummary(
+    int discoveries,
+    String stability,
+    int measurements,
+  ) {
+    return 'الاكتشافات: $discoveries · $stability · $measurements قياسًا.';
+  }
+
+  @override
+  String get dashboardViewDiscoveries => 'عرض اكتشافاتي';
+
+  @override
+  String get dashboardGmiEstimated => 'مؤشر GMI التقديري';
+
+  @override
+  String dashboardGmiCoverage(String mean, int measurements, int days) {
+    return 'المتوسط $mean mg/dL · $measurements قياسًا · بيانات $days أيام';
+  }
+
+  @override
+  String get dashboardGmiLimitedCoverage =>
+      'تغطية محدودة: أقل من 14 يومًا أو 50 قياسًا. النتيجة إرشادية.';
+
+  @override
+  String get dashboardGmiCalculated => 'يُحسب من متوسط سكر الدم المتاح.';
+
+  @override
+  String get dashboardGmiDisclaimer =>
+      'لا يغني هذا التقدير عن فحص HbA1c المخبري.';
+
+  @override
+  String get dashboardInsufficientData => 'بيانات غير كافية';
+
+  @override
+  String get dashboardCvTitle => 'التباين (CV)';
+
+  @override
+  String get dashboardCvReferenceShort => 'مرجع عام <36٪';
+
+  @override
+  String dashboardMeasurementCoverage(int measurements, int days) {
+    return '$measurements قياسًا خلال $days أيام';
+  }
+
+  @override
+  String get dashboardCvBelowReference => 'أقل من المرجع العام';
+
+  @override
+  String get dashboardCvAboveReference => 'أعلى من المرجع العام';
+
+  @override
+  String get dashboardCvReferenceExplanation =>
+      'المرجع العام لـ CV أقل من 36٪. قد يختلف هدفك الشخصي.';
+
+  @override
+  String get dashboardAgpTitle => 'ملف الغلوكوز المتنقل (AGP)';
+
+  @override
+  String get dashboardLive => 'مباشر';
+
+  @override
+  String get dashboardAll => 'الكل';
+
+  @override
+  String dashboardHoursShort(int hours) {
+    return '$hours س';
+  }
+
+  @override
+  String get dashboardBeforeBed => 'قبل النوم';
+
+  @override
+  String get dashboardAgpInsufficient => 'لا توجد بيانات كافية لملف AGP';
+
+  @override
+  String get dashboardMedian => 'الوسيط';
+
+  @override
+  String get dashboardTargetLegend => 'النطاق المستهدف 70–180';
+
+  @override
+  String dashboardMealEvents(int count) {
+    return 'الوجبات: $count';
+  }
+
+  @override
+  String dashboardInsulinEvents(int count) {
+    return 'الإنسولين: $count';
+  }
+
+  @override
+  String dashboardAgpSufficiency(int days) {
+    return 'يستند AGP إلى $days أيام · توصي ADA ببيانات 14 يومًا على الأقل لتحليل موثوق.';
+  }
+
+  @override
+  String get dashboardKeyEvents => 'الأحداث الرئيسية';
+
+  @override
+  String get dashboardInTarget => 'ضمن الهدف';
+
+  @override
+  String get dashboardHyperglycemia => 'حالات ارتفاع السكر';
+
+  @override
+  String get dashboardHypoglycemia => 'حالات انخفاض السكر';
+
+  @override
+  String get dashboardTotalMeasurements => 'إجمالي القياسات';
+
+  @override
+  String get dashboardDiscoveriesTitle => 'اكتشافات IAmina';
+
+  @override
+  String get dashboardWaitingForData => 'في انتظار البيانات…';
+
+  @override
+  String dashboardDiscoveryCount(int count) {
+    return 'الاكتشافات: $count';
+  }
+
+  @override
+  String get dashboardViewAll => 'عرض الكل ←';
+
+  @override
+  String get dashboardAiDegraded =>
+      'تحليل الذكاء الاصطناعي محدود مؤقتًا · بياناتك محفوظة.';
+
+  @override
+  String get dashboardAnalyzingPatterns =>
+      'تحلل IAmina بياناتك لتحديد الأنماط…';
+
+  @override
+  String get dashboardMeasurement => 'قياس';
 }

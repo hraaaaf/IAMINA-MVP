@@ -53,12 +53,42 @@ class AuditedPageCopy {
   String minutesAgo(int value) => l10n.minutesAgo(value);
 
   String meal(String? value) {
-    if (value == null || value.isEmpty) return '';
-    final normalized = value.toLowerCase();
-    if (normalized.contains('après') || normalized.contains('post')) {
+    if (value == null || value.trim().isEmpty) return '';
+    final normalized = value.trim().toLowerCase();
+    if ({
+      'breakfast',
+      'petit-déjeuner',
+      'petit dejeuner',
+    }.contains(normalized)) {
+      return l10n.journalMealBreakfast;
+    }
+    if ({'lunch', 'déjeuner', 'dejeuner'}.contains(normalized)) {
+      return l10n.journalMealLunch;
+    }
+    if ({'dinner', 'dîner', 'diner'}.contains(normalized)) {
+      return l10n.journalMealDinner;
+    }
+    if ({'snack', 'en-cas', 'encas', 'collation'}.contains(normalized)) {
+      return l10n.journalMealSnack;
+    }
+    if (normalized == 'suhoor') return l10n.journalMealSuhoor;
+    if (normalized == 'iftar') return l10n.journalMealIftar;
+    if ({'other', 'autre'}.contains(normalized)) return l10n.journalMealOther;
+    if ({'fasting', 'à jeun', 'a jeun'}.contains(normalized)) {
+      return l10n.journalContextFasting;
+    }
+    if ({'pre_meal', 'pre-meal', 'avant repas'}.contains(normalized)) {
+      return l10n.journalContextPreMeal;
+    }
+    if ({
+      'post_meal',
+      'post-meal',
+      'post-prandial',
+      'après repas',
+      'apres repas',
+    }.contains(normalized)) {
       return l10n.afterMeal;
     }
-    if (normalized.contains('jeun')) return l10n.fasting;
     return value;
   }
 
