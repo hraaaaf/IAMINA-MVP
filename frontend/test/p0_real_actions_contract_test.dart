@@ -27,7 +27,8 @@ void main() {
     for (final path in _patientFacingSources) {
       final source = _read(path);
       for (final match in emptyCallback.allMatches(source)) {
-        final line = '\n'.allMatches(source.substring(0, match.start)).length + 1;
+        final line =
+            '\n'.allMatches(source.substring(0, match.start)).length + 1;
         failures.add('$path:$line has an empty patient-facing callback');
       }
     }
@@ -43,8 +44,9 @@ void main() {
     expect(module, contains("path: '/ajouter'"));
     expect(module, contains("path: '/journal/:id/edit'"));
     expect(
-      RegExp(r'db\s*\.\s*into\(db\.logEntries\)\s*\.\s*insert\s*\(')
-          .hasMatch(add),
+      RegExp(
+        r'db\s*\.\s*into\(db\.logEntries\)\s*\.\s*insert\s*\(',
+      ).hasMatch(add),
       isTrue,
     );
     expect(journal, contains("context.push('/journal/\${log.id}/edit')"));
@@ -56,9 +58,13 @@ void main() {
     final shell = _read('lib/features/navigation/main_shell.dart');
 
     expect(module, contains("route: '/importer'"));
-    expect(RegExp(r'for \(final \w+ in entries\)').hasMatch(shell), isTrue);
-    expect(shell, contains('NavigationDestination('));
-    expect(shell, contains('onDestinationSelected:'));
+    expect(
+      shell,
+      contains('for (var index = 0; index < entries.length; index++)'),
+    );
+    expect(shell, contains('_GlassNavDestination('));
+    expect(shell, contains('entry: entries[index]'));
+    expect(shell, contains("ValueKey('mobile-nav-\${entry.route}')"));
     expect(shell, contains('GoRouter.of(context).go(entries[index].route)'));
   });
 
