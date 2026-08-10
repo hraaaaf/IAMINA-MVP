@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-10 — P2-JOURNAL-9 Post-save experience is certified pre-merge in PR #77; Journal metabolic-event redesign is at its final merge unit.
+> **Last updated:** 2026-08-10 — P2-JOURNAL-9 Post-save experience is merged and 100% closed; the Journal metabolic-event redesign is fully closed. The active critical path returns to MENA launch blockers.
 >
 > **Authority:** this file is the single forward tracker. Detailed implementation history belongs in git, ADRs and architecture documents.
 
@@ -29,7 +29,7 @@ Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilo
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43; five executable UX truthfulness contracts |
 | P0 agent governance | 100% | ✅ Ready for certification | PR #63; Builder → Reviewer → Release Certifier protocol, 6 role briefs and 6 reusable skills |
 | P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14 certified; PRs #53–#66; final density/polish recertification run `31267173791` |
-| Journal metabolic-event redesign | 100% pre-merge | 🟢 P2-JOURNAL-9 certified; merge/post-merge pending | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 + P2-JOURNAL-8 merged; PR #77 factual post-save receipt; exact-code CI #1387 + drift #1199 green; 16-view FR/AR UX 9.3/10; four specialist reviewer PASSes |
+| Journal metabolic-event redesign | 100% | ✅ Closed | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 + P2-JOURNAL-8/9 merged; PR #77 merged as `d841d926d1b7fe076827a3086306daa09399e38d`; UX 9.3/10; post-merge CI #1390 + drift #1202 green |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, RTL certification PR #36 and review-package PR #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17, merge `185f680` |
@@ -96,7 +96,7 @@ Preparation work does not close a live benchmark, legal/privacy approval, native
 
 ---
 
-# Journal metabolic-event redesign — ACTIVE
+# Journal metabolic-event redesign — CLOSED
 
 **Goal:** turn the add-log surface into a fast, truthful metabolic-event journal that records what happened, keeps treatment decisions out of the UI, and can later support evidence-backed personal response patterns without fabricated precision.
 
@@ -114,7 +114,7 @@ Each Journal LOT is a separate branch/PR. Clinical/safety, UX/UI, privacy/egress
 | P1-JOURNAL-6 | Context intelligence | ✅ Closed | PR #73 merged as `95cf4d75226720386d7e8e55acc30c39fdd5017c`; post-merge CI #1342 + drift #1154 green; optional positive context, unknown-by-default omission, progressive Add + correctable Edit, legacy fatigue sync-compatible; UX 9.2/10 |
 | P1-JOURNAL-7 | Ramadan mode v2 | ✅ Closed | PR #75 merged as `5c70e5aeb67274767e56d0eb80f882ea52a45511`; post-merge CI #1372 + drift #1184 green; explicit nullable profile period; no fasting inference/meal preselection; update-only local persistence prevents fabricated medical defaults; UX 9.3/10 |
 | P2-JOURNAL-8 | Personal metabolic response | ✅ Closed | PR #76 merged as `a8ff01b9298f49133b3201d72086ade2643a9167`; post-merge CI #1383 + drift #1195 green; deterministic repeated observations, explicit evidence basis, 90-day synced scope, no causal/statistical/treatment claim; UX 9.3/10 |
-| P2-JOURNAL-9 | Post-save experience | 🟢 PR #77 merge unit | persistent factual local receipt after successful save; no instant interpretation/advice; mobile next actions remain reachable; longitudinal insights stay separate behind J8 evidence requirements; UX 9.3/10 |
+| P2-JOURNAL-9 | Post-save experience | ✅ Closed | PR #77 merged as `d841d926d1b7fe076827a3086306daa09399e38d`; persistent factual local receipt; no instant interpretation/advice; mobile actions remain reachable; post-merge CI #1390 + drift #1202 green; UX 9.3/10 |
 
 ### P0-JOURNAL-1 durable closeout contract
 
@@ -190,7 +190,7 @@ The receipt does not classify a non-low glucose value as good/bad or inside a pe
 
 After a successful save, the prior draft is cleared before another entry can begin, preventing previous meal/context/insulin facts from being silently reused. The next actions are explicit: **View in Journal / Add another reading / Done**. The first real FR/AR visual pass scored **8.9/10 and was rejected** because a rich receipt on `360×560` pushed all next actions below the fold. The same LOT was remediated so the receipt body scrolls independently while the action panel remains persistently reachable on mobile; Arabic numeric insulin values remain LTR.
 
-**Pre-closeout evidence on product head `ec701826a2f2be6edc075742d3c6d349564b77db`:** canonical CI #1387 SUCCESS; migration drift #1199 SUCCESS; focused FR persistence→render/reset and AR/RTL tests PASS; exact-code visual audit run `31389858816` SUCCESS with 16/16 FR/AR minimal/rich receipt renders across `1440×1000`, `768×1024`, `390×844` and `360×560`; artifact `9063210662`, digest `sha256:62b67588d47b0f5a441f38ebb11cbc362d6e7e56b4e3b8deef0e22213bba77f6`; UX Auditor **9.3/10 PASS**; Clinical Safety, Security/Privacy, Persistence/Database and UX reviewers FINAL PASS; unresolved review threads 0. Canonical documentation changes make these anchors pre-closeout evidence, so exact-final-head recertification, Release Certifier, expected-head merge and post-merge gates remain mandatory before Journal is declared 100% closed.
+**Pre-closeout evidence on product head `ec701826a2f2be6edc075742d3c6d349564b77db`:** canonical CI #1387 SUCCESS; migration drift #1199 SUCCESS; focused FR persistence→render/reset and AR/RTL tests PASS; exact-code visual audit run `31389858816` SUCCESS with 16/16 FR/AR minimal/rich receipt renders across `1440×1000`, `768×1024`, `390×844` and `360×560`; artifact `9063210662`, digest `sha256:62b67588d47b0f5a441f38ebb11cbc362d6e7e56b4e3b8deef0e22213bba77f6`; UX Auditor **9.3/10 PASS**; Clinical Safety, Security/Privacy, Persistence/Database and UX reviewers FINAL PASS; unresolved review threads 0. Canonical documentation changed the pre-merge head to `cc529c378eea7cb4908a57fdad2e85db5bde75bd`; exact-final-head CI #1389, drift #1201 and visual audit #4 all passed, the four specialist reviewers re-anchored FINAL PASS, and Release Certifier authorized the expected-head merge. PR #77 merged as `d841d926d1b7fe076827a3086306daa09399e38d`; post-merge CI #1390 and migration drift #1202 passed. **P2-JOURNAL-9 and the complete Journal metabolic-event redesign are 100% closed.**
 
 
 ---
