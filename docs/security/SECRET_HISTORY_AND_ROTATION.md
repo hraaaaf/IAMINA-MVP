@@ -43,16 +43,16 @@ Covered categories include:
 
 - generic `sk-` service tokens;
 - Anthropic-style API keys;
-- Google API keys, except deliberately public Firebase client identifiers at the exact generated-client path and exact copies anchored in the canonical generated Firebase configuration at `HEAD`;
+- Google API keys, except deliberately public Firebase client identifiers at the exact generated-client path and exact anchored copies in the approved compiled `main.dart.js` artifact;
 - AWS access keys;
 - GitHub tokens;
 - Slack tokens;
 - private-key material;
 - forbidden `.env`, service-account and local-credential paths.
 
-Known Firebase client identifiers are derived from `HEAD:frontend/lib/firebase_options.dart`. If that canonical generated configuration is unavailable, the derived allow-set is empty and the scanner fails closed. An unknown Google-format identifier outside the exact generated-client path therefore remains a finding even when a different Firebase client identifier is approved.
+Known Firebase client identifiers are derived from `HEAD:frontend/lib/firebase_options.dart`. If that canonical generated configuration is unavailable, the derived allow-set is empty and the scanner fails closed. An anchored identifier is exempt outside the generated-client path only when every reachable path for that blob is the approved compiled `main.dart.js` path. The same known identifier in another path remains a finding, and an unknown Google-format identifier in `main.dart.js` also remains a finding.
 
-Known synthetic `sk-` examples are ignored only at the individual regex match. They do not suppress other credential categories on the same line, and arbitrary `sk-` values remain findings.
+Explicit synthetic `sk-` example prefixes are ignored only at the individual regex match, so they cannot suppress a different credential category on the same line. The historical synthetic fixture identified by the 2026-08-10 preflight is an exact-value test exception, not a prefix exception; arbitrary or extended `sk-` values remain findings.
 
 The scanner is high-signal rather than mathematically exhaustive. A pass proves that no covered non-exempt pattern exists in reachable blobs; it does not prove that every unknown credential format has been detected.
 
