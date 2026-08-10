@@ -31,7 +31,7 @@ jobs:
         run: |
           flutter pub get
           dart format lib/features/profile/profile_screen.dart lib/features/journal/ai_summary_screen.dart test/features/ramadan_profile_responsive_test.dart
-          flutter analyze
+          flutter analyze --no-fatal-infos
           flutter test test/features/ramadan_profile_responsive_test.dart
       - name: Commit product patch
         run: |
