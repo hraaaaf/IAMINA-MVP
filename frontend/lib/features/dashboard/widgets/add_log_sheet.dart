@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/data/meal_food_catalog.dart';
 import '../../../core/data/nutrition_catalog.dart';
+import '../../../core/data/ramadan_context.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/drift/database.dart';
 import '../../../l10n/app_localizations.dart';
@@ -68,13 +69,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
     'pre_meal',
     'post_meal',
     'other',
-  ];
-
-  static const List<String> _mealTypes = <String>[
-    'breakfast',
-    'lunch',
-    'dinner',
-    'snack',
   ];
 
   @override
@@ -145,6 +139,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
                                   l10n,
                                   unit,
                                   profile?.aiConsentGivenAt != null,
+                                  profile,
                                 ),
                               ),
                               const SizedBox(width: 28),
@@ -156,6 +151,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
                             l10n,
                             unit,
                             profile?.aiConsentGivenAt != null,
+                            profile,
                           ),
                           const SizedBox(height: 18),
                           if (!_detailsExpanded)
@@ -221,6 +217,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
     AppLocalizations l10n,
     String unit,
     bool canUsePhotoRecognition,
+    PatientProfileData? profile,
   ) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: <Widget>[
@@ -228,7 +225,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
       const SizedBox(height: 22),
       _measurementContext(l10n),
       const SizedBox(height: 22),
-      _mealCapture(l10n, canUsePhotoRecognition),
+      _mealCapture(l10n, canUsePhotoRecognition, profile),
     ],
   );
 
@@ -337,7 +334,21 @@ class _AddLogSheetState extends State<AddLogSheet> {
     ],
   );
 
-  Widget _mealCapture(AppLocalizations l10n, bool canUsePhotoRecognition) {
+  Widget _mealCapture(
+    AppLocalizations l10n,
+    bool canUsePhotoRecognition,
+    PatientProfileData? profile,
+  ) {
+    final ramadanActive = isRamadanProfileDate(
+      _selectedTime,
+      profile?.ramadanStartDate,
+      profile?.ramadanEndDate,
+    );
+    final mealTypes = mealTypesForProfileDate(
+      _selectedTime,
+      profile?.ramadanStartDate,
+      profile?.ramadanEndDate,
+    );
     if (!_mealExpanded) {
       return OutlinedButton.icon(
         key: const Key('add-meal-button'),
@@ -381,10 +392,18 @@ class _AddLogSheetState extends State<AddLogSheet> {
             ],
           ),
           const SizedBox(height: 8),
+          if (ramadanActive) ...<Widget>[
+            Text(
+              l10n.journalRamadanMealVocabularyHint,
+              key: const Key('ramadan-meal-vocabulary-hint'),
+              style: _helperStyle(),
+            ),
+            const SizedBox(height: 10),
+          ],
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _mealTypes.map((value) {
+            children: mealTypes.map((value) {
               return ChoiceChip(
                 key: Key('meal-type-$value'),
                 label: Text(_mealLabel(l10n, value)),
@@ -617,6 +636,9 @@ class _AddLogSheetState extends State<AddLogSheet> {
     'breakfast' => l10n.journalMealBreakfast,
     'lunch' => l10n.journalMealLunch,
     'dinner' => l10n.journalMealDinner,
+    'suhoor' => l10n.journalMealSuhoor,
+    'iftar' => l10n.journalMealIftar,
+    'other' => l10n.journalMealOther,
     _ => l10n.journalMealSnack,
   };
 
@@ -647,6 +669,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
       initialTime: TimeOfDay.fromDateTime(_selectedTime),
     );
     if (time == null || !mounted) return;
+    final profile = context.read<PatientProfileData?>();
     setState(() {
       _selectedTime = DateTime(
         date.year,
@@ -655,6 +678,14 @@ class _AddLogSheetState extends State<AddLogSheet> {
         time.hour,
         time.minute,
       );
+      final allowed = mealTypesForProfileDate(
+        _selectedTime,
+        profile?.ramadanStartDate,
+        profile?.ramadanEndDate,
+      );
+      if (_mealType != null && !allowed.contains(_mealType)) {
+        _mealType = null;
+      }
     });
   }
 

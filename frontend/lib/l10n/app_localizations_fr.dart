@@ -920,4 +920,65 @@ class AppLocalizationsFr extends AppLocalizations {
   String journalNutritionSource(String source) {
     return 'Source : $source';
   }
+
+  @override
+  String get ramadanProfileSection => 'Période de Ramadan';
+
+  @override
+  String get ramadanProfileHint =>
+      'Optionnel. Cette période adapte les noms de repas dans le journal. IAmina n’en déduit pas que tu jeûnes.';
+
+  @override
+  String get ramadanNotConfigured => 'Non configurée';
+
+  @override
+  String get ramadanStartDate => 'Début';
+
+  @override
+  String get ramadanEndDate => 'Fin';
+
+  @override
+  String get ramadanChooseDate => 'Choisir une date';
+
+  @override
+  String get ramadanClear => 'Effacer la période';
+
+  @override
+  String get ramadanSave => 'Enregistrer';
+
+  @override
+  String get ramadanSaved => 'Période de Ramadan enregistrée.';
+
+  @override
+  String get ramadanSavedLocalOnly =>
+      'Enregistrée sur cet appareil. Le serveur n’a pas été mis à jour.';
+
+  @override
+  String get ramadanSavedServerOnly =>
+      'Enregistrée sur ton compte. Aucun profil local n’était disponible sur cet appareil.';
+
+  @override
+  String get ramadanSaveFailed =>
+      'Impossible d’enregistrer la période. Réessaie lorsque ton profil est disponible ou que la connexion est rétablie.';
+
+  @override
+  String get ramadanNeedsBothDates =>
+      'Choisis une date de début et une date de fin, ou efface les deux.';
+
+  @override
+  String get ramadanDateOrderError =>
+      'La date de début doit précéder ou être égale à la date de fin.';
+
+  @override
+  String get journalRamadanMealVocabularyHint =>
+      'Repas adaptés à la période enregistrée dans ton profil. Aucun jeûne n’est supposé.';
+
+  @override
+  String get journalMealSuhoor => 'Suhoor';
+
+  @override
+  String get journalMealIftar => 'Iftar';
+
+  @override
+  String get journalMealOther => 'Autre';
 }

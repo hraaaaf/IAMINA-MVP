@@ -8,7 +8,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
   test(
-    'Drift v7 to v8 adds meal_portions_json without rewriting existing logs',
+    'Drift v7 to latest adds meal portions and Ramadan profile columns safely',
     () async {
       final dir = await Directory.systemTemp.createTemp('iamina-journal-v7-');
       final file = File('${dir.path}/amina.sqlite');
@@ -39,6 +39,24 @@ void main() {
       );
     ''');
       legacy.execute('''
+      CREATE TABLE patient_profiles (
+        user_id INTEGER NOT NULL PRIMARY KEY,
+        preferred_language TEXT NOT NULL DEFAULT 'fr',
+        updated_at INTEGER NOT NULL,
+        diabetes_type TEXT,
+        target_range_low REAL NOT NULL DEFAULT 70.0,
+        target_range_high REAL NOT NULL DEFAULT 180.0,
+        unit_preference TEXT NOT NULL DEFAULT 'mg/dL',
+        treatment TEXT,
+        ai_consent_given_at INTEGER
+      );
+    ''');
+      legacy.execute('''
+      INSERT INTO patient_profiles (
+        user_id, preferred_language, updated_at, diabetes_type, treatment
+      ) VALUES (1, 'fr', 1723200000, 'type1', 'insulin');
+    ''');
+      legacy.execute('''
       INSERT INTO log_entries (
         created_at, blood_sugar, glycemic_context, meal_type,
         meal_description, meal_items_json, source, sync_status, client_uuid
@@ -60,10 +78,17 @@ void main() {
         expect(logs.single.mealItemsJson, '["couscous"]');
         expect(logs.single.mealPortionsJson, isNull);
         expect(logs.single.clientUuid, '88888888-8888-8888-8888-888888888888');
+
+        final profile = await db.select(db.patientProfiles).getSingle();
+        expect(profile.diabetesType, 'type1');
+        expect(profile.treatment, 'insulin');
+        expect(profile.ramadanStartDate, isNull);
+        expect(profile.ramadanEndDate, isNull);
+
         final version = await db
             .customSelect('PRAGMA user_version')
             .getSingle();
-        expect(version.data['user_version'], 8);
+        expect(version.data['user_version'], 9);
       } finally {
         await db.close();
         await dir.delete(recursive: true);

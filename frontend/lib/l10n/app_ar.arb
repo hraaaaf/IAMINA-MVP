@@ -357,5 +357,23 @@
         "type": "String"
       }
     }
-  }
+  },
+  "ramadanProfileSection": "فترة رمضان",
+  "ramadanProfileHint": "اختياري. تُكيّف هذه الفترة أسماء الوجبات في السجل. لا تفترض IAmina أنك صائم.",
+  "ramadanNotConfigured": "غير محددة",
+  "ramadanStartDate": "البداية",
+  "ramadanEndDate": "النهاية",
+  "ramadanChooseDate": "اختر تاريخًا",
+  "ramadanClear": "مسح الفترة",
+  "ramadanSave": "حفظ",
+  "ramadanSaved": "تم حفظ فترة رمضان.",
+  "ramadanSavedLocalOnly": "تم الحفظ على هذا الجهاز. لم يتم تحديث الخادم.",
+  "ramadanSavedServerOnly": "تم الحفظ في حسابك. لم يكن هناك ملف محلي متاح على هذا الجهاز.",
+  "ramadanSaveFailed": "تعذر حفظ فترة رمضان. أعد المحاولة عندما يصبح ملفك متاحًا أو يعود الاتصال.",
+  "ramadanNeedsBothDates": "اختر تاريخ البداية وتاريخ النهاية معًا، أو امسحهما معًا.",
+  "ramadanDateOrderError": "يجب أن يكون تاريخ البداية قبل تاريخ النهاية أو مساويًا له.",
+  "journalRamadanMealVocabularyHint": "تتكيف أسماء الوجبات مع الفترة المحفوظة في ملفك. لا يُفترض أنك صائم.",
+  "journalMealSuhoor": "السحور",
+  "journalMealIftar": "الإفطار",
+  "journalMealOther": "أخرى"
 }

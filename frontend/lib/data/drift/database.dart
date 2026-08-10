@@ -52,6 +52,9 @@ class PatientProfiles extends Table {
   /// Treatment modality: 'insulin' | 'tablets' | 'lifestyle'
   TextColumn get treatment => text().nullable()();
 
+  DateTimeColumn get ramadanStartDate => dateTime().nullable()();
+  DateTimeColumn get ramadanEndDate => dateTime().nullable()();
+
   /// RGPD Art. 7 — explicit AI processing consent timestamp.
   /// null = no consent given or withdrawn.
   DateTimeColumn get aiConsentGivenAt => dateTime().nullable()();
@@ -88,7 +91,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -125,8 +128,37 @@ class AppDatabase extends _$AppDatabase {
       if (from < 8) {
         await m.addColumn(logEntries, logEntries.mealPortionsJson);
       }
+      if (from < 9) {
+        await m.addColumn(patientProfiles, patientProfiles.ramadanStartDate);
+        await m.addColumn(patientProfiles, patientProfiles.ramadanEndDate);
+      }
     },
   );
+
+  Future<bool> setRamadanPeriod({DateTime? start, DateTime? end}) async {
+    if ((start == null) != (end == null)) {
+      throw ArgumentError('Ramadan period requires both dates or neither');
+    }
+    if (start != null && end != null && start.isAfter(end)) {
+      throw ArgumentError('Ramadan period start must not be after end');
+    }
+    final existing = await (select(
+      patientProfiles,
+    )..limit(1)).getSingleOrNull();
+    if (existing == null) return false;
+
+    final updated =
+        await (update(
+          patientProfiles,
+        )..where((row) => row.userId.equals(existing.userId))).write(
+          PatientProfilesCompanion(
+            updatedAt: Value(DateTime.now()),
+            ramadanStartDate: Value(start),
+            ramadanEndDate: Value(end),
+          ),
+        );
+    return updated == 1;
+  }
 
   // Watchers
   Stream<List<LogEntryData>> watchRecentLogs({int limit = 20}) {

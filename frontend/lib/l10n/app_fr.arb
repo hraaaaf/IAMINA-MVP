@@ -357,5 +357,23 @@
         "type": "String"
       }
     }
-  }
+  },
+  "ramadanProfileSection": "Période de Ramadan",
+  "ramadanProfileHint": "Optionnel. Cette période adapte les noms de repas dans le journal. IAmina n’en déduit pas que tu jeûnes.",
+  "ramadanNotConfigured": "Non configurée",
+  "ramadanStartDate": "Début",
+  "ramadanEndDate": "Fin",
+  "ramadanChooseDate": "Choisir une date",
+  "ramadanClear": "Effacer la période",
+  "ramadanSave": "Enregistrer",
+  "ramadanSaved": "Période de Ramadan enregistrée.",
+  "ramadanSavedLocalOnly": "Enregistrée sur cet appareil. Le serveur n’a pas été mis à jour.",
+  "ramadanSavedServerOnly": "Enregistrée sur ton compte. Aucun profil local n’était disponible sur cet appareil.",
+  "ramadanSaveFailed": "Impossible d’enregistrer la période. Réessaie lorsque ton profil est disponible ou que la connexion est rétablie.",
+  "ramadanNeedsBothDates": "Choisis une date de début et une date de fin, ou efface les deux.",
+  "ramadanDateOrderError": "La date de début doit précéder ou être égale à la date de fin.",
+  "journalRamadanMealVocabularyHint": "Repas adaptés à la période enregistrée dans ton profil. Aucun jeûne n’est supposé.",
+  "journalMealSuhoor": "Suhoor",
+  "journalMealIftar": "Iftar",
+  "journalMealOther": "Autre"
 }

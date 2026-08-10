@@ -55,6 +55,8 @@ class PatientProfileSchema(Schema):
     date_of_birth: Optional[date] = None
     weight: Optional[float] = None
     height: Optional[float] = None
+    ramadan_start_date: Optional[date] = None
+    ramadan_end_date: Optional[date] = None
 
 
 class LogEntrySchema(Schema):

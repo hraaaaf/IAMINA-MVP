@@ -1341,6 +1341,30 @@ class $PatientProfilesTable extends PatientProfiles
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _ramadanStartDateMeta = const VerificationMeta(
+    'ramadanStartDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> ramadanStartDate =
+      GeneratedColumn<DateTime>(
+        'ramadan_start_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _ramadanEndDateMeta = const VerificationMeta(
+    'ramadanEndDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> ramadanEndDate =
+      GeneratedColumn<DateTime>(
+        'ramadan_end_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _aiConsentGivenAtMeta = const VerificationMeta(
     'aiConsentGivenAt',
   );
@@ -1363,6 +1387,8 @@ class $PatientProfilesTable extends PatientProfiles
     targetRangeHigh,
     unitPreference,
     treatment,
+    ramadanStartDate,
+    ramadanEndDate,
     aiConsentGivenAt,
   ];
   @override
@@ -1442,6 +1468,24 @@ class $PatientProfilesTable extends PatientProfiles
         treatment.isAcceptableOrUnknown(data['treatment']!, _treatmentMeta),
       );
     }
+    if (data.containsKey('ramadan_start_date')) {
+      context.handle(
+        _ramadanStartDateMeta,
+        ramadanStartDate.isAcceptableOrUnknown(
+          data['ramadan_start_date']!,
+          _ramadanStartDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('ramadan_end_date')) {
+      context.handle(
+        _ramadanEndDateMeta,
+        ramadanEndDate.isAcceptableOrUnknown(
+          data['ramadan_end_date']!,
+          _ramadanEndDateMeta,
+        ),
+      );
+    }
     if (data.containsKey('ai_consent_given_at')) {
       context.handle(
         _aiConsentGivenAtMeta,
@@ -1492,6 +1536,14 @@ class $PatientProfilesTable extends PatientProfiles
         DriftSqlType.string,
         data['${effectivePrefix}treatment'],
       ),
+      ramadanStartDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}ramadan_start_date'],
+      ),
+      ramadanEndDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}ramadan_end_date'],
+      ),
       aiConsentGivenAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}ai_consent_given_at'],
@@ -1517,6 +1569,8 @@ class PatientProfileData extends DataClass
 
   /// Treatment modality: 'insulin' | 'tablets' | 'lifestyle'
   final String? treatment;
+  final DateTime? ramadanStartDate;
+  final DateTime? ramadanEndDate;
 
   /// RGPD Art. 7 — explicit AI processing consent timestamp.
   /// null = no consent given or withdrawn.
@@ -1530,6 +1584,8 @@ class PatientProfileData extends DataClass
     required this.targetRangeHigh,
     required this.unitPreference,
     this.treatment,
+    this.ramadanStartDate,
+    this.ramadanEndDate,
     this.aiConsentGivenAt,
   });
   @override
@@ -1546,6 +1602,12 @@ class PatientProfileData extends DataClass
     map['unit_preference'] = Variable<String>(unitPreference);
     if (!nullToAbsent || treatment != null) {
       map['treatment'] = Variable<String>(treatment);
+    }
+    if (!nullToAbsent || ramadanStartDate != null) {
+      map['ramadan_start_date'] = Variable<DateTime>(ramadanStartDate);
+    }
+    if (!nullToAbsent || ramadanEndDate != null) {
+      map['ramadan_end_date'] = Variable<DateTime>(ramadanEndDate);
     }
     if (!nullToAbsent || aiConsentGivenAt != null) {
       map['ai_consent_given_at'] = Variable<DateTime>(aiConsentGivenAt);
@@ -1567,6 +1629,12 @@ class PatientProfileData extends DataClass
       treatment: treatment == null && nullToAbsent
           ? const Value.absent()
           : Value(treatment),
+      ramadanStartDate: ramadanStartDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ramadanStartDate),
+      ramadanEndDate: ramadanEndDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ramadanEndDate),
       aiConsentGivenAt: aiConsentGivenAt == null && nullToAbsent
           ? const Value.absent()
           : Value(aiConsentGivenAt),
@@ -1587,6 +1655,10 @@ class PatientProfileData extends DataClass
       targetRangeHigh: serializer.fromJson<double>(json['targetRangeHigh']),
       unitPreference: serializer.fromJson<String>(json['unitPreference']),
       treatment: serializer.fromJson<String?>(json['treatment']),
+      ramadanStartDate: serializer.fromJson<DateTime?>(
+        json['ramadanStartDate'],
+      ),
+      ramadanEndDate: serializer.fromJson<DateTime?>(json['ramadanEndDate']),
       aiConsentGivenAt: serializer.fromJson<DateTime?>(
         json['aiConsentGivenAt'],
       ),
@@ -1604,6 +1676,8 @@ class PatientProfileData extends DataClass
       'targetRangeHigh': serializer.toJson<double>(targetRangeHigh),
       'unitPreference': serializer.toJson<String>(unitPreference),
       'treatment': serializer.toJson<String?>(treatment),
+      'ramadanStartDate': serializer.toJson<DateTime?>(ramadanStartDate),
+      'ramadanEndDate': serializer.toJson<DateTime?>(ramadanEndDate),
       'aiConsentGivenAt': serializer.toJson<DateTime?>(aiConsentGivenAt),
     };
   }
@@ -1617,6 +1691,8 @@ class PatientProfileData extends DataClass
     double? targetRangeHigh,
     String? unitPreference,
     Value<String?> treatment = const Value.absent(),
+    Value<DateTime?> ramadanStartDate = const Value.absent(),
+    Value<DateTime?> ramadanEndDate = const Value.absent(),
     Value<DateTime?> aiConsentGivenAt = const Value.absent(),
   }) => PatientProfileData(
     userId: userId ?? this.userId,
@@ -1627,6 +1703,12 @@ class PatientProfileData extends DataClass
     targetRangeHigh: targetRangeHigh ?? this.targetRangeHigh,
     unitPreference: unitPreference ?? this.unitPreference,
     treatment: treatment.present ? treatment.value : this.treatment,
+    ramadanStartDate: ramadanStartDate.present
+        ? ramadanStartDate.value
+        : this.ramadanStartDate,
+    ramadanEndDate: ramadanEndDate.present
+        ? ramadanEndDate.value
+        : this.ramadanEndDate,
     aiConsentGivenAt: aiConsentGivenAt.present
         ? aiConsentGivenAt.value
         : this.aiConsentGivenAt,
@@ -1651,6 +1733,12 @@ class PatientProfileData extends DataClass
           ? data.unitPreference.value
           : this.unitPreference,
       treatment: data.treatment.present ? data.treatment.value : this.treatment,
+      ramadanStartDate: data.ramadanStartDate.present
+          ? data.ramadanStartDate.value
+          : this.ramadanStartDate,
+      ramadanEndDate: data.ramadanEndDate.present
+          ? data.ramadanEndDate.value
+          : this.ramadanEndDate,
       aiConsentGivenAt: data.aiConsentGivenAt.present
           ? data.aiConsentGivenAt.value
           : this.aiConsentGivenAt,
@@ -1668,6 +1756,8 @@ class PatientProfileData extends DataClass
           ..write('targetRangeHigh: $targetRangeHigh, ')
           ..write('unitPreference: $unitPreference, ')
           ..write('treatment: $treatment, ')
+          ..write('ramadanStartDate: $ramadanStartDate, ')
+          ..write('ramadanEndDate: $ramadanEndDate, ')
           ..write('aiConsentGivenAt: $aiConsentGivenAt')
           ..write(')'))
         .toString();
@@ -1683,6 +1773,8 @@ class PatientProfileData extends DataClass
     targetRangeHigh,
     unitPreference,
     treatment,
+    ramadanStartDate,
+    ramadanEndDate,
     aiConsentGivenAt,
   );
   @override
@@ -1697,6 +1789,8 @@ class PatientProfileData extends DataClass
           other.targetRangeHigh == this.targetRangeHigh &&
           other.unitPreference == this.unitPreference &&
           other.treatment == this.treatment &&
+          other.ramadanStartDate == this.ramadanStartDate &&
+          other.ramadanEndDate == this.ramadanEndDate &&
           other.aiConsentGivenAt == this.aiConsentGivenAt);
 }
 
@@ -1709,6 +1803,8 @@ class PatientProfilesCompanion extends UpdateCompanion<PatientProfileData> {
   final Value<double> targetRangeHigh;
   final Value<String> unitPreference;
   final Value<String?> treatment;
+  final Value<DateTime?> ramadanStartDate;
+  final Value<DateTime?> ramadanEndDate;
   final Value<DateTime?> aiConsentGivenAt;
   const PatientProfilesCompanion({
     this.userId = const Value.absent(),
@@ -1719,6 +1815,8 @@ class PatientProfilesCompanion extends UpdateCompanion<PatientProfileData> {
     this.targetRangeHigh = const Value.absent(),
     this.unitPreference = const Value.absent(),
     this.treatment = const Value.absent(),
+    this.ramadanStartDate = const Value.absent(),
+    this.ramadanEndDate = const Value.absent(),
     this.aiConsentGivenAt = const Value.absent(),
   });
   PatientProfilesCompanion.insert({
@@ -1730,6 +1828,8 @@ class PatientProfilesCompanion extends UpdateCompanion<PatientProfileData> {
     this.targetRangeHigh = const Value.absent(),
     this.unitPreference = const Value.absent(),
     this.treatment = const Value.absent(),
+    this.ramadanStartDate = const Value.absent(),
+    this.ramadanEndDate = const Value.absent(),
     this.aiConsentGivenAt = const Value.absent(),
   }) : updatedAt = Value(updatedAt);
   static Insertable<PatientProfileData> custom({
@@ -1741,6 +1841,8 @@ class PatientProfilesCompanion extends UpdateCompanion<PatientProfileData> {
     Expression<double>? targetRangeHigh,
     Expression<String>? unitPreference,
     Expression<String>? treatment,
+    Expression<DateTime>? ramadanStartDate,
+    Expression<DateTime>? ramadanEndDate,
     Expression<DateTime>? aiConsentGivenAt,
   }) {
     return RawValuesInsertable({
@@ -1752,6 +1854,8 @@ class PatientProfilesCompanion extends UpdateCompanion<PatientProfileData> {
       if (targetRangeHigh != null) 'target_range_high': targetRangeHigh,
       if (unitPreference != null) 'unit_preference': unitPreference,
       if (treatment != null) 'treatment': treatment,
+      if (ramadanStartDate != null) 'ramadan_start_date': ramadanStartDate,
+      if (ramadanEndDate != null) 'ramadan_end_date': ramadanEndDate,
       if (aiConsentGivenAt != null) 'ai_consent_given_at': aiConsentGivenAt,
     });
   }
@@ -1765,6 +1869,8 @@ class PatientProfilesCompanion extends UpdateCompanion<PatientProfileData> {
     Value<double>? targetRangeHigh,
     Value<String>? unitPreference,
     Value<String?>? treatment,
+    Value<DateTime?>? ramadanStartDate,
+    Value<DateTime?>? ramadanEndDate,
     Value<DateTime?>? aiConsentGivenAt,
   }) {
     return PatientProfilesCompanion(
@@ -1776,6 +1882,8 @@ class PatientProfilesCompanion extends UpdateCompanion<PatientProfileData> {
       targetRangeHigh: targetRangeHigh ?? this.targetRangeHigh,
       unitPreference: unitPreference ?? this.unitPreference,
       treatment: treatment ?? this.treatment,
+      ramadanStartDate: ramadanStartDate ?? this.ramadanStartDate,
+      ramadanEndDate: ramadanEndDate ?? this.ramadanEndDate,
       aiConsentGivenAt: aiConsentGivenAt ?? this.aiConsentGivenAt,
     );
   }
@@ -1807,6 +1915,12 @@ class PatientProfilesCompanion extends UpdateCompanion<PatientProfileData> {
     if (treatment.present) {
       map['treatment'] = Variable<String>(treatment.value);
     }
+    if (ramadanStartDate.present) {
+      map['ramadan_start_date'] = Variable<DateTime>(ramadanStartDate.value);
+    }
+    if (ramadanEndDate.present) {
+      map['ramadan_end_date'] = Variable<DateTime>(ramadanEndDate.value);
+    }
     if (aiConsentGivenAt.present) {
       map['ai_consent_given_at'] = Variable<DateTime>(aiConsentGivenAt.value);
     }
@@ -1824,6 +1938,8 @@ class PatientProfilesCompanion extends UpdateCompanion<PatientProfileData> {
           ..write('targetRangeHigh: $targetRangeHigh, ')
           ..write('unitPreference: $unitPreference, ')
           ..write('treatment: $treatment, ')
+          ..write('ramadanStartDate: $ramadanStartDate, ')
+          ..write('ramadanEndDate: $ramadanEndDate, ')
           ..write('aiConsentGivenAt: $aiConsentGivenAt')
           ..write(')'))
         .toString();
@@ -2757,6 +2873,8 @@ typedef $$PatientProfilesTableCreateCompanionBuilder =
       Value<double> targetRangeHigh,
       Value<String> unitPreference,
       Value<String?> treatment,
+      Value<DateTime?> ramadanStartDate,
+      Value<DateTime?> ramadanEndDate,
       Value<DateTime?> aiConsentGivenAt,
     });
 typedef $$PatientProfilesTableUpdateCompanionBuilder =
@@ -2769,6 +2887,8 @@ typedef $$PatientProfilesTableUpdateCompanionBuilder =
       Value<double> targetRangeHigh,
       Value<String> unitPreference,
       Value<String?> treatment,
+      Value<DateTime?> ramadanStartDate,
+      Value<DateTime?> ramadanEndDate,
       Value<DateTime?> aiConsentGivenAt,
     });
 
@@ -2818,6 +2938,16 @@ class $$PatientProfilesTableFilterComposer
 
   ColumnFilters<String> get treatment => $composableBuilder(
     column: $table.treatment,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get ramadanStartDate => $composableBuilder(
+    column: $table.ramadanStartDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get ramadanEndDate => $composableBuilder(
+    column: $table.ramadanEndDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2876,6 +3006,16 @@ class $$PatientProfilesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get ramadanStartDate => $composableBuilder(
+    column: $table.ramadanStartDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get ramadanEndDate => $composableBuilder(
+    column: $table.ramadanEndDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get aiConsentGivenAt => $composableBuilder(
     column: $table.aiConsentGivenAt,
     builder: (column) => ColumnOrderings(column),
@@ -2924,6 +3064,16 @@ class $$PatientProfilesTableAnnotationComposer
 
   GeneratedColumn<String> get treatment =>
       $composableBuilder(column: $table.treatment, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get ramadanStartDate => $composableBuilder(
+    column: $table.ramadanStartDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get ramadanEndDate => $composableBuilder(
+    column: $table.ramadanEndDate,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get aiConsentGivenAt => $composableBuilder(
     column: $table.aiConsentGivenAt,
@@ -2976,6 +3126,8 @@ class $$PatientProfilesTableTableManager
                 Value<double> targetRangeHigh = const Value.absent(),
                 Value<String> unitPreference = const Value.absent(),
                 Value<String?> treatment = const Value.absent(),
+                Value<DateTime?> ramadanStartDate = const Value.absent(),
+                Value<DateTime?> ramadanEndDate = const Value.absent(),
                 Value<DateTime?> aiConsentGivenAt = const Value.absent(),
               }) => PatientProfilesCompanion(
                 userId: userId,
@@ -2986,6 +3138,8 @@ class $$PatientProfilesTableTableManager
                 targetRangeHigh: targetRangeHigh,
                 unitPreference: unitPreference,
                 treatment: treatment,
+                ramadanStartDate: ramadanStartDate,
+                ramadanEndDate: ramadanEndDate,
                 aiConsentGivenAt: aiConsentGivenAt,
               ),
           createCompanionCallback:
@@ -2998,6 +3152,8 @@ class $$PatientProfilesTableTableManager
                 Value<double> targetRangeHigh = const Value.absent(),
                 Value<String> unitPreference = const Value.absent(),
                 Value<String?> treatment = const Value.absent(),
+                Value<DateTime?> ramadanStartDate = const Value.absent(),
+                Value<DateTime?> ramadanEndDate = const Value.absent(),
                 Value<DateTime?> aiConsentGivenAt = const Value.absent(),
               }) => PatientProfilesCompanion.insert(
                 userId: userId,
@@ -3008,6 +3164,8 @@ class $$PatientProfilesTableTableManager
                 targetRangeHigh: targetRangeHigh,
                 unitPreference: unitPreference,
                 treatment: treatment,
+                ramadanStartDate: ramadanStartDate,
+                ramadanEndDate: ramadanEndDate,
                 aiConsentGivenAt: aiConsentGivenAt,
               ),
           withReferenceMapper: (p0) => p0

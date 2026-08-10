@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:amina/data/drift/database.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+// ignore: depend_on_referenced_packages
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
@@ -35,6 +36,24 @@ void main() {
       );
     ''');
     legacy.execute('''
+      CREATE TABLE patient_profiles (
+        user_id INTEGER NOT NULL PRIMARY KEY,
+        preferred_language TEXT NOT NULL DEFAULT 'fr',
+        updated_at INTEGER NOT NULL,
+        diabetes_type TEXT,
+        target_range_low REAL NOT NULL DEFAULT 70.0,
+        target_range_high REAL NOT NULL DEFAULT 180.0,
+        unit_preference TEXT NOT NULL DEFAULT 'mg/dL',
+        treatment TEXT,
+        ai_consent_given_at INTEGER
+      );
+    ''');
+    legacy.execute('''
+      INSERT INTO patient_profiles (
+        user_id, preferred_language, updated_at, diabetes_type, treatment
+      ) VALUES (1, 'fr', 1723200000, 'type2', 'lifestyle');
+    ''');
+    legacy.execute('''
       INSERT INTO log_entries (
         created_at, blood_sugar, meal_type, source, sync_status, client_uuid
       ) VALUES (
@@ -56,8 +75,15 @@ void main() {
       expect(logs.single.mealPortionsJson, isNull);
       expect(logs.single.clientUuid, '55555555-5555-5555-5555-555555555555');
 
+      final profile = await db.select(db.patientProfiles).getSingle();
+      expect(profile.userId, 1);
+      expect(profile.diabetesType, 'type2');
+      expect(profile.treatment, 'lifestyle');
+      expect(profile.ramadanStartDate, isNull);
+      expect(profile.ramadanEndDate, isNull);
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 8);
+      expect(version.data['user_version'], 9);
     } finally {
       await db.close();
       await dir.delete(recursive: true);
