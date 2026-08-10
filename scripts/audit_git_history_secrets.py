@@ -42,11 +42,17 @@ PATTERN_PATH_EXCEPTIONS: dict[str, frozenset[str]] = {
     "Google API key": frozenset({"frontend/lib/firebase_options.dart"}),
 }
 
-SAFE_GENERIC_SK_EXAMPLES = (
+PUBLIC_FIREBASE_COMPILED_PATHS = frozenset({"main.dart.js"})
+
+SAFE_GENERIC_SK_PREFIXES = (
     "sk-example-",
     "sk-placeholder-",
     "sk-not-a-real-",
-    "sk-" + "this-must-never-be-in-the-manifest",
+)
+SAFE_GENERIC_SK_EXACT = frozenset(
+    {
+        "sk-" + "this-must-never-be-in-the-manifest",
+    }
 )
 
 
@@ -160,9 +166,10 @@ def _current_public_google_identifiers(repo: Path) -> frozenset[str]:
     """Return deliberate Firebase client identifiers from the canonical HEAD config.
 
     FlutterFire client API identifiers are public application metadata. Exact copies
-    emitted into compiled Flutter web artifacts may therefore be ignored, but only
-    when the value is anchored in the canonical generated Firebase options at HEAD.
-    Missing configuration produces an empty allow-set so the scanner fails closed.
+    emitted into the approved compiled web artifact may therefore be ignored, but
+    only when the value is anchored in the canonical generated Firebase options at
+    HEAD. Missing configuration produces an empty allow-set so the scanner fails
+    closed.
     """
 
     try:
@@ -176,7 +183,21 @@ def _current_public_google_identifiers(repo: Path) -> frozenset[str]:
 def _match_is_known_safe_example(label: str, value: str) -> bool:
     if label != "generic sk token":
         return False
-    return any(value.startswith(prefix) for prefix in SAFE_GENERIC_SK_EXAMPLES)
+    if value in SAFE_GENERIC_SK_EXACT:
+        return True
+    return any(value.startswith(prefix) for prefix in SAFE_GENERIC_SK_PREFIXES)
+
+
+def _public_google_copy_allowed(
+    value: str,
+    paths: set[str],
+    public_google_identifiers: frozenset[str],
+) -> bool:
+    return (
+        value in public_google_identifiers
+        and bool(paths)
+        and all(path in PUBLIC_FIREBASE_COMPILED_PATHS for path in paths)
+    )
 
 
 def scan_text(
@@ -197,7 +218,11 @@ def scan_text(
                 value = match.group(0)
                 if _match_is_known_safe_example(label, value):
                     continue
-                if label == "Google API key" and value in public_google_identifiers:
+                if label == "Google API key" and _public_google_copy_allowed(
+                    value,
+                    paths,
+                    public_google_identifiers,
+                ):
                     continue
                 findings.append((line_number, label))
                 break
