@@ -80,6 +80,20 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - the legacy per-log `ramadan_mode` field is preserved for compatibility and is not retrospectively promoted into authoritative fasting evidence;
 - FR/EN/AR localization is supported for this capability, with Arabic governed by the application's RTL contract.
 
+### Personal metabolic response contract
+
+- personal-response patterns are deterministic derived observations recalculated from authoritative synchronized source logs; they are not persisted as clinical facts;
+- a context pattern may use only explicitly recorded positive states; historical `no`, `good` or `ok` values must not be treated as a negative/control cohort because older schemas may have materialized defaults;
+- a meal pattern requires an explicit `post_meal` measurement context plus an explicit meal type;
+- demo rows are excluded and patient scope is derived from the authenticated server identity, never a client-supplied patient identifier;
+- the analysis window is bounded to 90 days and the UI/API disclose that only server-synchronized logs are analyzed;
+- pattern eligibility requires at least 3 matching observations across at least 2 distinct days; insufficient repetition fails closed instead of producing a pattern;
+- each pattern may expose observation count, distinct-day count, its median glucose and the median of all eligible synchronized readings in the same window; no causal delta or predicted glucose is produced;
+- `limited` / `moderate` / `strong` describe only product repeatability/evidence density. They are not a probability, p-value, statistical significance test, diagnosis or clinical confidence score;
+- the patient-facing surface must state that association does not establish cause and must not guide treatment or dosing;
+- no pattern detector may produce treatment optimization, insulin-dose advice, diagnosis or autonomous clinical recommendation;
+- the Journal shows one strongest pattern by default and makes secondary patterns explicitly expandable so longitudinal context does not crowd out the primary history task.
+
 ### Insulin logging v2 contract
 
 - `insulin_units` is patient-entered historical fact: the quantity the patient reports having already administered;
