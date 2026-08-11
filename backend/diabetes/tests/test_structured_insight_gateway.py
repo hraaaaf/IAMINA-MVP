@@ -37,10 +37,12 @@ def test_structured_formatter_uses_deterministic_pattern_capability(monkeypatch)
     assert len(calls) == 1
     assert calls[0][2] is Capability.SURFACE_DETERMINISTIC_PATTERN
     assert result[0]["code"] == "TEST_PATTERN"
-    assert result[0]["content"] == "Observation reformulée."
+    assert result[0]["title"] == "Observation dans tes données"
+    assert "établir une cause ou un diagnostic" in result[0]["content"]
+    assert "Observation reformulée" not in result[0]["content"]
 
 
-def test_structured_formatter_preserves_template_fallback_on_gateway_failure(monkeypatch):
+def test_structured_formatter_fails_closed_on_gateway_failure(monkeypatch):
     class FailingGateway:
         def complete(self, system, user, capability):
             raise RuntimeError("synthetic provider failure")
@@ -50,4 +52,7 @@ def test_structured_formatter_preserves_template_fallback_on_gateway_failure(mon
     result = engine._format_with_llm([_pattern()], language="fr")
 
     assert result[0]["code"] == "TEST_PATTERN"
-    assert result[0]["content"] == "Observation de secours."
+    assert result[0]["title"] == "Observation dans tes données"
+    assert "établir une cause ou un diagnostic" in result[0]["content"]
+    assert result[0]["content"] != "Observation de secours."
+    assert result[0]["action"] != "À discuter avec votre médecin."
