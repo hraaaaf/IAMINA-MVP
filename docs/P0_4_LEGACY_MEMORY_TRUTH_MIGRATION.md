@@ -12,7 +12,7 @@ P0.4 is complete only when:
 - canonical truth classification is owned by code and cannot be overridden by snapshot-supplied metadata;
 - legacy unknown fields are preserved outside active reasoning rather than silently discarded;
 - `last_concern` remains an explicit `USER_CLAIM`; cached/dialogue/relationship state remains non-clinical `CONVERSATIONAL_STATE`;
-- historical `food_sensitivities` is classified as `MODEL_INFERENCE`, retained only in quarantine, and cannot enter deterministic clinical logic or patient-fact persistence;
+- historical `food_sensitivities` is classified as `HEURISTIC_INFERENCE`, retained only in quarantine, and cannot enter deterministic clinical logic or patient-fact persistence;
 - new log events no longer learn the old single-reading / approximate-baseline food heuristic;
 - quarantined food heuristics cannot select `next_intention` or otherwise steer active companion reasoning;
 - existing streak, relationship, emotion, milestone and cached-state behavior remains backward compatible;
