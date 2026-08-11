@@ -4,7 +4,6 @@ This module does not decide whether a clinical pattern exists. It only prevents
 generative narration from upgrading approved observations into a diagnosis,
 confirmed mechanism/causality or an unauthorized therapeutic intervention.
 """
-from __future__ import annotations
 
 import re
 
