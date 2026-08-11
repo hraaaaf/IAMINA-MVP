@@ -147,7 +147,7 @@ Generative AI must never be the authority for:
 - Unexpected unit-normalization failures are fail-closed.
 - Authoritative deterministic triage classification belongs to shared `core` safety ownership; compatibility shims may remain for historical imports, but core safety must not depend on the diabetes module.
 
-### P0.2 truth and capability boundary now as-built
+### P0.2/P0.3 truth and capability boundary now as-built
 
 - `TruthRecord` distinguishes observed facts, explicit patient claims, deterministic derivations, preferences, conversational state and model inference.
 - Model inference and conversational state cannot be persisted as patient clinical fact or used as deterministic clinical input merely because a model produced or repeated them.
@@ -155,12 +155,12 @@ Generative AI must never be the authority for:
 - The capability matrix permits generative explanation/summarization of approved data and clinician-question preparation, while emergency classification remains deterministic-only.
 - Diagnosis, prescription, dose calculation, treatment optimization/change, model-inference promotion and autonomous clinical-record writes are disabled capabilities.
 - `GatewayLLM` fails closed on a forbidden generative capability before provider egress.
-- `doctor-brief` now uses the capability-aware gateway while preserving its structured JSON response contract.
-- One legacy structured diabetes insight formatter still calls the provider abstraction directly after egress authorization; this bounded exception is tracked in `docs/TECHDEBT.md` and does not authorize diagnosis/prescription/treatment behavior.
+- `doctor-brief` uses the capability-aware gateway with `SUMMARIZE_APPROVED_DATA` while preserving its structured JSON response contract.
+- The diabetes structured insight formatter uses the same gateway with `SURFACE_DETERMINISTIC_PATTERN`, preserving its existing JSON parsing, fallback and patient-visible sanitation behavior.
 
 ## 6. AI / model boundary
 
-### Current state after P0-B and P0.2
+### Current state after P0-B, P0.2 and P0.3
 
 `core.ai_egress` is the central authorization layer for currently wired live external model/media operations.
 
@@ -182,9 +182,9 @@ The boundary is intentionally **lazy**: entering a request scope does not itself
 
 The shared text gateway additionally enforces the IAmina capability matrix before provider egress. This authority check is independent of consent/egress authorization: an allowed narrative capability can still be denied for missing egress consent, and egress consent never grants a forbidden medical capability.
 
-Live call paths wired through this policy include the currently inventoried text/gateway, chat, summary/doctor-brief, STT/audio, vision/OCR, and document-processing flows.
+Live call paths wired through this policy include the currently inventoried text/gateway, chat, summary/doctor-brief, structured diabetes insight formatting, STT/audio, vision/OCR, and document-processing flows.
 
-CI contains an AI-egress anti-bypass gate so new direct model/provider callsites cannot silently omit the authorization assertion. P0.2 adds a focused anti-regression contract preventing the AI API/doctor-brief path from returning to direct text-provider access.
+CI contains an AI-egress anti-bypass gate so new direct model/provider callsites cannot silently omit the authorization assertion. Focused IAmina contracts prevent both the AI API/doctor-brief path and the structured diabetes insight formatter from returning to direct text-provider access.
 
 ### Important remaining limitations
 
@@ -200,12 +200,9 @@ Still required under P0-MENA-1:
 - timeout/failure/fallback policy;
 - final removal/isolation of provider-specific seams.
 
-P0.2 additionally leaves two bounded follow-ups:
+The remaining IAmina truth follow-up is to classify/migrate legacy companion-memory snapshots before treating those stores as typed clinical truth.
 
-- remove the structured diabetes formatter capability-gateway exception tracked in `docs/TECHDEBT.md`;
-- classify/migrate legacy companion-memory snapshots before treating those stores as typed clinical truth.
-
-Therefore the system is **egress-authorized**, and shared text-gateway calls are capability-bounded, but every legacy structured-provider seam is not yet claimed as migrated.
+Therefore the currently migrated shared text paths are capability-bounded, while provider-specific non-text and legacy integration seams remain governed by their existing egress contracts until their dedicated migrations are complete.
 
 ## 7. Data-egress policy
 
