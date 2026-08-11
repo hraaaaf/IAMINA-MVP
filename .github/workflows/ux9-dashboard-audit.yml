@@ -82,7 +82,8 @@ jobs:
               const page = await context.newPage();
               const errors=[];
               page.on('pageerror', e => errors.push(String(e)));
-              await page.goto(`http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#/dashboard`, {waitUntil:'networkidle'});
+              await page.goto(`http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#/dashboard`, {waitUntil:'domcontentloaded', timeout:30000});
+              await page.waitForSelector('flutter-view', {timeout:30000});
               await page.waitForTimeout(10000);
               const flutterViews = await page.locator('flutter-view').count();
               const path=`audit-ux9/${lang}-${label}-dashboard.png`;
