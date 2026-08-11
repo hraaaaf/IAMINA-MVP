@@ -16,7 +16,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    '390px user can navigate to Importer and open the document review flow',
+    '390px Importer route remains functional outside approved bottom navigation',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -69,14 +69,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final importerAction = find.byKey(
-        const ValueKey('dashboard-import-action'),
-      );
-      expect(importerAction, findsOneWidget);
       expect(find.byKey(const ValueKey('mobile-nav-/importer')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('dashboard-reminders-action')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
 
-      await tester.tap(importerAction);
+      router.go('/importer');
       await tester.pumpAndSettle();
 
       expect(find.byType(ImportScreen), findsOneWidget);

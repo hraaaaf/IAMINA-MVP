@@ -41,14 +41,14 @@ final ModuleConfig diabetesModule = ModuleConfig(
     ),
     ModuleNavDestination(
       route: '/journal',
-      icon: Icons.monitor_heart_outlined,
-      selectedIcon: Icons.monitor_heart_rounded,
+      icon: Icons.show_chart_rounded,
+      selectedIcon: Icons.show_chart_rounded,
       label: (l) => _navText(l, 'Mesures', 'Measurements', 'القياسات'),
     ),
     ModuleNavDestination(
       route: '/summary',
-      icon: Icons.insert_chart_outlined_rounded,
-      selectedIcon: Icons.insert_chart_rounded,
+      icon: Icons.description_outlined,
+      selectedIcon: Icons.description_rounded,
       label: (l) => _navText(l, 'Rapports', 'Reports', 'التقارير'),
     ),
     ModuleNavDestination(

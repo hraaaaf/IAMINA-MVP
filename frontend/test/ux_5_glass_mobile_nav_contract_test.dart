@@ -29,7 +29,7 @@ void main() {
     expect(source, contains("ValueKey('mobile-nav-add')"));
     expect(
       source,
-      contains('EdgeInsets.symmetric(horizontal: 12).copyWith(bottom: 10)'),
+      contains('EdgeInsets.symmetric(horizontal: 18).copyWith(bottom: 6)'),
     );
     expect(source, isNot(contains('EdgeInsets.fromLTRB')));
     expect(source, isNot(contains('child: NavigationBar(')));
