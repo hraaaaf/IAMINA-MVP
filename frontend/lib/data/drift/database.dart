@@ -35,6 +35,25 @@ class LogEntries extends Table {
   BoolColumn get errorSync => boolean().withDefault(const Constant(false))();
 }
 
+@DataClassName('MedicationEventData')
+class MedicationEvents extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get label => text()();
+  RealColumn get dose => real().nullable()();
+  TextColumn get unit => text().nullable()();
+  DateTimeColumn get takenAt => dateTime()();
+  DateTimeColumn get createdAt => dateTime()();
+}
+
+@DataClassName('ReminderData')
+class Reminders extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text()();
+  DateTimeColumn get dueAt => dateTime()();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get createdAt => dateTime()();
+}
+
 @DataClassName('PatientProfileData')
 class PatientProfiles extends Table {
   IntColumn get userId => integer()();
@@ -73,7 +92,15 @@ class ChatMessages extends Table {
 // Database
 // ============================================================================
 
-@DriftDatabase(tables: [LogEntries, PatientProfiles, ChatMessages])
+@DriftDatabase(
+  tables: [
+    LogEntries,
+    PatientProfiles,
+    ChatMessages,
+    MedicationEvents,
+    Reminders,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   // Constructor for custom openers (useful for tests)
   AppDatabase(super.e);
@@ -91,7 +118,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -131,6 +158,10 @@ class AppDatabase extends _$AppDatabase {
       if (from < 9) {
         await m.addColumn(patientProfiles, patientProfiles.ramadanStartDate);
         await m.addColumn(patientProfiles, patientProfiles.ramadanEndDate);
+      }
+      if (from < 10) {
+        await m.createTable(medicationEvents);
+        await m.createTable(reminders);
       }
     },
   );
@@ -252,6 +283,66 @@ class AppDatabase extends _$AppDatabase {
             ..where((t) => t.userId.equals(existing.userId)))
           .write(PatientProfilesCompanion(aiConsentGivenAt: Value(ts)));
     }
+  }
+
+  Stream<List<MedicationEventData>> watchMedicationEvents({int limit = 50}) {
+    return (select(medicationEvents)
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.takenAt, mode: OrderingMode.desc),
+          ])
+          ..limit(limit))
+        .watch();
+  }
+
+  Future<int> addMedicationEvent({
+    required String label,
+    double? dose,
+    String? unit,
+    required DateTime takenAt,
+  }) {
+    final cleanedUnit = unit?.trim();
+    return into(medicationEvents).insert(
+      MedicationEventsCompanion.insert(
+        label: label.trim(),
+        dose: Value(dose),
+        unit: Value(
+          cleanedUnit == null || cleanedUnit.isEmpty ? null : cleanedUnit,
+        ),
+        takenAt: takenAt,
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
+
+  Future<void> deleteMedicationEvent(int id) {
+    return (delete(medicationEvents)..where((t) => t.id.equals(id))).go();
+  }
+
+  Stream<List<ReminderData>> watchReminders() {
+    return (select(reminders)..orderBy([
+          (t) => OrderingTerm(expression: t.dueAt, mode: OrderingMode.asc),
+        ]))
+        .watch();
+  }
+
+  Future<int> addReminder({required String title, required DateTime dueAt}) {
+    return into(reminders).insert(
+      RemindersCompanion.insert(
+        title: title.trim(),
+        dueAt: dueAt,
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
+
+  Future<void> setReminderEnabled(int id, bool enabled) {
+    return (update(reminders)..where((t) => t.id.equals(id))).write(
+      RemindersCompanion(enabled: Value(enabled)),
+    );
+  }
+
+  Future<void> deleteReminder(int id) {
+    return (delete(reminders)..where((t) => t.id.equals(id))).go();
   }
 
   // Generates 21 days of realistic Type-2 diabetic patient demo data.
