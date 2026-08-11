@@ -280,10 +280,10 @@ class NextIntentionTest(SimpleTestCase):
         state = compute_state(_memory(), deep, _ctx(tir_pct=None))
         self.assertIn("régularité", state.next_intention)
 
-    def test_food_sensitivities_intention(self):
+    def test_food_sensitivities_do_not_drive_intention(self):
         deep = _deep(food_sensitivities={"couscous": 2.1})
         state = compute_state(_memory(), deep, _ctx(tir_pct=None))
-        self.assertIn("repas", state.next_intention)
+        self.assertEqual(state.next_intention, "écouter et accompagner")
 
     def test_emotional_signals_intention(self):
         mem = _memory(emotional_signals=["discouragement"])

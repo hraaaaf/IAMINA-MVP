@@ -36,19 +36,24 @@ class IAminaMemoryDBFallbackTest(TestCase):
 
     def test_save_creates_db_snapshot(self):
         from companion.memory import IAminaMemory
+        from companion.memory_truth import SNAPSHOT_SCHEMA, SNAPSHOT_VERSION
         from diabetes.models import IAminaMemorySnapshot
         user = self._make_user()
         mem = IAminaMemory(patient_id=user.id, patterns=["HIGH_VARIABILITY"], current_tone="gentle")
         mem.save()
         snap = IAminaMemorySnapshot.objects.get(patient=user)
-        self.assertEqual(snap.data_json["patterns"], ["HIGH_VARIABILITY"])
-        self.assertEqual(snap.data_json["current_tone"], "gentle")
+        self.assertEqual(snap.data_json["schema"], SNAPSHOT_SCHEMA)
+        self.assertEqual(snap.data_json["schema_version"], SNAPSHOT_VERSION)
+        self.assertEqual(snap.data_json["kind"], "memory")
+        self.assertEqual(snap.data_json["values"]["patterns"], ["HIGH_VARIABILITY"])
+        self.assertEqual(snap.data_json["values"]["current_tone"], "gentle")
+        self.assertIn("patterns", snap.data_json["provenance"])
 
     def test_load_recovers_from_db_when_cache_cold(self):
         from companion.memory import IAminaMemory
         from diabetes.models import IAminaMemorySnapshot
         user = self._make_user()
-        # Write directly to DB (bypassing cache)
+        # Write a legacy flat v1 snapshot directly to DB (bypassing cache).
         IAminaMemorySnapshot.objects.create(
             patient=user,
             data_json={
@@ -67,10 +72,13 @@ class IAminaMemoryDBFallbackTest(TestCase):
 
         mem = IAminaMemory.load(user)
         self.assertEqual(mem.patterns, ["DAWN_PHENOMENON"])
-        self.assertEqual(mem.current_tone, "challenge")
+        # P0.4: the legacy flat snapshot cannot prove whether tone came from
+        # deterministic keyword handling or model output, so it fails closed.
+        self.assertEqual(mem.current_tone, "encouraging")
 
     def test_save_updates_existing_snapshot(self):
         from companion.memory import IAminaMemory
+        from companion.memory_truth import SNAPSHOT_SCHEMA
         from diabetes.models import IAminaMemorySnapshot
         user = self._make_user()
         mem = IAminaMemory(patient_id=user.id, patterns=["FIRST"])
@@ -80,7 +88,8 @@ class IAminaMemoryDBFallbackTest(TestCase):
         # Should still be exactly one row
         self.assertEqual(IAminaMemorySnapshot.objects.filter(patient=user).count(), 1)
         snap = IAminaMemorySnapshot.objects.get(patient=user)
-        self.assertEqual(snap.data_json["patterns"], ["SECOND"])
+        self.assertEqual(snap.data_json["schema"], SNAPSHOT_SCHEMA)
+        self.assertEqual(snap.data_json["values"]["patterns"], ["SECOND"])
 
 
 # ──────────────────────────────────────────────────────────────

@@ -38,12 +38,9 @@ class IAmina:
             self.deep.save()
             return alert.message
 
-        # Learn food sensitivities from this entry.
-        # NOTE (P7): _learn_from_entry is glucose/meal-specific heuristic logic.
-        # When a second module ships, move per-entry learning behind a module port.
-        g = getattr(entry, "blood_sugar", None)
-        if g is not None:
-            _learn_from_entry(self.deep, entry, float(g))
+        # P0.4 truth boundary: legacy food-response heuristics are no longer
+        # learned by the active runtime. Historical values remain readable only
+        # for backward-compatible snapshot decoding; they are not patient facts.
 
         # Streak + relationship
         self.deep.update_streak(today_has_log=True)
@@ -95,14 +92,14 @@ class IAmina:
         )
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
+# ── legacy compatibility helper ───────────────────────────────────────────────
 
 def _learn_from_entry(deep: IAminaDeepMemory, entry, glucose: float) -> None:
-    """
-    Infer food sensitivity from a single log entry.
-    Uses a conservative heuristic: post-meal spike above 180 mg/dL is recorded
-    as delta = glucose - 130 (approximate normal post-meal baseline).
-    EMA smoothing in learn_food_sensitivity handles outliers over time.
+    """Legacy food-response heuristic retained only for compatibility tests.
+
+    The active IAmina orchestrator no longer calls this helper. P0.4 quarantines
+    its output from patient-facing reasoning because the historical heuristic
+    lacks the provenance/evidence needed to support a durable meal observation.
     """
     meal_desc = (getattr(entry, "meal_description", "") or "").strip()
     meal_items = getattr(entry, "meal_items", None) or []
@@ -111,17 +108,15 @@ def _learn_from_entry(deep: IAminaDeepMemory, entry, glucose: float) -> None:
     if meal_type == "fasting" or glucose <= 180:
         return
 
-    # Extract food names from meal_items list or fall back to description
     foods: list[str] = []
     if isinstance(meal_items, list):
         foods = [str(item) for item in meal_items if item]
     if not foods and meal_desc:
-        # Split on common separators, take first 3 words as a rough food name
         foods = [meal_desc[:40]]
 
     if not foods:
         return
 
-    delta = glucose - 130  # approximate normal post-meal baseline
+    delta = glucose - 130
     for food in foods[:3]:
         deep.learn_food_sensitivity(food, delta)
