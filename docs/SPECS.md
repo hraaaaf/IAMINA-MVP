@@ -297,7 +297,7 @@ Before real external egress, the boundary requires:
 The following fail closed:
 
 - no active egress scope;
-- missing patient consent record or no consent;
+- missing consent record or no consent;
 - unknown purpose;
 - modality not allowed for the purpose.
 
