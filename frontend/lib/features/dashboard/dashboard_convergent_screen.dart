@@ -219,11 +219,11 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
           physics: const BouncingScrollPhysics(),
           slivers: [
             SliverPadding(
-              padding: const EdgeInsetsDirectional.fromSTEB(18, 10, 18, 118),
+              padding: const EdgeInsetsDirectional.fromSTEB(18, 8, 18, 96),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   _BrandRow(),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 18),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -263,7 +263,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                       _RangePill(range: range, onChanged: onRangeChanged),
                     ],
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 11),
                   _GlucoseHero(
                     latest: latest,
                     latestAt: latestAt,
@@ -277,7 +277,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                     meal: meal,
                     observation: _observation(context, tir),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   _TrendsPanel(
                     mean: mean,
                     unit: unit,
@@ -285,7 +285,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                     gmi: gmi,
                     observation: _observation(context, tir),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 14),
                   Text(
                     _t(
                       context,
@@ -299,9 +299,9 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                       color: AminaTheme.textPrimary(context),
                     ),
                   ),
-                  const SizedBox(height: 9),
+                  const SizedBox(height: 7),
                   const _QuickActionsRow(),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 20),
                   _DetailedTrendCard(
                     logs: logs,
                     low: low,
@@ -321,12 +321,11 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
 class _BrandRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     return Row(
       children: [
         const SizedBox(
-          width: 46,
-          height: 46,
+          width: 40,
+          height: 40,
           child: CustomPaint(painter: _SealPainter()),
         ),
         const SizedBox(width: 11),
@@ -346,7 +345,12 @@ class _BrandRow extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                l10n.appTagline,
+                _t(
+                  context,
+                  'Votre santé, notre mission',
+                  'Your health, our mission',
+                  'صحتك، مهمتنا',
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -362,16 +366,35 @@ class _BrandRow extends StatelessWidget {
           color: AminaTheme.surface(context),
           shape: const CircleBorder(),
           child: InkWell(
-            key: const ValueKey('dashboard-import-action'),
-            onTap: () => GoRouter.of(context).go('/importer'),
+            key: const ValueKey('dashboard-reminders-action'),
+            onTap: () => GoRouter.of(context).go('/reminders'),
             customBorder: const CircleBorder(),
             child: SizedBox(
-              width: 46,
-              height: 46,
-              child: Icon(
-                Icons.upload_file_outlined,
-                size: 21,
-                color: AminaTheme.textPrimary(context),
+              width: 42,
+              height: 42,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Center(
+                    child: Icon(
+                      Icons.notifications_none_rounded,
+                      size: 21,
+                      color: Color(0xFF064E52),
+                    ),
+                  ),
+                  PositionedDirectional(
+                    top: 7,
+                    end: 7,
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF35C78A),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -463,7 +486,7 @@ class _GlucoseHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 17, 18, 15),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF063C43), Color(0xFF00575D), Color(0xFF073E44)],
@@ -484,8 +507,8 @@ class _GlucoseHero extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
                   color: const Color(0xFF5AD7A1).withValues(alpha: 0.18),
                   shape: BoxShape.circle,
@@ -526,7 +549,7 @@ class _GlucoseHero extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -545,7 +568,7 @@ class _GlucoseHero extends StatelessWidget {
                               text: display,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 49,
+                                fontSize: 44,
                                 height: 1,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -2.2,
@@ -595,7 +618,7 @@ class _GlucoseHero extends StatelessWidget {
               Expanded(
                 flex: 6,
                 child: SizedBox(
-                  height: 112,
+                  height: 80,
                   child: _MiniGlucoseChart(logs: logs, low: low, high: high),
                 ),
               ),
@@ -606,7 +629,7 @@ class _GlucoseHero extends StatelessWidget {
             onTap: () => GoRouter.of(context).go('/summary'),
             borderRadius: BorderRadius.circular(13),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(13),
@@ -668,7 +691,7 @@ class _TrendsPanel extends StatelessWidget {
         ? (mean / 18.0).toStringAsFixed(1)
         : mean.toStringAsFixed(0);
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       decoration: BoxDecoration(
         color: AminaTheme.surface(context),
         borderRadius: BorderRadius.circular(20),
@@ -736,7 +759,7 @@ class _TrendsPanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 13),
+          const SizedBox(height: 8),
           InkWell(
             onTap: () => GoRouter.of(context).go('/summary'),
             borderRadius: BorderRadius.circular(13),
@@ -812,8 +835,8 @@ class _MetricTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 30,
+            height: 30,
             decoration: const BoxDecoration(
               color: Color(0xFFE8F4ED),
               shape: BoxShape.circle,
@@ -840,7 +863,7 @@ class _MetricTile extends StatelessWidget {
                   TextSpan(
                     text: value,
                     style: TextStyle(
-                      fontSize: 23,
+                      fontSize: 20,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.7,
                       color: AminaTheme.textPrimary(context),
@@ -909,8 +932,8 @@ class _QuickActionsRow extends StatelessWidget {
               child: Column(
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 46,
+                    height: 46,
                     decoration: BoxDecoration(
                       color: AminaTheme.surface(context),
                       borderRadius: BorderRadius.circular(15),
@@ -929,7 +952,7 @@ class _QuickActionsRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 8.8,
+                      fontSize: 8.5,
                       fontWeight: FontWeight.w600,
                       color: AminaTheme.textPrimary(context),
                     ),
@@ -1093,31 +1116,38 @@ class _SealPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final stroke = Paint()
-      ..color = const Color(0xFF075A5D)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.2
-      ..strokeCap = StrokeCap.square
-      ..strokeJoin = StrokeJoin.miter;
-    final accent = Paint()
-      ..color = const Color(0xFF27B984)
-      ..style = PaintingStyle.fill;
-    final s = size.width;
-    final p = Path()
-      ..moveTo(2, s * .72)
-      ..lineTo(2, 2)
-      ..lineTo(s * .72, 2)
-      ..lineTo(s * .72, s * .30)
-      ..lineTo(s * .36, s * .30)
-      ..lineTo(s * .36, s * .58)
-      ..lineTo(s * .82, s * .58)
-      ..lineTo(s * .82, s * .92)
-      ..lineTo(s * .18, s * .92)
-      ..lineTo(s * .18, s * .72)
-      ..lineTo(s * .58, s * .72);
-    canvas.drawPath(p, stroke);
-    canvas.drawRect(Rect.fromLTWH(s * .84, s * .12, 6, 6), accent);
-    canvas.drawRect(Rect.fromLTWH(s * .58, s * .40, 5, 5), accent);
+    final teal = Paint()..color = const Color(0xFF075A5D);
+    final mint = Paint()..color = const Color(0xFF27B984);
+    final c = size.width / 7;
+    final blocks = <(int, int, int, int)>[
+      (0, 0, 3, 1),
+      (0, 0, 1, 3),
+      (2, 1, 1, 2),
+      (4, 0, 3, 1),
+      (6, 0, 1, 3),
+      (4, 2, 2, 1),
+      (0, 4, 1, 3),
+      (0, 6, 3, 1),
+      (2, 4, 1, 2),
+      (4, 4, 3, 1),
+      (4, 6, 3, 1),
+      (6, 4, 1, 3),
+      (1, 3, 2, 1),
+      (3, 1, 1, 2),
+      (3, 4, 1, 2),
+      (4, 3, 2, 1),
+      (1, 5, 1, 1),
+      (5, 5, 1, 1),
+    ];
+    for (final b in blocks) {
+      canvas.drawRect(
+        Rect.fromLTWH(b.$1 * c, b.$2 * c, b.$3 * c, b.$4 * c),
+        teal,
+      );
+    }
+    canvas.drawRect(Rect.fromLTWH(3 * c, 3 * c, c, c), mint);
+    canvas.drawRect(Rect.fromLTWH(5 * c, 1 * c, c, c), mint);
+    canvas.drawRect(Rect.fromLTWH(1 * c, 4 * c, c, c), mint);
   }
 
   @override

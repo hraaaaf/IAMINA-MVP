@@ -74,8 +74,8 @@ void main() {
         isTrue,
       );
       expect(shell, contains("GoRouter.of(context).go('/ajouter')"));
-      expect(dashboard, contains("ValueKey('dashboard-import-action')"));
-      expect(dashboard, contains("GoRouter.of(context).go('/importer')"));
+      expect(dashboard, contains("ValueKey('dashboard-reminders-action')"));
+      expect(dashboard, contains("GoRouter.of(context).go('/reminders')"));
     },
   );
 
