@@ -7,6 +7,7 @@ String _read(String path) => File(path).readAsStringSync();
 void main() {
   test('360px dashboard removes redundant FAB on first-use state', () {
     final source = _read('lib/features/dashboard/dashboard_screen.dart');
+    final firstUse = _read('lib/core/widgets/first_use_panel.dart');
     expect(source, contains('screenW >= 720 || logs.isEmpty'));
     expect(
       RegExp(r'BoxConstraints\(\s*maxWidth:\s*900,?\s*\)').hasMatch(source),
@@ -15,9 +16,10 @@ void main() {
     expect(source, contains('emptyDashboardTitle'));
     expect(source, contains('emptyDashboardBody'));
     expect(
-      source,
-      contains('compactHeight = MediaQuery.sizeOf(context).height <= 600'),
+      firstUse,
+      contains('shortViewport = MediaQuery.sizeOf(context).height <= 600'),
     );
+    expect(firstUse, contains('minimumSize: const Size.fromHeight(48)'));
     expect(source, isNot(contains("'Commencez votre suivi'")));
     expect(source, isNot(contains("'Ajouter ma première mesure'")));
   });

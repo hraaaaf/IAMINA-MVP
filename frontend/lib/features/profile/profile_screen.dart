@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/amina_text_field.dart';
 import '../../core/widgets/responsive_content_surface.dart';
 import '../../core/widgets/mobile_page_header.dart';
+import '../../core/widgets/first_use_panel.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
 import '../../services/auth_service.dart';
@@ -75,6 +76,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     final sections = Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (!_hasPersistedProfile) ...[
+                          AminaFirstUsePanel(
+                            key: const ValueKey('profile-first-use'),
+                            icon: Icons.tune_rounded,
+                            title: l10n.profileMedicalSection,
+                            body: AuditedPageCopy.of(
+                              context,
+                            ).profileCompletionPrompt,
+                            compact: true,
+                          ),
+                          const SizedBox(height: 14),
+                        ],
                         _buildMedicalSection(l10n),
                         const SizedBox(height: 14),
                         _buildRamadanSection(l10n),
