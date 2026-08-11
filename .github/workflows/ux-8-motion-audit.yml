@@ -16,6 +16,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Verify product source is exact
         run: git diff --quiet 9f8bd4e6e4427e6ec6d7d8dced9936b5abec3ccc -- frontend
       - uses: subosito/flutter-action@v2
