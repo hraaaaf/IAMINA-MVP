@@ -1,19 +1,20 @@
 # IAmina — Truth & Capability Contract
 
-> **Status:** chassis contract introduced by P0.2 and extended to structured insight formatting by P0.3.  
+> **Status:** chassis contract introduced by P0.2, extended to structured insight formatting by P0.3, and applied to legacy memory snapshots by P0.4.  
 > **Scope:** IAmina companion reasoning, memory provenance and generative-model authority.  
 > **Non-scope:** no new disease module, clinical threshold, diagnosis, prescription, treatment optimization or patient-facing UX.
 
 ## 1. Purpose
 
-IAmina must distinguish what is **observed**, what the **patient reported**, what a **deterministic engine derived**, what is merely a **preference or conversational state**, and what a **generative model inferred**.
+IAmina must distinguish what is **observed**, what the **patient reported**, what a **deterministic engine derived**, what is merely a **preference or conversational state**, what a **non-authoritative heuristic inferred**, and what a **generative model inferred**.
 
-A generative inference must never become a patient fact, clinical rule or durable clinical truth merely because it was plausible or repeated.
+Neither heuristic nor generative inference may become a patient fact, clinical rule or durable clinical truth merely because it was plausible or repeated.
 
 The executable source is:
 
 - `backend/core/contracts/truth.py`
 - `backend/core/contracts/capabilities.py`
+- `backend/companion/memory_truth.py`
 
 ## 2. Truth classes
 
@@ -23,16 +24,17 @@ The executable source is:
 | `USER_CLAIM` | information explicitly reported by the patient but not independently validated | yes, as a claim | yes, while remaining explicitly a claim |
 | `DETERMINISTIC_DERIVATION` | KPI/pattern/result produced by approved deterministic logic from authoritative inputs | no, recalculate from source | yes |
 | `PREFERENCE` | patient-selected product preference such as language/presentation choice | yes | no |
-| `CONVERSATIONAL_STATE` | transient relationship/tone/dialogue state | no clinical-fact persistence | no |
+| `CONVERSATIONAL_STATE` | transient relationship/tone/dialogue/cache state | no clinical-fact persistence | no |
+| `HEURISTIC_INFERENCE` | non-authoritative inference produced by a heuristic without an approved clinical derivation contract | no | no |
 | `MODEL_INFERENCE` | hypothesis or interpretation produced by a generative model | no | no |
 
 ### Persistence rule
 
-Patient-fact storage may contain observed facts, explicit user claims and explicit preferences. A deterministic derivation is recomputed from its source data rather than silently materialized as immutable fact. Conversational state and model inference remain outside patient clinical truth.
+Patient-fact storage may contain observed facts, explicit user claims and explicit preferences. A deterministic derivation is recomputed from its source data rather than silently materialized as immutable fact. Conversational state, heuristic inference and model inference remain outside patient clinical truth.
 
 ### Deterministic clinical-input rule
 
-Observed facts, explicitly labeled patient claims and approved deterministic derivations may be consumed by deterministic clinical/safety logic. A patient-reported symptom can therefore inform deterministic triage without being promoted into a validated diagnosis or independently observed fact. Generative output and conversational state never become clinical decision inputs.
+Observed facts, explicitly labeled patient claims and approved deterministic derivations may be consumed by deterministic clinical/safety logic. A patient-reported symptom can therefore inform deterministic triage without being promoted into a validated diagnosis or independently observed fact. Heuristic inference, generative output and conversational state never become clinical decision inputs.
 
 ## 3. Capability authority
 
@@ -79,21 +81,35 @@ Recording a user claim or changing a user preference requires explicit user conf
 
 The existing egress authorization, consent, PHI stripping, deterministic safety and output-safety layers remain mandatory and independent. Passing the capability contract does **not** itself authorize external data transfer.
 
-## 6. Legacy-memory boundary
+## 6. Memory snapshot boundary
 
-The current `companion.memory` and `companion.deep_memory` stores predate this typed truth contract and contain mixed historical structures such as cached observations, emotional signals and heuristic food-response memory.
+`companion.memory` and `companion.deep_memory` still use the existing condition-agnostic `SnapshotStore` and JSON persistence; P0.4 introduces no database schema migration.
 
-P0.2 does **not** claim those legacy snapshots are already migrated. Their classification/migration must be a separate focused lot with backward-compatible snapshot handling and regression evidence. Until then, legacy memory must not be treated as a new authoritative clinical fact source merely because this contract exists.
+Legacy unversioned snapshots are normalized into a canonical versioned shape on load/save. Snapshot JSON is treated as data only: truth classification is resolved from code in `companion.memory_truth` and persisted `truth_kinds` / `truth_provenance` metadata is ignored rather than trusted.
+
+Memory rules:
+
+- `last_concern` is retained as an explicit `USER_CLAIM`;
+- cached statistics, tone, emotional signals, milestones, relationship/streak state and unknown legacy fields are retained as non-clinical `CONVERSATIONAL_STATE` rather than promoted to patient fact;
+- unknown legacy fields are preserved outside active reasoning to avoid silent destructive migration;
+- the historical `food_sensitivities` field was a single-entry / approximate-baseline heuristic, so it is `HEURISTIC_INFERENCE`, not a clinical derivation and not a generative-model inference;
+- old food-sensitivity values are preserved only under `quarantined_heuristics`; active `food_sensitivities` is normalized empty;
+- new log events no longer learn that heuristic, and quarantined values cannot select IAmina's `next_intention`.
+
+Personal metabolic-response analysis remains the evidence-bounded deterministic Journal capability; legacy deep-memory heuristics are not upgraded into that evidence simply by migration.
 
 ## 7. Permanent regression expectations
 
 Tests must prove at minimum that:
 
-- `MODEL_INFERENCE` cannot be persisted as patient fact or enter deterministic clinical logic;
+- `MODEL_INFERENCE` and `HEURISTIC_INFERENCE` cannot be persisted as patient fact or enter deterministic clinical logic;
 - `USER_CLAIM` stays explicitly labeled while remaining available to deterministic triage/domain logic;
 - deterministic derivations can feed approved logic but are not immutable patient facts;
 - generative models cannot classify emergencies;
 - diagnosis, prescription, dose calculation, treatment optimization and treatment change remain disabled;
 - user-claim/preference writes remain confirmation-gated;
 - the LLM gateway rejects forbidden generative capabilities before provider egress;
-- `doctor-brief` and the structured diabetes insight formatter cannot regress to direct `get_llm()` provider access.
+- `doctor-brief` and the structured diabetes insight formatter cannot regress to direct `get_llm()` provider access;
+- unversioned legacy memory snapshots remain loadable without schema migration;
+- snapshot-supplied truth metadata cannot override canonical classification;
+- legacy food-sensitivity values are quarantined and cannot steer active companion intent.
