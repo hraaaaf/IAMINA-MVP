@@ -659,120 +659,143 @@ class _BottomNav extends StatelessWidget {
 
   const _BottomNav({required this.entries, required this.selectedIndex});
 
+  _NavEntry? _entry(String route) {
+    for (final entry in entries) {
+      if (entry.route == route) return entry;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final dark = AminaTheme.isDark(context);
-    final rtl = Directionality.of(context) == TextDirection.rtl;
-    final safeIndex = selectedIndex.clamp(0, entries.length - 1);
-    final visualIndex = rtl ? entries.length - 1 - safeIndex : safeIndex;
-    final glassColor = dark
-        ? AminaTheme.darkCard.withValues(alpha: 0.78)
-        : Colors.white.withValues(alpha: 0.74);
-    final glassBorder = dark
-        ? Colors.white.withValues(alpha: 0.12)
-        : Colors.white.withValues(alpha: 0.88);
-    final indicatorColor = dark
-        ? AminaTheme.teal700.withValues(alpha: 0.34)
-        : AminaTheme.teal50.withValues(alpha: 0.94);
+    final visible = <_NavEntry?>[
+      _entry('/dashboard'),
+      _entry('/journal'),
+      _entry('/importer'),
+      _entry('/profile'),
+    ];
+    final surface = dark
+        ? AminaTheme.darkCard.withValues(alpha: 0.97)
+        : Colors.white.withValues(alpha: 0.98);
 
     return SafeArea(
       top: false,
-      minimum: EdgeInsets.symmetric(horizontal: 12).copyWith(bottom: 10),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            height: 72,
-            decoration: BoxDecoration(
-              color: glassColor,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: glassBorder, width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: dark ? 0.24 : 0.10),
-                  blurRadius: 28,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final itemWidth = constraints.maxWidth / entries.length;
-                return Material(
-                  color: Colors.transparent,
-                  child: Stack(
-                    children: [
-                      AnimatedPositioned(
-                        duration: AminaMotion.resolve(
-                          context,
-                          AminaMotion.navSelection,
-                        ),
-                        curve: AminaMotion.enter,
-                        left: visualIndex * itemWidth + 4,
-                        top: 8,
-                        width: itemWidth - 8,
-                        height: 56,
-                        child: IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: indicatorColor,
-                              borderRadius: BorderRadius.circular(22),
-                              border: Border.all(
-                                color: dark
-                                    ? AminaTheme.teal400.withValues(alpha: 0.16)
-                                    : AminaTheme.teal500.withValues(
-                                        alpha: 0.12,
-                                      ),
-                              ),
-                            ),
-                          ),
-                        ),
+      minimum: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: SizedBox(
+        height: 82,
+        child: Stack(
+          alignment: Alignment.topCenter,
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              top: 12,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: surface,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: dark
+                            ? Colors.white.withValues(alpha: 0.10)
+                            : const Color(0xFFE7E5DE),
                       ),
-                      Row(
-                        children: [
-                          for (var index = 0; index < entries.length; index++)
-                            Expanded(
-                              child: _GlassNavDestination(
-                                entry: entries[index],
-                                selected: index == safeIndex,
-                                onTap: () {
-                                  HapticFeedback.selectionClick();
-                                  GoRouter.of(context).go(entries[index].route);
-                                },
-                              ),
-                            ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: dark ? 0.24 : 0.08,
+                          ),
+                          blurRadius: 26,
+                          offset: const Offset(0, 9),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < visible.length; i++) ...[
+                          if (i == 2) const SizedBox(width: 68),
+                          Expanded(
+                            child: visible[i] == null
+                                ? const SizedBox.shrink()
+                                : _ReferenceNavDestination(entry: visible[i]!),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 0,
+              child: Semantics(
+                button: true,
+                label: AppLocalizations.of(context)!.addEntry,
+                child: Tooltip(
+                  message: AppLocalizations.of(context)!.addEntry,
+                  child: InkWell(
+                    key: const ValueKey('mobile-nav-add'),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      GoRouter.of(context).go('/ajouter');
+                    },
+                    customBorder: const CircleBorder(),
+                    child: Container(
+                      width: 62,
+                      height: 62,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF086263), Color(0xFF03484F)],
+                          begin: AlignmentDirectional.topStart,
+                          end: AlignmentDirectional.bottomEnd,
+                        ),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: dark ? AminaTheme.darkCard : Colors.white,
+                          width: 5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF064D50,
+                            ).withValues(alpha: 0.30),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
                         ],
                       ),
-                    ],
+                      child: const Icon(
+                        Icons.add_rounded,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _GlassNavDestination extends StatelessWidget {
+class _ReferenceNavDestination extends StatelessWidget {
   final _NavEntry entry;
-  final bool selected;
-  final VoidCallback onTap;
 
-  const _GlassNavDestination({
-    required this.entry,
-    required this.selected,
-    required this.onTap,
-  });
+  const _ReferenceNavDestination({required this.entry});
 
   @override
   Widget build(BuildContext context) {
     final dark = AminaTheme.isDark(context);
+    final selected = GoRouterState.of(context).uri.path.startsWith(entry.route);
     final label = entry.label(AppLocalizations.of(context)!);
-    final activeColor = dark ? AminaTheme.teal400 : AminaTheme.teal700;
-    final inactiveColor = dark ? AminaTheme.dark400 : AminaTheme.ink400;
+    final active = dark ? AminaTheme.teal400 : const Color(0xFF0A8765);
+    final inactive = dark ? AminaTheme.dark400 : const Color(0xFF78807C);
 
     return Semantics(
       button: true,
@@ -780,45 +803,32 @@ class _GlassNavDestination extends StatelessWidget {
       label: label,
       child: InkWell(
         key: ValueKey('mobile-nav-${entry.route}'),
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          GoRouter.of(context).go(entry.route);
+        },
+        borderRadius: BorderRadius.circular(18),
         child: SizedBox(
-          height: 72,
+          height: 70,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedScale(
-                scale: selected ? 1.06 : 1.0,
-                duration: AminaMotion.resolve(
-                  context,
-                  AminaMotion.navSelection,
-                ),
-                curve: AminaMotion.enter,
-                child: Icon(
-                  selected ? entry.selectedIcon : entry.icon,
-                  color: selected ? activeColor : inactiveColor,
-                  size: 21,
-                ),
+              Icon(
+                selected ? entry.selectedIcon : entry.icon,
+                color: selected ? active : inactive,
+                size: 20,
               ),
               const SizedBox(height: 4),
-              AnimatedDefaultTextStyle(
-                duration: AminaMotion.resolve(
-                  context,
-                  AminaMotion.navSelection,
-                ),
-                curve: AminaMotion.enter,
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 9.5,
-                  height: 1.05,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                  color: selected ? activeColor : inactiveColor,
-                  fontFamily: 'Inter',
-                ),
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
+                  fontSize: 9.2,
+                  height: 1,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  color: selected ? active : inactive,
                 ),
               ),
             ],
