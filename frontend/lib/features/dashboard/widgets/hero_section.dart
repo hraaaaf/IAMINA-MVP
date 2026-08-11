@@ -47,11 +47,12 @@ class _PageHead extends StatelessWidget {
 }
 
 // ── Hero Contextuel ───────────────────────────────────────────────────────────
-// A fresh measurement gets a live state; otherwise the latest measurement
-// anchors a longitudinal summary. TIR stays in the metric block below so the
-// first viewport does not repeat the same KPI twice.
+// Mobile is deliberately simpler: a fresh measurement gets a live state;
+// otherwise the latest measurement anchors the longitudinal summary. Desktop
+// keeps the existing midday TIR presentation so UX-9 does not broaden into a
+// desktop information-architecture rewrite.
 
-enum _HeroMode { live, insight }
+enum _HeroMode { live, tir, insight }
 
 class _HeroContextual extends StatelessWidget {
   final List<LogEntryData> logs;
@@ -67,25 +68,32 @@ class _HeroContextual extends StatelessWidget {
     required this.range,
   });
 
-  _HeroMode _resolveMode() {
+  _HeroMode _resolveMode(BuildContext context) {
     final now = DateTime.now();
     if (logs.isEmpty) return _HeroMode.insight;
     final latest = logs.first;
     final minutesSince = now.difference(latest.loggedAt ?? latest.createdAt).inMinutes;
-    return minutesSince >= 0 && minutesSince < 90
-        ? _HeroMode.live
-        : _HeroMode.insight;
+    if (minutesSince >= 0 && minutesSince < 90) return _HeroMode.live;
+    final desktop = MediaQuery.sizeOf(context).width >= 900;
+    if (desktop && now.hour >= 11 && now.hour < 15) return _HeroMode.tir;
+    return _HeroMode.insight;
   }
 
   @override
   Widget build(BuildContext context) {
-    final mode = _resolveMode();
+    final mode = _resolveMode(context);
     return switch (mode) {
       _HeroMode.live => _HeroLive(
           logs: logs,
           unit: unit,
           low: low,
           high: high,
+        ),
+      _HeroMode.tir => _HeroTIR(
+          logs: logs,
+          low: low,
+          high: high,
+          range: range,
         ),
       _HeroMode.insight => _HeroInsight(
           logs: logs,
