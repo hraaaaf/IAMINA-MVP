@@ -74,6 +74,16 @@ const _screenRegistry = <_RtlScreenEntry>[
     source: 'lib/features/documents/document_import_screen.dart',
   ),
   _RtlScreenEntry(
+    route: '/medications',
+    widget: 'MedicationScreen',
+    source: 'lib/features/medications/medication_screen.dart',
+  ),
+  _RtlScreenEntry(
+    route: '/reminders',
+    widget: 'RemindersScreen',
+    source: 'lib/features/reminders/reminders_screen.dart',
+  ),
+  _RtlScreenEntry(
     route: '/journal/:id/edit',
     widget: 'EditLogScreen',
     source: 'lib/features/journal/edit_log_screen.dart',

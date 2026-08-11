@@ -1,4 +1,5 @@
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/features/dashboard/dashboard_convergent_screen.dart';
 import 'package:amina/features/documents/document_import_screen.dart';
 import 'package:amina/features/import/import_screen.dart';
 import 'package:amina/features/navigation/main_shell.dart';
@@ -15,7 +16,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    '390px user can navigate to Importer and open the document review flow',
+    '390px Importer route remains functional outside approved bottom navigation',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -39,9 +40,7 @@ void main() {
             routes: [
               GoRoute(
                 path: '/dashboard',
-                builder: (_, __) => const Scaffold(
-                  body: Center(child: Text('Dashboard test marker')),
-                ),
+                builder: (_, __) => const DashboardConvergentScreen(),
               ),
               GoRoute(
                 path: '/importer',
@@ -70,27 +69,33 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final importerDestination = find.byKey(
-        const ValueKey('mobile-nav-/importer'),
+      expect(find.byKey(const ValueKey('mobile-nav-/importer')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('dashboard-reminders-action')),
+        findsOneWidget,
       );
-      expect(importerDestination, findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      await tester.tap(importerDestination);
+      router.go('/importer');
       await tester.pumpAndSettle();
 
       expect(find.byType(ImportScreen), findsOneWidget);
       expect(find.text('Importer'), findsWidgets);
       final firstUse = find.byKey(const ValueKey('import-first-use'));
-      expect(firstUse, findsOneWidget);
-      final firstUseAction = find.descendant(
-        of: firstUse,
-        matching: find.byType(FilledButton),
-      );
-      expect(firstUseAction, findsOneWidget);
+      final populatedCta = find.byKey(const ValueKey('import-document-cta'));
+      expect(firstUse.evaluate().length + populatedCta.evaluate().length, 1);
       expect(tester.takeException(), isNull);
 
-      await tester.tap(firstUseAction);
+      if (firstUse.evaluate().isNotEmpty) {
+        final firstUseAction = find.descendant(
+          of: firstUse,
+          matching: find.byType(FilledButton),
+        );
+        expect(firstUseAction, findsOneWidget);
+        await tester.tap(firstUseAction);
+      } else {
+        await tester.tap(populatedCta);
+      }
       await tester.pumpAndSettle();
 
       expect(find.byType(DocumentImportScreen), findsOneWidget);

@@ -86,7 +86,16 @@ void main() {
         final version = await db
             .customSelect('PRAGMA user_version')
             .getSingle();
-        expect(version.data['user_version'], 9);
+        expect(version.data['user_version'], 10);
+        final v10Tables = await db
+            .customSelect(
+              "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('medication_events', 'reminders')",
+            )
+            .get();
+        expect(v10Tables.map((row) => row.data['name']).toSet(), {
+          'medication_events',
+          'reminders',
+        });
       } finally {
         await db.close();
         await dir.delete(recursive: true);

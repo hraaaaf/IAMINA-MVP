@@ -1,17 +1,35 @@
 import 'package:flutter/material.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/dashboard/dashboard_convergent_screen.dart';
+import '../features/dashboard/widgets/add_log_sheet.dart';
 import '../features/journal/journal_screen.dart';
 import '../features/journal/ai_summary_screen.dart';
 import '../features/journal/add_log_screen.dart';
 import '../features/journal/edit_log_screen.dart';
 import '../features/import/import_screen.dart';
 import '../features/documents/document_import_screen.dart';
+import '../features/medications/medication_screen.dart';
+import '../features/reminders/reminders_screen.dart';
+import '../l10n/app_localizations.dart';
 import 'module_config.dart';
 
-/// The diabetes module — the one shipped condition. Declares the same screens,
-/// routes, and nav destinations the app used to hardcode, now expressed as a
-/// ModuleConfig so the chassis renders them generically.
+String _navText(AppLocalizations l, String fr, String en, String ar) {
+  final code = l.localeName.split('_').first;
+  if (code == 'ar') return ar;
+  if (code == 'en') return en;
+  return fr;
+}
+
+AddLogFocus _focusFromState(String? value) => switch (value) {
+  'meal' => AddLogFocus.meal,
+  'activity' => AddLogFocus.activity,
+  'insulin' => AddLogFocus.insulin,
+  _ => AddLogFocus.none,
+};
+
+/// Diabetes condition module. Mobile navigation is filtered by MainShell
+/// to preserve the approved four-destination + central-add composition;
+/// Import remains available in desktop navigation and by direct route.
 final ModuleConfig diabetesModule = ModuleConfig(
   id: 'diabetes',
   navDestinations: [
@@ -22,16 +40,16 @@ final ModuleConfig diabetesModule = ModuleConfig(
       label: (l) => l.navHome,
     ),
     ModuleNavDestination(
-      route: '/summary',
-      icon: Icons.auto_awesome_outlined,
-      selectedIcon: Icons.auto_awesome,
-      label: (l) => l.navIamina,
+      route: '/journal',
+      icon: Icons.show_chart_rounded,
+      selectedIcon: Icons.show_chart_rounded,
+      label: (l) => _navText(l, 'Mesures', 'Measurements', 'القياسات'),
     ),
     ModuleNavDestination(
-      route: '/journal',
-      icon: Icons.history_rounded,
-      selectedIcon: Icons.history_rounded,
-      label: (l) => l.navJournal,
+      route: '/summary',
+      icon: Icons.description_outlined,
+      selectedIcon: Icons.description_rounded,
+      label: (l) => _navText(l, 'Rapports', 'Reports', 'التقارير'),
     ),
     ModuleNavDestination(
       route: '/importer',
@@ -49,13 +67,28 @@ final ModuleConfig diabetesModule = ModuleConfig(
             : const DashboardScreen(),
       ),
     ),
-    ModuleShellRoute(path: '/summary', builder: () => const AISummaryScreen()),
     ModuleShellRoute(path: '/journal', builder: () => const JournalScreen()),
+    ModuleShellRoute(path: '/summary', builder: () => const AISummaryScreen()),
     ModuleShellRoute(path: '/importer', builder: () => const ImportScreen()),
   ],
   fullScreenRoutes: [
-    ModuleFullScreenRoute(path: '/ajouter', builder: (s) => const AddLogScreen()),
-    ModuleFullScreenRoute(path: '/pulper', builder: (s) => const DocumentImportScreen()),
+    ModuleFullScreenRoute(
+      path: '/ajouter',
+      builder: (s) =>
+          AddLogScreen(focus: _focusFromState(s.uri.queryParameters['focus'])),
+    ),
+    ModuleFullScreenRoute(
+      path: '/medications',
+      builder: (s) => const MedicationScreen(),
+    ),
+    ModuleFullScreenRoute(
+      path: '/reminders',
+      builder: (s) => const RemindersScreen(),
+    ),
+    ModuleFullScreenRoute(
+      path: '/pulper',
+      builder: (s) => const DocumentImportScreen(),
+    ),
     ModuleFullScreenRoute(
       path: '/journal/:id/edit',
       builder: (s) => EditLogScreen(logId: int.parse(s.pathParameters['id']!)),
