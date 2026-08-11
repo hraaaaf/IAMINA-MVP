@@ -99,7 +99,7 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 
 - a successful Add Log write transitions to a persistent factual receipt only after the local Drift insertion has completed successfully;
 - the receipt may restate only the facts from that saved entry: glucose, timestamp and explicitly entered measurement context, meal, already-taken insulin and additional context observations;
-- local persistence is described narrowly as saved on the device; this receipt does not imply server synchronization or external persistence;
+- local persistence is described narrowly as saved on the device; this receipt does not imply server synchronization, external backup or provider processing;
 - one saved reading must not trigger a good/bad glucose verdict, personal-target claim, prediction, causal explanation, AI analysis, diagnosis, treatment optimization or insulin-dose advice;
 - P2-JOURNAL-8 longitudinal personal-response patterns remain separate from the immediate receipt and retain their own minimum-evidence contract;
 - after successful insertion, the previous draft is cleared before another entry is started so prior meal/context/insulin facts cannot be silently reused;
@@ -297,7 +297,7 @@ Before real external egress, the boundary requires:
 The following fail closed:
 
 - no active egress scope;
-- missing consent record or no consent;
+- missing patient consent record or no consent;
 - unknown purpose;
 - modality not allowed for the purpose.
 
