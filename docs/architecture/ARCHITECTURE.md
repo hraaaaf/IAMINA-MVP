@@ -26,6 +26,7 @@ The existence of platform seams does **not** mean IAmina is currently a multi-co
 - Provider-specific AI/STT/vision/document adapters still exist.
 - A central `core.ai_egress` boundary now authorizes live external model/media operations by patient, purpose, modality, and server-side consent.
 - IAmina has an executable truth-provenance and capability/authority contract: generative models may narrate approved data but are not clinical decision authorities.
+- Legacy companion memory snapshots are normalized through a code-owned truth-classification layer; non-authoritative food heuristics are quarantined from active reasoning.
 - CI blocks new direct external AI callsites that omit the central authorization assertion.
 
 ### Target direction
@@ -147,16 +148,19 @@ Generative AI must never be the authority for:
 - Unexpected unit-normalization failures are fail-closed.
 - Authoritative deterministic triage classification belongs to shared `core` safety ownership; compatibility shims may remain for historical imports, but core safety must not depend on the diabetes module.
 
-### P0.2/P0.3 truth and capability boundary now as-built
+### P0.2/P0.3/P0.4 truth and capability boundary now as-built
 
-- `TruthRecord` distinguishes observed facts, explicit patient claims, deterministic derivations, preferences, conversational state and model inference.
-- Model inference and conversational state cannot be persisted as patient clinical fact or used as deterministic clinical input merely because a model produced or repeated them.
+- `TruthRecord` distinguishes observed facts, explicit patient claims, deterministic derivations, preferences, conversational state, heuristic inference and model inference.
+- Model inference, heuristic inference and conversational state cannot be persisted as patient clinical fact or used as deterministic clinical input merely because they were produced or repeated.
 - Explicit patient claims retain their provenance but may feed approved deterministic triage/domain logic; using a claim as input does not validate a diagnosis.
 - The capability matrix permits generative explanation/summarization of approved data and clinician-question preparation, while emergency classification remains deterministic-only.
 - Diagnosis, prescription, dose calculation, treatment optimization/change, model-inference promotion and autonomous clinical-record writes are disabled capabilities.
 - `GatewayLLM` fails closed on a forbidden generative capability before provider egress.
 - `doctor-brief` uses the capability-aware gateway with `SUMMARIZE_APPROVED_DATA` while preserving its structured JSON response contract.
 - The diabetes structured insight formatter uses the same gateway with `SURFACE_DETERMINISTIC_PATTERN`, preserving its existing JSON parsing, fallback and patient-visible sanitation behavior.
+- Legacy `memory` / `deep` JSON snapshots are normalized to a versioned canonical shape on load/save without changing the database schema.
+- Snapshot-supplied truth metadata is not authoritative; field classification comes from `companion.memory_truth`.
+- The historical single-entry food-sensitivity heuristic is retained only as quarantined `HEURISTIC_INFERENCE`; it is no longer learned by `IAmina.on_log` and cannot steer `next_intention`.
 
 ## 6. AI / model boundary
 
@@ -200,7 +204,7 @@ Still required under P0-MENA-1:
 - timeout/failure/fallback policy;
 - final removal/isolation of provider-specific seams.
 
-The remaining IAmina truth follow-up is to classify/migrate legacy companion-memory snapshots before treating those stores as typed clinical truth.
+Companion snapshot truth classification is now explicit and legacy food-response heuristics are quarantined rather than promoted into clinical truth. Future memory work must build on those typed boundaries instead of reviving untyped legacy knowledge.
 
 Therefore the currently migrated shared text paths are capability-bounded, while provider-specific non-text and legacy integration seams remain governed by their existing egress contracts until their dedicated migrations are complete.
 
@@ -279,6 +283,7 @@ A locale/dialect is disabled for patient pilot until it has:
 - Clinical data ownership stays inside the diabetes domain unless a clearly shared concept is proven.
 - Normative clinical metrics require source/version, eligibility rules, and regression fixtures; SQLite-only success is insufficient evidence for PostgreSQL-specific raw SQL.
 - Deterministic derived metrics/patterns remain derived truth and should be recomputed from authoritative source data rather than promoted to immutable patient facts.
+- Companion memory snapshots remain JSON-backed through the registered `SnapshotStore`; P0.4 changes logical normalization/provenance only and introduces no database schema migration.
 
 ## 11. Key invariants
 
@@ -288,8 +293,9 @@ A locale/dialect is disabled for patient pilot until it has:
 | Unit normalization before clinical/AI logic, fail-closed on unexpected normalization failure | Data integrity |
 | Cookie/session API writes retain CSRF protection | Web/API security |
 | No diagnosis/prescription/treatment optimization | Product/regulatory boundary |
-| Model inference never silently becomes patient fact or clinical authority | Clinical truthfulness |
+| Model/heuristic inference never silently becomes patient fact or clinical authority | Clinical truthfulness |
 | Explicit patient claims remain labeled claims even when used by deterministic triage/domain logic | Provenance integrity |
+| Legacy unknown memory fields are preserved outside active reasoning during logical snapshot migration | Backward compatibility |
 | Forbidden generative capabilities fail closed before shared-gateway provider egress | AI authority boundary |
 | Every live external model/media call requires sanctioned egress authorization | Privacy + sovereignty |
 | Missing scope/consent/purpose/modality authorization denies egress | Default-deny safety |
