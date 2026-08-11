@@ -1,9 +1,9 @@
 """Truth provenance contract for IAmina companion data.
 
 The companion must never collapse observations, patient claims, deterministic
-clinical derivations and generative-model inferences into one untyped memory.
-This module gives the shared chassis a small executable vocabulary for the
-provenance and authority of information used by IAmina.
+clinical derivations, heuristic inferences and generative-model inferences into
+one untyped memory. This module gives the shared chassis a small executable
+vocabulary for the provenance and authority of information used by IAmina.
 """
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ class TruthKind(str, Enum):
     DETERMINISTIC_DERIVATION = "deterministic_derivation"
     PREFERENCE = "preference"
     CONVERSATIONAL_STATE = "conversational_state"
+    HEURISTIC_INFERENCE = "heuristic_inference"
     MODEL_INFERENCE = "model_inference"
 
 
@@ -72,8 +73,8 @@ class TruthRecord:
         USER_CLAIM is allowed here because reported symptoms/context can be valid
         inputs to deterministic triage or domain rules. Its provenance remains a
         claim: this does not validate an underlying diagnosis or promote it to an
-        observed fact. MODEL_INFERENCE and CONVERSATIONAL_STATE are never allowed
-        as clinical decision inputs.
+        observed fact. HEURISTIC_INFERENCE, MODEL_INFERENCE and
+        CONVERSATIONAL_STATE are never allowed as clinical decision inputs.
         """
 
         return self.kind in _DETERMINISTIC_CLINICAL_INPUT
