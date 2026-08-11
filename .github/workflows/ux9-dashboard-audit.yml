@@ -1,0 +1,106 @@
+name: UX9 dashboard audit
+
+on:
+  push:
+    branches: [ux/9-dashboard-recomposition]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+
+      - name: Get Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: frontend
+        run: flutter analyze --no-fatal-infos
+
+      - name: Flutter tests
+        working-directory: frontend
+        run: flutter test --no-pub
+
+      - name: Audit-only locale bootstrap
+        working-directory: frontend
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('lib/main.dart')
+          s=p.read_text()
+          s=s.replace("import 'package:go_router/go_router.dart';", "import 'package:go_router/go_router.dart';\nimport 'package:intl/intl.dart';")
+          s=s.replace('WidgetsFlutterBinding.ensureInitialized();', "WidgetsFlutterBinding.ensureInitialized();\n  Intl.defaultLocale = Uri.base.queryParameters['lang'] ?? 'fr';")
+          p.write_text(s)
+          PY
+
+      - name: Build debug web with audit access
+        working-directory: frontend
+        run: flutter build web --debug --dart-define=IAMINA_AUDIT_ACCESS=true
+
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium --with-deps
+
+      - name: Serve web build
+        working-directory: frontend/build/web
+        run: |
+          python3 -m http.server 8080 > /tmp/iamina-http.log 2>&1 &
+          echo $! > /tmp/iamina-http.pid
+
+      - name: Capture populated dashboard matrix
+        run: |
+          mkdir -p audit-ux9
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            const cases = [
+              ['fr','390x844',390,844,'fr-FR'],
+              ['ar','390x844',390,844,'ar-MA'],
+              ['fr','360x560',360,560,'fr-FR'],
+              ['ar','360x560',360,560,'ar-MA'],
+              ['fr','1440x1000',1440,1000,'fr-FR'],
+              ['ar','1440x1000',1440,1000,'ar-MA'],
+            ];
+            const manifest=[];
+            for (const [lang,label,width,height,locale] of cases) {
+              const context = await browser.newContext({viewport:{width,height}, deviceScaleFactor:1, locale});
+              const page = await context.newPage();
+              const errors=[];
+              page.on('pageerror', e => errors.push(String(e)));
+              await page.goto(`http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#/dashboard`, {waitUntil:'networkidle'});
+              await page.waitForTimeout(10000);
+              const flutterViews = await page.locator('flutter-view').count();
+              const path=`audit-ux9/${lang}-${label}-dashboard.png`;
+              await page.screenshot({path, fullPage:false});
+              fs.writeFileSync(`audit-ux9/${lang}-${label}-errors.json`, JSON.stringify(errors,null,2));
+              manifest.push({lang,label,width,height,flutterViews,pageErrors:errors.length,path});
+              if (flutterViews !== 1 || errors.length !== 0) process.exitCode = 1;
+              await context.close();
+            }
+            fs.writeFileSync('audit-ux9/manifest.json', JSON.stringify(manifest,null,2));
+            await browser.close();
+          })();
+          NODE
+
+      - name: Upload UX9 evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux9-dashboard-evidence
+          path: audit-ux9/
+          if-no-files-found: error
+          retention-days: 7
