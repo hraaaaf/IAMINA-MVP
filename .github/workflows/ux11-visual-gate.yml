@@ -1,0 +1,94 @@
+name: UX-11 visual parity gate
+
+on:
+  push:
+    branches:
+      - ux/11-dashboard-action-parity
+    paths:
+      - .github/workflows/ux11-visual-gate.yml
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ux/11-dashboard-action-parity
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build certified Flutter Web bundle
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter build web --release --dart-define=IAMINA_AUDIT_ACCESS=true
+      - name: Install capture runtime
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.54.2
+          npx playwright install --with-deps chromium
+      - name: Start local bundle
+        working-directory: frontend/build/web
+        run: |
+          python3 -m http.server 8080 --bind 127.0.0.1 > /tmp/iamina-web.log 2>&1 &
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:8080/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/iamina-web.log
+          exit 1
+      - name: Capture UX-11 Dashboard matrix
+        run: |
+          mkdir -p /tmp/ux11-visual
+          cat > /tmp/ux11-visual/capture.cjs <<'EOF'
+          const { chromium } = require(process.cwd() + '/node_modules/playwright');
+          const fs = require('fs');
+          const path = require('path');
+          const profiles = [
+            ['mobile-fr',390,844,'fr','fr-FR'],
+            ['mobile-ar',390,844,'ar','ar-MA'],
+            ['small-fr',360,560,'fr','fr-FR'],
+            ['small-ar',360,560,'ar','ar-MA'],
+          ];
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            const report = [];
+            for (const [profile,width,height,lang,locale] of profiles) {
+              const context = await browser.newContext({viewport:{width,height},deviceScaleFactor:1,locale,timezoneId:'Africa/Casablanca'});
+              const page = await context.newPage();
+              const consoleErrors=[]; const pageErrors=[];
+              page.on('console', m => { if (m.type()==='error') consoleErrors.push(m.text()); });
+              page.on('pageerror', e => pageErrors.push(String(e)));
+              await page.goto(`http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#/dashboard`, {waitUntil:'domcontentloaded', timeout:30000});
+              await page.waitForTimeout(6000);
+              const file=`${profile}__dashboard.png`;
+              await page.screenshot({path:path.join('/tmp/ux11-visual',file),fullPage:true});
+              const flutterViews=await page.locator('flutter-view').count();
+              report.push({profile,lang,width,height,url:page.url(),flutterViews,consoleErrors,pageErrors,screenshot:file});
+              await context.close();
+            }
+            await browser.close();
+            fs.writeFileSync('/tmp/ux11-visual/report.json', JSON.stringify(report,null,2));
+            const failures=report.filter(x=>x.flutterViews===0 || x.pageErrors.length>0);
+            if (failures.length) { console.error(JSON.stringify(failures,null,2)); process.exit(1); }
+          })();
+          EOF
+          node /tmp/ux11-visual/capture.cjs
+      - name: Record source
+        if: always()
+        run: |
+          git rev-parse HEAD > /tmp/ux11-visual/source-sha.txt
+          cp /tmp/iamina-web.log /tmp/ux11-visual/server.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ux11-visual-parity-captures
+          path: /tmp/ux11-visual
+          retention-days: 14
+          if-no-files-found: error
