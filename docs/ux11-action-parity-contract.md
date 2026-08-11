@@ -43,4 +43,4 @@ The final visual gate uses real rendered Flutter Web output with persisted local
 
 ## Finalization state
 
-The branch was reconciled with current `main` and cleaned from broad formatter/pub-get noise. The final PR diff is expected to contain only the focused UX-11 files and focused migration/navigation regression tests. Exact-head CI and migration-drift results after this documentation commit remain the final pre-merge release gate.
+The branch was reconciled with current `main` and cleaned from broad formatter/pub-get noise. The final PR diff is expected to contain only the focused UX-11 files and focused migration/navigation regression tests. Exact-head CI and migration-drift results after the final documentation head remain the last pre-merge release gate.
