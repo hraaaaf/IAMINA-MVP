@@ -16,7 +16,7 @@ from core.contracts.truth import TruthKind, TruthRecord
 def test_memory_truth_classification_is_code_owned_and_non_clinical_by_default():
     assert truth_kind_for("memory", "last_concern") is TruthKind.USER_CLAIM
     assert truth_kind_for("memory", "cached_stats") is TruthKind.CONVERSATIONAL_STATE
-    assert truth_kind_for("deep", "food_sensitivities") is TruthKind.MODEL_INFERENCE
+    assert truth_kind_for("deep", "food_sensitivities") is TruthKind.HEURISTIC_INFERENCE
     assert truth_kind_for("deep", "relationship_stage") is TruthKind.CONVERSATIONAL_STATE
 
     heuristic = TruthRecord(
@@ -87,6 +87,21 @@ def test_legacy_food_heuristic_is_preserved_only_in_quarantine():
     assert normalized["relationship_stage"] == "building"
     assert normalized["total_interactions"] == 12
     assert normalized["legacy_unknown_fields"]["unknown_old_field"] == "preserve-me"
+
+
+def test_deep_snapshot_tolerates_malformed_legacy_counters():
+    normalized = normalize_deep_snapshot(
+        {
+            "total_interactions": "not-a-number",
+            "consecutive_log_days": None,
+            "longest_streak": "5",
+        },
+        patient_id=9,
+    )
+
+    assert normalized["total_interactions"] == 0
+    assert normalized["consecutive_log_days"] == 0
+    assert normalized["longest_streak"] == 5
 
 
 def test_deep_memory_load_quarantines_unversioned_food_heuristic(monkeypatch):
