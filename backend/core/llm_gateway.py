@@ -18,6 +18,11 @@ import logging
 from collections.abc import Iterator
 
 from core.ai_egress import TEXT, assert_ai_egress_allowed
+from core.contracts.capabilities import (
+    Authority,
+    Capability,
+    assert_capability_allowed,
+)
 from core.contracts.companion_identity import CompanionIdentity
 from core.contracts.domain_context import DomainContext
 from core.contracts.patient_context import ModulePatientContext
@@ -29,6 +34,12 @@ from llm.pipeline import LLMPipeline
 from llm.pseudonymizer import PHIPseudonymizer
 
 logger = logging.getLogger(__name__)
+
+
+def _assert_generative_capability(capability: Capability) -> None:
+    """Fail closed if a caller asks the LLM gateway to perform a forbidden action."""
+
+    assert_capability_allowed(capability, Authority.GENERATIVE_MODEL)
 
 
 class GatewayLLM:
@@ -46,7 +57,13 @@ class GatewayLLM:
             [PHIStrippingMiddleware(), LoggingMiddleware()],
         )
 
-    def complete(self, system: str, user: str):
+    def complete(
+        self,
+        system: str,
+        user: str,
+        capability: Capability = Capability.EXPLAIN_APPROVED_DATA,
+    ):
+        _assert_generative_capability(capability)
         assert_ai_egress_allowed(TEXT)
         safe_system = self._pseudonymizer.mask(system)
         safe_user = self._pseudonymizer.mask(user)
@@ -54,9 +71,15 @@ class GatewayLLM:
         response.content = self._pseudonymizer.unmask_medical_report(response.content)
         return response
 
-    def stream(self, system: str, user: str) -> Iterator[str]:
+    def stream(
+        self,
+        system: str,
+        user: str,
+        capability: Capability = Capability.EXPLAIN_APPROVED_DATA,
+    ) -> Iterator[str]:
+        _assert_generative_capability(capability)
         if not medical_streaming_enabled():
-            yield self.complete(system, user).content
+            yield self.complete(system, user, capability=capability).content
             return
 
         assert_ai_egress_allowed(TEXT)
@@ -66,7 +89,13 @@ class GatewayLLM:
         restored = self._pseudonymizer.unmask_medical_report("".join(chunks))
         yield restored
 
-    def think(self, system: str, user: str) -> tuple[str, str]:
+    def think(
+        self,
+        system: str,
+        user: str,
+        capability: Capability = Capability.EXPLAIN_APPROVED_DATA,
+    ) -> tuple[str, str]:
+        _assert_generative_capability(capability)
         assert_ai_egress_allowed(TEXT)
         safe_system = self._pseudonymizer.mask(system)
         safe_user = self._pseudonymizer.mask(user)
@@ -106,6 +135,7 @@ def narrate(
         PHILeakError: if PHI patterns are detected in the prompts after masking.
         Exception: propagated from the LLM provider on unrecoverable errors.
     """
+    _assert_generative_capability(Capability.SUMMARIZE_APPROVED_DATA)
     assert_ai_egress_allowed(TEXT)
     pseudonymizer = PHIPseudonymizer()
     llm = LLMPipeline(get_llm(), [PHIStrippingMiddleware(), LoggingMiddleware()])
