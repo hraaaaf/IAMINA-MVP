@@ -1,5 +1,3 @@
-import json
-
 from companion.parser import parse_llm_json
 from companion.prompts import SUMMARY_USER
 from core.epistemic_safety import violates_epistemic_claim_policy
@@ -26,12 +24,10 @@ def test_summary_prompt_is_kpi_only_even_if_legacy_patterns_argument_is_passed()
 
 
 def test_safe_doctor_brief_fields_survive_parser_boundary():
-    payload = json.dumps(
-        {
-            "narrative": "Les mesures enregistrées sont résumées sur la période.",
-            "key_insight": "Le TIR enregistré est de 72% sur la période.",
-            "doctor_brief": "TIR 72%; CV 31%; 14 jours de données.",
-        }
+    payload = (
+        '{"narrative":"Les mesures enregistrées sont résumées sur la période.",'
+        '"key_insight":"Le TIR enregistré est de 72% sur la période.",'
+        '"doctor_brief":"TIR 72%; CV 31%; 14 jours de données."}'
     )
 
     parsed = parse_llm_json(payload, _DOCTOR_FIELDS)
@@ -42,12 +38,10 @@ def test_safe_doctor_brief_fields_survive_parser_boundary():
 
 
 def test_french_causal_or_named_mechanism_claim_fails_field_closed():
-    payload = json.dumps(
-        {
-            "narrative": "Cette tendance confirme le phénomène de l'aube.",
-            "key_insight": "Le TIR enregistré est de 72%.",
-            "doctor_brief": "TIR 72%; 14 jours de données.",
-        }
+    payload = (
+        '{"narrative":"Cette tendance confirme le phénomène de l aube.",'
+        '"key_insight":"Le TIR enregistré est de 72%.",'
+        '"doctor_brief":"TIR 72%; 14 jours de données."}'
     )
 
     parsed = parse_llm_json(payload, _DOCTOR_FIELDS)
@@ -58,12 +52,10 @@ def test_french_causal_or_named_mechanism_claim_fails_field_closed():
 
 
 def test_english_intervention_claim_fails_field_closed():
-    payload = json.dumps(
-        {
-            "narrative": "The recorded values are summarized for this period.",
-            "key_insight": "A bedtime snack could help this pattern.",
-            "doctor_brief": "TIR 72%; CV 31%.",
-        }
+    payload = (
+        '{"narrative":"The recorded values are summarized for this period.",'
+        '"key_insight":"A bedtime snack could help this pattern.",'
+        '"doctor_brief":"TIR 72%; CV 31%."}'
     )
 
     parsed = parse_llm_json(payload, _DOCTOR_FIELDS)
@@ -74,13 +66,10 @@ def test_english_intervention_claim_fails_field_closed():
 
 
 def test_arabic_assertive_causality_fails_field_closed():
-    payload = json.dumps(
-        {
-            "narrative": "هذه البيانات تؤكد السبب والآلية.",
-            "key_insight": "تم تلخيص القياسات المسجلة.",
-            "doctor_brief": "72%",
-        },
-        ensure_ascii=False,
+    payload = (
+        '{"narrative":"هذه البيانات تؤكد السبب والآلية.",'
+        '"key_insight":"تم تلخيص القياسات المسجلة.",'
+        '"doctor_brief":"72%"}'
     )
 
     parsed = parse_llm_json(payload, _DOCTOR_FIELDS)
@@ -99,7 +88,7 @@ def test_safe_uncertainty_language_does_not_trigger_overclaim_guard():
 
 
 def test_non_doctor_parser_schema_is_not_reclassified_by_p0_5b():
-    payload = json.dumps({"reply": "This data confirms the diagnosis of diabetes."})
+    payload = '{"reply":"This data confirms the diagnosis of diabetes."}'
 
     parsed = parse_llm_json(payload, ["reply"])
 
