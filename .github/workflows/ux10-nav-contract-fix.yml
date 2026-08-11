@@ -1,0 +1,286 @@
+name: UX10 nav contract fix
+
+"on":
+  push:
+    branches:
+      - "ux/10-dashboard-pixel-convergence"
+    paths:
+      - ".github/workflows/ux10-nav-contract-fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ux/10-dashboard-pixel-convergence
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+
+      - name: Restore five-destination contract with reference FAB
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/lib/features/navigation/main_shell.dart')
+          s = p.read_text()
+          start = s.index('class _BottomNav extends StatelessWidget')
+          prefix = s[:start]
+          tail = r'''class _BottomNav extends StatelessWidget {
+            final List<_NavEntry> entries;
+            final int selectedIndex;
+
+            const _BottomNav({required this.entries, required this.selectedIndex});
+
+            @override
+            Widget build(BuildContext context) {
+              final dark = AminaTheme.isDark(context);
+              final rtl = Directionality.of(context) == TextDirection.rtl;
+              final safeIndex = selectedIndex.clamp(0, entries.length - 1);
+              final visualIndex = rtl ? entries.length - 1 - safeIndex : safeIndex;
+              final glassColor = dark
+                  ? AminaTheme.darkCard.withValues(alpha: 0.88)
+                  : Colors.white.withValues(alpha: 0.92);
+              final glassBorder = dark
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : Colors.white.withValues(alpha: 0.92);
+              final indicatorColor = dark
+                  ? AminaTheme.teal700.withValues(alpha: 0.34)
+                  : AminaTheme.teal50.withValues(alpha: 0.96);
+              final addLabel = AppLocalizations.of(context)!.addEntry;
+
+              return SafeArea(
+                top: false,
+                minimum: EdgeInsets.symmetric(horizontal: 12).copyWith(bottom: 10),
+                child: SizedBox(
+                  height: 92,
+                  child: Stack(
+                    alignment: Alignment.topCenter,
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned.fill(
+                        top: 20,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(28),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                            child: Container(
+                              height: 72,
+                              decoration: BoxDecoration(
+                                color: glassColor,
+                                borderRadius: BorderRadius.circular(28),
+                                border: Border.all(color: glassBorder, width: 1),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: dark ? 0.24 : 0.10),
+                                    blurRadius: 28,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final itemWidth = constraints.maxWidth / entries.length;
+                                  return Material(
+                                    color: Colors.transparent,
+                                    child: Stack(
+                                      children: [
+                                        AnimatedPositioned(
+                                          duration: AminaMotion.resolve(
+                                            context,
+                                            AminaMotion.navSelection,
+                                          ),
+                                          curve: AminaMotion.enter,
+                                          left: visualIndex * itemWidth + 4,
+                                          top: 8,
+                                          width: itemWidth - 8,
+                                          height: 56,
+                                          child: IgnorePointer(
+                                            child: DecoratedBox(
+                                              decoration: BoxDecoration(
+                                                color: indicatorColor,
+                                                borderRadius: BorderRadius.circular(22),
+                                                border: Border.all(
+                                                  color: dark
+                                                      ? AminaTheme.teal400.withValues(alpha: 0.16)
+                                                      : AminaTheme.teal500.withValues(alpha: 0.12),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Row(
+                                          children: [
+                                            for (var index = 0; index < entries.length; index++)
+                                              Expanded(
+                                                child: _GlassNavDestination(
+                                                  entry: entries[index],
+                                                  selected: index == safeIndex,
+                                                  onTap: () {
+                                                    HapticFeedback.selectionClick();
+                                                    GoRouter.of(context).go(entries[index].route);
+                                                  },
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Semantics(
+                        button: true,
+                        label: addLabel,
+                        child: Tooltip(
+                          message: addLabel,
+                          child: InkWell(
+                            key: const ValueKey('mobile-nav-add'),
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              GoRouter.of(context).go('/ajouter');
+                            },
+                            customBorder: const CircleBorder(),
+                            child: Container(
+                              width: 58,
+                              height: 58,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF0A766B), Color(0xFF064D50)],
+                                  begin: AlignmentDirectional.topStart,
+                                  end: AlignmentDirectional.bottomEnd,
+                                ),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: dark ? AminaTheme.darkCard : Colors.white,
+                                  width: 5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF064D50).withValues(alpha: 0.30),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(Icons.add_rounded, color: Colors.white, size: 29),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+
+          class _GlassNavDestination extends StatelessWidget {
+            final _NavEntry entry;
+            final bool selected;
+            final VoidCallback onTap;
+
+            const _GlassNavDestination({
+              required this.entry,
+              required this.selected,
+              required this.onTap,
+            });
+
+            @override
+            Widget build(BuildContext context) {
+              final dark = AminaTheme.isDark(context);
+              final label = entry.label(AppLocalizations.of(context)!);
+              final activeColor = dark ? AminaTheme.teal400 : AminaTheme.teal700;
+              final inactiveColor = dark ? AminaTheme.dark400 : AminaTheme.ink400;
+
+              return Semantics(
+                button: true,
+                selected: selected,
+                label: label,
+                child: InkWell(
+                  key: ValueKey('mobile-nav-${entry.route}'),
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(22),
+                  child: SizedBox(
+                    height: 72,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedScale(
+                          scale: selected ? 1.06 : 1.0,
+                          duration: AminaMotion.resolve(
+                            context,
+                            AminaMotion.navSelection,
+                          ),
+                          curve: AminaMotion.enter,
+                          child: Icon(
+                            selected ? entry.selectedIcon : entry.icon,
+                            color: selected ? activeColor : inactiveColor,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        AnimatedDefaultTextStyle(
+                          duration: AminaMotion.resolve(
+                            context,
+                            AminaMotion.navSelection,
+                          ),
+                          curve: AminaMotion.enter,
+                          style: TextStyle(
+                            fontSize: 9.2,
+                            height: 1.05,
+                            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                            color: selected ? activeColor : inactiveColor,
+                            fontFamily: 'Inter',
+                          ),
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+          '''
+          p.write_text(prefix + tail)
+          PY
+
+          cd frontend
+          dart format lib/features/navigation/main_shell.dart
+          flutter pub get
+          flutter analyze --no-fatal-infos
+          flutter test --no-pub \
+            test/p0_ux_8_mobile_navigation_test.dart \
+            test/ux_8_motion_system_contract_test.dart \
+            test/p0_real_actions_contract_test.dart \
+            test/ux_5_glass_mobile_nav_contract_test.dart \
+            test/rtl_screen_contract_test.dart \
+            test/p0_ux_6_4_rtl_accessibility_contract_test.dart
+          cd ..
+          git diff --check
+
+      - name: Commit verified nav fix
+        run: |
+          git config user.name "hraaaaf"
+          git config user.email "123034021+hraaaaf@users.noreply.github.com"
+          git add frontend/lib/features/navigation/main_shell.dart
+          git commit -m "fix(ux): preserve mobile nav contracts with central add action"
+          git push origin HEAD:ux/10-dashboard-pixel-convergence
