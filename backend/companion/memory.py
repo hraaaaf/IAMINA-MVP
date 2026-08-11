@@ -5,6 +5,9 @@ from typing import Optional
 
 from django.core.cache import cache
 
+from companion.memory_truth import SNAPSHOT_VERSION, normalize_memory_snapshot, truth_kind_for
+from core.contracts.truth import TruthKind
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,6 +20,8 @@ class IAminaMemory:
     emotional_signals: list[str] = field(default_factory=list)
     milestones_celebrated: list[str] = field(default_factory=list)
     cached_stats: dict = field(default_factory=dict)
+    snapshot_version: int = SNAPSHOT_VERSION
+    legacy_unknown_fields: dict = field(default_factory=dict)
 
     @classmethod
     def load(cls, patient) -> "IAminaMemory":
@@ -24,23 +29,26 @@ class IAminaMemory:
         raw = cache.get(f"iamina:memory:{patient.id}")
         if raw:
             try:
-                return cls(**json.loads(raw))
+                data = normalize_memory_snapshot(json.loads(raw), patient.id)
+                return cls(**data)
             except Exception:
-                pass
+                logger.exception("IAminaMemory.load cache normalization failed for patient=%s", patient.id)
 
         # 2. Cold path: durable snapshot via the registered store (server restart /
         #    Redis eviction). The active module supplies the SnapshotStore adapter.
         try:
             from core.companion.ports import get_snapshot_store
+
             store = get_snapshot_store()
             if store is not None:
                 data = store.load("memory", patient.id)
                 if data:
-                    obj = cls(**data)
-                    # Warm the cache for subsequent requests
+                    normalized = normalize_memory_snapshot(data, patient.id)
+                    obj = cls(**normalized)
+                    # Warm the cache with the canonical versioned shape.
                     cache.set(
                         f"iamina:memory:{patient.id}",
-                        json.dumps(data),
+                        json.dumps(normalized),
                         timeout=60 * 60 * 24 * 90,
                     )
                     return obj
@@ -50,7 +58,8 @@ class IAminaMemory:
         return cls(patient_id=patient.id)
 
     def save(self):
-        payload = json.dumps(asdict(self))
+        normalized = normalize_memory_snapshot(asdict(self), self.patient_id)
+        payload = json.dumps(normalized)
 
         # 1. Cache (fast, 90-day TTL)
         cache.set(f"iamina:memory:{self.patient_id}", payload, timeout=60 * 60 * 24 * 90)
@@ -58,11 +67,17 @@ class IAminaMemory:
         # 2. Durable snapshot via the registered store (survives restarts)
         try:
             from core.companion.ports import get_snapshot_store
+
             store = get_snapshot_store()
             if store is not None:
-                store.save("memory", self.patient_id, asdict(self))
+                store.save("memory", self.patient_id, normalized)
         except Exception:
             logger.exception("IAminaMemory.save snapshot failed for patient=%s", self.patient_id)
+
+    def truth_kind_for(self, field_name: str) -> TruthKind:
+        """Return the canonical, code-owned truth class for a memory field."""
+
+        return truth_kind_for("memory", field_name)
 
     def update(self, entry):
         glucose = getattr(entry, "blood_sugar", None)
@@ -145,8 +160,8 @@ def _check_milestones(memory: IAminaMemory) -> None:
     """Detect simple streak/count milestones from cached_stats (no SQL cost)."""
     count = memory.cached_stats.get("log_count", 0)
     thresholds = {
-        10:  "first_10_logs",
-        50:  "logs_50",
+        10: "first_10_logs",
+        50: "logs_50",
         100: "logs_100",
     }
     for threshold, key in thresholds.items():
