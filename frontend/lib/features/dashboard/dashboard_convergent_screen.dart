@@ -235,14 +235,14 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                 delegate: SliverChildListDelegate([
                   _BrandRow(),
                   const SizedBox(height: 18),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
                               greeting,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -254,24 +254,26 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                                 color: AminaTheme.textPrimary(context),
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              _t(
-                                context,
-                                "Voici votre résumé santé d'aujourd'hui.",
-                                "Here is today's health summary.",
-                                'إليك ملخص صحتك اليوم.',
-                              ),
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AminaTheme.textSecondary(context),
-                              ),
-                            ),
-                          ],
+                          ),
+                          const SizedBox(width: 8),
+                          _DatePill(date: anchorDate, onChanged: onDateChanged),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _t(
+                          context,
+                          "Voici votre résumé santé d'aujourd'hui.",
+                          "Here is today's health summary.",
+                          'إليك ملخص صحتك اليوم.',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AminaTheme.textSecondary(context),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      _DatePill(date: anchorDate, onChanged: onDateChanged),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -373,21 +375,27 @@ class _BrandRow extends StatelessWidget {
             ],
           ),
         ),
-        Material(
-          color: AminaTheme.surface(context),
-          shape: const CircleBorder(),
-          child: InkWell(
-            key: const ValueKey('dashboard-reminders-action'),
-            onTap: () => GoRouter.of(context).go('/reminders'),
-            customBorder: const CircleBorder(),
-            child: const SizedBox(
-              width: 40,
-              height: 40,
-              child: Center(
-                child: Icon(
-                  Icons.notifications_none_rounded,
-                  size: 22,
-                  color: Color(0xFF064E52),
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: Material(
+              color: AminaTheme.surface(context),
+              shape: const CircleBorder(),
+              child: InkWell(
+                key: const ValueKey('dashboard-reminders-action'),
+                onTap: () => GoRouter.of(context).go('/reminders'),
+                customBorder: const CircleBorder(),
+                child: const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Center(
+                    child: Icon(
+                      Icons.notifications_none_rounded,
+                      size: 22,
+                      color: Color(0xFF064E52),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -745,6 +753,12 @@ class _TrendsPanel extends StatelessWidget {
                   suffix: unit,
                 ),
               ),
+              Container(
+                width: 1,
+                height: 58,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                color: AminaTheme.divider(context),
+              ),
               Expanded(
                 child: _MetricTile(
                   icon: Icons.timelapse_rounded,
@@ -752,6 +766,12 @@ class _TrendsPanel extends StatelessWidget {
                   value: tir.toStringAsFixed(0),
                   suffix: '%',
                 ),
+              ),
+              Container(
+                width: 1,
+                height: 58,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                color: AminaTheme.divider(context),
               ),
               Expanded(
                 child: _MetricTile(
