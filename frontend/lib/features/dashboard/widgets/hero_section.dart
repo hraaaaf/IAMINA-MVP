@@ -13,7 +13,7 @@ class _PageHead extends StatelessWidget {
     final now = DateTime.now();
     final copy = AuditedPageCopy.of(context);
     return Padding(
-      padding: EdgeInsets.only(top: isDesktop ? 32 : 16, bottom: isDesktop ? 4 : 0),
+      padding: EdgeInsets.only(top: isDesktop ? 32 : 18, bottom: isDesktop ? 4 : 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -23,20 +23,21 @@ class _PageHead extends StatelessWidget {
             return Text(
               salut,
               style: TextStyle(
-                fontSize: isDesktop ? 44 : 30,
+                fontSize: isDesktop ? 44 : 31,
                 fontWeight: FontWeight.w700,
                 color: AminaTheme.textPrimary(context),
-                letterSpacing: -1.0,
-                height: 1.05,
+                letterSpacing: -1.1,
+                height: 1.04,
               ),
             );
           }),
-          const SizedBox(height: 8),
+          const SizedBox(height: 7),
           Text(
             logCount > 0 ? copy.observation(range) : copy.emptyAnalysis,
             style: TextStyle(
               fontSize: isDesktop ? 16 : 14,
               color: AminaTheme.textSecondary(context),
+              height: 1.35,
             ),
           ),
         ],
@@ -46,9 +47,11 @@ class _PageHead extends StatelessWidget {
 }
 
 // ── Hero Contextuel ───────────────────────────────────────────────────────────
-// 3 modes : insight (matin) / live (post-repas, CGM) / tir (mid-day)
+// A fresh measurement gets a live state; otherwise the latest measurement
+// anchors a longitudinal summary. TIR stays in the metric block below so the
+// first viewport does not repeat the same KPI twice.
 
-enum _HeroMode { live, tir, insight }
+enum _HeroMode { live, insight }
 
 class _HeroContextual extends StatelessWidget {
   final List<LogEntryData> logs;
@@ -69,18 +72,29 @@ class _HeroContextual extends StatelessWidget {
     if (logs.isEmpty) return _HeroMode.insight;
     final latest = logs.first;
     final minutesSince = now.difference(latest.loggedAt ?? latest.createdAt).inMinutes;
-    if (minutesSince < 90) return _HeroMode.live;
-    if (now.hour >= 11 && now.hour < 15) return _HeroMode.tir;
-    return _HeroMode.insight;
+    return minutesSince >= 0 && minutesSince < 90
+        ? _HeroMode.live
+        : _HeroMode.insight;
   }
 
   @override
   Widget build(BuildContext context) {
     final mode = _resolveMode();
     return switch (mode) {
-      _HeroMode.live    => _HeroLive(logs: logs, unit: unit, range: range),
-      _HeroMode.tir     => _HeroTIR(logs: logs, low: low, high: high, range: range),
-      _HeroMode.insight => _HeroInsight(logs: logs, range: range),
+      _HeroMode.live => _HeroLive(
+          logs: logs,
+          unit: unit,
+          low: low,
+          high: high,
+          range: range,
+        ),
+      _HeroMode.insight => _HeroInsight(
+          logs: logs,
+          unit: unit,
+          low: low,
+          high: high,
+          range: range,
+        ),
     };
   }
 }
