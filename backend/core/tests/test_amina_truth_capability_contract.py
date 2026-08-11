@@ -28,6 +28,23 @@ def test_model_inference_cannot_be_persisted_or_used_as_clinical_input():
         record.assert_deterministic_clinical_input_allowed()
 
 
+def test_heuristic_inference_cannot_be_persisted_or_used_as_clinical_input():
+    record = TruthRecord(
+        key="legacy_food_sensitivity",
+        value={"msemen": 65.0},
+        kind=TruthKind.HEURISTIC_INFERENCE,
+        source="companion.deep_memory.legacy",
+    )
+
+    assert record.may_persist_as_patient_fact is False
+    assert record.may_enter_deterministic_clinical_logic is False
+
+    with pytest.raises(ValueError, match="cannot be persisted as a patient fact"):
+        record.assert_patient_fact_persistence_allowed()
+    with pytest.raises(ValueError, match="cannot enter deterministic clinical decision logic"):
+        record.assert_deterministic_clinical_input_allowed()
+
+
 def test_observed_fact_and_user_claim_keep_distinct_provenance_but_can_feed_deterministic_logic():
     observed = TruthRecord(
         key="glucose_mg_dl",
