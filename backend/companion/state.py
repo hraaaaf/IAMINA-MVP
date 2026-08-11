@@ -125,8 +125,6 @@ def compute_state(
         next_intention = "mentionner doucement la tendance à la baisse"
     elif deep.consecutive_log_days >= 7:
         next_intention = "souligner la régularité et encourager"
-    elif deep.food_sensitivities:
-        next_intention = "partager une observation sur les repas"
     elif emotional:
         next_intention = "commencer par prendre des nouvelles"
     else:

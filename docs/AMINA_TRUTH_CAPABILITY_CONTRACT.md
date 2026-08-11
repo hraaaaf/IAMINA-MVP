@@ -1,6 +1,6 @@
 # IAmina — Truth & Capability Contract
 
-> **Status:** chassis contract introduced by P0.2 and extended to structured insight formatting by P0.3.  
+> **Status:** chassis contract introduced by P0.2, extended to structured insight formatting by P0.3 and legacy-memory enforcement by P0.4 (certification pending).  
 > **Scope:** IAmina companion reasoning, memory provenance and generative-model authority.  
 > **Non-scope:** no new disease module, clinical threshold, diagnosis, prescription, treatment optimization or patient-facing UX.
 
@@ -14,6 +14,7 @@ The executable source is:
 
 - `backend/core/contracts/truth.py`
 - `backend/core/contracts/capabilities.py`
+- `backend/companion/memory_truth.py`
 
 ## 2. Truth classes
 
@@ -29,6 +30,8 @@ The executable source is:
 ### Persistence rule
 
 Patient-fact storage may contain observed facts, explicit user claims and explicit preferences. A deterministic derivation is recomputed from its source data rather than silently materialized as immutable fact. Conversational state and model inference remain outside patient clinical truth.
+
+A companion-memory snapshot is **not** a patient-fact store. If non-clinical runtime state or a recomputable derivative is cached there, it must carry an explicit truth kind and stable source and must never gain additional clinical authority merely because it survived a restart.
 
 ### Deterministic clinical-input rule
 
@@ -81,9 +84,15 @@ The existing egress authorization, consent, PHI stripping, deterministic safety 
 
 ## 6. Legacy-memory boundary
 
-The current `companion.memory` and `companion.deep_memory` stores predate this typed truth contract and contain mixed historical structures such as cached observations, emotional signals and heuristic food-response memory.
+P0.4 migrates the legacy companion snapshot boundary without changing the database schema. `memory` and `deep` continue to use the condition-agnostic `SnapshotStore` and existing JSON fields, but new writes use the versioned `iamina.companion-memory` v2 envelope defined in `backend/companion/memory_truth.py`.
 
-P0.2 does **not** claim those legacy snapshots are already migrated. Their classification/migration must be a separate focused lot with backward-compatible snapshot handling and regression evidence. Until then, legacy memory must not be treated as a new authoritative clinical fact source merely because this contract exists.
+Each persisted field carries its expected `TruthKind` and stable non-PHI source. Wrong namespace, unknown schema version, malformed envelopes or provenance mismatch fail closed rather than silently gaining authority. The stored `patient_id` can never override the identity selected by the caller.
+
+Legacy flat snapshots remain readable for backward compatibility. However, legacy `last_concern`, `current_tone` and `emotional_signals` are reset to neutral defaults because their old format cannot prove whether the value came from deterministic keyword handling or generative output. New deterministic keyword-derived emotion/tone state is persisted explicitly as `CONVERSATIONAL_STATE`; direct generative mutations are rejected at the durable `IAminaMemory.save()` boundary.
+
+Historical `food_sensitivities` remain structurally readable but lose active authority: the IAmina orchestrator no longer learns the legacy food-response heuristic and `compute_state()` no longer turns it into a meal-related intention. Compatibility retention does not make the heuristic a patient fact or an approved clinical pattern.
+
+Detailed implementation and acceptance evidence live in `docs/P0_4_LEGACY_MEMORY_TRUTH_MIGRATION.md`.
 
 ## 7. Permanent regression expectations
 
@@ -96,4 +105,10 @@ Tests must prove at minimum that:
 - diagnosis, prescription, dose calculation, treatment optimization and treatment change remain disabled;
 - user-claim/preference writes remain confirmation-gated;
 - the LLM gateway rejects forbidden generative capabilities before provider egress;
-- `doctor-brief` and the structured diabetes insight formatter cannot regress to direct `get_llm()` provider access.
+- `doctor-brief` and the structured diabetes insight formatter cannot regress to direct `get_llm()` provider access;
+- legacy companion snapshots decode backward-compatibly into a versioned provenance contract;
+- malformed/tampered companion provenance fails closed;
+- legacy emotion/tone with unprovable origin is quarantined;
+- direct generative concern/tone mutations cannot survive a durable companion-memory save;
+- deterministic keyword-derived conversational state can persist with explicit provenance;
+- historical food-response heuristic memory cannot drive patient-facing reasoning or a new prompt intention.
