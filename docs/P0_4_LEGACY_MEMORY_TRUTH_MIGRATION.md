@@ -1,6 +1,6 @@
 # P0.4 — Legacy Memory Truth Migration
 
-> **Status:** implementation complete on the P0.4 branch; certification pending exact-head CI, migration drift, Clinical/Safety Reviewer and Release Certifier.  
+> **Status:** ✅ CLOSED 100% — PR #114 merged as `ebfd77f036f10188888b7bc52d754a01cf11973b`; exact-head CI #1649 + drift #1461 and post-merge CI #1650 + drift #1462 are green.  
 > **Scope:** IAmina companion-memory persistence/provenance only.  
 > **Non-scope:** no patient-facing UX, diagnosis, prescription, treatment optimization, clinical threshold/formula, Django model or database schema change.
 
@@ -83,15 +83,17 @@ The compatibility helper/method remains temporarily present so this focused lot 
 - historical food heuristic data does not drive `next_intention`;
 - active `on_log()` no longer feeds the legacy food heuristic.
 
-The pre-existing state contract is also migrated so it permanently rejects meal-intention steering from `food_sensitivities`.
+The pre-existing state and Sprint-2 persistence contracts were migrated so they permanently reject meal-intention steering from `food_sensitivities` and assert the v2 snapshot envelope instead of the retired flat format.
 
-## Acceptance gates
+## Closure evidence
 
-P0.4 is not CLOSED until all are true on one exact final head:
+All P0.4 acceptance gates are satisfied:
 
-1. CI SUCCESS, including backend, PostgreSQL source-of-truth, Flutter, Ruff, import-linter, security and permanent contracts.
-2. Django migration drift SUCCESS; expected result is no migration.
-3. Clinical/Safety Reviewer PASS on the exact head.
-4. Release Certifier GO on the exact head.
-5. Expected-head locked merge.
-6. Post-merge CI SUCCESS and migration drift SUCCESS on the merge commit.
+1. Exact implementation head `f484ccb6018492873fa711cc72bb2e052eda69cb` — CI #1649 SUCCESS.
+2. Exact implementation head — Django migration drift #1461 SUCCESS; no migration required.
+3. Clinical/Safety Reviewer PASS anchored to the exact implementation head.
+4. Release Certifier GO anchored to the same exact implementation head.
+5. PR #114 merged with expected-head locking as `ebfd77f036f10188888b7bc52d754a01cf11973b`.
+6. Post-merge `main@ebfd77f036f10188888b7bc52d754a01cf11973b` — CI #1650 SUCCESS and migration drift #1462 SUCCESS.
+
+**P0.4 is CLOSED 100%.**
