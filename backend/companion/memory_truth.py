@@ -28,8 +28,8 @@ _MEMORY_TRUTH = MappingProxyType(
 _DEEP_TRUTH = MappingProxyType(
     {
         "significant_events": TruthKind.CONVERSATIONAL_STATE,
-        "food_sensitivities": TruthKind.MODEL_INFERENCE,
-        "quarantined_heuristics": TruthKind.MODEL_INFERENCE,
+        "food_sensitivities": TruthKind.HEURISTIC_INFERENCE,
+        "quarantined_heuristics": TruthKind.HEURISTIC_INFERENCE,
         "peak_hours": TruthKind.CONVERSATIONAL_STATE,
         "relationship_stage": TruthKind.CONVERSATIONAL_STATE,
         "communication_style": TruthKind.CONVERSATIONAL_STATE,
@@ -66,6 +66,13 @@ def _legacy_unknown_fields(raw: dict[str, Any], known: frozenset[str]) -> dict[s
         if key not in known and key not in _UNTRUSTED_METADATA_KEYS:
             unknown.setdefault(key, deepcopy(value))
     return unknown
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def normalize_memory_snapshot(data: dict | None, patient_id: int) -> dict[str, Any]:
@@ -109,10 +116,10 @@ def normalize_deep_snapshot(data: dict | None, patient_id: int) -> dict[str, Any
         "peak_hours": list(raw.get("peak_hours") or []),
         "relationship_stage": raw.get("relationship_stage") or "new",
         "communication_style": raw.get("communication_style") or "unknown",
-        "total_interactions": int(raw.get("total_interactions") or 0),
+        "total_interactions": _safe_int(raw.get("total_interactions")),
         "last_log_date": raw.get("last_log_date"),
-        "consecutive_log_days": int(raw.get("consecutive_log_days") or 0),
-        "longest_streak": int(raw.get("longest_streak") or 0),
+        "consecutive_log_days": _safe_int(raw.get("consecutive_log_days")),
+        "longest_streak": _safe_int(raw.get("longest_streak")),
         "last_advice_given_at": raw.get("last_advice_given_at"),
         "snapshot_version": SNAPSHOT_VERSION,
         "legacy_unknown_fields": _legacy_unknown_fields(raw, _DEEP_KEYS),
