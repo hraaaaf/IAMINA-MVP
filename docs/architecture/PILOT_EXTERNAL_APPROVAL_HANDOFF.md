@@ -6,33 +6,33 @@
 
 ## 1. Purpose
 
-The repository already contains executable fail-closed gates for the remaining external pilot approvals. The remaining risk is operational fragmentation: security rotation, processor/CNDP approval, deployment residency evidence and native/clinical review are documented separately.
-
-This handoff provides one deterministic order of operations for the human owners and the release operator. It does not weaken, replace or bypass any underlying gate.
+The repository contains executable fail-closed gates for the remaining external pilot approvals. This handoff provides one deterministic order of operations for the human owners and release operator. It does not weaken, replace or bypass any underlying gate.
 
 ## 2. Hard stop: security issue #30
 
-Before destructive Git remediation or pilot approval can proceed, the security owner must confirm restricted evidence for all of the following:
+### Provenance correction
 
-- every potentially affected PekPik credential has been revoked or rotated;
-- PekPik provider activity logs have been reviewed from the first known exposure onward;
-- every real deployed and developer environment has been checked and no old credential remains active;
-- the restricted evidence ledger contains only opaque references and has security-owner approval.
+The historical PekPik values were present in `.claude/settings.local.json` from the initial IAMINA repository snapshot. That file is a local Claude/agent permission file; the later removal commit explicitly classified it as local agent settings containing secret material.
 
-Do not place credential values, provider-private logs, screenshots containing secrets or replacement tokens in Git, GitHub issues, PRs or chat.
+The project owner reports no knowledge of, or intentional account relationship with, PekPik. A connected-mailbox search found no PekPik registration/billing/account correspondence. Public PekPik documentation currently describes public test keys usable without registration.
 
-Only after those four facts are approved may the repository history be rewritten according to `docs/security/SECRET_HISTORY_AND_ROTATION.md`.
+Therefore IAMINA does **not** have evidence that the historical values were user-owned PekPik account credentials. The incident is classified as **public/test-key provenance plus forbidden historical secret-like material** unless contrary evidence appears.
 
-After the rewrite:
+This does not make the historical blob acceptable. `.claude/settings.local.json` remains a forbidden historical path and must be removed from all reachable Git refs.
 
-1. force-update every affected branch/tag during the approved maintenance window;
-2. require fresh clones so old history cannot be pushed back;
-3. run `scripts/audit_git_history_secrets.py` from a fresh full non-shallow checkout;
-4. require a clean tracked-tree scan and a clean reachable-history scan;
-5. activate the blocking push/pull-request history gate without weakening scanner logic;
-6. obtain Security Reviewer and Release Certifier approval on the exact rewritten head.
+Before issue #30 can close:
 
-Any missing security evidence is a **STOP**.
+1. remove `.claude/settings.local.json` from every affected branch/tag using a reviewed history rewrite;
+2. verify the rewritten mirror with the unchanged full-history scanner and `git fsck --full`;
+3. force-update affected refs only after impact review;
+4. require fresh clones and prevent stale history from being pushed back;
+5. run tracked-tree and full-history scans from a fresh non-shallow clone;
+6. activate the blocking push/pull-request history gate without weakening scanner logic;
+7. obtain Security Reviewer and Release Certifier approval on the exact rewritten state.
+
+Do **not** require the project owner to rotate or revoke a PekPik account credential unless independent evidence first demonstrates that a private/user-owned PekPik account credential existed.
+
+Any missing history-remediation evidence is a **STOP**.
 
 ## 3. Consent, CNDP and processor approval
 
@@ -106,19 +106,7 @@ python manage.py export_safety_corpus_review_packet \
   --output /restricted/iamina/safety-review-packet.json
 ```
 
-Human review must cover the fingerprinted corpus for:
-
-- French;
-- Modern Standard Arabic;
-- English;
-- Moroccan Darija;
-- Darija Arabic script;
-- Darija Latin transliteration;
-- mixed-language cases;
-- text and voice-transcript channels;
-- every exact high-severity phrase;
-- every clinical severity decision;
-- every locale/channel/input-form parity row.
+Human review must cover the fingerprinted corpus for French, Modern Standard Arabic, English, Moroccan Darija, script/transliteration variants, mixed-language cases, text/voice-transcript channels, every exact high-severity phrase, every clinical severity decision and every parity row.
 
 Reviewer identities and direct contact information must not be committed. Use opaque reviewer/evidence references in the restricted manifest.
 
@@ -137,25 +125,24 @@ Any stale fingerprint, missing coverage, rejected decision or failing parity row
 
 The release operator must use this sequence:
 
-1. confirm issue #30 external rotation/log/environment evidence is approved;
-2. complete and certify the Git history rewrite and blocking history gate;
-3. freeze the candidate release Git SHA;
-4. complete CNDP, processor, contract, privacy and security evidence against that candidate deployment;
-5. build the restricted residency manifest for the exact deployed SHA;
-6. export the native/clinical review packet from the exact candidate release head;
-7. obtain all native, clinical and parity approvals against its exact fingerprint;
-8. run all three fail-closed `--require-approved` gates;
-9. run the standard exact-head CI, PostgreSQL source-of-truth suite, migration drift, secret hygiene, Bandit, OpenAPI, import-linter and Flutter gates;
-10. obtain the applicable independent Reviewer verdicts;
-11. obtain Release Certifier approval;
-12. merge/deploy only with expected-head protection and re-run post-merge/post-deploy evidence where required;
-13. perform the real-patient pilot go/no-go only after every required gate is current.
+1. complete and certify issue #30 Git history purge plus blocking history gate;
+2. freeze the candidate release Git SHA;
+3. complete CNDP, processor, contract, privacy and security evidence against that candidate deployment;
+4. build the restricted residency manifest for the exact deployed SHA;
+5. export the native/clinical review packet from the exact candidate release head;
+6. obtain all native, clinical and parity approvals against its exact fingerprint;
+7. run all three fail-closed `--require-approved` gates;
+8. run standard exact-head CI, PostgreSQL source-of-truth, migration drift, secret hygiene, Bandit, OpenAPI, import-linter and Flutter gates;
+9. obtain applicable independent Reviewer verdicts;
+10. obtain Release Certifier approval;
+11. merge/deploy only with expected-head protection and re-run post-merge/post-deploy evidence where required;
+12. perform the real-patient pilot go/no-go only after every required gate is current.
 
 ## 7. Evidence matrix
 
-| Lane | Human owner evidence | Repository proof | Result required |
+| Lane | Required external/operational evidence | Repository proof | Result required |
 |---|---|---|---|
-| PekPik / Git history | rotation/revocation, provider-log review, deployed-environment verification | full non-shallow history scanner + blocking history gate | PASS |
+| PekPik / Git history | provenance classification + affected-ref coordination; provider rotation only if private ownership is later proven | fresh non-shallow full-history scanner + blocking history gate | PASS |
 | CNDP / processor | authorization, transfer basis, contracts, processor/subprocessor, retention/no-training, privacy/security | `audit_pilot_consent_governance --require-approved` | PASS |
 | Residency | exact deployed topology, countries/regions, evidence references | `audit_pilot_data_residency --require-approved` | PASS |
 | Native/clinical | locale reviewers, clinical decisions, parity decisions, safety-owner approval | `audit_safety_corpus_review --require-approved` | PASS |
@@ -166,8 +153,7 @@ The release operator must use this sequence:
 Creating or updating this handoff does **not**:
 
 - close issue #30;
-- prove PekPik credentials were rotated;
-- authorize a history rewrite;
+- prove the historical blob has been purged;
 - prove CNDP authorization;
 - approve a processor or subprocessor;
 - prove production geography;
@@ -175,4 +161,4 @@ Creating or updating this handoff does **not**:
 - increase the MENA critical-path numerator;
 - authorize a real-patient pilot.
 
-The project remains blocked wherever the underlying external evidence is absent. The correct response to missing evidence is to stop, not to infer approval.
+The project remains blocked wherever underlying evidence is absent. The correct response to missing evidence is to stop, not to infer approval.
