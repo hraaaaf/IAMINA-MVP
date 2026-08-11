@@ -219,11 +219,11 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
           physics: const BouncingScrollPhysics(),
           slivers: [
             SliverPadding(
-              padding: const EdgeInsetsDirectional.fromSTEB(18, 8, 18, 96),
+              padding: const EdgeInsetsDirectional.fromSTEB(18, 12, 18, 108),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   _BrandRow(),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 22),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -236,7 +236,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 25,
+                                fontSize: 28,
                                 height: 1.05,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -0.8,
@@ -252,7 +252,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                                 'إليك ملخص صحتك اليوم.',
                               ),
                               style: TextStyle(
-                                fontSize: 12.5,
+                                fontSize: 14,
                                 color: AminaTheme.textSecondary(context),
                               ),
                             ),
@@ -263,7 +263,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                       _RangePill(range: range, onChanged: onRangeChanged),
                     ],
                   ),
-                  const SizedBox(height: 11),
+                  const SizedBox(height: 15),
                   _GlucoseHero(
                     latest: latest,
                     latestAt: latestAt,
@@ -277,7 +277,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                     meal: meal,
                     observation: _observation(context, tir),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
                   _TrendsPanel(
                     mean: mean,
                     unit: unit,
@@ -285,7 +285,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                     gmi: gmi,
                     observation: _observation(context, tir),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 18),
                   Text(
                     _t(
                       context,
@@ -294,12 +294,12 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                       'إجراءات سريعة',
                     ),
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: AminaTheme.textPrimary(context),
                     ),
                   ),
-                  const SizedBox(height: 7),
+                  const SizedBox(height: 10),
                   const _QuickActionsRow(),
                   const SizedBox(height: 20),
                   _DetailedTrendCard(
@@ -324,8 +324,8 @@ class _BrandRow extends StatelessWidget {
     return Row(
       children: [
         const SizedBox(
-          width: 40,
-          height: 40,
+          width: 46,
+          height: 46,
           child: CustomPaint(painter: _SealPainter()),
         ),
         const SizedBox(width: 11),
@@ -336,7 +336,7 @@ class _BrandRow extends StatelessWidget {
               Text(
                 'IAmina',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 28,
                   height: 1,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.8,
@@ -354,7 +354,7 @@ class _BrandRow extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 10.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AminaTheme.textSecondary(context),
                 ),
@@ -369,32 +369,15 @@ class _BrandRow extends StatelessWidget {
             key: const ValueKey('dashboard-reminders-action'),
             onTap: () => GoRouter.of(context).go('/reminders'),
             customBorder: const CircleBorder(),
-            child: SizedBox(
-              width: 42,
-              height: 42,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const Center(
-                    child: Icon(
-                      Icons.notifications_none_rounded,
-                      size: 21,
-                      color: Color(0xFF064E52),
-                    ),
-                  ),
-                  PositionedDirectional(
-                    top: 7,
-                    end: 7,
-                    child: Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF35C78A),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                ],
+            child: const SizedBox(
+              width: 46,
+              height: 46,
+              child: Center(
+                child: Icon(
+                  Icons.notifications_none_rounded,
+                  size: 24,
+                  color: Color(0xFF064E52),
+                ),
               ),
             ),
           ),
@@ -419,8 +402,8 @@ class _RangePill extends StatelessWidget {
         90,
       ].map((v) => PopupMenuItem<int>(value: v, child: Text('$v j'))).toList(),
       child: Container(
-        height: 38,
-        padding: const EdgeInsetsDirectional.fromSTEB(11, 0, 9, 0),
+        height: 42,
+        padding: const EdgeInsetsDirectional.fromSTEB(14, 0, 11, 0),
         decoration: BoxDecoration(
           color: AminaTheme.surface(context),
           borderRadius: BorderRadius.circular(18),
@@ -486,7 +469,7 @@ class _GlucoseHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF063C43), Color(0xFF00575D), Color(0xFF073E44)],
@@ -507,8 +490,8 @@ class _GlucoseHero extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: const Color(0xFF5AD7A1).withValues(alpha: 0.18),
                   shape: BoxShape.circle,
@@ -533,7 +516,7 @@ class _GlucoseHero extends StatelessWidget {
                       ),
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 12.5,
+                        fontSize: 14.5,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -541,7 +524,7 @@ class _GlucoseHero extends StatelessWidget {
                       '${meal ?? _t(context, 'Mesure', 'Reading', 'قياس')} · ${DateFormat.Hm().format(latestAt)}',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.66),
-                        fontSize: 10.5,
+                        fontSize: 11.5,
                       ),
                     ),
                   ],
@@ -549,7 +532,7 @@ class _GlucoseHero extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -568,7 +551,7 @@ class _GlucoseHero extends StatelessWidget {
                               text: display,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 44,
+                                fontSize: 50,
                                 height: 1,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -2.2,
@@ -618,7 +601,7 @@ class _GlucoseHero extends StatelessWidget {
               Expanded(
                 flex: 6,
                 child: SizedBox(
-                  height: 80,
+                  height: 108,
                   child: _MiniGlucoseChart(logs: logs, low: low, high: high),
                 ),
               ),
@@ -629,7 +612,7 @@ class _GlucoseHero extends StatelessWidget {
             onTap: () => GoRouter.of(context).go('/summary'),
             borderRadius: BorderRadius.circular(13),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(13),
@@ -691,7 +674,7 @@ class _TrendsPanel extends StatelessWidget {
         ? (mean / 18.0).toStringAsFixed(1)
         : mean.toStringAsFixed(0);
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
         color: AminaTheme.surface(context),
         borderRadius: BorderRadius.circular(20),
@@ -759,13 +742,13 @@ class _TrendsPanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           InkWell(
             onTap: () => GoRouter.of(context).go('/summary'),
             borderRadius: BorderRadius.circular(13),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               decoration: BoxDecoration(
                 color: const Color(0xFFEAF6EE),
                 borderRadius: BorderRadius.circular(13),
@@ -773,8 +756,8 @@ class _TrendsPanel extends StatelessWidget {
               child: Row(
                 children: [
                   Container(
-                    width: 34,
-                    height: 34,
+                    width: 40,
+                    height: 40,
                     decoration: const BoxDecoration(
                       color: Color(0xFFD8F0E1),
                       shape: BoxShape.circle,
@@ -835,8 +818,8 @@ class _MetricTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 30,
-            height: 30,
+            width: 36,
+            height: 36,
             decoration: const BoxDecoration(
               color: Color(0xFFE8F4ED),
               shape: BoxShape.circle,
@@ -863,7 +846,7 @@ class _MetricTile extends StatelessWidget {
                   TextSpan(
                     text: value,
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 24,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.7,
                       color: AminaTheme.textPrimary(context),
@@ -873,7 +856,7 @@ class _MetricTile extends StatelessWidget {
                     TextSpan(
                       text: ' $suffix',
                       style: TextStyle(
-                        fontSize: 8.5,
+                        fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: AminaTheme.textSecondary(context),
                       ),
@@ -900,7 +883,7 @@ class _QuickActionsRow extends StatelessWidget {
         route: '/journal',
       ),
       (
-        icon: Icons.restaurant_outlined,
+        icon: Icons.apple_rounded,
         label: _t(context, 'Alimentation', 'Food', 'التغذية'),
         route: '/ajouter?focus=meal',
       ),
@@ -915,7 +898,7 @@ class _QuickActionsRow extends StatelessWidget {
         route: '/medications',
       ),
       (
-        icon: Icons.notifications_none_rounded,
+        icon: Icons.favorite_rounded,
         label: _t(context, 'Rappels', 'Reminders', 'التذكيرات'),
         route: '/reminders',
       ),
@@ -932,8 +915,8 @@ class _QuickActionsRow extends StatelessWidget {
               child: Column(
                 children: [
                   Container(
-                    width: 46,
-                    height: 46,
+                    width: 58,
+                    height: 58,
                     decoration: BoxDecoration(
                       color: AminaTheme.surface(context),
                       borderRadius: BorderRadius.circular(15),
