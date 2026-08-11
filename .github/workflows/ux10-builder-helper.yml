@@ -2,14 +2,15 @@ name: UX10 builder helper
 
 on:
   push:
-    branches: [ux/10-dashboard-pixel-convergence]
-    paths: [.github/workflows/ux10-builder-helper.yml]
+    branches:
+      - ux/10-dashboard-pixel-convergence
 
 permissions:
   contents: write
 
 jobs:
   build:
+    if: ${{ !contains(github.event.head_commit.message, '[ux10-applied]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,26 +18,46 @@ jobs:
           ref: ux/10-dashboard-pixel-convergence
 
       - name: Apply UX10 integration patches
+        shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import json
 
-          # 1) Wire mobile composition into dashboard library + rendered path.
           p = Path('frontend/lib/features/dashboard/dashboard_screen.dart')
           s = p.read_text()
           anchor = "part 'widgets/speed_dial.dart';"
           if "part 'widgets/mobile_convergence.dart';" not in s:
               s = s.replace(anchor, anchor + "\npart 'widgets/mobile_convergence.dart';")
+          target = "                return Scaffold(\n                  backgroundColor: AminaTheme.bg(context),"
+          replacement = """                if (screenW < 700 &&
+                    !localDataLoading &&
+                    !localDataError &&
+                    logs.isNotEmpty) {
+                  return _DashboardMobileConvergence(
+                    logs: logs,
+                    unit: unit,
+                    low: low,
+                    high: high,
+                    range: _range,
+                    syncService: context.read<SyncService>(),
+                    onRangeChanged: (r) {
+                      setState(() => _range = r);
+                      _fetchAiSummary();
+                    },
+                    onChatTap: _openChat,
+                    summary: _aiSummary,
+                    isLoadingSummary: _isLoadingSummary,
+                  );
+                }
 
-          target = """                return Scaffold(\n                  backgroundColor: AminaTheme.bg(context),"""
-          replacement = """                if (screenW < 700 &&\n                    !localDataLoading &&\n                    !localDataError &&\n                    logs.isNotEmpty) {\n                  return _DashboardMobileConvergence(\n                    logs: logs,\n                    unit: unit,\n                    low: low,\n                    high: high,\n                    range: _range,\n                    syncService: context.read<SyncService>(),\n                    onRangeChanged: (r) {\n                      setState(() => _range = r);\n                      _fetchAiSummary();\n                    },\n                    onChatTap: _openChat,\n                    summary: _aiSummary,\n                    isLoadingSummary: _isLoadingSummary,\n                  );\n                }\n\n                return Scaffold(\n                  backgroundColor: AminaTheme.bg(context),"""
+                return Scaffold(
+                  backgroundColor: AminaTheme.bg(context),"""
           if target not in s:
               raise SystemExit('dashboard scaffold anchor missing')
           s = s.replace(target, replacement, 1)
           p.write_text(s)
 
-          # 2) Add l10n keys to source ARBs.
           translations = {
               'app_fr.arb': {
                   'dashboardQuickActions': 'Actions rapides',
@@ -63,12 +84,11 @@ jobs:
               data.update(values)
               fp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
 
-          # 3) Recompose mobile nav around a central real Add action.
           p = Path('frontend/lib/features/navigation/main_shell.dart')
           s = p.read_text()
           start = s.index('class _BottomNav extends StatelessWidget')
           prefix = s[:start]
-          new_tail = r'''class _BottomNav extends StatelessWidget {
+          new_tail = '''class _BottomNav extends StatelessWidget {
   final List<_NavEntry> entries;
   final int selectedIndex;
 
@@ -263,5 +283,5 @@ class _ReferenceNavDestination extends StatelessWidget {
           git config user.name "hraaaaf"
           git config user.email "123034021+hraaaaf@users.noreply.github.com"
           git add frontend/lib/features/dashboard/dashboard_screen.dart frontend/lib/features/dashboard/widgets/mobile_convergence.dart frontend/lib/features/navigation/main_shell.dart frontend/lib/l10n/app_fr.arb frontend/lib/l10n/app_en.arb frontend/lib/l10n/app_ar.arb
-          git commit -m "feat(ux): integrate UX-10 dashboard convergence"
+          git commit -m "feat(ux): integrate UX-10 dashboard convergence [ux10-applied]"
           git push origin HEAD:ux/10-dashboard-pixel-convergence
