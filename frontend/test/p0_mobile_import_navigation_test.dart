@@ -81,15 +81,24 @@ void main() {
 
       expect(find.byType(ImportScreen), findsOneWidget);
       expect(find.text('Importer'), findsWidgets);
-      expect(find.byKey(const ValueKey('import-document-cta')), findsOneWidget);
+      final firstUse = find.byKey(const ValueKey('import-first-use'));
+      expect(firstUse, findsOneWidget);
+      final firstUseAction = find.descendant(
+        of: firstUse,
+        matching: find.byType(FilledButton),
+      );
+      expect(firstUseAction, findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.byKey(const ValueKey('import-document-cta')));
+      await tester.tap(firstUseAction);
       await tester.pumpAndSettle();
 
       expect(find.byType(DocumentImportScreen), findsOneWidget);
       expect(find.text('Importer un document'), findsOneWidget);
-      expect(find.byKey(const ValueKey('choose-document-button')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('choose-document-button')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -124,7 +133,10 @@ void main() {
       120,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.byKey(const ValueKey('choose-document-button')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('choose-document-button')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }

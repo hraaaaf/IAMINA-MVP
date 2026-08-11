@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../core/widgets/responsive_content_surface.dart';
 import '../../core/widgets/mobile_page_header.dart';
+import '../../core/widgets/first_use_panel.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
 import 'package:drift/drift.dart' as drift;
@@ -97,10 +98,23 @@ class _ImportScreenState extends State<ImportScreen> {
                       const SizedBox(height: 16),
                     ],
                     // ── Document import ─────────────────────────────────────────
-                    _DocumentImportCard(
-                      key: const ValueKey('import-document-cta'),
-                      onTap: () => context.push('/pulper'),
-                    ),
+                    if (_totalLogs == 0)
+                      AminaFirstUsePanel(
+                        key: const ValueKey('import-first-use'),
+                        icon: Icons.upload_file_rounded,
+                        title: AuditedPageCopy.of(context).documentTitle,
+                        body: AuditedPageCopy.of(context).documentIntro,
+                        primaryActionLabel: AuditedPageCopy.of(
+                          context,
+                        ).chooseDocument,
+                        onPrimaryAction: () => context.push('/pulper'),
+                        compact: true,
+                      )
+                    else
+                      _DocumentImportCard(
+                        key: const ValueKey('import-document-cta'),
+                        onTap: () => context.push('/pulper'),
+                      ),
                     const SizedBox(height: 20),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),

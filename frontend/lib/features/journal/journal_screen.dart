@@ -8,6 +8,7 @@ import '../../core/data/meal_food_catalog.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../core/widgets/mobile_page_header.dart';
+import '../../core/widgets/first_use_panel.dart';
 import 'widgets/insulin_logging.dart';
 import 'widgets/personal_response_section.dart';
 
@@ -44,16 +45,26 @@ class _JournalScreenState extends State<JournalScreen> {
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
-          SliverPadding(
-            padding: EdgeInsetsDirectional.fromSTEB(
-              horizontalPadding,
-              20,
-              horizontalPadding,
-              0,
-            ),
-            sliver: SliverToBoxAdapter(
-              child: PersonalResponseSection(unit: unit),
-            ),
+          StreamBuilder<List<LogEntryData>>(
+            stream: db.watchLogsInRange(start, now),
+            builder: (context, responseSnapshot) {
+              final hasLogs =
+                  (responseSnapshot.data ?? const <LogEntryData>[]).isNotEmpty;
+              if (!hasLogs) {
+                return const SliverToBoxAdapter(child: SizedBox.shrink());
+              }
+              return SliverPadding(
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  horizontalPadding,
+                  20,
+                  horizontalPadding,
+                  0,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: PersonalResponseSection(unit: unit),
+                ),
+              );
+            },
           ),
           StreamBuilder<List<LogEntryData>>(
             stream: db.watchLogsInRange(start, now),
@@ -132,73 +143,24 @@ class _JournalScreenState extends State<JournalScreen> {
     double horizontalPadding,
   ) {
     final l10n = AppLocalizations.of(context)!;
-    final content = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 100,
-          height: 100,
-          child: CustomPaint(painter: _EmptyJournalPainter()),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          l10n.journalEmpty,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: AminaTheme.ink900,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          l10n.journalEmptySubtitle,
-          style: const TextStyle(
-            fontSize: 14,
-            color: AminaTheme.ink500,
-            height: 1.5,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 28),
-        FilledButton.icon(
-          onPressed: () => context.go('/ajouter'),
-          icon: const Icon(Icons.add, size: 16),
-          label: Text(l10n.addMeasurement),
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(0, 48),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
-            ),
-          ),
-        ),
-      ],
-    );
-    if (viewportWidth < 700) {
-      return SliverFillRemaining(
-        hasScrollBody: false,
-        child: Center(
-          child: Padding(padding: const EdgeInsets.all(40), child: content),
-        ),
-      );
-    }
-    return SliverFillRemaining(
-      hasScrollBody: false,
-      child: Padding(
-        padding: EdgeInsetsDirectional.fromSTEB(
-          horizontalPadding,
-          48,
-          horizontalPadding,
-          32,
-        ),
+    return SliverPadding(
+      padding: EdgeInsetsDirectional.fromSTEB(
+        horizontalPadding,
+        viewportWidth < 700 ? 12 : 24,
+        horizontalPadding,
+        100,
+      ),
+      sliver: SliverToBoxAdapter(
         child: Align(
           alignment: AlignmentDirectional.topCenter,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: ClinicalCard(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
-              child: content,
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: AminaFirstUsePanel(
+              icon: Icons.timeline_rounded,
+              title: l10n.journalEmpty,
+              body: l10n.journalEmptySubtitle,
+              primaryActionLabel: l10n.addMeasurement,
+              onPrimaryAction: () => context.go('/ajouter'),
             ),
           ),
         ),
@@ -764,63 +726,4 @@ class _SkeletonBoxState extends State<_SkeletonBox>
       ),
     );
   }
-}
-
-// ── Empty state painter ───────────────────────────────────────────────────────
-
-class _EmptyJournalPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-
-    // Outer soft circle
-    final bgPaint = Paint()..color = AminaTheme.teal50;
-    canvas.drawCircle(Offset(cx, cy), 46, bgPaint);
-
-    // Glucose curve
-    final linePaint = Paint()
-      ..color = AminaTheme.teal500
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-    path.moveTo(cx - 30, cy + 6);
-    path.lineTo(cx - 14, cy + 6);
-    path.cubicTo(cx - 8, cy + 6, cx - 6, cy - 18, cx, cy - 20);
-    path.cubicTo(cx + 6, cy - 18, cx + 8, cy + 6, cx + 14, cy + 6);
-    path.lineTo(cx + 30, cy + 6);
-    canvas.drawPath(path, linePaint);
-
-    // Target zone dashes
-    final dashPaint = Paint()
-      ..color = AminaTheme.teal100
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
-    for (double x = cx - 28; x < cx + 30; x += 8) {
-      canvas.drawLine(Offset(x, cy - 10), Offset(x + 5, cy - 10), dashPaint);
-    }
-
-    // "+" circle
-    final plusBg = Paint()..color = AminaTheme.teal500;
-    canvas.drawCircle(Offset(cx + 28, cy - 24), 12, plusBg);
-    final plusPaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(
-      Offset(cx + 22, cy - 24),
-      Offset(cx + 34, cy - 24),
-      plusPaint,
-    );
-    canvas.drawLine(
-      Offset(cx + 28, cy - 30),
-      Offset(cx + 28, cy - 18),
-      plusPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
