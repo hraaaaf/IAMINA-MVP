@@ -94,6 +94,7 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - no pattern detector may produce treatment optimization, insulin-dose advice, diagnosis or autonomous clinical recommendation;
 - the Journal shows one strongest pattern by default and makes secondary patterns explicitly expandable so longitudinal context does not crowd out the primary history task.
 
+
 ### Post-save experience contract
 
 - a successful Add Log write transitions to a persistent factual receipt only after the local Drift insertion has completed successfully;
@@ -162,13 +163,19 @@ No locale/dialect is enabled for a real-patient pilot until it passes:
 
 ### Current
 
-The codebase retains compatibility/migration seams for historical identity infrastructure where configured; Django-native authentication is the sovereignty-critical target/source established by the current auth program.
+A Firebase JWT bridge exists in the current codebase and maps authenticated identities into Django users/accounts.
 
 P0-A hardened API write security:
 
 - cookie/session-authenticated API writes are not covered by a blanket `/api/` CSRF exemption;
 - narrow Bearer/bootstrap exemptions remain where required;
 - protected clinical routes use fail-closed unit normalization across legacy and namespaced module paths.
+
+### Target
+
+Django-native authentication becomes the sovereignty-critical source of truth under P0-MENA-3.
+
+Do not remove Firebase dependencies until account-preserving migration, reconciliation, and rollback are proven.
 
 ## 5. Diabetes data contract
 
@@ -273,7 +280,7 @@ IAmina must not:
 
 ## 9. AI / model contract
 
-### Current enforced boundaries
+### Current enforced capability after P0-B
 
 Currently wired live external AI/model/media operations use a central server-side authorization boundary.
 
@@ -299,7 +306,18 @@ Currently inventoried/wired surfaces include text/gateway narration, chat, summa
 
 CI prevents new direct external model/provider callsites from omitting the central authorization assertion. Focused P0.2 tests additionally prevent the AI API/doctor-brief surface from reverting to direct `get_llm()` access.
 
-Provider selection remains per modality and must follow the evidence-backed benchmark/cutover process.
+### Remaining target contract
+
+The authorization layer is not yet the complete sovereignty contract. P0-MENA-1 must still enforce consistently:
+
+- allowlisted payload fields/media per purpose;
+- minimization/redaction;
+- purpose/modality-granular media consent where required;
+- processor/subprocessor metadata;
+- residency and retention/no-training terms;
+- timeout/failure/fallback policy.
+
+Provider selection is per modality and must follow the P0-MENA-4 benchmark.
 
 ## 10. API surface — summary
 
@@ -307,7 +325,7 @@ Current code exposes versioned `/api/v1/` routes. Representative surfaces includ
 
 ### Account/profile
 
-- authentication/current auth endpoints;
+- authentication bridge/current auth endpoints;
 - profile read/update;
 - consent read/update/revoke;
 - account deletion.
@@ -327,7 +345,7 @@ Current code includes flows for some combination of:
 - image/OCR-assisted capture;
 - audio transcription/voice input.
 
-External model/media portions of these flows must pass the sanctioned authorization boundary.
+External model/media portions of these flows must pass the P0-B authorization boundary and remain subject to the unfinished P0-MENA-1 payload/media policy.
 
 ### IAmina companion
 
