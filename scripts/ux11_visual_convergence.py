@@ -173,10 +173,17 @@ module_path.write_text(s)
 
 real_actions = FRONTEND / 'test/p0_real_actions_contract_test.dart'
 s = real_actions.read_text()
-s = s.replace(
-    "expect(dashboard, contains(\"ValueKey('dashboard-import-action')\"));\n    expect(dashboard, contains(\"GoRouter.of(context).go('/importer')\"));",
-    "expect(dashboard, contains(\"ValueKey('dashboard-reminders-action')\"));\n    expect(dashboard, contains(\"GoRouter.of(context).go('/reminders')\"));\n    expect(module, contains(\"route: '/importer'\"));",
-    1,
+s = replace_once(
+    s,
+    "expect(dashboard, contains(\"ValueKey('dashboard-import-action')\"));",
+    "expect(dashboard, contains(\"ValueKey('dashboard-reminders-action')\"));",
+    'real-actions dashboard control key',
+)
+s = replace_once(
+    s,
+    "expect(dashboard, contains(\"GoRouter.of(context).go('/importer')\"));",
+    "expect(dashboard, contains(\"GoRouter.of(context).go('/reminders')\"));",
+    'real-actions dashboard control route',
 )
 real_actions.write_text(s)
 
@@ -209,3 +216,13 @@ s = s.replace(
     1,
 )
 mobile_import.write_text(s)
+
+glass_contract = FRONTEND / 'test/ux_5_glass_mobile_nav_contract_test.dart'
+s = glass_contract.read_text()
+s = replace_once(
+    s,
+    "contains('EdgeInsets.symmetric(horizontal: 12).copyWith(bottom: 10)'),",
+    "contains('EdgeInsets.symmetric(horizontal: 18).copyWith(bottom: 6)'),",
+    'glass nav approved safe-area contract',
+)
+glass_contract.write_text(s)
