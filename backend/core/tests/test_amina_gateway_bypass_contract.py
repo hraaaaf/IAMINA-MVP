@@ -1,7 +1,7 @@
-from pathlib import Path
+import pathlib
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
 
 
 def test_ai_api_does_not_reintroduce_direct_text_provider_access():
