@@ -209,7 +209,7 @@ for old, new, label in [
     ("borderRadius: BorderRadius.circular(28),", "borderRadius: BorderRadius.circular(22),", 'nav outer radius 1'),
     ("borderRadius: BorderRadius.circular(28),", "borderRadius: BorderRadius.circular(22),", 'nav outer radius 2'),
     ("                                        color: dark\n                                            ? AminaTheme.teal400.withValues(\n                                                alpha: 0.16,\n                                              )\n                                            : AminaTheme.teal500.withValues(\n                                                alpha: 0.12,\n                                              ),", "                                        color: Colors.transparent,", 'nav selected border'),
-    ("width: 52,\n                    height: 52,", "width: 46,\n                    height: 46,", 'center add size'),
+    ("width: 52,\n                    height: 52,", "width: 48,\n                    height: 48,", 'center add size'),
     ("width: 5,", "width: 4,", 'center add border'),
     ("size: 29,", "size: 27,", 'center add icon'),
 ]:
