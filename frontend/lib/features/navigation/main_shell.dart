@@ -6,6 +6,7 @@ import 'package:amina/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/motion/amina_motion.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../services/auth_service.dart';
@@ -437,7 +438,8 @@ class _NavItem extends StatelessWidget {
             onTap: () => GoRouter.of(context).go(entry.route),
             borderRadius: BorderRadius.circular(10),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
+              duration: AminaMotion.resolve(context, AminaMotion.fast),
+              curve: AminaMotion.standardCurve,
               constraints: const BoxConstraints(minHeight: 44),
               padding: EdgeInsetsDirectional.fromSTEB(
                 isWide ? 12 : 0,
@@ -702,8 +704,11 @@ class _BottomNav extends StatelessWidget {
                   child: Stack(
                     children: [
                       AnimatedPositioned(
-                        duration: const Duration(milliseconds: 240),
-                        curve: Curves.easeOutCubic,
+                        duration: AminaMotion.resolve(
+                          context,
+                          AminaMotion.navSelection,
+                        ),
+                        curve: AminaMotion.enter,
                         left: visualIndex * itemWidth + 4,
                         top: 8,
                         width: itemWidth - 8,
@@ -784,8 +789,11 @@ class _GlassNavDestination extends StatelessWidget {
             children: [
               AnimatedScale(
                 scale: selected ? 1.06 : 1.0,
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeOutCubic,
+                duration: AminaMotion.resolve(
+                  context,
+                  AminaMotion.navSelection,
+                ),
+                curve: AminaMotion.enter,
                 child: Icon(
                   selected ? entry.selectedIcon : entry.icon,
                   color: selected ? activeColor : inactiveColor,
@@ -794,8 +802,11 @@ class _GlassNavDestination extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeOutCubic,
+                duration: AminaMotion.resolve(
+                  context,
+                  AminaMotion.navSelection,
+                ),
+                curve: AminaMotion.enter,
                 style: TextStyle(
                   fontSize: 9.5,
                   height: 1.05,

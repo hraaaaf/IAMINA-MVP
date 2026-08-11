@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/motion/amina_motion.dart';
 import '../features/auth/consent_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/onboarding_chat_screen.dart';
@@ -12,7 +13,8 @@ import '../services/auth_service.dart';
 import '../services/consent_service.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> _shellNavigatorKey =
+    GlobalKey<NavigatorState>();
 
 class AppRouterHolder {
   final GoRouter router;
@@ -70,8 +72,17 @@ AppRouterHolder createAppRouterHolder({
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const LoginScreen(),
+          transitionDuration: AminaMotion.standard,
+          reverseTransitionDuration: AminaMotion.fast,
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
+            if (AminaMotion.reduce(context)) return child;
+            return FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: AminaMotion.enter,
+              ),
+              child: child,
+            );
           },
         ),
       ),
@@ -84,8 +95,17 @@ AppRouterHolder createAppRouterHolder({
             uid: state.uri.queryParameters['uid'] ?? '',
             token: state.uri.queryParameters['token'] ?? '',
           ),
+          transitionDuration: AminaMotion.standard,
+          reverseTransitionDuration: AminaMotion.fast,
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
+            if (AminaMotion.reduce(context)) return child;
+            return FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: AminaMotion.enter,
+              ),
+              child: child,
+            );
           },
         ),
       ),
@@ -95,8 +115,17 @@ AppRouterHolder createAppRouterHolder({
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const ConsentScreen(),
+          transitionDuration: AminaMotion.standard,
+          reverseTransitionDuration: AminaMotion.fast,
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
+            if (AminaMotion.reduce(context)) return child;
+            return FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: AminaMotion.enter,
+              ),
+              child: child,
+            );
           },
         ),
       ),
@@ -106,8 +135,17 @@ AppRouterHolder createAppRouterHolder({
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
           child: const OnboardingChatScreen(),
+          transitionDuration: AminaMotion.standard,
+          reverseTransitionDuration: AminaMotion.fast,
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
+            if (AminaMotion.reduce(context)) return child;
+            return FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: AminaMotion.enter,
+              ),
+              child: child,
+            );
           },
         ),
       ),
@@ -117,7 +155,8 @@ AppRouterHolder createAppRouterHolder({
           GoRoute(
             path: r.path,
             parentNavigatorKey: _rootNavigatorKey,
-            pageBuilder: (context, state) => _createPage(state, r.builder(state)),
+            pageBuilder: (context, state) =>
+                _createPage(state, r.builder(state)),
           ),
 
       ShellRoute(
@@ -133,15 +172,13 @@ AppRouterHolder createAppRouterHolder({
             for (final r in m.shellRoutes)
               GoRoute(
                 path: r.path,
-                pageBuilder: (context, state) => _createPage(state, r.builder()),
+                pageBuilder: (context, state) =>
+                    _createPage(state, r.builder()),
               ),
         ],
       ),
 
-      GoRoute(
-        path: '/',
-        redirect: (context, state) => _homeRoute(),
-      ),
+      GoRoute(path: '/', redirect: (context, state) => _homeRoute()),
     ],
   );
 
@@ -165,15 +202,21 @@ CustomTransitionPage _createPage(GoRouterState state, Widget child) {
   return CustomTransitionPage(
     key: state.pageKey,
     child: child,
-    transitionDuration: const Duration(milliseconds: 300),
+    transitionDuration: AminaMotion.standard,
+    reverseTransitionDuration: AminaMotion.fast,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (AminaMotion.reduce(context)) return child;
+      final entrance = CurvedAnimation(
+        parent: animation,
+        curve: AminaMotion.enter,
+      );
       return FadeTransition(
-        opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+        opacity: entrance,
         child: SlideTransition(
           position: Tween<Offset>(
-            begin: const Offset(0, 0.05),
+            begin: const Offset(0, 0.018),
             end: Offset.zero,
-          ).animate(CurveTween(curve: Curves.easeOutCubic).animate(animation)),
+          ).animate(entrance),
           child: child,
         ),
       );
