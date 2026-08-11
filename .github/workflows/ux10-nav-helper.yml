@@ -62,7 +62,7 @@ jobs:
 
               return SafeArea(
                 top: false,
-                minimum: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
+                minimum: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                 child: SizedBox(
                   height: 82,
                   child: Stack(
