@@ -654,177 +654,227 @@ class _UserChip extends StatelessWidget {
 }
 
 class _BottomNav extends StatelessWidget {
-  final List<_NavEntry> entries;
-  final int selectedIndex;
+            final List<_NavEntry> entries;
+            final int selectedIndex;
 
-  const _BottomNav({required this.entries, required this.selectedIndex});
+            const _BottomNav({required this.entries, required this.selectedIndex});
 
-  @override
-  Widget build(BuildContext context) {
-    final dark = AminaTheme.isDark(context);
-    final rtl = Directionality.of(context) == TextDirection.rtl;
-    final safeIndex = selectedIndex.clamp(0, entries.length - 1);
-    final visualIndex = rtl ? entries.length - 1 - safeIndex : safeIndex;
-    final glassColor = dark
-        ? AminaTheme.darkCard.withValues(alpha: 0.78)
-        : Colors.white.withValues(alpha: 0.74);
-    final glassBorder = dark
-        ? Colors.white.withValues(alpha: 0.12)
-        : Colors.white.withValues(alpha: 0.88);
-    final indicatorColor = dark
-        ? AminaTheme.teal700.withValues(alpha: 0.34)
-        : AminaTheme.teal50.withValues(alpha: 0.94);
+            @override
+            Widget build(BuildContext context) {
+              final dark = AminaTheme.isDark(context);
+              final rtl = Directionality.of(context) == TextDirection.rtl;
+              final safeIndex = selectedIndex.clamp(0, entries.length - 1);
+              final visualIndex = rtl ? entries.length - 1 - safeIndex : safeIndex;
+              final glassColor = dark
+                  ? AminaTheme.darkCard.withValues(alpha: 0.88)
+                  : Colors.white.withValues(alpha: 0.92);
+              final glassBorder = dark
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : Colors.white.withValues(alpha: 0.92);
+              final indicatorColor = dark
+                  ? AminaTheme.teal700.withValues(alpha: 0.34)
+                  : AminaTheme.teal50.withValues(alpha: 0.96);
+              final addLabel = AppLocalizations.of(context)!.addEntry;
 
-    return SafeArea(
-      top: false,
-      minimum: EdgeInsets.symmetric(horizontal: 12).copyWith(bottom: 10),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            height: 72,
-            decoration: BoxDecoration(
-              color: glassColor,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: glassBorder, width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: dark ? 0.24 : 0.10),
-                  blurRadius: 28,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final itemWidth = constraints.maxWidth / entries.length;
-                return Material(
-                  color: Colors.transparent,
+              return SafeArea(
+                top: false,
+                minimum: EdgeInsets.symmetric(horizontal: 12).copyWith(bottom: 10),
+                child: SizedBox(
+                  height: 92,
                   child: Stack(
+                    alignment: Alignment.topCenter,
+                    clipBehavior: Clip.none,
                     children: [
-                      AnimatedPositioned(
-                        duration: AminaMotion.resolve(
-                          context,
-                          AminaMotion.navSelection,
-                        ),
-                        curve: AminaMotion.enter,
-                        left: visualIndex * itemWidth + 4,
-                        top: 8,
-                        width: itemWidth - 8,
-                        height: 56,
-                        child: IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: indicatorColor,
-                              borderRadius: BorderRadius.circular(22),
-                              border: Border.all(
-                                color: dark
-                                    ? AminaTheme.teal400.withValues(alpha: 0.16)
-                                    : AminaTheme.teal500.withValues(
-                                        alpha: 0.12,
-                                      ),
+                      Positioned.fill(
+                        top: 20,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(28),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                            child: Container(
+                              height: 72,
+                              decoration: BoxDecoration(
+                                color: glassColor,
+                                borderRadius: BorderRadius.circular(28),
+                                border: Border.all(color: glassBorder, width: 1),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: dark ? 0.24 : 0.10),
+                                    blurRadius: 28,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final itemWidth = constraints.maxWidth / entries.length;
+                                  return Material(
+                                    color: Colors.transparent,
+                                    child: Stack(
+                                      children: [
+                                        AnimatedPositioned(
+                                          duration: AminaMotion.resolve(
+                                            context,
+                                            AminaMotion.navSelection,
+                                          ),
+                                          curve: AminaMotion.enter,
+                                          left: visualIndex * itemWidth + 4,
+                                          top: 8,
+                                          width: itemWidth - 8,
+                                          height: 56,
+                                          child: IgnorePointer(
+                                            child: DecoratedBox(
+                                              decoration: BoxDecoration(
+                                                color: indicatorColor,
+                                                borderRadius: BorderRadius.circular(22),
+                                                border: Border.all(
+                                                  color: dark
+                                                      ? AminaTheme.teal400.withValues(alpha: 0.16)
+                                                      : AminaTheme.teal500.withValues(alpha: 0.12),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        Row(
+                                          children: [
+                                            for (var index = 0; index < entries.length; index++)
+                                              Expanded(
+                                                child: _GlassNavDestination(
+                                                  entry: entries[index],
+                                                  selected: index == safeIndex,
+                                                  onTap: () {
+                                                    HapticFeedback.selectionClick();
+                                                    GoRouter.of(context).go(entries[index].route);
+                                                  },
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ),
                         ),
                       ),
-                      Row(
-                        children: [
-                          for (var index = 0; index < entries.length; index++)
-                            Expanded(
-                              child: _GlassNavDestination(
-                                entry: entries[index],
-                                selected: index == safeIndex,
-                                onTap: () {
-                                  HapticFeedback.selectionClick();
-                                  GoRouter.of(context).go(entries[index].route);
-                                },
+                      Semantics(
+                        button: true,
+                        label: addLabel,
+                        child: Tooltip(
+                          message: addLabel,
+                          child: InkWell(
+                            key: const ValueKey('mobile-nav-add'),
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              GoRouter.of(context).go('/ajouter');
+                            },
+                            customBorder: const CircleBorder(),
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF0A766B), Color(0xFF064D50)],
+                                  begin: AlignmentDirectional.topStart,
+                                  end: AlignmentDirectional.bottomEnd,
+                                ),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: dark ? AminaTheme.darkCard : Colors.white,
+                                  width: 5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF064D50).withValues(alpha: 0.30),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
                               ),
+                              child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
                             ),
-                        ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+                ),
+              );
+            }
+          }
 
-class _GlassNavDestination extends StatelessWidget {
-  final _NavEntry entry;
-  final bool selected;
-  final VoidCallback onTap;
+          class _GlassNavDestination extends StatelessWidget {
+            final _NavEntry entry;
+            final bool selected;
+            final VoidCallback onTap;
 
-  const _GlassNavDestination({
-    required this.entry,
-    required this.selected,
-    required this.onTap,
-  });
+            const _GlassNavDestination({
+              required this.entry,
+              required this.selected,
+              required this.onTap,
+            });
 
-  @override
-  Widget build(BuildContext context) {
-    final dark = AminaTheme.isDark(context);
-    final label = entry.label(AppLocalizations.of(context)!);
-    final activeColor = dark ? AminaTheme.teal400 : AminaTheme.teal700;
-    final inactiveColor = dark ? AminaTheme.dark400 : AminaTheme.ink400;
+            @override
+            Widget build(BuildContext context) {
+              final dark = AminaTheme.isDark(context);
+              final label = entry.label(AppLocalizations.of(context)!);
+              final activeColor = dark ? AminaTheme.teal400 : AminaTheme.teal700;
+              final inactiveColor = dark ? AminaTheme.dark400 : AminaTheme.ink400;
 
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: label,
-      child: InkWell(
-        key: ValueKey('mobile-nav-${entry.route}'),
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: SizedBox(
-          height: 72,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedScale(
-                scale: selected ? 1.06 : 1.0,
-                duration: AminaMotion.resolve(
-                  context,
-                  AminaMotion.navSelection,
+              return Semantics(
+                button: true,
+                selected: selected,
+                label: label,
+                child: InkWell(
+                  key: ValueKey('mobile-nav-${entry.route}'),
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(22),
+                  child: SizedBox(
+                    height: 72,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedScale(
+                          scale: selected ? 1.06 : 1.0,
+                          duration: AminaMotion.resolve(
+                            context,
+                            AminaMotion.navSelection,
+                          ),
+                          curve: AminaMotion.enter,
+                          child: Icon(
+                            selected ? entry.selectedIcon : entry.icon,
+                            color: selected ? activeColor : inactiveColor,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        AnimatedDefaultTextStyle(
+                          duration: AminaMotion.resolve(
+                            context,
+                            AminaMotion.navSelection,
+                          ),
+                          curve: AminaMotion.enter,
+                          style: TextStyle(
+                            fontSize: 9.2,
+                            height: 1.05,
+                            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                            color: selected ? activeColor : inactiveColor,
+                            fontFamily: 'Inter',
+                          ),
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                curve: AminaMotion.enter,
-                child: Icon(
-                  selected ? entry.selectedIcon : entry.icon,
-                  color: selected ? activeColor : inactiveColor,
-                  size: 21,
-                ),
-              ),
-              const SizedBox(height: 4),
-              AnimatedDefaultTextStyle(
-                duration: AminaMotion.resolve(
-                  context,
-                  AminaMotion.navSelection,
-                ),
-                curve: AminaMotion.enter,
-                style: TextStyle(
-                  fontSize: 9.5,
-                  height: 1.05,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                  color: selected ? activeColor : inactiveColor,
-                  fontFamily: 'Inter',
-                ),
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+              );
+            }
+          }
