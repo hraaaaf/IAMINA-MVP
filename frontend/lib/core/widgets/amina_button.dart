@@ -25,8 +25,7 @@ class AminaButton extends StatefulWidget {
   State<AminaButton> createState() => _AminaButtonState();
 }
 
-class _AminaButtonState extends State<AminaButton>
-    with SingleTickerProviderStateMixin {
+class _AminaButtonState extends State<AminaButton> with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -37,7 +36,7 @@ class _AminaButtonState extends State<AminaButton>
       vsync: this,
       duration: const Duration(seconds: 2),
     );
-
+    
     _pulseAnimation = Tween<double>(begin: 0.0, end: 12.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
     );
@@ -63,18 +62,16 @@ class _AminaButtonState extends State<AminaButton>
             height: 52,
             decoration: BoxDecoration(
               gradient: AminaTheme.heroGradient,
-              borderRadius: BorderRadius.circular(
-                widget.borderRadius ?? AminaTheme.radius2XL,
-              ),
-              boxShadow: widget.onPressed == null
-                  ? null
-                  : [
-                      BoxShadow(
-                        color: AminaTheme.primaryTeal.withValues(alpha: 0.4),
-                        blurRadius: 12 + _pulseAnimation.value,
-                        spreadRadius: _pulseAnimation.value / 4,
-                      ),
-                    ],
+              borderRadius: BorderRadius.circular(widget.borderRadius ?? AminaTheme.radius2XL),
+              boxShadow: widget.onPressed == null 
+                ? null 
+                : [
+                    BoxShadow(
+                      color: AminaTheme.primaryTeal.withValues(alpha: 0.4),
+                      blurRadius: 12 + _pulseAnimation.value,
+                      spreadRadius: _pulseAnimation.value / 4,
+                    ),
+                  ],
             ),
             child: ElevatedButton(
               onPressed: widget.isLoading ? null : widget.onPressed,
@@ -82,9 +79,7 @@ class _AminaButtonState extends State<AminaButton>
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
-                    widget.borderRadius ?? AminaTheme.radius2XL,
-                  ),
+                  borderRadius: BorderRadius.circular(widget.borderRadius ?? AminaTheme.radius2XL)
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 24),
               ),
@@ -101,9 +96,7 @@ class _AminaButtonState extends State<AminaButton>
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: AminaTheme.borderLight, width: 2),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                widget.borderRadius ?? AminaTheme.radius2XL,
-              ),
+              borderRadius: BorderRadius.circular(widget.borderRadius ?? AminaTheme.radius2XL)
             ),
             padding: const EdgeInsets.symmetric(horizontal: 24),
             backgroundColor: AminaTheme.surfaceWhite,

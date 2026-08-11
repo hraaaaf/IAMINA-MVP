@@ -57,8 +57,8 @@ class LocalePreferenceService extends ChangeNotifier {
     Locale? systemLocale,
   }) : _auditLocale = auditLocale,
        _storage = storage,
-       _systemLocale =
-           systemLocale ?? WidgetsBinding.instance.platformDispatcher.locale;
+       _systemLocale = systemLocale ??
+           WidgetsBinding.instance.platformDispatcher.locale;
 
   Locale get locale => _locale;
   LocaleResolutionSource get resolutionSource => _resolutionSource;

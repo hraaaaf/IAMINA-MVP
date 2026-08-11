@@ -79,23 +79,20 @@ void main() {
     expect(source, isNot(contains('Icons.sync_outlined')));
   });
 
-  test(
-    'static system-success claims and decorative notifications are absent',
-    () {
-      final paths = <String>[
-        'lib/features/dashboard/dashboard_screen.dart',
-        'lib/features/dashboard/widgets/top_bar.dart',
-        'lib/features/journal/ai_summary_screen.dart',
-        'lib/features/import/import_screen.dart',
-        'lib/features/profile/profile_screen.dart',
-        'lib/features/navigation/main_shell.dart',
-      ];
-      final combined = paths.map(_read).join('\n');
+  test('static system-success claims and decorative notifications are absent', () {
+    final paths = <String>[
+      'lib/features/dashboard/dashboard_screen.dart',
+      'lib/features/dashboard/widgets/top_bar.dart',
+      'lib/features/journal/ai_summary_screen.dart',
+      'lib/features/import/import_screen.dart',
+      'lib/features/profile/profile_screen.dart',
+      'lib/features/navigation/main_shell.dart',
+    ];
+    final combined = paths.map(_read).join('\n');
 
-      expect(combined, isNot(contains('Pilote actif')));
-      expect(combined, isNot(contains('Synchronisé')));
-      expect(combined, isNot(contains('notifications_none')));
-      expect(combined, isNot(contains('notification_important')));
-    },
-  );
+    expect(combined, isNot(contains('Pilote actif')));
+    expect(combined, isNot(contains('Synchronisé')));
+    expect(combined, isNot(contains('notifications_none')));
+    expect(combined, isNot(contains('notification_important')));
+  });
 }

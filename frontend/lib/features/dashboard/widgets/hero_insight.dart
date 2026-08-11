@@ -61,9 +61,7 @@ class _HeroInsight extends StatelessWidget {
     final l10n = copy.l10n;
     final desktop = MediaQuery.sizeOf(context).width >= 900;
     final latest = logs.isNotEmpty ? logs.first : null;
-    final latestAt = latest == null
-        ? null
-        : (latest.loggedAt ?? latest.createdAt);
+    final latestAt = latest == null ? null : (latest.loggedAt ?? latest.createdAt);
     final rawMeal = latest?.mealType?.trim();
     final meal = rawMeal == null || rawMeal.isEmpty ? '' : copy.meal(rawMeal);
 
@@ -153,8 +151,7 @@ class _HeroInsight extends StatelessWidget {
                                   Flexible(
                                     child: FittedBox(
                                       fit: BoxFit.scaleDown,
-                                      alignment:
-                                          AlignmentDirectional.centerStart,
+                                      alignment: AlignmentDirectional.centerStart,
                                       child: Text(
                                         latest == null
                                             ? '--'
@@ -175,9 +172,7 @@ class _HeroInsight extends StatelessWidget {
                                     child: Text(
                                       unit,
                                       style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.72,
-                                        ),
+                                        color: Colors.white.withValues(alpha: 0.72),
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -266,9 +261,7 @@ class _HeroInsight extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.62,
-                                      ),
+                                      color: Colors.white.withValues(alpha: 0.62),
                                       fontSize: 10.5,
                                       height: 1.2,
                                     ),

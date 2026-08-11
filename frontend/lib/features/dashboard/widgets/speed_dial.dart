@@ -11,7 +11,8 @@ class _AddFab extends StatefulWidget {
   State<_AddFab> createState() => _AddFabState();
 }
 
-class _AddFabState extends State<_AddFab> with SingleTickerProviderStateMixin {
+class _AddFabState extends State<_AddFab>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _pulse;
 
@@ -22,10 +23,9 @@ class _AddFabState extends State<_AddFab> with SingleTickerProviderStateMixin {
       vsync: this,
       duration: const Duration(milliseconds: 2600),
     )..repeat();
-    _pulse = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _pulse = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
   }
 
   @override

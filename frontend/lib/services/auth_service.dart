@@ -24,9 +24,9 @@ class AuthService extends ChangeNotifier {
     FirebaseAuth? auth,
     FlutterSecureStorage? storage,
     http.Client? httpClient,
-  }) : _firebaseAuth = _getAuthInstance(auth),
-       _storage = storage ?? const FlutterSecureStorage(),
-       _httpClient = httpClient ?? http.Client();
+  })  : _firebaseAuth = _getAuthInstance(auth),
+        _storage = storage ?? const FlutterSecureStorage(),
+        _httpClient = httpClient ?? http.Client();
 
   static FirebaseAuth? _getAuthInstance(FirebaseAuth? provided) {
     try {
@@ -43,8 +43,7 @@ class AuthService extends ChangeNotifier {
       _firebaseAuth?.currentUser != null;
   bool get isAnonymous =>
       _auditSession ||
-      (_nativeToken == null &&
-          (_firebaseAuth?.currentUser?.isAnonymous ?? false));
+      (_nativeToken == null && (_firebaseAuth?.currentUser?.isAnonymous ?? false));
   bool get isAuditSession => _auditSession;
   User? get firebaseUser => _firebaseAuth?.currentUser;
 
@@ -90,10 +89,10 @@ class AuthService extends ChangeNotifier {
 
   Future<void> signInWithEmail(String email, String password) async {
     final normalized = email.trim().toLowerCase();
-    final nativeResponse = await _postJson('/api/v1/auth/login', {
-      'email': normalized,
-      'password': password,
-    });
+    final nativeResponse = await _postJson(
+      '/api/v1/auth/login',
+      {'email': normalized, 'password': password},
+    );
     if (nativeResponse.statusCode >= 200 && nativeResponse.statusCode < 300) {
       await _acceptAuthResponse(nativeResponse);
       return;
@@ -108,9 +107,10 @@ class AuthService extends ChangeNotifier {
       if (firebaseToken == null || firebaseToken.isEmpty) {
         throw StateError('Firebase migration credential unavailable');
       }
-      final exchange = await _postJson('/api/v1/auth/firebase', {
-        'id_token': firebaseToken,
-      });
+      final exchange = await _postJson(
+        '/api/v1/auth/firebase',
+        {'id_token': firebaseToken},
+      );
       if (exchange.statusCode >= 200 && exchange.statusCode < 300) {
         await _acceptAuthResponse(exchange);
         return;
@@ -120,10 +120,10 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> registerWithEmail(String email, String password) async {
-    final response = await _postJson('/api/v1/auth/register', {
-      'email': email.trim().toLowerCase(),
-      'password': password,
-    });
+    final response = await _postJson(
+      '/api/v1/auth/register',
+      {'email': email.trim().toLowerCase(), 'password': password},
+    );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('Registration failed');
     }
@@ -154,9 +154,10 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
-    final response = await _postJson('/api/v1/auth/password/reset/request', {
-      'email': email.trim().toLowerCase(),
-    });
+    final response = await _postJson(
+      '/api/v1/auth/password/reset/request',
+      {'email': email.trim().toLowerCase()},
+    );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('Password recovery request failed');
     }
@@ -167,11 +168,14 @@ class AuthService extends ChangeNotifier {
     required String token,
     required String newPassword,
   }) async {
-    final response = await _postJson('/api/v1/auth/password/reset/confirm', {
-      'uid': uid,
-      'token': token,
-      'new_password': newPassword,
-    });
+    final response = await _postJson(
+      '/api/v1/auth/password/reset/confirm',
+      {
+        'uid': uid,
+        'token': token,
+        'new_password': newPassword,
+      },
+    );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('Password recovery confirmation failed');
     }

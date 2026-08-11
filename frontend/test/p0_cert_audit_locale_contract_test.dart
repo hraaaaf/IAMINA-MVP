@@ -20,27 +20,22 @@ void main() {
     expect(policy, contains('return null;'));
   });
 
-  test(
-    'audit locale bypasses remote preference lookup and has top priority',
-    () {
-      final localeService = _read(
-        'lib/services/locale_preference_service.dart',
-      );
-      final main = _read('lib/main.dart');
+  test('audit locale bypasses remote preference lookup and has top priority', () {
+    final localeService = _read('lib/services/locale_preference_service.dart');
+    final main = _read('lib/main.dart');
 
-      expect(localeService, contains('final Locale? _auditLocale'));
-      expect(localeService, contains('if (_auditLocale == null)'));
-      expect(localeService, contains('auditLocale: _auditLocale'));
-      expect(localeService, contains('LocaleResolutionSource.audit'));
-      expect(
-        localeService.indexOf('if (_auditLocale == null)'),
-        lessThan(localeService.indexOf("Uri.parse('/api/v1/profile/locale')")),
-      );
+    expect(localeService, contains('final Locale? _auditLocale'));
+    expect(localeService, contains('if (_auditLocale == null)'));
+    expect(localeService, contains('auditLocale: _auditLocale'));
+    expect(localeService, contains('LocaleResolutionSource.audit'));
+    expect(
+      localeService.indexOf('if (_auditLocale == null)'),
+      lessThan(localeService.indexOf("Uri.parse('/api/v1/profile/locale')")),
+    );
 
-      expect(main, contains('AuditAccessPolicy.requestedLocale(Uri.base)'));
-      expect(main, contains('auditLocale: auditAllowed'));
-    },
-  );
+    expect(main, contains('AuditAccessPolicy.requestedLocale(Uri.base)'));
+    expect(main, contains('auditLocale: auditAllowed'));
+  });
 
   testWidgets('certified Arabic locale resolves to RTL', (tester) async {
     TextDirection? direction;

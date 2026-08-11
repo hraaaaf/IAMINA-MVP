@@ -16,7 +16,10 @@ void main() {
   });
 
   test('confirmed languages and regional variants map independently', () {
-    expect(LocalePreferenceService.supportedLocale('fr')?.languageCode, 'fr');
+    expect(
+      LocalePreferenceService.supportedLocale('fr')?.languageCode,
+      'fr',
+    );
     expect(
       LocalePreferenceService.supportedLocale('en-GB')?.languageCode,
       'en',

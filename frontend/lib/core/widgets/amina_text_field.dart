@@ -64,15 +64,15 @@ class _AminaTextFieldState extends State<AminaTextField> {
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
-            boxShadow: _isFocused
-                ? [
-                    BoxShadow(
-                      color: AminaTheme.primaryTeal.withValues(alpha: 0.15),
-                      spreadRadius: 3,
-                      blurRadius: 0,
-                    ),
-                  ]
-                : null,
+            boxShadow: _isFocused 
+              ? [
+                  BoxShadow(
+                    color: AminaTheme.primaryTeal.withValues(alpha: 0.15),
+                    spreadRadius: 3,
+                    blurRadius: 0,
+                  )
+                ]
+              : null,
           ),
           child: TextField(
             focusNode: _focusNode,
@@ -83,30 +83,18 @@ class _AminaTextFieldState extends State<AminaTextField> {
             style: const TextStyle(fontWeight: FontWeight.w500),
             decoration: InputDecoration(
               hintText: widget.hint,
-              hintStyle: const TextStyle(
-                color: AminaTheme.textLight,
-                fontSize: 14,
-              ),
+              hintStyle: const TextStyle(color: AminaTheme.textLight, fontSize: 14),
               suffixIcon: widget.suffixIcon,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 15,
-              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
               filled: true,
               fillColor: Colors.white,
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
-                borderSide: const BorderSide(
-                  color: AminaTheme.borderLight,
-                  width: 2,
-                ),
+                borderSide: const BorderSide(color: AminaTheme.borderLight, width: 2),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
-                borderSide: const BorderSide(
-                  color: AminaTheme.primaryTeal,
-                  width: 2,
-                ),
+                borderSide: const BorderSide(color: AminaTheme.primaryTeal, width: 2),
               ),
             ),
           ),

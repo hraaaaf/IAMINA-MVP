@@ -111,10 +111,8 @@ class KpisResponse {
   final int logCount;
   final int daysWithData;
   final bool hasSufficientData;
-
   /// GMI reliability grade: "high" | "medium" | "low" | null
   final String? gmiConfidence;
-
   /// Human-readable GMI basis, e.g. "47 mesures · 15j"
   final String gmiBasis;
 
@@ -135,18 +133,18 @@ class KpisResponse {
 
   factory KpisResponse.fromJson(Map<String, dynamic> json) {
     return KpisResponse(
-      avgGlucose: (json['avg_glucose'] as num?)?.toDouble(),
-      stdDev: (json['std_dev'] as num?)?.toDouble(),
-      cvPct: (json['cv_pct'] as num?)?.toDouble(),
-      tirPct: (json['tir_pct'] as num?)?.toDouble(),
-      tarPct: (json['tar_pct'] as num?)?.toDouble(),
-      tbrPct: (json['tbr_pct'] as num?)?.toDouble(),
-      gmi: (json['gmi'] as num?)?.toDouble(),
-      logCount: (json['log_count'] as num?)?.toInt() ?? 0,
-      daysWithData: (json['days_with_data'] as num?)?.toInt() ?? 0,
+      avgGlucose:       (json['avg_glucose'] as num?)?.toDouble(),
+      stdDev:           (json['std_dev'] as num?)?.toDouble(),
+      cvPct:            (json['cv_pct'] as num?)?.toDouble(),
+      tirPct:           (json['tir_pct'] as num?)?.toDouble(),
+      tarPct:           (json['tar_pct'] as num?)?.toDouble(),
+      tbrPct:           (json['tbr_pct'] as num?)?.toDouble(),
+      gmi:              (json['gmi'] as num?)?.toDouble(),
+      logCount:         (json['log_count'] as num?)?.toInt() ?? 0,
+      daysWithData:     (json['days_with_data'] as num?)?.toInt() ?? 0,
       hasSufficientData: json['has_sufficient_data'] ?? false,
-      gmiConfidence: json['gmi_confidence'] as String?,
-      gmiBasis: json['gmi_basis'] as String? ?? '',
+      gmiConfidence:    json['gmi_confidence'] as String?,
+      gmiBasis:         json['gmi_basis'] as String? ?? '',
     );
   }
 }
@@ -197,17 +195,17 @@ class MealAnalysisResult {
 
   factory MealAnalysisResult.fromJson(Map<String, dynamic> json) {
     return MealAnalysisResult(
-      foods: List<String>.from(json['foods'] as List? ?? []),
+      foods:      List<String>.from(json['foods'] as List? ?? []),
       confidence: json['confidence'] as String? ?? 'low',
-      fallback: json['fallback'] as bool? ?? true,
+      fallback:   json['fallback']   as bool?   ?? true,
     );
   }
 }
 
 class GlucometerOcrResponse {
-  final double? value; // glucose value (null if not detected)
-  final String unit; // "mg/dL" | "mmol/L"
-  final String confidence; // "high" | "medium" | "low"
+  final double? value;        // glucose value (null if not detected)
+  final String unit;          // "mg/dL" | "mmol/L"
+  final String confidence;    // "high" | "medium" | "low"
   final bool fallback;
 
   GlucometerOcrResponse({
@@ -220,17 +218,17 @@ class GlucometerOcrResponse {
   factory GlucometerOcrResponse.fromJson(Map<String, dynamic> json) {
     final raw = json['value'];
     return GlucometerOcrResponse(
-      value: raw != null ? (raw as num).toDouble() : null,
-      unit: json['unit'] as String? ?? 'mg/dL',
+      value:      raw != null ? (raw as num).toDouble() : null,
+      unit:       json['unit']       as String? ?? 'mg/dL',
       confidence: json['confidence'] as String? ?? 'low',
-      fallback: json['fallback'] as bool? ?? true,
+      fallback:   json['fallback']   as bool?   ?? true,
     );
   }
 }
 
 class VoiceResponse {
-  final String transcript; // what IAmina heard — shown as user bubble subtitle
-  final String reply; // IAmina's text reply — read via flutter_tts
+  final String transcript;   // what IAmina heard — shown as user bubble subtitle
+  final String reply;        // IAmina's text reply — read via flutter_tts
   final String conversationId;
   final DateTime timestamp;
   final bool isEmergency;
@@ -247,12 +245,12 @@ class VoiceResponse {
 
   factory VoiceResponse.fromJson(Map<String, dynamic> json) {
     return VoiceResponse(
-      transcript: json['transcript'] ?? '',
-      reply: json['reply'] ?? '',
+      transcript:     json['transcript']      ?? '',
+      reply:          json['reply']           ?? '',
       conversationId: json['conversation_id'] ?? '',
-      timestamp: DateTime.tryParse(json['timestamp'] ?? '') ?? DateTime.now(),
-      isEmergency: json['is_emergency'] ?? false,
-      replyLanguage: json['reply_language'] as String? ?? 'fr',
+      timestamp:      DateTime.tryParse(json['timestamp'] ?? '') ?? DateTime.now(),
+      isEmergency:    json['is_emergency']    ?? false,
+      replyLanguage:  json['reply_language']  as String? ?? 'fr',
     );
   }
 }

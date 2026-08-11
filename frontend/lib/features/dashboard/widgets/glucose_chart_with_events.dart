@@ -33,17 +33,15 @@ class GlucoseChartWithEvents extends StatefulWidget {
 }
 
 class _GlucoseChartWithEventsState extends State<GlucoseChartWithEvents> {
-  int _hoursFilter = 0;
+  int    _hoursFilter = 0;
   String? _mealFilter;
-  int _touchedIndex = -1;
+  int    _touchedIndex = -1;
 
   List<LogEntryData> get _filteredLogs {
     var logs = widget.logs;
     if (_hoursFilter != 0) {
       final cutoff = DateTime.now().subtract(Duration(hours: _hoursFilter));
-      logs = logs
-          .where((l) => (l.loggedAt ?? l.createdAt).isAfter(cutoff))
-          .toList();
+      logs = logs.where((l) => (l.loggedAt ?? l.createdAt).isAfter(cutoff)).toList();
     }
     if (_mealFilter != null) {
       logs = logs.where((l) => l.mealType == _mealFilter).toList();
@@ -85,18 +83,10 @@ class _GlucoseChartWithEventsState extends State<GlucoseChartWithEvents> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Row(
               children: [
-                Expanded(
-                  child: CardHead(
-                    title: l10n.dashboardAgpTitle,
-                    meta: widget.unit,
-                  ),
-                ),
+                Expanded(child: CardHead(title: l10n.dashboardAgpTitle, meta: widget.unit)),
                 // Live badge
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: AminaTheme.goodBg,
                     borderRadius: BorderRadius.circular(100),
@@ -104,12 +94,8 @@ class _GlucoseChartWithEventsState extends State<GlucoseChartWithEvents> {
                   child: Row(
                     children: [
                       Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: AminaTheme.teal500,
-                          shape: BoxShape.circle,
-                        ),
+                        width: 6, height: 6,
+                        decoration: const BoxDecoration(color: AminaTheme.teal500, shape: BoxShape.circle),
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -134,40 +120,15 @@ class _GlucoseChartWithEventsState extends State<GlucoseChartWithEvents> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _TimeChip(
-                  label: l10n.dashboardAll,
-                  value: 0,
-                  selected: _hoursFilter == 0,
-                  onTap: () => setState(() => _hoursFilter = 0),
-                ),
+                _TimeChip(label: l10n.dashboardAll, value: 0,  selected: _hoursFilter == 0,  onTap: () => setState(() => _hoursFilter = 0)),
                 const SizedBox(width: 6),
-                _TimeChip(
-                  label: l10n.dashboardHoursShort(24),
-                  value: 24,
-                  selected: _hoursFilter == 24,
-                  onTap: () => setState(() => _hoursFilter = 24),
-                ),
+                _TimeChip(label: l10n.dashboardHoursShort(24),  value: 24, selected: _hoursFilter == 24, onTap: () => setState(() => _hoursFilter = 24)),
                 const SizedBox(width: 6),
-                _TimeChip(
-                  label: l10n.dashboardHoursShort(12),
-                  value: 12,
-                  selected: _hoursFilter == 12,
-                  onTap: () => setState(() => _hoursFilter = 12),
-                ),
+                _TimeChip(label: l10n.dashboardHoursShort(12),  value: 12, selected: _hoursFilter == 12, onTap: () => setState(() => _hoursFilter = 12)),
                 const SizedBox(width: 6),
-                _TimeChip(
-                  label: l10n.dashboardHoursShort(6),
-                  value: 6,
-                  selected: _hoursFilter == 6,
-                  onTap: () => setState(() => _hoursFilter = 6),
-                ),
+                _TimeChip(label: l10n.dashboardHoursShort(6),  value: 6,  selected: _hoursFilter == 6,  onTap: () => setState(() => _hoursFilter = 6)),
                 const SizedBox(width: 6),
-                _TimeChip(
-                  label: l10n.dashboardHoursShort(3),
-                  value: 3,
-                  selected: _hoursFilter == 3,
-                  onTap: () => setState(() => _hoursFilter = 3),
-                ),
+                _TimeChip(label: l10n.dashboardHoursShort(3),  value: 3,  selected: _hoursFilter == 3,  onTap: () => setState(() => _hoursFilter = 3)),
               ],
             ),
           ),
@@ -179,40 +140,15 @@ class _GlucoseChartWithEventsState extends State<GlucoseChartWithEvents> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _MealChip(
-                  label: l10n.dashboardAll,
-                  value: null,
-                  selected: _mealFilter == null,
-                  onTap: () => setState(() => _mealFilter = null),
-                ),
+                _MealChip(label: l10n.dashboardAll,             value: null,             selected: _mealFilter == null,             onTap: () => setState(() => _mealFilter = null)),
                 const SizedBox(width: 6),
-                _MealChip(
-                  label: l10n.journalContextFasting,
-                  value: 'À jeun',
-                  selected: _mealFilter == 'À jeun',
-                  onTap: () => setState(() => _mealFilter = 'À jeun'),
-                ),
+                _MealChip(label: l10n.journalContextFasting,           value: 'À jeun',         selected: _mealFilter == 'À jeun',         onTap: () => setState(() => _mealFilter = 'À jeun')),
                 const SizedBox(width: 6),
-                _MealChip(
-                  label: l10n.journalContextPostMeal,
-                  value: 'Post-prandial',
-                  selected: _mealFilter == 'Post-prandial',
-                  onTap: () => setState(() => _mealFilter = 'Post-prandial'),
-                ),
+                _MealChip(label: l10n.journalContextPostMeal,    value: 'Post-prandial',  selected: _mealFilter == 'Post-prandial',  onTap: () => setState(() => _mealFilter = 'Post-prandial')),
                 const SizedBox(width: 6),
-                _MealChip(
-                  label: l10n.dashboardBeforeBed,
-                  value: 'Avant le coucher',
-                  selected: _mealFilter == 'Avant le coucher',
-                  onTap: () => setState(() => _mealFilter = 'Avant le coucher'),
-                ),
+                _MealChip(label: l10n.dashboardBeforeBed, value: 'Avant le coucher', selected: _mealFilter == 'Avant le coucher', onTap: () => setState(() => _mealFilter = 'Avant le coucher')),
                 const SizedBox(width: 6),
-                _MealChip(
-                  label: l10n.journalMealSnack,
-                  value: 'En-cas',
-                  selected: _mealFilter == 'En-cas',
-                  onTap: () => setState(() => _mealFilter = 'En-cas'),
-                ),
+                _MealChip(label: l10n.journalMealSnack,           value: 'En-cas',         selected: _mealFilter == 'En-cas',         onTap: () => setState(() => _mealFilter = 'En-cas')),
               ],
             ),
           ),
@@ -317,10 +253,7 @@ class _AgpChart extends StatelessWidget {
 
   static double _percentile(List<double> sorted, double p) {
     if (sorted.isEmpty) return 0;
-    final idx = (p / 100 * (sorted.length - 1)).clamp(
-      0.0,
-      (sorted.length - 1).toDouble(),
-    );
+    final idx = (p / 100 * (sorted.length - 1)).clamp(0.0, (sorted.length - 1).toDouble());
     final lower = sorted[idx.floor()];
     final upper = sorted[idx.ceil()];
     return lower + (upper - lower) * (idx - idx.floor());
@@ -336,16 +269,14 @@ class _AgpChart extends StatelessWidget {
     for (var h = 0; h < 24; h++) {
       final values = List<double>.from(byHour[h] ?? [])..sort();
       if (values.isEmpty) continue;
-      points.add(
-        AgpPoint(
-          hour: h.toDouble(),
-          p5: _percentile(values, 5),
-          p25: _percentile(values, 25),
-          p50: _percentile(values, 50),
-          p75: _percentile(values, 75),
-          p95: _percentile(values, 95),
-        ),
-      );
+      points.add(AgpPoint(
+        hour: h.toDouble(),
+        p5:   _percentile(values, 5),
+        p25:  _percentile(values, 25),
+        p50:  _percentile(values, 50),
+        p75:  _percentile(values, 75),
+        p95:  _percentile(values, 95),
+      ));
     }
 
     if (points.length < 3) {
@@ -356,52 +287,51 @@ class _AgpChart extends StatelessWidget {
     final minY = (allVals.reduce(math.min) - 20).clamp(0.0, double.infinity);
     final maxY = allVals.reduce(math.max) + 30;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SizedBox(
-          height: 220,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Y-axis labels
-              SizedBox(
-                width: 36,
-                child: AgpYAxis(
-                  minY: minY,
-                  maxY: maxY,
-                  isDark: isDark,
-                  labels: const [54, 108, 162, 216, 270],
-                ),
+    return LayoutBuilder(builder: (context, constraints) {
+      return SizedBox(
+        height: 220,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Y-axis labels
+            SizedBox(
+              width: 36,
+              child: AgpYAxis(
+                minY: minY, maxY: maxY, isDark: isDark,
+                labels: const [54, 108, 162, 216, 270],
               ),
-              // Chart area
-              Expanded(
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: ClipRect(
-                        child: CustomPaint(
-                          painter: AgpPainter(
-                            points: points,
-                            minY: minY,
-                            maxY: maxY,
-                            low: low,
-                            high: high,
-                            isDark: isDark,
-                            gridLines: const [54.0, 108.0, 162.0, 216.0, 270.0],
-                          ),
+            ),
+            // Chart area
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ClipRect(
+                      child: CustomPaint(
+                        painter: AgpPainter(
+                          points: points,
+                          minY: minY,
+                          maxY: maxY,
+                          low: low,
+                          high: high,
+                          isDark: isDark,
+                          gridLines: const [54.0, 108.0, 162.0, 216.0, 270.0],
                         ),
                       ),
                     ),
-                    // X-axis labels
-                    SizedBox(height: 20, child: AgpXAxis(isDark: isDark)),
-                  ],
-                ),
+                  ),
+                  // X-axis labels
+                  SizedBox(
+                    height: 20,
+                    child: AgpXAxis(isDark: isDark),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-      },
-    );
+            ),
+          ],
+        ),
+      );
+    });
   }
 }
 
@@ -413,35 +343,23 @@ class _SimpleLineChart extends StatelessWidget {
   final List<LogEntryData> logs;
   final double low, high;
 
-  const _SimpleLineChart({
-    required this.logs,
-    required this.low,
-    required this.high,
-  });
+  const _SimpleLineChart({required this.logs, required this.low, required this.high});
 
   @override
   Widget build(BuildContext context) {
     final sorted = logs.reversed.toList();
-    final spots = sorted
-        .asMap()
-        .entries
-        .map((e) => FlSpot(e.key.toDouble(), e.value.bloodSugar))
-        .toList();
+    final spots  = sorted.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.bloodSugar)).toList();
     final allVals = logs.map((l) => l.bloodSugar).toList();
-    final minY = (allVals.reduce(math.min) - 20)
-        .clamp(0, double.infinity)
-        .toDouble();
+    final minY = (allVals.reduce(math.min) - 20).clamp(0, double.infinity).toDouble();
     final maxY = allVals.reduce(math.max) + 30;
 
     return LineChart(
       LineChartData(
-        minY: minY,
-        maxY: maxY,
+        minY: minY, maxY: maxY,
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          getDrawingHorizontalLine: (_) =>
-              const FlLine(color: AminaTheme.ink100, strokeWidth: 1),
+          getDrawingHorizontalLine: (_) => const FlLine(color: AminaTheme.ink100, strokeWidth: 1),
         ),
         borderData: FlBorderData(show: false),
         titlesData: FlTitlesData(
@@ -449,38 +367,17 @@ class _SimpleLineChart extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 36,
-              getTitlesWidget: (v, _) => Text(
-                v.toInt().toString(),
-                style: const TextStyle(fontSize: 10, color: AminaTheme.ink400),
-              ),
+              getTitlesWidget: (v, _) => Text(v.toInt().toString(), style: const TextStyle(fontSize: 10, color: AminaTheme.ink400)),
             ),
           ),
-          bottomTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
+          bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles:   const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        extraLinesData: ExtraLinesData(
-          horizontalLines: [
-            HorizontalLine(
-              y: low,
-              color: const Color(0xFFE4A85B).withValues(alpha: 0.7),
-              strokeWidth: 1.5,
-              dashArray: [6, 4],
-            ),
-            HorizontalLine(
-              y: high,
-              color: const Color(0xFFE4A85B).withValues(alpha: 0.7),
-              strokeWidth: 1.5,
-              dashArray: [6, 4],
-            ),
-          ],
-        ),
+        extraLinesData: ExtraLinesData(horizontalLines: [
+          HorizontalLine(y: low,  color: const Color(0xFFE4A85B).withValues(alpha: 0.7), strokeWidth: 1.5, dashArray: [6, 4]),
+          HorizontalLine(y: high, color: const Color(0xFFE4A85B).withValues(alpha: 0.7), strokeWidth: 1.5, dashArray: [6, 4]),
+        ]),
         lineBarsData: [
           LineChartBarData(
             spots: spots,
@@ -495,23 +392,14 @@ class _SimpleLineChart extends StatelessWidget {
                 final v = spot.y;
                 final color = v < 70 || v > 250
                     ? AminaTheme.dangerRed
-                    : (v < low || v > high
-                          ? AminaTheme.accentAmber
-                          : AminaTheme.teal500);
-                return FlDotCirclePainter(
-                  radius: 3,
-                  color: color,
-                  strokeWidth: 0,
-                );
+                    : (v < low || v > high ? AminaTheme.accentAmber : AminaTheme.teal500);
+                return FlDotCirclePainter(radius: 3, color: color, strokeWidth: 0);
               },
             ),
             belowBarData: BarAreaData(
               show: true,
               gradient: LinearGradient(
-                colors: [
-                  AminaTheme.teal500.withValues(alpha: 0.12),
-                  AminaTheme.teal500.withValues(alpha: 0.0),
-                ],
+                colors: [AminaTheme.teal500.withValues(alpha: 0.12), AminaTheme.teal500.withValues(alpha: 0.0)],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -534,9 +422,7 @@ class _EventLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AuditedPageCopy.of(context).l10n;
-    final mealCount = logs
-        .where((l) => l.mealType != null && l.mealType!.isNotEmpty)
-        .length;
+    final mealCount    = logs.where((l) => l.mealType != null && l.mealType!.isNotEmpty).length;
     final insulinCount = logs.where((l) => (l.insulinUnits ?? 0) > 0).length;
 
     return Row(
@@ -573,12 +459,7 @@ class _TimeChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _TimeChip({
-    required this.label,
-    required this.value,
-    required this.selected,
-    required this.onTap,
-  });
+  const _TimeChip({required this.label, required this.value, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -590,9 +471,7 @@ class _TimeChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AminaTheme.teal500 : AminaTheme.ink50,
           borderRadius: BorderRadius.circular(100),
-          border: Border.all(
-            color: selected ? AminaTheme.teal500 : AminaTheme.ink200,
-          ),
+          border: Border.all(color: selected ? AminaTheme.teal500 : AminaTheme.ink200),
         ),
         child: Text(
           label,
@@ -608,17 +487,12 @@ class _TimeChip extends StatelessWidget {
 }
 
 class _MealChip extends StatelessWidget {
-  final String label;
+  final String  label;
   final String? value;
-  final bool selected;
+  final bool    selected;
   final VoidCallback onTap;
 
-  const _MealChip({
-    required this.label,
-    required this.value,
-    required this.selected,
-    required this.onTap,
-  });
+  const _MealChip({required this.label, required this.value, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -630,9 +504,7 @@ class _MealChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? AminaTheme.teal50 : Colors.transparent,
           borderRadius: BorderRadius.circular(100),
-          border: Border.all(
-            color: selected ? AminaTheme.teal500 : AminaTheme.ink200,
-          ),
+          border: Border.all(color: selected ? AminaTheme.teal500 : AminaTheme.ink200),
         ),
         child: Text(
           label,
@@ -652,16 +524,16 @@ class _MealChip extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _LegendItem extends StatelessWidget {
-  final Color color;
-  final String label;
-  final double opacity;
-  final bool dashed;
+  final Color   color;
+  final String  label;
+  final double  opacity;
+  final bool    dashed;
 
   const _LegendItem({
     required this.color,
     required this.label,
     this.opacity = 1.0,
-    this.dashed = false,
+    this.dashed  = false,
   });
 
   @override
@@ -675,18 +547,14 @@ class _LegendItem extends StatelessWidget {
                 painter: _DashPainter(color: color.withValues(alpha: opacity)),
               )
             : Container(
-                width: 20,
-                height: 8,
+                width: 20, height: 8,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: opacity),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
         const SizedBox(width: 5),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 10, color: AminaTheme.ink500),
-        ),
+        Text(label, style: const TextStyle(fontSize: 10, color: AminaTheme.ink500)),
       ],
     );
   }
@@ -698,18 +566,12 @@ class _DashPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.5;
+    final paint = Paint()..color = color..strokeWidth = 1.5;
     const dash = 4.0;
-    const gap = 3.0;
+    const gap  = 3.0;
     double x = 0;
     while (x < size.width) {
-      canvas.drawLine(
-        Offset(x, size.height / 2),
-        Offset(math.min(x + dash, size.width), size.height / 2),
-        paint,
-      );
+      canvas.drawLine(Offset(x, size.height / 2), Offset(math.min(x + dash, size.width), size.height / 2), paint);
       x += dash + gap;
     }
   }

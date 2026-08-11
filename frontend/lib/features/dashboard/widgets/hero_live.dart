@@ -50,8 +50,8 @@ class _HeroLive extends StatelessWidget {
         ? latest!.mealType!
         : null;
     final mealLabel = rawMealLabel == null ? null : copy.meal(rawMealLabel);
-    final insulin =
-        latest?.insulinUnits != null && (latest!.insulinUnits ?? 0) > 0
+    final insulin = latest?.insulinUnits != null &&
+            (latest!.insulinUnits ?? 0) > 0
         ? AuditedPageCopy.of(context).l10n.dashboardRapidInsulin(
             '\u2066${latest.insulinUnits!.toStringAsFixed(latest.insulinUnits! == latest.insulinUnits!.truncateToDouble() ? 0 : 1)}\u2069',
           )
@@ -94,9 +94,7 @@ class _HeroLive extends StatelessWidget {
                     _HeroBadge(label: copy.latestReading),
                     const Spacer(),
                     Text(
-                      minutesAgo == 0
-                          ? copy.justNow
-                          : copy.minutesAgo(minutesAgo),
+                      minutesAgo == 0 ? copy.justNow : copy.minutesAgo(minutesAgo),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.62),
                         fontSize: 12,
@@ -128,7 +126,11 @@ class _HeroLive extends StatelessWidget {
                       flex: 6,
                       child: SizedBox(
                         height: 88,
-                        child: _HeroSparkline(logs: logs, low: low, high: high),
+                        child: _HeroSparkline(
+                          logs: logs,
+                          low: low,
+                          high: high,
+                        ),
                       ),
                     ),
                   ],
@@ -204,10 +206,7 @@ class _MeasurementValue extends StatelessWidget {
               if (trend != null) ...[
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 3,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(99),
