@@ -5,45 +5,48 @@ import 'package:flutter_test/flutter_test.dart';
 String _read(String path) => File(path).readAsStringSync();
 
 void main() {
-  test('dashboard top bar has an explicit compact composition', () {
+  test('dashboard top bar has a brand-led compact composition', () {
     final source = _read('lib/features/dashboard/widgets/top_bar.dart');
 
     for (final required in <String>[
       'LayoutBuilder',
       'constraints.maxWidth < 760',
       '_buildCompact',
-      'maxLines: 1',
-      'TextOverflow.ellipsis',
-      'EdgeInsetsDirectional.fromSTEB',
-      'Expanded(child: _ParlerButton',
+      "title: 'IAmina'",
+      'subtitle: copy.overview',
+      'AminaMobilePageHeader',
+      'AlignmentDirectional.centerStart',
+      '_ParlerButton(onTap: onChatTap, compact: true)',
+      'width: 44',
+      'height: 44',
     ]) {
       expect(
         source,
         contains(required),
-        reason: 'Missing responsive top-bar contract: $required',
+        reason: 'Missing brand-led responsive top-bar contract: $required',
       );
     }
 
     expect(
       source,
-      isNot(contains('Expanded(\n              child: RichText')),
-      reason: 'The old single-row breadcrumb composition must not return.',
+      isNot(contains('Expanded(child: _ParlerButton')),
+      reason: 'Compact chat access should stay a bounded icon action, not consume the range row.',
     );
   });
 
   test('glucose hero fits compact widths and isolates numeric direction', () {
     final source = _read('lib/features/dashboard/widgets/hero_live.dart');
+    final insightSource = _read('lib/features/dashboard/widgets/hero_insight.dart');
 
     for (final required in <String>[
-      'constraints.maxWidth < 600',
       'FittedBox',
       'BoxFit.scaleDown',
       'AlignmentDirectional.centerStart',
       r"'\u2066$displayValue\u2069'",
       r"'\u2066$unit\u2069'",
-      'if (!compact)',
-      'fontSize: compact ? 68 : 88',
       'PositionedDirectional',
+      '_HeroSparkline',
+      'Expanded(',
     ]) {
       expect(
         source,
@@ -52,11 +55,36 @@ void main() {
       );
     }
 
-    expect(
-      source,
-      isNot(contains('const Spacer()')),
-      reason: 'The fixed hero spacer caused mobile clipping.',
-    );
+    for (final required in <String>[
+      'HorizontalLine(',
+      'y: low',
+      'y: high',
+      'AlignmentDirectional.centerStart',
+    ]) {
+      expect(
+        insightSource,
+        contains(required),
+        reason: 'Missing truthful sparkline/reference contract: $required',
+      );
+    }
+  });
+
+  test('mobile dashboard metrics stay compact and GMI fails closed', () {
+    final source = _read('lib/features/dashboard/widgets/kpi_cards.dart');
+
+    for (final required in <String>[
+      'final gmiEligible = daysWithData >= 14 && logs.length >= 50',
+      "value: gmi == null ? '--' : gmi.toStringAsFixed(1)",
+      'dashboardGmiLimitedCoverage',
+      '_CompactMetricCell',
+      'IntrinsicHeight',
+    ]) {
+      expect(
+        source,
+        contains(required),
+        reason: 'Missing compact/fail-closed metric contract: $required',
+      );
+    }
   });
 
   test('mobile add action has a bounded accessible footprint', () {
