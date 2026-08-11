@@ -6,6 +6,7 @@ from typing import Optional
 
 from django.core.cache import cache
 
+from companion.memory_truth import decode_snapshot, encode_snapshot
 from core.observability import EVT_STREAK_BROKEN, EVT_STREAK_CONTINUED, track
 
 logger = logging.getLogger(__name__)
@@ -36,10 +37,13 @@ class IAminaDeepMemory:
     @classmethod
     def load(cls, patient) -> "IAminaDeepMemory":
         key = f"iamina:deep:{patient.id}"
+        defaults = asdict(cls(patient_id=patient.id))
         raw = cache.get(key)
         if raw:
             try:
-                return cls(**json.loads(raw))
+                payload = json.loads(raw) if isinstance(raw, str) else raw
+                data = decode_snapshot("deep", payload, defaults=defaults)
+                return cls(**data)
             except Exception:
                 pass
 
@@ -47,10 +51,15 @@ class IAminaDeepMemory:
             from core.companion.ports import get_snapshot_store
             store = get_snapshot_store()
             if store is not None:
-                data = store.load("deep", patient.id)
-                if data:
+                payload = store.load("deep", patient.id)
+                if payload:
+                    data = decode_snapshot("deep", payload, defaults=defaults)
                     obj = cls(**data)
-                    cache.set(key, json.dumps(data), timeout=_TTL)
+                    cache.set(
+                        key,
+                        json.dumps(encode_snapshot("deep", asdict(obj))),
+                        timeout=_TTL,
+                    )
                     return obj
         except Exception:
             logger.exception("IAminaDeepMemory.load snapshot fallback failed for patient=%s", patient.id)
@@ -59,14 +68,15 @@ class IAminaDeepMemory:
 
     def save(self):
         key = f"iamina:deep:{self.patient_id}"
-        payload = json.dumps(asdict(self))
+        envelope = encode_snapshot("deep", asdict(self))
+        payload = json.dumps(envelope)
         cache.set(key, payload, timeout=_TTL)
 
         try:
             from core.companion.ports import get_snapshot_store
             store = get_snapshot_store()
             if store is not None:
-                store.save("deep", self.patient_id, asdict(self))
+                store.save("deep", self.patient_id, envelope)
         except Exception:
             logger.exception("IAminaDeepMemory.save snapshot failed for patient=%s", self.patient_id)
 
@@ -84,6 +94,12 @@ class IAminaDeepMemory:
             self.significant_events = self.significant_events[-20:]
 
     def learn_food_sensitivity(self, food_name: str, delta_glucose: float):
+        """Legacy deterministic heuristic retained for snapshot compatibility.
+
+        P0.4 removes the active orchestrator call and patient-facing prompt use.
+        The method stays temporarily so old code/tests can decode historical
+        snapshots without a breaking API deletion inside this focused lot.
+        """
         alpha = 0.3
         name = food_name.lower().strip()
         if name in self.food_sensitivities:
