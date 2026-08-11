@@ -8,6 +8,7 @@ from core.contracts.capabilities import (
     rule_for,
 )
 from core.contracts.truth import TruthKind, TruthRecord
+from core.llm_gateway import _assert_generative_capability
 
 
 def test_model_inference_cannot_be_persisted_as_patient_fact():
@@ -115,3 +116,10 @@ def test_diagnosis_prescription_and_treatment_optimization_are_disabled_for_ever
 def test_user_claim_and_preference_writes_require_confirmation():
     assert rule_for(Capability.RECORD_USER_CLAIM).requires_user_confirmation is True
     assert rule_for(Capability.UPDATE_USER_PREFERENCE).requires_user_confirmation is True
+
+
+def test_llm_gateway_fails_closed_before_forbidden_capability_egress():
+    _assert_generative_capability(Capability.EXPLAIN_APPROVED_DATA)
+
+    with pytest.raises(PermissionError, match="generative_model is not allowed"):
+        _assert_generative_capability(Capability.DIAGNOSE)
