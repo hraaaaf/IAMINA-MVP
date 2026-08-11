@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../core/widgets/responsive_content_surface.dart';
+import '../../core/widgets/mobile_page_header.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
 import 'package:drift/drift.dart' as drift;
@@ -82,139 +83,143 @@ class _ImportScreenState extends State<ImportScreen> {
             child: ResponsiveContentSurface(
               maxWidth: 1160,
               child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Last import summary banner ──────────────────────────────
-                  if (_totalLogs != null && _totalLogs! > 0) ...[
-                    _LastImportBanner(
-                      totalLogs: _totalLogs!,
-                      lastLogAt: _lastLogAt,
-                      isStale: _isDataStale,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Last import summary banner ──────────────────────────────
+                    if (_totalLogs != null && _totalLogs! > 0) ...[
+                      _LastImportBanner(
+                        totalLogs: _totalLogs!,
+                        lastLogAt: _lastLogAt,
+                        isStale: _isDataStale,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    // ── Document import ─────────────────────────────────────────
+                    _DocumentImportCard(
+                      key: const ValueKey('import-document-cta'),
+                      onTap: () => context.push('/pulper'),
                     ),
-                    const SizedBox(height: 16),
-                  ],
-                  // ── Document import ─────────────────────────────────────────
-                  _DocumentImportCard(
-                    key: const ValueKey('import-document-cta'),
-                    onTap: () => context.push('/pulper'),
-                  ),
-                  const SizedBox(height: 20),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Text(
-                      AuditedPageCopy.of(context).directConnections,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AminaTheme.ink900,
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        AuditedPageCopy.of(context).directConnections,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AminaTheme.ink900,
+                        ),
                       ),
                     ),
-                  ),
-                  if (kDebugMode) ...[
-                    _ImportOption(
-                      icon: Icons.science_outlined,
-                      title: 'Données démo — 21 jours',
-                      subtitle:
-                          'Charger un jeu de données cliniques réalistes pour explorer toutes les fonctionnalités.',
-                      badge: 'DEV',
-                      badgeBg: AminaTheme.ink100,
-                      badgeFg: AminaTheme.ink500,
-                      action: _seeding
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AminaTheme.teal500,
-                              ),
-                            )
-                          : _done
-                          ? const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.check,
-                                  size: 16,
-                                  color: AminaTheme.goodFg,
+                    if (kDebugMode) ...[
+                      _ImportOption(
+                        icon: Icons.science_outlined,
+                        title: 'Données démo — 21 jours',
+                        subtitle:
+                            'Charger un jeu de données cliniques réalistes pour explorer toutes les fonctionnalités.',
+                        badge: 'DEV',
+                        badgeBg: AminaTheme.ink100,
+                        badgeFg: AminaTheme.ink500,
+                        action: _seeding
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AminaTheme.teal500,
                                 ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Chargé',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
+                              )
+                            : _done
+                            ? const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.check,
+                                    size: 16,
                                     color: AminaTheme.goodFg,
                                   ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Chargé',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: AminaTheme.goodFg,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : FilledButton(
+                                onPressed: _seedDemo,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AminaTheme.teal500,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  minimumSize: Size.zero,
                                 ),
-                              ],
-                            )
-                          : FilledButton(
-                              onPressed: _seedDemo,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AminaTheme.teal500,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 8,
+                                child: const Text(
+                                  'Charger',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                                minimumSize: Size.zero,
                               ),
-                              child: const Text(
-                                'Charger',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final cards = <Widget>[
-                        _ImportOption(
-                          icon: Icons.bluetooth,
-                          title: 'Dexcom G6/G7',
-                          subtitle: AuditedPageCopy.of(context).dexcomDescription,
-                          badge: AuditedPageCopy.of(context).soon,
-                          badgeBg: AminaTheme.ink50,
-                          badgeFg: AminaTheme.ink500,
-                          action: const _UnavailableAction(),
-                        ),
-                        _ImportOption(
-                          icon: Icons.sensors,
-                          title: 'Abbott LibreLink',
-                          subtitle: AuditedPageCopy.of(context).libreDescription,
-                          badge: AuditedPageCopy.of(context).soon,
-                          badgeBg: AminaTheme.ink50,
-                          badgeFg: AminaTheme.ink500,
-                          action: const _UnavailableAction(),
-                        ),
-                      ];
-                      if (constraints.maxWidth >= 900) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final cards = <Widget>[
+                          _ImportOption(
+                            icon: Icons.bluetooth,
+                            title: 'Dexcom G6/G7',
+                            subtitle: AuditedPageCopy.of(
+                              context,
+                            ).dexcomDescription,
+                            badge: AuditedPageCopy.of(context).soon,
+                            badgeBg: AminaTheme.ink50,
+                            badgeFg: AminaTheme.ink500,
+                            action: const _UnavailableAction(),
+                          ),
+                          _ImportOption(
+                            icon: Icons.sensors,
+                            title: 'Abbott LibreLink',
+                            subtitle: AuditedPageCopy.of(
+                              context,
+                            ).libreDescription,
+                            badge: AuditedPageCopy.of(context).soon,
+                            badgeBg: AminaTheme.ink50,
+                            badgeFg: AminaTheme.ink500,
+                            action: const _UnavailableAction(),
+                          ),
+                        ];
+                        if (constraints.maxWidth >= 900) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: cards[0]),
+                              const SizedBox(width: 16),
+                              Expanded(child: cards[1]),
+                            ],
+                          );
+                        }
+                        return Column(
                           children: [
-                            Expanded(child: cards[0]),
-                            const SizedBox(width: 16),
-                            Expanded(child: cards[1]),
+                            cards[0],
+                            const SizedBox(height: 12),
+                            cards[1],
                           ],
                         );
-                      }
-                      return Column(
-                        children: [
-                          cards[0],
-                          const SizedBox(height: 12),
-                          cards[1],
-                        ],
-                      );
-                    },
-                  ),
-                ],
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
             ),
           ),
         ],
@@ -226,10 +231,18 @@ class _ImportScreenState extends State<ImportScreen> {
 class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final copy = AuditedPageCopy.of(context);
+    if (MediaQuery.sizeOf(context).width < 700) {
+      return AminaMobilePageHeader(
+        title: copy.importTitle,
+        subtitle: copy.importSubtitle,
+      );
+    }
+
     return Container(
       padding: EdgeInsetsDirectional.fromSTEB(
         16,
-        MediaQuery.of(context).padding.top + 12,
+        MediaQuery.paddingOf(context).top + 12,
         16,
         12,
       ),
@@ -244,7 +257,7 @@ class _TopBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  AuditedPageCopy.of(context).importTitle,
+                  copy.importTitle,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -252,7 +265,7 @@ class _TopBar extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  AuditedPageCopy.of(context).importSubtitle,
+                  copy.importSubtitle,
                   style: TextStyle(fontSize: 12, color: AminaTheme.ink500),
                 ),
               ],
@@ -469,10 +482,18 @@ class _DocumentImportCard extends StatelessWidget {
                     Wrap(
                       spacing: 6,
                       children: [
-                        _DocumentFormatChip(label: AuditedPageCopy.of(context).labReport),
-                        _DocumentFormatChip(label: AuditedPageCopy.of(context).cgmExport),
-                        _DocumentFormatChip(label: AuditedPageCopy.of(context).prescription),
-                        _DocumentFormatChip(label: AuditedPageCopy.of(context).photo),
+                        _DocumentFormatChip(
+                          label: AuditedPageCopy.of(context).labReport,
+                        ),
+                        _DocumentFormatChip(
+                          label: AuditedPageCopy.of(context).cgmExport,
+                        ),
+                        _DocumentFormatChip(
+                          label: AuditedPageCopy.of(context).prescription,
+                        ),
+                        _DocumentFormatChip(
+                          label: AuditedPageCopy.of(context).photo,
+                        ),
                       ],
                     ),
                   ],

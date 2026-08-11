@@ -19,23 +19,23 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
-    return Container(
-      decoration: BoxDecoration(
-        color: AminaTheme.surface(context),
-        border: Border(bottom: BorderSide(color: AminaTheme.divider(context))),
-      ),
-      child: Padding(
-        padding: EdgeInsetsDirectional.fromSTEB(hPad, top + 10, hPad, 10),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final compact = constraints.maxWidth < 760;
-            return compact
-                ? _buildCompact(context)
-                : _buildDesktop(context);
-          },
-        ),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 760;
+        if (compact) return _buildCompact(context);
+
+        final top = MediaQuery.paddingOf(context).top;
+        return Container(
+          decoration: BoxDecoration(
+            color: AminaTheme.surface(context),
+            border: Border(
+              bottom: BorderSide(color: AminaTheme.divider(context)),
+            ),
+          ),
+          padding: EdgeInsetsDirectional.fromSTEB(hPad, top + 10, hPad, 10),
+          child: _buildDesktop(context),
+        );
+      },
     );
   }
 
@@ -53,31 +53,25 @@ class _TopBar extends StatelessWidget {
   }
 
   Widget _buildCompact(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(child: _breadcrumb(context, detailed: false)),
-            const SizedBox(width: 8),
-            _syncButton(),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            _RangeChips(range: range, onChanged: onRangeChanged),
-            const SizedBox(width: 8),
-            Expanded(child: _ParlerButton(onTap: onChatTap, compact: true)),
-          ],
-        ),
-      ],
+    final copy = AuditedPageCopy.of(context);
+    return AminaMobilePageHeader(
+      title: copy.overview,
+      trailing: _syncButton(),
+      bottom: Row(
+        children: [
+          _RangeChips(range: range, onChanged: onRangeChanged),
+          const SizedBox(width: 8),
+          Expanded(child: _ParlerButton(onTap: onChatTap, compact: true)),
+        ],
+      ),
     );
   }
 
   Widget _breadcrumb(BuildContext context, {required bool detailed}) {
     return Text(
-      detailed ? AuditedPageCopy.of(context).breadcrumb : AuditedPageCopy.of(context).overview,
+      detailed
+          ? AuditedPageCopy.of(context).breadcrumb
+          : AuditedPageCopy.of(context).overview,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
