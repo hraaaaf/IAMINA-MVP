@@ -1,0 +1,72 @@
+name: UX10 nav contract fix v2
+
+"on":
+  push:
+    branches:
+      - "ux/10-dashboard-pixel-convergence"
+    paths:
+      - ".github/workflows/ux10-nav-contract-fix-v2.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ux/10-dashboard-pixel-convergence
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+
+      - name: Apply five-destination nav with non-overlapping center action
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          helper = Path('.github/workflows/ux10-nav-contract-fix.yml').read_text()
+          marker = "tail = r'''"
+          if marker not in helper:
+              raise SystemExit('UX10 helper tail not found')
+          tail = helper.split(marker, 1)[1].split("'''", 1)[0]
+
+          # Keep the center action visually central but ensure its tap target does
+          # not cover the navigation destination beneath it on 390px RTL layouts.
+          tail = tail.replace('width: 58,\n                              height: 58,',
+                              'width: 44,\n                              height: 44,', 1)
+          tail = tail.replace('child: const Icon(Icons.add_rounded, color: Colors.white, size: 29),',
+                              'child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),', 1)
+
+          source = Path('frontend/lib/features/navigation/main_shell.dart')
+          current = source.read_text()
+          start = current.index('class _BottomNav extends StatelessWidget')
+          source.write_text(current[:start] + tail)
+          PY
+
+          cd frontend
+          flutter pub get
+          flutter analyze --no-fatal-infos
+          flutter test --no-pub \
+            test/p0_ux_8_mobile_navigation_test.dart \
+            test/ux_8_motion_system_contract_test.dart \
+            test/p0_real_actions_contract_test.dart \
+            test/ux_5_glass_mobile_nav_contract_test.dart \
+            test/rtl_screen_contract_test.dart \
+            test/p0_ux_6_4_rtl_accessibility_contract_test.dart
+          cd ..
+          git diff --check
+
+      - name: Commit verified fix
+        run: |
+          git config user.name "hraaaaf"
+          git config user.email "123034021+hraaaaf@users.noreply.github.com"
+          git add frontend/lib/features/navigation/main_shell.dart
+          git commit -m "fix(ux): preserve nav routes around central add action"
+          git push origin HEAD:ux/10-dashboard-pixel-convergence
