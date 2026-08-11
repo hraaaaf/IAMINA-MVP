@@ -37,8 +37,6 @@ jobs:
               raise SystemExit('UX10 helper tail not found')
           tail = helper.split(marker, 1)[1].split("'''", 1)[0]
 
-          # Keep the center action visually central but ensure its tap target does
-          # not cover the navigation destination beneath it on 390px RTL layouts.
           tail = tail.replace('width: 58,\n                              height: 58,',
                               'width: 44,\n                              height: 44,', 1)
           tail = tail.replace('child: const Icon(Icons.add_rounded, color: Colors.white, size: 29),',
@@ -47,7 +45,9 @@ jobs:
           source = Path('frontend/lib/features/navigation/main_shell.dart')
           current = source.read_text()
           start = current.index('class _BottomNav extends StatelessWidget')
-          source.write_text(current[:start] + tail)
+          merged = current[:start] + tail
+          merged = '\n'.join(line.rstrip() for line in merged.splitlines()).rstrip() + '\n'
+          source.write_text(merged)
           PY
 
           cd frontend
