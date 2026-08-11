@@ -64,6 +64,14 @@ jobs:
               if old not in text:
                   raise SystemExit(f'formatter-tolerant nav contract target not found: {rel}')
               path.write_text(text.replace(old, new, 1))
+
+          mobile_import = Path('frontend/test/p0_mobile_import_navigation_test.dart')
+          text = mobile_import.read_text()
+          old = """      final firstUse = find.byKey(const ValueKey('import-first-use'));\n      expect(firstUse, findsOneWidget);\n      final firstUseAction = find.descendant(\n        of: firstUse,\n        matching: find.byType(FilledButton),\n      );\n      expect(firstUseAction, findsOneWidget);\n      expect(tester.takeException(), isNull);\n\n      await tester.tap(firstUseAction);"""
+          new = """      final firstUse = find.byKey(const ValueKey('import-first-use'));\n      final populatedCta = find.byKey(const ValueKey('import-document-cta'));\n      expect(firstUse.evaluate().length + populatedCta.evaluate().length, 1);\n      expect(tester.takeException(), isNull);\n\n      if (firstUse.evaluate().isNotEmpty) {\n        final firstUseAction = find.descendant(\n          of: firstUse,\n          matching: find.byType(FilledButton),\n        );\n        expect(firstUseAction, findsOneWidget);\n        await tester.tap(firstUseAction);\n      } else {\n        await tester.tap(populatedCta);\n      }"""
+          if old not in text:
+              raise SystemExit('truthful importer state contract target not found')
+          mobile_import.write_text(text.replace(old, new, 1))
           PY
 
       - uses: subosito/flutter-action@v2
