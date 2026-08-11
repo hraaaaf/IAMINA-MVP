@@ -24,7 +24,7 @@ class LoadSaveTest(TestCase):
         self.assertEqual(mem.relationship_stage, "new")
         self.assertEqual(mem.total_interactions, 0)
 
-    def test_load_from_cache(self):
+    def test_load_from_cache_quarantines_legacy_food_heuristic(self):
         import json
         data = {
             "patient_id": 7,
@@ -41,11 +41,11 @@ class LoadSaveTest(TestCase):
         with patch("django.core.cache.cache.get", return_value=json.dumps(data)):
             mem = IAminaDeepMemory.load(_make_patient(7))
         self.assertEqual(mem.patient_id, 7)
-        self.assertEqual(mem.food_sensitivities["pizza"], 1.8)
+        self.assertEqual(mem.food_sensitivities, {})
+        self.assertEqual(mem.quarantined_heuristics["food_sensitivities"]["pizza"], 1.8)
         self.assertEqual(mem.relationship_stage, "building")
 
     def test_load_from_db_when_cache_miss(self):
-        import json
         data = {
             "patient_id": 8,
             "significant_events": [],
@@ -82,7 +82,6 @@ class LoadSaveTest(TestCase):
         with patch("django.core.cache.cache.set"), \
              patch("diabetes.models.IAminaDeepMemorySnapshot.objects") as mock_qs:
             mock_qs.update_or_create.side_effect = Exception("DB down")
-            # Should not raise
             mem.save()
 
 
@@ -108,38 +107,44 @@ class RecordEventTest(TestCase):
         for i in range(25):
             mem.record_event("test", f"event {i}")
         self.assertEqual(len(mem.significant_events), 20)
-        # Must keep the most recent ones
         self.assertEqual(mem.significant_events[-1]["description"], "event 24")
         self.assertEqual(mem.significant_events[0]["description"], "event 5")
 
 
-class LearnFoodSensitivityTest(TestCase):
+class LearnFoodSensitivityQuarantineTest(TestCase):
 
-    def test_new_food_stored(self):
+    def test_new_food_is_quarantined_not_activated(self):
         mem = IAminaDeepMemory(patient_id=1)
         mem.learn_food_sensitivity("couscous", 2.1)
-        self.assertIn("couscous", mem.food_sensitivities)
-        self.assertAlmostEqual(mem.food_sensitivities["couscous"], 2.1, places=3)
+        self.assertEqual(mem.food_sensitivities, {})
+        self.assertAlmostEqual(
+            mem.quarantined_heuristics["food_sensitivities"]["couscous"], 2.1, places=3
+        )
 
-    def test_existing_food_ema_update(self):
-        mem = IAminaDeepMemory(patient_id=1)
-        mem.food_sensitivities["pizza"] = 2.0
+    def test_existing_quarantined_food_ema_update(self):
+        mem = IAminaDeepMemory(
+            patient_id=1,
+            quarantined_heuristics={"food_sensitivities": {"pizza": 2.0}},
+        )
         mem.learn_food_sensitivity("pizza", 3.0)
-        # alpha=0.3: 0.3*3.0 + 0.7*2.0 = 0.9 + 1.4 = 2.3
-        self.assertAlmostEqual(mem.food_sensitivities["pizza"], 2.3, places=3)
+        self.assertAlmostEqual(
+            mem.quarantined_heuristics["food_sensitivities"]["pizza"], 2.3, places=3
+        )
+        self.assertEqual(mem.food_sensitivities, {})
 
-    def test_food_name_normalized_lowercase(self):
+    def test_food_name_normalized_lowercase_in_quarantine(self):
         mem = IAminaDeepMemory(patient_id=1)
         mem.learn_food_sensitivity("Couscous", 1.5)
-        self.assertIn("couscous", mem.food_sensitivities)
+        self.assertIn("couscous", mem.quarantined_heuristics["food_sensitivities"])
+        self.assertEqual(mem.food_sensitivities, {})
 
-    def test_multiple_updates_converge(self):
+    def test_multiple_quarantined_updates_converge(self):
         mem = IAminaDeepMemory(patient_id=1)
         mem.learn_food_sensitivity("pain", 1.0)
         for _ in range(20):
             mem.learn_food_sensitivity("pain", 3.0)
-        # After many updates with delta=3, value should be close to 3
-        self.assertGreater(mem.food_sensitivities["pain"], 2.5)
+        self.assertGreater(mem.quarantined_heuristics["food_sensitivities"]["pain"], 2.5)
+        self.assertEqual(mem.food_sensitivities, {})
 
 
 class UpdateStreakTest(TestCase):
@@ -215,7 +220,6 @@ class EvolveRelationshipTest(TestCase):
         self.assertEqual(mem.relationship_stage, "companion")
 
     def test_emotional_signals_boost_progression(self):
-        # 4 interactions + 1 signal = 5, should trigger new→building
         mem = IAminaDeepMemory(patient_id=1, relationship_stage="new", total_interactions=4)
         mem.evolve_relationship(emotional_signals=["discouragement"])
         self.assertEqual(mem.relationship_stage, "building")
