@@ -17,10 +17,10 @@ The executable source is:
 
 ## 2. Truth classes
 
-| Truth kind | Meaning | May persist as patient fact? | May drive clinical decision? |
+| Truth kind | Meaning | May persist as patient fact? | May enter deterministic clinical logic? |
 |---|---|---:|---:|
 | `OBSERVED_FACT` | measured/imported/explicitly recorded observation from an authoritative product source | yes | yes |
-| `USER_CLAIM` | information explicitly reported by the patient but not independently validated | yes, as a claim | no silent promotion |
+| `USER_CLAIM` | information explicitly reported by the patient but not independently validated | yes, as a claim | yes, while remaining explicitly a claim |
 | `DETERMINISTIC_DERIVATION` | KPI/pattern/result produced by approved deterministic logic from authoritative inputs | no, recalculate from source | yes |
 | `PREFERENCE` | patient-selected product preference such as language/presentation choice | yes | no |
 | `CONVERSATIONAL_STATE` | transient relationship/tone/dialogue state | no clinical-fact persistence | no |
@@ -30,9 +30,9 @@ The executable source is:
 
 Patient-fact storage may contain observed facts, explicit user claims and explicit preferences. A deterministic derivation is recomputed from its source data rather than silently materialized as immutable fact. Conversational state and model inference remain outside patient clinical truth.
 
-### Clinical-authority rule
+### Deterministic clinical-input rule
 
-Only authoritative observations and approved deterministic derivations may be used as clinical decision authority. User claims may be displayed and used as reported context but must not be silently upgraded into validated clinical facts. Generative output is never clinical authority.
+Observed facts, explicitly labeled patient claims and approved deterministic derivations may be consumed by deterministic clinical/safety logic. A patient-reported symptom can therefore inform deterministic triage without being promoted into a validated diagnosis or independently observed fact. Generative output and conversational state never become clinical decision inputs.
 
 ## 3. Capability authority
 
@@ -89,9 +89,9 @@ P0.2 does **not** claim those legacy snapshots are already migrated. Their class
 
 Tests must prove at minimum that:
 
-- `MODEL_INFERENCE` cannot be persisted as patient fact;
-- `USER_CLAIM` remains distinct from validated clinical authority;
-- deterministic derivations can drive approved logic but are not immutable patient facts;
+- `MODEL_INFERENCE` cannot be persisted as patient fact or enter deterministic clinical logic;
+- `USER_CLAIM` stays explicitly labeled while remaining available to deterministic triage/domain logic;
+- deterministic derivations can feed approved logic but are not immutable patient facts;
 - generative models cannot classify emergencies;
 - diagnosis, prescription, dose calculation, treatment optimization and treatment change remain disabled;
 - user-claim/preference writes remain confirmation-gated;
