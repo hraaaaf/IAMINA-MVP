@@ -1,0 +1,72 @@
+name: Audit populated dashboard
+
+on:
+  push:
+    branches: [chore/audit-populated-dashboard]
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+
+      - name: Get Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Build debug web
+        working-directory: frontend
+        run: flutter build web --debug
+
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium --with-deps
+
+      - name: Serve web build
+        working-directory: frontend/build/web
+        run: |
+          python3 -m http.server 8080 > /tmp/iamina-http.log 2>&1 &
+          echo $! > /tmp/iamina-http.pid
+
+      - name: Capture populated FR and AR dashboards
+        run: |
+          mkdir -p audit-populated
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            for (const lang of ['fr','ar']) {
+              const context = await browser.newContext({viewport:{width:390,height:844}, deviceScaleFactor:1});
+              const page = await context.newPage();
+              const errors=[];
+              page.on('pageerror', e => errors.push(String(e)));
+              await page.goto(`http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#/dashboard`, {waitUntil:'networkidle'});
+              await page.waitForTimeout(8000);
+              await page.screenshot({path:`audit-populated/${lang}-dashboard-populated.png`, fullPage:false});
+              fs.writeFileSync(`audit-populated/${lang}-errors.json`, JSON.stringify(errors,null,2));
+              await context.close();
+            }
+            await browser.close();
+          })();
+          NODE
+
+      - name: Upload populated dashboard evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: populated-dashboard-audit
+          path: audit-populated/
+          if-no-files-found: error
+          retention-days: 7
