@@ -86,7 +86,6 @@ class _HeroContextual extends StatelessWidget {
           unit: unit,
           low: low,
           high: high,
-          range: range,
         ),
       _HeroMode.insight => _HeroInsight(
           logs: logs,
