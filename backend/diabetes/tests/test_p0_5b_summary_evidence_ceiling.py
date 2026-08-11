@@ -2,7 +2,6 @@ from companion.parser import parse_llm_json
 from companion.prompts import SUMMARY_USER
 from core.epistemic_safety import violates_epistemic_claim_policy
 
-
 _DOCTOR_FIELDS = ["narrative", "key_insight", "doctor_brief"]
 
 
