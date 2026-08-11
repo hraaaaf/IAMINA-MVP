@@ -26,9 +26,10 @@ void main() {
       final source = _read('lib/features/journal/journal_screen.dart');
       expect(source, contains('(viewportWidth - 980) / 2'));
       expect(source, contains('viewportWidth < 700'));
-      expect(source, contains('BoxConstraints(maxWidth: 560)'));
-      expect(source, contains('ClinicalCard('));
+      expect(source, contains('BoxConstraints(maxWidth: 720)'));
+      expect(source, contains('AminaFirstUsePanel('));
       expect(source, contains('AlignmentDirectional.topCenter'));
+      expect(source, contains('PersonalResponseSection(unit: unit)'));
     },
   );
 

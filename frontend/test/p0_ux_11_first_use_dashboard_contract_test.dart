@@ -39,11 +39,16 @@ void main() {
 
   test('desktop and short-height first-use layouts are explicit', () {
     final source = _read('lib/features/dashboard/dashboard_screen.dart');
+    final firstUse = _read('lib/core/widgets/first_use_panel.dart');
 
-    expect(source, contains('wideFirstUse'));
-    expect(source, contains('constraints.maxWidth >= 720'));
-    expect(source, contains('compactHeight'));
-    expect(source, contains('if (!compactHeight)'));
-    expect(source, contains('AlignmentDirectional'));
+    expect(source, contains('BoxConstraints('));
+    expect(source, contains('maxWidth: 900'));
+    expect(firstUse, contains('constraints.maxWidth >= 720'));
+    expect(
+      firstUse,
+      contains('shortViewport = MediaQuery.sizeOf(context).height <= 600'),
+    );
+    expect(firstUse, contains('final dense = compact || shortViewport'));
+    expect(firstUse, contains('EdgeInsetsDirectional.fromSTEB'));
   });
 }
