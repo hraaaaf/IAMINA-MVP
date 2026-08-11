@@ -13,7 +13,7 @@ The legacy `IAminaMemory` and `IAminaDeepMemory` snapshots predate the executabl
 
 Because the old snapshot has no field provenance, a later load cannot prove whether an emotional/tone value came from deterministic keyword handling or model output.
 
-A separate legacy food-response heuristic stored `food_sensitivities` from a single-reading/approximate-baseline rule. That value is not an approved deterministic clinical derivation and must not gain clinical authority merely because it remains readable for compatibility.
+Legacy `food_sensitivities` came from a single-reading/approximate-baseline food-response heuristic, while legacy `peak_hours` is likewise compatibility-era heuristic state without an approved clinical derivation contract. Neither field may gain deterministic clinical authority merely because it remains readable for compatibility.
 
 ## P0.4 contract
 
@@ -56,7 +56,7 @@ Their legacy origin cannot distinguish deterministic keyword state from generati
 
 Direct assignments that mimic legacy model-output paths therefore cannot become durable memory merely because another code path later calls `save()`.
 
-### 5. Legacy food-response heuristic is quarantine-only
+### 5. Legacy heuristics remain non-clinical
 
 `HEURISTIC_INFERENCE` is a distinct truth class. It is neither a patient fact nor an allowed deterministic clinical input.
 
@@ -66,21 +66,24 @@ The compatibility method `learn_food_sensitivity()` may remain temporarily calla
 
 The active authority paths stay disabled:
 
-- `IAmina.on_log()` does not feed the legacy heuristic;
+- `IAmina.on_log()` does not feed the legacy food heuristic;
 - `compute_state()` does not derive a meal-related `next_intention` from it;
 - quarantine data cannot enter deterministic clinical logic through the truth contract.
 
-This preserves historical bytes for audit/backward compatibility without representing the heuristic as an approved clinical pattern.
+Legacy `peak_hours` remains structurally readable for compatibility but is labelled `HEURISTIC_INFERENCE` in v3. The exact v2 marker that briefly labelled it `DETERMINISTIC_DERIVATION` is accepted only as a migration input; a subsequent v3 encode/save writes corrected heuristic provenance. Arbitrary mismatched provenance still fails closed.
+
+This preserves historical bytes for audit/backward compatibility without representing either heuristic as an approved clinical pattern or clinical decision input.
 
 ## Executable evidence
 
-`backend/diabetes/tests/test_memory_truth_migration.py` and companion regression tests prove:
+`backend/diabetes/tests/test_memory_truth_migration.py`, `backend/core/tests/test_p0_4_peak_hours_provenance.py` and companion regression tests prove:
 
 - v3 schema/version/provenance;
 - typed field provenance through `TruthKind`;
 - v3 round-trip behavior for approved fields;
 - P0.4 v2 → v3 food-heuristic migration;
 - legacy flat → v3 food-heuristic migration;
+- v2 → v3 `peak_hours` compatibility with corrected `HEURISTIC_INFERENCE` provenance;
 - provenance tamper fail-closed behavior;
 - unknown-version fail-closed behavior;
 - patient identity cannot be overridden by a snapshot;
@@ -88,9 +91,10 @@ This preserves historical bytes for audit/backward compatibility without represe
 - direct model-like memory mutations do not persist;
 - deterministic keyword emotion does persist with explicit provenance;
 - `HEURISTIC_INFERENCE` cannot persist as patient fact or enter deterministic clinical logic;
-- the legacy learning API and direct active mutations end in quarantine only;
+- the legacy food learning API and direct active mutations end in quarantine only;
 - historical food heuristic data does not drive `next_intention`;
-- active `on_log()` does not feed the legacy food heuristic.
+- active `on_log()` does not feed the legacy food heuristic;
+- historical `peak_hours` never receives approved deterministic clinical authority.
 
 ## Acceptance gates
 
