@@ -106,7 +106,10 @@ class _CVCard extends StatelessWidget {
           if (logs.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              l10n.dashboardMeasurementCoverage(logs.length, daysWithData),
+              l10n.dashboardMeasurementCoverage(
+                logs.length,
+                daysWithData,
+              ),
               style: TextStyle(
                 fontSize: 11,
                 color: AminaTheme.textSecondary(context),

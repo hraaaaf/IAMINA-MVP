@@ -18,11 +18,11 @@ class GlucoseReadingPreview {
 
   factory GlucoseReadingPreview.fromJson(Map<String, dynamic> j) =>
       GlucoseReadingPreview(
-        valueMgdl: (j['value_mgdl'] as num).toDouble(),
-        timestamp: j['timestamp'] as String?,
-        context: j['context'] as String?,
+        valueMgdl:     (j['value_mgdl']     as num).toDouble(),
+        timestamp:     j['timestamp']       as String?,
+        context:       j['context']         as String?,
         originalValue: (j['original_value'] as num?)?.toDouble(),
-        originalUnit: j['original_unit'] as String?,
+        originalUnit:  j['original_unit']   as String?,
       );
 }
 
@@ -57,15 +57,15 @@ class LabValuesPreview {
       creatinineUmol == null;
 
   factory LabValuesPreview.fromJson(Map<String, dynamic> j) => LabValuesPreview(
-    hba1cPct: (j['hba1c_pct'] as num?)?.toDouble(),
-    fastingGlucoseMgdl: (j['fasting_glucose_mgdl'] as num?)?.toDouble(),
-    totalCholesterolMgdl: (j['total_cholesterol_mgdl'] as num?)?.toDouble(),
-    hdlMgdl: (j['hdl_mgdl'] as num?)?.toDouble(),
-    ldlMgdl: (j['ldl_mgdl'] as num?)?.toDouble(),
-    triglyceridesMgdl: (j['triglycerides_mgdl'] as num?)?.toDouble(),
-    creatinineUmol: (j['creatinine_umol'] as num?)?.toDouble(),
-    reportDate: j['report_date'] as String?,
-  );
+        hba1cPct:             (j['hba1c_pct']               as num?)?.toDouble(),
+        fastingGlucoseMgdl:   (j['fasting_glucose_mgdl']    as num?)?.toDouble(),
+        totalCholesterolMgdl: (j['total_cholesterol_mgdl']  as num?)?.toDouble(),
+        hdlMgdl:              (j['hdl_mgdl']                as num?)?.toDouble(),
+        ldlMgdl:              (j['ldl_mgdl']                as num?)?.toDouble(),
+        triglyceridesMgdl:    (j['triglycerides_mgdl']      as num?)?.toDouble(),
+        creatinineUmol:       (j['creatinine_umol']         as num?)?.toDouble(),
+        reportDate:            j['report_date']             as String?,
+      );
 }
 
 class MedicationPreview {
@@ -75,10 +75,9 @@ class MedicationPreview {
 
   const MedicationPreview({required this.name, this.dose, this.frequency});
 
-  factory MedicationPreview.fromJson(Map<String, dynamic> j) =>
-      MedicationPreview(
-        name: j['name'] as String,
-        dose: j['dose'] as String?,
+  factory MedicationPreview.fromJson(Map<String, dynamic> j) => MedicationPreview(
+        name:      j['name']      as String,
+        dose:      j['dose']      as String?,
         frequency: j['frequency'] as String?,
       );
 }
@@ -86,15 +85,15 @@ class MedicationPreview {
 /// Returned by POST /api/v1/documents/ingest (confirm=false).
 /// Nothing is persisted yet — this is the preview for user confirmation.
 class PulperPreview {
-  final String batchId;
-  final String documentType;
-  final String sourceFormat;
-  final double confidence;
-  final bool needsReview;
+  final String   batchId;
+  final String   documentType;
+  final String   sourceFormat;
+  final double   confidence;
+  final bool     needsReview;
   final List<GlucoseReadingPreview> glucoseReadings;
-  final LabValuesPreview labValues;
-  final List<MedicationPreview> medications;
-  final String clinicalNotes;
+  final LabValuesPreview            labValues;
+  final List<MedicationPreview>     medications;
+  final String   clinicalNotes;
   final List<String> warnings;
   final List<String> errors;
 
@@ -119,32 +118,31 @@ class PulperPreview {
       clinicalNotes.isNotEmpty;
 
   factory PulperPreview.fromJson(Map<String, dynamic> j) => PulperPreview(
-    batchId: j['batch_id'] as String,
-    documentType: j['document_type'] as String,
-    sourceFormat: j['source_format'] as String,
-    confidence: (j['confidence'] as num).toDouble(),
-    needsReview: j['needs_review'] as bool,
-    glucoseReadings: (j['glucose_readings'] as List? ?? [])
-        .map((e) => GlucoseReadingPreview.fromJson(e as Map<String, dynamic>))
-        .toList(),
-    labValues: LabValuesPreview.fromJson(
-      (j['lab_values'] as Map<String, dynamic>?) ?? {},
-    ),
-    medications: (j['medications'] as List? ?? [])
-        .map((e) => MedicationPreview.fromJson(e as Map<String, dynamic>))
-        .toList(),
-    clinicalNotes: j['clinical_notes'] as String? ?? '',
-    warnings: List<String>.from(j['warnings'] ?? []),
-    errors: List<String>.from(j['errors'] ?? []),
-  );
+        batchId:       j['batch_id']      as String,
+        documentType:  j['document_type'] as String,
+        sourceFormat:  j['source_format'] as String,
+        confidence:    (j['confidence']   as num).toDouble(),
+        needsReview:   j['needs_review']  as bool,
+        glucoseReadings: (j['glucose_readings'] as List? ?? [])
+            .map((e) => GlucoseReadingPreview.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        labValues:     LabValuesPreview.fromJson(
+            (j['lab_values'] as Map<String, dynamic>?) ?? {}),
+        medications:   (j['medications'] as List? ?? [])
+            .map((e) => MedicationPreview.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        clinicalNotes: j['clinical_notes'] as String? ?? '',
+        warnings:      List<String>.from(j['warnings'] ?? []),
+        errors:        List<String>.from(j['errors']   ?? []),
+      );
 }
 
 /// Returned by POST /api/v1/documents/confirm/{batchId}.
 class PulperConfirmResult {
-  final bool ok;
-  final int? labReportId;
-  final int glucoseReadingsSaved;
-  final int glucoseDuplicates;
+  final bool   ok;
+  final int?   labReportId;
+  final int    glucoseReadingsSaved;
+  final int    glucoseDuplicates;
   final List<String> errors;
 
   const PulperConfirmResult({
@@ -157,23 +155,23 @@ class PulperConfirmResult {
 
   factory PulperConfirmResult.fromJson(Map<String, dynamic> j) =>
       PulperConfirmResult(
-        ok: j['ok'] as bool,
-        labReportId: j['lab_report_id'] as int?,
-        glucoseReadingsSaved: (j['glucose_readings_saved'] as num).toInt(),
-        glucoseDuplicates: (j['glucose_duplicates'] as num).toInt(),
-        errors: List<String>.from(j['errors'] ?? []),
+        ok:                    j['ok']                      as bool,
+        labReportId:           j['lab_report_id']           as int?,
+        glucoseReadingsSaved:  (j['glucose_readings_saved'] as num).toInt(),
+        glucoseDuplicates:     (j['glucose_duplicates']     as num).toInt(),
+        errors:                List<String>.from(j['errors'] ?? []),
       );
 }
 
 /// Row from GET /api/v1/documents/
 class LabReportSummary {
-  final int id;
+  final int    id;
   final String documentType;
   final String sourceFormat;
   final String? reportDate;
   final double? hba1cPct;
   final double? fastingGlucoseMgdl;
-  final int glucoseReadingsImported;
+  final int    glucoseReadingsImported;
   final double confidence;
   final String clinicalNotes;
   final String createdAt;
@@ -192,15 +190,15 @@ class LabReportSummary {
   });
 
   factory LabReportSummary.fromJson(Map<String, dynamic> j) => LabReportSummary(
-    id: (j['id'] as num).toInt(),
-    documentType: j['document_type'] as String,
-    sourceFormat: j['source_format'] as String,
-    reportDate: j['report_date'] as String?,
-    hba1cPct: (j['hba1c_pct'] as num?)?.toDouble(),
-    fastingGlucoseMgdl: (j['fasting_glucose_mgdl'] as num?)?.toDouble(),
-    glucoseReadingsImported: (j['glucose_readings_imported'] as num).toInt(),
-    confidence: (j['confidence'] as num).toDouble(),
-    clinicalNotes: j['clinical_notes'] as String? ?? '',
-    createdAt: j['created_at'] as String,
-  );
+        id:                       (j['id']   as num).toInt(),
+        documentType:              j['document_type']  as String,
+        sourceFormat:              j['source_format']  as String,
+        reportDate:                j['report_date']    as String?,
+        hba1cPct:                 (j['hba1c_pct']      as num?)?.toDouble(),
+        fastingGlucoseMgdl:       (j['fasting_glucose_mgdl'] as num?)?.toDouble(),
+        glucoseReadingsImported:  (j['glucose_readings_imported'] as num).toInt(),
+        confidence:               (j['confidence'] as num).toDouble(),
+        clinicalNotes:             j['clinical_notes'] as String? ?? '',
+        createdAt:                 j['created_at']    as String,
+      );
 }

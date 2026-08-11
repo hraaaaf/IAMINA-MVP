@@ -21,18 +21,12 @@ AppDatabase _openDb() => AppDatabase(NativeDatabase.memory());
 
 class _FakeConsentService extends Fake implements ConsentService {
   bool _declined = false;
-  @override
-  bool get hasConsent => false;
-  @override
-  bool get hasDeclinedLocally => _declined;
-  @override
-  void declineLocally() => _declined = true;
-  @override
-  void addListener(VoidCallback listener) {}
-  @override
-  void removeListener(VoidCallback listener) {}
-  @override
-  void dispose() {}
+  @override bool get hasConsent => false;
+  @override bool get hasDeclinedLocally => _declined;
+  @override void declineLocally() => _declined = true;
+  @override void addListener(VoidCallback listener) {}
+  @override void removeListener(VoidCallback listener) {}
+  @override void dispose() {}
 }
 
 Widget _makeApp({
@@ -46,7 +40,10 @@ Widget _makeApp({
   final router = GoRouter(
     initialLocation: '/consent',
     routes: [
-      GoRoute(path: '/consent', builder: (_, __) => const ConsentScreen()),
+      GoRoute(
+        path: '/consent',
+        builder: (_, __) => const ConsentScreen(),
+      ),
       GoRoute(
         path: '/dashboard',
         builder: (_, __) => const Scaffold(body: Text('Dashboard')),
@@ -111,49 +108,49 @@ void main() {
   });
 
   testWidgets('renders without error (smoke test)', (tester) async {
-    await tester.pumpWidget(
-      _makeApp(db: db, apiClient: mockApi, consentService: consentService),
-    );
+    await tester.pumpWidget(_makeApp(
+      db: db, apiClient: mockApi, consentService: consentService,
+    ));
     await tester.pumpAndSettle();
     expect(find.byType(ConsentScreen), findsOneWidget);
   });
 
   testWidgets('shows shield icon in header', (tester) async {
-    await tester.pumpWidget(
-      _makeApp(db: db, apiClient: mockApi, consentService: consentService),
-    );
+    await tester.pumpWidget(_makeApp(
+      db: db, apiClient: mockApi, consentService: consentService,
+    ));
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.shield_outlined), findsOneWidget);
   });
 
   testWidgets('shows accept button', (tester) async {
-    await tester.pumpWidget(
-      _makeApp(db: db, apiClient: mockApi, consentService: consentService),
-    );
+    await tester.pumpWidget(_makeApp(
+      db: db, apiClient: mockApi, consentService: consentService,
+    ));
     await tester.pumpAndSettle();
     expect(find.text('Accepter et continuer'), findsOneWidget);
   });
 
   testWidgets('shows decline button', (tester) async {
-    await tester.pumpWidget(
-      _makeApp(db: db, apiClient: mockApi, consentService: consentService),
-    );
+    await tester.pumpWidget(_makeApp(
+      db: db, apiClient: mockApi, consentService: consentService,
+    ));
     await tester.pumpAndSettle();
     expect(find.text('Continuer sans IA'), findsOneWidget);
   });
 
   testWidgets('shows lock icon in privacy footnote', (tester) async {
-    await tester.pumpWidget(
-      _makeApp(db: db, apiClient: mockApi, consentService: consentService),
-    );
+    await tester.pumpWidget(_makeApp(
+      db: db, apiClient: mockApi, consentService: consentService,
+    ));
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.lock_outline), findsOneWidget);
   });
 
   testWidgets('shows three data point emojis', (tester) async {
-    await tester.pumpWidget(
-      _makeApp(db: db, apiClient: mockApi, consentService: consentService),
-    );
+    await tester.pumpWidget(_makeApp(
+      db: db, apiClient: mockApi, consentService: consentService,
+    ));
     await tester.pumpAndSettle();
     expect(find.textContaining('📊'), findsOneWidget);
     expect(find.textContaining('🍽️'), findsOneWidget);
@@ -161,9 +158,9 @@ void main() {
   });
 
   testWidgets('tapping decline marks service declined', (tester) async {
-    await tester.pumpWidget(
-      _makeApp(db: db, apiClient: mockApi, consentService: consentService),
-    );
+    await tester.pumpWidget(_makeApp(
+      db: db, apiClient: mockApi, consentService: consentService,
+    ));
     await tester.pumpAndSettle();
 
     final declineBtn = find.text('Continuer sans IA');
@@ -176,9 +173,9 @@ void main() {
   });
 
   testWidgets('accept button calls giveConsent on ApiClient', (tester) async {
-    await tester.pumpWidget(
-      _makeApp(db: db, apiClient: mockApi, consentService: consentService),
-    );
+    await tester.pumpWidget(_makeApp(
+      db: db, apiClient: mockApi, consentService: consentService,
+    ));
     await tester.pumpAndSettle();
 
     final acceptBtn = find.text('Accepter et continuer');
@@ -194,9 +191,9 @@ void main() {
     final completer = Completer<bool>();
     when(() => mockApi.giveConsent()).thenAnswer((_) => completer.future);
 
-    await tester.pumpWidget(
-      _makeApp(db: db, apiClient: mockApi, consentService: consentService),
-    );
+    await tester.pumpWidget(_makeApp(
+      db: db, apiClient: mockApi, consentService: consentService,
+    ));
     await tester.pumpAndSettle();
 
     final acceptBtn = find.text('Accepter et continuer');

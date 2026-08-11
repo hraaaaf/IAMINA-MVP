@@ -17,9 +17,9 @@ void _mockPlatformChannels() {
   const ttsChannel = MethodChannel('flutter_tts');
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(ttsChannel, (call) async {
-        if (call.method == 'getLanguages') return <dynamic>['fr-FR', 'ar'];
-        return null;
-      });
+    if (call.method == 'getLanguages') return <dynamic>['fr-FR', 'ar'];
+    return null;
+  });
 
   const recordChannel = MethodChannel('com.llfbandit.record/messages');
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -53,7 +53,10 @@ Widget _makeChat({
           Provider<AppDatabase>.value(value: db),
           Provider<ApiClient>.value(value: apiClient),
         ],
-        child: AminaChatView(onClose: () {}, initialMessage: initialMessage),
+        child: AminaChatView(
+          onClose: () {},
+          initialMessage: initialMessage,
+        ),
       ),
     ),
   );
@@ -72,9 +75,8 @@ void main() {
     db = _openDb();
     mockApi = MockApiClient();
     // Default: chatStream returns empty stream
-    when(
-      () => mockApi.chatStream(any()),
-    ).thenAnswer((_) => const Stream.empty());
+    when(() => mockApi.chatStream(any()))
+        .thenAnswer((_) => const Stream.empty());
   });
 
   tearDown(() async {
@@ -111,39 +113,33 @@ void main() {
     expect(find.textContaining('Bonjour'), findsOneWidget);
   });
 
-  testWidgets('shows suggested prompts when no user message sent', (
-    tester,
-  ) async {
+  testWidgets('shows suggested prompts when no user message sent', (tester) async {
     await tester.pumpWidget(_makeChat(db: db, apiClient: mockApi));
     await _settle(tester);
 
     // At least one of the fallback suggestions should be visible
     expect(
-      find
-              .textContaining('Comment se passe ma semaine')
-              .evaluate()
-              .isNotEmpty ||
-          find.textContaining('hypos').evaluate().isNotEmpty ||
-          find.textContaining('Éviter').evaluate().isNotEmpty,
+      find.textContaining('Comment se passe ma semaine')
+          .evaluate().isNotEmpty ||
+      find.textContaining('hypos').evaluate().isNotEmpty ||
+      find.textContaining('Éviter').evaluate().isNotEmpty,
       isTrue,
     );
   });
 
   testWidgets('close button is present and tappable', (tester) async {
     bool closed = false;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: MultiProvider(
-            providers: [
-              Provider<AppDatabase>.value(value: db),
-              Provider<ApiClient>.value(value: mockApi),
-            ],
-            child: AminaChatView(onClose: () => closed = true),
-          ),
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: MultiProvider(
+          providers: [
+            Provider<AppDatabase>.value(value: db),
+            Provider<ApiClient>.value(value: mockApi),
+          ],
+          child: AminaChatView(onClose: () => closed = true),
         ),
       ),
-    );
+    ));
     await _settle(tester);
 
     await tester.tap(find.byIcon(Icons.close));
@@ -169,9 +165,8 @@ void main() {
   // ── Sending a message ────────────────────────────────────────────────────────
 
   testWidgets('typing a message and sending adds user bubble', (tester) async {
-    when(
-      () => mockApi.chatStream(any()),
-    ).thenAnswer((_) => Stream.fromIterable(['Voici ma réponse.']));
+    when(() => mockApi.chatStream(any()))
+        .thenAnswer((_) => Stream.fromIterable(['Voici ma réponse.']));
 
     await tester.pumpWidget(_makeChat(db: db, apiClient: mockApi));
     await _settle(tester);
@@ -188,12 +183,9 @@ void main() {
     expect(find.text('Comment va ma glycémie ?'), findsOneWidget);
   });
 
-  testWidgets('suggested prompts disappear after first user message', (
-    tester,
-  ) async {
-    when(
-      () => mockApi.chatStream(any()),
-    ).thenAnswer((_) => Stream.fromIterable(['OK']));
+  testWidgets('suggested prompts disappear after first user message', (tester) async {
+    when(() => mockApi.chatStream(any()))
+        .thenAnswer((_) => Stream.fromIterable(['OK']));
 
     await tester.pumpWidget(_makeChat(db: db, apiClient: mockApi));
     await _settle(tester);
@@ -201,10 +193,7 @@ void main() {
     // At least ONE suggestion chip is visible before any user message.
     // (The exact set depends on IAmina's welcome message — any chip qualifies.)
     final promptsBefore =
-        find
-            .textContaining('Comment se passe ma semaine')
-            .evaluate()
-            .isNotEmpty ||
+        find.textContaining('Comment se passe ma semaine').evaluate().isNotEmpty ||
         find.textContaining('Éviter').evaluate().isNotEmpty ||
         find.textContaining('Pourquoi ce pic').evaluate().isNotEmpty ||
         find.textContaining('Mon meilleur').evaluate().isNotEmpty ||
@@ -218,50 +207,40 @@ void main() {
 
     // ALL suggestion chips must be gone after a user message is sent
     expect(find.textContaining('Comment se passe ma semaine'), findsNothing);
-    expect(find.textContaining('Pourquoi ce pic'), findsNothing);
-    expect(find.textContaining('Mon meilleur'), findsNothing);
+    expect(find.textContaining('Pourquoi ce pic'),             findsNothing);
+    expect(find.textContaining('Mon meilleur'),                findsNothing);
   });
 
   // ── History loading ──────────────────────────────────────────────────────────
 
   testWidgets('loads and shows existing chat history from DB', (tester) async {
     // Seed the DB with a prior conversation
-    await db
-        .into(db.chatMessages)
-        .insert(
-          ChatMessagesCompanion.insert(
-            conversationId: 'default',
-            role: 'assistant',
-            message: 'Salut, je suis IAmina !',
-            createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
-          ),
-        );
-    await db
-        .into(db.chatMessages)
-        .insert(
-          ChatMessagesCompanion.insert(
-            conversationId: 'default',
-            role: 'user',
-            message: 'Mon TIR ?',
-            createdAt: DateTime.now().subtract(const Duration(minutes: 4)),
-          ),
-        );
+    await db.into(db.chatMessages).insert(ChatMessagesCompanion.insert(
+      conversationId: 'default',
+      role: 'assistant',
+      message: 'Salut, je suis IAmina !',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
+    ));
+    await db.into(db.chatMessages).insert(ChatMessagesCompanion.insert(
+      conversationId: 'default',
+      role: 'user',
+      message: 'Mon TIR ?',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 4)),
+    ));
 
     await tester.pumpWidget(_makeChat(db: db, apiClient: mockApi));
     await _settle(tester);
 
     expect(find.text('Salut, je suis IAmina !'), findsOneWidget);
-    expect(find.text('Mon TIR ?'), findsOneWidget);
+    expect(find.text('Mon TIR ?'),               findsOneWidget);
   });
 
   testWidgets('initialMessage pre-fills text field', (tester) async {
-    await tester.pumpWidget(
-      _makeChat(
-        db: db,
-        apiClient: mockApi,
-        initialMessage: 'Mon pic glycémique',
-      ),
-    );
+    await tester.pumpWidget(_makeChat(
+      db: db,
+      apiClient: mockApi,
+      initialMessage: 'Mon pic glycémique',
+    ));
     await _settle(tester);
 
     final tf = tester.widget<TextField>(find.byType(TextField));

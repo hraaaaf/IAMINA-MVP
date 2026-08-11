@@ -17,9 +17,9 @@ void main() {
     ];
 
     for (final locale in <String>['fr', 'en', 'ar']) {
-      final data =
-          jsonDecode(File('lib/l10n/app_$locale.arb').readAsStringSync())
-              as Map<String, dynamic>;
+      final data = jsonDecode(
+        File('lib/l10n/app_$locale.arb').readAsStringSync(),
+      ) as Map<String, dynamic>;
       for (final key in keys) {
         expect(data[key], isA<String>(), reason: '$locale is missing $key');
         expect((data[key] as String).trim(), isNotEmpty);

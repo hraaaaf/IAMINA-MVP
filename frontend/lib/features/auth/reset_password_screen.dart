@@ -31,15 +31,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   Future<void> _submit() async {
     final password = _passwordController.text;
     if (!_hasValidLink) {
-      setState(
-        () => _error = 'Lien de réinitialisation invalide ou incomplet.',
-      );
+      setState(() => _error = 'Lien de réinitialisation invalide ou incomplet.');
       return;
     }
     if (password.length < 8) {
-      setState(
-        () => _error = 'Le mot de passe doit contenir au moins 8 caractères.',
-      );
+      setState(() => _error = 'Le mot de passe doit contenir au moins 8 caractères.');
       return;
     }
     if (password != _confirmController.text) {
@@ -53,16 +49,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     });
     try {
       await context.read<AuthService>().confirmPasswordReset(
-        uid: widget.uid,
-        token: widget.token,
-        newPassword: password,
-      );
+            uid: widget.uid,
+            token: widget.token,
+            newPassword: password,
+          );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Mot de passe réinitialisé. Vous pouvez vous connecter.',
-          ),
+          content: Text('Mot de passe réinitialisé. Vous pouvez vous connecter.'),
           behavior: SnackBarBehavior.floating,
         ),
       );

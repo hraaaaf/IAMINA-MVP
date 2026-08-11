@@ -149,13 +149,13 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
       body: ResponsiveContentSurface(
         maxWidth: 980,
         child: SafeArea(
-          child: _loading
-              ? _buildLoading()
-              : switch (_phase) {
-                  _Phase.pick => _buildPick(),
-                  _Phase.preview => _buildPreview(),
-                  _Phase.done => _buildDone(),
-                },
+        child: _loading
+            ? _buildLoading()
+            : switch (_phase) {
+                _Phase.pick => _buildPick(),
+                _Phase.preview => _buildPreview(),
+                _Phase.done => _buildDone(),
+              },
         ),
       ),
     );
@@ -168,10 +168,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
     return LayoutBuilder(
       builder: (context, constraints) => SingleChildScrollView(
         key: const ValueKey('document-import-pick-scroll'),
-        padding: EdgeInsets.symmetric(
-          horizontal: compactHeight ? 20 : 24,
-          vertical: verticalPadding,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: compactHeight ? 20 : 24, vertical: verticalPadding),
         child: ConstrainedBox(
           constraints: BoxConstraints(
             minHeight: constraints.maxHeight > verticalPadding * 2
@@ -218,9 +215,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AminaTheme.teal600,
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(
-                      vertical: compactHeight ? 13 : 16,
-                    ),
+                    padding: EdgeInsets.symmetric(vertical: compactHeight ? 13 : 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -687,11 +682,7 @@ class _DocumentImportIcon extends StatelessWidget {
         gradient: AminaTheme.heroGradient,
         shape: BoxShape.circle,
       ),
-      child: Icon(
-        Icons.upload_file,
-        color: Colors.white,
-        size: compactHeight ? 40 : 48,
-      ),
+      child: Icon(Icons.upload_file, color: Colors.white, size: compactHeight ? 40 : 48),
     );
   }
 }

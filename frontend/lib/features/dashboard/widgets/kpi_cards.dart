@@ -44,9 +44,7 @@ class _MetricRow extends StatelessWidget {
             child: _GMICard(logs: logs, prevLogs: prevLogs, range: range),
           ),
           const SizedBox(width: 14),
-          Expanded(
-            child: _CVCard(logs: logs, prevLogs: prevLogs),
-          ),
+          Expanded(child: _CVCard(logs: logs, prevLogs: prevLogs)),
         ],
       );
     }
@@ -315,30 +313,30 @@ class _LegendDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-    children: [
-      Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      ),
-      const SizedBox(width: 5),
-      Expanded(
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: AminaTheme.textSecondary(context),
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
-        ),
-      ),
-      Text(
-        value,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: AminaTheme.textPrimary(context),
-        ),
-      ),
-    ],
-  );
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: AminaTheme.textSecondary(context),
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AminaTheme.textPrimary(context),
+            ),
+          ),
+        ],
+      );
 }

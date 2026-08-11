@@ -12,22 +12,11 @@ class _HeroBadge extends StatelessWidget {
       color: Colors.white.withValues(alpha: 0.16),
       borderRadius: BorderRadius.circular(99),
     ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.auto_awesome, color: Colors.white, size: 10),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.12,
-          ),
-        ),
-      ],
-    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      const Icon(Icons.auto_awesome, color: Colors.white, size: 10),
+      const SizedBox(width: 6),
+      Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.12)),
+    ]),
   );
 }
 
@@ -37,18 +26,8 @@ class _HeroChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(99),
-    ),
-    child: Text(
-      label,
-      style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.9),
-        fontSize: 11,
-        fontWeight: FontWeight.w500,
-      ),
-    ),
+    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(99)),
+    child: Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 11, fontWeight: FontWeight.w500)),
   );
 }
 
@@ -64,22 +43,9 @@ class _HeroFilledBtn extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(99),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.18),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 12, offset: const Offset(0, 4))],
       ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: AminaTheme.teal700,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
+      child: Text(label, style: const TextStyle(color: AminaTheme.teal700, fontSize: 12, fontWeight: FontWeight.w700)),
     ),
   );
 }
@@ -98,14 +64,7 @@ class _HeroOutlineBtn extends StatelessWidget {
         border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
         borderRadius: BorderRadius.circular(99),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.9),
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      child: Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.w600)),
     ),
   );
 }
@@ -123,7 +82,6 @@ class _DotsPainter extends CustomPainter {
       }
     }
   }
-
   @override
   bool shouldRepaint(_DotsPainter _) => false;
 }

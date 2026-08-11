@@ -30,17 +30,14 @@ void main() {
     expect(fields.containsKey('fatigue_level'), isFalse);
   });
 
-  test(
-    'explicit legacy fatigue remains synchronized without fabricating ok',
-    () {
-      final fields = journalContextFieldsForSync(
-        isSick: false,
-        isStressed: false,
-        isActive: false,
-        sleepQuality: null,
-        fatigueLevel: 2,
-      );
-      expect(fields, {'fatigue_level': 'tired'});
-    },
-  );
+  test('explicit legacy fatigue remains synchronized without fabricating ok', () {
+    final fields = journalContextFieldsForSync(
+      isSick: false,
+      isStressed: false,
+      isActive: false,
+      sleepQuality: null,
+      fatigueLevel: 2,
+    );
+    expect(fields, {'fatigue_level': 'tired'});
+  });
 }
