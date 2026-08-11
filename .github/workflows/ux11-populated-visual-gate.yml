@@ -41,7 +41,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add frontend/lib/features/dashboard/dashboard_convergent_screen.dart frontend/lib/features/navigation/main_shell.dart frontend/lib/modules/diabetes_module.dart frontend/test/p0_real_actions_contract_test.dart frontend/test/p0_mobile_import_navigation_test.dart
+          git add frontend/lib/features/dashboard/dashboard_convergent_screen.dart frontend/lib/features/navigation/main_shell.dart frontend/lib/modules/diabetes_module.dart frontend/test/p0_real_actions_contract_test.dart frontend/test/p0_mobile_import_navigation_test.dart frontend/test/ux_5_glass_mobile_nav_contract_test.dart
           git diff --cached --stat
           git commit -m 'feat(ux): converge dashboard to approved mockup proportions' || true
           git push origin HEAD:ux/11-dashboard-action-parity
@@ -120,7 +120,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ux11-populated-visual-parity-captures-v2
+          name: ux11-populated-visual-parity-captures-v3
           path: /tmp/ux11-populated
           retention-days: 14
           if-no-files-found: error
