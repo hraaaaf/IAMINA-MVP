@@ -7,7 +7,6 @@ confirmed mechanism/causality or an unauthorized therapeutic intervention.
 
 import re
 
-
 _EPISTEMIC_OVERCLAIM_PATTERNS = (
     # French — affirmative causality / diagnostic mechanism claims.
     re.compile(
