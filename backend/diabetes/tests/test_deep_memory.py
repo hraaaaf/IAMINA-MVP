@@ -41,7 +41,8 @@ class LoadSaveTest(TestCase):
         with patch("django.core.cache.cache.get", return_value=json.dumps(data)):
             mem = IAminaDeepMemory.load(_make_patient(7))
         self.assertEqual(mem.patient_id, 7)
-        self.assertEqual(mem.food_sensitivities["pizza"], 1.8)
+        self.assertEqual(mem.food_sensitivities, {})
+        self.assertEqual(mem.quarantined_heuristics["food_sensitivities"]["pizza"], 1.8)
         self.assertEqual(mem.relationship_stage, "building")
 
     def test_load_from_db_when_cache_miss(self):
@@ -113,33 +114,46 @@ class RecordEventTest(TestCase):
         self.assertEqual(mem.significant_events[0]["description"], "event 5")
 
 
-class LearnFoodSensitivityTest(TestCase):
+class LearnFoodSensitivityQuarantineTest(TestCase):
 
-    def test_new_food_stored(self):
+    def test_new_food_is_quarantined_not_activated(self):
         mem = IAminaDeepMemory(patient_id=1)
         mem.learn_food_sensitivity("couscous", 2.1)
-        self.assertIn("couscous", mem.food_sensitivities)
-        self.assertAlmostEqual(mem.food_sensitivities["couscous"], 2.1, places=3)
+        self.assertEqual(mem.food_sensitivities, {})
+        self.assertAlmostEqual(
+            mem.quarantined_heuristics["food_sensitivities"]["couscous"],
+            2.1,
+            places=3,
+        )
 
-    def test_existing_food_ema_update(self):
-        mem = IAminaDeepMemory(patient_id=1)
-        mem.food_sensitivities["pizza"] = 2.0
+    def test_existing_quarantined_food_ema_update(self):
+        mem = IAminaDeepMemory(
+            patient_id=1,
+            quarantined_heuristics={"food_sensitivities": {"pizza": 2.0}},
+        )
         mem.learn_food_sensitivity("pizza", 3.0)
         # alpha=0.3: 0.3*3.0 + 0.7*2.0 = 0.9 + 1.4 = 2.3
-        self.assertAlmostEqual(mem.food_sensitivities["pizza"], 2.3, places=3)
+        self.assertAlmostEqual(
+            mem.quarantined_heuristics["food_sensitivities"]["pizza"],
+            2.3,
+            places=3,
+        )
+        self.assertEqual(mem.food_sensitivities, {})
 
-    def test_food_name_normalized_lowercase(self):
+    def test_food_name_normalized_lowercase_in_quarantine(self):
         mem = IAminaDeepMemory(patient_id=1)
         mem.learn_food_sensitivity("Couscous", 1.5)
-        self.assertIn("couscous", mem.food_sensitivities)
+        self.assertIn("couscous", mem.quarantined_heuristics["food_sensitivities"])
+        self.assertEqual(mem.food_sensitivities, {})
 
-    def test_multiple_updates_converge(self):
+    def test_multiple_quarantined_updates_converge(self):
         mem = IAminaDeepMemory(patient_id=1)
         mem.learn_food_sensitivity("pain", 1.0)
         for _ in range(20):
             mem.learn_food_sensitivity("pain", 3.0)
-        # After many updates with delta=3, value should be close to 3
-        self.assertGreater(mem.food_sensitivities["pain"], 2.5)
+        # Backward-compatible EMA may be retained in quarantine, never active state.
+        self.assertGreater(mem.quarantined_heuristics["food_sensitivities"]["pain"], 2.5)
+        self.assertEqual(mem.food_sensitivities, {})
 
 
 class UpdateStreakTest(TestCase):
