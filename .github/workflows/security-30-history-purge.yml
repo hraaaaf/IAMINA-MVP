@@ -1,0 +1,103 @@
+name: SECURITY-30 one-shot history purge
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/security-30-history-purge.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+  actions: read
+
+concurrency:
+  group: security-30-history-purge
+  cancel-in-progress: false
+
+jobs:
+  purge-history:
+    name: Purge forbidden local-agent settings from Git history
+    if: github.event_name == 'workflow_dispatch' || github.event.forced != true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trigger head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fail closed before destructive work
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse --is-shallow-repository)" = "false"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          open_prs="$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" --jq 'length')"
+          test "$open_prs" = "0"
+          python scripts/check_secrets.py
+          cp scripts/audit_git_history_secrets.py /tmp/audit_git_history_secrets.py
+
+      - name: Build and certify rewritten mirror
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check git-filter-repo
+          rm -rf /tmp/IAMINA-MVP-clean.git
+          git clone --mirror "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" /tmp/IAMINA-MVP-clean.git
+          test "$(git -C /tmp/IAMINA-MVP-clean.git rev-parse refs/heads/main)" = "$GITHUB_SHA"
+          git -C /tmp/IAMINA-MVP-clean.git for-each-ref --format='%(refname) %(objectname)' refs/heads refs/tags > /tmp/refs-before.txt
+          git -C /tmp/IAMINA-MVP-clean.git filter-repo --path .claude/settings.local.json --invert-paths --force
+          python /tmp/audit_git_history_secrets.py --repo /tmp/IAMINA-MVP-clean.git | tee /tmp/history-scan-rewritten.txt
+          git -C /tmp/IAMINA-MVP-clean.git fsck --full | tee /tmp/fsck-rewritten.txt
+          if git -C /tmp/IAMINA-MVP-clean.git rev-list --objects --all | grep -F '.claude/settings.local.json'; then
+            echo 'Forbidden historical path remains reachable after rewrite.' >&2
+            exit 1
+          fi
+          git -C /tmp/IAMINA-MVP-clean.git for-each-ref --format='%(refname) %(objectname)' refs/heads refs/tags > /tmp/refs-after.txt
+
+      - name: Recheck repository freeze and atomically publish rewritten refs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          open_prs="$(gh api "repos/${GITHUB_REPOSITORY}/pulls?state=open&per_page=100" --jq 'length')"
+          test "$open_prs" = "0"
+          remote_main="$(git ls-remote "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)"
+          test "$remote_main" = "$GITHUB_SHA"
+          git -C /tmp/IAMINA-MVP-clean.git remote add publish "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git -C /tmp/IAMINA-MVP-clean.git push --force --atomic publish \
+            'refs/heads/*:refs/heads/*' \
+            'refs/tags/*:refs/tags/*'
+
+      - name: Certify from a fresh non-shallow clone
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/IAMINA-MVP-fresh
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" /tmp/IAMINA-MVP-fresh
+          test "$(git -C /tmp/IAMINA-MVP-fresh rev-parse --is-shallow-repository)" = "false"
+          python /tmp/IAMINA-MVP-fresh/scripts/check_secrets.py | tee /tmp/tracked-scan-fresh.txt
+          python /tmp/IAMINA-MVP-fresh/scripts/audit_git_history_secrets.py --repo /tmp/IAMINA-MVP-fresh | tee /tmp/history-scan-fresh.txt
+          git -C /tmp/IAMINA-MVP-fresh fsck --full | tee /tmp/fsck-fresh.txt
+          git -C /tmp/IAMINA-MVP-fresh rev-parse HEAD > /tmp/rewritten-main.txt
+
+      - name: Upload non-sensitive remediation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-30-history-purge-evidence
+          if-no-files-found: warn
+          path: |
+            /tmp/refs-before.txt
+            /tmp/refs-after.txt
+            /tmp/history-scan-rewritten.txt
+            /tmp/fsck-rewritten.txt
+            /tmp/tracked-scan-fresh.txt
+            /tmp/history-scan-fresh.txt
+            /tmp/fsck-fresh.txt
+            /tmp/rewritten-main.txt
