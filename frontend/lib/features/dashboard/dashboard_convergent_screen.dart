@@ -24,7 +24,8 @@ class DashboardConvergentScreen extends StatefulWidget {
 }
 
 class _DashboardConvergentScreenState extends State<DashboardConvergentScreen> {
-  int _range = 21;
+  final int _range = 21;
+  DateTime _anchorDate = DateTime.now();
 
   @override
   void initState() {
@@ -43,7 +44,14 @@ class _DashboardConvergentScreenState extends State<DashboardConvergentScreen> {
   @override
   Widget build(BuildContext context) {
     final db = context.read<AppDatabase>();
-    final now = DateTime.now();
+    final now = DateTime(
+      _anchorDate.year,
+      _anchorDate.month,
+      _anchorDate.day,
+      23,
+      59,
+      59,
+    );
     final start = now.subtract(Duration(days: _range));
 
     return StreamBuilder<PatientProfileData?>(
@@ -107,7 +115,8 @@ class _DashboardConvergentScreenState extends State<DashboardConvergentScreen> {
               low: low,
               high: high,
               range: _range,
-              onRangeChanged: (value) => setState(() => _range = value),
+              anchorDate: _anchorDate,
+              onDateChanged: (value) => setState(() => _anchorDate = value),
             );
           },
         );
@@ -122,7 +131,8 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
   final double low;
   final double high;
   final int range;
-  final ValueChanged<int> onRangeChanged;
+  final DateTime anchorDate;
+  final ValueChanged<DateTime> onDateChanged;
 
   const _PopulatedReferenceDashboard({
     required this.logs,
@@ -130,7 +140,8 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
     required this.low,
     required this.high,
     required this.range,
-    required this.onRangeChanged,
+    required this.anchorDate,
+    required this.onDateChanged,
   });
 
   int _daysWithData() => logs
@@ -219,7 +230,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
           physics: const BouncingScrollPhysics(),
           slivers: [
             SliverPadding(
-              padding: const EdgeInsetsDirectional.fromSTEB(18, 10, 18, 100),
+              padding: const EdgeInsetsDirectional.fromSTEB(18, 10, 18, 112),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   _BrandRow(),
@@ -236,7 +247,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 27,
+                                fontSize: 26,
                                 height: 1.05,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -0.8,
@@ -260,7 +271,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      _RangePill(range: range, onChanged: onRangeChanged),
+                      _DatePill(date: anchorDate, onChanged: onDateChanged),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -277,7 +288,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                     meal: meal,
                     observation: _observation(context, tir),
                   ),
-                  const SizedBox(height: 11),
+                  const SizedBox(height: 9),
                   _TrendsPanel(
                     mean: mean,
                     unit: unit,
@@ -285,7 +296,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                     gmi: gmi,
                     observation: _observation(context, tir),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 10),
                   Text(
                     _t(
                       context,
@@ -301,7 +312,7 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   const _QuickActionsRow(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 48),
                   _DetailedTrendCard(
                     logs: logs,
                     low: low,
@@ -324,8 +335,8 @@ class _BrandRow extends StatelessWidget {
     return Row(
       children: [
         const SizedBox(
-          width: 46,
-          height: 46,
+          width: 40,
+          height: 40,
           child: CustomPaint(painter: _SealPainter()),
         ),
         const SizedBox(width: 11),
@@ -336,7 +347,7 @@ class _BrandRow extends StatelessWidget {
               Text(
                 'IAmina',
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: 25,
                   height: 1,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.8,
@@ -354,7 +365,7 @@ class _BrandRow extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 10.8,
                   fontWeight: FontWeight.w600,
                   color: AminaTheme.textSecondary(context),
                 ),
@@ -370,12 +381,12 @@ class _BrandRow extends StatelessWidget {
             onTap: () => GoRouter.of(context).go('/reminders'),
             customBorder: const CircleBorder(),
             child: const SizedBox(
-              width: 46,
-              height: 46,
+              width: 40,
+              height: 40,
               child: Center(
                 child: Icon(
                   Icons.notifications_none_rounded,
-                  size: 24,
+                  size: 22,
                   color: Color(0xFF064E52),
                 ),
               ),
@@ -387,26 +398,36 @@ class _BrandRow extends StatelessWidget {
   }
 }
 
-class _RangePill extends StatelessWidget {
-  final int range;
-  final ValueChanged<int> onChanged;
-  const _RangePill({required this.range, required this.onChanged});
+class _DatePill extends StatelessWidget {
+  final DateTime date;
+  final ValueChanged<DateTime> onChanged;
+
+  const _DatePill({required this.date, required this.onChanged});
+
+  Future<void> _pick(BuildContext context) async {
+    final today = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: date.isAfter(today) ? today : date,
+      firstDate: DateTime(2020),
+      lastDate: today,
+    );
+    if (picked != null) onChanged(picked);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<int>(
-      onSelected: onChanged,
-      itemBuilder: (_) => [
-        7,
-        21,
-        90,
-      ].map((v) => PopupMenuItem<int>(value: v, child: Text('$v j'))).toList(),
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final label = DateFormat('d MMM yyyy', locale).format(date);
+    return InkWell(
+      onTap: () => _pick(context),
+      borderRadius: BorderRadius.circular(22),
       child: Container(
         height: 40,
-        padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 10, 0),
+        padding: const EdgeInsetsDirectional.fromSTEB(13, 0, 10, 0),
         decoration: BoxDecoration(
           color: AminaTheme.surface(context),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(color: AminaTheme.divider(context)),
         ),
         child: Row(
@@ -414,22 +435,22 @@ class _RangePill extends StatelessWidget {
           children: [
             Icon(
               Icons.calendar_today_outlined,
-              size: 14,
+              size: 15,
               color: AminaTheme.textSecondary(context),
             ),
-            const SizedBox(width: 7),
+            const SizedBox(width: 8),
             Text(
-              '$range j',
+              label,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w800,
                 color: AminaTheme.textPrimary(context),
               ),
             ),
-            const SizedBox(width: 3),
+            const SizedBox(width: 5),
             Icon(
               Icons.keyboard_arrow_down_rounded,
-              size: 16,
+              size: 17,
               color: AminaTheme.textSecondary(context),
             ),
           ],
@@ -469,7 +490,7 @@ class _GlucoseHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF063C43), Color(0xFF00575D), Color(0xFF073E44)],
@@ -490,8 +511,8 @@ class _GlucoseHero extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
                   color: const Color(0xFF5AD7A1).withValues(alpha: 0.18),
                   shape: BoxShape.circle,
@@ -532,7 +553,7 @@ class _GlucoseHero extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -601,18 +622,18 @@ class _GlucoseHero extends StatelessWidget {
               Expanded(
                 flex: 6,
                 child: SizedBox(
-                  height: 92,
+                  height: 76,
                   child: _MiniGlucoseChart(logs: logs, low: low, high: high),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           InkWell(
             onTap: () => GoRouter.of(context).go('/summary'),
             borderRadius: BorderRadius.circular(13),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(13),
@@ -674,7 +695,7 @@ class _TrendsPanel extends StatelessWidget {
         ? (mean / 18.0).toStringAsFixed(1)
         : mean.toStringAsFixed(0);
     return Container(
-      padding: const EdgeInsets.fromLTRB(15, 11, 15, 11),
+      padding: const EdgeInsets.fromLTRB(15, 8, 15, 8),
       decoration: BoxDecoration(
         color: AminaTheme.surface(context),
         borderRadius: BorderRadius.circular(20),
@@ -742,13 +763,13 @@ class _TrendsPanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 9),
+          const SizedBox(height: 6),
           InkWell(
             onTap: () => GoRouter.of(context).go('/summary'),
             borderRadius: BorderRadius.circular(13),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFFEAF6EE),
                 borderRadius: BorderRadius.circular(13),
@@ -756,8 +777,8 @@ class _TrendsPanel extends StatelessWidget {
               child: Row(
                 children: [
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: 32,
+                    height: 32,
                     decoration: const BoxDecoration(
                       color: Color(0xFFD8F0E1),
                       shape: BoxShape.circle,
@@ -818,15 +839,15 @@ class _MetricTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 28,
+            height: 28,
             decoration: const BoxDecoration(
               color: Color(0xFFE8F4ED),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 17, color: const Color(0xFF0B8766)),
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 5),
           Text(
             label,
             maxLines: 1,
@@ -846,7 +867,7 @@ class _MetricTile extends StatelessWidget {
                   TextSpan(
                     text: value,
                     style: TextStyle(
-                      fontSize: 22,
+                      fontSize: 21,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.7,
                       color: AminaTheme.textPrimary(context),
@@ -915,8 +936,8 @@ class _QuickActionsRow extends StatelessWidget {
               child: Column(
                 children: [
                   Container(
-                    width: 54,
-                    height: 54,
+                    width: 50,
+                    height: 50,
                     decoration: BoxDecoration(
                       color: AminaTheme.surface(context),
                       borderRadius: BorderRadius.circular(15),
@@ -924,7 +945,7 @@ class _QuickActionsRow extends StatelessWidget {
                     ),
                     child: Icon(
                       action.icon,
-                      size: 20,
+                      size: 21,
                       color: const Color(0xFF064E52),
                     ),
                   ),
@@ -935,7 +956,7 @@ class _QuickActionsRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 8.5,
+                      fontSize: 9.3,
                       fontWeight: FontWeight.w600,
                       color: AminaTheme.textPrimary(context),
                     ),

@@ -674,13 +674,11 @@ class _BottomNav extends StatelessWidget {
     final visualIndex = rtl ? mobileEntries.length - 1 - safeIndex : safeIndex;
     final glassColor = dark
         ? AminaTheme.darkCard.withValues(alpha: 0.88)
-        : Colors.white.withValues(alpha: 0.92);
+        : Colors.white.withValues(alpha: 0.98);
     final glassBorder = dark
         ? Colors.white.withValues(alpha: 0.12)
-        : Colors.white.withValues(alpha: 0.92);
-    final indicatorColor = dark
-        ? AminaTheme.teal700.withValues(alpha: 0.34)
-        : AminaTheme.teal50.withValues(alpha: 0.96);
+        : const Color(0xFFE8E5DF);
+    final indicatorColor = Colors.transparent;
     final addLabel = AppLocalizations.of(context)!.addEntry;
 
     return SafeArea(
@@ -695,14 +693,14 @@ class _BottomNav extends StatelessWidget {
             Positioned.fill(
               top: 12,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(22),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                   child: Container(
                     height: 72,
                     decoration: BoxDecoration(
                       color: glassColor,
-                      borderRadius: BorderRadius.circular(28),
+                      borderRadius: BorderRadius.circular(22),
                       border: Border.all(color: glassBorder, width: 1),
                       boxShadow: [
                         BoxShadow(
@@ -738,13 +736,7 @@ class _BottomNav extends StatelessWidget {
                                       color: indicatorColor,
                                       borderRadius: BorderRadius.circular(22),
                                       border: Border.all(
-                                        color: dark
-                                            ? AminaTheme.teal400.withValues(
-                                                alpha: 0.16,
-                                              )
-                                            : AminaTheme.teal500.withValues(
-                                                alpha: 0.12,
-                                              ),
+                                        color: Colors.transparent,
                                       ),
                                     ),
                                   ),
@@ -799,8 +791,8 @@ class _BottomNav extends StatelessWidget {
                   },
                   customBorder: const CircleBorder(),
                   child: Container(
-                    width: 52,
-                    height: 52,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFF0A766B), Color(0xFF064D50)],
@@ -810,7 +802,7 @@ class _BottomNav extends StatelessWidget {
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: dark ? AminaTheme.darkCard : Colors.white,
-                        width: 5,
+                        width: 4,
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -825,7 +817,7 @@ class _BottomNav extends StatelessWidget {
                     child: const Icon(
                       Icons.add_rounded,
                       color: Colors.white,
-                      size: 29,
+                      size: 27,
                     ),
                   ),
                 ),
