@@ -14,7 +14,11 @@ void main() {
       expect(source, contains('BackdropFilter('));
       expect(source, contains('ImageFilter.blur(sigmaX: 20, sigmaY: 20)'));
       expect(source, contains('AnimatedPositioned('));
-      expect(source, contains('Duration(milliseconds: 240)'));
+      expect(source, contains('AminaMotion.navSelection'));
+      final motion = File(
+        'lib/core/motion/amina_motion.dart',
+      ).readAsStringSync();
+      expect(motion, contains('navSelection = Duration(milliseconds: 240)'));
       expect(source, contains('HapticFeedback.selectionClick()'));
       expect(source, contains("ValueKey('mobile-nav-\${entry.route}')"));
       expect(source, contains('selected: selected'));
