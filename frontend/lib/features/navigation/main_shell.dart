@@ -687,13 +687,13 @@ class _BottomNav extends StatelessWidget {
       top: false,
       minimum: EdgeInsets.symmetric(horizontal: 18).copyWith(bottom: 6),
       child: SizedBox(
-        height: 82,
+        height: 76,
         child: Stack(
           alignment: Alignment.topCenter,
           clipBehavior: Clip.none,
           children: [
             Positioned.fill(
-              top: 14,
+              top: 12,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(28),
                 child: BackdropFilter(
@@ -799,8 +799,8 @@ class _BottomNav extends StatelessWidget {
                   },
                   customBorder: const CircleBorder(),
                   child: Container(
-                    width: 54,
-                    height: 54,
+                    width: 52,
+                    height: 52,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFF0A766B), Color(0xFF064D50)],
@@ -825,7 +825,7 @@ class _BottomNav extends StatelessWidget {
                     child: const Icon(
                       Icons.add_rounded,
                       color: Colors.white,
-                      size: 30,
+                      size: 29,
                     ),
                   ),
                 ),
@@ -890,7 +890,7 @@ class _GlassNavDestination extends StatelessWidget {
                 ),
                 curve: AminaMotion.enter,
                 style: TextStyle(
-                  fontSize: 9.6,
+                  fontSize: 9.2,
                   height: 1.05,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                   color: selected ? activeColor : inactiveColor,
