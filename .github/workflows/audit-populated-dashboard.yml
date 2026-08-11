@@ -24,9 +24,9 @@ jobs:
         working-directory: frontend
         run: flutter pub get
 
-      - name: Build debug web
+      - name: Build debug web with audit access
         working-directory: frontend
-        run: flutter build web --debug
+        run: flutter build web --debug --dart-define=IAMINA_AUDIT_ACCESS=true
 
       - name: Install Playwright
         run: |
@@ -54,7 +54,7 @@ jobs:
               const errors=[];
               page.on('pageerror', e => errors.push(String(e)));
               await page.goto(`http://127.0.0.1:8080/?audit=visual-cert&lang=${lang}#/dashboard`, {waitUntil:'networkidle'});
-              await page.waitForTimeout(8000);
+              await page.waitForTimeout(10000);
               await page.screenshot({path:`audit-populated/${lang}-dashboard-populated.png`, fullPage:false});
               fs.writeFileSync(`audit-populated/${lang}-errors.json`, JSON.stringify(errors,null,2));
               await context.close();
