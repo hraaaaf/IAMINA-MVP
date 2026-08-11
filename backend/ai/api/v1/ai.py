@@ -32,11 +32,10 @@ from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
-from core.ai_egress import IMAGE, TEXT, assert_ai_egress_allowed, patient_ai_egress_scope
+from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
+from core.contracts.capabilities import Capability
 from core.input_safety import INSULIN_BLOCK, PRESCRIPTION_BLOCK, evaluate_input_safety
-from core.llm_gateway import (
-    narrate,  # noqa: F401 — P1.4: imported, full wiring pending (see TODO below)
-)
+from core.llm_gateway import get_gateway_llm
 from core.locale import resolve_patient_locale
 from core.models import BasePatientProfile
 from core.observability import EVT_CHAT_MESSAGE, EVT_SUMMARY_VIEWED, track
@@ -249,18 +248,13 @@ def get_doctor_brief(request, days: int = 14):
     user = request.user
     language = _get_patient_language(user)
 
-    from datetime import timedelta
-
-    from companion.core import IAmina
     from companion.memory import IAminaMemory
-    from companion.narrator import summarize as iamina_summarize
     from companion.parser import parse_llm_json
     from companion.prompts import SUMMARY_USER, SYSTEM_BASE, get_language_label
     from companion.tone import get_tone_instruction, select_tone
     from core.medical_safety import apply_no_prescription_policy
     from diabetes.services.clinical.engine import run_clinical_analysis
     from diabetes.services.clinical.sql_analytics import compute_kpis
-    from llm.factory import get_llm
 
     kpis = compute_kpis(patient_id=user.id, days=days)
 
@@ -289,14 +283,9 @@ def get_doctor_brief(request, days: int = 14):
 
     IAminaMemory.load(user)
     tone_ctx = select_tone(tir_pct=kpis.tir_pct, cv_pct=kpis.cv_pct)
-    # PHI-AUDIT(P1.3): prompts here contain only aggregated KPIs + clinical pattern codes —
-    # no patient name, CIN, or DOB. No pseudonymizer needed at this callsite.
-    # TODO(P1.4-doctor-brief): full narrate() wiring requires extracting this endpoint's
-    # JSON-structured prompt (narrative + key_insight + doctor_brief) into a dedicated
-    # DomainContext + CompanionIdentity. narrate() returns plain text; this endpoint
-    # expects JSON. A structured narrate_json() variant or a separate doctor_brief module
-    # is needed before this call can be replaced. narrate is imported above (P1.4 gateway ready).
-    llm = get_llm()
+    # The structured JSON response remains endpoint-specific, but provider access
+    # now goes through GatewayLLM so capability, PHI and egress controls are shared.
+    llm = get_gateway_llm()
 
     stats_lines = [
         f"AVG_GLUCOSE: {kpis.avg_glucose} mg/dL" if kpis.avg_glucose else "",
@@ -320,8 +309,11 @@ def get_doctor_brief(request, days: int = 14):
     doctor_brief = ""
 
     try:
-        assert_ai_egress_allowed(TEXT)
-        result = llm.complete(system, user_prompt)
+        result = llm.complete(
+            system,
+            user_prompt,
+            capability=Capability.SUMMARIZE_APPROVED_DATA,
+        )
         parsed = parse_llm_json(result.content, ["narrative", "key_insight", "doctor_brief"])
         narrative = parsed["narrative"]
         key_insight = parsed["key_insight"]
