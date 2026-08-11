@@ -38,7 +38,6 @@ class IAminaMemory:
         #    Redis eviction). The active module supplies the SnapshotStore adapter.
         try:
             from core.companion.ports import get_snapshot_store
-
             store = get_snapshot_store()
             if store is not None:
                 data = store.load("memory", patient.id)
@@ -67,7 +66,6 @@ class IAminaMemory:
         # 2. Durable snapshot via the registered store (survives restarts)
         try:
             from core.companion.ports import get_snapshot_store
-
             store = get_snapshot_store()
             if store is not None:
                 store.save("memory", self.patient_id, normalized)
@@ -160,8 +158,8 @@ def _check_milestones(memory: IAminaMemory) -> None:
     """Detect simple streak/count milestones from cached_stats (no SQL cost)."""
     count = memory.cached_stats.get("log_count", 0)
     thresholds = {
-        10: "first_10_logs",
-        50: "logs_50",
+        10:  "first_10_logs",
+        50:  "logs_50",
         100: "logs_100",
     }
     for threshold, key in thresholds.items():
