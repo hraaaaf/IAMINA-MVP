@@ -30,6 +30,19 @@ jobs:
         run: |
           python scripts/ux11_apply.py
           python scripts/ux11_fix_tests.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/test/p0_ux_8_mobile_navigation_test.dart')
+          text = path.read_text()
+          text = text.replace(
+              "Finder get addDestination => find.byKey(const ValueKey('mobile-nav-add'));",
+              "Finder addDestination() => find.byKey(const ValueKey('mobile-nav-add'));",
+          )
+          text = text.replace('expect(addDestination, findsOneWidget);', 'expect(addDestination(), findsOneWidget);')
+          text = text.replace('tester.getSize(addDestination)', 'tester.getSize(addDestination())')
+          text = text.replace('tester.tap(addDestination)', 'tester.tap(addDestination())')
+          path.write_text(text)
+          PY
 
       - uses: subosito/flutter-action@v2
         with:
