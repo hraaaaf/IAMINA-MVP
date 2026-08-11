@@ -93,7 +93,9 @@ Legacy flat snapshots and P0.4 v2 envelopes remain readable for backward compati
 
 Historical `food_sensitivities` are explicitly `HEURISTIC_INFERENCE`, not `DETERMINISTIC_DERIVATION`. During flat/v2 decoding and every new deep-memory encode boundary, such values move into `quarantined_heuristics.food_sensitivities` and the active `food_sensitivities` field is cleared. The compatibility learning method writes quarantine only. The IAmina orchestrator does not learn this legacy heuristic and `compute_state()` cannot turn it into a meal-related intention.
 
-Compatibility retention therefore preserves historical information without making the heuristic a patient fact, an approved clinical pattern or an allowed deterministic clinical input.
+Historical `peak_hours` is also compatibility-only heuristic state, not an approved deterministic clinical derivation. It remains structurally readable but carries `HEURISTIC_INFERENCE` provenance in v3, so it cannot become a patient fact or deterministic clinical input. The exact `DETERMINISTIC_DERIVATION` marker emitted for `peak_hours` by the brief P0.4 v2 window is accepted only during v2 decoding and is rewritten as `HEURISTIC_INFERENCE` on the next v3 encode/save.
+
+Compatibility retention therefore preserves historical information without making either legacy heuristic a patient fact, an approved clinical pattern or an allowed deterministic clinical input.
 
 Detailed implementation and acceptance evidence live in `docs/P0_4_LEGACY_MEMORY_TRUTH_MIGRATION.md`.
 
@@ -115,4 +117,5 @@ Tests must prove at minimum that:
 - legacy emotion/tone with unprovable origin is quarantined;
 - direct generative concern/tone mutations cannot survive a durable companion-memory save;
 - deterministic keyword-derived conversational state can persist with explicit provenance;
-- historical food-response heuristic memory is quarantine-only and cannot drive patient-facing reasoning or deterministic clinical logic.
+- historical food-response heuristic memory is quarantine-only and cannot drive patient-facing reasoning or deterministic clinical logic;
+- historical peak-hour heuristic memory is non-clinical `HEURISTIC_INFERENCE`, with v2 compatibility that rewrites corrected provenance on v3 save.
