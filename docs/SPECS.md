@@ -99,7 +99,7 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 
 - a successful Add Log write transitions to a persistent factual receipt only after the local Drift insertion has completed successfully;
 - the receipt may restate only the facts from that saved entry: glucose, timestamp and explicitly entered measurement context, meal, already-taken insulin and additional context observations;
-- local persistence is described narrowly as saved on the device; this receipt does not imply server synchronization, external backup or provider processing;
+- local persistence is described narrowly as saved on the device; this receipt does not imply server synchronization or external persistence;
 - one saved reading must not trigger a good/bad glucose verdict, personal-target claim, prediction, causal explanation, AI analysis, diagnosis, treatment optimization or insulin-dose advice;
 - P2-JOURNAL-8 longitudinal personal-response patterns remain separate from the immediate receipt and retain their own minimum-evidence contract;
 - after successful insertion, the previous draft is cleared before another entry is started so prior meal/context/insulin facts cannot be silently reused;
@@ -229,16 +229,19 @@ The chassis uses explicit provenance classes for information consumed or remembe
 - `USER_CLAIM` — information explicitly reported by the patient and retained as a claim rather than silently validated;
 - `DETERMINISTIC_DERIVATION` — KPI/pattern/result produced by approved deterministic logic;
 - `PREFERENCE` — explicit product preference;
-- `CONVERSATIONAL_STATE` — transient dialogue/relationship state;
+- `CONVERSATIONAL_STATE` — transient dialogue/relationship/cache state;
+- `HEURISTIC_INFERENCE` — non-authoritative heuristic output without an approved clinical derivation contract;
 - `MODEL_INFERENCE` — hypothesis/interpretation produced by a generative model.
 
 Persistence/authority invariants:
 
-- model inference and conversational state must not become patient clinical facts;
-- model inference must not enter deterministic clinical decision logic;
+- model inference, heuristic inference and conversational state must not become patient clinical facts;
+- model/heuristic inference must not enter deterministic clinical decision logic;
 - patient claims may feed approved deterministic triage/domain logic while remaining explicitly claims;
 - deterministic derivations should be recomputed from source truth rather than promoted to immutable patient facts;
 - explicit user-claim/preference writes require user confirmation.
+
+Legacy `memory` / `deep` snapshots are normalized into a versioned canonical JSON shape without a database schema migration. Snapshot-supplied truth metadata is ignored; classification is code-owned. Unknown legacy fields are preserved outside active reasoning. Historical `food_sensitivities` is quarantined as `HEURISTIC_INFERENCE`, is no longer learned by `IAmina.on_log`, and cannot steer `next_intention`.
 
 Generative models are allowed to explain/summarize approved data, verbalize already-detected deterministic patterns and help prepare questions for a clinician. They are not allowed to classify emergencies, diagnose, prescribe, calculate doses, optimize/change treatment, promote model inference to patient fact or write clinical records autonomously.
 
@@ -366,6 +369,7 @@ All such endpoints must obey the same deterministic safety and no-prescription b
 - Sync must be idempotent via stable client identifiers.
 - Server-side authority and conflict behavior must be explicit for edited/deleted records.
 - Safety-sensitive decisions must not rely on stale local-only state without explicit handling.
+- Companion memory snapshots remain JSON-backed through the registered server `SnapshotStore`; P0.4 changes logical normalization/provenance without changing the Django schema.
 
 ## 12. Observability and retention
 
