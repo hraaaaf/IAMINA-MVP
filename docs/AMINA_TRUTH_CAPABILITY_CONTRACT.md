@@ -1,8 +1,8 @@
 # IAmina — Truth & Capability Contract
 
-> **Status:** ✅ Certified through P0.4/P0.4.1 — truth/capability chassis, structured insight gateway and legacy-memory/heuristic quarantine are closed; PR #117 merged as `23eab9eafa9e25661ae71763a5266c48f9e2a437` with post-merge CI #1677 + drift #1489 green.  
-> **Scope:** IAmina companion reasoning, memory provenance and generative-model authority.  
-> **Non-scope:** no new disease module, clinical threshold, diagnosis, prescription, treatment optimization or patient-facing UX.
+> **Status:** ✅ Certified through P0.5 implementation — truth/capability chassis, structured insight gateway, legacy-memory/heuristic quarantine and epistemic patient-visible output boundaries are implemented; P0.5A PR #120 and P0.5B PR #121 are both exact-head certified and post-merge green.  
+> **Scope:** IAmina companion reasoning, memory provenance, patient-visible claim authority and generative-model authority.  
+> **Non-scope:** no new disease module, clinical threshold, diagnosis, prescription, treatment optimization or autonomous clinical write.
 
 ## 1. Purpose
 
@@ -10,11 +10,15 @@ IAmina must distinguish what is **observed**, what the **patient reported**, wha
 
 Neither a heuristic inference nor a generative inference may become a patient fact, clinical rule or durable clinical truth merely because it was plausible, repeated or persisted.
 
+The same evidence ceiling applies at presentation time: an internal detector label, a legacy fallback string or a generative reformulation must never gain more diagnostic, causal or therapeutic authority than the underlying evidence.
+
 The executable source is:
 
 - `backend/core/contracts/truth.py`
 - `backend/core/contracts/capabilities.py`
 - `backend/companion/memory_truth.py`
+- `backend/core/medical_safety.py`
+- `backend/core/epistemic_safety.py`
 
 ## 2. Truth classes
 
@@ -48,10 +52,10 @@ A generative model may:
 
 - explain approved data;
 - summarize approved data;
-- verbalize a pattern that was already detected deterministically;
+- verbalize approved evidence within the patient-visible claim ceiling;
 - help prepare questions for a clinician.
 
-The model does not become the source of the underlying metric, pattern or clinical rule.
+The model does not become the source of the underlying metric, pattern or clinical rule. A semantic detector name is not itself approved patient-facing evidence.
 
 ### Deterministic-only capability
 
@@ -67,6 +71,8 @@ No authority inside IAmina is permitted to autonomously:
 - optimize treatment;
 - change treatment;
 - promote a model inference into patient fact;
+- promote a heuristic inference into approved clinical truth;
+- upgrade an association/temporal sequence into proven causality;
 - write a clinical record autonomously on behalf of the patient.
 
 Changing this list requires an explicit product/regulatory architecture decision and is not a prompt-level change.
@@ -79,9 +85,11 @@ Recording a user claim or changing a user preference requires explicit user conf
 
 `core.llm_gateway.GatewayLLM` accepts only capabilities for which `GENERATIVE_MODEL` is an allowed authority. A forbidden capability fails closed before provider egress.
 
-`narrate()` and `doctor-brief` are classified as `SUMMARIZE_APPROVED_DATA`. The diabetes structured insight formatter is classified as `SURFACE_DETERMINISTIC_PATTERN`; it may only verbalize patterns already produced by deterministic logic and preserves its structured JSON parse/fallback and patient-visible sanitation contract behind the same gateway.
+`narrate()` and `doctor-brief` are classified as `SUMMARIZE_APPROVED_DATA`. The diabetes structured insight formatter is classified as `SURFACE_DETERMINISTIC_PATTERN`; it may call the gateway, but P0.5A independently constrains the final patient-visible structured insight to an observation-only envelope. A successful LLM call therefore does not grant the generated title/content/action clinical authority.
 
-The existing egress authorization, consent, PHI stripping, deterministic safety and output-safety layers remain mandatory and independent. Passing the capability contract does **not** itself authorize external data transfer.
+For summary/doctor-brief narration, P0.5B constrains the generative evidence surface to deterministic KPI/stat input and applies a focused fail-closed epistemic guard to the exact `narrative/key_insight/doctor_brief` schema.
+
+The existing egress authorization, consent, PHI stripping, deterministic safety, no-prescription sanitation and epistemic-output safety layers remain mandatory and independent. Passing the capability contract does **not** itself authorize external data transfer or a stronger clinical claim.
 
 ## 6. Legacy-memory boundary
 
@@ -99,7 +107,36 @@ Compatibility retention therefore preserves historical information without makin
 
 Detailed implementation and acceptance evidence live in `docs/P0_4_LEGACY_MEMORY_TRUTH_MIGRATION.md`.
 
-## 7. Permanent regression expectations
+## 7. Patient-visible epistemic output boundary
+
+P0.5 separates **detector authority** from **presentation authority**.
+
+### Structured clinical insights — P0.5A
+
+At the final `sanitize_patient_visible()` boundary, the stable structured insight shape keeps only deterministic metadata (`code`, `priority`, `icon`) from the upstream insight. Patient-visible `title`, `content` and `action` are replaced with a localized deterministic observation-only envelope.
+
+The envelope states that the observed trend alone is insufficient to establish a cause or diagnosis and offers only a non-therapeutic documentation/discussion step. This prevents legacy fallback strings or adversarial model text from promoting an internal detector into a named mechanism, causal claim, diagnosis or treatment instruction.
+
+This boundary is implemented in FR, EN, Modern Standard Arabic and Moroccan Darija in Arabic script.
+
+### Summary / doctor brief — P0.5B
+
+`SUMMARY_USER` receives deterministic KPI/stat evidence only. The prompt no longer exposes semantic detector codes/names and no longer contains the legacy therapeutic few-shot example.
+
+The prompt explicitly forbids causal upgrades, named syndrome/phenomenon/mechanism claims and therapeutic/food/exercise/timing/medication/insulin interventions.
+
+`core.epistemic_safety` then provides a focused multilingual fail-closed guard for the exact `narrative/key_insight/doctor_brief` response schema. If one field exceeds the evidence authority, that field alone is discarded; safe sibling fields survive.
+
+Other parser schemas remain outside this focused P0.5B guard and continue to rely on their existing capability/safety boundaries.
+
+### Closure evidence
+
+- P0.5A PR #120 — exact-head `18f14805a240594071a147ad527448a7dcee909b`; CI #1680 + drift #1492; merge `8a941185511b1c0e96b0acb9754794cdfb6209b3`; post-merge CI #1681 + drift #1493 — all green.
+- P0.5B PR #121 — exact-head `4ac2f3a9a0c86ffad4386ff22bb9b75b30b8a190`; CI #1688 + drift #1500; merge `9febaaf96b9b17d716f183d2adae625f11d1dce2`; post-merge CI #1690 + drift #1502 — all green.
+
+Detailed evidence lives in `docs/P0_5_EPISTEMIC_CLINICAL_OUTPUT_SAFETY.md`.
+
+## 8. Permanent regression expectations
 
 Tests must prove at minimum that:
 
@@ -118,4 +155,9 @@ Tests must prove at minimum that:
 - direct generative concern/tone mutations cannot survive a durable companion-memory save;
 - deterministic keyword-derived conversational state can persist with explicit provenance;
 - historical food-response heuristic memory is quarantine-only and cannot drive patient-facing reasoning or deterministic clinical logic;
-- historical peak-hour heuristic memory is non-clinical `HEURISTIC_INFERENCE`, with v2 compatibility that rewrites corrected provenance on v3 save.
+- historical peak-hour heuristic memory is non-clinical `HEURISTIC_INFERENCE`, with v2 compatibility that rewrites corrected provenance on v3 save;
+- structured clinical insight metadata can survive while legacy/model patient-visible clinical authority is replaced by the observation-only envelope;
+- provider failure cannot resurrect legacy structured-insight therapeutic/causal strings;
+- summary/doctor-brief prompts cannot leak semantic detector names through the legacy `patterns=` argument;
+- generated summary fields that assert named mechanisms, proven causality or unauthorized interventions fail closed;
+- safe uncertainty/caveat language remains allowed rather than being blanket-blocked.
