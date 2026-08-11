@@ -1,4 +1,4 @@
-"""P0.4 regression contracts for IAmina legacy-memory truth migration."""
+"""P0.4/P0.4.1 regression contracts for IAmina memory truth migration."""
 from __future__ import annotations
 
 import json
@@ -18,7 +18,7 @@ from companion.memory_truth import (
 )
 from companion.state import compute_state
 from core.contracts.domain_context import DomainContext
-from core.contracts.truth import TruthKind
+from core.contracts.truth import TruthKind, TruthRecord
 
 
 def _memory_defaults(patient_id: int = 1) -> dict:
@@ -44,7 +44,7 @@ def _empty_context() -> DomainContext:
 
 
 class SnapshotCodecTest(SimpleTestCase):
-    def test_v2_envelope_has_explicit_schema_and_provenance(self):
+    def test_v3_envelope_has_explicit_schema_and_provenance(self):
         values = _memory_defaults(7)
         values["patterns"] = ["overnight_high"]
 
@@ -61,7 +61,7 @@ class SnapshotCodecTest(SimpleTestCase):
         self.assertEqual(kind, TruthKind.DETERMINISTIC_DERIVATION)
         self.assertEqual(source, "domain_context.detected_patterns")
 
-    def test_v2_round_trip_preserves_known_values(self):
+    def test_v3_round_trip_preserves_known_nonheuristic_values(self):
         values = _deep_defaults(8)
         values["relationship_stage"] = "building"
         values["total_interactions"] = 12
@@ -72,6 +72,50 @@ class SnapshotCodecTest(SimpleTestCase):
         self.assertEqual(decoded["relationship_stage"], "building")
         self.assertEqual(decoded["total_interactions"], 12)
         self.assertEqual(decoded["patient_id"], 8)
+
+    def test_v3_encode_quarantines_direct_food_heuristic(self):
+        values = _deep_defaults(8)
+        values["food_sensitivities"] = {"pizza": 42.5}
+
+        payload = encode_snapshot("deep", values)
+
+        self.assertEqual(payload["values"]["food_sensitivities"], {})
+        self.assertEqual(
+            payload["values"]["quarantined_heuristics"]["food_sensitivities"],
+            {"pizza": 42.5},
+        )
+        self.assertEqual(
+            payload["provenance"]["quarantined_heuristics"]["kind"],
+            TruthKind.HEURISTIC_INFERENCE.value,
+        )
+        kind, source = snapshot_field_truth("deep", "food_sensitivities")
+        self.assertEqual(kind, TruthKind.HEURISTIC_INFERENCE)
+        self.assertEqual(source, "legacy.food_response_heuristic")
+
+    def test_p0_4_v2_food_heuristic_migrates_to_v3_quarantine(self):
+        payload = {
+            "schema": SNAPSHOT_SCHEMA,
+            "schema_version": 2,
+            "kind": "deep",
+            "values": {
+                "patient_id": 11,
+                "food_sensitivities": {"couscous": 42.5},
+            },
+            "provenance": {
+                "food_sensitivities": {
+                    "kind": TruthKind.DETERMINISTIC_DERIVATION.value,
+                    "source": "legacy.food_response_heuristic",
+                }
+            },
+        }
+
+        decoded = decode_snapshot("deep", payload, defaults=_deep_defaults(11))
+
+        self.assertEqual(decoded["food_sensitivities"], {})
+        self.assertEqual(
+            decoded["quarantined_heuristics"]["food_sensitivities"],
+            {"couscous": 42.5},
+        )
 
     def test_tampered_provenance_fails_only_field_closed(self):
         values = _memory_defaults(3)
@@ -123,13 +167,28 @@ class SnapshotCodecTest(SimpleTestCase):
         self.assertEqual(decoded["current_tone"], "encouraging")
         self.assertEqual(decoded["emotional_signals"], [])
 
-    def test_legacy_deep_food_memory_remains_readable_only_for_compatibility(self):
+    def test_legacy_flat_deep_food_memory_is_quarantined(self):
         legacy = _deep_defaults(11)
         legacy["food_sensitivities"] = {"couscous": 42.5}
 
         decoded = decode_snapshot("deep", legacy, defaults=_deep_defaults(11))
 
-        self.assertEqual(decoded["food_sensitivities"], {"couscous": 42.5})
+        self.assertEqual(decoded["food_sensitivities"], {})
+        self.assertEqual(
+            decoded["quarantined_heuristics"]["food_sensitivities"],
+            {"couscous": 42.5},
+        )
+
+    def test_heuristic_inference_has_no_patient_fact_or_clinical_authority(self):
+        record = TruthRecord(
+            key="legacy_food_response",
+            value={"couscous": 42.5},
+            kind=TruthKind.HEURISTIC_INFERENCE,
+            source="legacy.food_response_heuristic",
+        )
+
+        self.assertFalse(record.may_persist_as_patient_fact)
+        self.assertFalse(record.may_enter_deterministic_clinical_logic)
 
 
 class DurableMemoryAuthorityTest(SimpleTestCase):
@@ -140,8 +199,6 @@ class DurableMemoryAuthorityTest(SimpleTestCase):
         get_store.return_value = store
         memory = IAminaMemory(patient_id=20)
 
-        # Simulates the two historical LLM write paths: concern_detected and
-        # tone_detected. Neither was accepted through deterministic provenance.
         memory.last_concern = "model-generated concern"
         memory.current_tone = "challenge"
         memory.emotional_signals.append("model-generated-signal")
@@ -187,11 +244,39 @@ class LegacyHeuristicQuarantineTest(SimpleTestCase):
         deep = IAminaDeepMemory(
             patient_id=30,
             food_sensitivities={"couscous": 42.5},
+            quarantined_heuristics={"food_sensitivities": {"couscous": 42.5}},
         )
 
         state = compute_state(memory, deep, _empty_context())
 
         self.assertEqual(state.next_intention, "écouter et accompagner")
+
+    def test_legacy_learning_api_writes_quarantine_only(self):
+        deep = IAminaDeepMemory(patient_id=30)
+
+        deep.learn_food_sensitivity("Couscous", 42.5)
+
+        self.assertEqual(deep.food_sensitivities, {})
+        self.assertEqual(
+            deep.quarantined_heuristics["food_sensitivities"],
+            {"couscous": 42.5},
+        )
+
+    @patch("core.companion.ports.get_snapshot_store")
+    @patch("companion.deep_memory.cache.set")
+    def test_save_quarantines_direct_active_mutation(self, cache_set, get_store):
+        get_store.return_value = MagicMock()
+        deep = IAminaDeepMemory(patient_id=30, food_sensitivities={"pizza": 50.0})
+
+        deep.save()
+
+        payload = json.loads(cache_set.call_args.args[1])
+        self.assertEqual(deep.food_sensitivities, {})
+        self.assertEqual(
+            deep.quarantined_heuristics["food_sensitivities"],
+            {"pizza": 50.0},
+        )
+        self.assertEqual(payload["values"]["food_sensitivities"], {})
 
     @patch("companion.core.react", return_value="ok")
     @patch("companion.core._evaluate_alert", return_value=None)
