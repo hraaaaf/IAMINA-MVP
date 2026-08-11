@@ -8,7 +8,7 @@ truth.
 P0.4.1 distinguishes legacy heuristic inference from approved deterministic
 clinical derivation. Existing v2 envelopes and older flat snapshots remain
 readable, but historical food-response heuristic values are moved into an
-explicit quarantine and never restored as active companion knowledge.
+explicit quarantine and legacy peak-hour heuristics remain non-clinical.
 """
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ _FIELD_PROVENANCE: dict[str, dict[str, tuple[TruthKind, str]]] = {
             "companion.heuristic_quarantine",
         ),
         "peak_hours": (
-            TruthKind.DETERMINISTIC_DERIVATION,
+            TruthKind.HEURISTIC_INFERENCE,
             "legacy.peak_hours",
         ),
         "relationship_stage": (
@@ -109,7 +109,11 @@ _V2_FIELD_PROVENANCE: dict[str, dict[str, tuple[TruthKind, str]]] = {
         "food_sensitivities": (
             TruthKind.DETERMINISTIC_DERIVATION,
             "legacy.food_response_heuristic",
-        )
+        ),
+        "peak_hours": (
+            TruthKind.DETERMINISTIC_DERIVATION,
+            "legacy.peak_hours",
+        ),
     },
 }
 
