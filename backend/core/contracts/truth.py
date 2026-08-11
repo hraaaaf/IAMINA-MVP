@@ -31,9 +31,10 @@ _PATIENT_FACT_PERSISTABLE = frozenset(
     }
 )
 
-_CLINICAL_AUTHORITY = frozenset(
+_DETERMINISTIC_CLINICAL_INPUT = frozenset(
     {
         TruthKind.OBSERVED_FACT,
+        TruthKind.USER_CLAIM,
         TruthKind.DETERMINISTIC_DERIVATION,
     }
 )
@@ -65,15 +66,17 @@ class TruthRecord:
         return self.kind in _PATIENT_FACT_PERSISTABLE
 
     @property
-    def may_drive_clinical_decision(self) -> bool:
-        """Whether this provenance class may be authoritative for clinical logic.
+    def may_enter_deterministic_clinical_logic(self) -> bool:
+        """Whether this item may be consumed by approved deterministic clinical logic.
 
-        A USER_CLAIM can be stored and displayed as a claim, but it must not be
-        silently upgraded into validated clinical truth. MODEL_INFERENCE and
-        CONVERSATIONAL_STATE are never clinical decision authority.
+        USER_CLAIM is allowed here because reported symptoms/context can be valid
+        inputs to deterministic triage or domain rules. Its provenance remains a
+        claim: this does not validate an underlying diagnosis or promote it to an
+        observed fact. MODEL_INFERENCE and CONVERSATIONAL_STATE are never allowed
+        as clinical decision inputs.
         """
 
-        return self.kind in _CLINICAL_AUTHORITY
+        return self.kind in _DETERMINISTIC_CLINICAL_INPUT
 
     def assert_patient_fact_persistence_allowed(self) -> None:
         if not self.may_persist_as_patient_fact:
@@ -82,6 +85,8 @@ class TruthRecord:
                 "explicit reclassification from an authoritative source"
             )
 
-    def assert_clinical_authority(self) -> None:
-        if not self.may_drive_clinical_decision:
-            raise ValueError(f"{self.kind.value} is not clinical decision authority")
+    def assert_deterministic_clinical_input_allowed(self) -> None:
+        if not self.may_enter_deterministic_clinical_logic:
+            raise ValueError(
+                f"{self.kind.value} cannot enter deterministic clinical decision logic"
+            )
