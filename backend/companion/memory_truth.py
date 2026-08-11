@@ -1,14 +1,14 @@
 """Versioned truth/provenance codec for IAmina companion memory snapshots.
 
-P0.4 keeps the existing database models and JSONField storage unchanged.  The
+P0.4 keeps the existing database models and JSONField storage unchanged. The
 payload itself becomes explicit about schema version, truth kind and stable
 source so a durable companion snapshot cannot silently masquerade as clinical
 patient truth.
 
-Legacy flat snapshots are accepted for backward compatibility.  Their
+Legacy flat snapshots are accepted for backward compatibility. Their
 emotion/tone fields are deliberately reset because the old format cannot prove
 whether those values came from deterministic keyword handling or a generative
-model.  Other known legacy fields are retained with their documented source.
+model. Other known legacy fields are retained with their documented source.
 """
 from __future__ import annotations
 
@@ -53,11 +53,11 @@ _FIELD_PROVENANCE: dict[str, dict[str, tuple[TruthKind, str]]] = {
             "companion.deterministic_events",
         ),
         "food_sensitivities": (
-            TruthKind.DETERMINISTIC_DERIVATION,
+            TruthKind.HEURISTIC_INFERENCE,
             "legacy.food_response_heuristic",
         ),
         "peak_hours": (
-            TruthKind.DETERMINISTIC_DERIVATION,
+            TruthKind.HEURISTIC_INFERENCE,
             "legacy.peak_hours",
         ),
         "relationship_stage": (
@@ -91,8 +91,23 @@ _FIELD_PROVENANCE: dict[str, dict[str, tuple[TruthKind, str]]] = {
     },
 }
 
+# PR #114 briefly emitted these two legacy heuristics as deterministic
+# derivations. They were never authorized clinical derivations. Accept that
+# exact marker only for backward-compatible decoding; every new encode writes
+# the corrected HEURISTIC_INFERENCE marker.
+_LEGACY_V2_PROVENANCE_ALIASES: dict[tuple[str, str], dict[str, str]] = {
+    ("deep", "food_sensitivities"): {
+        "kind": TruthKind.DETERMINISTIC_DERIVATION.value,
+        "source": "legacy.food_response_heuristic",
+    },
+    ("deep", "peak_hours"): {
+        "kind": TruthKind.DETERMINISTIC_DERIVATION.value,
+        "source": "legacy.peak_hours",
+    },
+}
+
 # The old flat snapshot cannot prove whether these fields were created by the
-# deterministic keyword detector or by model output.  Unknown provenance fails
+# deterministic keyword detector or by model output. Unknown provenance fails
 # closed to neutral conversation state during the one-time legacy read path.
 _LEGACY_UNPROVEN_CONVERSATION_FIELDS = frozenset(
     {"last_concern", "current_tone", "emotional_signals"}
@@ -120,6 +135,19 @@ def encode_snapshot(kind: str, values: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _provenance_marker_is_valid(
+    kind: str,
+    field: str,
+    marker: Any,
+    truth_kind: TruthKind,
+    source: str,
+) -> bool:
+    expected = {"kind": truth_kind.value, "source": source}
+    if marker == expected:
+        return True
+    return marker == _LEGACY_V2_PROVENANCE_ALIASES.get((kind, field))
+
+
 def decode_snapshot(
     kind: str,
     payload: dict[str, Any] | None,
@@ -129,7 +157,7 @@ def decode_snapshot(
     """Decode a v2 or legacy flat payload into safe dataclass constructor values.
 
     Unknown schema versions, kind mismatches and malformed envelopes fail closed
-    to the supplied defaults.  A snapshot can never override the patient_id
+    to the supplied defaults. A snapshot can never override the patient_id
     selected by the caller.
     """
     provenance = _FIELD_PROVENANCE.get(kind)
@@ -152,16 +180,22 @@ def decode_snapshot(
             return safe_defaults
 
         values = deepcopy(raw_values)
-        # Provenance metadata is an executable contract.  If a field's label or
+        # Provenance metadata is an executable contract. If a field's label or
         # source is missing/tampered, that field alone falls back to neutral.
         for field, (truth_kind, source) in provenance.items():
             if field not in values:
                 continue
             marker = raw_provenance.get(field)
-            if marker != {"kind": truth_kind.value, "source": source}:
+            if not _provenance_marker_is_valid(
+                kind,
+                field,
+                marker,
+                truth_kind,
+                source,
+            ):
                 values[field] = deepcopy(safe_defaults.get(field))
     else:
-        # Legacy v1 = flat dataclass dict.  Preserve known structures, but do not
+        # Legacy v1 = flat dataclass dict. Preserve known structures, but do not
         # carry forward conversational fields whose origin cannot be proven.
         values = deepcopy(payload)
         if kind == "memory":
