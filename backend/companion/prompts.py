@@ -154,26 +154,25 @@ Réponds en 1-2 phrases naturelles. Réponds UNIQUEMENT en JSON:
 """
 
 # ─────────────────────────────────────────────────────────
-# Mode 3 — Résumé narratif (SUMMARY_USER)
+# Mode 3 — Résumé narratif / doctor brief (SUMMARY_USER)
 # ─────────────────────────────────────────────────────────
 # Output JSON schema:
 #   { "narrative": str, "key_insight": str, "doctor_brief": str }
-#
-# Few-shot example:
-#   → {"narrative": "Cette semaine, ta glycémie a été plutôt stable...",
-#      "key_insight": "Tes nuits semblent bien équilibrées, mais les matins restent à surveiller.",
-#      "doctor_brief": "TIR 72% / Hypos nocturnes x2 / Tendance aube confirmée."}
+# P0.5B: this prompt intentionally accepts KPI/stat evidence only. Internal
+# detector codes/names are not part of the generative evidence surface.
 
-SUMMARY_USER = """Données des {window_days} derniers jours:
+SUMMARY_USER = """Données déterministes des {window_days} derniers jours:
 {stats}
 
-Patterns détectés: {patterns}
-
-Exemples de réponses attendues:
-[TIR=72%, hypos nocturnes] → {{"narrative": "Cette semaine, tu as bien géré ta glycémie dans l'ensemble. Deux épisodes nocturnes méritent attention.", "key_insight": "Tes nuits semblent un peu agitées — une petite collation le soir pourrait aider.", "doctor_brief": "TIR 72%, 2 hypos nocturnes < 54 mg/dL, tendance aube +15%."}}
+Règles d'autorité:
+- Utilise UNIQUEMENT les données ci-dessus. N'invente aucune valeur, tendance ou information absente.
+- Décris les mesures enregistrées; ne transforme jamais une association ou une séquence temporelle en cause prouvée.
+- Ne nomme aucun syndrome, phénomène, mécanisme physiologique ou diagnostic à partir de ces seules données.
+- Ne propose aucune intervention thérapeutique, alimentaire, d'exercice, de timing, de médicament ou d'insuline.
+- Le key_insight doit rester une observation descriptive, jamais une recommandation.
+- Le doctor_brief doit tenir en une phrase et contenir uniquement les chiffres/éléments explicitement fournis ci-dessus, sans interprétation causale ou diagnostique.
 
 Résumé narratif, style ami informé, pas tableau de chiffres.
-Le doctor_brief doit tenir en une phrase, chiffres uniquement.
 Réponds UNIQUEMENT en JSON:
 {{"narrative": "...", "key_insight": "...", "doctor_brief": "..."}}
 """
