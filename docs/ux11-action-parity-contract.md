@@ -27,6 +27,8 @@ Import remains reachable elsewhere but is not a primary bottom-nav item in the a
 - No button may be dead or mislabeled.
 - Rendered visual + functional parity score **>= 9.8/10** against the approved reference.
 - Exact-head CI and migration drift green before merge.
+- No one-shot UX implementation/capture workflows or helper scripts remain in the final PR.
+- PR diff is limited to the UX-11 implementation, schema migration, and focused regression contracts.
 
 ## Visual certification evidence
 
@@ -38,3 +40,7 @@ The final visual gate uses real rendered Flutter Web output with persisted local
 - Render integrity: 1 `flutter-view` per capture and 0 page errors.
 - Structural comparison against the approved mockup: **9.8/10** after normalizing for the mockup status-bar/device aspect ratio and excluding intentionally non-authoritative/fabricated clinical content.
 - Certified geometry includes the same major composition and order: brand/header, greeting + truthful date selector, glucose hero, Trends & Insights, five quick actions, and Accueil / Mesures / `+` / Rapports / Profil bottom navigation.
+
+## Finalization state
+
+The branch was reconciled with current `main` and cleaned from broad formatter/pub-get noise. The final PR diff is expected to contain only the focused UX-11 files and focused migration/navigation regression tests. Exact-head CI and migration-drift results after this documentation commit remain the final pre-merge release gate.
