@@ -3,7 +3,6 @@ name: UX10 nav helper
 on:
   push:
     branches: [ux/10-dashboard-pixel-convergence]
-    paths: [.github/workflows/ux10-nav-helper.yml]
 
 permissions:
   contents: write
@@ -22,6 +21,9 @@ jobs:
           from pathlib import Path
           p = Path('frontend/lib/features/navigation/main_shell.dart')
           s = p.read_text()
+          if 'class _ReferenceNavDestination' in s:
+              Path('/tmp/already').write_text('yes')
+              raise SystemExit(0)
           start = s.index('class _BottomNav extends StatelessWidget')
           prefix = s[:start]
           tail = r'''class _BottomNav extends StatelessWidget {
@@ -211,6 +213,7 @@ class _ReferenceNavDestination extends StatelessWidget {
 '''
           p.write_text(prefix + tail)
           PY
+          if [ -f /tmp/already ]; then exit 0; fi
           cd frontend
           dart format lib/features/navigation/main_shell.dart
           cd ..
