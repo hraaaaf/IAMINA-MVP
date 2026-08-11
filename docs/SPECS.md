@@ -221,7 +221,32 @@ Durable analytics requirements:
 - a metric must not be exposed outside the data modality/population supported by its definition;
 - production-authoritative PostgreSQL SQL must be validated on PostgreSQL, not inferred from SQLite fallback success.
 
-## 7. Safety contract
+## 7. IAmina truth and capability contract
+
+The chassis uses explicit provenance classes for information consumed or remembered by IAmina:
+
+- `OBSERVED_FACT` — measured/imported/explicitly recorded observation from an authoritative product source;
+- `USER_CLAIM` — information explicitly reported by the patient and retained as a claim rather than silently validated;
+- `DETERMINISTIC_DERIVATION` — KPI/pattern/result produced by approved deterministic logic;
+- `PREFERENCE` — explicit product preference;
+- `CONVERSATIONAL_STATE` — transient dialogue/relationship state;
+- `MODEL_INFERENCE` — hypothesis/interpretation produced by a generative model.
+
+Persistence/authority invariants:
+
+- model inference and conversational state must not become patient clinical facts;
+- model inference must not enter deterministic clinical decision logic;
+- patient claims may feed approved deterministic triage/domain logic while remaining explicitly claims;
+- deterministic derivations should be recomputed from source truth rather than promoted to immutable patient facts;
+- explicit user-claim/preference writes require user confirmation.
+
+Generative models are allowed to explain/summarize approved data, verbalize already-detected deterministic patterns and help prepare questions for a clinician. They are not allowed to classify emergencies, diagnose, prescribe, calculate doses, optimize/change treatment, promote model inference to patient fact or write clinical records autonomously.
+
+`GatewayLLM` enforces the generative capability check before provider egress. `doctor-brief` uses this shared capability-aware gateway. One legacy structured diabetes insight formatter remains an explicitly tracked exception in `docs/TECHDEBT.md`; it remains covered by the existing egress authorization and output sanitization but is not claimed as capability-gateway-clean.
+
+Detailed semantics: `docs/AMINA_TRUTH_CAPABILITY_CONTRACT.md`.
+
+## 8. Safety contract
 
 ### Emergency handling
 
@@ -253,7 +278,7 @@ IAmina must not:
 - instruct a patient to change treatment;
 - use a generative model as the authority for emergency classification.
 
-## 8. AI / model contract
+## 9. AI / model contract
 
 ### Current enforced capability after P0-B
 
@@ -275,9 +300,11 @@ The following fail closed:
 
 The authorization is evaluated lazily at actual provider egress so deterministic emergency/safety behavior remains available when AI consent is absent, provided no external call is attempted.
 
+For shared text-gateway calls, P0.2 adds a separate authority check: egress permission does not grant a forbidden clinical capability, and an allowed narrative capability still requires the ordinary egress/consent boundary.
+
 Currently inventoried/wired surfaces include text/gateway narration, chat, summary/doctor brief, STT/audio, vision/OCR, and document-processing paths.
 
-CI prevents new direct external model/provider callsites from omitting the central authorization assertion.
+CI prevents new direct external model/provider callsites from omitting the central authorization assertion. Focused P0.2 tests additionally prevent the AI API/doctor-brief surface from reverting to direct `get_llm()` access.
 
 ### Remaining target contract
 
@@ -292,7 +319,7 @@ The authorization layer is not yet the complete sovereignty contract. P0-MENA-1 
 
 Provider selection is per modality and must follow the P0-MENA-4 benchmark.
 
-## 9. API surface — summary
+## 10. API surface — summary
 
 Current code exposes versioned `/api/v1/` routes. Representative surfaces include:
 
@@ -333,14 +360,14 @@ Current code includes surfaces for:
 
 All such endpoints must obey the same deterministic safety and no-prescription boundaries.
 
-## 10. Offline-first contract
+## 11. Offline-first contract
 
 - Flutter/Drift may persist local records before server sync.
 - Sync must be idempotent via stable client identifiers.
 - Server-side authority and conflict behavior must be explicit for edited/deleted records.
 - Safety-sensitive decisions must not rely on stale local-only state without explicit handling.
 
-## 11. Observability and retention
+## 12. Observability and retention
 
 The backend contains observability/retention foundations for events and cohort metrics including D90.
 
@@ -348,7 +375,7 @@ Retention instrumentation is a business/product decision tool, not a clinical sc
 
 Do not expand disease/module scope before the Retention Gate in `docs/ROADMAP.md` passes.
 
-## 12. Specification maintenance
+## 13. Specification maintenance
 
 Update this file only for durable capability or contract changes.
 
@@ -366,6 +393,7 @@ Use:
 
 - `ROADMAP.md` for forward work and recent closeout state;
 - `ARCHITECTURE.md` for boundaries;
+- `AMINA_TRUTH_CAPABILITY_CONTRACT.md` for the detailed companion truth/authority vocabulary;
 - `TECHDEBT.md` for unresolved compromise;
 - ADRs for durable decisions;
 - OpenAPI for exact endpoint schemas.

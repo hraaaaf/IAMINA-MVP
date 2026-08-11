@@ -25,6 +25,7 @@ The existence of platform seams does **not** mean IAmina is currently a multi-co
 - Legacy Firebase authentication bridge.
 - Provider-specific AI/STT/vision/document adapters still exist.
 - A central `core.ai_egress` boundary now authorizes live external model/media operations by patient, purpose, modality, and server-side consent.
+- IAmina has an executable truth-provenance and capability/authority contract: generative models may narrate approved data but are not clinical decision authorities.
 - CI blocks new direct external AI callsites that omit the central authorization assertion.
 
 ### Target direction
@@ -64,6 +65,7 @@ Shared core responsibilities include:
 - authentication bridge/current auth surface;
 - safety middleware/registries;
 - shared module contracts;
+- IAmina truth-provenance and capability/authority contracts;
 - AI/media egress authorization policy;
 - observability and retention instrumentation;
 - account deletion/consent hooks;
@@ -119,6 +121,7 @@ patient input
   → diabetes/domain analysis
   → approved structured result
   → optional external AI/media task
+       → capability/authority check where routed through the shared LLM gateway
        → patient/purpose/modality egress scope
        → server-side consent authorization
        → payload minimization/redaction where implemented
@@ -133,6 +136,7 @@ Generative AI must never be the authority for:
 - diagnosis;
 - prescription;
 - treatment/dose optimization;
+- whether a model inference becomes patient truth;
 - whether a prohibited payload may leave the system.
 
 ### P0-A safety boundary changes now as-built
@@ -143,9 +147,20 @@ Generative AI must never be the authority for:
 - Unexpected unit-normalization failures are fail-closed.
 - Authoritative deterministic triage classification belongs to shared `core` safety ownership; compatibility shims may remain for historical imports, but core safety must not depend on the diabetes module.
 
+### P0.2 truth and capability boundary now as-built
+
+- `TruthRecord` distinguishes observed facts, explicit patient claims, deterministic derivations, preferences, conversational state and model inference.
+- Model inference and conversational state cannot be persisted as patient clinical fact or used as deterministic clinical input merely because a model produced or repeated them.
+- Explicit patient claims retain their provenance but may feed approved deterministic triage/domain logic; using a claim as input does not validate a diagnosis.
+- The capability matrix permits generative explanation/summarization of approved data and clinician-question preparation, while emergency classification remains deterministic-only.
+- Diagnosis, prescription, dose calculation, treatment optimization/change, model-inference promotion and autonomous clinical-record writes are disabled capabilities.
+- `GatewayLLM` fails closed on a forbidden generative capability before provider egress.
+- `doctor-brief` now uses the capability-aware gateway while preserving its structured JSON response contract.
+- One legacy structured diabetes insight formatter still calls the provider abstraction directly after egress authorization; this bounded exception is tracked in `docs/TECHDEBT.md` and does not authorize diagnosis/prescription/treatment behavior.
+
 ## 6. AI / model boundary
 
-### Current state after P0-B
+### Current state after P0-B and P0.2
 
 `core.ai_egress` is the central authorization layer for currently wired live external model/media operations.
 
@@ -165,9 +180,11 @@ Default-deny conditions include:
 
 The boundary is intentionally **lazy**: entering a request scope does not itself require AI consent. Deterministic emergency/safety behavior can still complete for a patient who declined AI as long as no external provider call is attempted.
 
+The shared text gateway additionally enforces the IAmina capability matrix before provider egress. This authority check is independent of consent/egress authorization: an allowed narrative capability can still be denied for missing egress consent, and egress consent never grants a forbidden medical capability.
+
 Live call paths wired through this policy include the currently inventoried text/gateway, chat, summary/doctor-brief, STT/audio, vision/OCR, and document-processing flows.
 
-CI contains an AI-egress anti-bypass gate so new direct model/provider callsites cannot silently omit the authorization assertion.
+CI contains an AI-egress anti-bypass gate so new direct model/provider callsites cannot silently omit the authorization assertion. P0.2 adds a focused anti-regression contract preventing the AI API/doctor-brief path from returning to direct text-provider access.
 
 ### Important remaining limitations
 
@@ -183,7 +200,12 @@ Still required under P0-MENA-1:
 - timeout/failure/fallback policy;
 - final removal/isolation of provider-specific seams.
 
-Therefore the system is **egress-authorized**, but not yet fully provider-agnostic or fully sovereignty-certified.
+P0.2 additionally leaves two bounded follow-ups:
+
+- remove the structured diabetes formatter capability-gateway exception tracked in `docs/TECHDEBT.md`;
+- classify/migrate legacy companion-memory snapshots before treating those stores as typed clinical truth.
+
+Therefore the system is **egress-authorized**, and shared text-gateway calls are capability-bounded, but every legacy structured-provider seam is not yet claimed as migrated.
 
 ## 7. Data-egress policy
 
@@ -259,6 +281,7 @@ A locale/dialect is disabled for patient pilot until it has:
 - KPI calculations covered by ADR-0007 remain SQL-first.
 - Clinical data ownership stays inside the diabetes domain unless a clearly shared concept is proven.
 - Normative clinical metrics require source/version, eligibility rules, and regression fixtures; SQLite-only success is insufficient evidence for PostgreSQL-specific raw SQL.
+- Deterministic derived metrics/patterns remain derived truth and should be recomputed from authoritative source data rather than promoted to immutable patient facts.
 
 ## 11. Key invariants
 
@@ -268,6 +291,9 @@ A locale/dialect is disabled for patient pilot until it has:
 | Unit normalization before clinical/AI logic, fail-closed on unexpected normalization failure | Data integrity |
 | Cookie/session API writes retain CSRF protection | Web/API security |
 | No diagnosis/prescription/treatment optimization | Product/regulatory boundary |
+| Model inference never silently becomes patient fact or clinical authority | Clinical truthfulness |
+| Explicit patient claims remain labeled claims even when used by deterministic triage/domain logic | Provenance integrity |
+| Forbidden generative capabilities fail closed before shared-gateway provider egress | AI authority boundary |
 | Every live external model/media call requires sanctioned egress authorization | Privacy + sovereignty |
 | Missing scope/consent/purpose/modality authorization denies egress | Default-deny safety |
 | Default-deny sensitive outbound data/media | Data minimization |
@@ -281,6 +307,7 @@ A locale/dialect is disabled for patient pilot until it has:
 - `docs/ROADMAP.md` — what happens next and recent closeout state.
 - This file — current architecture + target boundaries.
 - `docs/SPECS.md` — current capability/API contract.
+- `docs/AMINA_TRUTH_CAPABILITY_CONTRACT.md` — detailed IAmina truth/authority vocabulary.
 - `docs/TECHDEBT.md` — unresolved compromise only.
 - `docs/adr/` — immutable decisions.
 - `ARCHITECTURE-TIMELINE.md` — historical evolution.
