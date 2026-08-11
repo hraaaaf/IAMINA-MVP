@@ -1,6 +1,6 @@
 # IAmina — Truth & Capability Contract
 
-> **Status:** chassis contract introduced by P0.2, extended to structured insight formatting by P0.3 and legacy-memory enforcement by P0.4/P0.4.1.  
+> **Status:** ✅ Certified through P0.4/P0.4.1 — truth/capability chassis, structured insight gateway and legacy-memory/heuristic quarantine are closed; PR #117 merged as `23eab9eafa9e25661ae71763a5266c48f9e2a437` with post-merge CI #1677 + drift #1489 green.  
 > **Scope:** IAmina companion reasoning, memory provenance and generative-model authority.  
 > **Non-scope:** no new disease module, clinical threshold, diagnosis, prescription, treatment optimization or patient-facing UX.
 
