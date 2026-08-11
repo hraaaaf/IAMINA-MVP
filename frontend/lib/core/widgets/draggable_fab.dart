@@ -19,7 +19,8 @@ class DraggableFab extends StatefulWidget {
   State<DraggableFab> createState() => _DraggableFabState();
 }
 
-class _DraggableFabState extends State<DraggableFab> with SingleTickerProviderStateMixin {
+class _DraggableFabState extends State<DraggableFab>
+    with SingleTickerProviderStateMixin {
   late Offset _offset;
   bool _isDragging = false;
   late AnimationController _pulseController;
@@ -29,13 +30,13 @@ class _DraggableFabState extends State<DraggableFab> with SingleTickerProviderSt
   void initState() {
     super.initState();
     _offset = widget.initialOffset ?? const Offset(-24, -100);
-    
+
     // Breathing/Pulse animation (Phase 2 UI)
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    
+
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
     );
@@ -75,10 +76,12 @@ class _DraggableFabState extends State<DraggableFab> with SingleTickerProviderSt
               builder: (context, child) {
                 // Combine drag scale (1.15) with pulse scale
                 final scale = _isDragging ? 1.15 : _pulseAnimation.value;
-                
+
                 return AnimatedScale(
                   scale: scale,
-                  duration: _isDragging ? const Duration(milliseconds: 200) : Duration.zero,
+                  duration: _isDragging
+                      ? const Duration(milliseconds: 200)
+                      : Duration.zero,
                   curve: Curves.easeOutBack,
                   child: AnimatedRotation(
                     turns: _isDragging ? 0.125 : 0.0,
@@ -98,10 +101,16 @@ class _DraggableFabState extends State<DraggableFab> with SingleTickerProviderSt
                           boxShadow: [
                             BoxShadow(
                               color: AminaTheme.primaryTeal.withValues(
-                                alpha: _isDragging ? 0.6 : (0.4 * _pulseAnimation.value)
+                                alpha: _isDragging
+                                    ? 0.6
+                                    : (0.4 * _pulseAnimation.value),
                               ),
-                              blurRadius: _isDragging ? 24 : (18 * _pulseAnimation.value),
-                              spreadRadius: _isDragging ? 4 : (2 * (_pulseAnimation.value - 1.0) * 10),
+                              blurRadius: _isDragging
+                                  ? 24
+                                  : (18 * _pulseAnimation.value),
+                              spreadRadius: _isDragging
+                                  ? 4
+                                  : (2 * (_pulseAnimation.value - 1.0) * 10),
                               offset: const Offset(0, 4),
                             ),
                           ],
@@ -111,7 +120,7 @@ class _DraggableFabState extends State<DraggableFab> with SingleTickerProviderSt
                     ),
                   ),
                 );
-              }
+              },
             ),
           ),
         ),

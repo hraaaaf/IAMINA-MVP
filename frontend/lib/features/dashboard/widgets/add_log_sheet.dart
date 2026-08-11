@@ -36,10 +36,17 @@ GlucoseEntrySafety classifyGlucoseEntrySafety(double mgdl) {
 /// optional meal. Treatment context and daily-state details remain secondary.
 /// Measurement context and meal category are persisted independently; neither
 /// is inferred when the patient does not select it.
+enum AddLogFocus { none, meal, activity, insulin }
+
 class AddLogSheet extends StatefulWidget {
   final bool isPage;
+  final AddLogFocus focus;
 
-  const AddLogSheet({super.key, this.isPage = false});
+  const AddLogSheet({
+    super.key,
+    this.isPage = false,
+    this.focus = AddLogFocus.none,
+  });
 
   @override
   State<AddLogSheet> createState() => _AddLogSheetState();
@@ -72,6 +79,16 @@ class _AddLogSheetState extends State<AddLogSheet> {
     'post_meal',
     'other',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _mealExpanded = widget.focus == AddLogFocus.meal;
+    _detailsExpanded =
+        widget.focus == AddLogFocus.activity ||
+        widget.focus == AddLogFocus.insulin;
+    _contextExpanded = widget.focus == AddLogFocus.activity;
+  }
 
   @override
   void dispose() {

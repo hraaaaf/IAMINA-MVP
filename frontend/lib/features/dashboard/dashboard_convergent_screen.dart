@@ -145,9 +145,13 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
       unit == 'mmol/L' ? (mg / 18.0).toStringAsFixed(1) : mg.toStringAsFixed(0);
 
   String _firstName() {
-    final raw = FirebaseAuth.instance.currentUser?.displayName?.trim();
-    if (raw == null || raw.isEmpty) return '';
-    return raw.split(RegExp(r'\s+')).first;
+    try {
+      final raw = FirebaseAuth.instance.currentUser?.displayName?.trim();
+      if (raw == null || raw.isEmpty) return '';
+      return raw.split(RegExp(r'\s+')).first;
+    } on Exception {
+      return '';
+    }
   }
 
   String _observation(BuildContext context, double tir) {
@@ -358,31 +362,16 @@ class _BrandRow extends StatelessWidget {
           color: AminaTheme.surface(context),
           shape: const CircleBorder(),
           child: InkWell(
-            onTap: () => GoRouter.of(context).go('/summary'),
+            key: const ValueKey('dashboard-import-action'),
+            onTap: () => GoRouter.of(context).go('/importer'),
             customBorder: const CircleBorder(),
             child: SizedBox(
               width: 46,
               height: 46,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Icon(
-                    Icons.notifications_none_rounded,
-                    size: 21,
-                    color: AminaTheme.textPrimary(context),
-                  ),
-                  const PositionedDirectional(
-                    top: 8,
-                    end: 8,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Color(0xFF31C78A),
-                        shape: BoxShape.circle,
-                      ),
-                      child: SizedBox(width: 7, height: 7),
-                    ),
-                  ),
-                ],
+              child: Icon(
+                Icons.upload_file_outlined,
+                size: 21,
+                color: AminaTheme.textPrimary(context),
               ),
             ),
           ),
@@ -881,28 +870,31 @@ class _QuickActionsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final actions = <({IconData icon, String label, String route})>[
       (
         icon: Icons.menu_book_outlined,
-        label: l10n.navJournal,
+        label: _t(context, 'Journal', 'Journal', 'السجل'),
         route: '/journal',
       ),
-      (icon: Icons.add_rounded, label: l10n.addEntry, route: '/ajouter'),
       (
-        icon: Icons.upload_file_outlined,
-        label: l10n.importDocument,
-        route: '/importer',
+        icon: Icons.restaurant_outlined,
+        label: _t(context, 'Alimentation', 'Food', 'التغذية'),
+        route: '/ajouter?focus=meal',
       ),
       (
-        icon: Icons.description_outlined,
-        label: l10n.summary,
-        route: '/summary',
+        icon: Icons.directions_run_rounded,
+        label: _t(context, 'Activité', 'Activity', 'النشاط'),
+        route: '/ajouter?focus=activity',
       ),
       (
-        icon: Icons.person_outline_rounded,
-        label: l10n.profile,
-        route: '/profile',
+        icon: Icons.medication_outlined,
+        label: _t(context, 'Médicaments', 'Medications', 'الأدوية'),
+        route: '/medications',
+      ),
+      (
+        icon: Icons.notifications_none_rounded,
+        label: _t(context, 'Rappels', 'Reminders', 'التذكيرات'),
+        route: '/reminders',
       ),
     ];
     return Row(
@@ -911,6 +903,7 @@ class _QuickActionsRow extends StatelessWidget {
         for (final action in actions)
           Expanded(
             child: InkWell(
+              key: ValueKey('dashboard-action-${action.route}'),
               onTap: () => GoRouter.of(context).go(action.route),
               borderRadius: BorderRadius.circular(15),
               child: Column(

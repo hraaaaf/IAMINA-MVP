@@ -6,31 +6,40 @@ class _PageHead extends StatelessWidget {
   final int logCount;
   final int range;
   final bool isDesktop;
-  const _PageHead({required this.logCount, required this.range, this.isDesktop = false});
+  const _PageHead({
+    required this.logCount,
+    required this.range,
+    this.isDesktop = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final copy = AuditedPageCopy.of(context);
     return Padding(
-      padding: EdgeInsets.only(top: isDesktop ? 32 : 18, bottom: isDesktop ? 4 : 2),
+      padding: EdgeInsets.only(
+        top: isDesktop ? 32 : 18,
+        bottom: isDesktop ? 4 : 2,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Builder(builder: (ctx) {
-            final firstName = _HeroInsight._firstName();
-            final salut = copy.greeting(now.hour, firstName);
-            return Text(
-              salut,
-              style: TextStyle(
-                fontSize: isDesktop ? 44 : 31,
-                fontWeight: FontWeight.w700,
-                color: AminaTheme.textPrimary(context),
-                letterSpacing: -1.1,
-                height: 1.04,
-              ),
-            );
-          }),
+          Builder(
+            builder: (ctx) {
+              final firstName = _HeroInsight._firstName();
+              final salut = copy.greeting(now.hour, firstName);
+              return Text(
+                salut,
+                style: TextStyle(
+                  fontSize: isDesktop ? 44 : 31,
+                  fontWeight: FontWeight.w700,
+                  color: AminaTheme.textPrimary(context),
+                  letterSpacing: -1.1,
+                  height: 1.04,
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 7),
           Text(
             logCount > 0 ? copy.observation(range) : copy.emptyAnalysis,
@@ -71,7 +80,9 @@ class _HeroContextual extends StatelessWidget {
     final now = DateTime.now();
     if (logs.isEmpty) return _HeroMode.insight;
     final latest = logs.first;
-    final minutesSince = now.difference(latest.loggedAt ?? latest.createdAt).inMinutes;
+    final minutesSince = now
+        .difference(latest.loggedAt ?? latest.createdAt)
+        .inMinutes;
     if (minutesSince >= 0 && minutesSince < 90) return _HeroMode.live;
     return _HeroMode.insight;
   }
@@ -80,25 +91,15 @@ class _HeroContextual extends StatelessWidget {
   Widget build(BuildContext context) {
     final mode = _resolveMode();
     return switch (mode) {
-      _HeroMode.live => _HeroLive(
-          logs: logs,
-          unit: unit,
-          low: low,
-          high: high,
-        ),
-      _HeroMode.tir => _HeroTIR(
-          logs: logs,
-          low: low,
-          high: high,
-          range: range,
-        ),
+      _HeroMode.live => _HeroLive(logs: logs, unit: unit, low: low, high: high),
+      _HeroMode.tir => _HeroTIR(logs: logs, low: low, high: high, range: range),
       _HeroMode.insight => _HeroInsight(
-          logs: logs,
-          unit: unit,
-          low: low,
-          high: high,
-          range: range,
-        ),
+        logs: logs,
+        unit: unit,
+        low: low,
+        high: high,
+        range: range,
+      ),
     };
   }
 }

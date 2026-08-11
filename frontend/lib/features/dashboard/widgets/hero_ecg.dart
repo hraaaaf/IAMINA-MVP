@@ -22,13 +22,13 @@ class _EcgPainter extends CustomPainter {
 
     // Points ECG normalisés
     final pts = [
-      Offset(0.0,  h),
+      Offset(0.0, h),
       Offset(0.35, h),
       Offset(0.42, h * 0.4),
       Offset(0.50, h * 1.6),
       Offset(0.58, h * 0.1),
       Offset(0.65, h),
-      Offset(1.0,  h),
+      Offset(1.0, h),
     ].map((p) => Offset(p.dx * w, p.dy)).toList();
 
     // Longueur totale approximative
@@ -59,9 +59,17 @@ class _EcgPainter extends CustomPainter {
     // Dot à la position courante
     final pathMetrics = path.computeMetrics().toList();
     if (pathMetrics.isNotEmpty) {
-      final tang = pathMetrics.last.getTangentForOffset(pathMetrics.last.length);
+      final tang = pathMetrics.last.getTangentForOffset(
+        pathMetrics.last.length,
+      );
       if (tang != null) {
-        canvas.drawCircle(tang.position, 3.5, Paint()..color = color..style = PaintingStyle.fill);
+        canvas.drawCircle(
+          tang.position,
+          3.5,
+          Paint()
+            ..color = color
+            ..style = PaintingStyle.fill,
+        );
       }
     }
   }
@@ -79,22 +87,29 @@ class _AnimatedEcg extends StatefulWidget {
   State<_AnimatedEcg> createState() => _AnimatedEcgState();
 }
 
-class _AnimatedEcgState extends State<_AnimatedEcg> with SingleTickerProviderStateMixin {
+class _AnimatedEcgState extends State<_AnimatedEcg>
+    with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _anim;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))
-      ..repeat();
-    _anim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat();
+    _anim = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -26,11 +26,11 @@ class TweaksPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tweaks = context.watch<TweaksNotifier>();
-    final isDark  = tweaks.isDark;
+    final isDark = tweaks.isDark;
 
-    final bg     = isDark ? AminaTheme.darkCard       : AminaTheme.cardBg;
-    final border = isDark ? AminaTheme.dark600         : AminaTheme.ink100;
-    final muted  = isDark ? AminaTheme.dark400         : AminaTheme.ink500;
+    final bg = isDark ? AminaTheme.darkCard : AminaTheme.cardBg;
+    final border = isDark ? AminaTheme.dark600 : AminaTheme.ink100;
+    final muted = isDark ? AminaTheme.dark400 : AminaTheme.ink500;
 
     return GestureDetector(
       onTap: onClose, // tap outside panel closes it
@@ -46,7 +46,9 @@ class TweaksPanel extends StatelessWidget {
             decoration: BoxDecoration(
               color: bg,
               border: Border(left: BorderSide(color: border)),
-              boxShadow: isDark ? AminaTheme.shadowDark : AminaTheme.shadowClinicalLg,
+              boxShadow: isDark
+                  ? AminaTheme.shadowDark
+                  : AminaTheme.shadowClinicalLg,
             ),
             child: SafeArea(
               child: Column(
@@ -57,13 +59,24 @@ class TweaksPanel extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(20, 20, 12, 16),
                     child: Row(
                       children: [
-                        Text('TWEAKS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: muted, letterSpacing: 0.1)),
+                        Text(
+                          'TWEAKS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: muted,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
                         const Spacer(),
                         IconButton(
                           onPressed: onClose,
                           icon: Icon(Icons.close, size: 18, color: muted),
                           padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
                         ),
                       ],
                     ),
@@ -78,9 +91,9 @@ class TweaksPanel extends StatelessWidget {
                         const SizedBox(height: 10),
                         _SegmentGroup<TweaksDirection>(
                           options: const [
-                            (TweaksDirection.clinique,  'Clinique'),
+                            (TweaksDirection.clinique, 'Clinique'),
                             (TweaksDirection.editorial, 'Éditorial'),
-                            (TweaksDirection.dense,     'Dense'),
+                            (TweaksDirection.dense, 'Dense'),
                           ],
                           selected: tweaks.direction,
                           onSelect: tweaks.setDirection,
@@ -93,10 +106,7 @@ class TweaksPanel extends StatelessWidget {
                         _SectionLabel(label: 'Thème', isDark: isDark),
                         const SizedBox(height: 10),
                         _SegmentGroup<bool>(
-                          options: const [
-                            (false, 'Clair'),
-                            (true,  'Sombre'),
-                          ],
+                          options: const [(false, 'Clair'), (true, 'Sombre')],
                           selected: tweaks.isDark,
                           onSelect: tweaks.setDark,
                           isDark: isDark,
@@ -109,8 +119,8 @@ class TweaksPanel extends StatelessWidget {
                         const SizedBox(height: 10),
                         _SegmentGroup<TweaksDensity>(
                           options: const [
-                            (TweaksDensity.confort,  'Confort'),
-                            (TweaksDensity.compact,  'Compact'),
+                            (TweaksDensity.confort, 'Confort'),
+                            (TweaksDensity.compact, 'Compact'),
                           ],
                           selected: tweaks.density,
                           onSelect: tweaks.setDensity,
@@ -155,13 +165,21 @@ class TweaksPanel extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: tweaks.primaryColor.withValues(alpha: isDark ? 0.15 : 0.07),
+                            color: tweaks.primaryColor.withValues(
+                              alpha: isDark ? 0.15 : 0.07,
+                            ),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: tweaks.primaryColor.withValues(alpha: 0.2)),
+                            border: Border.all(
+                              color: tweaks.primaryColor.withValues(alpha: 0.2),
+                            ),
                           ),
                           child: Text(
                             'Les changements s\'appliquent en temps réel.',
-                            style: TextStyle(fontSize: 11, color: tweaks.primaryColor, height: 1.5),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: tweaks.primaryColor,
+                              height: 1.5,
+                            ),
                           ),
                         ),
                       ],
@@ -216,10 +234,10 @@ class _SegmentGroup<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg     = isDark ? AminaTheme.darkCardElevated : AminaTheme.ink50;
-    final selBg  = isDark ? AminaTheme.darkCard         : AminaTheme.cardBg;
+    final bg = isDark ? AminaTheme.darkCardElevated : AminaTheme.ink50;
+    final selBg = isDark ? AminaTheme.darkCard : AminaTheme.cardBg;
     final selText = accent;
-    final defText = isDark ? AminaTheme.dark400          : AminaTheme.ink500;
+    final defText = isDark ? AminaTheme.dark400 : AminaTheme.ink500;
 
     return Container(
       decoration: BoxDecoration(
@@ -241,7 +259,9 @@ class _SegmentGroup<T> extends StatelessWidget {
                   color: isSelected ? selBg : Colors.transparent,
                   borderRadius: BorderRadius.circular(6),
                   boxShadow: isSelected
-                      ? (isDark ? AminaTheme.shadowDark : AminaTheme.shadowClinical)
+                      ? (isDark
+                            ? AminaTheme.shadowDark
+                            : AminaTheme.shadowClinical)
                       : null,
                 ),
                 child: Text(
@@ -287,15 +307,25 @@ class _AccentDot extends StatelessWidget {
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            width: 32, height: 32,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
               border: selected
-                  ? Border.all(color: isDark ? Colors.white : AminaTheme.ink900, width: 2.5)
+                  ? Border.all(
+                      color: isDark ? Colors.white : AminaTheme.ink900,
+                      width: 2.5,
+                    )
                   : null,
               boxShadow: selected
-                  ? [BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 2))]
+                  ? [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
                   : null,
             ),
             child: selected
@@ -308,7 +338,9 @@ class _AccentDot extends StatelessWidget {
             style: TextStyle(
               fontSize: 10,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected ? color : (isDark ? AminaTheme.dark400 : AminaTheme.ink500),
+              color: selected
+                  ? color
+                  : (isDark ? AminaTheme.dark400 : AminaTheme.ink500),
             ),
           ),
         ],

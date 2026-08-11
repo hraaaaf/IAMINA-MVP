@@ -35,11 +35,10 @@ class GlucoseFormatter {
 
     // Marge de 10% en haut et en bas
     final range = maxValue - minValue;
-    final padding = range > 0 ? range * 0.1 : (unit.toLowerCase() == 'mmol/l' ? 1.0 : 20.0);
+    final padding = range > 0
+        ? range * 0.1
+        : (unit.toLowerCase() == 'mmol/l' ? 1.0 : 20.0);
 
-    return [
-      max(0.0, minValue - padding),
-      maxValue + padding,
-    ];
+    return [max(0.0, minValue - padding), maxValue + padding];
   }
 }

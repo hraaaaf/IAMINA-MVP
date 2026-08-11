@@ -29,12 +29,7 @@ class PremiumSlider extends StatelessWidget {
             thumbShape: const PremiumThumbShape(),
             trackShape: const GradientTrackShape(),
           ),
-          child: Slider(
-            value: value,
-            min: min,
-            max: max,
-            onChanged: onChanged,
-          ),
+          child: Slider(value: value, min: min, max: max, onChanged: onChanged),
         ),
         const SizedBox(height: 12),
         Padding(
@@ -140,7 +135,7 @@ class GradientTrackShape extends SliderTrackShape with BaseSliderTrackShape {
         colors: [
           Color(0xFFEF4444), // 0-15% (30-85.5) -> Approx 30-70 is Red/Amber
           Color(0xFFEF4444),
-          Color(0xFFF59E0B), 
+          Color(0xFFF59E0B),
           Color(0xFFF59E0B),
           Color(0xFF10B981),
           Color(0xFF10B981),
@@ -152,7 +147,10 @@ class GradientTrackShape extends SliderTrackShape with BaseSliderTrackShape {
         stops: [0.0, 0.15, 0.15, 0.22, 0.22, 0.40, 0.40, 0.70, 0.70, 1.0],
       ).createShader(trackRect);
 
-    final RRect rrect = RRect.fromRectAndRadius(trackRect, const Radius.circular(10));
+    final RRect rrect = RRect.fromRectAndRadius(
+      trackRect,
+      const Radius.circular(10),
+    );
     context.canvas.drawRRect(rrect, gradientPaint);
   }
 }

@@ -29,8 +29,9 @@ Future<void> main() async {
   }
 
   final db = AppDatabase.defaults();
-  final initialProfile =
-      await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull();
+  final initialProfile = await (db.select(
+    db.patientProfiles,
+  )..limit(1)).getSingleOrNull();
   final consentService = ConsentService()
     ..seedInitialProfile(initialProfile)
     ..attachStream(db.watchProfile());
@@ -74,9 +75,7 @@ Future<void> main() async {
           create: (context) => db.watchProfile(),
           initialData: null,
         ),
-        ChangeNotifierProvider<TweaksNotifier>(
-          create: (_) => TweaksNotifier(),
-        ),
+        ChangeNotifierProvider<TweaksNotifier>(create: (_) => TweaksNotifier()),
       ],
       child: AminaApp(router: routerHolder.router),
     ),

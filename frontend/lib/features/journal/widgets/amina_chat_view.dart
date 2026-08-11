@@ -21,8 +21,8 @@ class AminaChatView extends StatefulWidget {
 enum _VoiceState { idle, recording, processing }
 
 class _AminaChatViewState extends State<AminaChatView> {
-  final TextEditingController _ctrl       = TextEditingController();
-  final ScrollController      _scrollCtrl = ScrollController();
+  final TextEditingController _ctrl = TextEditingController();
+  final ScrollController _scrollCtrl = ScrollController();
   final List<Map<String, dynamic>> _messages = [];
   bool _isTyping = false;
   bool _showScrollDown = false;
@@ -30,7 +30,7 @@ class _AminaChatViewState extends State<AminaChatView> {
 
   // Voice
   final AudioRecorder _recorder = AudioRecorder();
-  final FlutterTts    _tts      = FlutterTts();
+  final FlutterTts _tts = FlutterTts();
   _VoiceState _voiceState = _VoiceState.idle;
 
   // Suggested prompts — generated dynamically in _buildSuggestions()
@@ -57,7 +57,8 @@ class _AminaChatViewState extends State<AminaChatView> {
 
   void _onScroll() {
     if (!_scrollCtrl.hasClients) return;
-    final atBottom = _scrollCtrl.position.maxScrollExtent - _scrollCtrl.offset < 80;
+    final atBottom =
+        _scrollCtrl.position.maxScrollExtent - _scrollCtrl.offset < 80;
     if (atBottom != !_showScrollDown) {
       setState(() => _showScrollDown = !atBottom);
     }
@@ -90,14 +91,14 @@ class _AminaChatViewState extends State<AminaChatView> {
   Future<String> _resolveTtsLanguage() async {
     // Derive language from device locale (set when the user registered the app).
     // PatientProfile preferred_language: "fr" → "fr-FR", "ar-MA" / "ar" → "ar".
-    final locale    = WidgetsBinding.instance.platformDispatcher.locale.toString();
+    final locale = WidgetsBinding.instance.platformDispatcher.locale.toString();
     final preferred = locale.startsWith('ar') ? 'ar' : 'fr-FR';
 
     // Verify the locale is actually installed on this device/browser.
     try {
       final available = await _tts.getLanguages as List<dynamic>? ?? [];
-      final locales   = available.map((l) => l.toString().toLowerCase()).toList();
-      final prefix    = preferred.toLowerCase().split('-').first;
+      final locales = available.map((l) => l.toString().toLowerCase()).toList();
+      final prefix = preferred.toLowerCase().split('-').first;
       if (locales.any((l) => l.startsWith(prefix))) return preferred;
     } catch (_) {}
 
@@ -117,13 +118,15 @@ class _AminaChatViewState extends State<AminaChatView> {
           .replaceAll(RegExp(r'^```json\s*', multiLine: true), '')
           .replaceAll(RegExp(r'^```\s*', multiLine: true), '')
           .trim();
-      final decoded = jsonStr.isNotEmpty ? (
-        jsonStr.startsWith('{')
-            ? (jsonStr) // attempt parse below
-            : jsonStr
-      ) : jsonStr;
+      final decoded = jsonStr.isNotEmpty
+          ? (jsonStr.startsWith('{')
+                ? (jsonStr) // attempt parse below
+                : jsonStr)
+          : jsonStr;
       // Simple regex extract of "reply" value — avoids dart:convert dependency issues
-      final match = RegExp(r'"reply"\s*:\s*"((?:[^"\\]|\\.)*)"').firstMatch(decoded);
+      final match = RegExp(
+        r'"reply"\s*:\s*"((?:[^"\\]|\\.)*)"',
+      ).firstMatch(decoded);
       if (match != null) return match.group(1)!.replaceAll(r'\"', '"');
     } catch (_) {}
     return trimmed;
@@ -134,7 +137,9 @@ class _AminaChatViewState extends State<AminaChatView> {
   /// "ar-MA" and "ar" → Arabic TTS locale; anything else → French.
   Future<void> _speakReply(String text, {String replyLanguage = 'fr'}) async {
     if (text.isEmpty) return;
-    final lang = (replyLanguage == 'ar-MA' || replyLanguage == 'ar') ? 'ar' : 'fr-FR';
+    final lang = (replyLanguage == 'ar-MA' || replyLanguage == 'ar')
+        ? 'ar'
+        : 'fr-FR';
     await _tts.setLanguage(lang);
     await _tts.speak(text);
   }
@@ -151,23 +156,27 @@ class _AminaChatViewState extends State<AminaChatView> {
 
   Future<void> _loadHistory() async {
     final db = context.read<AppDatabase>();
-    final history = await (db.select(db.chatMessages)
-          ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.asc)]))
-        .get();
+    final history =
+        await (db.select(db.chatMessages)..orderBy([
+              (t) =>
+                  OrderingTerm(expression: t.createdAt, mode: OrderingMode.asc),
+            ]))
+            .get();
 
     if (mounted) {
       setState(() {
         if (history.isEmpty) {
           _messages.add({
-            'isAi':        true,
-            'text':        'Bonjour 👋 Je peux analyser vos tendances, expliquer un pic glycémique, ou suggérer un ajustement. Par quoi on commence ?',
+            'isAi': true,
+            'text':
+                'Bonjour 👋 Je peux analyser vos tendances, expliquer un pic glycémique, ou suggérer un ajustement. Par quoi on commence ?',
             'isEmergency': false,
           });
         } else {
           for (final msg in history) {
             _messages.add({
-              'isAi':        msg.role == 'assistant',
-              'text':        msg.message,
+              'isAi': msg.role == 'assistant',
+              'text': msg.message,
               'isEmergency': false,
             });
           }
@@ -179,8 +188,8 @@ class _AminaChatViewState extends State<AminaChatView> {
 
   Future<void> _send(String text) async {
     if (text.trim().isEmpty || _isTyping) return;
-    final msg       = text.trim();
-    final db        = context.read<AppDatabase>();
+    final msg = text.trim();
+    final db = context.read<AppDatabase>();
     final apiClient = context.read<ApiClient>();
 
     setState(() {
@@ -192,63 +201,77 @@ class _AminaChatViewState extends State<AminaChatView> {
     });
     _scrollToBottom();
 
-    await db.into(db.chatMessages).insert(
-      ChatMessagesCompanion.insert(
-        conversationId: 'default',
-        role:           'user',
-        message:        msg,
-        createdAt:      DateTime.now(),
-      ),
-    );
+    await db
+        .into(db.chatMessages)
+        .insert(
+          ChatMessagesCompanion.insert(
+            conversationId: 'default',
+            role: 'user',
+            message: msg,
+            createdAt: DateTime.now(),
+          ),
+        );
 
     final aiMsgIndex = _messages.length - 1;
     final buffer = StringBuffer();
 
-    _streamSub = apiClient.chatStream(msg).listen(
-      (token) {
-        if (!mounted) return;
-        buffer.write(token);
-        setState(() {
-          _messages[aiMsgIndex] = {'isAi': true, 'text': buffer.toString(), 'isEmergency': false};
-        });
-        _scrollToBottom();
-      },
-      onDone: () async {
-        if (!mounted) return;
-        final raw = buffer.toString();
-        // Guard: if the LLM leaked JSON despite the plain-text instruction,
-        // extract the "reply" field rather than showing raw JSON.
-        final reply = _stripJsonIfNeeded(raw);
-        setState(() {
-          _messages[aiMsgIndex] = {'isAi': true, 'text': reply, 'isEmergency': false};
-          _isTyping = false;
-        });
-        await db.into(db.chatMessages).insert(
-          ChatMessagesCompanion.insert(
-            conversationId: 'default',
-            role:           'assistant',
-            message:        reply,
-            createdAt:      DateTime.now(),
-          ),
+    _streamSub = apiClient
+        .chatStream(msg)
+        .listen(
+          (token) {
+            if (!mounted) return;
+            buffer.write(token);
+            setState(() {
+              _messages[aiMsgIndex] = {
+                'isAi': true,
+                'text': buffer.toString(),
+                'isEmergency': false,
+              };
+            });
+            _scrollToBottom();
+          },
+          onDone: () async {
+            if (!mounted) return;
+            final raw = buffer.toString();
+            // Guard: if the LLM leaked JSON despite the plain-text instruction,
+            // extract the "reply" field rather than showing raw JSON.
+            final reply = _stripJsonIfNeeded(raw);
+            setState(() {
+              _messages[aiMsgIndex] = {
+                'isAi': true,
+                'text': reply,
+                'isEmergency': false,
+              };
+              _isTyping = false;
+            });
+            await db
+                .into(db.chatMessages)
+                .insert(
+                  ChatMessagesCompanion.insert(
+                    conversationId: 'default',
+                    role: 'assistant',
+                    message: reply,
+                    createdAt: DateTime.now(),
+                  ),
+                );
+          },
+          onError: (error) {
+            if (!mounted) return;
+            final message = error is ProviderApiException
+                ? error.userMessage
+                : 'La demande n’a pas pu être traitée en toute sécurité.';
+            setState(() {
+              _messages[aiMsgIndex] = {
+                'isAi': true,
+                'text': message,
+                'isEmergency': false,
+                'retryable': error is ProviderApiException && error.retryable,
+              };
+              _isTyping = false;
+            });
+          },
+          cancelOnError: true,
         );
-      },
-      onError: (error) {
-        if (!mounted) return;
-        final message = error is ProviderApiException
-            ? error.userMessage
-            : 'La demande n’a pas pu être traitée en toute sécurité.';
-        setState(() {
-          _messages[aiMsgIndex] = {
-            'isAi': true,
-            'text': message,
-            'isEmergency': false,
-            'retryable': error is ProviderApiException && error.retryable,
-          };
-          _isTyping = false;
-        });
-      },
-      cancelOnError: true,
-    );
   }
 
   // ── Voice ─────────────────────────────────────────────────────────────────
@@ -276,7 +299,9 @@ class _AminaChatViewState extends State<AminaChatView> {
       if (!hasPermission) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Accès au micro refusé. Vérifie les permissions.')),
+            const SnackBar(
+              content: Text('Accès au micro refusé. Vérifie les permissions.'),
+            ),
           );
         }
         return;
@@ -288,7 +313,7 @@ class _AminaChatViewState extends State<AminaChatView> {
     // Web supports Opus/WebM only — AAC is not available in browser MediaRecorder.
     // Mobile (iOS/Android) uses AAC (m4a). Both are accepted by Gemini Audio STT.
     const config = RecordConfig(
-      encoder:    kIsWeb ? AudioEncoder.opus : AudioEncoder.aacLc,
+      encoder: kIsWeb ? AudioEncoder.opus : AudioEncoder.aacLc,
       sampleRate: 16000,
       numChannels: 1,
     );
@@ -300,9 +325,9 @@ class _AminaChatViewState extends State<AminaChatView> {
         onError: (e) {
           if (mounted) {
             setState(() => _voiceState = _VoiceState.idle);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Erreur micro : $e')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Erreur micro : $e')));
           }
         },
       );
@@ -311,11 +336,13 @@ class _AminaChatViewState extends State<AminaChatView> {
       if (mounted) {
         setState(() => _voiceState = _VoiceState.idle);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(
-            e.toString().contains('NotAllowed')
-                ? 'Accès au micro refusé. Autorise le micro dans le navigateur.'
-                : 'Impossible de démarrer l\'enregistrement : $e',
-          )),
+          SnackBar(
+            content: Text(
+              e.toString().contains('NotAllowed')
+                  ? 'Accès au micro refusé. Autorise le micro dans le navigateur.'
+                  : 'Impossible de démarrer l\'enregistrement : $e',
+            ),
+          ),
         );
       }
     }
@@ -331,7 +358,7 @@ class _AminaChatViewState extends State<AminaChatView> {
 
     // Combine all chunks into one Uint8List
     final totalLength = _audioChunks.fold<int>(0, (sum, c) => sum + c.length);
-    final audioBytes  = Uint8List(totalLength);
+    final audioBytes = Uint8List(totalLength);
     var offset = 0;
     for (final chunk in _audioChunks) {
       audioBytes.setRange(offset, offset + chunk.length, chunk);
@@ -345,9 +372,9 @@ class _AminaChatViewState extends State<AminaChatView> {
     }
 
     // Web records WebM, mobile records AAC — both supported by Gemini Audio
-    const mimeType  = kIsWeb ? 'audio/webm' : 'audio/mp4';
+    const mimeType = kIsWeb ? 'audio/webm' : 'audio/mp4';
     final apiClient = context.read<ApiClient>();
-    final db        = context.read<AppDatabase>();
+    final db = context.read<AppDatabase>();
 
     final response = await apiClient.sendVoiceMessage(audioBytes, mimeType);
 
@@ -357,8 +384,8 @@ class _AminaChatViewState extends State<AminaChatView> {
     if (response == null) {
       setState(() {
         _messages.add({
-          'isAi':        true,
-          'text':        'Impossible d\'envoyer le message vocal. Réessaie.',
+          'isAi': true,
+          'text': 'Impossible d\'envoyer le message vocal. Réessaie.',
           'isEmergency': false,
         });
       });
@@ -372,22 +399,38 @@ class _AminaChatViewState extends State<AminaChatView> {
         : '🎤 [message vocal]';
 
     setState(() {
-      _messages.add({'isAi': false, 'text': userText,        'isEmergency': false});
-      _messages.add({'isAi': true,  'text': response.reply,  'isEmergency': response.isEmergency});
+      _messages.add({'isAi': false, 'text': userText, 'isEmergency': false});
+      _messages.add({
+        'isAi': true,
+        'text': response.reply,
+        'isEmergency': response.isEmergency,
+      });
     });
     _scrollToBottom();
 
     // Persist to local DB
-    await db.into(db.chatMessages).insert(ChatMessagesCompanion.insert(
-      conversationId: 'default', role: 'user',
-      message: response.transcript.isNotEmpty ? response.transcript : '[voice]',
-      createdAt: DateTime.now(),
-    ));
-    await db.into(db.chatMessages).insert(ChatMessagesCompanion.insert(
-      conversationId: 'default', role: 'assistant',
-      message:   response.reply,
-      createdAt: DateTime.now(),
-    ));
+    await db
+        .into(db.chatMessages)
+        .insert(
+          ChatMessagesCompanion.insert(
+            conversationId: 'default',
+            role: 'user',
+            message: response.transcript.isNotEmpty
+                ? response.transcript
+                : '[voice]',
+            createdAt: DateTime.now(),
+          ),
+        );
+    await db
+        .into(db.chatMessages)
+        .insert(
+          ChatMessagesCompanion.insert(
+            conversationId: 'default',
+            role: 'assistant',
+            message: response.reply,
+            createdAt: DateTime.now(),
+          ),
+        );
 
     // TTS — IAmina reads her reply aloud (skip emergency: user needs to call SAMU)
     if (!response.isEmergency) {
@@ -405,17 +448,44 @@ class _AminaChatViewState extends State<AminaChatView> {
   List<String> _buildSuggestions(BuildContext context) {
     // Derive from conversation history — no async needed.
     // After IAmina's first response, we can read the clinical context from its text.
-    final lastAi = _messages.lastWhere((m) => m['isAi'] == true, orElse: () => {});
+    final lastAi = _messages.lastWhere(
+      (m) => m['isAi'] == true,
+      orElse: () => {},
+    );
     final aiText = (lastAi['text'] as String? ?? '').toLowerCase();
 
-    if (aiText.contains('hypo') || aiText.contains('glycémie basse') || aiText.contains('< 70') || aiText.contains('tbr')) {
-      return ['Que faire en cas d\'hypo ?', 'Quels aliments éviter ?', 'C\'est souvent la nuit ?', 'Résumé 7 jours'];
+    if (aiText.contains('hypo') ||
+        aiText.contains('glycémie basse') ||
+        aiText.contains('< 70') ||
+        aiText.contains('tbr')) {
+      return [
+        'Que faire en cas d\'hypo ?',
+        'Quels aliments éviter ?',
+        'C\'est souvent la nuit ?',
+        'Résumé 7 jours',
+      ];
     }
-    if (aiText.contains('élevé') || aiText.contains('pic') || aiText.contains('hyperglycé') || aiText.contains('180')) {
-      return ['Pourquoi ce pic ?', 'C\'est lié au repas ?', 'Éviter les hausses', 'Mon meilleur jour'];
+    if (aiText.contains('élevé') ||
+        aiText.contains('pic') ||
+        aiText.contains('hyperglycé') ||
+        aiText.contains('180')) {
+      return [
+        'Pourquoi ce pic ?',
+        'C\'est lié au repas ?',
+        'Éviter les hausses',
+        'Mon meilleur jour',
+      ];
     }
-    if (aiText.contains('cible') || aiText.contains('tir') || aiText.contains('excellent') || aiText.contains('bravo')) {
-      return ['Garder ce rythme ?', 'Ce qui a bien marché', 'Résumé 30 jours', 'Objectif prochain mois'];
+    if (aiText.contains('cible') ||
+        aiText.contains('tir') ||
+        aiText.contains('excellent') ||
+        aiText.contains('bravo')) {
+      return [
+        'Garder ce rythme ?',
+        'Ce qui a bien marché',
+        'Résumé 30 jours',
+        'Objectif prochain mois',
+      ];
     }
     return _fallbackSuggestions;
   }
@@ -437,7 +507,9 @@ class _AminaChatViewState extends State<AminaChatView> {
     return Container(
       decoration: BoxDecoration(
         color: AminaTheme.surface(context),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(AminaTheme.radius3XL)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AminaTheme.radius3XL),
+        ),
       ),
       child: Column(
         children: [
@@ -446,17 +518,20 @@ class _AminaChatViewState extends State<AminaChatView> {
             child: Stack(
               children: [
                 _messages.isEmpty
-                    ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : ListView.builder(
                         controller: _scrollCtrl,
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                         itemCount: _messages.length + (_isTyping ? 1 : 0),
                         itemBuilder: (ctx, i) {
-                          if (i == _messages.length) return const _TypingBubble();
+                          if (i == _messages.length)
+                            return const _TypingBubble();
                           final m = _messages[i];
                           return _MessageBubble(
-                            text:        m['text'] as String,
-                            isAi:        m['isAi'] as bool,
+                            text: m['text'] as String,
+                            isAi: m['isAi'] as bool,
                             isEmergency: m['isEmergency'] as bool? ?? false,
                           );
                         },
@@ -473,14 +548,27 @@ class _AminaChatViewState extends State<AminaChatView> {
                     child: GestureDetector(
                       onTap: _scrollToBottom,
                       child: Container(
-                        width: 36, height: 36,
+                        width: 36,
+                        height: 36,
                         decoration: BoxDecoration(
                           color: AminaTheme.surface(context),
                           shape: BoxShape.circle,
-                          border: Border.all(color: AminaTheme.divider(context)),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))],
+                          border: Border.all(
+                            color: AminaTheme.divider(context),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        child: const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: AminaTheme.teal500),
+                        child: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 20,
+                          color: AminaTheme.teal500,
+                        ),
                       ),
                     ),
                   ),
@@ -496,10 +584,10 @@ class _AminaChatViewState extends State<AminaChatView> {
             ),
           _ChatInput(
             controller: _ctrl,
-            isTyping:   _isTyping,
-            onSend:     () => _send(_ctrl.text),
+            isTyping: _isTyping,
+            onSend: () => _send(_ctrl.text),
             voiceState: _voiceState,
-            onVoice:    _toggleVoice,
+            onVoice: _toggleVoice,
           ),
         ],
       ),
@@ -527,20 +615,35 @@ class _ChatHeader extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width: 36, height: 36,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     gradient: AminaTheme.heroGradient,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('IAmina', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AminaTheme.ink900)),
-                    Text('Assistant clinique · Gemini Flash', style: TextStyle(fontSize: 11, color: AminaTheme.ink400)),
+                    Text(
+                      'IAmina',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AminaTheme.ink900,
+                      ),
+                    ),
+                    Text(
+                      'Assistant clinique · Gemini Flash',
+                      style: TextStyle(fontSize: 11, color: AminaTheme.ink400),
+                    ),
                   ],
                 ),
               ],
@@ -573,24 +676,37 @@ class _SuggestedPrompts extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: suggestions.map((s) => Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () => onTap(s),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: AminaTheme.subtleBg(context),
-                  border: Border.all(color: AminaTheme.divider(context)),
-                  borderRadius: BorderRadius.circular(100),
+          children: suggestions
+              .map(
+                (s) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => onTap(s),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AminaTheme.subtleBg(context),
+                        border: Border.all(color: AminaTheme.divider(context)),
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: Text(
+                        s,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: AminaTheme.isDark(context)
+                              ? AminaTheme.dark200
+                              : AminaTheme.ink700,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                child: Text(
-                  s,
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AminaTheme.isDark(context) ? AminaTheme.dark200 : AminaTheme.ink700),
-                ),
-              ),
-            ),
-          )).toList(),
+              )
+              .toList(),
         ),
       ),
     );
@@ -601,10 +717,14 @@ class _SuggestedPrompts extends StatelessWidget {
 
 class _MessageBubble extends StatelessWidget {
   final String text;
-  final bool   isAi;
-  final bool   isEmergency;
+  final bool isAi;
+  final bool isEmergency;
 
-  const _MessageBubble({required this.text, required this.isAi, required this.isEmergency});
+  const _MessageBubble({
+    required this.text,
+    required this.isAi,
+    required this.isEmergency,
+  });
 
   // Returns true when the majority of letters are Arabic/Hebrew/Darija script.
   static bool _isRtl(String text) {
@@ -628,10 +748,22 @@ class _MessageBubble extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.warning_amber_rounded, color: AminaTheme.dangerFg, size: 18),
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: AminaTheme.dangerFg,
+              size: 18,
+            ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(text, style: const TextStyle(fontSize: 13, color: AminaTheme.dangerFg, fontWeight: FontWeight.w600, height: 1.5)),
+              child: Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AminaTheme.dangerFg,
+                  fontWeight: FontWeight.w600,
+                  height: 1.5,
+                ),
+              ),
             ),
           ],
         ),
@@ -646,31 +778,47 @@ class _MessageBubble extends StatelessWidget {
           children: [
             // AI avatar
             Container(
-              width: 28, height: 28,
+              width: 28,
+              height: 28,
               margin: const EdgeInsets.only(right: 10, top: 2),
               decoration: BoxDecoration(
                 gradient: AminaTheme.heroGradient,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 14),
+              child: const Icon(
+                Icons.auto_awesome,
+                color: Colors.white,
+                size: 14,
+              ),
             ),
             Flexible(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
                 decoration: BoxDecoration(
                   color: AminaTheme.subtleBg(context),
                   borderRadius: const BorderRadius.only(
-                    topLeft:     Radius.circular(4),
-                    topRight:    Radius.circular(AminaTheme.radiusXL),
-                    bottomLeft:  Radius.circular(AminaTheme.radiusXL),
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(AminaTheme.radiusXL),
+                    bottomLeft: Radius.circular(AminaTheme.radiusXL),
                     bottomRight: Radius.circular(AminaTheme.radiusXL),
                   ),
                   border: Border.all(color: AminaTheme.divider(context)),
                 ),
                 child: Text(
                   text,
-                  textDirection: _isRtl(text) ? TextDirection.rtl : TextDirection.ltr,
-                  style: TextStyle(fontSize: 13, color: AminaTheme.isDark(context) ? AminaTheme.dark100 : AminaTheme.ink800, height: 1.55),
+                  textDirection: _isRtl(text)
+                      ? TextDirection.rtl
+                      : TextDirection.ltr,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AminaTheme.isDark(context)
+                        ? AminaTheme.dark100
+                        : AminaTheme.ink800,
+                    height: 1.55,
+                  ),
                 ),
               ),
             ),
@@ -692,15 +840,19 @@ class _MessageBubble extends StatelessWidget {
               decoration: const BoxDecoration(
                 color: AminaTheme.teal500,
                 borderRadius: BorderRadius.only(
-                  topLeft:     Radius.circular(AminaTheme.radiusXL),
-                  topRight:    Radius.circular(4),
-                  bottomLeft:  Radius.circular(AminaTheme.radiusXL),
+                  topLeft: Radius.circular(AminaTheme.radiusXL),
+                  topRight: Radius.circular(4),
+                  bottomLeft: Radius.circular(AminaTheme.radiusXL),
                   bottomRight: Radius.circular(AminaTheme.radiusXL),
                 ),
               ),
               child: Text(
                 text,
-                style: const TextStyle(fontSize: 13, color: Colors.white, height: 1.5),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.white,
+                  height: 1.5,
+                ),
               ),
             ),
           ),
@@ -719,17 +871,24 @@ class _TypingBubble extends StatefulWidget {
   State<_TypingBubble> createState() => _TypingBubbleState();
 }
 
-class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderStateMixin {
+class _TypingBubbleState extends State<_TypingBubble>
+    with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -739,22 +898,27 @@ class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderS
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 28, height: 28,
+            width: 28,
+            height: 28,
             margin: const EdgeInsets.only(right: 10, top: 2),
             decoration: BoxDecoration(
               gradient: AminaTheme.heroGradient,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.auto_awesome, color: Colors.white, size: 14),
+            child: const Icon(
+              Icons.auto_awesome,
+              color: Colors.white,
+              size: 14,
+            ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
               color: AminaTheme.subtleBg(context),
               borderRadius: const BorderRadius.only(
-                topLeft:     Radius.circular(4),
-                topRight:    Radius.circular(AminaTheme.radiusXL),
-                bottomLeft:  Radius.circular(AminaTheme.radiusXL),
+                topLeft: Radius.circular(4),
+                topRight: Radius.circular(AminaTheme.radiusXL),
+                bottomLeft: Radius.circular(AminaTheme.radiusXL),
                 bottomRight: Radius.circular(AminaTheme.radiusXL),
               ),
               border: Border.all(color: AminaTheme.divider(context)),
@@ -765,9 +929,10 @@ class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderS
                 return Row(
                   mainAxisSize: MainAxisSize.min,
                   children: List.generate(3, (i) {
-                    final delay  = i / 3;
-                    final phase  = ((_ctrl.value - delay) % 1.0 + 1.0) % 1.0;
-                    final scale  = 0.6 + 0.4 * (phase < 0.5 ? phase * 2 : (1 - phase) * 2);
+                    final delay = i / 3;
+                    final phase = ((_ctrl.value - delay) % 1.0 + 1.0) % 1.0;
+                    final scale =
+                        0.6 + 0.4 * (phase < 0.5 ? phase * 2 : (1 - phase) * 2);
                     final opacity = 0.3 + 0.7 * scale;
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -776,8 +941,12 @@ class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderS
                         child: Transform.scale(
                           scale: scale,
                           child: Container(
-                            width: 7, height: 7,
-                            decoration: const BoxDecoration(color: AminaTheme.teal500, shape: BoxShape.circle),
+                            width: 7,
+                            height: 7,
+                            decoration: const BoxDecoration(
+                              color: AminaTheme.teal500,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ),
                       ),
@@ -792,7 +961,11 @@ class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderS
             padding: const EdgeInsets.only(left: 8, top: 16),
             child: Text(
               'IAmina réfléchit…',
-              style: TextStyle(fontSize: 11, color: AminaTheme.ink400.withValues(alpha: 0.7), fontStyle: FontStyle.italic),
+              style: TextStyle(
+                fontSize: 11,
+                color: AminaTheme.ink400.withValues(alpha: 0.7),
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ),
         ],
@@ -805,9 +978,9 @@ class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderS
 
 class _ChatInput extends StatefulWidget {
   final TextEditingController controller;
-  final bool         isTyping;
+  final bool isTyping;
   final VoidCallback onSend;
-  final _VoiceState  voiceState;
+  final _VoiceState voiceState;
   final VoidCallback onVoice;
 
   const _ChatInput({
@@ -822,7 +995,8 @@ class _ChatInput extends StatefulWidget {
   State<_ChatInput> createState() => _ChatInputState();
 }
 
-class _ChatInputState extends State<_ChatInput> with SingleTickerProviderStateMixin {
+class _ChatInputState extends State<_ChatInput>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseCtrl;
 
   @override
@@ -844,10 +1018,12 @@ class _ChatInputState extends State<_ChatInput> with SingleTickerProviderStateMi
     switch (widget.voiceState) {
       case _VoiceState.processing:
         return const SizedBox(
-          width: 40, height: 40,
+          width: 40,
+          height: 40,
           child: Center(
             child: SizedBox(
-              width: 20, height: 20,
+              width: 20,
+              height: 20,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 valueColor: AlwaysStoppedAnimation<Color>(AminaTheme.teal500),
@@ -866,19 +1042,26 @@ class _ChatInputState extends State<_ChatInput> with SingleTickerProviderStateMi
               child: Transform.scale(
                 scale: scale,
                 child: Container(
-                  width: 40, height: 40,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: const Color(0xFFEF4444),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFEF4444).withValues(alpha: 0.35 + 0.25 * _pulseCtrl.value),
+                        color: const Color(
+                          0xFFEF4444,
+                        ).withValues(alpha: 0.35 + 0.25 * _pulseCtrl.value),
                         blurRadius: 10,
                         spreadRadius: 2,
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.stop_rounded, color: Colors.white, size: 20),
+                  child: const Icon(
+                    Icons.stop_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
               ),
             );
@@ -889,13 +1072,18 @@ class _ChatInputState extends State<_ChatInput> with SingleTickerProviderStateMi
         return GestureDetector(
           onTap: widget.onVoice,
           child: Container(
-            width: 40, height: 40,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: AminaTheme.subtleBg(context),
               border: Border.all(color: AminaTheme.divider(context)),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.mic_rounded, color: AminaTheme.teal500, size: 20),
+            child: const Icon(
+              Icons.mic_rounded,
+              color: AminaTheme.teal500,
+              size: 20,
+            ),
           ),
         );
     }
@@ -925,13 +1113,24 @@ class _ChatInputState extends State<_ChatInput> with SingleTickerProviderStateMi
                 maxLines: null,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => widget.onSend(),
-                style: TextStyle(fontSize: 14, color: AminaTheme.isDark(context) ? AminaTheme.dark100 : AminaTheme.ink900),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AminaTheme.isDark(context)
+                      ? AminaTheme.dark100
+                      : AminaTheme.ink900,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Posez une question à IAmina…',
-                  hintStyle: TextStyle(fontSize: 13, color: AminaTheme.textSecondary(context)),
+                  hintStyle: TextStyle(
+                    fontSize: 13,
+                    color: AminaTheme.textSecondary(context),
+                  ),
                   filled: true,
                   fillColor: AminaTheme.subtleBg(context),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
                     borderSide: BorderSide(color: AminaTheme.divider(context)),
@@ -956,15 +1155,29 @@ class _ChatInputState extends State<_ChatInput> with SingleTickerProviderStateMi
             child: GestureDetector(
               onTap: widget.isTyping ? null : widget.onSend,
               child: Container(
-                width: 40, height: 40,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   gradient: AminaTheme.heroGradient,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: widget.isTyping ? null : AminaTheme.shadowPrimary,
                 ),
                 child: widget.isTyping
-                    ? const Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)))
-                    : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                    ? const Center(
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
+                      )
+                    : const Icon(
+                        Icons.send_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
               ),
             ),
           ),
