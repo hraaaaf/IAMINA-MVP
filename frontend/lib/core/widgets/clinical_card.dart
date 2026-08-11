@@ -29,7 +29,9 @@ class ClinicalCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: backgroundColor ?? AminaTheme.cardBg,
-        borderRadius: BorderRadius.circular(borderRadius ?? AminaTheme.radius2XL),
+        borderRadius: BorderRadius.circular(
+          borderRadius ?? AminaTheme.radius2XL,
+        ),
         border: border ?? Border.all(color: AminaTheme.ink100),
         boxShadow: AminaTheme.shadowClinical,
       ),

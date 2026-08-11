@@ -107,14 +107,10 @@ class GlucoseOcrShield {
 
     // ── HI / LO special readings ─────────────────────────────────────────────
     if (_hiPattern.hasMatch(raw)) {
-      return GlucoseOcrResult(
-        confidence: 1.0, rawText: raw, isHI: true,
-      );
+      return GlucoseOcrResult(confidence: 1.0, rawText: raw, isHI: true);
     }
     if (_loPattern.hasMatch(raw)) {
-      return GlucoseOcrResult(
-        confidence: 1.0, rawText: raw, isLO: true,
-      );
+      return GlucoseOcrResult(confidence: 1.0, rawText: raw, isLO: true);
     }
 
     // ── mmol/L path ───────────────────────────────────────────────────────────
@@ -142,12 +138,10 @@ class GlucoseOcrShield {
 
     // Single unambiguous match → high confidence.
     // Multiple matches → lower confidence, UI must ask.
-    final value      = matches.first;
+    final value = matches.first;
     final confidence = matches.length == 1 ? 0.92 : 0.58;
 
-    return GlucoseOcrResult(
-      value: value, confidence: confidence, rawText: raw,
-    );
+    return GlucoseOcrResult(value: value, confidence: confidence, rawText: raw);
   }
 
   static GlucoseOcrResult _extractMmol(String raw) {

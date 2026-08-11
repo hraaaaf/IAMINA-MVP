@@ -38,30 +38,31 @@ void main() {
     },
   );
 
-  testWidgets('UX-8 resolves standard motion to zero when animations are disabled', (
-    tester,
-  ) async {
-    Duration? resolved;
-    bool? reduced;
+  testWidgets(
+    'UX-8 resolves standard motion to zero when animations are disabled',
+    (tester) async {
+      Duration? resolved;
+      bool? reduced;
 
-    await tester.pumpWidget(
-      MediaQuery(
-        data: const MediaQueryData(disableAnimations: true),
-        child: MaterialApp(
-          home: Builder(
-            builder: (context) {
-              reduced = AminaMotion.reduce(context);
-              resolved = AminaMotion.resolve(context, AminaMotion.standard);
-              return const SizedBox.shrink();
-            },
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(disableAnimations: true),
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) {
+                reduced = AminaMotion.reduce(context);
+                resolved = AminaMotion.resolve(context, AminaMotion.standard);
+                return const SizedBox.shrink();
+              },
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(reduced, isTrue);
-    expect(resolved, Duration.zero);
-  });
+      expect(reduced, isTrue);
+      expect(resolved, Duration.zero);
+    },
+  );
 
   testWidgets('UX-8 also reduces motion for accessible navigation', (
     tester,
@@ -74,10 +75,7 @@ void main() {
         child: MaterialApp(
           home: Builder(
             builder: (context) {
-              resolved = AminaMotion.resolve(
-                context,
-                AminaMotion.navSelection,
-              );
+              resolved = AminaMotion.resolve(context, AminaMotion.navSelection);
               return const SizedBox.shrink();
             },
           ),

@@ -53,20 +53,31 @@ void main() {
     expect(journal, contains('db.deleteLog(log.id)'));
   });
 
-  test('mobile navigation derives every destination including Importer', () {
-    final module = _read('lib/modules/diabetes_module.dart');
-    final shell = _read('lib/features/navigation/main_shell.dart');
+  test(
+    'mobile navigation exposes approved destinations while Import stays reachable',
+    () {
+      final module = _read('lib/modules/diabetes_module.dart');
+      final shell = _read('lib/features/navigation/main_shell.dart');
+      final dashboard = _read(
+        'lib/features/dashboard/dashboard_convergent_screen.dart',
+      );
 
-    expect(module, contains("route: '/importer'"));
-    expect(
-      shell,
-      contains('for (var index = 0; index < entries.length; index++)'),
-    );
-    expect(shell, contains('_GlassNavDestination('));
-    expect(shell, contains('entry: entries[index]'));
-    expect(shell, contains("ValueKey('mobile-nav-\${entry.route}')"));
-    expect(shell, contains('GoRouter.of(context).go(entries[index].route)'));
-  });
+      expect(module, contains("route: '/importer'"));
+      expect(shell, contains("entry.route != '/importer'"));
+      expect(shell, contains('_GlassNavDestination('));
+      expect(shell, contains('entry: mobileEntries[index]'));
+      expect(shell, contains("ValueKey('mobile-nav-\${entry.route}')"));
+      expect(
+        RegExp(
+          r'GoRouter\.of\(\s*context,?\s*\)\s*\.go\(mobileEntries\[index\]\.route\)',
+        ).hasMatch(shell),
+        isTrue,
+      );
+      expect(shell, contains("GoRouter.of(context).go('/ajouter')"));
+      expect(dashboard, contains("ValueKey('dashboard-import-action')"));
+      expect(dashboard, contains("GoRouter.of(context).go('/importer')"));
+    },
+  );
 
   test('unavailable integrations cannot masquerade as active actions', () {
     final import = _read('lib/features/import/import_screen.dart');

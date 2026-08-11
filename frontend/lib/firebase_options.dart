@@ -55,7 +55,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '231591358771',
     projectId: 'iamina',
     storageBucket: 'iamina.firebasestorage.app',
-    iosClientId: '231591358771-015unol3l0mc03b9iqu6uqrs7j1n0iqp.apps.googleusercontent.com',
+    iosClientId:
+        '231591358771-015unol3l0mc03b9iqu6uqrs7j1n0iqp.apps.googleusercontent.com',
     iosBundleId: 'com.example.amina',
   );
 
@@ -65,7 +66,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '231591358771',
     projectId: 'iamina',
     storageBucket: 'iamina.firebasestorage.app',
-    iosClientId: '231591358771-s8ci3nf2uvpk73tvgavp4b0u2s2f8kcs.apps.googleusercontent.com',
+    iosClientId:
+        '231591358771-s8ci3nf2uvpk73tvgavp4b0u2s2f8kcs.apps.googleusercontent.com',
     iosBundleId: 'com.example.amina',
   );
 
@@ -85,5 +87,4 @@ class DefaultFirebaseOptions {
     authDomain: 'iamina.firebaseapp.com',
     storageBucket: 'iamina.firebasestorage.app',
   );
-
 }

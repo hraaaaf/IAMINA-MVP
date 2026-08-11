@@ -12,16 +12,16 @@ AppDatabase _openDb() => AppDatabase(NativeDatabase.memory());
 
 // Helper: create a PatientProfile row with or without AI consent.
 Future<void> _insertProfile(AppDatabase db, {bool withConsent = false}) async {
-  await db.into(db.patientProfiles).insert(
-    PatientProfilesCompanion.insert(
-      userId: const drift.Value(1),
-      preferredLanguage: const drift.Value('fr'),
-      updatedAt: DateTime.now(),
-      aiConsentGivenAt: drift.Value(
-        withConsent ? DateTime.now() : null,
-      ),
-    ),
-  );
+  await db
+      .into(db.patientProfiles)
+      .insert(
+        PatientProfilesCompanion.insert(
+          userId: const drift.Value(1),
+          preferredLanguage: const drift.Value('fr'),
+          updatedAt: DateTime.now(),
+          aiConsentGivenAt: drift.Value(withConsent ? DateTime.now() : null),
+        ),
+      );
 }
 
 void main() {
@@ -104,13 +104,16 @@ void main() {
       expect(svc.hasConsent, isTrue);
     });
 
-    test('stream emission with no consent profile keeps hasConsent false', () async {
-      await _insertProfile(db, withConsent: false);
-      final svc = ConsentService();
-      svc.attachStream(db.watchProfile());
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(svc.hasConsent, isFalse);
-    });
+    test(
+      'stream emission with no consent profile keeps hasConsent false',
+      () async {
+        await _insertProfile(db, withConsent: false);
+        final svc = ConsentService();
+        svc.attachStream(db.watchProfile());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(svc.hasConsent, isFalse);
+      },
+    );
 
     test('consent changes reflect in real-time via stream', () async {
       await _insertProfile(db, withConsent: false);

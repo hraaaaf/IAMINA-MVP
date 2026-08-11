@@ -15,7 +15,8 @@ class ModulesProvider extends ChangeNotifier {
   Set<String> _activeIds = ModuleRegistry.all().map((m) => m.id).toSet();
   Set<String> get activeIds => _activeIds;
 
-  Set<String> get _allRegistered => ModuleRegistry.all().map((m) => m.id).toSet();
+  Set<String> get _allRegistered =>
+      ModuleRegistry.all().map((m) => m.id).toSet();
 
   /// Pull active modules from the backend. Keeps the current set on failure.
   Future<void> refresh() async {

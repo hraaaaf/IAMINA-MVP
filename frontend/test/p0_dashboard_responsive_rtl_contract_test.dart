@@ -30,13 +30,16 @@ void main() {
     expect(
       source,
       isNot(contains('Expanded(child: _ParlerButton')),
-      reason: 'Compact chat access should stay a bounded icon action, not consume the range row.',
+      reason:
+          'Compact chat access should stay a bounded icon action, not consume the range row.',
     );
   });
 
   test('glucose hero fits compact widths and isolates numeric direction', () {
     final source = _read('lib/features/dashboard/widgets/hero_live.dart');
-    final insightSource = _read('lib/features/dashboard/widgets/hero_insight.dart');
+    final insightSource = _read(
+      'lib/features/dashboard/widgets/hero_insight.dart',
+    );
 
     for (final required in <String>[
       'FittedBox',

@@ -39,38 +39,41 @@ void main() {
     expect(find.text('الفطور'), findsOneWidget);
   });
 
-  test('rich Dashboard widgets do not reintroduce known hard-coded French copy', () {
-    const files = [
-      'lib/features/dashboard/widgets/hero_live.dart',
-      'lib/features/dashboard/widgets/hero_insight.dart',
-      'lib/features/dashboard/widgets/kpi_gmi_card.dart',
-      'lib/features/dashboard/widgets/kpi_cv_card.dart',
-      'lib/features/dashboard/widgets/chart_section.dart',
-      'lib/features/dashboard/widgets/glucose_chart_with_events.dart',
-      'lib/features/dashboard/widgets/insights_section.dart',
-      'lib/features/dashboard/widgets/recent_entries.dart',
-    ];
-    const forbidden = [
-      'GMI estimée',
-      'Variabilité (CV)',
-      'Événements clés',
-      'DÉCOUVERTES IAMINA',
-      "Journal · Aujourd'hui",
-      'Profil glycémique ambulatoire',
-      'Données insuffisantes',
-      'Analyse IA temporairement limitée',
-      'IAmina analyse tes données',
-      'u rapide',
-    ];
-    for (final file in files) {
-      final source = File(file).readAsStringSync();
-      for (final literal in forbidden) {
-        expect(
-          source.contains(literal),
-          isFalse,
-          reason: '$file contains $literal',
-        );
+  test(
+    'rich Dashboard widgets do not reintroduce known hard-coded French copy',
+    () {
+      const files = [
+        'lib/features/dashboard/widgets/hero_live.dart',
+        'lib/features/dashboard/widgets/hero_insight.dart',
+        'lib/features/dashboard/widgets/kpi_gmi_card.dart',
+        'lib/features/dashboard/widgets/kpi_cv_card.dart',
+        'lib/features/dashboard/widgets/chart_section.dart',
+        'lib/features/dashboard/widgets/glucose_chart_with_events.dart',
+        'lib/features/dashboard/widgets/insights_section.dart',
+        'lib/features/dashboard/widgets/recent_entries.dart',
+      ];
+      const forbidden = [
+        'GMI estimée',
+        'Variabilité (CV)',
+        'Événements clés',
+        'DÉCOUVERTES IAMINA',
+        "Journal · Aujourd'hui",
+        'Profil glycémique ambulatoire',
+        'Données insuffisantes',
+        'Analyse IA temporairement limitée',
+        'IAmina analyse tes données',
+        'u rapide',
+      ];
+      for (final file in files) {
+        final source = File(file).readAsStringSync();
+        for (final literal in forbidden) {
+          expect(
+            source.contains(literal),
+            isFalse,
+            reason: '$file contains $literal',
+          );
+        }
       }
-    }
-  });
+    },
+  );
 }

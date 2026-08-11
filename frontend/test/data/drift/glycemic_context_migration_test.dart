@@ -83,7 +83,7 @@ void main() {
       expect(profile.ramadanEndDate, isNull);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 9);
+      expect(version.data['user_version'], 10);
     } finally {
       await db.close();
       await dir.delete(recursive: true);

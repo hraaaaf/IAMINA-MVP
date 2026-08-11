@@ -67,7 +67,8 @@ void main() {
       expect(
         frenchArb,
         contains(required),
-        reason: 'Canonical localized truthfulness contract is missing: $required',
+        reason:
+            'Canonical localized truthfulness contract is missing: $required',
       );
     }
     expect(adapter, contains('l10n.targetCoverage(count, days)'));
@@ -122,16 +123,34 @@ void main() {
     }
 
     expect(fr['dashboardGmiCoverage'], contains('Moyenne'));
-    expect(fr['dashboardGmiLimitedCoverage'], contains('moins de 14 jours ou 50 mesures'));
-    expect(fr['dashboardGmiDisclaimer'], contains('ne remplace pas une HbA1c de laboratoire'));
+    expect(
+      fr['dashboardGmiLimitedCoverage'],
+      contains('moins de 14 jours ou 50 mesures'),
+    );
+    expect(
+      fr['dashboardGmiDisclaimer'],
+      contains('ne remplace pas une HbA1c de laboratoire'),
+    );
 
     expect(en['dashboardGmiCoverage'], contains('Average'));
-    expect(en['dashboardGmiLimitedCoverage'], contains('fewer than 14 days or 50 readings'));
-    expect(en['dashboardGmiDisclaimer'], contains('does not replace a laboratory HbA1c'));
+    expect(
+      en['dashboardGmiLimitedCoverage'],
+      contains('fewer than 14 days or 50 readings'),
+    );
+    expect(
+      en['dashboardGmiDisclaimer'],
+      contains('does not replace a laboratory HbA1c'),
+    );
 
     expect(ar['dashboardGmiCoverage'], contains('المتوسط'));
-    expect(ar['dashboardGmiLimitedCoverage'], contains('أقل من 14 يومًا أو 50 قياسًا'));
-    expect(ar['dashboardGmiDisclaimer'], contains('لا يغني هذا التقدير عن فحص HbA1c المخبري'));
+    expect(
+      ar['dashboardGmiLimitedCoverage'],
+      contains('أقل من 14 يومًا أو 50 قياسًا'),
+    );
+    expect(
+      ar['dashboardGmiDisclaimer'],
+      contains('لا يغني هذا التقدير عن فحص HbA1c المخبري'),
+    );
 
     for (final forbidden in <String>[
       '_confidence',
@@ -169,18 +188,36 @@ void main() {
 
     expect(fr['dashboardCvReferenceShort'], contains('Repère général <36 %'));
     expect(fr['dashboardCvBelowReference'], contains('Sous le repère général'));
-    expect(fr['dashboardCvAboveReference'], contains('Au-dessus du repère général'));
-    expect(fr['dashboardCvReferenceExplanation'], contains('Votre objectif personnel peut être différent'));
+    expect(
+      fr['dashboardCvAboveReference'],
+      contains('Au-dessus du repère général'),
+    );
+    expect(
+      fr['dashboardCvReferenceExplanation'],
+      contains('Votre objectif personnel peut être différent'),
+    );
 
     expect(en['dashboardCvReferenceShort'], contains('General reference <36%'));
-    expect(en['dashboardCvBelowReference'], contains('Below the general reference'));
-    expect(en['dashboardCvAboveReference'], contains('Above the general reference'));
-    expect(en['dashboardCvReferenceExplanation'], contains('Your personal target may differ'));
+    expect(
+      en['dashboardCvBelowReference'],
+      contains('Below the general reference'),
+    );
+    expect(
+      en['dashboardCvAboveReference'],
+      contains('Above the general reference'),
+    );
+    expect(
+      en['dashboardCvReferenceExplanation'],
+      contains('Your personal target may differ'),
+    );
 
     expect(ar['dashboardCvReferenceShort'], contains('مرجع عام <36٪'));
     expect(ar['dashboardCvBelowReference'], contains('أقل من المرجع العام'));
     expect(ar['dashboardCvAboveReference'], contains('أعلى من المرجع العام'));
-    expect(ar['dashboardCvReferenceExplanation'], contains('قد يختلف هدفك الشخصي'));
+    expect(
+      ar['dashboardCvReferenceExplanation'],
+      contains('قد يختلف هدفك الشخصي'),
+    );
 
     for (final forbidden in <String>[
       'Variabilité maîtrisée',

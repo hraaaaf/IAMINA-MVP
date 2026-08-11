@@ -22,6 +22,10 @@ void main() {
     final router = GoRouter(
       initialLocation: '/dashboard',
       routes: [
+        GoRoute(
+          path: '/ajouter',
+          builder: (_, __) => const Scaffold(body: Text('route:/ajouter')),
+        ),
         ShellRoute(
           builder: (_, __, child) => MainShell(child: child),
           routes: [
@@ -58,112 +62,99 @@ void main() {
   }
 
   Finder destination(String route) => find.byKey(ValueKey('mobile-nav-$route'));
+  Finder addDestination() => find.byKey(const ValueKey('mobile-nav-add'));
 
-  void expectFiveDestinations() {
+  void expectApprovedDestinations() {
     for (final route in const [
       '/dashboard',
-      '/summary',
       '/journal',
-      '/importer',
+      '/summary',
       '/profile',
     ]) {
       expect(destination(route), findsOneWidget);
     }
+    expect(destination('/importer'), findsNothing);
+    expect(addDestination(), findsOneWidget);
   }
 
   void expectTouchTargets(WidgetTester tester) {
     for (final route in const [
       '/dashboard',
-      '/summary',
       '/journal',
-      '/importer',
+      '/summary',
       '/profile',
     ]) {
-      final target = destination(route);
-      final size = tester.getSize(target);
+      final size = tester.getSize(destination(route));
       expect(size.width, greaterThanOrEqualTo(48));
       expect(size.height, greaterThanOrEqualTo(48));
     }
+    final addSize = tester.getSize(addDestination());
+    expect(addSize.width, greaterThanOrEqualTo(48));
+    expect(addSize.height, greaterThanOrEqualTo(48));
   }
 
   Finder semanticsContaining(String label) =>
       find.bySemanticsLabel(RegExp(RegExp.escape(label)));
 
-  testWidgets(
-    '390px French navigation keeps every label visible and explicit',
-    (tester) async {
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final semantics = tester.ensureSemantics();
-
-      final router = await pumpNavigation(tester, locale: const Locale('fr'));
-      addTearDown(router.dispose);
-
-      expectFiveDestinations();
-      expect(
-        Directionality.of(tester.element(destination('/dashboard'))),
-        TextDirection.ltr,
-      );
-
-      for (final label in const [
-        'Accueil',
-        'IAmina',
-        'Journal',
-        'Importer',
-        'Paramètres',
-      ]) {
-        expect(find.text(label), findsOneWidget);
-        expect(semanticsContaining(label), findsWidgets);
-      }
-
-      expectTouchTargets(tester);
-
-      await tester.tap(destination('/importer'));
-      await tester.pumpAndSettle();
-
-      expect(router.routeInformationProvider.value.uri.path, '/importer');
-      expect(find.text('route:/importer'), findsOneWidget);
-      expectFiveDestinations();
-      expect(tester.takeException(), isNull);
-      semantics.dispose();
-    },
-  );
-
-  testWidgets('390px Arabic navigation is RTL, readable and route-aware', (
+  testWidgets('390px French navigation matches approved UX-11 semantics', (
     tester,
   ) async {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final semantics = tester.ensureSemantics();
-
-    final router = await pumpNavigation(tester, locale: const Locale('ar'));
+    final router = await pumpNavigation(tester, locale: const Locale('fr'));
     addTearDown(router.dispose);
 
-    expectFiveDestinations();
+    expectApprovedDestinations();
     expect(
       Directionality.of(tester.element(destination('/dashboard'))),
-      TextDirection.rtl,
+      TextDirection.ltr,
     );
-
-    for (final label in const [
-      'الرئيسية',
-      'IAmina',
-      'اليومية',
-      'استيراد',
-      'الإعدادات',
-    ]) {
+    for (final label in const ['Accueil', 'Mesures', 'Rapports', 'Profil']) {
       expect(find.text(label), findsOneWidget);
       expect(semanticsContaining(label), findsWidgets);
     }
-
     expectTouchTargets(tester);
 
     await tester.tap(destination('/journal'));
     await tester.pumpAndSettle();
-
     expect(router.routeInformationProvider.value.uri.path, '/journal');
-    expect(find.text('route:/journal'), findsOneWidget);
-    expectFiveDestinations();
+    expectApprovedDestinations();
+
+    await tester.tap(addDestination());
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/ajouter');
+    expect(tester.takeException(), isNull);
+    semantics.dispose();
+  });
+
+  testWidgets('390px Arabic navigation is RTL and route-aware', (tester) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final semantics = tester.ensureSemantics();
+    final router = await pumpNavigation(tester, locale: const Locale('ar'));
+    addTearDown(router.dispose);
+
+    expectApprovedDestinations();
+    expect(
+      Directionality.of(tester.element(destination('/dashboard'))),
+      TextDirection.rtl,
+    );
+    for (final label in const [
+      'الرئيسية',
+      'القياسات',
+      'التقارير',
+      'الملف الشخصي',
+    ]) {
+      expect(find.text(label), findsOneWidget);
+      expect(semanticsContaining(label), findsWidgets);
+    }
+    expectTouchTargets(tester);
+
+    await tester.tap(destination('/summary'));
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/summary');
+    expectApprovedDestinations();
     expect(tester.takeException(), isNull);
     semantics.dispose();
   });
