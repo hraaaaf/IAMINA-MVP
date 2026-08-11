@@ -114,6 +114,15 @@ Rules:
 - **Risk:** a metric can be mathematically wrong or pass SQLite tests while failing/diverging on PostgreSQL.
 - **Resolution:** P0-C — normative formula verification, metric eligibility rules, PostgreSQL CI execution, and regression fixtures. Remove this debt only after P0-C is merged and green.
 
+## TD-014 — One structured diabetes insight formatter still bypasses the capability-aware LLM gateway
+
+- **Area:** Companion / AI authority
+- **Priority:** High before expanding IAmina reasoning capabilities
+- **Resolved foundation:** P0.2 introduces typed truth provenance, an executable capability/authority matrix and capability-aware `GatewayLLM`; `doctor-brief` is routed through that gateway.
+- **Current compromise:** `diabetes.services.clinical.engine._format_with_llm()` remains a legacy structured-JSON formatter that calls `get_llm()` directly after the central AI-egress authorization assertion. It is egress-authorized and its output is still sanitized, but it does not yet pass through the P0.2 capability assertion.
+- **Risk:** the formatter is a policy exception that could drift from the shared capability contract even though it cannot bypass the existing egress-consent boundary.
+- **Resolution:** extract a structured `GatewayLLM`/`narrate_json`-style path for approved deterministic-pattern formatting, preserve the existing JSON schema/fallback behavior, and add an anti-bypass regression before removing this debt.
+
 ## Documentation closeout rule
 
 After every merged task/phase:
