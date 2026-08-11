@@ -6,6 +6,8 @@ from typing import Optional
 
 from django.core.cache import cache
 
+from companion.memory_truth import SNAPSHOT_VERSION, normalize_deep_snapshot, truth_kind_for
+from core.contracts.truth import TruthKind
 from core.observability import EVT_STREAK_BROKEN, EVT_STREAK_CONTINUED, track
 
 logger = logging.getLogger(__name__)
@@ -23,7 +25,10 @@ _RELATIONSHIP_THRESHOLDS = {
 class IAminaDeepMemory:
     patient_id: int
     significant_events: list = field(default_factory=list)
+    # Compatibility-only field. Canonical loading keeps it empty and moves old
+    # values to quarantined_heuristics so they cannot steer active reasoning.
     food_sensitivities: dict = field(default_factory=dict)
+    quarantined_heuristics: dict = field(default_factory=dict)
     peak_hours: list = field(default_factory=list)
     relationship_stage: str = "new"
     communication_style: str = "unknown"
@@ -32,6 +37,8 @@ class IAminaDeepMemory:
     consecutive_log_days: int = 0
     longest_streak: int = 0
     last_advice_given_at: Optional[str] = None
+    snapshot_version: int = SNAPSHOT_VERSION
+    legacy_unknown_fields: dict = field(default_factory=dict)
 
     @classmethod
     def load(cls, patient) -> "IAminaDeepMemory":
@@ -39,18 +46,24 @@ class IAminaDeepMemory:
         raw = cache.get(key)
         if raw:
             try:
-                return cls(**json.loads(raw))
+                data = normalize_deep_snapshot(json.loads(raw), patient.id)
+                return cls(**data)
             except Exception:
-                pass
+                logger.exception(
+                    "IAminaDeepMemory.load cache normalization failed for patient=%s",
+                    patient.id,
+                )
 
         try:
             from core.companion.ports import get_snapshot_store
+
             store = get_snapshot_store()
             if store is not None:
                 data = store.load("deep", patient.id)
                 if data:
-                    obj = cls(**data)
-                    cache.set(key, json.dumps(data), timeout=_TTL)
+                    normalized = normalize_deep_snapshot(data, patient.id)
+                    obj = cls(**normalized)
+                    cache.set(key, json.dumps(normalized), timeout=_TTL)
                     return obj
         except Exception:
             logger.exception("IAminaDeepMemory.load snapshot fallback failed for patient=%s", patient.id)
@@ -58,20 +71,34 @@ class IAminaDeepMemory:
         return cls(patient_id=patient.id)
 
     def save(self):
+        normalized = normalize_deep_snapshot(asdict(self), self.patient_id)
+        # Keep the in-memory object aligned with the durable canonical shape.
+        self.food_sensitivities = {}
+        self.quarantined_heuristics = normalized["quarantined_heuristics"]
+        self.snapshot_version = SNAPSHOT_VERSION
+        self.legacy_unknown_fields = normalized["legacy_unknown_fields"]
+
         key = f"iamina:deep:{self.patient_id}"
-        payload = json.dumps(asdict(self))
+        payload = json.dumps(normalized)
         cache.set(key, payload, timeout=_TTL)
 
         try:
             from core.companion.ports import get_snapshot_store
+
             store = get_snapshot_store()
             if store is not None:
-                store.save("deep", self.patient_id, asdict(self))
+                store.save("deep", self.patient_id, normalized)
         except Exception:
             logger.exception("IAminaDeepMemory.save snapshot failed for patient=%s", self.patient_id)
 
+    def truth_kind_for(self, field_name: str) -> TruthKind:
+        """Return the canonical, code-owned truth class for a deep-memory field."""
+
+        return truth_kind_for("deep", field_name)
+
     def record_event(self, type: str, description: str, glucose: Optional[float] = None):
         from datetime import datetime, timezone
+
         event = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "type": type,
@@ -84,35 +111,48 @@ class IAminaDeepMemory:
             self.significant_events = self.significant_events[-20:]
 
     def learn_food_sensitivity(self, food_name: str, delta_glucose: float):
+        """Retain legacy API compatibility while quarantining heuristic output.
+
+        This method no longer creates active patient knowledge. Existing callers
+        cannot make the heuristic influence IAmina's clinical or dialogue state.
+        """
+
         alpha = 0.3
         name = food_name.lower().strip()
-        if name in self.food_sensitivities:
-            self.food_sensitivities[name] = round(
-                alpha * delta_glucose + (1 - alpha) * self.food_sensitivities[name], 4
-            )
+        bucket = self.quarantined_heuristics.setdefault("food_sensitivities", {})
+        if name in bucket:
+            bucket[name] = round(alpha * delta_glucose + (1 - alpha) * bucket[name], 4)
         else:
-            self.food_sensitivities[name] = round(delta_glucose, 4)
+            bucket[name] = round(delta_glucose, 4)
+        self.food_sensitivities = {}
 
     def update_streak(self, today_has_log: bool):
         today = date.today().isoformat()
         if not today_has_log:
             _streak_before = self.consecutive_log_days
             self.consecutive_log_days = 0
-            track(EVT_STREAK_BROKEN, patient_id=self.patient_id, props={"streak_before": _streak_before})
+            track(
+                EVT_STREAK_BROKEN,
+                patient_id=self.patient_id,
+                props={"streak_before": _streak_before},
+            )
             return
 
         if self.last_log_date == today:
             return
 
-        (date.today().replace(day=date.today().day - 1) if date.today().day > 1
-                     else None)
         # Use date arithmetic properly
         from datetime import timedelta
+
         yesterday_iso = (date.today() - timedelta(days=1)).isoformat()
 
         if self.last_log_date == yesterday_iso:
             self.consecutive_log_days += 1
-            track(EVT_STREAK_CONTINUED, patient_id=self.patient_id, props={"streak": self.consecutive_log_days})
+            track(
+                EVT_STREAK_CONTINUED,
+                patient_id=self.patient_id,
+                props={"streak": self.consecutive_log_days},
+            )
         else:
             self.consecutive_log_days = 1
 
@@ -141,12 +181,14 @@ class IAminaDeepMemory:
 
     def record_advice_given(self) -> None:
         from datetime import datetime, timezone
+
         self.last_advice_given_at = datetime.now(timezone.utc).isoformat()
 
     def advice_given_within(self, hours: int = 24) -> bool:
         if not self.last_advice_given_at:
             return False
         from datetime import datetime, timedelta, timezone
+
         try:
             last = datetime.fromisoformat(self.last_advice_given_at)
             return (datetime.now(timezone.utc) - last) < timedelta(hours=hours)
