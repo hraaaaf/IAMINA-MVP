@@ -12,7 +12,7 @@ def test_ai_api_does_not_reintroduce_direct_text_provider_access():
     assert "Capability.SUMMARIZE_APPROVED_DATA" in source
 
 
-def test_known_structured_formatter_exception_remains_explicitly_bounded():
+def test_structured_diabetes_formatter_uses_capability_aware_gateway():
     source = (
         REPO_ROOT
         / "backend"
@@ -23,5 +23,8 @@ def test_known_structured_formatter_exception_remains_explicitly_bounded():
     ).read_text()
 
     assert "def _format_with_llm" in source
-    assert "assert_ai_egress_allowed(TEXT)" in source
+    assert "from llm.factory import get_llm" not in source
+    assert "get_llm()" not in source
+    assert "get_gateway_llm" in source
+    assert "Capability.SURFACE_DETERMINISTIC_PATTERN" in source
     assert "sanitize_patient_visible" in source

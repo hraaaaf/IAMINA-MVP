@@ -242,7 +242,7 @@ Persistence/authority invariants:
 
 Generative models are allowed to explain/summarize approved data, verbalize already-detected deterministic patterns and help prepare questions for a clinician. They are not allowed to classify emergencies, diagnose, prescribe, calculate doses, optimize/change treatment, promote model inference to patient fact or write clinical records autonomously.
 
-`GatewayLLM` enforces the generative capability check before provider egress. `doctor-brief` uses this shared capability-aware gateway. One legacy structured diabetes insight formatter remains an explicitly tracked exception in `docs/TECHDEBT.md`; it remains covered by the existing egress authorization and output sanitization but is not claimed as capability-gateway-clean.
+`GatewayLLM` enforces the generative capability check before provider egress. `doctor-brief` uses `SUMMARIZE_APPROVED_DATA`, and the structured diabetes insight formatter uses `SURFACE_DETERMINISTIC_PATTERN`; both preserve their existing structured response/fallback contracts behind the shared capability-aware gateway.
 
 Detailed semantics: `docs/AMINA_TRUTH_CAPABILITY_CONTRACT.md`.
 
@@ -302,9 +302,9 @@ The authorization is evaluated lazily at actual provider egress so deterministic
 
 For shared text-gateway calls, P0.2 adds a separate authority check: egress permission does not grant a forbidden clinical capability, and an allowed narrative capability still requires the ordinary egress/consent boundary.
 
-Currently inventoried/wired surfaces include text/gateway narration, chat, summary/doctor brief, STT/audio, vision/OCR, and document-processing paths.
+Currently inventoried/wired surfaces include text/gateway narration, chat, summary/doctor brief, structured diabetes insight formatting, STT/audio, vision/OCR, and document-processing paths.
 
-CI prevents new direct external model/provider callsites from omitting the central authorization assertion. Focused P0.2 tests additionally prevent the AI API/doctor-brief surface from reverting to direct `get_llm()` access.
+CI prevents new direct external model/provider callsites from omitting the central authorization assertion. Focused IAmina tests additionally prevent the AI API/doctor-brief and structured diabetes formatter surfaces from reverting to direct `get_llm()` access.
 
 ### Remaining target contract
 

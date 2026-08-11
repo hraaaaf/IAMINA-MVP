@@ -1,6 +1,6 @@
 # IAmina — Truth & Capability Contract
 
-> **Status:** chassis contract introduced by P0.2.  
+> **Status:** chassis contract introduced by P0.2 and extended to structured insight formatting by P0.3.  
 > **Scope:** IAmina companion reasoning, memory provenance and generative-model authority.  
 > **Non-scope:** no new disease module, clinical threshold, diagnosis, prescription, treatment optimization or patient-facing UX.
 
@@ -75,7 +75,7 @@ Recording a user claim or changing a user preference requires explicit user conf
 
 `core.llm_gateway.GatewayLLM` accepts only capabilities for which `GENERATIVE_MODEL` is an allowed authority. A forbidden capability fails closed before provider egress.
 
-`narrate()` is explicitly classified as `SUMMARIZE_APPROVED_DATA`.
+`narrate()` and `doctor-brief` are classified as `SUMMARIZE_APPROVED_DATA`. The diabetes structured insight formatter is classified as `SURFACE_DETERMINISTIC_PATTERN`; it may only verbalize patterns already produced by deterministic logic and preserves its structured JSON parse/fallback and patient-visible sanitation contract behind the same gateway.
 
 The existing egress authorization, consent, PHI stripping, deterministic safety and output-safety layers remain mandatory and independent. Passing the capability contract does **not** itself authorize external data transfer.
 
@@ -95,4 +95,5 @@ Tests must prove at minimum that:
 - generative models cannot classify emergencies;
 - diagnosis, prescription, dose calculation, treatment optimization and treatment change remain disabled;
 - user-claim/preference writes remain confirmation-gated;
-- the LLM gateway rejects forbidden generative capabilities before provider egress.
+- the LLM gateway rejects forbidden generative capabilities before provider egress;
+- `doctor-brief` and the structured diabetes insight formatter cannot regress to direct `get_llm()` provider access.
