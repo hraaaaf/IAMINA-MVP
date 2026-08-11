@@ -6,6 +6,8 @@ on:
       - ux/11-dashboard-action-parity
     paths:
       - .github/workflows/ux11-apply.yml
+      - scripts/ux11_apply.py
+      - scripts/ux11_fix_tests.py
 
 permissions:
   contents: write
@@ -25,7 +27,9 @@ jobs:
           fetch-depth: 0
 
       - name: Apply UX-11 implementation
-        run: python scripts/ux11_apply.py
+        run: |
+          python scripts/ux11_apply.py
+          python scripts/ux11_fix_tests.py
 
       - uses: subosito/flutter-action@v2
         with:
