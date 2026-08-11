@@ -1,19 +1,19 @@
 part of '../dashboard_screen.dart';
 
-// ── Hero Live (après repas, <90min) ──────────────────────────────────────────
+// ── Hero Live (mesure fraîche, <90 min) ───────────────────────────────────────
 
 class _HeroLive extends StatelessWidget {
   final List<LogEntryData> logs;
   final String unit;
-  final int range;
+  final double low, high;
 
   const _HeroLive({
     required this.logs,
     required this.unit,
-    required this.range,
+    required this.low,
+    required this.high,
   });
 
-  /// Calcule la tendance réelle : delta mg/dL sur 30 min entre les 2 dernières mesures.
   String? _trend(BuildContext context) {
     if (logs.length < 2) return null;
     final latest = logs[0];
@@ -34,11 +34,13 @@ class _HeroLive extends StatelessWidget {
     return logs[0].bloodSugar >= logs[1].bloodSugar;
   }
 
+  double _displayValue(double raw) => unit == 'mmol/L' ? raw / 18.0 : raw;
+
   @override
   Widget build(BuildContext context) {
     final copy = AuditedPageCopy.of(context);
     final latest = logs.isNotEmpty ? logs.first : null;
-    final value = latest?.bloodSugar ?? 0;
+    final value = latest == null ? 0.0 : _displayValue(latest.bloodSugar);
     final minutesAgo = latest != null
         ? DateTime.now()
               .difference(latest.loggedAt ?? latest.createdAt)
@@ -65,16 +67,16 @@ class _HeroLive extends StatelessWidget {
             child: Container(decoration: AminaTheme.heroCardDecoration()),
           ),
           PositionedDirectional(
-            top: -50,
-            end: -50,
+            top: -68,
+            end: -56,
             child: Container(
-              width: 220,
-              height: 220,
+              width: 230,
+              height: 230,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    Colors.white.withValues(alpha: 0.14),
+                    Colors.white.withValues(alpha: 0.13),
                     Colors.transparent,
                   ],
                 ),
@@ -83,62 +85,68 @@ class _HeroLive extends StatelessWidget {
           ),
           Positioned.fill(child: CustomPaint(painter: _DotsPainter())),
           Padding(
-            padding: const EdgeInsets.all(24),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 600;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
                     _HeroBadge(label: copy.latestReading),
-                    SizedBox(height: compact ? 14 : 18),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: AlignmentDirectional.centerStart,
-                            child: _MeasurementValue(
-                              value: value,
-                              unit: unit,
-                              trend: trend,
-                              trendUp: trendUp,
-                              compact: compact,
-                            ),
-                          ),
-                        ),
-                        if (!compact) ...[
-                          const SizedBox(width: 20),
-                          _AnimatedEcg(
-                            color: Colors.white.withValues(alpha: 0.75),
-                            width: 140,
-                            height: 32,
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 8),
+                    const Spacer(),
                     Text(
                       minutesAgo == 0 ? copy.justNow : copy.minutesAgo(minutesAgo),
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.65),
+                        color: Colors.white.withValues(alpha: 0.62),
                         fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (mealLabel != null || insulin != null) ...[
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          if (mealLabel != null) _HeroChip(label: mealLabel),
-                          if (insulin != null) _HeroChip(label: insulin),
-                        ],
-                      ),
-                    ],
                   ],
-                );
-              },
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: _MeasurementValue(
+                          value: value,
+                          unit: unit,
+                          trend: trend,
+                          trendUp: trendUp,
+                          compact: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      flex: 6,
+                      child: SizedBox(
+                        height: 88,
+                        child: _HeroSparkline(
+                          logs: logs,
+                          low: low,
+                          high: high,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (mealLabel != null || insulin != null) ...[
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (mealLabel != null) _HeroChip(label: mealLabel),
+                      if (insulin != null) _HeroChip(label: insulin),
+                    ],
+                  ),
+                ],
+              ],
             ),
           ),
         ],
@@ -164,7 +172,9 @@ class _MeasurementValue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayValue = value > 0 ? value.toStringAsFixed(0) : '--';
+    final displayValue = value > 0
+        ? value.toStringAsFixed(unit == 'mmol/L' ? 1 : 0)
+        : '--';
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -173,15 +183,15 @@ class _MeasurementValue extends StatelessWidget {
           '\u2066$displayValue\u2069',
           style: TextStyle(
             color: Colors.white,
-            fontSize: compact ? 68 : 88,
+            fontSize: compact ? 62 : 88,
             fontWeight: FontWeight.w800,
-            height: 0.85,
-            letterSpacing: compact ? -2.5 : -4,
+            height: 0.86,
+            letterSpacing: compact ? -2.3 : -4,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 7),
         Padding(
-          padding: EdgeInsets.only(bottom: compact ? 7 : 12),
+          padding: EdgeInsets.only(bottom: compact ? 5 : 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -189,19 +199,16 @@ class _MeasurementValue extends StatelessWidget {
                 '\u2066$unit\u2069',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.72),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+                  fontSize: compact ? 12 : 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               if (trend != null) ...[
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.22),
+                    color: Colors.white.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(99),
                   ),
                   child: Row(
@@ -209,16 +216,16 @@ class _MeasurementValue extends StatelessWidget {
                     children: [
                       Icon(
                         trendUp ? Icons.arrow_upward : Icons.arrow_downward,
-                        color: const Color(0xFFFCD34D),
+                        color: const Color(0xFF8FF3D4),
                         size: 10,
                       ),
                       const SizedBox(width: 3),
                       Text(
                         '\u2066${trend!}\u2069',
                         style: const TextStyle(
-                          color: Color(0xFFFCD34D),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF8FF3D4),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],

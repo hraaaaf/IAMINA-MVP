@@ -55,13 +55,19 @@ class _TopBar extends StatelessWidget {
   Widget _buildCompact(BuildContext context) {
     final copy = AuditedPageCopy.of(context);
     return AminaMobilePageHeader(
-      title: copy.overview,
+      title: 'IAmina',
+      subtitle: copy.overview,
       trailing: _syncButton(),
       bottom: Row(
         children: [
-          _RangeChips(range: range, onChanged: onRangeChanged),
-          const SizedBox(width: 8),
-          Expanded(child: _ParlerButton(onTap: onChatTap, compact: true)),
+          Expanded(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: _RangeChips(range: range, onChanged: onRangeChanged),
+            ),
+          ),
+          const SizedBox(width: 10),
+          _ParlerButton(onTap: onChatTap, compact: true),
         ],
       ),
     );
@@ -106,29 +112,47 @@ class _ParlerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = Text(
-      compact ? 'IAmina' : AuditedPageCopy.of(context).talk,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-      ),
-    );
+    final copy = AuditedPageCopy.of(context);
+    if (compact) {
+      return Semantics(
+        button: true,
+        label: copy.talk,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              gradient: AminaTheme.heroGradient,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: AminaTheme.teal500.withValues(alpha: 0.24),
+                  blurRadius: 12,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.chat_bubble_outline_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+        ),
+      );
+    }
 
     return Semantics(
       button: true,
-      label: AuditedPageCopy.of(context).talk,
+      label: copy.talk,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(99),
         child: Container(
           constraints: const BoxConstraints(minHeight: 44),
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 10 : 14,
-            vertical: 12,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             gradient: AminaTheme.heroGradient,
             borderRadius: BorderRadius.circular(99),
@@ -141,8 +165,7 @@ class _ParlerButton extends StatelessWidget {
             ],
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: compact ? MainAxisSize.max : MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
                 Icons.chat_bubble_outline,
@@ -150,7 +173,16 @@ class _ParlerButton extends StatelessWidget {
                 size: 14,
               ),
               const SizedBox(width: 8),
-              if (compact) Expanded(child: label) else label,
+              Text(
+                copy.talk,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
         ),
@@ -207,14 +239,14 @@ class _SyncStatusButton extends StatelessWidget {
         label: label,
         child: InkWell(
           onTap: onRetry,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           child: Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.08),
-              border: Border.all(color: color.withValues(alpha: 0.25)),
-              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: color.withValues(alpha: 0.2)),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: state == SyncUiState.syncing
                 ? Center(
@@ -247,30 +279,31 @@ class _RangeChips extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: dark ? AminaTheme.dark700 : AminaTheme.ink50,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AminaTheme.divider(context)),
       ),
-      padding: const EdgeInsets.all(2),
+      padding: const EdgeInsets.all(3),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [7, 21, 90].map((r) {
           final selected = r == range;
           return InkWell(
             onTap: () => onChanged(r),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(9),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
                 color: selected
                     ? (dark ? AminaTheme.dark500 : AminaTheme.cardBg)
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(9),
                 boxShadow: selected ? AminaTheme.shadowClinical : null,
               ),
               child: Text(
                 '$r ${AuditedPageCopy.of(context).dayShort}',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11.5,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   color: selected
                       ? AminaTheme.textPrimary(context)
