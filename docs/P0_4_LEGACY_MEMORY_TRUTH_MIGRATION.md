@@ -1,8 +1,8 @@
 # P0.4 — Legacy Memory Truth Migration
 
-> **Status:** implementation complete on the P0.4 branch; certification pending exact-head CI, migration drift, Clinical/Safety Reviewer and Release Certifier.  
 > **Scope:** IAmina companion-memory persistence/provenance only.  
-> **Non-scope:** no patient-facing UX, diagnosis, prescription, treatment optimization, clinical threshold/formula, Django model or database schema change.
+> **Non-scope:** no patient-facing UX, diagnosis, prescription, treatment optimization, clinical threshold/formula, Django model or database schema change.  
+> **Closure rule:** P0.4 includes the P0.4.1 heuristic-quarantine correction; final closure still requires exact-head reviews/gates, expected-head merge and post-merge CI + drift.
 
 ## Problem
 
@@ -13,17 +13,17 @@ The legacy `IAminaMemory` and `IAminaDeepMemory` snapshots predate the executabl
 
 Because the old snapshot has no field provenance, a later load cannot prove whether an emotional/tone value came from deterministic keyword handling or model output.
 
-A separate legacy food-response heuristic also stored `food_sensitivities` and could steer `next_intention` toward a meal observation despite lacking the evidence/provenance required for durable patient-facing reasoning.
+A separate legacy food-response heuristic stored `food_sensitivities` from a single-reading/approximate-baseline rule. That value is not an approved deterministic clinical derivation and must not gain clinical authority merely because it remains readable for compatibility.
 
 ## P0.4 contract
 
 ### 1. Versioned companion snapshot
 
-Both memory namespaces continue to use the existing `SnapshotStore` and existing Django `JSONField`. The JSON payload becomes an explicit v2 envelope:
+Both memory namespaces continue to use the existing `SnapshotStore` and existing Django `JSONField`. New writes use the explicit v3 envelope:
 
 ```text
 schema: iamina.companion-memory
-schema_version: 2
+schema_version: 3
 kind: memory | deep
 values: {...}
 provenance:
@@ -36,7 +36,7 @@ No Django model or database migration is required.
 
 ### 2. Backward-compatible read
 
-The codec accepts legacy flat snapshots. Known compatible values remain readable. The caller-selected `patient_id` is always authoritative and cannot be overridden by the stored payload.
+The codec accepts legacy flat snapshots and P0.4 v2 envelopes. Known compatible values remain readable. The caller-selected `patient_id` is always authoritative and cannot be overridden by the stored payload.
 
 Unknown schema versions, wrong namespace/kind, malformed envelopes or provenance mismatches fail closed to field/default state.
 
@@ -48,9 +48,7 @@ For a legacy flat `memory` payload, these fields reset to neutral defaults on lo
 - `current_tone`;
 - `emotional_signals`.
 
-This is intentional. Their legacy origin cannot distinguish deterministic keyword state from generative output, so preserving them would promote unknown provenance into the new trusted snapshot.
-
-New deterministic keyword-derived conversation state remains persistable as `CONVERSATIONAL_STATE` with source `companion.keyword_emotion`.
+Their legacy origin cannot distinguish deterministic keyword state from generative output. New deterministic keyword-derived conversation state remains persistable as `CONVERSATIONAL_STATE` with source `companion.keyword_emotion`.
 
 ### 4. Model output cannot survive the durable memory boundary
 
@@ -58,32 +56,41 @@ New deterministic keyword-derived conversation state remains persistable as `CON
 
 Direct assignments that mimic legacy model-output paths therefore cannot become durable memory merely because another code path later calls `save()`.
 
-### 5. Legacy food-response heuristic is quarantined
+### 5. Legacy food-response heuristic is quarantine-only
 
-Historical `food_sensitivities` remain decodable so an old snapshot is not structurally corrupted, but P0.4 removes both active authority paths:
+`HEURISTIC_INFERENCE` is a distinct truth class. It is neither a patient fact nor an allowed deterministic clinical input.
 
-- `IAmina.on_log()` no longer feeds `_learn_from_entry()`;
-- `compute_state()` no longer derives a meal-related `next_intention` from `food_sensitivities`.
+Historical `food_sensitivities` from flat snapshots or P0.4 v2 envelopes are migrated into `quarantined_heuristics.food_sensitivities`. The active `food_sensitivities` field is cleared on decode and encode boundaries.
 
-The compatibility helper/method remains temporarily present so this focused lot does not combine truth migration with a breaking API deletion. Historical values are not patient facts and do not drive the prompt.
+The compatibility method `learn_food_sensitivity()` may remain temporarily callable, but it writes only into quarantine. A direct assignment to active `food_sensitivities` is also moved to quarantine on `save()` and removed from the live active field.
+
+The active authority paths stay disabled:
+
+- `IAmina.on_log()` does not feed the legacy heuristic;
+- `compute_state()` does not derive a meal-related `next_intention` from it;
+- quarantine data cannot enter deterministic clinical logic through the truth contract.
+
+This preserves historical bytes for audit/backward compatibility without representing the heuristic as an approved clinical pattern.
 
 ## Executable evidence
 
-`backend/diabetes/tests/test_memory_truth_migration.py` proves:
+`backend/diabetes/tests/test_memory_truth_migration.py` and companion regression tests prove:
 
-- v2 schema/version/provenance;
-- typed field provenance through the existing `TruthKind` contract;
-- v2 round-trip behavior;
+- v3 schema/version/provenance;
+- typed field provenance through `TruthKind`;
+- v3 round-trip behavior for approved fields;
+- P0.4 v2 → v3 food-heuristic migration;
+- legacy flat → v3 food-heuristic migration;
 - provenance tamper fail-closed behavior;
 - unknown-version fail-closed behavior;
 - patient identity cannot be overridden by a snapshot;
 - legacy emotion/tone quarantine while compatible legacy data remains readable;
 - direct model-like memory mutations do not persist;
 - deterministic keyword emotion does persist with explicit provenance;
+- `HEURISTIC_INFERENCE` cannot persist as patient fact or enter deterministic clinical logic;
+- the legacy learning API and direct active mutations end in quarantine only;
 - historical food heuristic data does not drive `next_intention`;
-- active `on_log()` no longer feeds the legacy food heuristic.
-
-The pre-existing state contract is also migrated so it permanently rejects meal-intention steering from `food_sensitivities`.
+- active `on_log()` does not feed the legacy food heuristic.
 
 ## Acceptance gates
 
@@ -92,6 +99,7 @@ P0.4 is not CLOSED until all are true on one exact final head:
 1. CI SUCCESS, including backend, PostgreSQL source-of-truth, Flutter, Ruff, import-linter, security and permanent contracts.
 2. Django migration drift SUCCESS; expected result is no migration.
 3. Clinical/Safety Reviewer PASS on the exact head.
-4. Release Certifier GO on the exact head.
-5. Expected-head locked merge.
-6. Post-merge CI SUCCESS and migration drift SUCCESS on the merge commit.
+4. Database & Migration Reviewer PASS on the exact head.
+5. Release Certifier GO on the exact head.
+6. Expected-head locked merge.
+7. Post-merge CI SUCCESS and migration drift SUCCESS on the merge commit.
