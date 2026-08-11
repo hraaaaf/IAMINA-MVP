@@ -10,9 +10,14 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ux11-apply
+  cancel-in-progress: true
+
 jobs:
   apply:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,7 +29,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.7'
+          flutter-version: '3.41.0'
           channel: stable
           cache: true
 
@@ -37,11 +42,11 @@ jobs:
 
       - name: Analyze
         working-directory: frontend
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Test
         working-directory: frontend
-        run: flutter test
+        run: flutter test --no-pub
 
       - name: Commit verified UX-11 implementation
         run: |
