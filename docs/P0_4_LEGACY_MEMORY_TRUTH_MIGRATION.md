@@ -1,8 +1,8 @@
 # P0.4 — Legacy Memory Truth Migration
 
+> **Status:** ✅ CLOSED 100% — P0.4 PR #114 + corrective P0.4.1 PR #117 are merged and fully post-merge certified.  
 > **Scope:** IAmina companion-memory persistence/provenance only.  
 > **Non-scope:** no patient-facing UX, diagnosis, prescription, treatment optimization, clinical threshold/formula, Django model or database schema change.  
-> **Closure rule:** P0.4 includes the P0.4.1 heuristic-quarantine correction; final closure still requires exact-head reviews/gates, expected-head merge and post-merge CI + drift.
 
 ## Problem
 
@@ -96,14 +96,24 @@ This preserves historical bytes for audit/backward compatibility without represe
 - active `on_log()` does not feed the legacy food heuristic;
 - historical `peak_hours` never receives approved deterministic clinical authority.
 
-## Acceptance gates
+## Closure evidence
 
-P0.4 is not CLOSED until all are true on one exact final head:
+All acceptance gates are satisfied across the implementation lot and its corrective lot:
 
-1. CI SUCCESS, including backend, PostgreSQL source-of-truth, Flutter, Ruff, import-linter, security and permanent contracts.
-2. Django migration drift SUCCESS; expected result is no migration.
-3. Clinical/Safety Reviewer PASS on the exact head.
-4. Database & Migration Reviewer PASS on the exact head.
-5. Release Certifier GO on the exact head.
-6. Expected-head locked merge.
-7. Post-merge CI SUCCESS and migration drift SUCCESS on the merge commit.
+### P0.4 — PR #114
+
+1. Exact implementation head `f484ccb6018492873fa711cc72bb2e052eda69cb` — CI #1649 SUCCESS.
+2. Exact implementation head — Django migration drift #1461 SUCCESS; no migration required.
+3. Clinical/Safety Reviewer PASS and Release Certifier GO anchored to the exact implementation head.
+4. PR #114 merged with expected-head locking as `ebfd77f036f10188888b7bc52d754a01cf11973b`.
+5. Post-merge `main@ebfd77f036f10188888b7bc52d754a01cf11973b` — CI #1650 SUCCESS and migration drift #1462 SUCCESS.
+
+### P0.4.1 — PR #117 corrective quarantine
+
+1. Exact corrective head `d2269a92416f412e9f8629f508137a918ca8cf77` — CI #1676 SUCCESS.
+2. Exact corrective head — Django migration drift #1488 SUCCESS; no migration required.
+3. Clinical Safety Reviewer PASS, Database & Migration Reviewer PASS and Release Certifier GO anchored to the same exact corrective head; zero review threads.
+4. PR #117 merged as `23eab9eafa9e25661ae71763a5266c48f9e2a437`.
+5. Post-merge `main@23eab9eafa9e25661ae71763a5266c48f9e2a437` — CI #1677 SUCCESS and migration drift #1489 SUCCESS.
+
+**P0.4 / P0.4.1 is CLOSED 100%.**
