@@ -362,7 +362,7 @@ class StateToPromptTest(SimpleTestCase):
         """End-to-end: compute_state → state_to_prompt returns usable string."""
         mem = _memory(milestones_celebrated=["first_10_logs"])
         deep = _deep(consecutive_log_days=5, relationship_stage="building", total_interactions=15)
-        ctx = _ctx(tir_pct=68.0, cv_pct=30.0, tir_trend={"direction": "stable"})
+        ctx = _ctx(tir_pct=68.0, cv_pct=30.0, tir_trend={"direction": "stable")
         state = compute_state(mem, deep, ctx)
         result = state_to_prompt(state)
         self.assertTrue(result.strip())
