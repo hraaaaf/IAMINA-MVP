@@ -6,6 +6,7 @@ from typing import Optional
 
 from django.core.cache import cache
 
+from companion.memory_truth import decode_snapshot, encode_snapshot
 from core.observability import EVT_STREAK_BROKEN, EVT_STREAK_CONTINUED, track
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,10 @@ _RELATIONSHIP_THRESHOLDS = {
 class IAminaDeepMemory:
     patient_id: int
     significant_events: list = field(default_factory=list)
+    # Compatibility-only field. Snapshot boundaries keep it empty and move any
+    # historical/direct value into quarantined_heuristics.
     food_sensitivities: dict = field(default_factory=dict)
+    quarantined_heuristics: dict = field(default_factory=dict)
     peak_hours: list = field(default_factory=list)
     relationship_stage: str = "new"
     communication_style: str = "unknown"
@@ -36,10 +40,13 @@ class IAminaDeepMemory:
     @classmethod
     def load(cls, patient) -> "IAminaDeepMemory":
         key = f"iamina:deep:{patient.id}"
+        defaults = asdict(cls(patient_id=patient.id))
         raw = cache.get(key)
         if raw:
             try:
-                return cls(**json.loads(raw))
+                payload = json.loads(raw) if isinstance(raw, str) else raw
+                data = decode_snapshot("deep", payload, defaults=defaults)
+                return cls(**data)
             except Exception:
                 pass
 
@@ -47,10 +54,15 @@ class IAminaDeepMemory:
             from core.companion.ports import get_snapshot_store
             store = get_snapshot_store()
             if store is not None:
-                data = store.load("deep", patient.id)
-                if data:
+                payload = store.load("deep", patient.id)
+                if payload:
+                    data = decode_snapshot("deep", payload, defaults=defaults)
                     obj = cls(**data)
-                    cache.set(key, json.dumps(data), timeout=_TTL)
+                    cache.set(
+                        key,
+                        json.dumps(encode_snapshot("deep", asdict(obj))),
+                        timeout=_TTL,
+                    )
                     return obj
         except Exception:
             logger.exception("IAminaDeepMemory.load snapshot fallback failed for patient=%s", patient.id)
@@ -59,14 +71,19 @@ class IAminaDeepMemory:
 
     def save(self):
         key = f"iamina:deep:{self.patient_id}"
-        payload = json.dumps(asdict(self))
+        envelope = encode_snapshot("deep", asdict(self))
+        values = envelope["values"]
+        # Keep the live object aligned with the canonical quarantine boundary.
+        self.food_sensitivities = {}
+        self.quarantined_heuristics = values["quarantined_heuristics"]
+        payload = json.dumps(envelope)
         cache.set(key, payload, timeout=_TTL)
 
         try:
             from core.companion.ports import get_snapshot_store
             store = get_snapshot_store()
             if store is not None:
-                store.save("deep", self.patient_id, asdict(self))
+                store.save("deep", self.patient_id, envelope)
         except Exception:
             logger.exception("IAminaDeepMemory.save snapshot failed for patient=%s", self.patient_id)
 
@@ -84,14 +101,21 @@ class IAminaDeepMemory:
             self.significant_events = self.significant_events[-20:]
 
     def learn_food_sensitivity(self, food_name: str, delta_glucose: float):
+        """Legacy API retained only to preserve historical heuristic data.
+
+        New callers cannot create active patient knowledge through this method:
+        updates are stored only in the explicit heuristic quarantine.
+        """
         alpha = 0.3
         name = food_name.lower().strip()
-        if name in self.food_sensitivities:
-            self.food_sensitivities[name] = round(
-                alpha * delta_glucose + (1 - alpha) * self.food_sensitivities[name], 4
+        bucket = self.quarantined_heuristics.setdefault("food_sensitivities", {})
+        if name in bucket:
+            bucket[name] = round(
+                alpha * delta_glucose + (1 - alpha) * bucket[name], 4
             )
         else:
-            self.food_sensitivities[name] = round(delta_glucose, 4)
+            bucket[name] = round(delta_glucose, 4)
+        self.food_sensitivities = {}
 
     def update_streak(self, today_has_log: bool):
         today = date.today().isoformat()

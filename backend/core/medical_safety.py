@@ -83,6 +83,83 @@ def apply_no_prescription_policy(text: str, language: str = "fr") -> str:
     return text
 
 
+_STRUCTURED_CLINICAL_INSIGHT_KEYS = frozenset(
+    {"code", "priority", "icon", "title", "content", "action"}
+)
+
+
+def _observation_only_envelope(language: str) -> dict[str, str]:
+    """Return the fail-closed patient wording for a structured clinical insight.
+
+    Detector codes, model prose and compatibility-era fallback strings are not
+    patient-visible authority. Until a richer evidence-bearing presentation
+    contract is supplied, the safe boundary is an observation-only envelope.
+    """
+    if language == "ar-MA":
+        return {
+            "title": "ملاحظة فالمعطيات ديالك",
+            "content": (
+                "بان واحد النمط فالمعطيات اللي تحللات. هاد الملاحظة بوحدها ما كتكفيش "
+                "باش نحددو السبب ولا نشخصو شي حالة."
+            ),
+            "action": (
+                "تقدر تدوّن السياق وتوجد هاد الملاحظة باش تهضر عليها مع المختص الصحي ديالك."
+            ),
+        }
+    if language == "ar":
+        return {
+            "title": "ملاحظة في بياناتك",
+            "content": (
+                "ظهرت ملاحظة متكررة في البيانات التي تم تحليلها. هذه الملاحظة وحدها "
+                "لا تكفي لإثبات سبب أو تشخيص."
+            ),
+            "action": (
+                "يمكنك تدوين السياق وتحضير هذه الملاحظة لمناقشتها مع مختص الرعاية الصحية."
+            ),
+        }
+    if language == "en":
+        return {
+            "title": "Observation in your data",
+            "content": (
+                "A pattern was found in the data analyzed. This observation alone is not "
+                "enough to establish a cause or diagnosis."
+            ),
+            "action": (
+                "You can note the context and prepare this observation to discuss with "
+                "your healthcare professional."
+            ),
+        }
+    return {
+        "title": "Observation dans tes données",
+        "content": (
+            "Une tendance a été repérée dans les données analysées. Cette observation ne "
+            "suffit pas, à elle seule, à établir une cause ou un diagnostic."
+        ),
+        "action": (
+            "Tu peux noter le contexte et préparer cette observation pour en parler avec "
+            "ton professionnel de santé."
+        ),
+    }
+
+
+def _looks_like_structured_clinical_insight(value: dict) -> bool:
+    """Recognize the stable structured-insight response shape, not arbitrary dicts."""
+    return _STRUCTURED_CLINICAL_INSIGHT_KEYS.issubset(value)
+
+
+def _sanitize_structured_clinical_insight(value: dict, language: str) -> dict:
+    """Strip model/legacy clinical authority while preserving stable metadata."""
+    safe = dict(value)
+    safe.update(_observation_only_envelope(language))
+
+    for key, item in list(safe.items()):
+        if isinstance(item, str):
+            safe[key] = apply_no_prescription_policy(item, language)
+        elif isinstance(item, (list, tuple, dict)):
+            safe[key] = sanitize_patient_visible(item, language)
+    return safe
+
+
 # ── Input-side insulin prescription request detection ──────────────────────
 # Blocks user INPUT asking for insulin doses/prescriptions before it reaches the LLM.
 # Educational questions (what is insulin, how to store it) must NOT be blocked.
@@ -254,7 +331,7 @@ def is_treatment_prescription_request(text: str | None) -> bool:
 
 
 def sanitize_patient_visible(value, language: str = "fr"):
-    """Recursively apply the no-prescription policy to visible text."""
+    """Apply prescription and epistemic safety to patient-visible structures."""
     if isinstance(value, str):
         return apply_no_prescription_policy(value, language)
     if isinstance(value, list):
@@ -262,5 +339,7 @@ def sanitize_patient_visible(value, language: str = "fr"):
     if isinstance(value, tuple):
         return tuple(sanitize_patient_visible(item, language) for item in value)
     if isinstance(value, dict):
+        if _looks_like_structured_clinical_insight(value):
+            return _sanitize_structured_clinical_insight(value, language)
         return {key: sanitize_patient_visible(item, language) for key, item in value.items()}
     return value

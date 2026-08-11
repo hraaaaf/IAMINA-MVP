@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 # Keys the LLM sometimes uses instead of the schema-specified key.
 # Checked in order; first non-empty value wins.
 _REPLY_ALIASES = ("reply", "response", "message", "text", "content", "answer")
+_DOCTOR_BRIEF_FIELDS = ("narrative", "key_insight", "doctor_brief")
 
 
 def strip_fences(content: str) -> str:
@@ -28,6 +29,11 @@ def parse_llm_json(content: str, fields: list[str]) -> dict:
     DRY: single place for LLM JSON parsing.
     Never crashes — returns empty strings for missing fields.
     Strips markdown fences. Falls back to alias keys for common mismatches.
+
+    The doctor-brief schema has an additional fail-closed epistemic boundary:
+    a generated field that asserts unsupported causality/diagnosis/mechanism or
+    an unauthorized intervention is discarded instead of being promoted into
+    patient/clinician-visible text.
     """
     clean = strip_fences(content)
     try:
@@ -50,5 +56,14 @@ def parse_llm_json(content: str, fields: list[str]) -> dict:
                         logger.debug("parse_llm_json: used alias '%s' for field '%s'", alias, f)
                         break
             result[f] = alias_val or ""
+
+    if tuple(fields) == _DOCTOR_BRIEF_FIELDS:
+        from core.epistemic_safety import violates_epistemic_claim_policy
+
+        for field in _DOCTOR_BRIEF_FIELDS:
+            value = result.get(field)
+            if isinstance(value, str) and violates_epistemic_claim_policy(value):
+                logger.warning("doctor-brief epistemic overclaim discarded: field=%s", field)
+                result[field] = ""
 
     return result

@@ -2,7 +2,7 @@
 IAmina Clinical Engine - Hybrid Architecture
 ============================================
 Step 1: Pure Python rules detect clinical patterns mathematically.
-Step 2: Gemini Flash reformulates patterns into empathetic French insights.
+Step 2: The capability-aware LLM gateway reformulates approved patterns for presentation.
 Step 3: Fallback to template messages if no API key is available.
 """
 
@@ -13,9 +13,9 @@ from dataclasses import dataclass, field
 from statistics import mean, stdev
 from typing import TYPE_CHECKING
 
-from core.ai_egress import TEXT, assert_ai_egress_allowed
+from core.contracts.capabilities import Capability
+from core.llm_gateway import get_gateway_llm
 from core.medical_safety import sanitize_patient_visible
-from llm.factory import get_llm
 
 from .sql_analytics import AnalyticalKPIs
 
@@ -696,12 +696,14 @@ def _format_with_llm(patterns: list[ClinicalPattern], language: str = "fr") -> l
         # PHI-AUDIT(P1.3): verified no PHI in prompts at this callsite.
         # FORMAT_USER contains only clinical pattern codes + evidence text (no name, CIN, DOB).
         # get_format_system() injects language label only.
-        # NARRATE-EXEMPT(P4): this is a structured JSON formatter, not a narrative endpoint.
-        # narrate() expects ModulePatientContext+DomainContext+CompanionIdentity and returns
-        # free-text — that contract doesn't fit FORMAT_USER/FORMAT_SYSTEM (JSON insight cards).
-        assert_ai_egress_allowed(TEXT)
-        provider = get_llm()
-        response_text = provider.complete(get_format_system(language), user_prompt).content
+        # The formatter keeps its endpoint-specific JSON schema while provider access goes
+        # through the shared capability-aware gateway.
+        gateway = get_gateway_llm()
+        response_text = gateway.complete(
+            get_format_system(language),
+            user_prompt,
+            capability=Capability.SURFACE_DETERMINISTIC_PATTERN,
+        ).content
         return _parse_insights_json(response_text, patterns, language)
     except Exception:
         logger.exception("ClinicalEngine: LLM formatter failed")

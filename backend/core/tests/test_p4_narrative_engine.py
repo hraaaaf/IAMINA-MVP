@@ -7,7 +7,7 @@ Covers:
   T3: build_system_prompt() uses get_language_label() for language mapping
   T4: build_system_prompt() raises ValueError when sentinel drifts
   T5: narrate() delegates _build_system_prompt() to build_system_prompt()
-  T6: engine._format_with_llm() is exempt from narrate() (NARRATE-EXEMPT)
+  T6: structured insight formatting keeps its JSON contract behind the capability-aware gateway
   T7: IAmina.__init__ no longer stores self.llm
   T8: react() self-provisions the sanctioned gateway when none passed
   T9: summarize() self-provisions the sanctioned gateway when none passed
@@ -137,14 +137,16 @@ def test_narrate_delegates_to_build_system_prompt():
     assert calls[0][1] == "fr"
 
 
-def test_engine_format_with_llm_has_narrate_exempt_comment():
+def test_engine_format_with_llm_uses_capability_aware_gateway():
     import inspect
 
     from diabetes.services.clinical import engine
 
     source = inspect.getsource(engine._format_with_llm)
-    assert "NARRATE-EXEMPT" in source, (
-        "_format_with_llm must carry NARRATE-EXEMPT(P4) comment"
+    assert "get_gateway_llm" in source
+    assert "Capability.SURFACE_DETERMINISTIC_PATTERN" in source
+    assert "narrate(" not in source, (
+        "structured insight formatting keeps its endpoint-specific JSON contract"
     )
 
 
