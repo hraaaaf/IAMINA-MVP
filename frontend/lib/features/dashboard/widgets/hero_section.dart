@@ -67,7 +67,7 @@ class _HeroContextual extends StatelessWidget {
     required this.range,
   });
 
-  _HeroMode _resolveMode(BuildContext context) {
+  _HeroMode _resolveMode() {
     final now = DateTime.now();
     if (logs.isEmpty) return _HeroMode.insight;
     final latest = logs.first;
@@ -78,7 +78,7 @@ class _HeroContextual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mode = _resolveMode(context);
+    final mode = _resolveMode();
     return switch (mode) {
       _HeroMode.live => _HeroLive(
           logs: logs,
