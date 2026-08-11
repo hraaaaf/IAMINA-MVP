@@ -32,7 +32,10 @@ class _DashboardConvergentScreenState extends State<DashboardConvergentScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || !kDebugMode) return;
       final db = context.read<AppDatabase>();
-      final count = await db.select(db.logEntries).get().then((rows) => rows.length);
+      final count = await db
+          .select(db.logEntries)
+          .get()
+          .then((rows) => rows.length);
       if (count == 0) await db.seedDemoData();
     });
   }
@@ -56,7 +59,12 @@ class _DashboardConvergentScreenState extends State<DashboardConvergentScreen> {
             if (profileSnap.hasError || logsSnap.hasError) {
               return _ConvergentState(
                 icon: Icons.error_outline_rounded,
-                title: _t(context, 'Données indisponibles', 'Data unavailable', 'البيانات غير متاحة'),
+                title: _t(
+                  context,
+                  'Données indisponibles',
+                  'Data unavailable',
+                  'البيانات غير متاحة',
+                ),
                 body: _t(
                   context,
                   'IAmina ne peut pas lire vos données locales pour le moment.',
@@ -88,8 +96,11 @@ class _DashboardConvergentScreenState extends State<DashboardConvergentScreen> {
             }
 
             final sorted = [...logs]
-              ..sort((a, b) => (b.loggedAt ?? b.createdAt)
-                  .compareTo(a.loggedAt ?? a.createdAt));
+              ..sort(
+                (a, b) => (b.loggedAt ?? b.createdAt).compareTo(
+                  a.loggedAt ?? a.createdAt,
+                ),
+              );
             return _PopulatedReferenceDashboard(
               logs: sorted,
               unit: unit,
@@ -179,17 +190,19 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
     final status = latest.bloodSugar < low
         ? l10n.low
         : latest.bloodSugar > high
-            ? l10n.high
-            : l10n.inRange;
+        ? l10n.high
+        : l10n.inRange;
     final rawMeal = latest.mealType?.trim();
     final meal = rawMeal == null || rawMeal.isEmpty ? null : rawMeal;
     final firstName = _firstName();
     final greetingBase = DateTime.now().hour < 12
         ? l10n.goodMorning
         : DateTime.now().hour < 18
-            ? l10n.goodAfternoon
-            : l10n.goodEvening;
-    final greeting = firstName.isEmpty ? '$greetingBase !' : '$greetingBase, $firstName';
+        ? l10n.goodAfternoon
+        : l10n.goodEvening;
+    final greeting = firstName.isEmpty
+        ? '$greetingBase !'
+        : '$greetingBase, $firstName';
     final bg = AminaTheme.isDark(context)
         ? AminaTheme.bg(context)
         : const Color(0xFFF8F5EF);
@@ -270,7 +283,12 @@ class _PopulatedReferenceDashboard extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    _t(context, 'Actions rapides', 'Quick actions', 'إجراءات سريعة'),
+                    _t(
+                      context,
+                      'Actions rapides',
+                      'Quick actions',
+                      'إجراءات سريعة',
+                    ),
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
@@ -302,7 +320,11 @@ class _BrandRow extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     return Row(
       children: [
-        const SizedBox(width: 46, height: 46, child: CustomPaint(painter: _SealPainter())),
+        const SizedBox(
+          width: 46,
+          height: 46,
+          child: CustomPaint(painter: _SealPainter()),
+        ),
         const SizedBox(width: 11),
         Expanded(
           child: Column(
@@ -344,8 +366,11 @@ class _BrandRow extends StatelessWidget {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Icon(Icons.notifications_none_rounded,
-                      size: 21, color: AminaTheme.textPrimary(context)),
+                  Icon(
+                    Icons.notifications_none_rounded,
+                    size: 21,
+                    color: AminaTheme.textPrimary(context),
+                  ),
                   const PositionedDirectional(
                     top: 8,
                     end: 8,
@@ -376,9 +401,11 @@ class _RangePill extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<int>(
       onSelected: onChanged,
-      itemBuilder: (_) => [7, 21, 90]
-          .map((v) => PopupMenuItem<int>(value: v, child: Text('$v j')))
-          .toList(),
+      itemBuilder: (_) => [
+        7,
+        21,
+        90,
+      ].map((v) => PopupMenuItem<int>(value: v, child: Text('$v j'))).toList(),
       child: Container(
         height: 38,
         padding: const EdgeInsetsDirectional.fromSTEB(11, 0, 9, 0),
@@ -390,18 +417,26 @@ class _RangePill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.calendar_today_outlined,
-                size: 14, color: AminaTheme.textSecondary(context)),
+            Icon(
+              Icons.calendar_today_outlined,
+              size: 14,
+              color: AminaTheme.textSecondary(context),
+            ),
             const SizedBox(width: 7),
-            Text('$range j',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: AminaTheme.textPrimary(context),
-                )),
+            Text(
+              '$range j',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: AminaTheme.textPrimary(context),
+              ),
+            ),
             const SizedBox(width: 3),
-            Icon(Icons.keyboard_arrow_down_rounded,
-                size: 16, color: AminaTheme.textSecondary(context)),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: AminaTheme.textSecondary(context),
+            ),
           ],
         ),
       ),
@@ -466,8 +501,11 @@ class _GlucoseHero extends StatelessWidget {
                   color: const Color(0xFF5AD7A1).withValues(alpha: 0.18),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.water_drop_rounded,
-                    color: Color(0xFF74E7B2), size: 19),
+                child: const Icon(
+                  Icons.water_drop_rounded,
+                  color: Color(0xFF74E7B2),
+                  size: 19,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -475,7 +513,12 @@ class _GlucoseHero extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _t(context, 'Glycémie actuelle', 'Current glucose', 'سكر الدم الحالي'),
+                      _t(
+                        context,
+                        'Glycémie actuelle',
+                        'Current glucose',
+                        'سكر الدم الحالي',
+                      ),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12.5,
@@ -533,12 +576,16 @@ class _GlucoseHero extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 7,
+                      ),
                       decoration: BoxDecoration(
-                        color: (inTarget
-                                ? const Color(0xFF35C780)
-                                : const Color(0xFFE8AC42))
-                            .withValues(alpha: 0.20),
+                        color:
+                            (inTarget
+                                    ? const Color(0xFF35C780)
+                                    : const Color(0xFFE8AC42))
+                                .withValues(alpha: 0.20),
                         borderRadius: BorderRadius.circular(99),
                       ),
                       child: Text(
@@ -577,8 +624,11 @@ class _GlucoseHero extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.auto_awesome_rounded,
-                      color: Color(0xFF78E7BE), size: 16),
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Color(0xFF78E7BE),
+                    size: 16,
+                  ),
                   const SizedBox(width: 9),
                   Expanded(
                     child: Text(
@@ -593,8 +643,11 @@ class _GlucoseHero extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded,
-                      color: Colors.white70, size: 18),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white70,
+                    size: 18,
+                  ),
                 ],
               ),
             ),
@@ -645,7 +698,12 @@ class _TrendsPanel extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  _t(context, 'Tendances & Insights', 'Trends & Insights', 'الاتجاهات والمؤشرات'),
+                  _t(
+                    context,
+                    'Tendances & Insights',
+                    'Trends & Insights',
+                    'الاتجاهات والمؤشرات',
+                  ),
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
@@ -709,8 +767,11 @@ class _TrendsPanel extends StatelessWidget {
                       color: Color(0xFFD8F0E1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.insights_rounded,
-                        color: Color(0xFF0B8766), size: 17),
+                    child: const Icon(
+                      Icons.insights_rounded,
+                      color: Color(0xFF0B8766),
+                      size: 17,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -726,8 +787,11 @@ class _TrendsPanel extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded,
-                      color: Color(0xFF0B8766), size: 18),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF0B8766),
+                    size: 18,
+                  ),
                 ],
               ),
             ),
@@ -772,7 +836,10 @@ class _MetricTile extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 9.5, color: AminaTheme.textSecondary(context)),
+            style: TextStyle(
+              fontSize: 9.5,
+              color: AminaTheme.textSecondary(context),
+            ),
           ),
           const SizedBox(height: 3),
           FittedBox(
@@ -816,11 +883,27 @@ class _QuickActionsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final actions = <({IconData icon, String label, String route})>[
-      (icon: Icons.menu_book_outlined, label: l10n.navJournal, route: '/journal'),
+      (
+        icon: Icons.menu_book_outlined,
+        label: l10n.navJournal,
+        route: '/journal',
+      ),
       (icon: Icons.add_rounded, label: l10n.addEntry, route: '/ajouter'),
-      (icon: Icons.upload_file_outlined, label: l10n.navImport, route: '/importer'),
-      (icon: Icons.description_outlined, label: l10n.summary, route: '/summary'),
-      (icon: Icons.person_outline_rounded, label: l10n.profile, route: '/profile'),
+      (
+        icon: Icons.upload_file_outlined,
+        label: l10n.importDocument,
+        route: '/importer',
+      ),
+      (
+        icon: Icons.description_outlined,
+        label: l10n.summary,
+        route: '/summary',
+      ),
+      (
+        icon: Icons.person_outline_rounded,
+        label: l10n.profile,
+        route: '/profile',
+      ),
     ];
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -840,8 +923,11 @@ class _QuickActionsRow extends StatelessWidget {
                       borderRadius: BorderRadius.circular(15),
                       border: Border.all(color: AminaTheme.divider(context)),
                     ),
-                    child: Icon(action.icon,
-                        size: 20, color: const Color(0xFF064E52)),
+                    child: Icon(
+                      action.icon,
+                      size: 20,
+                      color: const Color(0xFF064E52),
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -898,7 +984,15 @@ class _DetailedTrendCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          SizedBox(height: 155, child: _MiniGlucoseChart(logs: logs, low: low, high: high, light: true)),
+          SizedBox(
+            height: 155,
+            child: _MiniGlucoseChart(
+              logs: logs,
+              low: low,
+              high: high,
+              light: true,
+            ),
+          ),
           const SizedBox(height: 12),
           Text(
             _t(
@@ -907,7 +1001,10 @@ class _DetailedTrendCard extends StatelessWidget {
               'Chart built only from recorded readings.',
               'تم إنشاء المنحنى فقط من القياسات المسجلة.',
             ),
-            style: TextStyle(fontSize: 10.5, color: AminaTheme.textSecondary(context)),
+            style: TextStyle(
+              fontSize: 10.5,
+              color: AminaTheme.textSecondary(context),
+            ),
           ),
         ],
       ),
@@ -952,10 +1049,22 @@ class _MiniGlucoseChart extends StatelessWidget {
         gridData: const FlGridData(show: false),
         titlesData: const FlTitlesData(show: false),
         borderData: FlBorderData(show: false),
-        extraLinesData: ExtraLinesData(horizontalLines: [
-          HorizontalLine(y: low, color: guide, strokeWidth: 1, dashArray: [4, 4]),
-          HorizontalLine(y: high, color: guide, strokeWidth: 1, dashArray: [4, 4]),
-        ]),
+        extraLinesData: ExtraLinesData(
+          horizontalLines: [
+            HorizontalLine(
+              y: low,
+              color: guide,
+              strokeWidth: 1,
+              dashArray: [4, 4],
+            ),
+            HorizontalLine(
+              y: high,
+              color: guide,
+              strokeWidth: 1,
+              dashArray: [4, 4],
+            ),
+          ],
+        ),
         lineBarsData: [
           LineChartBarData(
             spots: spots,
@@ -973,7 +1082,10 @@ class _MiniGlucoseChart extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [line.withValues(alpha: 0.18), line.withValues(alpha: 0)],
+                colors: [
+                  line.withValues(alpha: 0.18),
+                  line.withValues(alpha: 0),
+                ],
               ),
             ),
           ),
@@ -1047,8 +1159,13 @@ class _ConvergentState extends StatelessWidget {
               else
                 Icon(icon, size: 34, color: AminaTheme.teal600),
               const SizedBox(height: 16),
-              Text(title,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 7),
               Text(body, textAlign: TextAlign.center),
             ],
@@ -1078,14 +1195,25 @@ class _ConvergentEmpty extends StatelessWidget {
             children: [
               _BrandRow(),
               const Spacer(),
-              Text(l10n.emptyDashboardTitle,
-                  style: const TextStyle(fontSize: 27, fontWeight: FontWeight.w800)),
+              Text(
+                l10n.emptyDashboardTitle,
+                style: const TextStyle(
+                  fontSize: 27,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 8),
               Text(l10n.emptyDashboardBody),
               const SizedBox(height: 22),
-              FilledButton(onPressed: onAdd, child: Text(l10n.addFirstMeasurement)),
+              FilledButton(
+                onPressed: onAdd,
+                child: Text(l10n.addFirstMeasurement),
+              ),
               const SizedBox(height: 10),
-              OutlinedButton(onPressed: onImport, child: Text(l10n.importDocument)),
+              OutlinedButton(
+                onPressed: onImport,
+                child: Text(l10n.importDocument),
+              ),
               const Spacer(),
             ],
           ),
