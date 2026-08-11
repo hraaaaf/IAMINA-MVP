@@ -47,10 +47,9 @@ class _PageHead extends StatelessWidget {
 }
 
 // ── Hero Contextuel ───────────────────────────────────────────────────────────
-// Mobile is deliberately simpler: a fresh measurement gets a live state;
-// otherwise the latest measurement anchors the longitudinal summary. Desktop
-// keeps the existing midday TIR presentation so UX-9 does not broaden into a
-// desktop information-architecture rewrite.
+// A fresh measurement gets a live state; otherwise the latest real measurement
+// anchors the longitudinal summary on every viewport. TIR remains represented by
+// the dedicated metric card below, avoiding a duplicated or washed-out hero.
 
 enum _HeroMode { live, tir, insight }
 
@@ -74,8 +73,6 @@ class _HeroContextual extends StatelessWidget {
     final latest = logs.first;
     final minutesSince = now.difference(latest.loggedAt ?? latest.createdAt).inMinutes;
     if (minutesSince >= 0 && minutesSince < 90) return _HeroMode.live;
-    final desktop = MediaQuery.sizeOf(context).width >= 900;
-    if (desktop && now.hour >= 11 && now.hour < 15) return _HeroMode.tir;
     return _HeroMode.insight;
   }
 
