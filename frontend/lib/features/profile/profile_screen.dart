@@ -6,6 +6,7 @@ import 'package:drift/drift.dart' as drift;
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/amina_text_field.dart';
 import '../../core/widgets/responsive_content_surface.dart';
+import '../../core/widgets/mobile_page_header.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
 import '../../services/auth_service.dart';
@@ -56,46 +57,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isMobile = MediaQuery.sizeOf(context).width < 700;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.myProfile), centerTitle: true),
-      body: ResponsiveContentSurface(
-        maxWidth: 1040,
-        child: SingleChildScrollView(
-          padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 24, 40),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final sections = Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildMedicalSection(l10n),
-                  const SizedBox(height: 14),
-                  _buildRamadanSection(l10n),
-                  const SizedBox(height: 14),
-                  _buildProfileSection(
-                    key: const ValueKey('profile-iamina-section'),
-                    icon: Icons.auto_awesome_outlined,
-                    title: l10n.profileIaminaSection,
-                    subtitle: l10n.profileIaminaSectionHint,
-                    initiallyExpanded: false,
-                    children: [_buildIASetupCard(l10n)],
-                  ),
-                  const SizedBox(height: 14),
-                  _buildAccountSection(l10n),
-                ],
-              );
-              if (constraints.maxWidth < 900) return sections;
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AminaTheme.ink50,
-                  borderRadius: BorderRadius.circular(AminaTheme.radius3XL),
-                  border: Border.all(color: AminaTheme.ink100),
+      appBar: isMobile
+          ? null
+          : AppBar(title: Text(l10n.myProfile), centerTitle: true),
+      body: Column(
+        children: [
+          if (isMobile) AminaMobilePageHeader(title: l10n.myProfile),
+          Expanded(
+            child: ResponsiveContentSurface(
+              maxWidth: 1040,
+              child: SingleChildScrollView(
+                padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 24, 40),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final sections = Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildMedicalSection(l10n),
+                        const SizedBox(height: 14),
+                        _buildRamadanSection(l10n),
+                        const SizedBox(height: 14),
+                        _buildProfileSection(
+                          key: const ValueKey('profile-iamina-section'),
+                          icon: Icons.auto_awesome_outlined,
+                          title: l10n.profileIaminaSection,
+                          subtitle: l10n.profileIaminaSectionHint,
+                          initiallyExpanded: false,
+                          children: [_buildIASetupCard(l10n)],
+                        ),
+                        const SizedBox(height: 14),
+                        _buildAccountSection(l10n),
+                      ],
+                    );
+                    if (constraints.maxWidth < 900) return sections;
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AminaTheme.ink50,
+                        borderRadius: BorderRadius.circular(
+                          AminaTheme.radius3XL,
+                        ),
+                        border: Border.all(color: AminaTheme.ink100),
+                      ),
+                      child: sections,
+                    );
+                  },
                 ),
-                child: sections,
-              );
-            },
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -76,8 +76,18 @@ void main() {
     expect(import, isNot(contains('Notifiez-moi')));
     expect(import, isNot(contains("rejoignez la liste d'attente")));
     expect(import, contains('AuditedPageCopy.of(context).unavailable'));
-    expect(import, contains('AuditedPageCopy.of(context).dexcomDescription'));
-    expect(import, contains('AuditedPageCopy.of(context).libreDescription'));
+    expect(
+      RegExp(
+        r'AuditedPageCopy\.of\(\s*context,?\s*\)\.dexcomDescription',
+      ).hasMatch(import),
+      isTrue,
+    );
+    expect(
+      RegExp(
+        r'AuditedPageCopy\.of\(\s*context,?\s*\)\.libreDescription',
+      ).hasMatch(import),
+      isTrue,
+    );
     expect(import, contains('action: const _UnavailableAction()'));
     expect(frenchArb, contains('Non disponible'));
     expect(frenchArb, contains('à confirmer avant activation'));
