@@ -182,22 +182,30 @@ The boundary is intentionally **lazy**: entering a request scope does not itself
 
 The shared text gateway additionally enforces the IAmina capability matrix before provider egress. This authority check is independent of consent/egress authorization: an allowed narrative capability can still be denied for missing egress consent, and egress consent never grants a forbidden medical capability.
 
-Live call paths wired through the egress policy include the currently inventoried text/gateway, chat, summary/doctor-brief, STT/audio, vision/OCR, and document-processing flows.
+Live call paths wired through this policy include the currently inventoried text/gateway, chat, summary/doctor-brief, STT/audio, vision/OCR, and document-processing flows.
 
 CI contains an AI-egress anti-bypass gate so new direct model/provider callsites cannot silently omit the authorization assertion. P0.2 adds a focused anti-regression contract preventing the AI API/doctor-brief path from returning to direct text-provider access.
 
 ### Important remaining limitations
 
-P0-B and P0.2 do **not** mean the complete sovereignty/data-egress or legacy-provider cleanup program is finished.
+P0-B does **not** mean the complete sovereignty/data-egress program is finished.
 
-Still required or externally gated:
+Still required under P0-MENA-1:
 
-- structured payload/field allowlists and processor/residency evidence where not already closed by current deployment governance;
-- final provider benchmark/cutover evidence;
-- removal of the bounded structured diabetes formatter capability-gateway exception tracked in `docs/TECHDEBT.md`;
-- migration/classification of legacy companion memory snapshots under the new truth contract before treating those stores as typed clinical truth.
+- structured payload/field allowlists per purpose;
+- uniformly enforced minimization/redaction contracts;
+- purpose/modality-granular raw-media consent where required;
+- processor/subprocessor and residency metadata;
+- retention/no-training terms;
+- timeout/failure/fallback policy;
+- final removal/isolation of provider-specific seams.
 
-Therefore the system is **egress-authorized and capability-bounded on the shared text gateway**, but it is not claimed to be free of every legacy structured-provider seam.
+P0.2 additionally leaves two bounded follow-ups:
+
+- remove the structured diabetes formatter capability-gateway exception tracked in `docs/TECHDEBT.md`;
+- classify/migrate legacy companion-memory snapshots before treating those stores as typed clinical truth.
+
+Therefore the system is **egress-authorized**, and shared text-gateway calls are capability-bounded, but every legacy structured-provider seam is not yet claimed as migrated.
 
 ## 7. Data-egress policy
 
@@ -213,19 +221,19 @@ Do not send by default:
 - raw unrelated clinical logs;
 - unrelated health data.
 
-Raw audio/images/documents may disclose sensitive information even without explicit text fields, so media transmission requires an approved purpose and the consent/policy level defined by the current outbound-governance contract.
+Raw audio/images/documents may disclose sensitive information even without explicit text fields, so media transmission requires an approved purpose and the consent/policy level defined by P0-MENA-1.
 
 ## 8. Authentication
 
 ### Current
 
-Firebase-based identity/token handling remains present as legacy infrastructure/migration compatibility where still configured.
+Firebase-based identity/token handling remains present as legacy infrastructure.
 
-The API safety hardening from P0-A distinguishes Bearer/bootstrap behavior from cookie/session CSRF behavior.
+The API safety hardening from P0-A distinguishes Bearer/bootstrap behavior from cookie/session CSRF behavior; it does **not** complete the Firebase → Django sovereignty migration.
 
 ### Target
 
-Django-native authentication/identity is the sovereignty-critical source of truth with explicit lifecycle for:
+Django-native authentication/identity becomes sovereignty-critical source of truth with explicit lifecycle for:
 
 - account creation/invite;
 - verification;
@@ -235,7 +243,7 @@ Django-native authentication/identity is the sovereignty-critical source of trut
 - deletion/export;
 - staff/professional strong authentication.
 
-Any remaining Firebase compatibility must preserve account identity and reconciliation guarantees until removal criteria pass.
+Migration must preserve account identity and provide reconciliation + rollback before Firebase dependencies are removed.
 
 ## 9. Locale architecture
 
