@@ -10,6 +10,7 @@ import '../../data/drift/database.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../core/widgets/mobile_page_header.dart';
+import '../../core/widgets/first_use_panel.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../services/sync_service.dart';
 import 'clinical_engine.dart';
@@ -499,215 +500,27 @@ class _DashboardLocalState extends StatelessWidget {
 class _EmptyDashboard extends StatelessWidget {
   final VoidCallback onAddTap;
   final VoidCallback onImportTap;
+
   const _EmptyDashboard({required this.onAddTap, required this.onImportTap});
 
   @override
   Widget build(BuildContext context) {
     final l10n = AuditedPageCopy.of(context).l10n;
-    final compactHeight = MediaQuery.sizeOf(context).height <= 600;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wideFirstUse = constraints.maxWidth >= 720 && !compactHeight;
-        final padding = compactHeight
-            ? 16.0
-            : wideFirstUse
-            ? 30.0
-            : 24.0;
-
-        final intro = Column(
-          crossAxisAlignment: wideFirstUse
-              ? CrossAxisAlignment.start
-              : CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: compactHeight ? 60 : 78,
-              height: compactHeight ? 60 : 78,
-              decoration: BoxDecoration(
-                gradient: AminaTheme.heroGradient,
-                shape: BoxShape.circle,
-                boxShadow: AminaTheme.shadowFab,
-              ),
-              child: Icon(
-                Icons.monitor_heart_outlined,
-                color: Colors.white,
-                size: compactHeight ? 30 : 38,
-              ),
-            ),
-            SizedBox(height: compactHeight ? 14 : 20),
-            Text(
-              l10n.emptyDashboardTitle,
-              style: TextStyle(
-                fontSize: compactHeight ? 20 : 24,
-                fontWeight: FontWeight.w800,
-                color: AminaTheme.textPrimary(context),
-                letterSpacing: -0.4,
-              ),
-              textAlign: wideFirstUse ? TextAlign.start : TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.emptyDashboardBody,
-              style: TextStyle(
-                fontSize: compactHeight ? 13 : 14,
-                color: AminaTheme.textSecondary(context),
-                height: 1.5,
-              ),
-              textAlign: wideFirstUse ? TextAlign.start : TextAlign.center,
-            ),
-          ],
-        );
-
-        final actions = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ValueListenableBuilder<SyncUiState>(
-              valueListenable: context.read<SyncService>().state,
-              builder: (context, state, _) {
-                if (state != SyncUiState.offline)
-                  return const SizedBox.shrink();
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AminaTheme.ink50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.cloud_off_outlined,
-                        size: 17,
-                        color: AminaTheme.ink500,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          AuditedPageCopy.of(context).sync('offline'),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            height: 1.35,
-                            color: AminaTheme.ink600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            FilledButton.icon(
-              onPressed: onAddTap,
-              icon: const Icon(Icons.add_circle_outline, size: 18),
-              label: Text(
-                l10n.addFirstMeasurement,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              style: FilledButton.styleFrom(
-                backgroundColor: AminaTheme.teal500,
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: onImportTap,
-              icon: const Icon(Icons.upload_file_outlined, size: 18),
-              label: Text(
-                l10n.importDocument,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AminaTheme.teal600,
-                minimumSize: const Size.fromHeight(48),
-                side: const BorderSide(color: AminaTheme.teal200),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-            if (!compactHeight) ...[
-              const SizedBox(height: 18),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AminaTheme.teal50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AminaTheme.teal100),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(
-                      Icons.verified_user_outlined,
-                      size: 17,
-                      color: AminaTheme.teal700,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        l10n.firstUseTruthNote,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          height: 1.4,
-                          color: AminaTheme.teal700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        );
-
-        return Padding(
-          padding: EdgeInsets.only(
-            top: compactHeight ? 10 : 34,
-            bottom: compactHeight ? 14 : 28,
-          ),
-          child: Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(padding),
-            decoration: BoxDecoration(
-              color: AminaTheme.surface(context),
-              borderRadius: BorderRadius.circular(compactHeight ? 18 : 24),
-              border: Border.all(color: AminaTheme.divider(context)),
-            ),
-            child: wideFirstUse
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(flex: 5, child: intro),
-                      const SizedBox(width: 34),
-                      Container(
-                        width: 1,
-                        height: 210,
-                        color: AminaTheme.divider(context),
-                      ),
-                      const SizedBox(width: 34),
-                      Expanded(flex: 5, child: actions),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      intro,
-                      SizedBox(height: compactHeight ? 16 : 24),
-                      actions,
-                    ],
-                  ),
-          ),
+    return ValueListenableBuilder<SyncUiState>(
+      valueListenable: context.read<SyncService>().state,
+      builder: (context, state, _) {
+        final note = state == SyncUiState.offline
+            ? '${AuditedPageCopy.of(context).sync('offline')} · ${l10n.firstUseTruthNote}'
+            : l10n.firstUseTruthNote;
+        return AminaFirstUsePanel(
+          icon: Icons.monitor_heart_outlined,
+          title: l10n.emptyDashboardTitle,
+          body: l10n.emptyDashboardBody,
+          primaryActionLabel: l10n.addFirstMeasurement,
+          onPrimaryAction: onAddTap,
+          secondaryActionLabel: l10n.importDocument,
+          onSecondaryAction: onImportTap,
+          note: note,
         );
       },
     );

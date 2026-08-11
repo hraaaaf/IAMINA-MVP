@@ -1,10 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../core/widgets/mobile_page_header.dart';
+import '../../core/widgets/first_use_panel.dart';
 import '../../services/api_client.dart';
+import '../../data/drift/database.dart';
 import '../../data/models/ai_models.dart';
 import '../../l10n/app_localizations.dart';
 import '../../l10n/audited_page_copy.dart';
@@ -27,6 +30,7 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
   SummaryResponse? _summary;
   KpisResponse? _kpis;
   String? _errorMessage;
+  bool? _hasLocalLogs;
   bool _showTweaks = false;
   int _periodDays = 21;
   final ScrollController _scrollController = ScrollController();
@@ -34,7 +38,15 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initialize());
+  }
+
+  Future<void> _initialize() async {
+    final db = context.read<AppDatabase>();
+    final count = await db.countLogs();
+    if (!mounted) return;
+    setState(() => _hasLocalLogs = count > 0);
+    await _fetchData();
   }
 
   @override
@@ -111,7 +123,9 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
                   child: _isLoading
                       ? _buildLoader()
                       : _errorMessage != null
-                      ? _buildError()
+                      ? (_hasLocalLogs == false
+                            ? _buildFirstUse()
+                            : _buildError())
                       : _buildContent(),
                 ),
               ],
@@ -124,6 +138,30 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFirstUse() {
+    final l10n = AppLocalizations.of(context)!;
+    return SingleChildScrollView(
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 20, 20, 120),
+      child: Align(
+        alignment: AlignmentDirectional.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 820),
+          child: AminaFirstUsePanel(
+            icon: Icons.auto_graph_rounded,
+            eyebrow: l10n.navIamina,
+            title: l10n.emptyDashboardTitle,
+            body: AuditedPageCopy.of(context).emptyAnalysis,
+            primaryActionLabel: l10n.addFirstMeasurement,
+            onPrimaryAction: () => context.go('/ajouter'),
+            secondaryActionLabel: l10n.importDocument,
+            onSecondaryAction: () => context.go('/importer'),
+            note: l10n.firstUseTruthNote,
+          ),
+        ),
       ),
     );
   }
