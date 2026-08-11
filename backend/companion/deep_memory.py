@@ -56,7 +56,6 @@ class IAminaDeepMemory:
 
         try:
             from core.companion.ports import get_snapshot_store
-
             store = get_snapshot_store()
             if store is not None:
                 data = store.load("deep", patient.id)
@@ -84,7 +83,6 @@ class IAminaDeepMemory:
 
         try:
             from core.companion.ports import get_snapshot_store
-
             store = get_snapshot_store()
             if store is not None:
                 store.save("deep", self.patient_id, normalized)
@@ -98,7 +96,6 @@ class IAminaDeepMemory:
 
     def record_event(self, type: str, description: str, glucose: Optional[float] = None):
         from datetime import datetime, timezone
-
         event = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "type": type,
@@ -116,7 +113,6 @@ class IAminaDeepMemory:
         This method no longer creates active patient knowledge. Existing callers
         cannot make the heuristic influence IAmina's clinical or dialogue state.
         """
-
         alpha = 0.3
         name = food_name.lower().strip()
         bucket = self.quarantined_heuristics.setdefault("food_sensitivities", {})
@@ -131,28 +127,21 @@ class IAminaDeepMemory:
         if not today_has_log:
             _streak_before = self.consecutive_log_days
             self.consecutive_log_days = 0
-            track(
-                EVT_STREAK_BROKEN,
-                patient_id=self.patient_id,
-                props={"streak_before": _streak_before},
-            )
+            track(EVT_STREAK_BROKEN, patient_id=self.patient_id, props={"streak_before": _streak_before})
             return
 
         if self.last_log_date == today:
             return
 
+        (date.today().replace(day=date.today().day - 1) if date.today().day > 1
+                     else None)
         # Use date arithmetic properly
         from datetime import timedelta
-
         yesterday_iso = (date.today() - timedelta(days=1)).isoformat()
 
         if self.last_log_date == yesterday_iso:
             self.consecutive_log_days += 1
-            track(
-                EVT_STREAK_CONTINUED,
-                patient_id=self.patient_id,
-                props={"streak": self.consecutive_log_days},
-            )
+            track(EVT_STREAK_CONTINUED, patient_id=self.patient_id, props={"streak": self.consecutive_log_days})
         else:
             self.consecutive_log_days = 1
 
@@ -181,14 +170,12 @@ class IAminaDeepMemory:
 
     def record_advice_given(self) -> None:
         from datetime import datetime, timezone
-
         self.last_advice_given_at = datetime.now(timezone.utc).isoformat()
 
     def advice_given_within(self, hours: int = 24) -> bool:
         if not self.last_advice_given_at:
             return False
         from datetime import datetime, timedelta, timezone
-
         try:
             last = datetime.fromisoformat(self.last_advice_given_at)
             return (datetime.now(timezone.utc) - last) < timedelta(hours=hours)
