@@ -1,6 +1,6 @@
-# Secret history and credential-rotation certification
+# Secret history and provenance certification
 
-**Status:** pre-remediation tooling prepared; pilot gate remains blocked by issue #30.
+**Status:** pre-remediation tooling prepared; pilot gate remains blocked by issue #30 until the historical blob is purged and a fresh full-history scan passes.
 
 ## 1. Scope
 
@@ -9,7 +9,7 @@ The pilot requires proof that no covered credential pattern remains in either:
 - the current tracked tree; or
 - any blob reachable from Git refs.
 
-Scanning only current files is insufficient because deleted credentials remain retrievable from repository history and old clones.
+Scanning only current files is insufficient because deleted credential-like material remains retrievable from repository history and old clones.
 
 ## 2. Current known result
 
@@ -18,10 +18,22 @@ A full non-shallow scan performed on 2026-08-02 found:
 - current tracked tree: **pass**;
 - reachable history: **fail**;
 - one forbidden historical path: `.claude/settings.local.json`;
-- six generic service-token findings in one reachable blob;
+- six generic `sk-` service-token findings in one reachable blob;
 - referenced service host in the deleted configuration: `aiapiv2.pekpik.com`.
 
-The scheduled full-history preflight on 2026-08-10 reconfirmed the tracked-tree pass and reachable-history failure. It also surfaced two classifier-only findings: a deliberately public Firebase client identifier emitted into a compiled Flutter web artifact and a known synthetic `sk-` fixture from a security test. Neither changes the six PekPik credentials that require external rotation. SECURITY-30A narrows classification of those non-secret cases without weakening detection of unknown Google-format identifiers or arbitrary service tokens.
+The scheduled full-history preflight on 2026-08-10 reconfirmed the tracked-tree pass and reachable-history failure. SECURITY-30A removed unrelated classifier noise without allow-listing the historical PekPik blob.
+
+### Provenance correction — 2026-08-11
+
+Repository history shows that the PekPik material was already present in the **initial IAMINA snapshot** inside `.claude/settings.local.json`, a local Claude/agent permission file. The later cleanup commit describes the file as `local agent settings containing secrets`.
+
+The project owner reports no knowledge of, or intentional account relationship with, PekPik. A connected-mailbox search found no PekPik registration, billing or account correspondence.
+
+Current public PekPik documentation states that developers can copy **public test keys** and test the gateway **without registration**. Therefore the repository does **not** have evidence that these six historical values were user-owned PekPik account credentials.
+
+This changes the incident classification from **assumed user-owned credential rotation** to **public/test-key provenance plus historical secret-like material purge**.
+
+It does **not** change the scanner result: `.claude/settings.local.json` remains a forbidden historical path and the blob must still be removed from all reachable refs.
 
 Credential values are intentionally absent from this document, issues, PRs and logs.
 
@@ -37,22 +49,11 @@ The remediation tracker is issue #30.
 4. checks forbidden historical paths;
 5. scans covered credential categories;
 6. reports only blob prefix, path, line and category;
-7. never prints the matched credential value.
+7. never prints the matched value.
 
-Covered categories include:
+Covered categories include generic service tokens, provider API-key patterns, AWS/GitHub/Slack tokens, private-key material and forbidden local credential paths.
 
-- generic `sk-` service tokens;
-- Anthropic-style API keys;
-- Google API keys, except deliberately public Firebase client identifiers at the exact generated-client path and exact anchored copies in the approved compiled `main.dart.js` artifact;
-- AWS access keys;
-- GitHub tokens;
-- Slack tokens;
-- private-key material;
-- forbidden `.env`, service-account and local-credential paths.
-
-Known Firebase client identifiers are derived from `HEAD:frontend/lib/firebase_options.dart`. If that canonical generated configuration is unavailable, the derived allow-set is empty and the scanner fails closed. An anchored identifier is exempt outside the generated-client path only when every reachable path for that blob is the approved compiled `main.dart.js` path. The same known identifier in another path remains a finding, and an unknown Google-format identifier in `main.dart.js` also remains a finding.
-
-Explicit synthetic `sk-` example prefixes are ignored only at the individual regex match, so they cannot suppress a different credential category on the same line. The historical synthetic fixture identified by the 2026-08-10 preflight is an exact-value test exception, not a prefix exception; arbitrary or extended `sk-` values remain findings.
+Known safe classifier exceptions remain narrow and exact. The historical PekPik blob is not allow-listed.
 
 The scanner is high-signal rather than mathematically exhaustive. A pass proves that no covered non-exempt pattern exists in reachable blobs; it does not prove that every unknown credential format has been detected.
 
@@ -60,87 +61,81 @@ The scanner is high-signal rather than mathematically exhaustive. A pass proves 
 
 ### Phase A — pre-remediation
 
-The mergeable preflight provides:
+The preflight provides:
 
 - the scanner;
 - synthetic regression tests;
-- weekly and manual full-history execution;
-- this response runbook.
+- weekly/manual full-history execution;
+- this runbook.
 
-`.github/workflows/secret-history-preflight.yml` intentionally has only scheduled and manual triggers. Its full-history step is expected to fail until issue #30 is remediated. The historical blob is **not allow-listed**, and the scanner is not weakened.
+`.github/workflows/secret-history-preflight.yml` intentionally remains scheduled/manual while the historical blob is reachable. Its full-history step is expected to fail until issue #30 is remediated.
 
 ### Phase B — final certification
 
-Only after provider-side rotation/revocation and history rewrite may the workflow become a mandatory push/pull-request gate.
-
-Final activation must add blocking triggers without changing scanner logic or adding exceptions for the compromised blob.
+After the history rewrite passes locally and from a fresh clone, the workflow may become a mandatory push/pull-request gate without changing scanner logic or adding an exception for the affected blob.
 
 ## 5. Required order of operations
 
-1. Treat every discovered credential as compromised.
-2. Revoke or rotate all potentially affected PekPik credentials.
-3. Review provider activity logs for unauthorized use.
-4. Confirm all deployments and developer environments use replacement credentials from the approved secret manager.
-5. Record restricted evidence using opaque references only.
-6. Coordinate a repository history rewrite with all maintainers.
-7. Remove the affected blob from all branches and tags, not only `main`.
-8. Force-update rewritten refs using the approved maintenance window.
-9. Invalidate or archive old deployment sources and caches.
-10. Require fresh clones; old clones must not push rewritten history back.
-11. Run the scanner from a fresh full non-shallow clone.
-12. Activate the blocking push/pull-request history workflow.
-13. Obtain security-owner approval.
+1. Preserve the provenance evidence: initial-snapshot location, local-agent file classification, no demonstrated user-owned PekPik account, and PekPik's public-test-key model.
+2. Confirm current tracked code and configured deployment surfaces do not reference PekPik.
+3. Coordinate a repository history rewrite with maintainers.
+4. Remove `.claude/settings.local.json` from every affected branch and tag, not only `main`.
+5. Verify the rewritten mirror locally with the unchanged scanner and `git fsck --full`.
+6. Force-update rewritten refs only after branch/tag impact is reviewed.
+7. Require fresh clones; old clones must not push pre-rewrite history back.
+8. Invalidate or archive old deployment sources/caches where applicable.
+9. Run tracked-tree and full-history scanners from a fresh non-shallow clone.
+10. Activate the blocking push/pull-request history workflow.
+11. Obtain Security Reviewer and Release Certifier approval on the exact rewritten head.
+12. Close issue #30 only after the fresh-clone scans and blocking gate pass.
 
-Rotation/revocation must happen **before** history rewrite. Rewriting Git does not invalidate an already exposed credential.
+### What is no longer a prerequisite
+
+Do **not** require the project owner to rotate or revoke a PekPik account credential unless independent evidence establishes that a user-owned PekPik account/credential actually existed.
+
+No such account ownership is currently demonstrated.
+
+If later evidence establishes a private/user-owned credential, provider-side revocation and activity review become mandatory before closure.
 
 ## 6. Safe history rewrite procedure
 
-The exact rewrite command must be chosen and reviewed during the maintenance window. Prefer `git filter-repo` from a fresh mirror clone.
-
-Illustrative procedure, to be adapted after rotation confirmation:
+Prefer `git filter-repo` from a fresh isolated mirror clone:
 
 ```bash
-# Fresh isolated mirror clone
 git clone --mirror <REPOSITORY_URL> IAMINA-MVP-clean.git
 cd IAMINA-MVP-clean.git
 
-# Remove the forbidden historical path from all refs.
-# Review the installed git-filter-repo version and command before execution.
 git filter-repo --path .claude/settings.local.json --invert-paths
 
-# Verify locally before any force push.
 python /trusted/path/audit_git_history_secrets.py --repo .
 git fsck --full
 ```
 
-Do not execute the force push until:
+Do not force-push until:
 
-- rotation evidence is approved;
-- the local rewritten mirror passes;
+- the rewritten mirror passes;
 - branch/tag impact is reviewed;
-- all collaborators receive the fresh-clone instruction;
-- deployment rollback is prepared.
+- collaborators receive fresh-clone instructions;
+- rollback/deployment implications are understood.
 
-Do not paste or search for credential values in shell history. Use blob/path metadata only.
+Do not paste or search credential values in shell history. Use path/blob metadata only.
 
-## 7. Restricted rotation evidence ledger
+## 7. Evidence ledger
 
-The restricted evidence record must include, without credential values:
+The restricted or operational evidence record should include, without credential values:
 
 - incident reference: issue #30;
-- provider and credential category;
-- affected environments;
-- revoked/rotated timestamp;
-- replacement activation timestamp;
-- accountable owner role;
-- opaque provider audit-log reference;
-- conclusion of unauthorized-use review;
-- confirmation that deployed environments no longer reference old credentials;
+- provenance classification;
+- evidence that no user-owned PekPik account is demonstrated;
+- current-tree/current-runtime PekPik search result;
 - history-rewrite change reference;
+- affected refs reviewed;
 - fresh-clone scanner run reference;
-- security-owner approval reference.
+- blocking-gate activation reference;
+- Security Reviewer verdict;
+- Release Certifier verdict.
 
-Signed provider records and internal identities remain outside source control.
+If future evidence proves private credential ownership, additionally record provider revocation, provider activity review and affected-environment verification.
 
 ## 8. Fresh-clone certification
 
@@ -154,10 +149,10 @@ python scripts/check_secrets.py
 python scripts/audit_git_history_secrets.py
 ```
 
-The certification is invalid if:
+Certification is invalid if:
 
 - the checkout is shallow;
-- any branch or tag containing the blob remains reachable;
+- any branch/tag still makes the forbidden blob reachable;
 - the tracked-tree scan fails;
 - the history scanner fails;
 - evidence refers to a clone created before the rewrite.
@@ -166,14 +161,15 @@ The certification is invalid if:
 
 The roadmap gate remains open until all are true:
 
-- [ ] six potentially affected credentials are revoked or rotated;
-- [ ] provider activity review is complete;
-- [ ] all deployments use replacement credentials;
-- [ ] restricted rotation evidence is approved;
-- [ ] the historical blob is removed from all reachable refs;
-- [ ] a fresh non-shallow clone passes both scanners;
+- [x] provenance investigated; no user-owned PekPik account is currently demonstrated;
+- [x] current tracked tree contains no PekPik integration reference;
+- [ ] historical `.claude/settings.local.json` blob removed from all reachable refs;
+- [ ] rewritten mirror passes unchanged history scanner and `git fsck --full`;
+- [ ] force-updated refs are coordinated;
+- [ ] fresh non-shallow clone passes tracked-tree and full-history scanners;
 - [ ] blocking push/pull-request history certification is enabled;
-- [ ] old clones and deployment caches are handled;
-- [ ] security owner approves closure.
+- [ ] stale clones/deployment caches are handled as applicable;
+- [ ] Security Reviewer approves the exact rewritten state;
+- [ ] Release Certifier approves closure.
 
 The current-tree secret-hygiene pass alone is not sufficient.
