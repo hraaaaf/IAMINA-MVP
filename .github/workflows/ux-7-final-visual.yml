@@ -1,0 +1,124 @@
+name: UX-7 final visual audit
+
+on:
+  push:
+    branches:
+      - audit/ux-7-final-5e7fbd3
+    paths:
+      - .github/workflows/ux-7-final-visual.yml
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 5e7fbd3e720643d55010be20f7a17e90da7b2eed
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Build exact UX-7 product head
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter build web --release --dart-define=IAMINA_AUDIT_ACCESS=true
+      - name: Install Playwright Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.54.2 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Serve Flutter web
+        run: |
+          nohup python3 -m http.server 8080 --directory frontend/build/web >/tmp/ux7-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080 >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/ux7-server.log
+          exit 1
+      - name: Capture FR/AR responsive first-use evidence
+        run: |
+          mkdir -p ux7-visual
+          cat > capture-ux7.js <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+
+          (async () => {
+            const browser = await chromium.launch({headless: true});
+            const matrix = [
+              {name:'desktop', width:1440, height:1000},
+              {name:'mobile', width:390, height:844},
+              {name:'small', width:360, height:560},
+            ];
+            const locales = [
+              {name:'fr', locale:'fr-FR'},
+              {name:'ar', locale:'ar-MA'},
+            ];
+            const routes = ['dashboard', 'summary', 'journal', 'importer', 'profile'];
+            const report = [];
+
+            for (const viewport of matrix) {
+              for (const lang of locales) {
+                for (const route of routes) {
+                  const context = await browser.newContext({
+                    viewport: {width: viewport.width, height: viewport.height},
+                    locale: lang.locale,
+                    timezoneId: 'Africa/Casablanca',
+                    deviceScaleFactor: 1,
+                  });
+                  const page = await context.newPage();
+                  const pageErrors = [];
+                  page.on('pageerror', error => pageErrors.push(String(error)));
+                  const expectedHash = `#/${route}`;
+                  const url = `http://127.0.0.1:8080/?audit=visual-cert&lang=${lang.name}${expectedHash}`;
+                  await page.goto(url, {waitUntil:'domcontentloaded', timeout:30000});
+                  await page.locator('flutter-view').waitFor({state:'attached', timeout:30000});
+                  await page.waitForTimeout(route === 'summary' ? 6500 : 5000);
+                  const flutterViews = await page.locator('flutter-view').count();
+                  const finalUrl = page.url();
+                  if (flutterViews !== 1) {
+                    throw new Error(`${viewport.name}-${lang.name}-${route}: expected 1 flutter-view, got ${flutterViews}`);
+                  }
+                  if (pageErrors.length) {
+                    throw new Error(`${viewport.name}-${lang.name}-${route}: page errors: ${pageErrors.join(' | ')}`);
+                  }
+                  if (!finalUrl.includes(expectedHash)) {
+                    throw new Error(`${viewport.name}-${lang.name}-${route}: wrong route after render: ${finalUrl}`);
+                  }
+                  const filename = `ux7-visual/${viewport.name}-${lang.name}__${route}.png`;
+                  await page.screenshot({path: filename, fullPage: false});
+                  report.push({
+                    viewport: viewport.name,
+                    width: viewport.width,
+                    height: viewport.height,
+                    lang: lang.name,
+                    route,
+                    requestedUrl: url,
+                    finalUrl,
+                    flutterViews,
+                    pageErrors,
+                    filename,
+                  });
+                  await context.close();
+                }
+              }
+            }
+            fs.writeFileSync('ux7-visual/report.json', JSON.stringify(report, null, 2));
+            fs.writeFileSync('ux7-visual/source-sha.txt', '5e7fbd3e720643d55010be20f7a17e90da7b2eed\n');
+            await browser.close();
+          })().catch(err => { console.error(err); process.exit(1); });
+          JS
+          node capture-ux7.js
+      - name: Upload exact visual artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux-7-final-visual
+          path: ux7-visual
+          if-no-files-found: error
+          retention-days: 14
