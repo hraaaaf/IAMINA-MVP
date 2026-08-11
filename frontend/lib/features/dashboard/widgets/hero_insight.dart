@@ -59,6 +59,7 @@ class _HeroInsight extends StatelessWidget {
   Widget build(BuildContext context) {
     final copy = AuditedPageCopy.of(context);
     final l10n = copy.l10n;
+    final desktop = MediaQuery.sizeOf(context).width >= 900;
     final latest = logs.isNotEmpty ? logs.first : null;
     final latestAt = latest == null ? null : (latest.loggedAt ?? latest.createdAt);
     final rawMeal = latest?.mealType?.trim();
@@ -89,6 +90,16 @@ class _HeroInsight extends StatelessWidget {
             ),
           ),
           Positioned.fill(child: CustomPaint(painter: _DotsPainter())),
+          if (desktop)
+            PositionedDirectional(
+              end: -8,
+              bottom: 10,
+              child: _AnimatedEcg(
+                color: Colors.white.withValues(alpha: 0.16),
+                width: 260,
+                height: 60,
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
             child: Column(
@@ -189,80 +200,86 @@ class _HeroInsight extends StatelessWidget {
                   },
                 ),
                 const SizedBox(height: 18),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
+                if (desktop)
+                  _HeroFilledBtn(
+                    label: l10n.dashboardViewDiscoveries,
                     onTap: () => GoRouter.of(context).go('/summary'),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.09),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.09),
+                  )
+                else
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => GoRouter.of(context).go('/summary'),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.11),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.insights_rounded,
-                              color: Color(0xFF8FF3D4),
-                              size: 17,
-                            ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.09),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.09),
                           ),
-                          const SizedBox(width: 11),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _headline(context),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    height: 1.25,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.11),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.insights_rounded,
+                                color: Color(0xFF8FF3D4),
+                                size: 17,
+                              ),
+                            ),
+                            const SizedBox(width: 11),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _headline(context),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.25,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  _subtitle(context),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.62),
-                                    fontSize: 10.5,
-                                    height: 1.2,
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    _subtitle(context),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.62),
+                                      fontSize: 10.5,
+                                      height: 1.2,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: Colors.white.withValues(alpha: 0.7),
-                            size: 20,
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              color: Colors.white.withValues(alpha: 0.7),
+                              size: 20,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
