@@ -498,7 +498,7 @@ class _GlucoseHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF063C43), Color(0xFF00575D), Color(0xFF073E44)],
@@ -519,8 +519,8 @@ class _GlucoseHero extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: const Color(0xFF5AD7A1).withValues(alpha: 0.18),
                   shape: BoxShape.circle,
@@ -561,7 +561,7 @@ class _GlucoseHero extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -630,18 +630,18 @@ class _GlucoseHero extends StatelessWidget {
               Expanded(
                 flex: 6,
                 child: SizedBox(
-                  height: 76,
+                  height: 92,
                   child: _MiniGlucoseChart(logs: logs, low: low, high: high),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           InkWell(
             onTap: () => GoRouter.of(context).go('/summary'),
             borderRadius: BorderRadius.circular(13),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(13),
@@ -703,7 +703,7 @@ class _TrendsPanel extends StatelessWidget {
         ? (mean / 18.0).toStringAsFixed(1)
         : mean.toStringAsFixed(0);
     return Container(
-      padding: const EdgeInsets.fromLTRB(15, 8, 15, 8),
+      padding: const EdgeInsets.fromLTRB(15, 12, 15, 12),
       decoration: BoxDecoration(
         color: AminaTheme.surface(context),
         borderRadius: BorderRadius.circular(20),
@@ -783,13 +783,13 @@ class _TrendsPanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           InkWell(
             onTap: () => GoRouter.of(context).go('/summary'),
             borderRadius: BorderRadius.circular(13),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
                 color: const Color(0xFFEAF6EE),
                 borderRadius: BorderRadius.circular(13),
@@ -797,8 +797,8 @@ class _TrendsPanel extends StatelessWidget {
               child: Row(
                 children: [
                   Container(
-                    width: 32,
-                    height: 32,
+                    width: 38,
+                    height: 38,
                     decoration: const BoxDecoration(
                       color: Color(0xFFD8F0E1),
                       shape: BoxShape.circle,
@@ -859,15 +859,15 @@ class _MetricTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 28,
-            height: 28,
+            width: 34,
+            height: 34,
             decoration: const BoxDecoration(
               color: Color(0xFFE8F4ED),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 17, color: const Color(0xFF0B8766)),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 7),
           Text(
             label,
             maxLines: 1,
@@ -887,7 +887,7 @@ class _MetricTile extends StatelessWidget {
                   TextSpan(
                     text: value,
                     style: TextStyle(
-                      fontSize: 21,
+                      fontSize: 23,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.7,
                       color: AminaTheme.textPrimary(context),
