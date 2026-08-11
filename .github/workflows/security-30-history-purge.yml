@@ -69,9 +69,9 @@ jobs:
           remote_main="$(git ls-remote "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)"
           test "$remote_main" = "$GITHUB_SHA"
           git -C /tmp/IAMINA-MVP-clean.git remote add publish "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git -C /tmp/IAMINA-MVP-clean.git push --force --atomic publish \
-            'refs/heads/*:refs/heads/*' \
-            'refs/tags/*:refs/tags/*'
+          mapfile -t refspecs < <(git -C /tmp/IAMINA-MVP-clean.git for-each-ref --format='%(refname):%(refname)' refs/heads refs/tags)
+          test "${#refspecs[@]}" -gt 0
+          git -C /tmp/IAMINA-MVP-clean.git push --force --atomic publish "${refspecs[@]}"
 
       - name: Certify from a fresh non-shallow clone
         env:
