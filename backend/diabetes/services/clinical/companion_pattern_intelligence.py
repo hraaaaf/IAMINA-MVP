@@ -51,6 +51,20 @@ _COMMON_LIMITATIONS = (
     "no_diagnosis_causality_treatment_response_or_future_prediction",
 )
 
+_APPROVED_RECORDED_CONTEXT: dict[str, dict[str, str]] = {
+    "context:stress": {"source_field": "stressed", "recorded_value": "yes"},
+    "context:activity": {"source_field": "exercised", "recorded_value": "yes"},
+    "context:illness": {"source_field": "is_sick", "recorded_value": "yes"},
+    "context:poor_sleep": {"source_field": "sleep_quality", "recorded_value": "bad"},
+    "context:fatigue": {"source_field": "fatigue_level", "recorded_value": "tired"},
+    "meal:breakfast": {"glycemic_context": "post_meal", "meal_type": "breakfast"},
+    "meal:lunch": {"glycemic_context": "post_meal", "meal_type": "lunch"},
+    "meal:dinner": {"glycemic_context": "post_meal", "meal_type": "dinner"},
+    "meal:snack": {"glycemic_context": "post_meal", "meal_type": "snack"},
+    "meal:suhoor": {"glycemic_context": "post_meal", "meal_type": "suhoor"},
+    "meal:iftar": {"glycemic_context": "post_meal", "meal_type": "iftar"},
+}
+
 
 @dataclass(frozen=True, slots=True)
 class CompanionPatternItem:
@@ -154,6 +168,19 @@ def _validate_observation(row: ClinicalObservationState) -> None:
         for key, value in row.context_modifiers.items()
     ):
         raise ValueError("pattern recorded context must contain string pairs only")
+    try:
+        approved_context = _APPROVED_RECORDED_CONTEXT[row.observation_key]
+    except KeyError as exc:
+        raise ValueError("pattern has unapproved observation key") from exc
+    if row.context_modifiers != approved_context:
+        raise ValueError("pattern recorded context does not match governed key")
+    expected_kind = (
+        ClinicalObservationState.KIND_MEAL
+        if row.observation_key.startswith("meal:")
+        else ClinicalObservationState.KIND_CONTEXT
+    )
+    if row.kind != expected_kind:
+        raise ValueError("pattern kind does not match governed observation key")
 
     current_delta = _finite(row.baseline_delta_mg_dl, field="baseline_delta_mg_dl")
     _finite(
