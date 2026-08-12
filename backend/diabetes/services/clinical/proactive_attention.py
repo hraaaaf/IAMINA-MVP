@@ -24,9 +24,9 @@ from diabetes.services.clinical.evidence_registry import (
     ClinicalAuthority,
     get_evidence,
 )
+from diabetes.services.clinical.observation_memory import refresh_personal_response_memory
 from diabetes.services.clinical.observation_memory import (
     PRODUCER_ID as OBSERVATION_PRODUCER_ID,
-    refresh_personal_response_memory,
 )
 
 
