@@ -167,7 +167,12 @@ Before any clinician brief is exposed, its structured source contract must be de
 - model/heuristic/conversational inference and unverified user claims are outside v1 consultation truth; later support for patient-reported claims requires an explicit contract extension that preserves their claim provenance;
 - consultation actions are restricted to monitoring, collecting missing data or preparing clinician discussion. The contract contains no diagnosis, prescription, dose or treatment-change authority;
 - free-form model output may not be used to populate or override contract fields. Any future narrator may only reformulate a fully assembled approved structured brief;
-- P2-DOCTOR-0 defines this contract only. Persistence of review checkpoints, deterministic assembly, endpoint replacement and clinician UX require separate release-gated work.
+- P2-DOCTOR-0 defines the versioned authority contract; later capabilities remain separately release-gated;
+- P2-DOCTOR-1 may assemble a read-only `CURRENT_SNAPSHOT` only from synchronized non-demo observed glucose rows plus already-persisted governed Clinical Twin derivations; it must not refresh or mutate those source states;
+- exact-window recorded-glucose average may be computed in the database under `rule.metric.recorded-glucose-stats.v1`, but remains descriptive recorded-row statistics and cannot be narrated as CGM coverage, target attainment or clinical confidence;
+- historical assembly must fail closed on Clinical Twin state whose persisted refresh happened after the requested window end;
+- no `since last review` semantics are authorized until a separately certified clinician-review checkpoint provider exists. A caller-constructed checkpoint object or nonempty provenance string is insufficient proof of a real review and must be rejected;
+- endpoint replacement, model narration and clinician UX remain later release-gated work after checkpoint authority is established.
 
 ## 6. Treatment and insulin data
 
