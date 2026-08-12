@@ -69,14 +69,37 @@ Do not hide insufficient data behind confident prose.
 
 Illness, stress, activity, sleep and fatigue context are observational patient-entered data. Missing context is **unknown**, not evidence of a negative/normal state. New logging paths must therefore avoid manufacturing `no`, `good` or `ok` values when the patient did not report them. Existing historical rows are not retrospectively rewritten to guess intent. Context may later support explicitly governed observational pattern detection, but it must not be presented as a proven cause of a glucose change or converted into treatment/dose advice.
 
-### Personal metabolic response patterns
+### Personal metabolic response patterns and Clinical Twin lifecycle
 
-Personal metabolic response is a **deterministic detected-pattern layer**, not a diagnosis, prediction or treatment engine. Patterns are recalculated from source Journal logs and are not persisted as new clinical truth. Source edits/deletions therefore remain authoritative. Eligibility is deliberately conservative: at least 3 matching observations across at least 2 distinct days, within a maximum 90-day synchronized-data window. Demo rows are excluded.
+Personal metabolic response is a **deterministic detected-pattern layer**, not a diagnosis, prediction or treatment engine. Source Journal rows remain authoritative. Eligible approved `personal_response` derivations may also be materialized as a diabetes-owned, recomputable `ClinicalObservationState` lifecycle so IAmina can preserve first/last seen history, recurrence episodes, active/inactive state, evidence-density evolution, baseline-relative descriptive evolution and governed provenance without promoting the derivation into diagnosis/problem-list truth.
+
+The canonical lifecycle uses a maximum 90-day synchronized-data window independently of shorter display queries. Eligibility remains deliberately conservative: at least 3 matching observations across at least 2 distinct days. Demo rows are excluded. Only the approved deterministic producer/evidence identity may write Clinical Twin state; patient claims, companion/conversational memory, heuristic inference and model inference cannot directly create this clinical-observation truth.
 
 Context-derived patterns may use only explicit positive observations. Missing context remains unknown, and historical negative/neutral values such as `no`, `good` or `ok` must not become a synthetic control population because earlier schemas could materialize defaults. Meal patterns require an explicitly recorded `post_meal` measurement context and meal type.
 
 Patient-facing evidence may include observation count, distinct-day count, the median for matching observations and the median across all eligible synchronized readings in the same window. A product repetition grade may summarize evidence density, but it must be described as neither a probability nor statistical/clinical confidence. Comparing those descriptive medians must not be presented as a causal effect, treatment response estimate or predicted future glucose. No detector output may be converted into diagnosis, dose calculation, treatment optimization or autonomous advice. Insufficient evidence must fail closed.
 
+Normal sparse refresh is not equivalent to source erasure: insufficient current support must not silently destroy longitudinal history. Explicit destructive source mutation is different. DELETE, clinically relevant PATCH and batch replacement of an existing authoritative source row must purge the affected persisted derivation and rebuild only from surviving authoritative source rows. Canonical refresh and destructive-source reconciliation share a patient-scoped serialization lock so a concurrent pre-erasure refresh cannot re-materialize stale derived state after source deletion. If surviving evidence is insufficient, no erased derivation may remain persisted.
+
+Patient-account deletion, portability export and retention/deletion governance apply to the patient-owned derived Clinical Twin state. Downstream proactive workflow state is subordinate to Clinical Twin state and cannot survive destruction of its source derivation.
+
+### Proactive insight lifecycle
+
+The proactive workflow is **delivery/prioritization state derived from approved `ClinicalObservationState`**, not a new source of clinical truth.
+
+For the current descriptive `personal_response` source:
+
+- lifecycle states are `new`, `monitoring`, `persisting`, `improving` and `resolved`;
+- `escalated` exists in the wider vocabulary but is database-rejected for this source;
+- only `MONITOR` and `PREPARE_CLINICIAN_DISCUSSION` actions are authorized;
+- prioritization must remain auditable through explicit dimensions rather than an opaque clinical risk score;
+- unchanged material state is suppressed and at most one non-urgent item may consume the 24-hour attention budget;
+- that 24-hour value is product interruption-cost policy, not a clinical follow-up interval;
+- `resolved` requires an eligible Clinical Twin refresh demonstrating eligible absence; insufficient data cannot resolve prior state;
+- deterministic emergency routing remains separate/upstream and cannot be suppressed by the proactive attention budget;
+- no proactive state may diagnose, prescribe, calculate a dose, infer causality, optimize/change treatment or grant a generative model clinical authority.
+
+Evaluation that consumes delivery state is an explicit authenticated state-changing command; safe GET requests must not consume delivery history or attention budget.
 
 ### Immediate post-save presentation
 
@@ -189,29 +212,31 @@ A translation being linguistically correct is not sufficient; the safety intent 
 
 ## 10. AI/model use with clinical data
 
-### Current enforced authorization layer
+### Current enforced egress governance layer
 
-P0-B introduced a central server-side AI egress authorization boundary for currently wired live external operations.
+P0-MENA-1 completed the central server-side AI/data-egress boundary for currently wired live external operations.
 
 Before a real external model/media call, the system requires:
 
 - an authenticated patient scope;
 - a registered purpose;
 - an authorized modality;
-- server-side patient AI consent.
+- server-side patient AI consent;
+- purpose-specific payload allowlisting/minimization;
+- the governed processor/provider policy required for that path.
 
 The following conditions deny egress by default:
 
 - no active egress scope;
 - missing consent record or no consent;
 - unknown purpose;
-- undeclared/unauthorized modality.
+- undeclared/unauthorized modality;
+- payload outside the sanctioned minimization/allowlist contract;
+- provider/path outside the governed egress policy.
 
 This authorization is intentionally evaluated at real egress time so deterministic emergency/safety handling remains available even when a patient declines AI.
 
-### Data minimization contract still being completed
-
-Authorization alone does **not** prove that every outbound payload is sufficiently minimized.
+### Data minimization and raw-media contract
 
 External models may receive only the minimum approved payload for an explicit purpose. Do not send by default:
 
@@ -221,16 +246,9 @@ External models may receive only the minimum approved payload for an explicit pu
 - raw unrelated clinical logs;
 - unrelated health data.
 
-Raw audio/images/documents require stronger treatment because sensitive content can be embedded in the media itself.
+Raw audio/images/documents require stronger treatment because sensitive content can be embedded in the media itself and therefore require the applicable granular consent/policy boundary.
 
-Remaining P0 obligations include:
-
-- explicit field/payload allowlists by purpose;
-- uniformly enforced minimization/redaction;
-- purpose/modality-granular raw-media consent where required;
-- processor/subprocessor and residency metadata;
-- retention/no-training terms;
-- timeout/failure/fallback policy.
+Repository-level implementation of the P0-MENA-1 authorization/minimization contract does not itself constitute external legal or deployment approval. Pilot processor/subprocessor, residency/cross-border and restricted consent approvals remain separate fail-closed readiness gates in `docs/ROADMAP.md`.
 
 CI must prevent new live direct provider callsites from bypassing the sanctioned authorization boundary.
 
