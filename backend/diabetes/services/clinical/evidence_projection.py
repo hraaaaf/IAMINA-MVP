@@ -10,7 +10,6 @@ from diabetes.services.clinical.cgm_eligibility import assess_cgm_sufficiency
 from diabetes.services.clinical.evidence_registry import evidence_for_kpi
 from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
 
-
 _NORMATIVE_CGM_FIELDS = (
     "cv_pct",
     "tir_pct",
