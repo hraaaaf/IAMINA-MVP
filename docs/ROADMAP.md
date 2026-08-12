@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-12 — P2-PROACTIVE is certified and merged; its post-merge `main` CI + migration drift passed. The Clinical Twin derived-data lifecycle follow-up in PR #140 is also certified/merged with post-merge proof. **P2-DOCTOR — Consultation Intelligence is now NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-12 — P2-DOCTOR-0 Consultation Brief Contract is certified, merged and post-merge green. **P2-DOCTOR-1 — Deterministic Brief Assembler is now NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -39,7 +39,7 @@ IAmina's intended product moat is **evidence-qualified longitudinal clinical int
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains a governance blocker despite being closed `not planned` |
-| Clinical intelligence / proactivity | P0 audit + semantics + skills + evidence registry + Clinical Twin + proactive lifecycle certified | ✅ P2 foundation closed; P2-DOCTOR next | PR #139 merge `752f5543…` + post-merge CI #1845/drift #1657; lifecycle hardening PR #140 merge `55d6b171…` + post-merge CI #1868/drift #1680 |
+| Clinical intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + P2-DOCTOR-0 contract certified | 🟡 P2-DOCTOR active — assembler next | PR #143 merge `04fb6535…`; post-merge CI #1893 + drift #1705 green |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
@@ -176,11 +176,13 @@ Certified contract:
 
 **Closure:** exact head `28215cd944c32ef310fd9d847fb3959ccf86b2c7` passed CI #1844 + migration drift #1656, Clinical Safety Reviewer, Database/Migration Reviewer, Final Diff/Architecture Reviewer and Release Certifier. Expected-head merge produced `752f5543cc651cfeda6fd75f14fd544ae5e8d03a`; post-merge `main` CI #1845 + drift #1657 passed. The subsequent PR #140 lifecycle hardening preserves this authority contract and ensures proactive workflow state cannot outlive erased source Clinical Twin derivation.
 
-## 🟡 P2-DOCTOR — Consultation Intelligence — CONTRACT FOUNDATION
+## 🟡 P2-DOCTOR — Consultation Intelligence — ACTIVE
+
+### ✅ P2-DOCTOR-0 — Consultation Brief Contract — CLOSED
 
 P2-DOCTOR-0 in PR #143 defines the executable consultation-brief authority contract before any new clinician UX, endpoint replacement or model narration integration.
 
-Runtime candidate contract:
+Certified contract:
 
 - versioned schema `consultation-brief.v1` carries only immutable scalar facts/derivations plus explicit provenance, missing-data and limitation fields;
 - v1 admits only `OBSERVED_FACT` and `DETERMINISTIC_DERIVATION`; deterministic derivations must reference a registered product RULE whose evidence registry authority is exactly `GOVERNED_RULE`;
@@ -191,9 +193,11 @@ Runtime candidate contract:
 - clinician-brief authority is fixed to `clinician_review_support_only`; any later model narration is limited to reformulating approved structured fields and cannot create clinical truth;
 - no endpoint, persisted review checkpoint, deterministic assembler, legacy doctor-brief replacement, clinician UX, diagnosis, prescription, dose calculation or treatment optimization is introduced by P2-DOCTOR-0.
 
-**Next sub-lot after P2-DOCTOR-0 closeout:** build the deterministic consultation-brief assembler from approved synchronized facts, governed KPI/Clinical Twin evidence and an authoritative review checkpoint source; only after that may the legacy narrator boundary be replaced.
+**Closure:** PR #143 head `1983829c…` passed CI #1892 + drift #1704, Clinical Safety Reviewer, Documentation/Architecture Reviewer and Release Certifier; expected-head merge `04fb6535…` then passed post-merge `main` CI #1893 + drift #1705.
 
-**P2-DOCTOR-0 closure gate:** final docs-inclusive SHA must pass exact-head CI + migration drift, Clinical Safety + Documentation/Architecture review, Release Certifier GO, expected-head merge and post-merge `main` CI + drift. P2-DOCTOR overall remains active after this contract LOT.
+### ▶️ P2-DOCTOR-1 — Deterministic Brief Assembler — NEXT
+
+Build the deterministic assembler from approved synchronized observed facts, governed KPI/Clinical Twin derivations and an authoritative prior-review checkpoint source. The assembler must produce `consultation-brief.v1` without model-authored fields; `SINCE_REVIEW_CHECKPOINT` semantics must fail closed when the checkpoint is unavailable, while `CURRENT_SNAPSHOT` may still be emitted with the missing-checkpoint limitation made explicit. Ungoverned derivations remain ineligible, and the legacy narrator endpoint must not be replaced until separately certified.
 
 ## Ordered execution
 
@@ -205,13 +209,13 @@ Runtime candidate contract:
 | **P1-EVIDENCE** | **Versioned Diabetes Evidence Registry** | ✅ **CLOSED** | PR #132 merged as `9d7add2b…`; post-merge CI #1785 + drift #1597 green |
 | **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | ✅ **CLOSED** | PR #135 runtime + PR #140 lifecycle hardening; current `main@55d6b171…` post-merge CI #1868 + drift #1680 green |
 | **P2-PROACTIVE** | **Prioritization + Insight Lifecycle** | ✅ **CLOSED** | PR #139 head `28215cd9…`; merge `752f5543…`; post-merge CI #1845 + drift #1657 green |
-| **P2-DOCTOR** | **Consultation Intelligence** | 🟡 **ACTIVE — P2-DOCTOR-0** | PR #143 contract candidate: provenance/uncertainty/authority schema implemented; deterministic assembler + endpoint/UX remain later sub-lots |
+| **P2-DOCTOR** | **Consultation Intelligence** | 🟡 **ACTIVE — P2-DOCTOR-1 NEXT** | P2-DOCTOR-0 PR #143 merge `04fb6535…` post-merge green; next = deterministic assembler, endpoint/UX later |
 | P3-HORIZON | Evidence Horizon Scanner | ⏳ Planned | Standard-of-care, emerging and investigational evidence remain explicitly separated; papers cannot silently alter patient rules |
 | P3-EVALS | Clinical Intelligence Evals | ⏳ Planned | Clinician-reviewed longitudinal, negative, false-positive and safety scenarios provide measurable release gates |
 
 ### P2-DOCTOR entry boundary
 
-P2-DOCTOR-0 establishes the consultation-brief authority contract without exposing a new product surface. The next implementation LOT must assemble that contract deterministically from approved source facts/governed derivations and an authoritative prior-review checkpoint; it must not infer review history from app activity or let a model populate unapproved fields. Existing deterministic emergency, no-prescription/no-dose and evidence-promotion boundaries remain upstream and authoritative.
+P2-DOCTOR-0 is closed and establishes the consultation-brief authority contract without exposing a new product surface. P2-DOCTOR-1 must now assemble that contract deterministically from approved source facts/governed derivations and an authoritative prior-review checkpoint; it must not infer review history from app activity or let a model populate unapproved fields. Existing deterministic emergency, no-prescription/no-dose and evidence-promotion boundaries remain upstream and authoritative.
 
 ---
 
