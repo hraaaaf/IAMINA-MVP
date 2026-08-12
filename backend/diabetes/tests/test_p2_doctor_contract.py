@@ -25,8 +25,8 @@ def _now_window():
 
 def _deterministic_item(**overrides):
     values = {
-        "key": "personal_response.context.stress",
-        "value": {"status": "active", "observations": 4},
+        "key": "personal_response.context.stress.status",
+        "value": "active",
         "truth_kind": TruthKind.DETERMINISTIC_DERIVATION,
         "source": "diabetes.personal_response.v1",
         "source_version": "personal-response.v1",
@@ -93,6 +93,18 @@ def test_contract_rejects_unapproved_truth_kinds(truth_kind):
         )
 
 
+def test_contract_rejects_raw_truth_kind_string_even_if_value_matches_enum():
+    with pytest.raises(ValueError, match="truth_kind must be a TruthKind"):
+        ConsultationEvidenceItem(
+            key="unsafe.input",
+            value="active",
+            truth_kind="deterministic_derivation",
+            source="diabetes.personal_response.v1",
+            source_version="personal-response.v1",
+            evidence_id="rule.personal-response.repetition.v1",
+        )
+
+
 def test_deterministic_derivation_requires_evidence_provenance():
     with pytest.raises(ValueError, match="require an evidence_id"):
         _deterministic_item(evidence_id=None)
@@ -144,6 +156,20 @@ def test_evidence_density_is_not_available_for_plain_observed_fact():
         )
 
 
+@pytest.mark.parametrize(
+    "raw_action",
+    ["CHANGE_TREATMENT", "CALCULATE_DOSE", "MONITOR"],
+)
+def test_raw_string_action_injection_is_rejected(raw_action):
+    with pytest.raises(ValueError, match="allowed_next_step must be a ConsultationNextStep"):
+        _deterministic_item(allowed_next_step=raw_action)
+
+
+def test_raw_string_change_kind_is_rejected():
+    with pytest.raises(ValueError, match="change_kind must be a ConsultationChangeKind"):
+        _deterministic_item(change_kind="new_since_review")
+
+
 def test_since_review_change_claim_fails_closed_without_checkpoint():
     start, end = _now_window()
     item = _deterministic_item(
@@ -163,6 +189,21 @@ def test_since_review_change_claim_fails_closed_without_checkpoint():
             window_start=start,
             window_end=end,
             comparison_basis=ConsultationComparisonBasis.SINCE_REVIEW_CHECKPOINT,
+            items=(item,),
+        )
+
+
+def test_raw_string_comparison_basis_cannot_bypass_checkpoint_validation():
+    start, end = _now_window()
+    item = _deterministic_item(
+        change_kind=ConsultationChangeKind.NEW_SINCE_REVIEW,
+    )
+
+    with pytest.raises(ValueError, match="comparison_basis must be"):
+        ConsultationBriefEnvelope(
+            window_start=start,
+            window_end=end,
+            comparison_basis="current_snapshot",
             items=(item,),
         )
 
@@ -238,6 +279,63 @@ def test_naive_datetimes_are_rejected_before_temporal_comparison():
         ConsultationReviewCheckpoint(
             reviewed_at=naive_review,
             source="clinician.review_checkpoint",
+        )
+
+
+def test_contract_rejects_mutable_or_nonfinite_values():
+    with pytest.raises(ValueError, match="value must be an immutable scalar"):
+        _deterministic_item(value={"status": "active"})
+    with pytest.raises(ValueError, match="float value must be finite"):
+        _deterministic_item(value=float("nan"))
+    with pytest.raises(ValueError, match="float value must be finite"):
+        _deterministic_item(value=float("inf"))
+
+
+def test_contract_rejects_mutable_containers_and_wrong_item_types():
+    start, end = _now_window()
+    item = _deterministic_item()
+
+    with pytest.raises(ValueError, match="items must be an immutable tuple"):
+        ConsultationBriefEnvelope(
+            window_start=start,
+            window_end=end,
+            comparison_basis=ConsultationComparisonBasis.CURRENT_SNAPSHOT,
+            items=[item],
+        )
+    with pytest.raises(ValueError, match="must contain ConsultationEvidenceItem"):
+        ConsultationBriefEnvelope(
+            window_start=start,
+            window_end=end,
+            comparison_basis=ConsultationComparisonBasis.CURRENT_SNAPSHOT,
+            items=("not-an-item",),
+        )
+    with pytest.raises(ValueError, match="missing_data must be an immutable tuple"):
+        ConsultationBriefEnvelope(
+            window_start=start,
+            window_end=end,
+            comparison_basis=ConsultationComparisonBasis.CURRENT_SNAPSHOT,
+            items=(item,),
+            missing_data=["missing"],
+        )
+
+
+def test_raw_authority_or_narration_policy_is_rejected():
+    start, end = _now_window()
+    with pytest.raises(ValueError, match="authority must be a ConsultationAuthority"):
+        ConsultationBriefEnvelope(
+            window_start=start,
+            window_end=end,
+            comparison_basis=ConsultationComparisonBasis.CURRENT_SNAPSHOT,
+            items=(),
+            authority="clinician_review_support_only",
+        )
+    with pytest.raises(ValueError, match="narration_policy must be"):
+        ConsultationBriefEnvelope(
+            window_start=start,
+            window_end=end,
+            comparison_basis=ConsultationComparisonBasis.CURRENT_SNAPSHOT,
+            items=(),
+            narration_policy="approved_structured_fields_only",
         )
 
 
