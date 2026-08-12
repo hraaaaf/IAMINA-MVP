@@ -114,6 +114,14 @@ def _derive_state(
     if prior is None:
         return ProactiveInsightState.STATE_NEW
 
+    # A Clinical Twin reactivation is a material lifecycle event even if the
+    # supporting rows later reproduce a prior fingerprint. Never carry a stale
+    # RESOLVED state forward merely because the evidence fingerprint matches.
+    if prior.state == ProactiveInsightState.STATE_RESOLVED:
+        if observation.recurrence_count >= 2:
+            return ProactiveInsightState.STATE_PERSISTING
+        return ProactiveInsightState.STATE_MONITORING
+
     support_changed = (
         prior.last_observation_fingerprint != observation.last_evidence_fingerprint
     )
