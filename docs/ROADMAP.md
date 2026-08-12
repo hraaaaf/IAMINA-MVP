@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-12 — P2-DOCTOR-0 Consultation Brief Contract is certified, merged and post-merge green. **P2-DOCTOR-1 — Deterministic Brief Assembler is now NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-12 — product authority is rebased from the former P2-DOCTOR lane to **P2-COMPANION — Companion Intelligence**. P2-COMPANION-0 defines the canonical companion ceiling; the certified `consultation-brief.v1` from PR #143 is preserved as a restricted future consultation sub-capability, not as IAmina's product identity. **P2-COMPANION-1 — Change Since Last Review is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -8,7 +8,7 @@
 
 Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilot cohort, then use retention, safety and payer evidence to decide whether IAmina deserves expansion.
 
-IAmina's intended product moat is **evidence-qualified longitudinal clinical intelligence and proactive follow-up**, not a generic chatbot and not autonomous treatment optimization.
+IAmina's intended product moat is **evidence-qualified longitudinal companion intelligence and proactive follow-up**, not a generic chatbot, not a virtual doctor and not autonomous treatment optimization.
 
 ## Product constraints
 
@@ -17,10 +17,13 @@ IAmina's intended product moat is **evidence-qualified longitudinal clinical int
 - French, Modern Standard Arabic and English are baseline languages.
 - Dialects require explicit selection, native review and safety parity.
 - Location may suggest settings; it never silently determines language, consent, emergency resources or clinical behavior.
-- IAmina is a companion, not a diagnostic or prescribing system.
+- IAmina is a **patient companion**, not a physician, diagnostic system, prescribing system or medical-consultation replacement.
+- IAmina may observe, compare, explain and propose only bounded non-prescriptive next steps; the qualified clinician remains the medical decision authority.
 - Deterministic clinical and safety logic decides; generative models may narrate only approved structured output.
-- No diagnosis, prescription, dose calculation or treatment optimization.
+- No diagnosis, differential diagnosis, prescription, dose calculation, treatment optimization/change or autonomous medical instruction.
 - No second disease module before the retention gate passes.
+
+Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 
 ---
 
@@ -39,7 +42,7 @@ IAmina's intended product moat is **evidence-qualified longitudinal clinical int
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains a governance blocker despite being closed `not planned` |
-| Clinical intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + P2-DOCTOR-0 contract certified | 🟡 P2-DOCTOR active — assembler next | PR #143 merge `04fb6535…`; post-merge CI #1893 + drift #1705 green |
+| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority contract | 🟡 P2-COMPANION active — Change Since Last Review next | P2-COMPANION-0 canonical contract; PR #143 consultation contract retained as P2-COMPANION-5 foundation |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
@@ -82,28 +85,28 @@ Historical run IDs, viewport matrices, per-LOT visual scores and merge SHAs rema
 
 ---
 
-# Clinical intelligence & proactive differentiation — ACTIVE
+# Companion intelligence & proactive differentiation — ACTIVE
 
 ## Objective
 
-Turn the analytical stack into an evidence-governed longitudinal companion that can safely determine:
+Turn the analytical stack into an evidence-governed longitudinal **patient companion** that can safely determine and communicate:
 
 - what materially changed from the patient's own baseline;
 - whether an observation is repeated enough to deserve attention;
 - what evidence supports it and what remains unknown;
 - whether underlying knowledge is standard of care, emerging evidence or investigational;
 - whether the same observation occurred before and what happened afterward;
-- whether the appropriate product action is education, monitoring, clinician handoff or deterministic emergency routing.
+- which bounded non-prescriptive suggestion is appropriate: understand, monitor, collect missing data, learn, prepare clinician discussion or follow-up recording.
 
-Target lifecycle:
+Target companion loop:
 
-`OBSERVE → QUALIFY EVIDENCE → DETECT → PRIORITIZE → EXPLAIN → FOLLOW UP → RESOLVE / ESCALATE`
+`OBSERVE → QUALIFY EVIDENCE → COMPARE → EXPLAIN → SUGGEST → FOLLOW UP → PREPARE DISCUSSION WHEN USEFUL`
 
-Target insight state model:
+The forbidden loop is:
 
-`NEW → MONITORING → PERSISTING / IMPROVING → RESOLVED / ESCALATED`
+`DATA → AI DIAGNOSIS → AI TREATMENT DECISION`
 
-Generative AI never becomes the authority for detection, emergency classification, diagnosis, prescription, dose calculation or treatment optimization.
+Generative AI never becomes the authority for detection, emergency classification, diagnosis, prescription, dose calculation or treatment optimization/change.
 
 ## ✅ P0-CLIN-INTEL-0 — Real brain audit
 
@@ -176,28 +179,51 @@ Certified contract:
 
 **Closure:** exact head `28215cd944c32ef310fd9d847fb3959ccf86b2c7` passed CI #1844 + migration drift #1656, Clinical Safety Reviewer, Database/Migration Reviewer, Final Diff/Architecture Reviewer and Release Certifier. Expected-head merge produced `752f5543cc651cfeda6fd75f14fd544ae5e8d03a`; post-merge `main` CI #1845 + drift #1657 passed. The subsequent PR #140 lifecycle hardening preserves this authority contract and ensures proactive workflow state cannot outlive erased source Clinical Twin derivation.
 
-## 🟡 P2-DOCTOR — Consultation Intelligence — ACTIVE
+## ✅ P2-COMPANION-0 — Companion Intelligence Contract — CLOSED
 
-### ✅ P2-DOCTOR-0 — Consultation Brief Contract — CLOSED
+The former `P2-DOCTOR` product lane is superseded by the broader patient-first **P2-COMPANION** lane. The canonical contract lives in `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 
-P2-DOCTOR-0 in PR #143 defines the executable consultation-brief authority contract before any new clinician UX, endpoint replacement or model narration integration.
+Durable authority:
 
-Certified contract:
+- IAmina is a patient companion, never a physician, diagnosis/prescription system or substitute medical consultation;
+- personalization is allowed through governed observation, patient-baseline comparison, evidence qualification, uncertainty and longitudinal memory;
+- suggestions are limited to `UNDERSTAND_DATA`, `MONITOR`, `COLLECT_MISSING_DATA`, `LEARN`, `PREPARE_CLINICIAN_DISCUSSION` and `FOLLOW_UP_RECORD`;
+- a personalized suggestion cannot become diagnosis, prescription, dose advice or treatment optimization/change;
+- emergency recognition/routing remains deterministic and upstream;
+- generative models may narrate approved structured output but cannot create facts, urgency, diagnosis, causality or treatment authority;
+- the certified PR #143 `consultation-brief.v1` contract is preserved without rollback as a restricted **P2-COMPANION-5 Consultation Companion** foundation; its `clinician_review_support_only` ceiling remains valid and does not define the product as a doctor.
 
-- versioned schema `consultation-brief.v1` carries only immutable scalar facts/derivations plus explicit provenance, missing-data and limitation fields;
-- v1 admits only `OBSERVED_FACT` and `DETERMINISTIC_DERIVATION`; deterministic derivations must reference a registered product RULE whose evidence registry authority is exactly `GOVERNED_RULE`;
-- raw external source records, unknown evidence IDs, governed-rule candidates, `NARRATIVE_ONLY` rules, user claims, preferences, conversational state, heuristic inference and model inference fail closed;
-- `CURRENT_SNAPSHOT` and `SINCE_REVIEW_CHECKPOINT` are distinct comparison modes; no `new/persisting/improving/resolved since review` claim is legal without an explicit timezone-aware review checkpoint;
-- `limited/moderate/strong` remains evidence/repetition density rather than probability or clinical confidence; no numeric confidence field exists;
-- allowed next steps are limited to `MONITOR`, `COLLECT_MISSING_DATA` and `PREPARE_CLINICIAN_DISCUSSION`; direct raw-string treatment/dose action injection is rejected at runtime;
-- clinician-brief authority is fixed to `clinician_review_support_only`; any later model narration is limited to reformulating approved structured fields and cannot create clinical truth;
-- no endpoint, persisted review checkpoint, deterministic assembler, legacy doctor-brief replacement, clinician UX, diagnosis, prescription, dose calculation or treatment optimization is introduced by P2-DOCTOR-0.
+### ▶️ P2-COMPANION-1 — Change Since Last Review — NEXT
 
-**Closure:** PR #143 head `1983829c…` passed CI #1892 + drift #1704, Clinical Safety Reviewer, Documentation/Architecture Reviewer and Release Certifier; expected-head merge `04fb6535…` then passed post-merge `main` CI #1893 + drift #1705.
+Build evidence-qualified current-vs-history comparison for the patient. The engine must identify what is new, persisting, improving, resolved or unknown relative to an explicit governed comparison anchor; it must fail closed when eligible data or the anchor is insufficient and must not infer diagnosis, causality, treatment response or clinician judgment.
 
-### ▶️ P2-DOCTOR-1 — Deterministic Brief Assembler — NEXT
+### ⏳ P2-COMPANION-2 — Personal Pattern Intelligence
 
-Build the deterministic assembler from approved synchronized observed facts, governed KPI/Clinical Twin derivations and an authoritative prior-review checkpoint source. The assembler must produce `consultation-brief.v1` without model-authored fields; `SINCE_REVIEW_CHECKPOINT` semantics must fail closed when the checkpoint is unavailable, while `CURRENT_SNAPSHOT` may still be emitted with the missing-checkpoint limitation made explicit. Ungoverned derivations remain ineligible, and the legacy narrator endpoint must not be replaced until separately certified.
+Make governed longitudinal observations easier to understand: first observed, recurring, persisting, improving, resolved and baseline-relative change, without causal/diagnostic upgrade.
+
+### ⏳ P2-COMPANION-3 — Evidence + Uncertainty
+
+Require every material companion observation to expose provenance, evidence maturity/density, missing data and limitations so the product can explain why it is speaking and when it does not know enough.
+
+### ⏳ P2-COMPANION-4 — Smart Suggestions
+
+Turn approved observations into bounded non-prescriptive suggestions only: understand, monitor, collect missing context, learn, prepare clinician discussion or follow-up recording.
+
+### ⏳ P2-COMPANION-5 — Consultation Companion
+
+Prepare the patient for a clinician review. Reuse the certified `consultation-brief.v1` authority/provenance contract from PR #143 as a sub-capability; do not transform it into autonomous medical decision support.
+
+### ⏳ P2-COMPANION-6 — After-Visit Continuity
+
+Track what happened after a consultation and what changed over the interval without judging, overriding or optimizing the clinician's treatment decision.
+
+### ⏳ P2-COMPANION-7 — Companion UX
+
+Organize patient-first surfaces around **Understand → Follow → Prepare** rather than around a virtual-clinic or doctor-replacement metaphor.
+
+### ⏳ P2-COMPANION-8 — Safety + Certification
+
+Add permanent clinician-reviewed negative, longitudinal, false-positive and boundary evals that block diagnosis, prescription, dosing, treatment-change, false certainty and doctor-replacement regressions.
 
 ## Ordered execution
 
@@ -207,15 +233,23 @@ Build the deterministic assembler from approved synchronized observed facts, gov
 | P0-CLIN-INTEL-1 | Clinical semantics hardening | ✅ Closed | PR #126 merged and post-merge green |
 | **P1-CLIN-SKILLS** | **Diabetologist Skills Foundation** | ✅ **CLOSED** | PR #127 merged and post-merge green |
 | **P1-EVIDENCE** | **Versioned Diabetes Evidence Registry** | ✅ **CLOSED** | PR #132 merged as `9d7add2b…`; post-merge CI #1785 + drift #1597 green |
-| **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | ✅ **CLOSED** | PR #135 runtime + PR #140 lifecycle hardening; current `main@55d6b171…` post-merge CI #1868 + drift #1680 green |
-| **P2-PROACTIVE** | **Prioritization + Insight Lifecycle** | ✅ **CLOSED** | PR #139 head `28215cd9…`; merge `752f5543…`; post-merge CI #1845 + drift #1657 green |
-| **P2-DOCTOR** | **Consultation Intelligence** | 🟡 **ACTIVE — P2-DOCTOR-1 NEXT** | P2-DOCTOR-0 PR #143 merge `04fb6535…` post-merge green; next = deterministic assembler, endpoint/UX later |
+| **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | ✅ **CLOSED** | PR #135 runtime + PR #140 lifecycle hardening; post-merge green |
+| **P2-PROACTIVE** | **Prioritization + Insight Lifecycle** | ✅ **CLOSED** | PR #139 merge `752f5543…`; post-merge CI #1845 + drift #1657 green |
+| **P2-COMPANION-0** | **Companion Intelligence Contract** | ✅ **CLOSED** | Canonical authority contract; former P2-DOCTOR framing superseded without rollback of certified PR #143 sub-contract |
+| **P2-COMPANION-1** | **Change Since Last Review** | ▶️ **NEXT** | Evidence-qualified current-vs-history change; insufficient anchor/data fail closed; no diagnosis/causality/treatment response |
+| P2-COMPANION-2 | Personal Pattern Intelligence | ⏳ Planned | Governed first/recurring/persisting/improving/resolved semantics remain descriptive |
+| P2-COMPANION-3 | Evidence + Uncertainty | ⏳ Planned | Material observations expose provenance, maturity, missing data and limitations |
+| P2-COMPANION-4 | Smart Suggestions | ⏳ Planned | Suggestions remain within six non-prescriptive companion classes |
+| P2-COMPANION-5 | Consultation Companion | ⏳ Planned | Patient preparation reuses certified `consultation-brief.v1`; clinician remains medical authority |
+| P2-COMPANION-6 | After-Visit Continuity | ⏳ Planned | Interval follow-up records change without judging/altering treatment |
+| P2-COMPANION-7 | Companion UX | ⏳ Planned | Patient-first Understand → Follow → Prepare surfaces; no virtual-doctor framing |
+| P2-COMPANION-8 | Safety + Certification | ⏳ Planned | Permanent boundary/false-positive/longitudinal release gates |
 | P3-HORIZON | Evidence Horizon Scanner | ⏳ Planned | Standard-of-care, emerging and investigational evidence remain explicitly separated; papers cannot silently alter patient rules |
-| P3-EVALS | Clinical Intelligence Evals | ⏳ Planned | Clinician-reviewed longitudinal, negative, false-positive and safety scenarios provide measurable release gates |
+| P3-EVALS | Companion Intelligence Evals | ⏳ Planned | Clinician-reviewed longitudinal, negative, false-positive and safety scenarios provide measurable release gates |
 
-### P2-DOCTOR entry boundary
+### Inherited consultation sub-contract
 
-P2-DOCTOR-0 is closed and establishes the consultation-brief authority contract without exposing a new product surface. P2-DOCTOR-1 must now assemble that contract deterministically from approved source facts/governed derivations and an authoritative prior-review checkpoint; it must not infer review history from app activity or let a model populate unapproved fields. Existing deterministic emergency, no-prescription/no-dose and evidence-promotion boundaries remain upstream and authoritative.
+PR #143 and its executable `consultation-brief.v1` contract remain certified historical/runtime foundations. They are **not deleted or weakened** by the P2-COMPANION rebase. Their role is narrower: support P2-COMPANION-5 when consultation preparation is built. The old `P2-DOCTOR-1 Deterministic Brief Assembler` is therefore superseded as the immediate roadmap next step; no new assembler work should start until the earlier companion-wide longitudinal/evidence/suggestion contracts are certified.
 
 ---
 
@@ -292,10 +326,10 @@ Preparation/executable gates do not imply that external legal, processor, lingui
 
 # Current blockers and next sequence
 
-1. **Clinical intelligence product lane:** start **P2-DOCTOR — Consultation Intelligence**, beginning with the consultation-brief authority/provenance/uncertainty contract before runtime or UX expansion.
+1. **Companion intelligence product lane:** execute **P2-COMPANION-1 — Change Since Last Review**. Do not resume the superseded P2-DOCTOR assembler-first sequence.
 2. **Pilot security blocker:** issue #30 is closed `not planned` but explicitly not remediated; either complete the documented history remediation/verification path or supersede the pilot policy through normal governance before any real-patient go/no-go.
 3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
 4. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
 5. Run deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
-6. UX visual rebase and Journal redesign remain closed. Reopen them only when fresh evidence or a new clinical-intelligence requirement changes a certified surface.
+6. UX visual rebase and Journal redesign remain closed. Reopen them only when fresh evidence or a new companion-intelligence requirement changes a certified surface.
 7. After pilot blockers are cleared, run the real-patient pilot go/no-go and cohort execution gates.
