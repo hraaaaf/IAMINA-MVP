@@ -118,6 +118,20 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - no pattern detector may produce treatment optimization, insulin-dose advice, diagnosis or autonomous clinical recommendation;
 - the Journal shows one strongest pattern by default and makes secondary patterns explicitly expandable so longitudinal context does not crowd out the primary history task.
 
+### Deterministic proactive-attention contract
+
+- proactive attention is diabetes-owned product state derived only from the certified deterministic `ClinicalObservationState`; it is not a patient fact, diagnosis/problem list, emergency state or companion/deep-memory state;
+- deterministic emergency handling is an upstream prerequisite: without explicit `CLEAR` clearance the proactive engine performs no clinical-twin refresh, creates no proactive state and surfaces nothing; an active emergency suppresses proactive attention rather than competing for the attention budget;
+- the `personal_response` evidence rule must remain `GOVERNED_RULE` and `current` before the proactive engine may refresh its source observation memory; superseded or non-governed evidence fails closed before source mutation;
+- clinical priority is an explicit field-by-field vector (time-sensitivity class, governed relevance, persistence, absolute descriptive baseline distance, evidence strength/maturity, actionability, interruption cost, observation/day density, recurrence and recency); no scalar risk/confidence/urgency score or companion `concern_level` is clinical authority;
+- the attention budget returns at most one candidate per decision call and suppresses an unchanged decision after it has been selected; materially changed unselected candidates retain pending reason codes until their turn;
+- lifecycle transitions are material-source driven rather than API-read-frequency driven: first selected insight is `NEW`, unchanged follow-up is `MONITORING`, recurrence may become `PERSISTING`, and movement toward the recorded personal baseline may become `IMPROVING`;
+- `IMPROVING` is descriptive only and must not be presented as treatment effect, causality or clinical recovery;
+- `RESOLVED` means only that a previously observed descriptive pattern is inactive and has had no supporting sighting across a full eligible evidence horizon; sparse/missing data cannot resolve it and this state must never be described as disease/problem resolution;
+- `ESCALATED` is not reachable in v1 and is blocked by a database constraint until a separately governed safety/handoff criterion is approved;
+- v1 allowed next steps are only `MONITOR` and `COLLECT_MISSING_DATA`; database constraints reject stronger unapproved actions, unapproved source producer/evidence, non-deterministic provenance and direct ORM escalation;
+- selection records that an item was chosen by the internal attention budget; it does **not** mean a patient notification was delivered; no patient-facing proactive API/message, background scheduler, push/local notification or clinician transport is enabled by this contract.
+
 
 ### Post-save experience contract
 

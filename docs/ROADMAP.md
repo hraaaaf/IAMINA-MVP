@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-12 — P2-CLINICAL-TWIN is merged and post-merge green. P2-PROACTIVE is the next executable clinical-intelligence LOT. UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-12 — P2-CLINICAL-TWIN is merged and post-merge green. P2-PROACTIVE is the active certification unit in PR #138. UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -39,7 +39,7 @@ IAmina's intended product moat is **evidence-qualified longitudinal clinical int
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains blocking |
-| Clinical intelligence / proactivity | P0 audit + semantics + skills foundation + evidence registry + clinical twin closed | 🟢 P2-PROACTIVE ready | PR #135 merge `00292e44…`; post-merge CI #1805 + drift #1617 green |
+| Clinical intelligence / proactivity | P0 audit + semantics + skills foundation + evidence registry + clinical twin closed; deterministic attention active | 🟡 P2-PROACTIVE certification | PR #138 — Deterministic Attention & Insight Lifecycle |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
@@ -156,6 +156,12 @@ P2 persists a diabetes-owned, recomputable lifecycle for approved deterministic 
 
 **Closure:** PR #135 head `1058ee4a…` passed CI #1804 + drift #1616, Clinical Safety Reviewer and Release Certifier; merge `00292e44…` then passed post-merge `main` CI #1805 + drift #1617.
 
+## P2-PROACTIVE — Deterministic Attention & Insight Lifecycle — PR #138 CERTIFICATION
+
+The candidate adds a diabetes-owned attention-state layer over certified `ClinicalObservationState` rows. It is not patient truth and does not deliver notifications. It requires explicit deterministic emergency clearance before any proactive write, requires the source evidence rule to remain governed/current before refreshing P2, exposes a field-by-field `PriorityVector` instead of a scalar risk/confidence score, selects at most one materially changed candidate, preserves pending candidates, and suppresses unchanged repeats. V1 lifecycle is `NEW / MONITORING / PERSISTING / IMPROVING / RESOLVED`; `ESCALATED` is structurally unavailable until a separately governed criterion exists. `IMPROVING` means only movement toward the recorded personal baseline; `RESOLVED` means the descriptive observation has been absent across a full eligible evidence horizon, never that disease/treatment is resolved. V1 next steps are limited to `MONITOR` and `COLLECT_MISSING_DATA`. No patient-facing message/API, scheduler or notification transport is added.
+
+**Certification gate:** exact-head CI + PostgreSQL + migration drift, Clinical Safety Reviewer, Release Certifier, expected-head locked merge, then post-merge `main` CI + drift before closure.
+
 ## Ordered execution
 
 | LOT | One responsibility | Status | Acceptance gate |
@@ -165,7 +171,7 @@ P2 persists a diabetes-owned, recomputable lifecycle for approved deterministic 
 | **P1-CLIN-SKILLS** | **Diabetologist Skills Foundation** | ✅ **CLOSED** | PR #127 merged and post-merge green |
 | **P1-EVIDENCE** | **Versioned Diabetes Evidence Registry** | ✅ **CLOSED** | PR #132 merged as `9d7add2b…`; post-merge CI #1785 + drift #1597 green |
 | **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | ✅ **CLOSED** | PR #135 merge `00292e44…`; post-merge CI #1805 + drift #1617 green |
-| **P2-PROACTIVE** | **Prioritization + Insight Lifecycle** | ▶️ **NEXT** | Clinical relevance, persistence, actionability, evidence density and interruption cost govern what surfaces and when |
+| **P2-PROACTIVE** | **Prioritization + Insight Lifecycle** | 🟡 **CERTIFICATION — PR #138** | Explicit deterministic priority vector + material-change lifecycle + max-one attention budget; specialist/release review + merge/post-merge required |
 | P2-DOCTOR | Consultation Intelligence | ⏳ Planned | Clinician brief reports evidence-qualified change since last review with uncertainty and provenance |
 | P3-HORIZON | Evidence Horizon Scanner | ⏳ Planned | Standard-of-care, emerging and investigational evidence remain explicitly separated; papers cannot silently alter patient rules |
 | P3-EVALS | Clinical Intelligence Evals | ⏳ Planned | Clinician-reviewed longitudinal, negative, false-positive and safety scenarios provide measurable release gates |
