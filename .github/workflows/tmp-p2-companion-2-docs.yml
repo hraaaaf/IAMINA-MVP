@@ -1,0 +1,163 @@
+name: Temporary P2 companion 2 docs
+
+on:
+  push:
+    branches:
+      - agent/p2-companion-personal-patterns
+
+permissions:
+  contents: write
+
+jobs:
+  sync-docs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2-companion-personal-patterns
+      - name: Align canonical personal-pattern contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected one anchor in {path}, found {count}")
+              p.write_text(text.replace(old, new, 1))
+
+          roadmap = "docs/ROADMAP.md"
+          replace_once(
+              roadmap,
+              "> **Last updated:** 2026-08-12 — P2-COMPANION-1 Change Since Last Review is certified, merged and post-merge green. **P2-COMPANION-2 — Personal Pattern Intelligence is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.",
+              "> **Last updated:** 2026-08-12 — P2-COMPANION-2 Personal Pattern Intelligence has a Clinical-Safety-reviewed runtime candidate in PR #149. It is a read-only projection of governed Clinical Twin truth and remains in merge gate; no endpoint/UX/narration is claimed. UX visual rebase remains closed through UX-11 at 9.8/10.",
+          )
+          replace_once(
+              roadmap,
+              "| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority contract + governed change-since-review | 🟡 P2-COMPANION active — Personal Pattern Intelligence next | PR #147 merge `f689f63b…`; post-merge CI #1913 + drift #1725 green |",
+              "| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority contract + governed change-since-review; personal-pattern projection candidate | 🟡 P2-COMPANION-2 merge gate | PR #149 runtime head reviewed; final docs-inclusive certification/merge/post-merge still required |",
+          )
+          old_p2_2 = "\n".join([
+              "### ▶️ P2-COMPANION-2 — Personal Pattern Intelligence — NEXT",
+              "",
+              "Make governed longitudinal observations easier to understand: first observed, recurring, persisting, improving, resolved and baseline-relative change, without causal/diagnostic upgrade.",
+          ])
+          new_p2_2 = "\n".join([
+              "### 🟡 P2-COMPANION-2 — Personal Pattern Intelligence — MERGE GATE",
+              "",
+              "PR #149 adds a deterministic read-only projection of already-governed `ClinicalObservationState`; it does not detect or persist new clinical truth.",
+              "",
+              "Candidate contract:",
+              "",
+              "- patient-scoped projection exposes first-observed time, activation-episode recurrence, active/resolved state, evidence density and repeatability trend, eligible observation/distinct-day counts, personal-window median, baseline-relative delta/direction/movement and provenance;",
+              "- accepted observation keys, kinds and recorded-context payloads must exactly match the existing governed personal-response contract; unapproved or mismatched state fails closed;",
+              "- the projection requires the canonical 90-day evidence window, finite numeric state, internally consistent baseline history and internally consistent evidence-density history;",
+              "- bounded markers are `persisting`, `recurring`, `improving_descriptively` and `resolved`; recurrence is activation-episode recurrence already stored by the Clinical Twin;",
+              "- `improving_descriptively` means only that the absolute baseline-relative delta moved toward the patient's own eligible window median; that median is not a clinical target, and the marker is not treatment response, therapeutic success, clinical outcome or causality;",
+              "- inactive/resolved rows disclose that numeric values describe the last eligible active evidence rather than current physiology;",
+              "- an empty projection means `no_governed_patterns`, not absence of disease or clinical issue; deterministic ordering is not clinical priority;",
+              "- evidence density/trend remains repeatability only, never probability, statistical significance or clinical confidence;",
+              "- P2-COMPANION-2 adds no endpoint, Flutter UX, model narration, notification, prioritization, new detector, migration, clinical threshold, diagnosis, prediction, prescription, dose logic, treatment optimization/change or clinician override.",
+              "",
+              "**Runtime evidence before canonical-doc update:** exact head `75aa4c768b1eecad6090b648987fcb4f8e98b147` passed CI #1918 + migration drift #1730 and Clinical Safety Reviewer FINAL PASS. These proofs become stale once docs change; final docs-inclusive exact-head gates, Documentation/Architecture review and Release Certifier remain mandatory before merge.",
+          ])
+          replace_once(roadmap, old_p2_2, new_p2_2)
+          replace_once(
+              roadmap,
+              "| **P2-COMPANION-2** | **Personal Pattern Intelligence** | ▶️ **NEXT** | Governed first/recurring/persisting/improving/resolved semantics remain descriptive |",
+              "| **P2-COMPANION-2** | **Personal Pattern Intelligence** | 🟡 **MERGE GATE** | PR #149 governed read-only Clinical Twin projection; final exact-head certification/merge/post-merge pending |",
+          )
+
+          companion = "docs/COMPANION_INTELLIGENCE_CONTRACT.md"
+          anchor = "These semantics do not by themselves establish diagnosis, causality, treatment response or future prediction."
+          addition = "\n".join([
+              anchor,
+              "",
+              "### 5.1 Personal-pattern projection contract",
+              "",
+              "P2-COMPANION-2 may make existing governed Clinical Twin observations easier to understand, but it cannot create or upgrade clinical truth:",
+              "",
+              "- the projection is read-only and patient-scoped; it consumes only already-persisted governed `ClinicalObservationState`;",
+              "- first observed, activation-episode recurrence, active/resolved lifecycle, evidence density/trend and baseline-relative values come directly from the governed Clinical Twin state;",
+              "- observation key, kind and recorded context must match the existing approved personal-response vocabulary exactly; malformed or ungoverned stored state fails closed;",
+              "- `persisting`, `recurring`, `improving_descriptively` and `resolved` are bounded descriptive markers only;",
+              "- `improving_descriptively` means movement of the absolute baseline-relative delta toward the patient's own eligible window median. That median is descriptive rather than a clinical target, and the marker does not establish treatment response, therapeutic success, clinical outcome or causality;",
+              "- evidence density and its trend describe repetition density only, never probability, statistical significance or clinical confidence;",
+              "- resolved rows must disclose that numeric values describe their last eligible active evidence rather than current physiology;",
+              "- no governed patterns is not evidence that no disease or clinical issue exists, and presentation order must not be treated as clinical priority;",
+              "- this projection adds no detector, write, clinical threshold, prioritization, suggestion, narration or autonomous medical authority.",
+          ])
+          replace_once(companion, anchor, addition)
+          replace_once(
+              companion,
+              "### 5.1 Change-since-review contract",
+              "### 5.2 Change-since-review contract",
+          )
+          replace_once(
+              companion,
+              "| **P2-COMPANION-2** | **Personal Pattern Intelligence** | ▶️ NEXT: first/recurring/persisting/improving/resolved personal observations without causal or diagnostic upgrade |",
+              "| **P2-COMPANION-2** | **Personal Pattern Intelligence** | 🟡 MERGE GATE: PR #149 read-only governed Clinical Twin projection; no causal/diagnostic/treatment-response upgrade |",
+          )
+
+          specs = "docs/SPECS.md"
+          specs_anchor = "### Companion change-since-review contract"
+          specs_section = "\n".join([
+              "### Companion personal-pattern intelligence contract",
+              "",
+              "- P2-COMPANION-2 is a read-only projection of already-governed `ClinicalObservationState`; it does not run a new detector, refresh Clinical Twin state or persist new clinical truth;",
+              "- patient scope is explicit server-side and every projected row must retain the approved deterministic truth kind, `diabetes.personal_response.v1` producer and `rule.personal-response.repetition.v1` evidence ID;",
+              "- observation key, kind and recorded-context payload must exactly match the governed personal-response vocabulary; noncanonical 90-day windows, malformed evidence-density history, inconsistent baseline history or non-finite numeric state fail closed;",
+              "- projected longitudinal fields may include first-observed time, recurrence count, active/resolved state, evidence density + repeatability trend, eligible observation/distinct-day counts and personal-window baseline-relative descriptive values;",
+              "- bounded markers are `persisting`, `recurring`, `improving_descriptively` and `resolved`; `recurring` means activation-episode recurrence already tracked by Clinical Twin;",
+              "- `improving_descriptively` means absolute baseline-relative delta moved toward the patient's own eligible window median. The window median is not a clinical target and this marker is not treatment response, clinical outcome or causality;",
+              "- resolved patterns must identify numeric values as last-eligible-active evidence rather than current physiology; `no_governed_patterns` must not be presented as absence of disease/clinical issue;",
+              "- evidence density/trend is repeatability only and output order is not clinical priority;",
+              "- P2-COMPANION-2 introduces no endpoint, Flutter UX, narration, notification, ranking/prioritization, diagnosis, prediction, prescription, dose calculation, treatment optimization/change or clinician override.",
+              "",
+              specs_anchor,
+          ])
+          replace_once(specs, specs_anchor, specs_section)
+
+          medical = "docs/MEDICAL_DATA_PLAN.md"
+          medical_anchor = "### 5.1 Companion longitudinal-comparison boundary"
+          medical_section = "\n".join([
+              "### 5.1 Companion personal-pattern projection boundary",
+              "",
+              "A personal-pattern explanation may only project already-governed Clinical Twin state; it cannot create a stronger clinical claim:",
+              "",
+              "- accepted source rows remain deterministic `personal_response` observations with the existing evidence ID, producer, minimum repetition criteria and canonical 90-day window;",
+              "- key/kind/recorded-context provenance, evidence-density history and baseline history must be internally consistent or the projection fails closed;",
+              "- first-observed time, activation recurrence, persistence/resolution, evidence density/trend and baseline-relative descriptive values may be exposed as structured facts/derivations;",
+              "- a move toward the patient's own eligible window median may be labelled only `improving_descriptively`; the median is not a clinical target and the movement is not treatment response, outcome or causality;",
+              "- inactive patterns retain historical last-eligible-active numeric evidence only with that limitation explicit;",
+              "- absence of governed patterns does not establish absence of disease/clinical issue; output order does not establish clinical priority;",
+              "- no detector, threshold, causal inference, prediction, treatment optimization, dose advice or model-created clinical authority may be introduced by the projection layer.",
+              "",
+              "### 5.2 Companion longitudinal-comparison boundary",
+          ])
+          replace_once(medical, medical_anchor, medical_section)
+          replace_once(
+              medical,
+              "### 5.2 Consultation-intelligence evidence boundary",
+              "### 5.3 Consultation-intelligence evidence boundary",
+          )
+
+          architecture = "docs/architecture/ARCHITECTURE.md"
+          arch_anchor = "P2-COMPANION-1 adds a diabetes-owned `CompanionReviewAnchor` workflow checkpoint plus immutable observation snapshots for deterministic longitudinal comparison. The anchor does not create clinical truth: it copies only already-governed Clinical Twin state at a server-generated explicit companion-review event. Capture/comparison share the canonical patient-row serialization lock. Explicit source erasure/replacement deletes affected patient anchors before Clinical Twin rebuild because historical snapshots may encode erased source evidence. No app-open/read event, client timestamp, conversation state or model output may become a review anchor. The comparison layer may classify only `new`, `persisting`, descriptive `improving`, governed `resolved` or `unknown`; missing evidence fails closed. This state is patient-owned application data and remains under portability/deletion/retention governance."
+          arch_addition = "\n\n".join([
+              arch_anchor,
+              "P2-COMPANION-2 adds a diabetes-owned read-only projection layer over `ClinicalObservationState`; it is not a second observation store and does not refresh or mutate the Clinical Twin. The layer validates the governed observation key/kind/context vocabulary, evidence provenance/window/density history and baseline-history integrity before exposing immutable longitudinal fields such as first observed, recurrence, active/resolved lifecycle, evidence-density trend and personal-window baseline-relative movement. `improving_descriptively` is strictly movement toward the patient's own descriptive window median, never treatment response or clinical outcome. Resolved numeric values are historical last-eligible-active evidence, empty output is not absence of disease, and deterministic ordering has no priority authority. Endpoint/UX/narration/suggestion/prioritization integration remains later work.",
+          ])
+          replace_once(architecture, arch_anchor, arch_addition)
+          PY
+      - name: Commit canonical docs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+hraaaaf@users.noreply.github.com"
+          git add docs/ROADMAP.md docs/COMPANION_INTELLIGENCE_CONTRACT.md docs/SPECS.md docs/MEDICAL_DATA_PLAN.md docs/architecture/ARCHITECTURE.md
+          git diff --cached --quiet && exit 0
+          git commit -m "docs(companion): align personal pattern intelligence"
+          git push origin HEAD:agent/p2-companion-personal-patterns
