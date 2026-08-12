@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-12 — P0-CLIN-INTEL-1 hardens the reachable diabetes clinical-intelligence stack around evidence-qualified observation semantics; PR #126 is the closeout unit pending final exact-head certification. UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-12 — P0-CLIN-INTEL-1 is merged and post-merge green. P1-CLIN-SKILLS is the active certification unit in PR #127; P1-EVIDENCE follows after closure. UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -39,7 +39,7 @@ IAmina's intended product moat is **evidence-qualified longitudinal clinical int
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains blocking |
-| Clinical intelligence / proactivity | P0 audit + semantics hardened | 🟡 Certification | PR #124 merged; PR #126 exact-head certification is the closeout gate; P1-CLIN-SKILLS follows |
+| Clinical intelligence / proactivity | P0 audit + semantics closed; skills foundation built | 🟡 Certification | PR #124 audit; PR #126 merged/post-merge green; PR #127 exact-head certification |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
@@ -111,45 +111,51 @@ Generative AI never becomes the authority for detection, emergency classificatio
 
 The audit established a baseline clinical-intelligence maturity score of **5.8/10** as an engineering/product maturity score, not a clinical-performance claim. It identified SQL-first analytics, shared safety/truth contracts and `personal_response.py` as the foundations to keep.
 
-## P0-CLIN-INTEL-1 — Clinical semantics hardening — PR #126 CERTIFICATION UNIT
+## ✅ P0-CLIN-INTEL-1 — Clinical semantics hardening
 
-Delivered behavior on the PR branch:
+**Closure:** PR #126 merged; exact-head CI + PostgreSQL + migration drift, Clinical Safety Reviewer and Release Certifier passed; post-merge `main` CI + migration drift passed.
 
-- active detector authority is **observation-only**: machine codes, patient wording and narrator packets no longer claim diagnosis, causal mechanism or treatment optimization;
-- each active observation carries explicit evidence basis, evidence density, data scope, source/version and limitations;
-- legacy standalone `prediction.py` and `correlations.py` fail closed while retaining import compatibility; no unvalidated numerical prediction or pseudo-confidence is produced;
-- context/meal compatibility helpers are descriptive only and excluded from the active Summary/doctor analysis engine; governed context personalization remains owned by `personal_response.py`;
-- raw-entry Python CV authority is retired; the general CV reference is surfaced from SQL-first metrics only for an eligible CGM window (at least 14 days and at least 70% active CGM coverage);
-- sparse/manual data are not presented as validated CGM target assessment, and “no eligible observation” is not converted into “everything is normal”;
-- the legacy named Somogyi conclusion is removed from patient authority; the retained CGM rule describes only a repeated night-low → later-morning-high chronology with explicit limitations;
-- diabetes alert templates contain no country-specific emergency number;
-- the reachable shared glycemic triage middleware now resolves its patient-visible medical emergency contact through `core.emergency_resources`; only an explicitly confirmed country with a current validated registry entry can produce a number, otherwise the path is number-free;
-- Morocco's current registry source remains versioned and review-dated; current external recheck confirms ambulance **150** in the configured source;
-- the existing doctor-brief evidence ceiling is preserved: its prompt is KPI/statistics-only and does not accept legacy detector identity as clinician authority.
+Durable result:
 
-**Acceptance gate:** final exact-head CI + PostgreSQL + migration drift + Clinical Safety Reviewer + Release Certifier must pass. Until then PR #126 is not declared closed.
+- active detector authority is observation-only and evidence-qualified rather than diagnostic/causal/treatment-optimizing;
+- unvalidated standalone prediction/correlation prototypes fail closed;
+- raw-entry Python CV authority is retired in favor of eligible SQL-first CGM metrics;
+- sparse/manual data cannot masquerade as validated CGM assessment;
+- patient-visible glycemic emergency contacts are resolved only from confirmed-jurisdiction versioned resources;
+- the clinician-summary boundary remains KPI/statistics-only rather than legacy pattern authority.
+
+## P1-CLIN-SKILLS — Diabetologist Skills Foundation — PR #127 CERTIFICATION UNIT
+
+Built on the PR branch:
+
+- repository-owned `diabetes-clinical-reasoning` procedure defines diabetologist-grade provenance, applicability, eligibility, uncertainty and allowed-next-step reasoning across the diabetes domain;
+- `diabetes-proactive-intelligence` defines explicit prioritization dimensions, attention budget and the longitudinal insight lifecycle without black-box urgency or treatment authority;
+- `diabetes-evidence-intelligence` separates `STANDARD_OF_CARE`, `EMERGING_EVIDENCE` and `INVESTIGATIONAL`, requires current-source verification and creates a promotion gate before evidence can affect patient rules;
+- `CORE_SOURCES.md` maps the current 2026 starting corpus, including ADA Standards 2026, ISPAD pediatric guidance, KDIGO final-vs-draft status and IDF/DaR 2026 fasting-risk resources;
+- `AGENTS.md` and `.skills/README.md` route future clinical-intelligence/proactivity LOTs through the new skills while explicitly preserving deterministic runtime precedence.
+
+**Acceptance gate:** exact-head CI + PostgreSQL + migration drift + Clinical Safety Reviewer + Release Certifier, expected-head merge, then post-merge `main` CI + migration drift. Until those gates pass, PR #127 is not closed.
 
 ## Ordered execution
 
 | LOT | One responsibility | Status | Acceptance gate |
 |---|---|---|---|
 | P0-CLIN-INTEL-0 | Audit real clinical/proactive stack | ✅ Closed | PR #124 merged and post-merge green |
-| P0-CLIN-INTEL-1 | Clinical semantics hardening | 🟡 Certification | PR #126; exact-head + specialist review + merge/post-merge required |
-| **P1-CLIN-SKILLS** | **Diabetologist Skills Foundation** | 🔴 **NEXT AFTER #126** | Repository-owned clinical reasoning, proactive-intelligence and evidence-intelligence skills exist and cannot override deterministic authority |
-| P1-EVIDENCE | Versioned Diabetes Evidence Registry | ⏳ Planned | Every governed clinical metric/rule/observation records source/version, population, modality, evidence maturity, review date and supersession state |
+| P0-CLIN-INTEL-1 | Clinical semantics hardening | ✅ Closed | PR #126 merged and post-merge green |
+| **P1-CLIN-SKILLS** | **Diabetologist Skills Foundation** | 🟡 **CERTIFICATION** | PR #127; exact-head + specialist review + merge/post-merge required |
+| **P1-EVIDENCE** | **Versioned Diabetes Evidence Registry** | 🔴 **NEXT AFTER #127** | Every governed clinical metric/rule/observation records source/version, population, modality, evidence maturity, review date and supersession state |
 | P2-CLINICAL-TWIN | Longitudinal Observation Memory | ⏳ Planned | Recurring evidence-qualified observations can be followed without promoting model inference to patient fact |
 | P2-PROACTIVE | Prioritization + Insight Lifecycle | ⏳ Planned | Clinical relevance, persistence, actionability, evidence density and interruption cost govern what surfaces and when |
 | P2-DOCTOR | Consultation Intelligence | ⏳ Planned | Clinician brief reports evidence-qualified change since last review with uncertainty and provenance |
 | P3-HORIZON | Evidence Horizon Scanner | ⏳ Planned | Standard-of-care, emerging and investigational evidence remain explicitly separated; papers cannot silently alter patient rules |
 | P3-EVALS | Clinical Intelligence Evals | ⏳ Planned | Clinician-reviewed longitudinal, negative, false-positive and safety scenarios provide measurable release gates |
 
-### P0-CLIN-INTEL-1 non-scope
+### P1-CLIN-SKILLS non-scope
 
-- no new treatment recommendations;
-- no new insulin/medication calculator;
-- no new predictive model;
-- no new proactive notification product;
-- no evidence-registry platform yet;
+- no runtime clinical-rule or threshold change;
+- no treatment recommendation, insulin/medication calculator or predictor;
+- no proactive notification feature or lifecycle implementation yet;
+- no evidence-registry database yet;
 - no broad UX redesign.
 
 ---
@@ -227,7 +233,7 @@ Preparation/executable gates do not imply that external legal, processor, lingui
 
 # Current blockers and next sequence
 
-1. **Clinical intelligence product lane:** certify and merge PR #126, then start **P1-CLIN-SKILLS** immediately. This lane is executable without waiting for external MENA approvals.
+1. **Clinical intelligence product lane:** certify and merge PR #127, then start **P1-EVIDENCE — Versioned Diabetes Evidence Registry** immediately. This lane is executable without waiting for external MENA approvals.
 2. **Security emergency:** revoke/rotate all potentially affected PekPik credentials and review provider activity under issue #30.
 3. After credential rotation confirmation, rewrite affected refs, require fresh clones, obtain a passing non-shallow secret-history scan and activate the blocking history gate.
 4. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
