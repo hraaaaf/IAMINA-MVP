@@ -35,6 +35,7 @@ Execute only explicitly assigned work from these roadmap areas:
 3. P0-MENA-3 — Django-native auth migration.
 4. P0-MENA-4 — multimodal provider benchmark.
 5. Pilot safety/compliance + staging + one-country pilot.
+6. Clinical intelligence/proactivity — only the explicit ordered LOTs in `docs/ROADMAP.md`.
 
 Do not pull gated platform/module work forward.
 
@@ -89,8 +90,13 @@ For UX/UI LOTs, `.skills/ux-ui-certification/SKILL.md` is mandatory and a score 
 
 Specialized skills are mandatory when their surface is touched:
 - clinical/medical/safety → `.skills/clinical-safety/SKILL.md`;
+- diabetes clinical reasoning / interpretation / clinician or patient semantic meaning → `.skills/diabetes-clinical-reasoning/SKILL.md` + `.skills/diabetes-evidence-intelligence/SKILL.md` + `.skills/clinical-safety/SKILL.md`;
+- diabetes proactive prioritization / insight lifecycle / follow-up / notification semantics → additionally `.skills/diabetes-proactive-intelligence/SKILL.md`;
+- any new/changed diabetes threshold, guideline statement, device claim or research-horizon claim → `.skills/diabetes-evidence-intelligence/SKILL.md` with current-source verification;
 - models/migrations/persistence/PostgreSQL → `.skills/migrations-database/SKILL.md`;
 - auth/authorization/privacy/secrets/external egress → `.skills/security-review/SKILL.md`.
+
+A diabetes-specific skill is an execution procedure, never a clinical authority source by itself. Canonical product/safety contracts and deterministic runtime authority take precedence. Emerging or investigational evidence cannot silently change patient behavior.
 
 `.skills/release-certification/SKILL.md` is mandatory for every LOT.
 
@@ -109,6 +115,7 @@ cd frontend && flutter analyze && flutter test
 Additional expectations:
 
 - safety change → focused positive + negative guardrail tests;
+- clinical-intelligence change → verify evidence provenance/finality, population applicability, insufficient-data behavior, deterministic authority and no autonomous treatment optimization;
 - locale change → native-reviewed fixtures, mixed-script/transliteration and fallback tests where relevant;
 - provider/egress change → tests proving bypass is impossible/detected and payload is minimized;
 - auth migration → identity reconciliation + rollback/recovery tests;
