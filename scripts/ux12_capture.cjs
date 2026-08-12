@@ -30,7 +30,7 @@ async function openApp(page, url, settleMs) {
     const context = await browser.newContext({ locale });
     const seed = await context.newPage();
     await seed.setViewportSize({ width: 390, height: 844 });
-    await openApp(seed, `http://127.0.0.1:4173/?audit=ux12&lang=${lang}#/importer`, 1800);
+    await openApp(seed, `http://127.0.0.1:4173/?audit=visual-cert&lang=${lang}#/importer`, 1800);
     const load = seed.getByRole('button', { name: /Charger|Load|تحميل/i });
     if (await load.count()) {
       try {
@@ -48,7 +48,7 @@ async function openApp(page, url, settleMs) {
         page.on('pageerror', e => errors.push(String(e)));
         await openApp(
           page,
-          `http://127.0.0.1:4173/?audit=ux12&lang=${lang}#${route}`,
+          `http://127.0.0.1:4173/?audit=visual-cert&lang=${lang}#${route}`,
           name === 'summary' ? 3500 : 1800,
         );
         const views = await page.locator('flutter-view').count();
