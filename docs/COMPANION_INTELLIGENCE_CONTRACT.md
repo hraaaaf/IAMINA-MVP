@@ -123,6 +123,19 @@ P2-COMPANION-1 makes review history an explicit governed product event rather th
 - persisted anchors/snapshots are patient-owned application records and remain subject to export, account deletion and retention governance;
 - the anchor records an IAmina **companion review**, not a clinician consultation. Consultation history remains a separate P2-COMPANION-5 concern.
 
+### 5.3 Evidence + uncertainty contract
+
+P2-COMPANION-3 makes the evidence boundary itself inspectable without creating stronger clinical claims:
+
+- every material P2-COMPANION-1/2 item carries one immutable `CompanionEvidenceContext` containing governed provenance plus explicit uncertainty;
+- provenance includes evidence/rule ID, approved producer, rule topic/summary, evidence maturity, clinical authority, finality, review date, population/modality and registered supporting-source metadata;
+- evidence maturity is governance/source status, not patient probability. `limited` / `moderate` / `strong` remains repetition density only and is not statistical or clinical confidence;
+- supporting external sources retain their own maturity/finality and never inherit runtime authority from the product rule;
+- candidate, narrative-only, source-only, unknown, superseded or non-versioned records cannot authorize a material companion observation;
+- a globally governed product rule is still not automatically companion truth: a separate explicit rule↔producer admission registry currently allows only `rule.personal-response.repetition.v1` from `diabetes.personal_response.v1`;
+- missing longitudinal/current evidence is represented in `missing_data` rather than hidden in prose or converted to certainty;
+- the evidence envelope has no numeric confidence field and grants no diagnosis, causality, prediction, urgency, treatment/dose, suggestion or prioritization authority.
+
 ## 6. Consultation is a sub-capability, not the product identity
 
 The certified `consultation-brief.v1` contract from PR #143 remains valid as a **restricted consultation-support sub-contract**.
@@ -162,7 +175,7 @@ The deterministic structured result is authoritative; narration is optional pres
 | **P2-COMPANION-0** | **Companion Intelligence Contract** | Product/authority ceiling is canonical; consultation is explicitly a sub-capability; no doctor-replacement framing |
 | **P2-COMPANION-1** | **Change Since Last Review** | ✅ Certified in PR #147: governed explicit companion-review anchor + deterministic `new/persisting/improving/resolved/unknown`; post-merge CI #1913 + drift #1725 green |
 | **P2-COMPANION-2** | **Personal Pattern Intelligence** | ✅ Certified in PR #149: read-only governed Clinical Twin projection; post-merge CI #1922 + drift #1734 green |
-| **P2-COMPANION-3** | **Evidence + Uncertainty** | ▶️ NEXT: every material observation exposes provenance, evidence maturity, limitations and missing data |
+| **P2-COMPANION-3** | **Evidence + Uncertainty** | 🟡 MERGE GATE: PR #151 adds one governed evidence/uncertainty envelope to material P2-COMPANION-1/2 observations; no confidence/authority upgrade |
 | P2-COMPANION-4 | Smart Suggestions | Non-prescriptive suggestions limited to understand/monitor/collect/learn/discuss/follow-up classes |
 | P2-COMPANION-5 | Consultation Companion | Prepare the patient for a clinician review using the inherited `consultation-brief.v1` authority contract |
 | P2-COMPANION-6 | After-Visit Continuity | Track the interval after a consultation without judging or changing the clinician's treatment decision |
