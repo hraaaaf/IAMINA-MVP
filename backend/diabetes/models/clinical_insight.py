@@ -84,6 +84,7 @@ class ClinicalInsightState(models.Model):
     last_material_fingerprint = models.CharField(max_length=64, blank=True, default="")
     last_decision_fingerprint = models.CharField(max_length=64, blank=True, default="")
     last_surfaced_decision_fingerprint = models.CharField(max_length=64, blank=True, default="")
+    pending_reason_codes = models.JSONField(default=list)
 
     first_surfaced_at = models.DateTimeField(null=True, blank=True)
     last_surfaced_at = models.DateTimeField(null=True, blank=True)
