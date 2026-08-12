@@ -10,6 +10,7 @@ from companion.tone import ToneContext, ToneMode, get_tone_instruction, select_t
 from core.companion.clinical import get_domain_context
 from core.companion.ports import get_conversation_store
 from core.contracts.domain_context import DomainContext
+from core.emergency_response import render_patient_medical_emergency_response
 from core.input_safety import (
     INSULIN_BLOCK,
     PRESCRIPTION_BLOCK,
@@ -74,13 +75,6 @@ _DARIJA_LATIN_RE = re.compile(
 )
 _HISTORY_CHAR_BUDGET = 3000  # ~750 tokens — hard cap regardless of message count
 
-_CHAT_EMERGENCY_FR = (
-    "⚠️ Si tu te sens mal, mange du sucre maintenant et contacte ton médecin ou le 15. "
-    "Ce n'est pas le moment de chatter — prends soin de toi d'abord."
-)
-_CHAT_EMERGENCY_AR = (
-    "⚠️ إلا كانعندك شي مشكل دابا، كول شي حلو وتسنّت للطبيب. ماتاخدش وقتك هنا — سيراك أولى."
-)
 _EMERGENCY_KEYWORDS = (
     "je me sens mal",
     "je fais une hypo",
@@ -266,7 +260,7 @@ def chat(
     decision = evaluate_input_safety(message)
     if decision.action == URGENT:
         _append_turn(patient, "user", message)
-        reply = _CHAT_EMERGENCY_AR if language == "ar-MA" else _CHAT_EMERGENCY_FR
+        reply = render_patient_medical_emergency_response(patient, language=language)
         _append_turn(patient, "assistant", reply)
         return reply
 
@@ -446,7 +440,7 @@ def stream_chat(
     decision = evaluate_input_safety(message)
     if decision.action == URGENT:
         _append_turn(patient, "user", message)
-        reply = _CHAT_EMERGENCY_AR if language == "ar-MA" else _CHAT_EMERGENCY_FR
+        reply = render_patient_medical_emergency_response(patient, language=language)
         _append_turn(patient, "assistant", reply)
         yield reply
         return
