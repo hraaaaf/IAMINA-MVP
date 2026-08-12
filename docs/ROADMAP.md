@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-12 — P2-COMPANION-1 Change Since Last Review is certified, merged and post-merge green. **P2-COMPANION-2 — Personal Pattern Intelligence is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-12 — P2-COMPANION-2 Personal Pattern Intelligence has a Clinical-Safety-reviewed runtime candidate in PR #149. It is a read-only projection of governed Clinical Twin truth and remains in merge gate; no endpoint/UX/narration is claimed. UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -42,7 +42,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains a governance blocker despite being closed `not planned` |
-| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority contract + governed change-since-review | 🟡 P2-COMPANION active — Personal Pattern Intelligence next | PR #147 merge `f689f63b…`; post-merge CI #1913 + drift #1725 green |
+| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority contract + governed change-since-review; personal-pattern projection candidate | 🟡 P2-COMPANION-2 merge gate | PR #149 runtime head reviewed; final docs-inclusive certification/merge/post-merge still required |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
@@ -212,9 +212,23 @@ Candidate contract:
 
 **Closure:** PR #147 final head `cb8591281997f5e1acca227f6545a1023f4a8fb0` passed CI #1912 + migration drift #1724, Clinical Safety Reviewer, Database/Migration Reviewer, Documentation/Architecture/Companion Safety review 9.8/10 and Release Certifier. Expected-head merge produced `f689f63b2abd7e77739838d0cb3d3e0780628994`; post-merge `main` CI #1913 + drift #1725 passed.
 
-### ▶️ P2-COMPANION-2 — Personal Pattern Intelligence — NEXT
+### 🟡 P2-COMPANION-2 — Personal Pattern Intelligence — MERGE GATE
 
-Make governed longitudinal observations easier to understand: first observed, recurring, persisting, improving, resolved and baseline-relative change, without causal/diagnostic upgrade.
+PR #149 adds a deterministic read-only projection of already-governed `ClinicalObservationState`; it does not detect or persist new clinical truth.
+
+Candidate contract:
+
+- patient-scoped projection exposes first-observed time, activation-episode recurrence, active/resolved state, evidence density and repeatability trend, eligible observation/distinct-day counts, personal-window median, baseline-relative delta/direction/movement and provenance;
+- accepted observation keys, kinds and recorded-context payloads must exactly match the existing governed personal-response contract; unapproved or mismatched state fails closed;
+- the projection requires the canonical 90-day evidence window, finite numeric state, internally consistent baseline history and internally consistent evidence-density history;
+- bounded markers are `persisting`, `recurring`, `improving_descriptively` and `resolved`; recurrence is activation-episode recurrence already stored by the Clinical Twin;
+- `improving_descriptively` means only that the absolute baseline-relative delta moved toward the patient's own eligible window median; that median is not a clinical target, and the marker is not treatment response, therapeutic success, clinical outcome or causality;
+- inactive/resolved rows disclose that numeric values describe the last eligible active evidence rather than current physiology;
+- an empty projection means `no_governed_patterns`, not absence of disease or clinical issue; deterministic ordering is not clinical priority;
+- evidence density/trend remains repeatability only, never probability, statistical significance or clinical confidence;
+- P2-COMPANION-2 adds no endpoint, Flutter UX, model narration, notification, prioritization, new detector, migration, clinical threshold, diagnosis, prediction, prescription, dose logic, treatment optimization/change or clinician override.
+
+**Runtime evidence before canonical-doc update:** exact head `75aa4c768b1eecad6090b648987fcb4f8e98b147` passed CI #1918 + migration drift #1730 and Clinical Safety Reviewer FINAL PASS. These proofs become stale once docs change; final docs-inclusive exact-head gates, Documentation/Architecture review and Release Certifier remain mandatory before merge.
 
 ### ⏳ P2-COMPANION-3 — Evidence + Uncertainty
 
@@ -252,7 +266,7 @@ Add permanent clinician-reviewed negative, longitudinal, false-positive and boun
 | **P2-PROACTIVE** | **Prioritization + Insight Lifecycle** | ✅ **CLOSED** | PR #139 merge `752f5543…`; post-merge CI #1845 + drift #1657 green |
 | **P2-COMPANION-0** | **Companion Intelligence Contract** | ✅ **CLOSED** | Canonical authority contract; former P2-DOCTOR framing superseded without rollback of certified PR #143 sub-contract |
 | **P2-COMPANION-1** | **Change Since Last Review** | ✅ **CLOSED** | PR #147 head `cb859128…`; merge `f689f63b…`; post-merge CI #1913 + drift #1725 green |
-| **P2-COMPANION-2** | **Personal Pattern Intelligence** | ▶️ **NEXT** | Governed first/recurring/persisting/improving/resolved semantics remain descriptive |
+| **P2-COMPANION-2** | **Personal Pattern Intelligence** | 🟡 **MERGE GATE** | PR #149 governed read-only Clinical Twin projection; final exact-head certification/merge/post-merge pending |
 | P2-COMPANION-3 | Evidence + Uncertainty | ⏳ Planned | Material observations expose provenance, maturity, missing data and limitations |
 | P2-COMPANION-4 | Smart Suggestions | ⏳ Planned | Suggestions remain within six non-prescriptive companion classes |
 | P2-COMPANION-5 | Consultation Companion | ⏳ Planned | Patient preparation reuses certified `consultation-brief.v1`; clinician remains medical authority |
