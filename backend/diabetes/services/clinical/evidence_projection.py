@@ -6,10 +6,6 @@ module is the single diabetes-owned boundary that converts raw analytics into
 patient/LLM-facing metric authority.
 """
 
-from __future__ import annotations
-
-from dataclasses import replace
-
 from .cgm_eligibility import assess_cgm_sufficiency
 from .evidence_registry import evidence_for_kpi
 from .sql_analytics import AnalyticalKPIs
@@ -41,10 +37,11 @@ def guard_normative_kpis(kpis: AnalyticalKPIs) -> AnalyticalKPIs:
     """
     if assess_cgm_sufficiency(kpis).verified:
         return kpis
-    return replace(
-        kpis,
+    guarded_values = {
+        **vars(kpis),
         **{field: None for field in _NORMATIVE_CGM_FIELDS},
-    )
+    }
+    return AnalyticalKPIs(**guarded_values)
 
 
 def project_public_kpis(kpis: AnalyticalKPIs) -> dict[str, object]:
