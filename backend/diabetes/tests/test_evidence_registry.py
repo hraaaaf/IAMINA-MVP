@@ -136,4 +136,4 @@ class RuntimeEvidenceCoverageTests(SimpleTestCase):
         combined = " ".join((record.claim_or_rule, record.limitations)).lower()
         self.assertIn("product", combined)
         self.assertIn("not diagnostic", combined)
-        self.assertIn("not universal", combined)
+        self.assertIn("do not present 250/300 mg/dl as universal", combined)
