@@ -38,7 +38,7 @@ class CompanionPersonalPatternIntelligenceTests(TestCase):
         status: str = ClinicalObservationState.STATUS_ACTIVE,
         recurrence_count: int = 1,
         evidence_strength: str = ClinicalObservationState.EVIDENCE_MODERATE,
-        evidence_trend: str = ClinicalObservationState.TREND_STABLE,
+        evidence_trend: str = ClinicalObservationState.TREND_INITIAL,
         baseline_delta: float = 40.0,
         previous_baseline_delta: float | None = None,
         baseline_delta_change: float | None = None,
@@ -46,6 +46,14 @@ class CompanionPersonalPatternIntelligenceTests(TestCase):
     ) -> ClinicalObservationState:
         first_seen = self.now - timedelta(days=20)
         last_seen = self.now - timedelta(days=1)
+        if evidence_trend == ClinicalObservationState.TREND_INITIAL:
+            previous_evidence_strength = ""
+        elif evidence_trend == ClinicalObservationState.TREND_STRENGTHENING:
+            previous_evidence_strength = ClinicalObservationState.EVIDENCE_LIMITED
+        elif evidence_trend == ClinicalObservationState.TREND_WEAKENING:
+            previous_evidence_strength = ClinicalObservationState.EVIDENCE_STRONG
+        else:
+            previous_evidence_strength = evidence_strength
         return ClinicalObservationState.objects.create(
             patient=patient,
             observation_key=key,
@@ -60,11 +68,7 @@ class CompanionPersonalPatternIntelligenceTests(TestCase):
             status_changed_at=self.now - timedelta(hours=12),
             recurrence_count=recurrence_count,
             evidence_strength=evidence_strength,
-            previous_evidence_strength=(
-                ClinicalObservationState.EVIDENCE_LIMITED
-                if evidence_trend == ClinicalObservationState.TREND_STRENGTHENING
-                else ""
-            ),
+            previous_evidence_strength=previous_evidence_strength,
             evidence_strength_trend=evidence_trend,
             observations=6,
             distinct_days=4,
@@ -230,6 +234,16 @@ class CompanionPersonalPatternIntelligenceTests(TestCase):
             "evidence_density_is_repeatability_not_probability_or_clinical_confidence",
             pattern.limitations,
         )
+
+    def test_inconsistent_evidence_density_history_fails_closed(self):
+        row = self._observation(self.patient)
+        ClinicalObservationState.objects.filter(pk=row.pk).update(
+            evidence_strength_trend=ClinicalObservationState.TREND_STABLE,
+            previous_evidence_strength="",
+        )
+
+        with self.assertRaisesRegex(ValueError, "requires previous density"):
+            project_personal_pattern_intelligence(patient_id=self.patient.id)
 
     def test_inconsistent_baseline_history_fails_closed(self):
         self._observation(
