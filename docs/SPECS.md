@@ -37,7 +37,28 @@ Core capabilities already represented in the application include:
 - edit/delete journal entries;
 - dashboard KPIs and AGP-style visualization;
 - IAmina companion/chat surfaces;
-- document/import and image/audio-assisted flows where currently wired.
+- document/import and image/audio-assisted flows where currently wired;
+- persisted local medication-event logging;
+- persisted in-app reminders;
+- approved mobile Dashboard quick actions and bottom navigation with real destinations.
+
+### Mobile Dashboard action-parity contract
+
+The populated mobile Dashboard follows the approved UX-11 information architecture without inventing patient state or product capability.
+
+Current invariants:
+
+- quick actions are **Journal / Alimentation / Activité / Médicaments / Rappels**;
+- Journal opens the real history surface; Alimentation and Activité open the existing add-entry flow already focused on the relevant truthful capture context, without silently asserting that a meal/activity occurred;
+- Médicaments records only user-entered medication-event facts and must not recommend, calculate or optimize a treatment or dose;
+- Rappels is a real Drift-backed in-app reminder list; system notification delivery is not claimed when no operating-system notification integration is enabled;
+- the mobile bottom navigation is **Accueil / Mesures / + / Rapports / Profil**; Import remains reachable elsewhere rather than masquerading as one of those destinations;
+- the Dashboard calendar control is a real date selector that changes the anchored data window;
+- the reminder bell must not display a fabricated unread badge;
+- FR/EN/AR and RTL behavior remain required, including >=48 px interactive targets for primary navigation actions;
+- visual parity must never be achieved by copying fabricated clinical values, causal claims, praise or treatment/exercise advice from a design reference.
+
+Drift schema v10 adds `medication_events` and `reminders`; these local tables hold user-entered events/reminders and do not create new clinical authority.
 
 ### Metabolic-event logging contract
 

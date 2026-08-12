@@ -46,6 +46,8 @@ Responsibilities:
 - onboarding/profile;
 - diabetes logging and journal;
 - dashboard/analytics presentation;
+- truthful mobile Dashboard action routing;
+- local medication-event and in-app reminder persistence in Drift v10;
 - companion conversation UI;
 - offline-first Drift persistence and sync;
 - locale/script/RTL presentation;
@@ -55,6 +57,9 @@ Rules:
 
 - Flutter is the only product frontend.
 - No business-critical safety rule may exist only in the client.
+- Medication-event capture is patient-entered historical data, not prescribing/dose authority.
+- In-app reminder persistence must not be presented as operating-system notification delivery unless that integration is actually enabled.
+- Mockup parity must not introduce fabricated patient data, unread-notification state or unsupported clinical capability.
 - Location may suggest locale settings but must not silently choose clinical/safety behavior.
 
 ### 3.2 Django API / shared core
