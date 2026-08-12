@@ -158,6 +158,17 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - explicit source erasure/replacement invalidates all patient companion-review anchors before Clinical Twin rebuild; patient export/account deletion/retention governance applies to anchor and snapshot rows;
 - P2-COMPANION-1 introduces no endpoint, Flutter UX, model narration, notification behavior, diagnosis, prescription, dose calculation, treatment optimization or clinician override.
 
+### Companion evidence + uncertainty contract
+
+- material outputs from P2-COMPANION-1 and P2-COMPANION-2 carry the same immutable `CompanionEvidenceContext`; the envelope explains existing truth and does not create a new detector or observation store;
+- material Companion admission requires both a current evidence-registry `GOVERNED_RULE` and an explicit rule↔producer registration; currently only `rule.personal-response.repetition.v1 ↔ diabetes.personal_response.v1` is admitted;
+- provenance exposes rule/evidence ID, approved producer, topic/summary, evidence maturity, authority, finality, review date, population/modality and supporting-source metadata when registered;
+- external sources remain supporting evidence with their own maturity/finality and cannot become runtime authority through citation;
+- evidence maturity is governance/source status. Personal-response `limited` / `moderate` / `strong` remains repetition density only; neither is patient probability, p-value, statistical significance or clinical-confidence score;
+- uncertainty is explicit through density/trend, `missing_data` and limitations; P2-COMPANION-1 `unknown` reasons become missing-data facts, and P2-COMPANION-2 exposes absent prior baseline/density history or resolved-state lack of current active evidence;
+- unknown, source-only, candidate, narrative-only, superseded, non-versioned or wrong-producer records fail closed;
+- P2-COMPANION-3 adds no endpoint, Flutter UX, model narration, suggestion, notification, prioritization, clinical threshold, diagnosis, prediction, treatment/dose authority or clinician override.
+
 ### Consultation intelligence contract
 
 - the certified PR #143 `consultation-brief.v1` contract is preserved as the restricted P2-COMPANION-5 consultation-support sub-contract; it is downstream review support and does not create new clinical truth;
