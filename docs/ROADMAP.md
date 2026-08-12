@@ -168,7 +168,7 @@ Candidate contract:
 - unchanged material state does not re-surface, and the product attention budget allows at most one **non-urgent** item per 24 hours; this is interruption-cost policy, not a medically authoritative follow-up interval;
 - `RESOLVED` requires an eligible Clinical Twin refresh showing absence of the previously eligible observation; insufficient data cannot silently resolve prior state;
 - true reactivation cannot remain stale-`RESOLVED`, including a matching-fingerprint edge case;
-- protected `GET /api/v1/proactive-insights/` returns at most one evidence-qualified candidate plus an explicit observation-only safety notice;
+- explicit `POST /api/v1/proactive-insights/evaluate/` evaluates and consumes at most one evidence-qualified candidate; safe GET requests cannot consume delivery state or the attention budget;
 - deterministic emergency routing remains separate/upstream and is never suppressed by the non-urgent attention budget;
 - no diagnosis, prescription, dose calculation, causal attribution, treatment optimization or generative clinical authority is introduced.
 
