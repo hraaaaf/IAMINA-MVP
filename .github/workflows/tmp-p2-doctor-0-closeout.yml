@@ -1,0 +1,70 @@
+name: Temporary P2 doctor 0 closeout
+
+on:
+  push:
+    branches:
+      - agent/p2-doctor-contract-closeout
+
+permissions:
+  contents: write
+
+jobs:
+  closeout:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2-doctor-contract-closeout
+      - name: Close P2-DOCTOR-0 and advance assembler
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('docs/ROADMAP.md')
+          text = p.read_text()
+
+          replacements = [
+              (
+                  '> **Last updated:** 2026-08-12 — P2-PROACTIVE is certified and merged; its post-merge `main` CI + migration drift passed. The Clinical Twin derived-data lifecycle follow-up in PR #140 is also certified/merged with post-merge proof. **P2-DOCTOR — Consultation Intelligence is now NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.',
+                  '> **Last updated:** 2026-08-12 — P2-DOCTOR-0 Consultation Brief Contract is certified, merged and post-merge green. **P2-DOCTOR-1 — Deterministic Brief Assembler is now NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.'
+              ),
+              (
+                  '| Clinical intelligence / proactivity | P0 audit + semantics + skills + evidence registry + Clinical Twin + proactive lifecycle certified | ✅ P2 foundation closed; P2-DOCTOR next | PR #139 merge `752f5543…` + post-merge CI #1845/drift #1657; lifecycle hardening PR #140 merge `55d6b171…` + post-merge CI #1868/drift #1680 |',
+                  '| Clinical intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + P2-DOCTOR-0 contract certified | 🟡 P2-DOCTOR active — assembler next | PR #143 merge `04fb6535…`; post-merge CI #1893 + drift #1705 green |'
+              ),
+              (
+                  '## 🟡 P2-DOCTOR — Consultation Intelligence — CONTRACT FOUNDATION',
+                  '## 🟡 P2-DOCTOR — Consultation Intelligence — ACTIVE\n\n### ✅ P2-DOCTOR-0 — Consultation Brief Contract — CLOSED'
+              ),
+              ('Runtime candidate contract:', 'Certified contract:'),
+              (
+                  '**Next sub-lot after P2-DOCTOR-0 closeout:** build the deterministic consultation-brief assembler from approved synchronized facts, governed KPI/Clinical Twin evidence and an authoritative review checkpoint source; only after that may the legacy narrator boundary be replaced.\n\n**P2-DOCTOR-0 closure gate:** final docs-inclusive SHA must pass exact-head CI + migration drift, Clinical Safety + Documentation/Architecture review, Release Certifier GO, expected-head merge and post-merge `main` CI + drift. P2-DOCTOR overall remains active after this contract LOT.',
+                  '**Closure:** PR #143 head `1983829c…` passed CI #1892 + drift #1704, Clinical Safety Reviewer, Documentation/Architecture Reviewer and Release Certifier; expected-head merge `04fb6535…` then passed post-merge `main` CI #1893 + drift #1705.\n\n### ▶️ P2-DOCTOR-1 — Deterministic Brief Assembler — NEXT\n\nBuild the deterministic assembler from approved synchronized observed facts, governed KPI/Clinical Twin derivations and an authoritative prior-review checkpoint source. The assembler must produce `consultation-brief.v1` without model-authored fields, must fail closed when the checkpoint or governed evidence is unavailable, and must not replace the legacy narrator endpoint until separately certified.'
+              ),
+              (
+                  '| **P2-DOCTOR** | **Consultation Intelligence** | 🟡 **ACTIVE — P2-DOCTOR-0** | PR #143 contract candidate: provenance/uncertainty/authority schema implemented; deterministic assembler + endpoint/UX remain later sub-lots |',
+                  '| **P2-DOCTOR** | **Consultation Intelligence** | 🟡 **ACTIVE — P2-DOCTOR-1 NEXT** | P2-DOCTOR-0 PR #143 merge `04fb6535…` post-merge green; next = deterministic assembler, endpoint/UX later |'
+              ),
+              (
+                  'P2-DOCTOR-0 establishes the consultation-brief authority contract without exposing a new product surface. The next implementation LOT must assemble that contract deterministically from approved source facts/governed derivations and an authoritative prior-review checkpoint; it must not infer review history from app activity or let a model populate unapproved fields. Existing deterministic emergency, no-prescription/no-dose and evidence-promotion boundaries remain upstream and authoritative.',
+                  'P2-DOCTOR-0 is closed and establishes the consultation-brief authority contract without exposing a new product surface. P2-DOCTOR-1 must now assemble that contract deterministically from approved source facts/governed derivations and an authoritative prior-review checkpoint; it must not infer review history from app activity or let a model populate unapproved fields. Existing deterministic emergency, no-prescription/no-dose and evidence-promotion boundaries remain upstream and authoritative.'
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected one anchor, found {count}: {old[:120]}')
+              text = text.replace(old, new, 1)
+
+          p.write_text(text)
+          PY
+      - name: Commit closeout roadmap
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ROADMAP.md
+          git diff --cached --quiet && exit 0
+          git commit -m "docs(clinical): close P2 doctor contract and advance assembler"
+          git push origin HEAD:agent/p2-doctor-contract-closeout
