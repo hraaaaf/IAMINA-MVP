@@ -190,14 +190,10 @@ def refresh_personal_response_memory(
                 row.evidence_strength,
                 pattern.confidence,
             )
-        elif row.evidence_strength == pattern.confidence:
-            row.evidence_strength_trend = ClinicalObservationState.TREND_STABLE
 
         if baseline_changed:
             row.previous_baseline_delta_mg_dl = previous_baseline
             row.baseline_delta_change_mg_dl = round(baseline_delta - previous_baseline, 1)
-        else:
-            row.baseline_delta_change_mg_dl = 0.0
 
         row.kind = pattern.kind
         row.status = ClinicalObservationState.STATUS_ACTIVE
