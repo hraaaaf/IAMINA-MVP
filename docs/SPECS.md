@@ -148,7 +148,7 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 
 ### Consultation intelligence contract
 
-- P2-DOCTOR begins with versioned structured contract `consultation-brief.v1`; this contract is downstream review support and does not create new clinical truth;
+- the certified PR #143 `consultation-brief.v1` contract is preserved as the restricted P2-COMPANION-5 consultation-support sub-contract; it is downstream review support and does not create new clinical truth;
 - v1 consultation evidence admits only authoritative `OBSERVED_FACT` values and approved `DETERMINISTIC_DERIVATION` values; deterministic derivations must reference an evidence-registry product rule with `GOVERNED_RULE` authority;
 - unknown evidence IDs, external source records, candidate/narrative-only rules, user claims, preferences, conversational state, heuristic inference and model inference are not authorized consultation-brief truth in v1;
 - contract values are immutable bounded scalars and all runtime enum/container types are validated rather than trusted from Python annotations; raw strings cannot inject treatment/dose actions or bypass comparison/truth validation;
@@ -156,7 +156,7 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - `limited` / `moderate` / `strong` is evidence density only; the consultation contract has no numeric clinical-confidence field;
 - allowed next steps are only `MONITOR`, `COLLECT_MISSING_DATA` and `PREPARE_CLINICIAN_DISCUSSION`; no treatment change, prescription, dose calculation or autonomous escalation action is part of the contract;
 - model narration, if later enabled, is constrained to `approved_structured_fields_only` under `clinician_review_support_only` authority; a model cannot add facts, change classifications or invent missing-data resolution;
-- P2-DOCTOR-0 does not replace the existing `/api/v1/ai/doctor-brief`, create a persisted review checkpoint, assemble a live brief, or add clinician/patient UX. Those capabilities require later separately certified LOTs.
+- the inherited PR #143 contract does not by itself replace the existing `/api/v1/ai/doctor-brief`, assemble a live brief, or add clinician/patient UX. P2-COMPANION-1 companion-review anchors are not clinician-consultation checkpoints; consultation assembly and UX remain later P2-COMPANION-5 work.
 
 ### Post-save experience contract
 

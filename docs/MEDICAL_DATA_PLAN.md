@@ -180,7 +180,7 @@ Before any clinician brief is exposed, its structured source contract must be de
 - model/heuristic/conversational inference and unverified user claims are outside v1 consultation truth; later support for patient-reported claims requires an explicit contract extension that preserves their claim provenance;
 - consultation actions are restricted to monitoring, collecting missing data or preparing clinician discussion. The contract contains no diagnosis, prescription, dose or treatment-change authority;
 - free-form model output may not be used to populate or override contract fields. Any future narrator may only reformulate a fully assembled approved structured brief;
-- P2-DOCTOR-0 defines this contract only. Persistence of review checkpoints, deterministic assembly, endpoint replacement and clinician UX require separate release-gated work.
+- the certified PR #143 contract is retained as restricted P2-COMPANION-5 consultation support. P2-COMPANION-1 companion-review anchors do not establish clinician consultation history; consultation assembly, endpoint replacement and clinician UX remain separate release-gated work.
 
 ## 6. Treatment and insulin data
 
