@@ -185,7 +185,6 @@ def refresh_personal_response_memory(
         was_inactive = row.status == ClinicalObservationState.STATUS_INACTIVE
 
         if support_changed:
-            row.recurrence_count += 1
             row.previous_evidence_strength = row.evidence_strength
             row.evidence_strength_trend = _evidence_trend(
                 row.evidence_strength,
@@ -203,6 +202,7 @@ def refresh_personal_response_memory(
         row.kind = pattern.kind
         row.status = ClinicalObservationState.STATUS_ACTIVE
         if was_inactive:
+            row.recurrence_count += 1
             row.status_changed_at = refresh_time
         row.first_seen_at = min(row.first_seen_at, pattern.first_observed_at)
         row.last_seen_at = max(row.last_seen_at, pattern.last_observed_at)
