@@ -151,6 +151,11 @@ def _validate_observation(row: ClinicalObservationState) -> None:
         ClinicalObservationState.TREND_WEAKENING,
     }:
         raise ValueError("pattern has unapproved evidence-density trend")
+    if row.evidence_strength_trend == ClinicalObservationState.TREND_INITIAL:
+        if row.previous_evidence_strength:
+            raise ValueError("initial evidence-density trend cannot have previous density")
+    elif not row.previous_evidence_strength:
+        raise ValueError("non-initial evidence-density trend requires previous density")
     if row.recurrence_count < 1:
         raise ValueError("pattern recurrence_count must be positive")
     if row.observations < MIN_OBSERVATIONS:
