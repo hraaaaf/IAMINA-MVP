@@ -1,5 +1,15 @@
 part of '../dashboard_screen.dart';
 
+String _dashboardFirstName() {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null || user.isAnonymous) return '';
+  final name = user.displayName ?? user.email ?? '';
+  if (name.isEmpty) return '';
+  return name
+      .split(RegExp(r'[\s@.]'))
+      .firstWhere((part) => part.isNotEmpty, orElse: () => '');
+}
+
 // ── Page Head ─────────────────────────────────────────────────────────────────
 
 class _PageHead extends StatelessWidget {
@@ -18,7 +28,7 @@ class _PageHead extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Builder(builder: (ctx) {
-            final firstName = _HeroInsight._firstName();
+            final firstName = _dashboardFirstName();
             final salut = copy.greeting(now.hour, firstName);
             return Text(
               salut,
@@ -48,8 +58,8 @@ class _PageHead extends StatelessWidget {
 
 // ── Hero Contextuel ───────────────────────────────────────────────────────────
 // A fresh measurement gets a live state; otherwise the latest real measurement
-// anchors the longitudinal summary on every viewport. TIR remains represented by
-// the dedicated metric card below, avoiding a duplicated or washed-out hero.
+// anchors the longitudinal summary on every viewport. Range fractions remain
+// descriptive until a true CGM sufficiency contract is available.
 
 enum _HeroMode { live, tir, insight }
 

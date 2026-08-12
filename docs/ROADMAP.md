@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-12 — P0-CLIN-INTEL-1 is merged and post-merge green. P1-CLIN-SKILLS is the active certification unit in PR #127; P1-EVIDENCE follows after closure. UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-12 — P1-CLIN-SKILLS is merged and post-merge green. P1-EVIDENCE is the active certification unit in PR #132. UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -39,7 +39,7 @@ IAmina's intended product moat is **evidence-qualified longitudinal clinical int
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains blocking |
-| Clinical intelligence / proactivity | P0 audit + semantics closed; skills foundation built | 🟡 Certification | PR #124 audit; PR #126 merged/post-merge green; PR #127 exact-head certification |
+| Clinical intelligence / proactivity | P0 audit + semantics + skills foundation closed; evidence registry built | 🟡 Certification | PR #127 merged/post-merge green; PR #132 P1-EVIDENCE certification |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
@@ -124,9 +124,9 @@ Durable result:
 - patient-visible glycemic emergency contacts are resolved only from confirmed-jurisdiction versioned resources;
 - the clinician-summary boundary remains KPI/statistics-only rather than legacy pattern authority.
 
-## P1-CLIN-SKILLS — Diabetologist Skills Foundation — PR #127 CERTIFICATION UNIT
+## ✅ P1-CLIN-SKILLS — Diabetologist Skills Foundation — CLOSED
 
-Built on the PR branch:
+Delivered in PR #127:
 
 - repository-owned `diabetes-clinical-reasoning` procedure defines diabetologist-grade provenance, applicability, eligibility, uncertainty and allowed-next-step reasoning across the diabetes domain;
 - `diabetes-proactive-intelligence` defines explicit prioritization dimensions, attention budget and the longitudinal insight lifecycle without black-box urgency or treatment authority;
@@ -134,7 +134,7 @@ Built on the PR branch:
 - `CORE_SOURCES.md` maps the current 2026 starting corpus, including ADA Standards 2026, ISPAD pediatric guidance, KDIGO final-vs-draft status and IDF/DaR 2026 fasting-risk resources;
 - `AGENTS.md` and `.skills/README.md` route future clinical-intelligence/proactivity LOTs through the new skills while explicitly preserving deterministic runtime precedence.
 
-**Acceptance gate:** exact-head CI + PostgreSQL + migration drift + Clinical Safety Reviewer + Release Certifier, expected-head merge, then post-merge `main` CI + migration drift. Until those gates pass, PR #127 is not closed.
+**Closure:** PR #127 head `763664f5…` passed CI #1731 + drift #1543, Clinical Safety Reviewer and Release Certifier; merge `572b53c3…` then passed post-merge CI #1732 + drift #1544.
 
 ## Ordered execution
 
@@ -142,8 +142,8 @@ Built on the PR branch:
 |---|---|---|---|
 | P0-CLIN-INTEL-0 | Audit real clinical/proactive stack | ✅ Closed | PR #124 merged and post-merge green |
 | P0-CLIN-INTEL-1 | Clinical semantics hardening | ✅ Closed | PR #126 merged and post-merge green |
-| **P1-CLIN-SKILLS** | **Diabetologist Skills Foundation** | 🟡 **CERTIFICATION** | PR #127; exact-head + specialist review + merge/post-merge required |
-| **P1-EVIDENCE** | **Versioned Diabetes Evidence Registry** | 🔴 **NEXT AFTER #127** | Every governed clinical metric/rule/observation records source/version, population, modality, evidence maturity, review date and supersession state |
+| **P1-CLIN-SKILLS** | **Diabetologist Skills Foundation** | ✅ **CLOSED** | PR #127 merged and post-merge green |
+| **P1-EVIDENCE** | **Versioned Diabetes Evidence Registry** | 🟡 **CERTIFICATION** | PR #132; exact-head + Clinical Safety Reviewer + Release Certifier + merge/post-merge required |
 | P2-CLINICAL-TWIN | Longitudinal Observation Memory | ⏳ Planned | Recurring evidence-qualified observations can be followed without promoting model inference to patient fact |
 | P2-PROACTIVE | Prioritization + Insight Lifecycle | ⏳ Planned | Clinical relevance, persistence, actionability, evidence density and interruption cost govern what surfaces and when |
 | P2-DOCTOR | Consultation Intelligence | ⏳ Planned | Clinician brief reports evidence-qualified change since last review with uncertainty and provenance |
@@ -233,7 +233,7 @@ Preparation/executable gates do not imply that external legal, processor, lingui
 
 # Current blockers and next sequence
 
-1. **Clinical intelligence product lane:** certify and merge PR #127, then start **P1-EVIDENCE — Versioned Diabetes Evidence Registry** immediately. This lane is executable without waiting for external MENA approvals.
+1. **Clinical intelligence product lane:** certify and merge PR #132 — **P1-EVIDENCE — Versioned Diabetes Evidence Registry** — then start **P2-CLINICAL-TWIN — Longitudinal Observation Memory**. This lane is executable without waiting for external MENA approvals.
 2. **Security emergency:** revoke/rotate all potentially affected PekPik credentials and review provider activity under issue #30.
 3. After credential rotation confirmation, rewrite affected refs, require fresh clones, obtain a passing non-shallow secret-history scan and activate the blocking history gate.
 4. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.

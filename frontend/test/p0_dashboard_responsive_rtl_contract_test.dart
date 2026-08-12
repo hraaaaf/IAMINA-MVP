@@ -69,15 +69,16 @@ void main() {
     }
   });
 
-  test('mobile dashboard metrics stay compact and GMI fails closed', () {
+  test('mobile dashboard metrics stay compact and CGM metrics fail closed', () {
     final source = _read('lib/features/dashboard/widgets/kpi_cards.dart');
 
     for (final required in <String>[
-      'final gmiEligible = daysWithData >= 14 && logs.length >= 50',
-      "value: gmi == null ? '--' : gmi.toStringAsFixed(1)",
-      'dashboardGmiLimitedCoverage',
+      "value: '--'",
+      'dashboardInsufficientData',
       '_CompactMetricCell',
       'IntrinsicHeight',
+      'final cv = ClinicalEngine.calcCV(logs)',
+      'accent: AminaTheme.teal600',
     ]) {
       expect(
         source,
@@ -85,6 +86,22 @@ void main() {
         reason: 'Missing compact/fail-closed metric contract: $required',
       );
     }
+
+    expect(
+      source,
+      isNot(contains('ClinicalEngine.calcGMI(logs)')),
+      reason: 'Compact dashboard must not derive GMI from mixed/manual local logs.',
+    );
+    expect(
+      source,
+      isNot(contains('dashboardGmiLimitedCoverage')),
+      reason: 'Compact dashboard must not claim row-count coverage makes CGM GMI eligible.',
+    );
+    expect(
+      source,
+      isNot(contains('cv < 36')),
+      reason: 'Compact dashboard must not apply a normative CGM CV threshold locally.',
+    );
   });
 
   test('mobile add action has a bounded accessible footprint', () {

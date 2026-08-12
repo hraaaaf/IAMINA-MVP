@@ -8,6 +8,7 @@ from unittest import mock
 from django.test import SimpleTestCase
 
 from diabetes.services.clinical.engine import run_clinical_analysis
+from diabetes.services.clinical.evidence_projection import guard_normative_kpis
 from diabetes.services.clinical.semantic_compressor import compress
 from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
 
@@ -85,38 +86,33 @@ class EngineRuntimeAuthorityTests(SimpleTestCase):
         self.assertNotIn("GLUCOSE_WITH_RECORDED_POOR_SLEEP", codes)
         self.assertNotIn("HIGH_GLUCOSE_WITH_RECORDED_MEAL_TEXT", codes)
 
-    def test_sql_first_cgm_variability_requires_valid_wear(self):
-        sparse = _kpis(
-            cv_pct=44.0,
-            log_count=200,
-            days_with_data=7,
-            cgm_active_pct=95.0,
+    def test_normative_cgm_variability_never_unlocks_from_row_fraction(self):
+        snapshots = (
+            _kpis(
+                cv_pct=44.0,
+                log_count=200,
+                days_with_data=7,
+                cgm_active_pct=95.0,
+            ),
+            _kpis(
+                cv_pct=44.0,
+                log_count=1200,
+                days_with_data=14,
+                cgm_active_pct=90.0,
+            ),
         )
-        with mock.patch(
-            "diabetes.services.clinical.engine._format_with_llm",
-            return_value=[],
-        ):
-            sparse_report = run_clinical_analysis([], sparse)
-        self.assertNotIn(
-            "CGM_HIGH_VARIABILITY",
-            {pattern.code for pattern in sparse_report.patterns},
-        )
-
-        eligible = _kpis(
-            cv_pct=44.0,
-            log_count=1200,
-            days_with_data=14,
-            cgm_active_pct=90.0,
-        )
-        with mock.patch(
-            "diabetes.services.clinical.engine._format_with_llm",
-            return_value=[],
-        ):
-            eligible_report = run_clinical_analysis([], eligible)
-        self.assertIn(
-            "CGM_HIGH_VARIABILITY",
-            {pattern.code for pattern in eligible_report.patterns},
-        )
+        for snapshot in snapshots:
+            guarded = guard_normative_kpis(snapshot)
+            self.assertIsNone(guarded.cv_pct)
+            with mock.patch(
+                "diabetes.services.clinical.engine._format_with_llm",
+                return_value=[],
+            ):
+                report = run_clinical_analysis([], guarded)
+            self.assertNotIn(
+                "CGM_HIGH_VARIABILITY",
+                {pattern.code for pattern in report.patterns},
+            )
 
     def test_active_pattern_packet_contains_source_and_limitations(self):
         morning = [_entry(7, day, 175) for day in range(3)]
@@ -168,7 +164,7 @@ class SemanticCompressorSafetyTests(SimpleTestCase):
         self.assertIn("do not apply", context.kpi_summary.lower())
         self.assertNotIn("unstable (above ada threshold)", context.kpi_summary.lower())
 
-    def test_eligible_cgm_window_can_state_general_reference(self):
+    def test_cgm_row_fraction_does_not_unlock_normative_reference_without_wear_time(self):
         context = compress(
             _kpis(
                 cv_pct=44.0,
@@ -177,7 +173,10 @@ class SemanticCompressorSafetyTests(SimpleTestCase):
             ),
             [],
         )
-        self.assertIn("ada 2026 general cgm reference", context.kpi_summary.lower())
+        summary = context.kpi_summary.lower()
+        self.assertIn("provenance, not sensor wear-time", summary)
+        self.assertIn("do not apply", summary)
+        self.assertNotIn("ada 2026 general cgm reference", summary)
 
 
 class NoTreatmentSemanticsTests(SimpleTestCase):
