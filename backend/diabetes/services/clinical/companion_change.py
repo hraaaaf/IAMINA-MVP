@@ -178,7 +178,7 @@ def _build_change_item(
         missing_data=missing_data,
         limitations=limitations,
     )
-    return _build_change_item(
+    return CompanionChangeItem(
         observation_key=observation_key,
         change_kind=change_kind,
         evidence_id=evidence_id,
