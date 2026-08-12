@@ -1,0 +1,26 @@
+name: Temporary rebase P2 proactive closeout
+
+on:
+  push:
+    branches:
+      - agent/p2-proactive-closeout
+
+permissions:
+  contents: write
+
+jobs:
+  rebase-closeout:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2-proactive-closeout
+          fetch-depth: 0
+      - name: Merge current main into closeout branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+          git push origin HEAD:agent/p2-proactive-closeout
