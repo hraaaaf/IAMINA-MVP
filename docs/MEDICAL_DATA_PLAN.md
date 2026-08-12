@@ -181,7 +181,21 @@ A claim about what changed since a prior IAmina review requires a governed compa
 - anchor/snapshot persistence remains patient-owned application data subject to export, account deletion and retention rules;
 - this product review anchor is not a clinician consultation checkpoint and cannot be used to fabricate consultation history.
 
-### 5.3 Consultation-intelligence evidence boundary
+### 5.3 Companion evidence + uncertainty boundary
+
+Material Companion observations must expose why they are allowed to exist and what remains unknown without inventing a confidence score:
+
+- P2-COMPANION-1 change items and P2-COMPANION-2 pattern items use one immutable evidence/uncertainty envelope;
+- runtime admission requires a current versioned internal product rule with `GOVERNED_RULE` authority plus an explicit Companion rule↔producer registration; a governed rule from another product surface is not automatically Companion authority;
+- the initial admission set contains only `rule.personal-response.repetition.v1` produced by `diabetes.personal_response.v1`;
+- provenance must preserve evidence/rule ID, producer, rule summary, maturity, authority, finality, review date, applicability metadata and registered supporting-source records;
+- a supporting external source keeps its own evidence maturity/finality and cannot be promoted into runtime patient authority through citation;
+- evidence maturity and repetition density are separate concepts. `limited` / `moderate` / `strong` describes repetition density only and must not become probability, p-value, significance or clinical confidence;
+- missing longitudinal/current evidence must be explicit: unprovable change stays `unknown`, initial density/baseline history remains missing, and resolved pattern numerics remain historical rather than current physiology;
+- source-only, candidate, narrative-only, unknown, superseded, non-versioned or wrong-producer inputs fail closed;
+- this explainability layer does not add a clinical detector, threshold, diagnosis, causality, prediction, treatment/dose rule, urgency, suggestion or prioritization authority.
+
+### 5.4 Consultation-intelligence evidence boundary
 
 Before any clinician brief is exposed, its structured source contract must be deterministic, provenance-qualified and fail closed:
 
