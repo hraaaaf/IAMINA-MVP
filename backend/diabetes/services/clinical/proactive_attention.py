@@ -394,15 +394,15 @@ def select_next_proactive_insight(
     if clearance is not EmergencyClearance.CLEAR:
         return ProactiveDecision(candidate=None, suppression_reason="emergency_clearance_required")
 
-    result = refresh_personal_response_memory(patient_id=patient_id)
-    dataset_eligible = _dataset_eligible(result)
-    now = timezone.now()
-
     evidence = get_evidence(PERSONAL_RESPONSE_EVIDENCE_ID)
     if evidence.clinical_authority is not ClinicalAuthority.GOVERNED_RULE:
         return ProactiveDecision(candidate=None, suppression_reason="source_rule_not_governed")
     if evidence.supersession_state != "current":
         return ProactiveDecision(candidate=None, suppression_reason="source_rule_superseded")
+
+    result = refresh_personal_response_memory(patient_id=patient_id)
+    dataset_eligible = _dataset_eligible(result)
+    now = timezone.now()
 
     observations = list(
         ClinicalObservationState.objects.select_for_update()
