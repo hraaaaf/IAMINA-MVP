@@ -9,7 +9,7 @@ class ClinicalObservationState(models.Model):
     """Persisted lifecycle of an approved deterministic observation.
 
     This model is deliberately not a diagnosis/problem list. Rows may be active or
-    inactive only, and the database accepts deterministic-derivation provenance only.
+    inactive only, and the database accepts only the approved deterministic producer.
     """
 
     KIND_CONTEXT = "context"
@@ -47,6 +47,8 @@ class ClinicalObservationState(models.Model):
     )
 
     DETERMINISTIC_TRUTH_KIND = "deterministic_derivation"
+    APPROVED_PRODUCER = "diabetes.personal_response.v1"
+    APPROVED_EVIDENCE_ID = "rule.personal-response.repetition.v1"
 
     patient = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -101,6 +103,14 @@ class ClinicalObservationState(models.Model):
             models.CheckConstraint(
                 condition=models.Q(truth_kind="deterministic_derivation"),
                 name="clinical_obs_truth_deterministic",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(producer="diabetes.personal_response.v1"),
+                name="clinical_obs_producer_personal_response",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(evidence_id="rule.personal-response.repetition.v1"),
+                name="clinical_obs_evidence_personal_response",
             ),
         ]
         ordering = ("patient_id", "observation_key")
