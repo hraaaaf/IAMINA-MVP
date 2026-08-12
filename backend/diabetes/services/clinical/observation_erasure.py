@@ -8,6 +8,7 @@ from the surviving authoritative rows instead of preserving historical aggregate
 
 from __future__ import annotations
 
+from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from diabetes.models.clinical_observation import ClinicalObservationState
@@ -28,5 +29,10 @@ def reconcile_personal_response_memory_after_source_erasure(
     If the remaining source dataset is insufficient, no observation state is
     recreated.
     """
+    # Use the same patient-level lock as every canonical Clinical Twin refresh.
+    # If a refresh started before erasure, it must finish first; this transaction
+    # then purges/rebuilds. Refreshes starting afterward wait for this transaction
+    # and therefore can only observe the surviving authoritative source rows.
+    get_user_model().objects.select_for_update().only("pk").get(pk=patient_id)
     ClinicalObservationState.objects.filter(patient_id=patient_id).delete()
     return refresh_personal_response_memory(patient_id=patient_id)
