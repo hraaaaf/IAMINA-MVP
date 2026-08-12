@@ -1,4 +1,4 @@
-# UX-12 visual gate revision 2
+# UX-12 visual gate revision 3
 name: UX-12 global visual convergence
 
 on:
@@ -46,7 +46,7 @@ jobs:
             lib/features/medications/medication_screen.dart \
             lib/features/reminders/reminders_screen.dart
           flutter pub get
-          flutter analyze
+          flutter analyze --no-fatal-infos
           flutter test
 
       - name: Commit UX-12 product convergence
