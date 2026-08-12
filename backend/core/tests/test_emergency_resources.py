@@ -1,6 +1,9 @@
 from datetime import date
 
-from core.emergency_resources import resolve_emergency_resources
+from core.emergency_resources import (
+    render_medical_emergency_contact,
+    resolve_emergency_resources,
+)
 from core.locale import ResolvedLocale
 
 
@@ -67,3 +70,36 @@ def test_stale_resource_fails_closed():
     assert result.country_specific is False
     assert result.contacts == ()
     assert result.safe_message_code == "country_resource_stale"
+
+
+def test_renderer_uses_validated_medical_contact_for_confirmed_morocco():
+    text = render_medical_emergency_contact(
+        _locale(country_code="MA", confirmed=True),
+        language="fr",
+        today=date(2026, 7, 30),
+    )
+
+    assert "150" in text
+    assert "141" not in text
+
+
+def test_renderer_is_number_free_when_country_is_unconfirmed():
+    text = render_medical_emergency_contact(
+        _locale(country_code="MA", confirmed=False),
+        language="fr",
+        today=date(2026, 7, 30),
+    )
+
+    assert "150" not in text
+    assert "numéro d'urgence confirmé" in text
+
+
+def test_renderer_is_number_free_when_resource_is_stale():
+    text = render_medical_emergency_contact(
+        _locale(country_code="MA", confirmed=True),
+        language="fr",
+        today=date(2027, 1, 31),
+    )
+
+    assert "150" not in text
+    assert "numéro d'urgence confirmé" in text

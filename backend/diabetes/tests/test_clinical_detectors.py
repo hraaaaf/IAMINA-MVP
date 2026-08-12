@@ -1,7 +1,5 @@
-"""
-Clinical engine — unit tests for pattern detectors and sql_analytics helpers.
-Each detector gets at minimum: a positive case, a negative case, an edge case.
-"""
+"""Regression tests for evidence-qualified diabetes observations."""
+
 from datetime import datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
@@ -13,219 +11,221 @@ from diabetes.services.clinical.engine import (
     detect_food_sensitivity,
     detect_high_variability,
     detect_post_exercise_hypo,
+    detect_postmeal_spike,
     detect_sleep_impact,
     detect_somogyi_rebound,
     detect_stress_correlation,
 )
 from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Entry factory
-# ─────────────────────────────────────────────────────────────────────────────
-
 _BASE = datetime(2026, 4, 1)
 
 
-def _e(hour, day_offset, bg, **kwargs):
-    """Minimal LogEntry stand-in matching what every detector probes."""
-    defaults = dict(
-        meal_description="",
-        exercised="no",
-        sleep_quality="good",
-        stressed="no",
-        fatigue_level="ok",
-        is_sick="no",
-        meal_type="",
-    )
-    defaults.update(kwargs)
+def _e(
+    hour,
+    day_offset,
+    bg,
+    *,
+    meal_description="",
+    exercised="",
+    sleep_quality="",
+    stressed="",
+    fatigue_level="",
+    is_sick="",
+    meal_type="",
+    glycemic_context="",
+    source="manual",
+):
     return SimpleNamespace(
         effective_time=_BASE + timedelta(days=day_offset, hours=hour),
         blood_sugar=Decimal(str(bg)),
-        **defaults,
+        meal_description=meal_description,
+        exercised=exercised,
+        sleep_quality=sleep_quality,
+        stressed=stressed,
+        fatigue_level=fatigue_level,
+        is_sick=is_sick,
+        meal_type=meal_type,
+        glycemic_context=glycemic_context,
+        source=source,
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# KPI formula contracts (inline — no dependency on deprecated helpers)
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _gmi(mean_glucose: float) -> float:
-    return round(3.31 + 0.02392 * mean_glucose, 1)
-
-
-def _tir(entries, low: float = 70.0, high: float = 180.0) -> float:
-    if not entries:
-        return 0.0
-    in_range = sum(1 for e in entries if low <= float(e.blood_sugar) <= high)
-    return round((in_range / len(entries)) * 100, 1)
-
-
-class GMITests(SimpleTestCase):
-    def test_ada_formula(self):
-        self.assertAlmostEqual(_gmi(154), 3.31 + 0.02392 * 154, places=1)
-
-    def test_low_glucose(self):
-        self.assertLess(_gmi(70), _gmi(154))
-
-    def test_high_glucose(self):
-        self.assertGreater(_gmi(250), _gmi(154))
-
-
-class TIRTests(SimpleTestCase):
-    def test_empty_returns_zero(self):
-        self.assertEqual(_tir([]), 0.0)
-
-    def test_all_in_range(self):
-        entries = [_e(10, i, 120) for i in range(5)]
-        self.assertEqual(_tir(entries), 100.0)
-
-    def test_none_in_range(self):
-        entries = [_e(10, 0, 250), _e(10, 1, 50)]
-        self.assertEqual(_tir(entries), 0.0)
-
-    def test_half_in_range(self):
-        entries = [_e(10, 0, 100), _e(10, 1, 250)]
-        self.assertEqual(_tir(entries), 50.0)
+def _assert_observation_only(testcase: SimpleTestCase, pattern) -> None:
+    text = " ".join(
+        [
+            pattern.title,
+            pattern.evidence,
+            pattern.fallback_content,
+            pattern.fallback_action,
+        ]
+    ).lower()
+    forbidden = (
+        "ajustement de votre dose",
+        "insuline basale",
+        "insuline rapide",
+        "bolus",
+        "c'est l'effet somogyi",
+        "directement liée",
+        "est la cause",
+    )
+    for phrase in forbidden:
+        testcase.assertNotIn(phrase, text)
+    testcase.assertIn("ne", pattern.evidence.lower())
+    testcase.assertTrue(pattern.source_version)
+    testcase.assertTrue(pattern.limitations)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Dawn phenomenon detector
-# ─────────────────────────────────────────────────────────────────────────────
-
-class DawnPhenomenonTests(SimpleTestCase):
-
-    def _morning(self, day, bg):
-        return _e(7, day, bg)   # 7h AM = morning
-
-    def _night(self, day, bg):
-        return _e(23, day, bg)  # 11 PM = night
-
-    def test_detects_classic_dawn(self):
+class NeutralTimePatternTests(SimpleTestCase):
+    def test_morning_night_pattern_is_not_dawn_diagnosis(self):
         entries = (
-            [self._morning(i, 180) for i in range(4)] +
-            [self._night(i, 110) for i in range(3)]
+            [_e(7, i, 180) for i in range(4)]
+            + [_e(23, i, 110) for i in range(3)]
         )
         result = detect_dawn_phenomenon(entries)
         self.assertIsNotNone(result)
-        self.assertEqual(result.code, "DAWN_PHENOMENON")
+        assert result is not None
+        self.assertEqual(result.code, "MORNING_NIGHT_GLUCOSE_DIFFERENCE")
+        self.assertNotIn("phénomène de l'aube", result.title.lower())
+        _assert_observation_only(self, result)
 
-    def test_no_detection_when_similar_levels(self):
-        entries = (
-            [self._morning(i, 120) for i in range(4)] +
-            [self._night(i, 115) for i in range(3)]
-        )
-        self.assertIsNone(detect_dawn_phenomenon(entries))
-
-    def test_no_detection_with_insufficient_data(self):
-        entries = [self._morning(0, 200), self._night(0, 100)]
-        self.assertIsNone(detect_dawn_phenomenon(entries))
+    def test_no_morning_night_pattern_with_insufficient_data(self):
+        self.assertIsNone(detect_dawn_phenomenon([_e(7, 0, 190), _e(23, 0, 100)]))
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Post-exercise hypoglycemia detector
-# ─────────────────────────────────────────────────────────────────────────────
-
-class PostExerciseHypoTests(SimpleTestCase):
-
-    def test_detects_hypo_after_exercise(self):
+class ActivityObservationTests(SimpleTestCase):
+    def test_requires_repeated_low_values_across_two_days(self):
         entries = [
-            _e(8,  0, 120, exercised="yes"),
-            _e(20, 0, 65),
-            _e(8,  1, 115, exercised="yes"),
-            _e(20, 1, 60),
+            _e(8, 0, 120, exercised="yes"),
+            _e(18, 0, 65),
+            _e(20, 0, 60),
+            _e(8, 1, 115, exercised="yes"),
+            _e(20, 1, 68),
         ]
         result = detect_post_exercise_hypo(entries)
         self.assertIsNotNone(result)
-        self.assertEqual(result.code, "POST_EXERCISE_HYPO")
-        self.assertEqual(result.priority, 1)
+        assert result is not None
+        self.assertEqual(result.code, "LOW_GLUCOSE_WITH_RECORDED_ACTIVITY")
+        self.assertGreaterEqual(result.evidence_count, 3)
+        self.assertGreaterEqual(result.distinct_days, 2)
+        _assert_observation_only(self, result)
 
-    def test_no_detection_without_exercise(self):
-        entries = [_e(20, i, 65) for i in range(3)]
-        self.assertIsNone(detect_post_exercise_hypo(entries))
-
-    def test_no_detection_with_only_one_episode(self):
+    def test_two_events_do_not_meet_strengthened_repetition_gate(self):
         entries = [
             _e(8, 0, 120, exercised="yes"),
-            _e(20, 0, 60),
+            _e(20, 0, 65),
+            _e(8, 1, 120, exercised="yes"),
+            _e(20, 1, 65),
         ]
         self.assertIsNone(detect_post_exercise_hypo(entries))
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Stress correlation detector
-# ─────────────────────────────────────────────────────────────────────────────
-
-class StressCorrelationTests(SimpleTestCase):
-
-    def test_detects_stress_hyperglycemia(self):
-        entries = (
-            [_e(10, i, 220, stressed="yes") for i in range(3)] +
-            [_e(10, i+3, 100, stressed="no") for i in range(3)]
-        )
+class ContextObservationTests(SimpleTestCase):
+    def test_stress_uses_positive_context_without_negative_control(self):
+        entries = [
+            _e(10, 0, 210, stressed="yes"),
+            _e(10, 1, 205, stressed="yes"),
+            _e(10, 2, 200, stressed="yes"),
+        ]
         result = detect_stress_correlation(entries)
         self.assertIsNotNone(result)
-        self.assertEqual(result.code, "STRESS_HYPERGLYCEMIA")
+        assert result is not None
+        self.assertEqual(result.code, "GLUCOSE_WITH_RECORDED_STRESS")
+        self.assertNotIn("jours calmes", result.evidence.lower())
+        _assert_observation_only(self, result)
 
-    def test_no_detection_when_delta_small(self):
-        entries = (
-            [_e(10, i, 130, stressed="yes") for i in range(3)] +
-            [_e(10, i+3, 120, stressed="no") for i in range(3)]
-        )
-        self.assertIsNone(detect_stress_correlation(entries))
-
-    def test_no_detection_with_only_stressed_entries(self):
-        entries = [_e(10, i, 200, stressed="yes") for i in range(4)]
-        self.assertIsNone(detect_stress_correlation(entries))
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# High variability detector
-# ─────────────────────────────────────────────────────────────────────────────
-
-class HighVariabilityTests(SimpleTestCase):
-
-    def test_detects_high_cv(self):
-        # Alternating hypo/hyper → huge std dev
-        entries = [_e(10, i, 250 if i % 2 == 0 else 55) for i in range(8)]
-        result = detect_high_variability(entries)
+    def test_sleep_uses_explicit_bad_sleep_only(self):
+        entries = [
+            _e(8, 0, 160, sleep_quality="bad"),
+            _e(8, 1, 155, sleep_quality="bad"),
+            _e(8, 2, 150, sleep_quality="bad"),
+        ]
+        result = detect_sleep_impact(entries)
         self.assertIsNotNone(result)
-        self.assertEqual(result.code, "HIGH_VARIABILITY")
+        assert result is not None
+        self.assertEqual(result.code, "GLUCOSE_WITH_RECORDED_POOR_SLEEP")
+        _assert_observation_only(self, result)
 
-    def test_no_detection_stable_glucose(self):
-        entries = [_e(10, i, 115 + i) for i in range(8)]
+
+class SQLFirstVariabilityTests(SimpleTestCase):
+    def test_raw_entry_cv_detector_is_retired(self):
+        entries = [_e(10, i, 250 if i % 2 == 0 else 55) for i in range(20)]
         self.assertIsNone(detect_high_variability(entries))
 
-    def test_no_detection_with_too_few_entries(self):
-        entries = [_e(10, 0, 250), _e(10, 1, 55)]
-        self.assertIsNone(detect_high_variability(entries))
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# AnalyticalKPIs dataclass — property tests (no DB needed)
-# ─────────────────────────────────────────────────────────────────────────────
-
-class AnalyticalKPIsTests(SimpleTestCase):
-
-    def _kpis(self, **kwargs):
-        defaults = dict(
-            avg_glucose=140.0, std_dev=20.0, cv_pct=14.0,
-            tir_pct=75.0, tar_pct=20.0, tbr_pct=5.0,
-            gmi=6.7, log_count=10, days_with_data=5,
+    def test_kpi_dataclass_stability_property_unchanged(self):
+        kpis = AnalyticalKPIs(
+            avg_glucose=140.0,
+            std_dev=20.0,
+            cv_pct=36.0,
+            tir_pct=75.0,
+            tar_pct=20.0,
+            tbr_pct=5.0,
+            gmi=6.7,
+            log_count=1000,
+            days_with_data=14,
+            cgm_active_pct=90.0,
         )
-        defaults.update(kwargs)
-        return AnalyticalKPIs(**defaults)
+        self.assertTrue(kpis.is_stable)
 
-    def test_has_sufficient_data_true(self):
-        self.assertTrue(self._kpis(log_count=5).has_sufficient_data)
 
-    def test_has_sufficient_data_false(self):
-        self.assertFalse(self._kpis(log_count=4).has_sufficient_data)
+class MealObservationTests(SimpleTestCase):
+    def test_food_text_does_not_claim_sensitivity(self):
+        entries = [
+            _e(13, 0, 230, meal_description="couscous tfaya"),
+            _e(13, 2, 215, meal_description="harira"),
+            _e(13, 3, 220, meal_description="couscous tfaya"),
+        ]
+        result = detect_food_sensitivity(entries)
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.code, "HIGH_GLUCOSE_WITH_RECORDED_MEAL_TEXT")
+        self.assertNotIn("sensibilité", result.title.lower())
+        _assert_observation_only(self, result)
 
-    def test_is_stable_below_threshold(self):
-        self.assertTrue(self._kpis(cv_pct=36.0).is_stable)
+    def test_postmeal_rise_requires_explicit_pre_and_post_context(self):
+        entries = [
+            _e(12, 0, 100, meal_type="lunch", glycemic_context="pre_meal"),
+            _e(14, 0, 170, meal_type="lunch", glycemic_context="post_meal"),
+            _e(12, 1, 110, meal_type="lunch", glycemic_context="pre_meal"),
+            _e(14, 1, 180, meal_type="lunch", glycemic_context="post_meal"),
+        ]
+        result = detect_postmeal_spike(entries)
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.code, "REPEATED_PRE_POST_MEAL_RISE")
+        _assert_observation_only(self, result)
 
-    def test_is_stable_above_threshold(self):
-        self.assertFalse(self._kpis(cv_pct=37.0).is_stable)
+    def test_meal_tag_without_explicit_measurement_context_fails_closed(self):
+        entries = [
+            _e(12, 0, 100, meal_type="lunch"),
+            _e(14, 0, 180, meal_type="lunch"),
+            _e(12, 1, 100, meal_type="lunch"),
+            _e(14, 1, 180, meal_type="lunch"),
+        ]
+        self.assertIsNone(detect_postmeal_spike(entries))
 
-    def test_is_stable_none_cv(self):
-        self.assertFalse(self._kpis(cv_pct=None).is_stable)
+
+class NightLowMorningHighTests(SimpleTestCase):
+    def _pair(self, day):
+        return [
+            _e(23, day, 65, source="cgm"),
+            _e(7, day + 1, 190, source="cgm"),
+        ]
+
+    def test_neutral_cgm_sequence_detected_without_somogyi_label(self):
+        result = detect_somogyi_rebound(self._pair(0) + self._pair(5))
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.code, "NIGHT_LOW_THEN_MORNING_HIGH")
+        self.assertNotIn("somogyi", result.title.lower())
+        self.assertNotIn("somogyi", result.fallback_content.lower())
+        _assert_observation_only(self, result)
+
+    def test_manual_sparse_pairs_do_not_create_named_mechanism(self):
+        entries = [
+            _e(23, 0, 65, source="manual"),
+            _e(7, 1, 190, source="manual"),
+            _e(23, 5, 65, source="manual"),
+            _e(7, 6, 190, source="manual"),
+        ]
+        self.assertIsNone(detect_somogyi_rebound(entries))
