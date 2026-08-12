@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
-/// Canonical compact page chrome for patient-facing mobile surfaces.
+/// Canonical page chrome for patient-facing mobile surfaces.
 ///
-/// The component intentionally owns safe-area spacing, visual hierarchy and
-/// directional padding so each screen does not invent its own mobile header.
+/// UX-12 deliberately mirrors the certified Dashboard rhythm: warm canvas,
+/// strong title hierarchy, quiet subtitle and a compact circular action surface.
+/// The component owns safe-area spacing and directional padding so screens do
+/// not invent competing mobile headers.
 class AminaMobilePageHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -28,15 +30,12 @@ class AminaMobilePageHeader extends StatelessWidget {
     final hasSubtitle = subtitle != null && subtitle!.trim().isNotEmpty;
 
     return Container(
-      decoration: BoxDecoration(
-        color: AminaTheme.surface(context),
-        border: Border(bottom: BorderSide(color: AminaTheme.divider(context))),
-      ),
+      color: Colors.transparent,
       padding: EdgeInsetsDirectional.fromSTEB(
-        20,
-        top + 12,
-        20,
-        bottom == null ? 14 : 12,
+        18,
+        top + 10,
+        18,
+        bottom == null ? 10 : 8,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -47,17 +46,6 @@ class AminaMobilePageHeader extends StatelessWidget {
                 ? CrossAxisAlignment.start
                 : CrossAxisAlignment.center,
             children: [
-              ExcludeSemantics(
-                child: Container(
-                  width: 4,
-                  height: hasSubtitle ? 38 : 30,
-                  decoration: BoxDecoration(
-                    gradient: AminaTheme.heroGradient,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,22 +59,22 @@ class AminaMobilePageHeader extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: AminaTheme.textPrimary(context),
-                          fontSize: 20,
-                          height: 1.1,
+                          fontSize: 26,
+                          height: 1.05,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: -0.35,
+                          letterSpacing: -0.8,
                         ),
                       ),
                     ),
                     if (hasSubtitle) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 5),
                       Text(
                         subtitle!,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: AminaTheme.textSecondary(context),
-                          fontSize: 12.5,
+                          fontSize: 13,
                           height: 1.3,
                           fontWeight: FontWeight.w500,
                         ),
@@ -97,15 +85,17 @@ class AminaMobilePageHeader extends StatelessWidget {
               ),
               if (trailing != null) ...[
                 const SizedBox(width: 10),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    minWidth: 44,
-                    minHeight: 44,
+                Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AminaTheme.surface(context),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AminaTheme.divider(context)),
+                    boxShadow: AminaTheme.shadowClinical,
                   ),
-                  child: Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: trailing!,
-                  ),
+                  child: trailing!,
                 ),
               ],
             ],
