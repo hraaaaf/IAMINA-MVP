@@ -25,7 +25,10 @@ class ConsultationBriefAssemblerTests(TestCase):
         self.patient = User.objects.create_user(username="p2-doctor-assembler")
         self.other = User.objects.create_user(username="p2-doctor-other")
         self.now = timezone.now()
-        self.start = self.now - timedelta(days=14)
+        # Keep the assembly end after rows created during the test so the
+        # historical-snapshot guard on Clinical Twin refresh time is deterministic.
+        self.end = self.now + timedelta(minutes=1)
+        self.start = self.end - timedelta(days=14)
 
     def _log(
         self,
@@ -84,7 +87,7 @@ class ConsultationBriefAssemblerTests(TestCase):
 
     def test_current_snapshot_uses_only_patient_non_demo_logs_and_governed_twin(self):
         self._log(self.patient, days_ago=3, glucose=120)
-        self._log(self.patient, days_ago=1, glucose=180)
+        latest_log = self._log(self.patient, days_ago=1, glucose=180)
         self._log(self.patient, days_ago=0, glucose=600, source="demo")
         self._log(self.other, days_ago=0, glucose=300)
         self._observation(self.patient)
@@ -95,7 +98,7 @@ class ConsultationBriefAssemblerTests(TestCase):
         brief = assemble_consultation_brief(
             patient_id=self.patient.id,
             window_start=self.start,
-            window_end=self.now,
+            window_end=self.end,
         )
 
         self.assertEqual(
@@ -109,21 +112,45 @@ class ConsultationBriefAssemblerTests(TestCase):
         self.assertEqual(ProactiveInsightState.objects.count(), before_proactive)
 
         by_key = {item.key: item for item in brief.items}
-        self.assertEqual(by_key["recorded_glucose.latest_mg_dl"].value, 180.0)
-        self.assertEqual(by_key["recorded_glucose.latest_mg_dl"].truth_kind, TruthKind.OBSERVED_FACT)
+        latest = by_key["recorded_glucose.latest_mg_dl"]
+        self.assertEqual(latest.value, 180.0)
+        self.assertEqual(latest.truth_kind, TruthKind.OBSERVED_FACT)
+        self.assertEqual(
+            by_key["recorded_glucose.latest_at"].value,
+            latest_log.logged_at.isoformat(),
+        )
+        self.assertEqual(
+            by_key["recorded_glucose.latest_capture_source"].value,
+            "manual",
+        )
 
         average = by_key["recorded_glucose.average_mg_dl"]
         self.assertEqual(average.value, 150.0)
         self.assertEqual(average.truth_kind, TruthKind.DETERMINISTIC_DERIVATION)
-        self.assertEqual(average.evidence_id, "rule.metric.recorded-glucose-stats.v1")
-        self.assertIn("not_cgm_time_weighted_and_not_target_assessment", average.limitations)
+        self.assertEqual(
+            average.evidence_id,
+            "rule.metric.recorded-glucose-stats.v1",
+        )
+        self.assertIn(
+            "not_cgm_time_weighted_and_not_target_assessment",
+            average.limitations,
+        )
 
         twin = by_key["clinical_twin.context:stress.status"]
         self.assertEqual(twin.value, ClinicalObservationState.STATUS_ACTIVE)
         self.assertEqual(twin.truth_kind, TruthKind.DETERMINISTIC_DERIVATION)
-        self.assertEqual(twin.evidence_id, ClinicalObservationState.APPROVED_EVIDENCE_ID)
-        self.assertEqual(twin.evidence_density, ConsultationEvidenceDensity.MODERATE)
-        self.assertEqual(twin.allowed_next_step, ConsultationNextStep.PREPARE_CLINICIAN_DISCUSSION)
+        self.assertEqual(
+            twin.evidence_id,
+            ClinicalObservationState.APPROVED_EVIDENCE_ID,
+        )
+        self.assertEqual(
+            twin.evidence_density,
+            ConsultationEvidenceDensity.MODERATE,
+        )
+        self.assertEqual(
+            twin.allowed_next_step,
+            ConsultationNextStep.PREPARE_CLINICIAN_DISCUSSION,
+        )
         self.assertNotIn("clinical_twin.context:activity.status", by_key)
 
     def test_window_excludes_outside_rows_and_reports_missing_glucose_truthfully(self):
@@ -132,17 +159,23 @@ class ConsultationBriefAssemblerTests(TestCase):
         brief = assemble_consultation_brief(
             patient_id=self.patient.id,
             window_start=self.start,
-            window_end=self.now,
+            window_end=self.end,
         )
 
         keys = {item.key for item in brief.items}
         self.assertNotIn("recorded_glucose.latest_mg_dl", keys)
         self.assertNotIn("recorded_glucose.average_mg_dl", keys)
-        self.assertIn("no_synchronized_non_demo_glucose_in_window", brief.missing_data)
-        self.assertIn("no_eligible_clinical_twin_observations", brief.missing_data)
+        self.assertIn(
+            "no_synchronized_non_demo_glucose_in_window",
+            brief.missing_data,
+        )
+        self.assertIn(
+            "no_eligible_clinical_twin_observations",
+            brief.missing_data,
+        )
 
     def test_explicit_checkpoint_unlocks_only_provable_twin_transitions(self):
-        checkpoint_at = self.now - timedelta(days=7)
+        checkpoint_at = self.end - timedelta(days=7)
         checkpoint = ConsultationReviewCheckpoint(
             reviewed_at=checkpoint_at,
             source="test.explicit-clinician-review",
@@ -180,8 +213,8 @@ class ConsultationBriefAssemblerTests(TestCase):
 
         brief = assemble_consultation_brief(
             patient_id=self.patient.id,
-            window_start=self.start,
-            window_end=self.now,
+            window_start=checkpoint_at,
+            window_end=self.end,
             review_checkpoint=checkpoint,
         )
 
@@ -222,6 +255,19 @@ class ConsultationBriefAssemblerTests(TestCase):
             ConsultationChangeKind.CURRENT_STATE,
         )
 
+    def test_since_review_window_must_start_exactly_at_checkpoint(self):
+        checkpoint = ConsultationReviewCheckpoint(
+            reviewed_at=self.end - timedelta(days=7),
+            source="test.explicit-clinician-review",
+        )
+        with self.assertRaisesRegex(ValueError, "window_start must equal checkpoint"):
+            assemble_consultation_brief(
+                patient_id=self.patient.id,
+                window_start=self.start,
+                window_end=self.end,
+                review_checkpoint=checkpoint,
+            )
+
     def test_old_inactive_twin_state_is_not_reintroduced_into_current_brief(self):
         self._observation(
             self.patient,
@@ -235,11 +281,33 @@ class ConsultationBriefAssemblerTests(TestCase):
         brief = assemble_consultation_brief(
             patient_id=self.patient.id,
             window_start=self.start,
-            window_end=self.now,
+            window_end=self.end,
         )
 
         self.assertNotIn(
             "clinical_twin.context:old-resolved.status",
+            {item.key for item in brief.items},
+        )
+
+    def test_historical_window_cannot_read_twin_state_refreshed_after_window_end(self):
+        self._observation(
+            self.patient,
+            key="context:created-later",
+            first_seen_at=self.now - timedelta(days=20),
+            last_seen_at=self.now - timedelta(days=12),
+            status_changed_at=self.now - timedelta(days=20),
+        )
+        historical_end = self.now - timedelta(days=10)
+        historical_start = historical_end - timedelta(days=14)
+
+        brief = assemble_consultation_brief(
+            patient_id=self.patient.id,
+            window_start=historical_start,
+            window_end=historical_end,
+        )
+
+        self.assertNotIn(
+            "clinical_twin.context:created-later.status",
             {item.key for item in brief.items},
         )
 
@@ -248,20 +316,20 @@ class ConsultationBriefAssemblerTests(TestCase):
             assemble_consultation_brief(
                 patient_id=0,
                 window_start=self.start,
-                window_end=self.now,
+                window_end=self.end,
             )
 
         with self.assertRaisesRegex(ValueError, "window must be timezone-aware"):
             assemble_consultation_brief(
                 patient_id=self.patient.id,
                 window_start=self.start.replace(tzinfo=None),
-                window_end=self.now,
+                window_end=self.end,
             )
 
         with self.assertRaisesRegex(ValueError, "window_start must precede window_end"):
             assemble_consultation_brief(
                 patient_id=self.patient.id,
-                window_start=self.now,
+                window_start=self.end,
                 window_end=self.start,
             )
 
@@ -269,19 +337,19 @@ class ConsultationBriefAssemblerTests(TestCase):
             assemble_consultation_brief(
                 patient_id=self.patient.id,
                 window_start=self.start,
-                window_end=self.now,
+                window_end=self.end,
                 review_checkpoint="2026-08-01",
             )
 
     def test_checkpoint_at_or_after_window_end_fails_closed(self):
         checkpoint = ConsultationReviewCheckpoint(
-            reviewed_at=self.now,
+            reviewed_at=self.end,
             source="test.explicit-clinician-review",
         )
         with self.assertRaisesRegex(ValueError, "checkpoint must precede"):
             assemble_consultation_brief(
                 patient_id=self.patient.id,
-                window_start=self.start,
-                window_end=self.now,
+                window_start=self.end,
+                window_end=self.end + timedelta(days=1),
                 review_checkpoint=checkpoint,
             )
