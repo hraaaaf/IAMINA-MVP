@@ -1,0 +1,32 @@
+name: P2 proactive canonical docs run
+
+on:
+  push:
+    branches: [p2-proactive-attention-lifecycle]
+    paths:
+      - .github/workflows/p2-proactive-docs-run.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p2-proactive-attention-lifecycle
+          fetch-depth: 0
+      - name: Apply canonical docs patch
+        run: python scripts/_p2_proactive_docs_patch.py
+      - name: Commit docs and remove temporary files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/p2-proactive-docs-run.yml
+          git rm scripts/_p2_proactive_docs_patch.py
+          git add docs/ROADMAP.md docs/SPECS.md
+          git commit -m "docs(p2-proactive): align canonical contracts"
+          git pull --rebase origin p2-proactive-attention-lifecycle
+          git push origin HEAD:p2-proactive-attention-lifecycle
