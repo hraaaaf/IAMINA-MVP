@@ -1,0 +1,319 @@
+name: UX-12 global visual convergence
+
+on:
+  push:
+    branches:
+      - ux/12-global-visual-consistency
+    paths:
+      - .github/workflows/ux12-apply-capture.yml
+
+permissions:
+  contents: write
+
+jobs:
+  converge-and-capture:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ux/12-global-visual-consistency
+          fetch-depth: 0
+
+      - name: Apply canonical Dashboard tokens to remaining surfaces
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, label):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'missing {label} in {path}')
+              p.write_text(text.replace(old, new, 1))
+
+          theme = 'frontend/lib/core/theme/app_theme.dart'
+          replace(theme, 'static const Color teal700 = Color(0xFF0B6E57);', 'static const Color teal700 = Color(0xFF064E52);', 'deep teal')
+          replace(theme, 'static const Color ink100 = Color(0xFFEAF0EE);', 'static const Color ink100 = Color(0xFFE8E3DB);', 'warm border')
+          replace(theme, 'static const Color ink50  = Color(0xFFF5F8F7);', 'static const Color ink50  = Color(0xFFF3F0EA);', 'warm subtle')
+          replace(theme, 'static const Color paper  = Color(0xFFFBFCFB);', 'static const Color paper  = Color(0xFFF8F5EF);', 'warm paper')
+          replace(theme, 'static const double radius2XL = 20.0;', 'static const double radius2XL = 22.0;', 'dashboard radius')
+
+          p = Path(theme)
+          text = p.read_text()
+          light_marker = '''      cardTheme: CardThemeData(
+        elevation: 0,'''
+          light_input = '''      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: cardBg,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle: const TextStyle(color: ink500, fontSize: 12.5),
+        hintStyle: const TextStyle(color: ink400),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: ink100),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: ink100),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: teal700, width: 1.4),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,'''
+          if text.count(light_marker) < 1:
+              raise SystemExit('missing light card marker')
+          text = text.replace(light_marker, light_input, 1)
+
+          dark_marker = '''      cardTheme: CardThemeData(
+        elevation: 0,'''
+          dark_input = '''      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: darkCardElevated,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle: const TextStyle(color: dark300, fontSize: 12.5),
+        hintStyle: const TextStyle(color: dark400),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: dark600),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: dark600),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: teal400, width: 1.4),
+        ),
+      ),
+      cardTheme: CardThemeData(
+        elevation: 0,'''
+          if dark_marker not in text:
+              raise SystemExit('missing dark card marker')
+          text = text.replace(dark_marker, dark_input, 1)
+
+          old_light_button = '''      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: teal500,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+        ),
+      ),'''
+          new_light_button = '''      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: teal700,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(0, 48),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+        ),
+      ),'''
+          if old_light_button not in text:
+              raise SystemExit('missing light filled button')
+          text = text.replace(old_light_button, new_light_button, 1)
+
+          old_dark_button = '''      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: teal500,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(99)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Inter'),
+        ),
+      ),'''
+          new_dark_button = '''      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: teal500,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(0, 48),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontFamily: 'Inter'),
+        ),
+      ),'''
+          if old_dark_button not in text:
+              raise SystemExit('missing dark filled button')
+          text = text.replace(old_dark_button, new_dark_button, 1)
+          p.write_text(text)
+
+          replace(
+              'frontend/lib/features/journal/journal_screen.dart',
+              ''': viewportWidth >= 700
+        ? 28.0
+        : 20.0;''',
+              ''': viewportWidth >= 700
+        ? 28.0
+        : 18.0;''',
+              'journal mobile gutter',
+          )
+          replace(
+              'frontend/lib/features/profile/profile_screen.dart',
+              "padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 24, 40),",
+              "padding: EdgeInsetsDirectional.fromSTEB(isMobile ? 18 : 24, isMobile ? 6 : 20, isMobile ? 18 : 24, isMobile ? 112 : 40),",
+              'profile mobile spacing',
+          )
+          replace(
+              'frontend/lib/features/import/import_screen.dart',
+              'backgroundColor: AminaTheme.paper,',
+              'backgroundColor: AminaTheme.bg(context),',
+              'import background',
+          )
+          replace(
+              'frontend/lib/features/import/import_screen.dart',
+              'padding: const EdgeInsets.all(16),',
+              'padding: const EdgeInsetsDirectional.fromSTEB(18, 6, 18, 112),',
+              'import mobile rhythm',
+          )
+          replace(
+              'frontend/lib/features/dashboard/widgets/add_log_sheet.dart',
+              'padding: const EdgeInsets.fromLTRB(20, 8, 20, 112),',
+              'padding: const EdgeInsetsDirectional.fromSTEB(18, 10, 18, 112),',
+              'add-log mobile gutter',
+          )
+          replace(
+              'frontend/lib/features/dashboard/widgets/add_log_sheet.dart',
+              '''fontSize: 24,
+                fontWeight: FontWeight.w800,''',
+              '''fontSize: 26,
+                height: 1.05,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.8,''',
+              'add-log heading',
+          )
+          replace(
+              'frontend/lib/features/dashboard/widgets/add_log_sheet.dart',
+              '''color: isLow ? const Color(0xFFFFF7ED) : AminaTheme.subtleBg(context),
+          borderRadius: BorderRadius.circular(22),''',
+              '''color: isLow ? const Color(0xFFFFF7ED) : AminaTheme.surface(context),
+          borderRadius: BorderRadius.circular(22),''',
+              'add-log glucose surface',
+          )
+          PY
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Format and verify frontend
+        working-directory: frontend
+        run: |
+          dart format \
+            lib/core/theme/app_theme.dart \
+            lib/core/widgets/mobile_page_header.dart \
+            lib/core/widgets/first_use_panel.dart \
+            lib/core/widgets/clinical_card.dart \
+            lib/features/journal/journal_screen.dart \
+            lib/features/profile/profile_screen.dart \
+            lib/features/import/import_screen.dart \
+            lib/features/dashboard/widgets/add_log_sheet.dart \
+            lib/features/medications/medication_screen.dart \
+            lib/features/reminders/reminders_screen.dart
+          flutter pub get
+          flutter analyze
+          flutter test
+
+      - name: Commit UX-12 product convergence
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/lib
+          if git diff --cached --quiet; then
+            echo "No product changes produced" >&2
+            exit 1
+          fi
+          git commit -m "feat(ux): align primary surfaces with Dashboard design system"
+          git push origin HEAD:ux/12-global-visual-consistency
+          git rev-parse HEAD > /tmp/ux12-source-sha.txt
+
+      - name: Build audit web
+        working-directory: frontend
+        run: flutter build web --debug --dart-define=IAMINA_AUDIT_ACCESS=true
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Serve build
+        run: |
+          python3 -m http.server 4173 --directory frontend/build/web >/tmp/ux12-server.log 2>&1 &
+          echo $! > /tmp/ux12-server.pid
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:4173 >/dev/null && exit 0
+            sleep 1
+          done
+          exit 1
+
+      - name: Capture all primary mobile surfaces
+        run: |
+          mkdir -p /tmp/ux12-captures
+          cat >/tmp/ux12-capture.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+
+          const routes = [
+            ['dashboard', '/dashboard'],
+            ['journal', '/journal'],
+            ['summary', '/summary'],
+            ['add', '/ajouter'],
+            ['medications', '/medications'],
+            ['reminders', '/reminders'],
+            ['profile', '/profile'],
+            ['importer', '/importer'],
+          ];
+          const viewports = [
+            ['mobile', 390, 844],
+            ['small', 360, 560],
+          ];
+          const locales = [['fr', 'fr-FR'], ['ar', 'ar-MA']];
+
+          (async () => {
+            const browser = await chromium.launch({headless: true});
+            const report = [];
+            for (const [lang, locale] of locales) {
+              const context = await browser.newContext({locale});
+              const seed = await context.newPage();
+              await seed.setViewportSize({width: 390, height: 844});
+              const seedErrors = [];
+              seed.on('pageerror', e => seedErrors.push(String(e)));
+              await seed.goto(`http://127.0.0.1:4173/?audit=ux12&lang=${lang}#/importer`, {waitUntil:'networkidle'});
+              await seed.waitForTimeout(1800);
+              const load = seed.getByRole('button', {name:/Charger|Load|تحميل/i});
+              if (await load.count()) {
+                try { await load.first().click(); await seed.waitForTimeout(1400); } catch (_) {}
+              }
+              await seed.close();
+
+              for (const [vp, width, height] of viewports) {
+                for (const [name, route] of routes) {
+                  const page = await context.newPage();
+                  await page.setViewportSize({width, height});
+                  const errors = [];
+                  page.on('pageerror', e => errors.push(String(e)));
+                  await page.goto(`http://127.0.0.1:4173/?audit=ux12&lang=${lang}#${route}`, {waitUntil:'networkidle'});
+                  await page.waitForTimeout(name === 'summary' ? 3500 : 1800);
+                  const views = await page.locator('flutter-view').count();
+                  const file = `/tmp/ux12-captures/${vp}-${lang}__${name}.png`;
+                  await page.screenshot({path:file, fullPage:false});
+                  report.push({lang,vp,width,height,name,route,views,errors});
+                  await page.close();
+                }
+              }
+              await context.close();
+            }
+            await browser.close();
+            fs.writeFileSync('/tmp/ux12-captures/report.json', JSON.stringify(report, null, 2));
+          })().catch(e => { console.error(e); process.exit(1); });
+          JS
+          node /tmp/ux12-capture.cjs
+          cp /tmp/ux12-source-sha.txt /tmp/ux12-captures/source-sha.txt
+          cp /tmp/ux12-server.log /tmp/ux12-captures/server.log
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ux12-global-visual-captures
+          path: /tmp/ux12-captures
+          retention-days: 14
