@@ -1,0 +1,94 @@
+name: Temporary P2 companion 3 docs
+
+on:
+  push:
+    branches:
+      - agent/p2-companion-3-evidence-uncertainty
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2-companion-3-evidence-uncertainty
+      - name: Update canonical P2 companion 3 contracts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected one anchor in {path}, found {count}")
+              p.write_text(text.replace(old, new, 1))
+
+          roadmap = "docs/ROADMAP.md"
+          replace_once(
+              roadmap,
+              "> **Last updated:** 2026-08-12 — P2-COMPANION-2 Personal Pattern Intelligence is certified, merged and post-merge green. **P2-COMPANION-3 — Evidence + Uncertainty is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.",
+              "> **Last updated:** 2026-08-12 — P2-COMPANION-3 Evidence + Uncertainty has a Clinical-Safety-reviewed runtime candidate in PR #151. Material P2-COMPANION-1/2 observations now expose governed provenance, evidence maturity, explicit missing data and limitations without adding clinical confidence or authority. It remains in merge gate. UX visual rebase remains closed through UX-11 at 9.8/10.",
+          )
+          replace_once(
+              roadmap,
+              "| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority contract + governed change-since-review + personal-pattern projection | 🟡 P2-COMPANION active — Evidence + Uncertainty next | PR #149 merge `a0560b38…`; post-merge CI #1922 + drift #1734 green |",
+              "| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority + governed change/pattern projections + evidence/uncertainty candidate | 🟡 P2-COMPANION-3 merge gate | PR #151 runtime head reviewed; final docs-inclusive certification/merge/post-merge still required |",
+          )
+          replace_once(
+              roadmap,
+              "### ▶️ P2-COMPANION-3 — Evidence + Uncertainty — NEXT\n\nRequire every material companion observation to expose provenance, evidence maturity/density, missing data and limitations so the product can explain why it is speaking and when it does not know enough.",
+              "### 🟡 P2-COMPANION-3 — Evidence + Uncertainty — MERGE GATE\n\nPR #151 adds one deterministic evidence/uncertainty envelope to material P2-COMPANION-1 and P2-COMPANION-2 observations without creating new clinical truth.\n\nCandidate contract:\n\n- material observations expose the governed rule/evidence ID, approved producer, rule topic/summary, evidence maturity, clinical authority, finality, review date, population/modality and any registered supporting-source metadata;\n- uncertainty is explicit through repetition density, optional density trend, `missing_data` and limitations; no numeric confidence score exists;\n- evidence maturity describes source/rule governance state, while `limited` / `moderate` / `strong` remains only personal-response repetition density; neither is patient probability or clinical confidence;\n- external source records remain supporting evidence only and never become runtime authority merely because they are cited;\n- unknown, source-only, candidate, narrative-only, superseded or non-versioned rules fail closed for material companion observations;\n- `GOVERNED_RULE` alone is insufficient: an explicit Companion rule↔producer registry currently admits only `rule.personal-response.repetition.v1 ↔ diabetes.personal_response.v1`;\n- P2-COMPANION-1 `unknown` reasons become explicit item-level missing-data facts; provable change items retain empty missing-data state;\n- P2-COMPANION-2 exposes absent prior density/baseline history and resolved-state lack of current active evidence instead of hiding those limitations;\n- P2-COMPANION-3 adds no detector, threshold, evidence source, database model/migration, endpoint, Flutter UX, model narration, suggestion, notification, prioritization, diagnosis, prediction, prescription, dose logic, treatment optimization/change or clinician override.\n\n**Runtime evidence before canonical-doc update:** exact head `a9e0fbda685c065ad85963fde757f98f31fc4bc4` passed CI #1925 + migration drift #1737 and Clinical Safety Reviewer PASS. These proofs become stale once docs change; final docs-inclusive exact-head gates, Documentation/Architecture review and Release Certifier remain mandatory before merge.",
+          )
+          replace_once(
+              roadmap,
+              "| **P2-COMPANION-3** | **Evidence + Uncertainty** | ▶️ **NEXT** | Material observations expose provenance, maturity, missing data and limitations |",
+              "| **P2-COMPANION-3** | **Evidence + Uncertainty** | 🟡 **MERGE GATE** | PR #151 common governed provenance + uncertainty envelope for P2-COMPANION-1/2; final exact-head certification/merge/post-merge pending |",
+          )
+
+          companion = "docs/COMPANION_INTELLIGENCE_CONTRACT.md"
+          replace_once(
+              companion,
+              "## 6. Consultation is a sub-capability, not the product identity",
+              "### 5.3 Evidence + uncertainty contract\n\nP2-COMPANION-3 makes the evidence boundary itself inspectable without creating stronger clinical claims:\n\n- every material P2-COMPANION-1/2 item carries one immutable `CompanionEvidenceContext` containing governed provenance plus explicit uncertainty;\n- provenance includes evidence/rule ID, approved producer, rule topic/summary, evidence maturity, clinical authority, finality, review date, population/modality and registered supporting-source metadata;\n- evidence maturity is governance/source status, not patient probability. `limited` / `moderate` / `strong` remains repetition density only and is not statistical or clinical confidence;\n- supporting external sources retain their own maturity/finality and never inherit runtime authority from the product rule;\n- candidate, narrative-only, source-only, unknown, superseded or non-versioned records cannot authorize a material companion observation;\n- a globally governed product rule is still not automatically companion truth: a separate explicit rule↔producer admission registry currently allows only `rule.personal-response.repetition.v1` from `diabetes.personal_response.v1`;\n- missing longitudinal/current evidence is represented in `missing_data` rather than hidden in prose or converted to certainty;\n- the evidence envelope has no numeric confidence field and grants no diagnosis, causality, prediction, urgency, treatment/dose, suggestion or prioritization authority.\n\n## 6. Consultation is a sub-capability, not the product identity",
+          )
+          replace_once(
+              companion,
+              "| **P2-COMPANION-3** | **Evidence + Uncertainty** | ▶️ NEXT: every material observation exposes provenance, evidence maturity, limitations and missing data |",
+              "| **P2-COMPANION-3** | **Evidence + Uncertainty** | 🟡 MERGE GATE: PR #151 adds one governed evidence/uncertainty envelope to material P2-COMPANION-1/2 observations; no confidence/authority upgrade |",
+          )
+
+          specs = "docs/SPECS.md"
+          replace_once(
+              specs,
+              "### Consultation intelligence contract",
+              "### Companion evidence + uncertainty contract\n\n- material outputs from P2-COMPANION-1 and P2-COMPANION-2 carry the same immutable `CompanionEvidenceContext`; the envelope explains existing truth and does not create a new detector or observation store;\n- material Companion admission requires both a current evidence-registry `GOVERNED_RULE` and an explicit rule↔producer registration; currently only `rule.personal-response.repetition.v1 ↔ diabetes.personal_response.v1` is admitted;\n- provenance exposes rule/evidence ID, approved producer, topic/summary, evidence maturity, authority, finality, review date, population/modality and supporting-source metadata when registered;\n- external sources remain supporting evidence with their own maturity/finality and cannot become runtime authority through citation;\n- evidence maturity is governance/source status. Personal-response `limited` / `moderate` / `strong` remains repetition density only; neither is patient probability, p-value, statistical significance or clinical-confidence score;\n- uncertainty is explicit through density/trend, `missing_data` and limitations; P2-COMPANION-1 `unknown` reasons become missing-data facts, and P2-COMPANION-2 exposes absent prior baseline/density history or resolved-state lack of current active evidence;\n- unknown, source-only, candidate, narrative-only, superseded, non-versioned or wrong-producer records fail closed;\n- P2-COMPANION-3 adds no endpoint, Flutter UX, model narration, suggestion, notification, prioritization, clinical threshold, diagnosis, prediction, treatment/dose authority or clinician override.\n\n### Consultation intelligence contract",
+          )
+
+          medical = "docs/MEDICAL_DATA_PLAN.md"
+          replace_once(
+              medical,
+              "### 5.3 Consultation-intelligence evidence boundary",
+              "### 5.3 Companion evidence + uncertainty boundary\n\nMaterial Companion observations must expose why they are allowed to exist and what remains unknown without inventing a confidence score:\n\n- P2-COMPANION-1 change items and P2-COMPANION-2 pattern items use one immutable evidence/uncertainty envelope;\n- runtime admission requires a current versioned internal product rule with `GOVERNED_RULE` authority plus an explicit Companion rule↔producer registration; a governed rule from another product surface is not automatically Companion authority;\n- the initial admission set contains only `rule.personal-response.repetition.v1` produced by `diabetes.personal_response.v1`;\n- provenance must preserve evidence/rule ID, producer, rule summary, maturity, authority, finality, review date, applicability metadata and registered supporting-source records;\n- a supporting external source keeps its own evidence maturity/finality and cannot be promoted into runtime patient authority through citation;\n- evidence maturity and repetition density are separate concepts. `limited` / `moderate` / `strong` describes repetition density only and must not become probability, p-value, significance or clinical confidence;\n- missing longitudinal/current evidence must be explicit: unprovable change stays `unknown`, initial density/baseline history remains missing, and resolved pattern numerics remain historical rather than current physiology;\n- source-only, candidate, narrative-only, unknown, superseded, non-versioned or wrong-producer inputs fail closed;\n- this explainability layer does not add a clinical detector, threshold, diagnosis, causality, prediction, treatment/dose rule, urgency, suggestion or prioritization authority.\n\n### 5.4 Consultation-intelligence evidence boundary",
+          )
+
+          architecture = "docs/architecture/ARCHITECTURE.md"
+          replace_once(
+              architecture,
+              "The inherited PR #143 `consultation-brief.v1` contract remains a downstream restricted P2-COMPANION-5 consultation-support sub-contract, not a new truth store and not IAmina's product identity.",
+              "P2-COMPANION-3 adds a read-only evidence/uncertainty envelope shared by the P2-COMPANION-1 change projection and P2-COMPANION-2 personal-pattern projection. It does not become another truth store. Runtime provenance is resolved through the immutable diabetes evidence registry and then constrained again by a Companion-specific rule↔producer admission map; a `GOVERNED_RULE` used elsewhere is not automatically companion authority. The envelope separates rule/source maturity from personal-response repetition density, exposes supporting-source metadata without promoting external literature to runtime authority, and carries explicit missing-data/limitation tokens. Candidate, narrative-only, source-only, superseded, wrong-producer or unknown evidence fails closed. No confidence score, detector, endpoint, UX, suggestion, priority or treatment authority is introduced.\n\nThe inherited PR #143 `consultation-brief.v1` contract remains a downstream restricted P2-COMPANION-5 consultation-support sub-contract, not a new truth store and not IAmina's product identity.",
+          )
+          PY
+      - name: Commit canonical docs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ROADMAP.md docs/COMPANION_INTELLIGENCE_CONTRACT.md docs/SPECS.md docs/MEDICAL_DATA_PLAN.md docs/architecture/ARCHITECTURE.md
+          git diff --cached --quiet && exit 0
+          git commit -m "docs(companion): define evidence uncertainty contract"
+          git push origin HEAD:agent/p2-companion-3-evidence-uncertainty
