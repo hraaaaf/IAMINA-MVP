@@ -9,10 +9,11 @@ surface.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import TypeAlias
 
 from core.contracts.truth import TruthKind
 from diabetes.services.clinical.evidence_registry import (
@@ -22,6 +23,7 @@ from diabetes.services.clinical.evidence_registry import (
 )
 
 CONSULTATION_BRIEF_SCHEMA_VERSION = "consultation-brief.v1"
+ConsultationScalar: TypeAlias = str | int | float | bool | None
 
 
 class ConsultationComparisonBasis(str, Enum):
@@ -83,8 +85,32 @@ _CHANGE_KINDS_REQUIRING_REVIEW_CHECKPOINT = frozenset(
 )
 
 
-def _is_timezone_aware(value: datetime) -> bool:
-    return value.tzinfo is not None and value.utcoffset() is not None
+def _require_nonempty_string(name: str, value: object) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{name} must be a non-empty string")
+    return value
+
+
+def _validate_string_tuple(name: str, values: object) -> None:
+    if not isinstance(values, tuple):
+        raise ValueError(f"{name} must be an immutable tuple")
+    for value in values:
+        _require_nonempty_string(f"{name} item", value)
+
+
+def _is_timezone_aware(value: object) -> bool:
+    return (
+        isinstance(value, datetime)
+        and value.tzinfo is not None
+        and value.utcoffset() is not None
+    )
+
+
+def _validate_scalar(value: object) -> None:
+    if type(value) not in (str, int, float, bool, type(None)):
+        raise ValueError("consultation evidence value must be an immutable scalar")
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError("consultation evidence float value must be finite")
 
 
 def _validate_governed_evidence_id(evidence_id: str) -> None:
@@ -109,8 +135,7 @@ class ConsultationReviewCheckpoint:
     source: str
 
     def __post_init__(self) -> None:
-        if not self.source or not self.source.strip():
-            raise ValueError("review checkpoint source is required")
+        _require_nonempty_string("review checkpoint source", self.source)
         if not _is_timezone_aware(self.reviewed_at):
             raise ValueError("review checkpoint reviewed_at must be timezone-aware")
 
@@ -120,7 +145,7 @@ class ConsultationEvidenceItem:
     """One evidence-qualified fact or deterministic derivation in the brief."""
 
     key: str
-    value: Any
+    value: ConsultationScalar
     truth_kind: TruthKind
     source: str
     source_version: str
@@ -134,26 +159,61 @@ class ConsultationEvidenceItem:
     allowed_next_step: ConsultationNextStep = ConsultationNextStep.MONITOR
 
     def __post_init__(self) -> None:
-        if not self.key or not self.key.strip():
-            raise ValueError("consultation evidence key is required")
-        if not self.source or not self.source.strip():
-            raise ValueError("consultation evidence source is required")
-        if not self.source_version or not self.source_version.strip():
-            raise ValueError("consultation evidence source_version is required")
+        _require_nonempty_string("consultation evidence key", self.key)
+        _require_nonempty_string("consultation evidence source", self.source)
+        _require_nonempty_string(
+            "consultation evidence source_version",
+            self.source_version,
+        )
+        _validate_scalar(self.value)
+        _validate_string_tuple("consultation evidence missing_data", self.missing_data)
+        _validate_string_tuple("consultation evidence limitations", self.limitations)
+
+        if not isinstance(self.truth_kind, TruthKind):
+            raise ValueError("consultation evidence truth_kind must be a TruthKind")
         if self.truth_kind not in _ALLOWED_TRUTH_KINDS:
             raise ValueError(
                 f"{self.truth_kind.value} is not authorized for consultation brief truth"
             )
+        if not isinstance(self.change_kind, ConsultationChangeKind):
+            raise ValueError(
+                "consultation evidence change_kind must be a ConsultationChangeKind"
+            )
+        if not isinstance(self.allowed_next_step, ConsultationNextStep):
+            raise ValueError(
+                "consultation evidence allowed_next_step must be a ConsultationNextStep"
+            )
+        if self.evidence_density is not None and not isinstance(
+            self.evidence_density,
+            ConsultationEvidenceDensity,
+        ):
+            raise ValueError(
+                "consultation evidence evidence_density must be a ConsultationEvidenceDensity"
+            )
+        if self.unit is not None:
+            _require_nonempty_string("consultation evidence unit", self.unit)
+
         if self.truth_kind is TruthKind.DETERMINISTIC_DERIVATION:
-            if not self.evidence_id or not self.evidence_id.strip():
+            if self.evidence_id is None:
                 raise ValueError(
                     "deterministic consultation derivations require an evidence_id"
                 )
-            _validate_governed_evidence_id(self.evidence_id)
+            evidence_id = _require_nonempty_string(
+                "deterministic consultation evidence_id",
+                self.evidence_id,
+            )
+            _validate_governed_evidence_id(evidence_id)
         elif self.evidence_id is not None:
             raise ValueError("observed facts must not masquerade as governed derivations")
-        if self.evidence_window_days is not None and self.evidence_window_days <= 0:
-            raise ValueError("evidence_window_days must be positive when present")
+
+        if self.evidence_window_days is not None:
+            if (
+                type(self.evidence_window_days) is not int
+                or self.evidence_window_days <= 0
+            ):
+                raise ValueError(
+                    "evidence_window_days must be a positive integer when present"
+                )
         if (
             self.evidence_density is not None
             and self.truth_kind is not TruthKind.DETERMINISTIC_DERIVATION
@@ -183,6 +243,25 @@ class ConsultationBriefEnvelope:
     def __post_init__(self) -> None:
         if self.schema_version != CONSULTATION_BRIEF_SCHEMA_VERSION:
             raise ValueError("unsupported consultation brief schema version")
+        if not isinstance(self.comparison_basis, ConsultationComparisonBasis):
+            raise ValueError(
+                "consultation brief comparison_basis must be a ConsultationComparisonBasis"
+            )
+        if not isinstance(self.authority, ConsultationAuthority):
+            raise ValueError("consultation brief authority must be a ConsultationAuthority")
+        if not isinstance(self.narration_policy, ConsultationNarrationPolicy):
+            raise ValueError(
+                "consultation brief narration_policy must be a ConsultationNarrationPolicy"
+            )
+        if not isinstance(self.items, tuple):
+            raise ValueError("consultation brief items must be an immutable tuple")
+        if not all(isinstance(item, ConsultationEvidenceItem) for item in self.items):
+            raise ValueError(
+                "consultation brief items must contain ConsultationEvidenceItem values"
+            )
+        _validate_string_tuple("consultation brief missing_data", self.missing_data)
+        _validate_string_tuple("consultation brief limitations", self.limitations)
+
         if not _is_timezone_aware(self.window_start) or not _is_timezone_aware(
             self.window_end
         ):
@@ -200,7 +279,7 @@ class ConsultationBriefEnvelope:
                         "since-review change claims require an explicit review checkpoint"
                     )
         elif self.comparison_basis is ConsultationComparisonBasis.SINCE_REVIEW_CHECKPOINT:
-            if self.review_checkpoint is None:
+            if not isinstance(self.review_checkpoint, ConsultationReviewCheckpoint):
                 raise ValueError(
                     "since_review_checkpoint requires an explicit review checkpoint"
                 )
