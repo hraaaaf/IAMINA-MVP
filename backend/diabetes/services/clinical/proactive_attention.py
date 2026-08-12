@@ -180,6 +180,16 @@ def _lifecycle_state(
     dataset_eligible: bool,
     now: datetime,
 ) -> str:
+    # Fresh data insufficiency may change the allowed next step, but it may not
+    # strengthen or resolve clinical-attention lifecycle state. Preserve any known
+    # state; a newly initialized historical observation starts in MONITORING.
+    if not dataset_eligible:
+        return (
+            ClinicalInsightState.STATE_MONITORING
+            if created
+            else insight.lifecycle_state
+        )
+
     if observation.status == ClinicalObservationState.STATUS_INACTIVE:
         if _resolution_criterion_met(
             observation,
@@ -187,8 +197,6 @@ def _lifecycle_state(
             now=now,
         ):
             return ClinicalInsightState.STATE_RESOLVED
-        if not dataset_eligible:
-            return insight.lifecycle_state
         return ClinicalInsightState.STATE_MONITORING
 
     if created:
@@ -208,11 +216,13 @@ def _lifecycle_state(
             return insight.lifecycle_state
         return ClinicalInsightState.STATE_MONITORING
 
-    if _moves_toward_recorded_baseline(observation):
-        return ClinicalInsightState.STATE_IMPROVING
-
+    # A repeated activation is the stronger longitudinal fact. Baseline movement
+    # remains available in reason codes, but cannot relabel recurrence as improvement.
     if observation.recurrence_count >= 2:
         return ClinicalInsightState.STATE_PERSISTING
+
+    if _moves_toward_recorded_baseline(observation):
+        return ClinicalInsightState.STATE_IMPROVING
 
     return ClinicalInsightState.STATE_MONITORING
 
@@ -226,6 +236,8 @@ def _reason_codes(
     lifecycle_state: str,
 ) -> list[str]:
     if created:
+        if not dataset_eligible:
+            return ["existing_observation_initialized", "current_data_insufficient"]
         if observation.status == ClinicalObservationState.STATUS_ACTIVE:
             return ["first_eligible_observation"]
         return ["existing_observation_initialized"]
