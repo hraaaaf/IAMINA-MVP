@@ -95,7 +95,7 @@ class ClinicalObservationMemoryTests(TestCase):
         self.assertEqual(second.last_evidence_fingerprint, first_fingerprint)
         self.assertEqual(second.evidence_strength_trend, ClinicalObservationState.TREND_STABLE)
 
-    def test_new_support_increments_recurrence_and_tracks_evidence_strength(self):
+    def test_new_support_strengthens_evidence_without_inflating_recurrence(self):
         self._stress_pattern()
         refresh_personal_response_memory(patient_id=self.patient.id)
 
@@ -104,7 +104,7 @@ class ClinicalObservationMemoryTests(TestCase):
         refresh_personal_response_memory(patient_id=self.patient.id)
 
         row = ClinicalObservationState.objects.get(patient=self.patient)
-        self.assertEqual(row.recurrence_count, 2)
+        self.assertEqual(row.recurrence_count, 1)
         self.assertEqual(row.previous_evidence_strength, "limited")
         self.assertEqual(row.evidence_strength, "moderate")
         self.assertEqual(
@@ -132,7 +132,7 @@ class ClinicalObservationMemoryTests(TestCase):
             round(after.baseline_delta_mg_dl - original_delta, 1),
         )
 
-    def test_eligible_absence_marks_inactive_but_insufficient_refresh_does_not(self):
+    def test_eligible_absence_and_true_reactivation_drive_lifecycle_recurrence(self):
         supporting = []
         for day, glucose in enumerate((150, 160, 170)):
             supporting.append(
@@ -154,6 +154,13 @@ class ClinicalObservationMemoryTests(TestCase):
         row.refresh_from_db()
         self.assertEqual(row.status, ClinicalObservationState.STATUS_INACTIVE)
         self.assertEqual(row.recurrence_count, 1)
+
+        for day, glucose in ((3, 180), (4, 190), (5, 200)):
+            self._log(days_ago=day, glucose=glucose, stressed="yes")
+        refresh_personal_response_memory(patient_id=self.patient.id)
+        row.refresh_from_db()
+        self.assertEqual(row.status, ClinicalObservationState.STATUS_ACTIVE)
+        self.assertEqual(row.recurrence_count, 2)
 
     def test_patient_state_is_strictly_isolated(self):
         self._stress_pattern(patient=self.patient, base=140)
