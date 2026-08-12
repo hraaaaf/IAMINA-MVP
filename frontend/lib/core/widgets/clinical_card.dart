@@ -28,10 +28,16 @@ class ClinicalCard extends StatelessWidget {
       height: height,
       padding: padding,
       decoration: BoxDecoration(
-        color: backgroundColor ?? AminaTheme.cardBg,
-        borderRadius: BorderRadius.circular(borderRadius ?? AminaTheme.radius2XL),
-        border: border ?? Border.all(color: AminaTheme.ink100),
-        boxShadow: AminaTheme.shadowClinical,
+        color: backgroundColor ?? AminaTheme.surface(context),
+        borderRadius: BorderRadius.circular(borderRadius ?? 22),
+        border: border ?? Border.all(color: AminaTheme.divider(context)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF064E52).withValues(alpha: 0.045),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: child,
     );
@@ -52,12 +58,12 @@ class CardHead extends StatelessWidget {
       children: [
         Flexible(
           child: Text(
-            title.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AminaTheme.ink500,
-              letterSpacing: 0.08,
+            title,
+            style: TextStyle(
+              fontSize: 15.5,
+              fontWeight: FontWeight.w800,
+              color: AminaTheme.textPrimary(context),
+              letterSpacing: -0.25,
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -69,10 +75,11 @@ class CardHead extends StatelessWidget {
             if (meta != null)
               Text(
                 meta!,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AminaTheme.ink400,
-                  fontFeatures: [FontFeature.tabularFigures()],
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: AminaTheme.textSecondary(context),
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             if (trailing != null) ...[
