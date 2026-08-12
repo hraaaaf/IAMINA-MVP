@@ -167,8 +167,8 @@ _SOURCE_PHNH_2025 = EvidenceRecord(
     evidence_maturity=EvidenceMaturity.EMERGING_EVIDENCE,
     source_organization="Peer-reviewed observational study",
     source_title=(
-        "Post-hypoglycemic nocturnal hyperglycemia in patients with type 1 "
-        "diabetes mellitus: the Somogyi phenomenon revisited"
+        "Post-hypoglycemic nocturnal hyperglycemia in type 1 diabetes: "
+        "the Somogyi hypothesis revisited"
     ),
     identifier="DOI 10.1007/s42000-025-00680-0; PMID 40465171",
     publication_or_version_date="2025",
