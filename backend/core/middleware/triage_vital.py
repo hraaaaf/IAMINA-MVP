@@ -1,11 +1,10 @@
 """
 IAmina — deterministic vital-triage middleware.
 
-This layer runs before generative AI on registered triage paths. Glycemic
-emergency classification remains deterministic. Patient-visible emergency
-numbers are never hard-coded here: they are selected by the versioned
-``core.emergency_resources`` registry only when the patient's country is
-explicitly confirmed and the resource policy is current.
+This layer runs before generative AI on registered triage paths. Emergency
+classification remains deterministic. P0.6 makes ``core.emergency_response``
+the sole patient-facing response composer; this middleware owns interception,
+request extraction and audit logging only.
 """
 from __future__ import annotations
 
@@ -16,7 +15,8 @@ import re
 from django.http import JsonResponse
 from django.utils import timezone
 
-from core.emergency_resources import render_medical_emergency_contact
+from core.emergency_response import compose_emergency_response
+from core.input_safety import URGENT, InputSafetyDecision, evaluate_input_safety
 from core.locale import ResolvedLocale, resolve_patient_locale
 
 logger = logging.getLogger(__name__)
@@ -180,46 +180,28 @@ def _pick_emergency_response(
     locale: ResolvedLocale | None = None,
     language: str | None = None,
 ) -> dict:
-    """Build deterministic glycemic emergency copy with jurisdiction-safe contact."""
+    """Compatibility helper delegated to the canonical emergency composer."""
     resolved_locale = locale or _generic_locale()
     reply_language = language or _message_language(message)
-    contact_line = render_medical_emergency_contact(
-        resolved_locale,
-        language=reply_language,
+    if reply_language != resolved_locale.response_language:
+        resolved_locale = ResolvedLocale(
+            country_code=resolved_locale.country_code,
+            ui_language=resolved_locale.ui_language,
+            response_language=reply_language,
+            script_preference=resolved_locale.script_preference,
+            transliteration_preference=resolved_locale.transliteration_preference,
+            dialect="ar-MA" if reply_language == "ar-MA" else resolved_locale.dialect,
+            glucose_unit=resolved_locale.glucose_unit,
+            timezone=resolved_locale.timezone,
+            country_confirmed=resolved_locale.country_confirmed,
+            timezone_confirmed=resolved_locale.timezone_confirmed,
+        )
+    response = compose_emergency_response(
+        InputSafetyDecision(URGENT, "glycemic_emergency"),
+        locale=resolved_locale,
+        message=message,
     )
-
-    if reply_language in ("ar-MA", "ar"):
-        reply = (
-            "⚠️ تنبيه صحي عاجل — IAmina وقفات التحليل الآلي.\n\n"
-            f"🚨 {contact_line}\n\n"
-            "إلا كان الشخص واعي ويقدر يبلع، طبقو خطة نقص السكر اللي سبق شرحها الفريق الصحي. "
-            "إلا كان فاقد الوعي، ما تعطيوه والو من الفم وبقاو معاه حتى توصل المساعدة.\n\n"
-            "IAmina ما كتبدلش الرعاية الطبية المستعجلة."
-        )
-    elif reply_language == "en":
-        reply = (
-            "⚠️ URGENT HEALTH SITUATION DETECTED — IAmina has stopped AI analysis.\n\n"
-            f"🚨 {contact_line}\n\n"
-            "If the person is conscious and can swallow, follow the hypoglycemia plan "
-            "already agreed with their care team. If they are unconscious, give nothing "
-            "by mouth and stay with them until emergency help arrives.\n\n"
-            "IAmina does not replace emergency medical care."
-        )
-    else:
-        reply = (
-            "⚠️ SITUATION D'URGENCE DÉTECTÉE — IAmina suspend l'analyse IA.\n\n"
-            f"🚨 {contact_line}\n\n"
-            "Si la personne est consciente et peut avaler, suivez le plan d'hypoglycémie "
-            "déjà validé avec son équipe soignante. Si elle est inconsciente, ne donnez rien "
-            "par la bouche et restez avec elle jusqu'à l'arrivée des secours.\n\n"
-            "IAmina ne remplace pas les soins médicaux d'urgence."
-        )
-
-    return {
-        "reply": reply,
-        "conversation_id": "TRIAGE_VITAL",
-        "is_emergency": True,
-    }
+    return response.as_payload()
 
 
 def detect_vital_distress(text: str) -> bool:
@@ -242,51 +224,33 @@ class TriageVitalMiddleware:
     def __call__(self, request):
         if self._is_chat_endpoint(request):
             user_message = self._read_message(request)
-
-            from core.input_safety import URGENT, evaluate_input_safety
-            from diabetes.middleware.triage_classification import crisis_support_response
-
             decision = evaluate_input_safety(user_message)
-
-            if decision.action == URGENT and decision.reason == "suicidal_ideation":
-                self._log_emergency(request, user_message, kind="ideation")
-                region = self._patient_region(request)
-                lang = self._patient_lang(request, user_message)
-                response_payload = {
-                    "reply": crisis_support_response(region=region, lang=lang),
-                    "conversation_id": "TRIAGE_CRISIS",
-                    "is_emergency": True,
-                    "timestamp": timezone.now().isoformat(),
-                }
-                return JsonResponse(response_payload, status=200)
-
-            if decision.action == URGENT and decision.reason == "glycemic_emergency":
-                self._log_emergency(request, user_message, kind="glycemic_classified")
-                locale = self._patient_locale(request)
-                lang = self._patient_lang(request, user_message)
-                response_payload = {
-                    **_pick_emergency_response(
-                        user_message,
-                        locale=locale,
-                        language=lang,
-                    ),
-                    "timestamp": timezone.now().isoformat(),
-                }
-                return JsonResponse(response_payload, status=200)
-
             if decision.action == URGENT:
-                self._log_emergency(request, user_message, kind="legacy_keyword")
+                self._log_emergency(request, user_message, kind=decision.reason or "urgent")
                 locale = self._patient_locale(request)
-                lang = self._patient_lang(request, user_message)
-                response_payload = {
-                    **_pick_emergency_response(
-                        user_message,
-                        locale=locale,
-                        language=lang,
-                    ),
-                    "timestamp": timezone.now().isoformat(),
-                }
-                return JsonResponse(response_payload, status=200)
+                language = self._patient_lang(request, user_message)
+                if language != (locale.dialect or locale.response_language):
+                    locale = ResolvedLocale(
+                        country_code=locale.country_code,
+                        ui_language=locale.ui_language,
+                        response_language=language,
+                        script_preference=locale.script_preference,
+                        transliteration_preference=locale.transliteration_preference,
+                        dialect="ar-MA" if language == "ar-MA" else locale.dialect,
+                        glucose_unit=locale.glucose_unit,
+                        timezone=locale.timezone,
+                        country_confirmed=locale.country_confirmed,
+                        timezone_confirmed=locale.timezone_confirmed,
+                    )
+                response = compose_emergency_response(
+                    decision,
+                    locale=locale,
+                    message=user_message,
+                )
+                return JsonResponse(
+                    response.as_payload(timestamp=timezone.now().isoformat()),
+                    status=200,
+                )
 
         return self.get_response(request)
 
@@ -319,7 +283,7 @@ class TriageVitalMiddleware:
             return _generic_locale()
 
     def _patient_region(self, request) -> str:
-        """Legacy non-glycemic crisis-resource region helper; unchanged in this LOT."""
+        """Legacy compatibility helper; canonical response does not consume it."""
         try:
             from core.models import BasePatientProfile
 
@@ -356,7 +320,9 @@ class TriageVitalMiddleware:
                 return preference.response_language
 
             pref = (getattr(base, "preferred_language", "") or "").lower()
-            if pref in ("fr", "ar", "ar-ma", "en"):
+            if pref == "ar-ma":
+                return "ar-MA"
+            if pref in ("fr", "ar", "en"):
                 return pref
         except Exception:
             pass

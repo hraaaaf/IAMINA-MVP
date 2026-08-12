@@ -33,6 +33,3 @@ ignore_imports =
     # DEBT: migration-only identity bootstrap still creates the diabetes module
     # shell. Remove once module activation owns extension creation.
     core.auth_migration -> diabetes.models
-    # DEBT: triage classifier should be module-registered, not imported by the gate.
-    # Safety-critical middleware — change only with explicit approval (CLAUDE.md).
-    core.middleware.triage_vital -> diabetes.middleware.triage_classification
