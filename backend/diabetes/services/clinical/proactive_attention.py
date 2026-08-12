@@ -176,6 +176,7 @@ def _lifecycle_state(
     insight: ClinicalInsightState,
     *,
     created: bool,
+    material_changed: bool,
     dataset_eligible: bool,
     now: datetime,
 ) -> str:
@@ -198,6 +199,14 @@ def _lifecycle_state(
         and not insight.last_surfaced_decision_fingerprint
     ):
         return ClinicalInsightState.STATE_NEW
+
+    if not material_changed:
+        if insight.lifecycle_state in (
+            ClinicalInsightState.STATE_PERSISTING,
+            ClinicalInsightState.STATE_IMPROVING,
+        ):
+            return insight.lifecycle_state
+        return ClinicalInsightState.STATE_MONITORING
 
     if _moves_toward_recorded_baseline(observation):
         return ClinicalInsightState.STATE_IMPROVING
@@ -418,10 +427,14 @@ def select_next_proactive_insight(
             observation,
             dataset_eligible=dataset_eligible,
         )
+        material_changed = (
+            created or material_fingerprint != insight.last_material_fingerprint
+        )
         lifecycle_state = _lifecycle_state(
             observation,
             insight,
             created=created,
+            material_changed=material_changed,
             dataset_eligible=dataset_eligible,
             now=now,
         )
