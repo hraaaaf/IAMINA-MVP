@@ -1,13 +1,8 @@
-"""
-KPI endpoint — Phase 6 SQL-first canonical analytics.
-GET /api/v1/kpis/ — returns pre-computed KPIs from sql_analytics.compute_kpis().
+"""KPI endpoint — SQL-first analytics with evidence-gated public authority.
 
-Phase 10: responses are Redis-cached for 5 minutes per (user, days, target_low,
-target_high) tuple.  Cache is invalidated automatically after any log write
-(create / update / delete / batch).  If Redis is down, IGNORE_EXCEPTIONS=True
-causes a transparent cache miss and the query runs fresh — no user impact.
-
-Design: see docs/adr/0007-analytical-sql-over-llm.md
+GET /api/v1/kpis/ computes descriptive analytics through ``sql_analytics`` and
+then projects only clinically eligible metric labels through P1-EVIDENCE.
+Cached response shape remains backward-compatible.
 """
 from __future__ import annotations
 
@@ -18,17 +13,14 @@ from django.core.cache import cache
 from ninja import Router
 from pydantic import BaseModel
 
+from diabetes.services.clinical.evidence_projection import project_public_kpis
 from diabetes.services.clinical.sql_analytics import AnalyticalKPIs, compute_kpis
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["kpis"])
 
-_KPI_TTL = 300  # 5 minutes
+_KPI_TTL = 300
 
-
-# ──────────────────────────────────────────────────────────────
-# SCHEMAS
-# ──────────────────────────────────────────────────────────────
 
 class KPIsOut(BaseModel):
     avg_glucose: Optional[float]
@@ -41,44 +33,23 @@ class KPIsOut(BaseModel):
     log_count: int
     days_with_data: int
     has_sufficient_data: bool
-    # GMI confidence indicator (P2-B)
-    gmi_confidence: Optional[str]   # "high" | "medium" | "low" | null
-    gmi_basis: str                  # e.g. "47 mesures · 15j"
-    # GRI — Glycemia Risk Index (Klonoff et al. 2022 / ADA consensus grid)
-    gri: Optional[float]            # 0-100 composite risk score
-    gri_zone: Optional[str]         # "A" | "B" | "C" | "D" | "E"
-    gri_label_fr: Optional[str]     # Patient-facing French label
+    gmi_confidence: Optional[str]
+    gmi_basis: str
+    gri: Optional[float]
+    gri_zone: Optional[str]
+    gri_label_fr: Optional[str]
 
-
-# ──────────────────────────────────────────────────────────────
-# CACHE HELPERS
-# ──────────────────────────────────────────────────────────────
 
 def _kpi_cache_key(user_id: int, days: int, target_low: float, target_high: float) -> str:
-    """Stable, human-readable Redis key for a KPI request."""
     return f"kpis:u{user_id}:d{days}:l{int(target_low)}:h{int(target_high)}"
 
 
 def invalidate_kpi_cache(user_id: int) -> None:
-    """
-    Wipe all KPI cache entries for this user after any write operation.
-
-    Uses django-redis delete_pattern() which supports glob wildcards.
-    Wrapped in try/except so a Redis outage never blocks a write path.
-    The KEY_PREFIX ('amina') is prepended by Django's cache layer, so
-    the actual stored key is  :1:amina:kpis:u<id>:…  — the wildcard
-    must match that prefix.
-    """
     try:
         cache.delete_pattern(f"*kpis:u{user_id}:*")
     except Exception:
-        # Redis down or pattern not supported — no-op; stale data expires in 5 min
         logger.debug("invalidate_kpi_cache: cache.delete_pattern unavailable (Redis down?)")
 
-
-# ──────────────────────────────────────────────────────────────
-# ENDPOINT
-# ──────────────────────────────────────────────────────────────
 
 @router.get("/kpis/", response=KPIsOut)
 def get_kpis(
@@ -87,19 +58,13 @@ def get_kpis(
     target_low: float = 70.0,
     target_high: float = 180.0,
 ):
-    """
-    Returns canonical KPIs for the authenticated patient.
+    """Return evidence-gated KPIs for the authenticated patient.
 
-    Computed via SQL (ADR-0007). On SQLite, cv_pct and std_dev are null
-    (STDDEV_SAMP not available). Full precision requires PostgreSQL.
-
-    Phase 10: Response is Redis-cached for 5 min.
-    Cache miss is transparent — falls back to SQL query.
-
-    Query params:
-        days        — look-back window in days (default 21)
-        target_low  — lower TIR bound in mg/dL (default 70)
-        target_high — upper TIR bound in mg/dL (default 180)
+    Raw SQL remains descriptive source data. Normative CGM labels such as TIR,
+    CV stability, GMI and GRI are returned only when the governed CGM sufficiency
+    contract verifies actual coverage. The current LogEntry schema cannot prove
+    wear-time/cadence, so those fields fail closed to null rather than being
+    inferred from the fraction of rows labelled ``source='cgm'``.
     """
     cache_key = _kpi_cache_key(request.user.id, days, target_low, target_high)
     hit = cache.get(cache_key)
@@ -113,23 +78,23 @@ def get_kpis(
         target_low=target_low,
         target_high=target_high,
     )
-
+    projection = project_public_kpis(kpis)
     result = {
-        "avg_glucose":         kpis.avg_glucose,
-        "std_dev":             kpis.std_dev,
-        "cv_pct":              kpis.cv_pct,
-        "tir_pct":             kpis.tir_pct,
-        "tar_pct":             kpis.tar_pct,
-        "tbr_pct":             kpis.tbr_pct,
-        "gmi":                 kpis.gmi,
-        "log_count":           kpis.log_count,
-        "days_with_data":      kpis.days_with_data,
-        "has_sufficient_data": kpis.has_sufficient_data,
-        "gmi_confidence":      kpis.gmi_confidence,
-        "gmi_basis":           kpis.gmi_basis,
-        "gri":                 kpis.gri,
-        "gri_zone":            kpis.gri_zone,
-        "gri_label_fr":        kpis.gri_label,
+        "avg_glucose": projection["avg_glucose"],
+        "std_dev": projection["std_dev"],
+        "cv_pct": projection["cv_pct"],
+        "tir_pct": projection["tir_pct"],
+        "tar_pct": projection["tar_pct"],
+        "tbr_pct": projection["tbr_pct"],
+        "gmi": projection["gmi"],
+        "log_count": projection["log_count"],
+        "days_with_data": projection["days_with_data"],
+        "has_sufficient_data": projection["has_sufficient_data"],
+        "gmi_confidence": projection["gmi_confidence"],
+        "gmi_basis": projection["gmi_basis"],
+        "gri": projection["gri"],
+        "gri_zone": projection["gri_zone"],
+        "gri_label_fr": projection["gri_label_fr"],
     }
 
     cache.set(cache_key, result, _KPI_TTL)
