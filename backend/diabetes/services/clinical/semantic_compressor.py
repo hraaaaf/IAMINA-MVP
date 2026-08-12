@@ -97,7 +97,7 @@ def _build_kpi_narrative(kpis: AnalyticalKPIs) -> str:
 
 
 def _build_pattern_summary(patterns: list[ClinicalPattern]) -> str:
-    """Serialize evidence-qualified observations for narration."""
+    """Serialize evidence-qualified observations for structured narration."""
     if not patterns:
         return (
             "ELIGIBLE DETERMINISTIC OBSERVATIONS: none surfaced by the currently enabled "
@@ -110,8 +110,25 @@ def _build_pattern_summary(patterns: list[ClinicalPattern]) -> str:
     return "\n".join(lines)
 
 
+def _chat_observation_evidence(patterns: list[ClinicalPattern]) -> str:
+    """Return descriptive evidence only; machine identifiers stay deterministic-only."""
+    if not patterns:
+        return ""
+
+    observations = [
+        f"Observation {index}: {pattern.evidence}"
+        for index, pattern in enumerate(patterns[:3], 1)
+    ]
+    return (
+        "Evidence-qualified deterministic observations (descriptive only): "
+        + " ".join(observations)
+        + " Use these observations only as stated; do not infer a named mechanism, "
+        "diagnosis, cause, prescription, dose or treatment change."
+    )
+
+
 def build_chat_context(kpis: AnalyticalKPIs, patterns: list[ClinicalPattern]) -> str:
-    """Minimal chat context; no clinical-alert or treatment language."""
+    """Minimal chat context using approved evidence, never detector identifiers."""
     if not kpis.has_sufficient_data:
         return (
             f"Recorded data are limited ({kpis.log_count} glucose log(s)). "
@@ -127,13 +144,7 @@ def build_chat_context(kpis: AnalyticalKPIs, patterns: list[ClinicalPattern]) ->
         parts.append(f"eligible CGM TIR {kpis.tir_pct}%")
 
     kpi_line = "Current deterministic metrics: " + ", ".join(parts) + "." if parts else ""
-    observation_line = ""
-    if patterns:
-        codes = ", ".join(pattern.code for pattern in patterns[:3])
-        observation_line = (
-            f"Evidence-qualified observation codes: {codes}. "
-            "They are observations, not diagnoses or treatment instructions."
-        )
+    observation_line = _chat_observation_evidence(patterns)
     return " ".join(filter(None, [kpi_line, observation_line]))
 
 

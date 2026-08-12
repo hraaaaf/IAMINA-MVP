@@ -73,6 +73,7 @@ Shared core responsibilities include:
 - shared module contracts;
 - IAmina truth-provenance and capability/authority contracts;
 - AI/media egress authorization policy;
+- unstructured generative clinical-context evidence minimization;
 - observability and retention instrumentation;
 - account deletion/consent hooks;
 - cross-cutting operational controls.
@@ -128,6 +129,7 @@ patient input
   → approved structured result
   → optional external AI/media task
        → capability/authority check where routed through the shared LLM gateway
+       → unstructured generative-context evidence minimization where applicable
        → patient/purpose/modality egress scope
        → server-side consent authorization
        → payload minimization/redaction where implemented
@@ -172,9 +174,19 @@ Generative AI must never be the authority for:
 - `doctor-brief` uses the capability-aware gateway with `SUMMARIZE_APPROVED_DATA` while preserving its structured JSON response contract.
 - The diabetes structured insight formatter uses the same gateway with `SURFACE_DETERMINISTIC_PATTERN`, preserving its existing JSON parsing, fallback and patient-visible sanitation behavior.
 
+### P0.7 generative clinical-context evidence boundary now as-built
+
+- Internal detector/pattern identifiers remain deterministic implementation metadata; they are not themselves evidence that an unstructured generative model may interpret as a clinical finding.
+- Diabetes chat context supplies approved descriptive observation evidence and explicit limitations instead of raw detector codes.
+- The generic `narrate()` prompt no longer appends `DomainContext.detected_patterns` as a free-text `Patterns:` block.
+- Main chat memory, legacy cached pivot shapes and hidden Thinking Mode are covered by a marker-scoped last-mile evidence-minimization boundary before provider-bound text leaves the shared gateway.
+- Thinking Mode consumes the current condition-agnostic `DomainContext` tone/primary signals and no longer depends on legacy/nonexistent pattern-code attributes.
+- The P0.5A structured `SURFACE_DETERMINISTIC_PATTERN` correlation contract is separate: its internal code token may remain inside that structured formatter because patient-visible authority is independently neutralized at its final sanitizer boundary.
+- P0.7 does not recalibrate detectors, change clinical thresholds, grant diagnosis/causality/treatment authority, or modify the P0.6 emergency path.
+
 ## 6. AI / model boundary
 
-### Current state after P0-B, P0.2 and P0.3
+### Current state after P0-B, P0.2, P0.3 and P0.7
 
 `core.ai_egress` is the central authorization layer for currently wired live external model/media operations.
 
@@ -195,6 +207,8 @@ Default-deny conditions include:
 The boundary is intentionally **lazy**: entering a request scope does not itself require AI consent. Deterministic emergency/safety behavior can still complete for a patient who declined AI as long as no external provider call is attempted.
 
 The shared text gateway additionally enforces the IAmina capability matrix before provider egress. This authority check is independent of consent/egress authorization: an allowed narrative capability can still be denied for missing egress consent, and egress consent never grants a forbidden medical capability.
+
+For unstructured generative clinical context, the shared gateway also applies the P0.7 evidence ceiling before the existing PHI masking boundary. Raw internal detector identifiers are therefore not accepted as semantic clinical evidence merely because a legacy memory/pivot/prompt shape still contains them.
 
 Live call paths wired through this policy include the currently inventoried text/gateway, chat, summary/doctor-brief, structured diabetes insight formatting, STT/audio, vision/OCR, and document-processing flows.
 
@@ -300,6 +314,7 @@ A locale/dialect is disabled for patient pilot until it has:
 |---|---|
 | Deterministic emergency gate before generative AI | Patient safety |
 | One shared patient-facing emergency response composer in core | Consistent safety behavior across POST, SSE and companion paths |
+| Raw internal detector identifiers are not unstructured generative clinical evidence | Epistemic safety / authority separation |
 | Unit normalization before clinical/AI logic, fail-closed on unexpected normalization failure | Data integrity |
 | Cookie/session API writes retain CSRF protection | Web/API security |
 | No diagnosis/prescription/treatment optimization | Product/regulatory boundary |
