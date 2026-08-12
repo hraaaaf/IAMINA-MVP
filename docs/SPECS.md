@@ -103,11 +103,14 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 
 ### Personal metabolic response contract
 
-- personal-response patterns are deterministic derived observations recalculated from authoritative synchronized source logs; they are not persisted as clinical facts;
+- personal-response patterns remain deterministic derived observations recalculated from authoritative synchronized source logs; P2 may persist only a recomputable materialized lifecycle (`ClinicalObservationState`) for those approved derivations, never promote it into a diagnosis/problem-list fact;
 - a context pattern may use only explicitly recorded positive states; historical `no`, `good` or `ok` values must not be treated as a negative/control cohort because older schemas may have materialized defaults;
 - a meal pattern requires an explicit `post_meal` measurement context plus an explicit meal type;
 - demo rows are excluded and patient scope is derived from the authenticated server identity, never a client-supplied patient identifier;
 - the analysis window is bounded to 90 days and the UI/API disclose that only server-synchronized logs are analyzed;
+- the durable clinical-twin refresh uses the canonical 90-day window independently of shorter display queries, so `?days=7` cannot toggle longitudinal active/inactive state;
+- only the approved `personal_response` deterministic producer may materialize this lifecycle; companion memory, patient claims, `HEURISTIC_INFERENCE`, `MODEL_INFERENCE` and conversational state cannot write clinical-twin truth;
+- lifecycle status is `active` or `inactive` only; `recurrence_count` counts activation episodes (first eligible sighting = 1, increment only on `inactive → active`), while support growth/decay, evidence-strength trend and baseline evolution are tracked separately;
 - pattern eligibility requires at least 3 matching observations across at least 2 distinct days; insufficient repetition fails closed instead of producing a pattern;
 - each pattern may expose observation count, distinct-day count, its median glucose and the median of all eligible synchronized readings in the same window; no causal delta or predicted glucose is produced;
 - `limited` / `moderate` / `strong` describe only product repeatability/evidence density. They are not a probability, p-value, statistical significance test, diagnosis or clinical confidence score;
@@ -249,16 +252,17 @@ The chassis uses explicit provenance classes for information consumed or remembe
 - `OBSERVED_FACT` — measured/imported/explicitly recorded observation from an authoritative product source;
 - `USER_CLAIM` — information explicitly reported by the patient and retained as a claim rather than silently validated;
 - `DETERMINISTIC_DERIVATION` — KPI/pattern/result produced by approved deterministic logic;
+- `HEURISTIC_INFERENCE` — compatibility/quarantine inference that must not be promoted into governed clinical truth;
 - `PREFERENCE` — explicit product preference;
 - `CONVERSATIONAL_STATE` — transient dialogue/relationship state;
 - `MODEL_INFERENCE` — hypothesis/interpretation produced by a generative model.
 
 Persistence/authority invariants:
 
-- model inference and conversational state must not become patient clinical facts;
+- model inference, heuristic inference and conversational state must not become patient clinical facts or clinical-twin writes;
 - model inference must not enter deterministic clinical decision logic;
 - patient claims may feed approved deterministic triage/domain logic while remaining explicitly claims;
-- deterministic derivations should be recomputed from source truth rather than promoted to immutable patient facts;
+- deterministic derivations should be recomputed from source truth rather than promoted to immutable patient facts; a diabetes-owned materialized lifecycle may persist approved deterministic derivations only while remaining recomputable, provenance-locked and non-diagnostic;
 - explicit user-claim/preference writes require user confirmation.
 
 Generative models are allowed to explain/summarize approved data, verbalize already-detected deterministic patterns and help prepare questions for a clinician. They are not allowed to classify emergencies, diagnose, prescribe, calculate doses, optimize/change treatment, promote model inference to patient fact or write clinical records autonomously.
