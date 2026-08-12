@@ -146,8 +146,8 @@ The deterministic structured result is authoritative; narration is optional pres
 | LOT | One responsibility | Acceptance target |
 |---|---|---|
 | **P2-COMPANION-0** | **Companion Intelligence Contract** | Product/authority ceiling is canonical; consultation is explicitly a sub-capability; no doctor-replacement framing |
-| P2-COMPANION-1 | Change Since Last Review | Governed explicit companion-review anchor + deterministic `new/persisting/improving/resolved/unknown`; runtime candidate in PR #147, merge gate pending |
-| P2-COMPANION-2 | Personal Pattern Intelligence | First/recurring/persisting/improving/resolved personal observations without causal or diagnostic upgrade |
+| **P2-COMPANION-1** | **Change Since Last Review** | ✅ Certified in PR #147: governed explicit companion-review anchor + deterministic `new/persisting/improving/resolved/unknown`; post-merge CI #1913 + drift #1725 green |
+| **P2-COMPANION-2** | **Personal Pattern Intelligence** | ▶️ NEXT: first/recurring/persisting/improving/resolved personal observations without causal or diagnostic upgrade |
 | P2-COMPANION-3 | Evidence + Uncertainty | Every material observation exposes provenance, evidence maturity, limitations and missing data |
 | P2-COMPANION-4 | Smart Suggestions | Non-prescriptive suggestions limited to understand/monitor/collect/learn/discuss/follow-up classes |
 | P2-COMPANION-5 | Consultation Companion | Prepare the patient for a clinician review using the inherited `consultation-brief.v1` authority contract |
