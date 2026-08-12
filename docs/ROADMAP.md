@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-12 — P2-CLINICAL-TWIN is merged and post-merge green. P2-PROACTIVE is the next executable clinical-intelligence LOT. UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-12 — P2-PROACTIVE has a reviewer-passed runtime candidate in PR #139. It remains open until exact-head certification, expected-head merge and post-merge CI + migration drift are complete. UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -39,7 +39,7 @@ IAmina's intended product moat is **evidence-qualified longitudinal clinical int
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains blocking |
-| Clinical intelligence / proactivity | P0 audit + semantics + skills foundation + evidence registry + clinical twin closed | 🟢 P2-PROACTIVE ready | PR #135 merge `00292e44…`; post-merge CI #1805 + drift #1617 green |
+| Clinical intelligence / proactivity | P0 audit + semantics + skills foundation + evidence registry + clinical twin closed; proactive runtime candidate ready | 🟡 P2-PROACTIVE merge gate | PR #139; final exact-head certification + post-merge proof remain |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
@@ -156,6 +156,24 @@ P2 persists a diabetes-owned, recomputable lifecycle for approved deterministic 
 
 **Closure:** PR #135 head `1058ee4a…` passed CI #1804 + drift #1616, Clinical Safety Reviewer and Release Certifier; merge `00292e44…` then passed post-merge `main` CI #1805 + drift #1617.
 
+## 🟡 P2-PROACTIVE — Prioritization + Insight Lifecycle — RUNTIME CANDIDATE
+
+PR #139 adds a diabetes-owned proactive workflow **derived from** `ClinicalObservationState`; it does not replace or mutate the Clinical Twin as clinical truth.
+
+Candidate contract:
+
+- deterministic lifecycle: `NEW → MONITORING → PERSISTING / IMPROVING → RESOLVED`; the current descriptive `personal_response` source is not authorized to enter `ESCALATED`;
+- an explicit priority vector exposes non-urgent safety/time sensitivity, observational/review-worthy relevance, persistence, change from the patient baseline, evidence density, bounded actionability, evidence maturity and interruption cost rather than a black-box risk score;
+- the current source can emit only `MONITOR` or `PREPARE_CLINICIAN_DISCUSSION`; database constraints reject escalation and treatment-change authority;
+- unchanged material state does not re-surface, and the product attention budget allows at most one **non-urgent** item per 24 hours; this is interruption-cost policy, not a medically authoritative follow-up interval;
+- `RESOLVED` requires an eligible Clinical Twin refresh showing absence of the previously eligible observation; insufficient data cannot silently resolve prior state;
+- true reactivation cannot remain stale-`RESOLVED`, including a matching-fingerprint edge case;
+- explicit `POST /api/v1/proactive-insights/evaluate/` evaluates and consumes at most one evidence-qualified candidate; safe GET requests cannot consume delivery state or the attention budget;
+- deterministic emergency routing remains separate/upstream and is never suppressed by the non-urgent attention budget;
+- no diagnosis, prescription, dose calculation, causal attribution, treatment optimization or generative clinical authority is introduced.
+
+**Closure gate:** P2-PROACTIVE remains open until the final docs-inclusive head passes exact-head CI + PostgreSQL + migration drift, Clinical Safety + Database/Migration review, Release Certifier GO, expected-head merge, and post-merge `main` CI + migration drift.
+
 ## Ordered execution
 
 | LOT | One responsibility | Status | Acceptance gate |
@@ -165,7 +183,7 @@ P2 persists a diabetes-owned, recomputable lifecycle for approved deterministic 
 | **P1-CLIN-SKILLS** | **Diabetologist Skills Foundation** | ✅ **CLOSED** | PR #127 merged and post-merge green |
 | **P1-EVIDENCE** | **Versioned Diabetes Evidence Registry** | ✅ **CLOSED** | PR #132 merged as `9d7add2b…`; post-merge CI #1785 + drift #1597 green |
 | **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | ✅ **CLOSED** | PR #135 merge `00292e44…`; post-merge CI #1805 + drift #1617 green |
-| **P2-PROACTIVE** | **Prioritization + Insight Lifecycle** | ▶️ **NEXT** | Clinical relevance, persistence, actionability, evidence density and interruption cost govern what surfaces and when |
+| **P2-PROACTIVE** | **Prioritization + Insight Lifecycle** | 🟡 **RUNTIME CANDIDATE** | PR #139: explicit priority/lifecycle + attention budget implemented; final exact-head certification, merge and post-merge proof remain |
 | P2-DOCTOR | Consultation Intelligence | ⏳ Planned | Clinician brief reports evidence-qualified change since last review with uncertainty and provenance |
 | P3-HORIZON | Evidence Horizon Scanner | ⏳ Planned | Standard-of-care, emerging and investigational evidence remain explicitly separated; papers cannot silently alter patient rules |
 | P3-EVALS | Clinical Intelligence Evals | ⏳ Planned | Clinician-reviewed longitudinal, negative, false-positive and safety scenarios provide measurable release gates |
@@ -253,7 +271,7 @@ Preparation/executable gates do not imply that external legal, processor, lingui
 
 # Current blockers and next sequence
 
-1. **Clinical intelligence product lane:** start **P2-PROACTIVE — Prioritization + Insight Lifecycle** from the post-merge-green P2-CLINICAL-TWIN baseline. This lane is executable without waiting for external MENA approvals.
+1. **Clinical intelligence product lane:** finish **P2-PROACTIVE — Prioritization + Insight Lifecycle** through docs-inclusive exact-head certification, expected-head merge and post-merge CI + migration drift. Do not start P2-DOCTOR before that closeout.
 2. **Security emergency:** revoke/rotate all potentially affected PekPik credentials and review provider activity under issue #30.
 3. After credential rotation confirmation, rewrite affected refs, require fresh clones, obtain a passing non-shallow secret-history scan and activate the blocking history gate.
 4. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.

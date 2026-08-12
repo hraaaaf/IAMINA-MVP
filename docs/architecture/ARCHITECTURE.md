@@ -89,7 +89,11 @@ The diabetes module owns:
 - diabetes KPI queries and analytics;
 - diabetes clinical/pattern rules;
 - diabetes-specific structured context;
-- diabetes-specific API surfaces and domain behavior.
+- diabetes-specific API surfaces and domain behavior;
+- recomputable longitudinal `ClinicalObservationState` for approved deterministic personal-response observations;
+- separate `ProactiveInsightState` workflow/delivery state derived from those observations, including bounded non-urgent prioritization and attention-budget bookkeeping.
+
+The Clinical Twin remains the clinical observation truth boundary. Proactive workflow state may decide **what to surface and when** within its approved authority, but it cannot create clinical truth, diagnose, prescribe, optimize treatment, calculate doses or take over deterministic emergency routing. The current `personal_response` source is constrained to monitoring or clinician-discussion preparation and cannot persist an escalated state.
 
 It must consume shared contracts without creating hidden reverse dependencies from core back into diabetes.
 

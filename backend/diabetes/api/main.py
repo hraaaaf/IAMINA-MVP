@@ -30,6 +30,7 @@ from diabetes.api.v1.imports import router as imports_router  # noqa: E402
 from diabetes.api.v1.kpis import router as kpis_router  # noqa: E402
 from diabetes.api.v1.logs import router as logs_router  # noqa: E402
 from diabetes.api.v1.personal_response import router as personal_response_router  # noqa: E402
+from diabetes.api.v1.proactive import router as proactive_router  # noqa: E402
 from diabetes.api.v1.profile import router as profile_router  # noqa: E402
 
 # Main API
@@ -76,6 +77,7 @@ api.add_router("/v1", profile_router, auth=_auth)
 api.add_router("/v1", locale_router, auth=_auth)
 api.add_router("/v1", kpis_router, auth=_auth)
 api.add_router("/v1", personal_response_router, auth=_auth)
+api.add_router("/v1", proactive_router, auth=_auth)
 api.add_router("/v1", account_router, auth=_auth)
 api.add_router("/v1", modules_router, auth=_auth)
 api.add_router("/v1", imports_router, auth=_auth)

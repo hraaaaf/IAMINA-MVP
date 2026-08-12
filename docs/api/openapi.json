@@ -1027,6 +1027,37 @@
         ]
       }
     },
+    "/api/v1/proactive-insights/evaluate/": {
+      "post": {
+        "operationId": "diabetes_api_v1_proactive_evaluate_proactive_insight",
+        "summary": "Evaluate Proactive Insight",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProactiveFeedOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Explicitly evaluate and consume at most one non-urgent insight candidate.\n\nThis is intentionally a POST because a surfaced item updates deterministic\ndelivery bookkeeping (`last_surfaced_at` and delivery signature). Safe GET\nrequests must not consume the patient's attention budget.",
+        "tags": [
+          "proactive-insights"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/account/consent": {
       "get": {
         "operationId": "core_api_v1_account_get_consent_status",
@@ -3292,6 +3323,247 @@
           "confidence"
         ],
         "title": "PersonalResponsePatternOut",
+        "type": "object"
+      },
+      "PriorityVectorOut": {
+        "properties": {
+          "safety_time_sensitivity": {
+            "const": "non_urgent_observation",
+            "title": "Safety Time Sensitivity",
+            "type": "string"
+          },
+          "clinical_relevance": {
+            "enum": [
+              "observational",
+              "review_worthy"
+            ],
+            "title": "Clinical Relevance",
+            "type": "string"
+          },
+          "persistence": {
+            "title": "Persistence",
+            "type": "string"
+          },
+          "change_from_personal_baseline_mg_dl": {
+            "title": "Change From Personal Baseline Mg Dl",
+            "type": "number"
+          },
+          "evidence_density": {
+            "enum": [
+              "limited",
+              "moderate",
+              "strong"
+            ],
+            "title": "Evidence Density",
+            "type": "string"
+          },
+          "actionability": {
+            "enum": [
+              "MONITOR",
+              "PREPARE_CLINICIAN_DISCUSSION"
+            ],
+            "title": "Actionability",
+            "type": "string"
+          },
+          "evidence_maturity": {
+            "title": "Evidence Maturity",
+            "type": "string"
+          },
+          "interruption_cost": {
+            "enum": [
+              "eligible",
+              "cooldown"
+            ],
+            "title": "Interruption Cost",
+            "type": "string"
+          }
+        },
+        "required": [
+          "safety_time_sensitivity",
+          "clinical_relevance",
+          "persistence",
+          "change_from_personal_baseline_mg_dl",
+          "evidence_density",
+          "actionability",
+          "evidence_maturity",
+          "interruption_cost"
+        ],
+        "title": "PriorityVectorOut",
+        "type": "object"
+      },
+      "ProactiveFeedOut": {
+        "properties": {
+          "status": {
+            "enum": [
+              "surfaced",
+              "cooldown",
+              "no_change",
+              "insufficient_data"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "attention_budget": {
+            "const": "one_non_urgent_item_per_24h",
+            "title": "Attention Budget",
+            "type": "string"
+          },
+          "cooldown_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cooldown Until"
+          },
+          "pending_count": {
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "safety_notice": {
+            "title": "Safety Notice",
+            "type": "string"
+          },
+          "item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProactiveInsightOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "attention_budget",
+          "cooldown_until",
+          "pending_count",
+          "safety_notice",
+          "item"
+        ],
+        "title": "ProactiveFeedOut",
+        "type": "object"
+      },
+      "ProactiveInsightOut": {
+        "properties": {
+          "observation_key": {
+            "title": "Observation Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "context",
+              "meal"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "new",
+              "monitoring",
+              "persisting",
+              "improving",
+              "resolved"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "surface_now": {
+            "title": "Surface Now",
+            "type": "boolean"
+          },
+          "what_changed": {
+            "title": "What Changed",
+            "type": "string"
+          },
+          "why_it_is_surfacing_now": {
+            "title": "Why It Is Surfacing Now",
+            "type": "string"
+          },
+          "evidence_window_days": {
+            "title": "Evidence Window Days",
+            "type": "integer"
+          },
+          "personal_baseline_comparison_mg_dl": {
+            "title": "Personal Baseline Comparison Mg Dl",
+            "type": "number"
+          },
+          "observations": {
+            "title": "Observations",
+            "type": "integer"
+          },
+          "distinct_days": {
+            "title": "Distinct Days",
+            "type": "integer"
+          },
+          "evidence_density": {
+            "enum": [
+              "limited",
+              "moderate",
+              "strong"
+            ],
+            "title": "Evidence Density",
+            "type": "string"
+          },
+          "limitations_or_missing_data": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations Or Missing Data",
+            "type": "array"
+          },
+          "allowed_next_step": {
+            "enum": [
+              "MONITOR",
+              "PREPARE_CLINICIAN_DISCUSSION"
+            ],
+            "title": "Allowed Next Step",
+            "type": "string"
+          },
+          "escalation_class": {
+            "const": "none",
+            "title": "Escalation Class",
+            "type": "string"
+          },
+          "evidence_id": {
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "source_version": {
+            "title": "Source Version",
+            "type": "string"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/PriorityVectorOut"
+          }
+        },
+        "required": [
+          "observation_key",
+          "kind",
+          "state",
+          "surface_now",
+          "what_changed",
+          "why_it_is_surfacing_now",
+          "evidence_window_days",
+          "personal_baseline_comparison_mg_dl",
+          "observations",
+          "distinct_days",
+          "evidence_density",
+          "limitations_or_missing_data",
+          "allowed_next_step",
+          "escalation_class",
+          "evidence_id",
+          "source_version",
+          "priority"
+        ],
+        "title": "ProactiveInsightOut",
         "type": "object"
       },
       "ConsentStatusSchema": {
