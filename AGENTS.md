@@ -5,25 +5,28 @@ This file is a **stable execution contract for coding agents**, not a session di
 ## Read first
 
 1. `docs/ROADMAP.md` — single forward backlog and gates.
-2. `docs/architecture/ARCHITECTURE.md` — current architecture + target boundaries.
-3. `docs/CONTRIBUTING.md` — workflow and non-negotiable guardrails.
-4. `docs/MISTAKES.md` — durable lessons.
-5. Relevant ADR/spec for the assigned unit.
-6. `.skills/lot-execution/SKILL.md` — mandatory LOT procedure.
-7. `.agents/README.md` — reviewer routing matrix.
-8. Every additional `.skills/*/SKILL.md` required by the touched surface.
+2. `docs/COMPANION_INTELLIGENCE_CONTRACT.md` — patient-companion identity, authority ceiling and allowed suggestion classes.
+3. `docs/architecture/ARCHITECTURE.md` — current architecture + target boundaries.
+4. `docs/CONTRIBUTING.md` — workflow and non-negotiable guardrails.
+5. `docs/MISTAKES.md` — durable lessons.
+6. Relevant ADR/spec for the assigned unit.
+7. `.skills/lot-execution/SKILL.md` — mandatory LOT procedure.
+8. `.agents/README.md` — reviewer routing matrix.
+9. Every additional `.skills/*/SKILL.md` required by the touched surface.
 
 Do not choose work from old phase numbers, archived plans, assessments, or stale commit notes.
 
 ## Product doctrine
 
-- IAmina is a **MENA diabetes companion**.
+- IAmina is a **MENA diabetes patient companion**, never a physician replacement.
 - Diabetes is the only live condition.
+- IAmina may observe, compare, explain and propose bounded non-prescriptive next steps; qualified clinicians remain the medical decision authority.
 - Country/dialect rollout is gated by native safety parity, validated emergency resources, and privacy/compliance readiness.
 - User choice determines language/dialect; location may suggest only.
 - Deterministic clinical/safety logic decides.
 - Generative models may verbalize approved minimized structured output or perform explicitly permitted media tasks.
-- No diagnosis, prescription, dose calculation, or treatment optimization.
+- No diagnosis, differential diagnosis, prescription, dose calculation, treatment optimization/change or autonomous medical instruction.
+- Personalized suggestions are limited to the classes defined in `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 - D90 retention + a credible payer/distribution signal gate expansion to another condition.
 
 ## Current critical path
@@ -35,7 +38,9 @@ Execute only explicitly assigned work from these roadmap areas:
 3. P0-MENA-3 — Django-native auth migration.
 4. P0-MENA-4 — multimodal provider benchmark.
 5. Pilot safety/compliance + staging + one-country pilot.
-6. Clinical intelligence/proactivity — only the explicit ordered LOTs in `docs/ROADMAP.md`.
+6. P2-COMPANION — only the explicit ordered companion-intelligence LOTs in `docs/ROADMAP.md`.
+
+Do not resume the superseded P2-DOCTOR assembler-first sequence unless the roadmap is explicitly changed through normal governance. The certified `consultation-brief.v1` contract remains a restricted P2-COMPANION consultation sub-capability.
 
 Do not pull gated platform/module work forward.
 
@@ -54,6 +59,9 @@ Do not pull gated platform/module work forward.
 
 Never:
 
+- present IAmina as a physician, medical consultation or substitute for qualified professional care;
+- turn a personalized suggestion into diagnosis, prescription, dose advice, treatment optimization/change or autonomous medical instruction;
+- judge or override a clinician's treatment decision from companion inference;
 - bypass/reorder deterministic emergency or unit-normalization gates without explicit decision;
 - route emergency authority to a generative model;
 - create a direct provider call that bypasses the sanctioned outbound boundary;
@@ -92,6 +100,7 @@ Specialized skills are mandatory when their surface is touched:
 - clinical/medical/safety → `.skills/clinical-safety/SKILL.md`;
 - diabetes clinical reasoning / interpretation / clinician or patient semantic meaning → `.skills/diabetes-clinical-reasoning/SKILL.md` + `.skills/diabetes-evidence-intelligence/SKILL.md` + `.skills/clinical-safety/SKILL.md`;
 - diabetes proactive prioritization / insight lifecycle / follow-up / notification semantics → additionally `.skills/diabetes-proactive-intelligence/SKILL.md`;
+- any P2-COMPANION observation, explanation, suggestion, consultation or after-visit behavior → additionally obey `docs/COMPANION_INTELLIGENCE_CONTRACT.md`;
 - any new/changed diabetes threshold, guideline statement, device claim or research-horizon claim → `.skills/diabetes-evidence-intelligence/SKILL.md` with current-source verification;
 - models/migrations/persistence/PostgreSQL → `.skills/migrations-database/SKILL.md`;
 - auth/authorization/privacy/secrets/external egress → `.skills/security-review/SKILL.md`.
@@ -116,6 +125,7 @@ Additional expectations:
 
 - safety change → focused positive + negative guardrail tests;
 - clinical-intelligence change → verify evidence provenance/finality, population applicability, insufficient-data behavior, deterministic authority and no autonomous treatment optimization;
+- companion-intelligence change → additionally verify no doctor-replacement framing, only approved suggestion classes, explicit uncertainty/missing data and preserved clinician decision authority;
 - locale change → native-reviewed fixtures, mixed-script/transliteration and fallback tests where relevant;
 - provider/egress change → tests proving bypass is impossible/detected and payload is minimized;
 - auth migration → identity reconciliation + rollback/recovery tests;
@@ -124,6 +134,7 @@ Additional expectations:
 ## Documentation ownership
 
 - `ROADMAP.md` — forward work only.
+- `COMPANION_INTELLIGENCE_CONTRACT.md` — patient-companion product identity, authority ceiling and P2-COMPANION behavioral contract.
 - `ARCHITECTURE.md` — current/target boundaries.
 - `SPECS.md` — current capability contract.
 - `TECHDEBT.md` — unresolved compromises only.
