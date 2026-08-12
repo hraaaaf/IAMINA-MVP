@@ -10,10 +10,7 @@ rewritten here: P0.5A gives that path a separate structured correlation/output
 sanitization contract.
 """
 
-from __future__ import annotations
-
 import re
-
 
 _MEMORY_PATTERN_SEGMENT = re.compile(
     r"(?i)patterns cliniques:\s*[^|\n]+(?:\s*\|\s*)?"
