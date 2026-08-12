@@ -12,7 +12,6 @@ from diabetes.services.clinical.consultation_brief_assembler import (
     assemble_consultation_brief,
 )
 from diabetes.services.clinical.consultation_brief_contract import (
-    ConsultationChangeKind,
     ConsultationComparisonBasis,
     ConsultationEvidenceDensity,
     ConsultationNextStep,
@@ -140,6 +139,10 @@ class ConsultationBriefAssemblerTests(TestCase):
         self.assertEqual(twin.value, ClinicalObservationState.STATUS_ACTIVE)
         self.assertEqual(twin.truth_kind, TruthKind.DETERMINISTIC_DERIVATION)
         self.assertEqual(
+            twin.source,
+            ClinicalObservationState.APPROVED_PRODUCER,
+        )
+        self.assertEqual(
             twin.evidence_id,
             ClinicalObservationState.APPROVED_EVIDENCE_ID,
         )
@@ -173,99 +176,34 @@ class ConsultationBriefAssemblerTests(TestCase):
             "no_eligible_clinical_twin_observations",
             brief.missing_data,
         )
+        self.assertIn("no_authoritative_review_checkpoint", brief.missing_data)
 
-    def test_explicit_checkpoint_unlocks_only_provable_twin_transitions(self):
-        checkpoint_at = self.end - timedelta(days=7)
+    def test_supplied_checkpoint_fails_closed_until_authoritative_provider_exists(self):
         checkpoint = ConsultationReviewCheckpoint(
-            reviewed_at=checkpoint_at,
-            source="test.explicit-clinician-review",
-        )
-        self._log(self.patient, days_ago=1, glucose=140)
-        self._observation(
-            self.patient,
-            key="context:new",
-            first_seen_at=self.now - timedelta(days=3),
-            last_seen_at=self.now - timedelta(days=1),
-            status_changed_at=self.now - timedelta(days=3),
-        )
-        self._observation(
-            self.patient,
-            key="context:persisting",
-            first_seen_at=self.now - timedelta(days=20),
-            last_seen_at=self.now - timedelta(days=1),
-            status_changed_at=self.now - timedelta(days=20),
-        )
-        self._observation(
-            self.patient,
-            key="context:resolved",
-            status=ClinicalObservationState.STATUS_INACTIVE,
-            first_seen_at=self.now - timedelta(days=20),
-            last_seen_at=self.now - timedelta(days=8),
-            status_changed_at=self.now - timedelta(days=2),
-        )
-        self._observation(
-            self.patient,
-            key="context:ambiguous",
-            first_seen_at=self.now - timedelta(days=20),
-            last_seen_at=self.now - timedelta(days=1),
-            status_changed_at=self.now - timedelta(days=2),
+            reviewed_at=self.start,
+            source="caller-constructed-but-unverified",
         )
 
-        brief = assemble_consultation_brief(
-            patient_id=self.patient.id,
-            window_start=checkpoint_at,
-            window_end=self.end,
-            review_checkpoint=checkpoint,
-        )
-
-        self.assertEqual(
-            brief.comparison_basis,
-            ConsultationComparisonBasis.SINCE_REVIEW_CHECKPOINT,
-        )
-        self.assertEqual(brief.review_checkpoint, checkpoint)
-        self.assertNotIn("no_authoritative_review_checkpoint", brief.missing_data)
-
-        by_key = {item.key: item for item in brief.items}
-        self.assertEqual(
-            by_key["clinical_twin.context:new.status"].change_kind,
-            ConsultationChangeKind.NEW_SINCE_REVIEW,
-        )
-        self.assertEqual(
-            by_key["clinical_twin.context:persisting.status"].change_kind,
-            ConsultationChangeKind.PERSISTING_SINCE_REVIEW,
-        )
-        self.assertEqual(
-            by_key["clinical_twin.context:resolved.status"].change_kind,
-            ConsultationChangeKind.RESOLVED_SINCE_REVIEW,
-        )
-        ambiguous = by_key["clinical_twin.context:ambiguous.status"]
-        self.assertEqual(ambiguous.change_kind, ConsultationChangeKind.UNKNOWN)
-        self.assertIn(
-            "since_review_change_not_inferred_from_incomplete_transition_history",
-            ambiguous.limitations,
-        )
-
-        # Window statistics are current facts/derivations, not fabricated deltas.
-        self.assertEqual(
-            by_key["recorded_glucose.latest_mg_dl"].change_kind,
-            ConsultationChangeKind.CURRENT_STATE,
-        )
-        self.assertEqual(
-            by_key["recorded_glucose.average_mg_dl"].change_kind,
-            ConsultationChangeKind.CURRENT_STATE,
-        )
-
-    def test_since_review_window_must_start_exactly_at_checkpoint(self):
-        checkpoint = ConsultationReviewCheckpoint(
-            reviewed_at=self.end - timedelta(days=7),
-            source="test.explicit-clinician-review",
-        )
-        with self.assertRaisesRegex(ValueError, "window_start must equal checkpoint"):
+        with self.assertRaisesRegex(
+            ValueError,
+            "authoritative review checkpoint source is unavailable",
+        ):
             assemble_consultation_brief(
                 patient_id=self.patient.id,
                 window_start=self.start,
                 window_end=self.end,
                 review_checkpoint=checkpoint,
+            )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "authoritative review checkpoint source is unavailable",
+        ):
+            assemble_consultation_brief(
+                patient_id=self.patient.id,
+                window_start=self.start,
+                window_end=self.end,
+                review_checkpoint="2026-08-01",
             )
 
     def test_old_inactive_twin_state_is_not_reintroduced_into_current_brief(self):
@@ -289,6 +227,29 @@ class ConsultationBriefAssemblerTests(TestCase):
             {item.key for item in brief.items},
         )
 
+    def test_recent_inactive_twin_state_is_current_state_not_since_review_claim(self):
+        self._observation(
+            self.patient,
+            key="context:recent-resolved",
+            status=ClinicalObservationState.STATUS_INACTIVE,
+            first_seen_at=self.now - timedelta(days=30),
+            last_seen_at=self.now - timedelta(days=10),
+            status_changed_at=self.now - timedelta(days=2),
+        )
+
+        brief = assemble_consultation_brief(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=self.end,
+        )
+        item = {
+            value.key: value for value in brief.items
+        }["clinical_twin.context:recent-resolved.status"]
+
+        self.assertEqual(item.value, ClinicalObservationState.STATUS_INACTIVE)
+        self.assertEqual(item.allowed_next_step, ConsultationNextStep.MONITOR)
+        self.assertEqual(item.change_kind.value, "current_state")
+
     def test_historical_window_cannot_read_twin_state_refreshed_after_window_end(self):
         self._observation(
             self.patient,
@@ -311,7 +272,7 @@ class ConsultationBriefAssemblerTests(TestCase):
             {item.key for item in brief.items},
         )
 
-    def test_assembler_rejects_invalid_identity_window_and_checkpoint_type(self):
+    def test_assembler_rejects_invalid_identity_and_window(self):
         with self.assertRaisesRegex(ValueError, "patient_id must be a positive integer"):
             assemble_consultation_brief(
                 patient_id=0,
@@ -331,26 +292,4 @@ class ConsultationBriefAssemblerTests(TestCase):
                 patient_id=self.patient.id,
                 window_start=self.end,
                 window_end=self.start,
-            )
-
-        with self.assertRaisesRegex(ValueError, "review_checkpoint must be"):
-            assemble_consultation_brief(
-                patient_id=self.patient.id,
-                window_start=self.start,
-                window_end=self.end,
-                review_checkpoint="2026-08-01",
-            )
-
-    def test_checkpoint_at_or_after_window_end_fails_closed(self):
-        window_end = self.end + timedelta(days=1)
-        checkpoint = ConsultationReviewCheckpoint(
-            reviewed_at=window_end,
-            source="test.explicit-clinician-review",
-        )
-        with self.assertRaisesRegex(ValueError, "checkpoint must precede"):
-            assemble_consultation_brief(
-                patient_id=self.patient.id,
-                window_start=self.end,
-                window_end=window_end,
-                review_checkpoint=checkpoint,
             )
