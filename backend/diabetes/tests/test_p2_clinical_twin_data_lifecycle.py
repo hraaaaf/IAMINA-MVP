@@ -1,10 +1,13 @@
 from datetime import timedelta
+from io import StringIO
 
 from django.contrib.auth.models import User
+from django.core.management import call_command
 from django.test import Client, TestCase
 from django.utils import timezone
 
 from core.data_portability import build_patient_export
+from core.retention_policy import ACCOUNT_DELETION, validated_retention_schedule
 from diabetes.models.clinical_observation import ClinicalObservationState
 from diabetes.models.entry import LogEntry
 from diabetes.models.proactive_insight import ProactiveInsightState
@@ -99,14 +102,38 @@ class ClinicalTwinDataLifecycleTests(TestCase):
             1,
         )
 
-    def test_patient_account_erasure_cascades_to_clinical_observation_state(self):
+    def test_verified_account_erasure_cascades_to_clinical_observation_state(self):
         for day, glucose in enumerate((150, 160, 170)):
             self._log(days_ago=day, glucose=glucose, stressed="yes")
         refresh_personal_response_memory(patient_id=self.patient.id)
+        patient_id = self.patient.id
         observation_id = ClinicalObservationState.objects.get(patient=self.patient).id
 
-        self.patient.delete()
+        call_command(
+            "delete_patient_data",
+            user_id=patient_id,
+            requested_at=timezone.localdate() - timedelta(days=31),
+            approval_reference="REQ-P2-TWIN-LIFECYCLE",
+            export_sha256="f" * 64,
+            legal_hold_status="CLEARED",
+            execute=True,
+            confirm=f"DELETE-PATIENT-{patient_id}",
+            stdout=StringIO(),
+        )
 
+        self.assertFalse(User.objects.filter(pk=patient_id).exists())
         self.assertFalse(
             ClinicalObservationState.objects.filter(pk=observation_id).exists()
         )
+
+    def test_clinical_twin_uses_existing_patient_application_retention_rule(self):
+        rule = next(
+            rule
+            for rule in validated_retention_schedule(today=timezone.localdate())
+            if rule.dataset == "patient_application_records"
+        )
+
+        self.assertEqual(rule.trigger, ACCOUNT_DELETION)
+        self.assertEqual(rule.retention_days, 30)
+        self.assertIn("Django relational cascade", rule.deletion_action)
+        self.assertTrue(rule.legal_hold_supported)
