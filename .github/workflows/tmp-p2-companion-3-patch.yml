@@ -1,0 +1,101 @@
+name: Temporary P2 companion 3 patch
+
+on:
+  push:
+    branches:
+      - agent/p2-companion-3-evidence-uncertainty
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2-companion-3-evidence-uncertainty
+      - name: Patch governed companion outputs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected one anchor in {path}, found {count}")
+              p.write_text(text.replace(old, new, 1))
+
+          pattern = "backend/diabetes/services/clinical/companion_pattern_intelligence.py"
+          replace_once(
+              pattern,
+              "from diabetes.models.clinical_observation import ClinicalObservationState\nfrom diabetes.services.clinical.personal_response import (",
+              "from diabetes.models.clinical_observation import ClinicalObservationState\nfrom diabetes.services.clinical.companion_evidence_uncertainty import (\n    CompanionEvidenceContext,\n    build_companion_evidence_context,\n)\nfrom diabetes.services.clinical.personal_response import (",
+          )
+          replace_once(
+              pattern,
+              "    recorded_context: tuple[tuple[str, str], ...]\n    limitations: tuple[str, ...]\n    source_version: str = SOURCE_VERSION",
+              "    recorded_context: tuple[tuple[str, str], ...]\n    limitations: tuple[str, ...]\n    evidence_context: CompanionEvidenceContext\n    source_version: str = SOURCE_VERSION",
+          )
+          replace_once(
+              pattern,
+              "def _project(row: ClinicalObservationState) -> CompanionPatternItem:\n",
+              "def _pattern_missing_data(\n    row: ClinicalObservationState,\n    *,\n    movement: BaselineMovement,\n    current_state: PatternCurrentState,\n) -> tuple[str, ...]:\n    missing: list[str] = []\n    if row.evidence_strength_trend == ClinicalObservationState.TREND_INITIAL:\n        missing.append(\"previous_evidence_density_not_available\")\n    if movement == \"initial_or_unknown\":\n        missing.append(\"previous_baseline_relative_delta_not_available\")\n    if current_state == \"resolved\":\n        missing.append(\"current_active_evidence_not_available_after_resolution\")\n    return tuple(missing)\n\n\ndef _project(row: ClinicalObservationState) -> CompanionPatternItem:\n",
+          )
+          replace_once(
+              pattern,
+              "    return CompanionPatternItem(\n",
+              "    limitations_tuple = tuple(limitations)\n    evidence_context = build_companion_evidence_context(\n        evidence_id=row.evidence_id,\n        producer=row.producer,\n        evidence_density=row.evidence_strength,\n        evidence_density_trend=row.evidence_strength_trend,\n        missing_data=_pattern_missing_data(\n            row,\n            movement=movement,\n            current_state=current_state,\n        ),\n        limitations=limitations_tuple,\n    )\n\n    return CompanionPatternItem(\n",
+          )
+          replace_once(
+              pattern,
+              "        limitations=tuple(limitations),\n    )",
+              "        limitations=limitations_tuple,\n        evidence_context=evidence_context,\n    )",
+          )
+
+          change = "backend/diabetes/services/clinical/companion_change.py"
+          replace_once(
+              change,
+              "from diabetes.models.clinical_observation import ClinicalObservationState\nfrom diabetes.models.companion_review import (",
+              "from diabetes.models.clinical_observation import ClinicalObservationState\nfrom diabetes.models.companion_review import (",
+          )
+          replace_once(
+              change,
+              ")\n\nChangeKind = Literal[\"new\", \"persisting\", \"improving\", \"resolved\", \"unknown\"]",
+              ")\nfrom diabetes.services.clinical.companion_evidence_uncertainty import (\n    CompanionEvidenceContext,\n    build_companion_evidence_context,\n)\n\nChangeKind = Literal[\"new\", \"persisting\", \"improving\", \"resolved\", \"unknown\"]",
+          )
+          replace_once(
+              change,
+              "    baseline_delta_now_mg_dl: float | None\n    limitations: tuple[str, ...]\n    source_version: str = ENGINE_VERSION",
+              "    baseline_delta_now_mg_dl: float | None\n    limitations: tuple[str, ...]\n    missing_data: tuple[str, ...]\n    evidence_context: CompanionEvidenceContext\n    source_version: str = ENGINE_VERSION",
+          )
+          replace_once(
+              change,
+              "def _unknown_item(\n",
+              "def _build_change_item(\n    *,\n    observation_key: str,\n    change_kind: ChangeKind,\n    evidence_id: str,\n    producer: str,\n    evidence_strength: str,\n    first_seen_at: datetime | None,\n    last_seen_at: datetime | None,\n    baseline_delta_at_review_mg_dl: float | None,\n    baseline_delta_now_mg_dl: float | None,\n    limitations: tuple[str, ...],\n    missing_data: tuple[str, ...] = (),\n) -> CompanionChangeItem:\n    evidence_context = build_companion_evidence_context(\n        evidence_id=evidence_id,\n        producer=producer,\n        evidence_density=evidence_strength,\n        evidence_density_trend=None,\n        missing_data=missing_data,\n        limitations=limitations,\n    )\n    return CompanionChangeItem(\n        observation_key=observation_key,\n        change_kind=change_kind,\n        evidence_id=evidence_id,\n        producer=producer,\n        evidence_strength=evidence_strength,\n        first_seen_at=first_seen_at,\n        last_seen_at=last_seen_at,\n        baseline_delta_at_review_mg_dl=baseline_delta_at_review_mg_dl,\n        baseline_delta_now_mg_dl=baseline_delta_now_mg_dl,\n        limitations=limitations,\n        missing_data=missing_data,\n        evidence_context=evidence_context,\n    )\n\n\ndef _unknown_item(\n",
+          )
+          replace_once(
+              change,
+              "    return CompanionChangeItem(\n        observation_key=key,\n        change_kind=\"unknown\",",
+              "    limitations = _COMMON_LIMITATIONS + (reason,)\n    return _build_change_item(\n        observation_key=key,\n        change_kind=\"unknown\",",
+          )
+          replace_once(
+              change,
+              "        limitations=_COMMON_LIMITATIONS + (reason,),\n    )",
+              "        limitations=limitations,\n        missing_data=(reason,),\n    )",
+          )
+          text = Path(change).read_text()
+          text = text.replace("return CompanionChangeItem(\n", "return _build_change_item(\n")
+          Path(change).write_text(text)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/diabetes/services/clinical/companion_pattern_intelligence.py backend/diabetes/services/clinical/companion_change.py
+          git diff --cached --quiet && exit 0
+          git commit -m "feat(companion): expose evidence uncertainty context"
+          git push origin HEAD:agent/p2-companion-3-evidence-uncertainty
