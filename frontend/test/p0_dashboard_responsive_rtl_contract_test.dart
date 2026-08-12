@@ -74,7 +74,7 @@ void main() {
 
     for (final required in <String>[
       "value: '--'",
-      'dashboardGmiLimitedCoverage',
+      'dashboardInsufficientData',
       '_CompactMetricCell',
       'IntrinsicHeight',
       'final cv = ClinicalEngine.calcCV(logs)',
@@ -91,6 +91,11 @@ void main() {
       source,
       isNot(contains('ClinicalEngine.calcGMI(logs)')),
       reason: 'Compact dashboard must not derive GMI from mixed/manual local logs.',
+    );
+    expect(
+      source,
+      isNot(contains('dashboardGmiLimitedCoverage')),
+      reason: 'Compact dashboard must not claim row-count coverage makes CGM GMI eligible.',
     );
     expect(
       source,
