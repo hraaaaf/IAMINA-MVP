@@ -6,24 +6,24 @@ Keep IAmina's diabetes knowledge current, source-traceable and explicitly separa
 This skill is mandatory for LOTs that add or change a diabetes threshold, clinical rule, population target, treatment-context statement, device/technology claim, research-horizon claim, Ramadan/fasting rule, clinician-summary knowledge or evidence registry.
 
 ## Evidence classes
-Every externally sourced clinical claim must be placed in exactly one class:
+Every externally sourced clinical claim must be placed in exactly one evidence-maturity class. **Regulatory status is orthogonal to evidence maturity**: approval/labeling can establish permitted use, contraindications, warnings or jurisdictional availability, but approval alone does not make a therapy, device or claim `STANDARD_OF_CARE`.
 
 ### `STANDARD_OF_CARE`
-A current final guideline, regulator-approved indication/safety requirement, or repository-accepted normative consensus appropriate to the population/jurisdiction.
+A current final clinical-practice guideline or repository-accepted normative consensus recommendation appropriate to the population/context. A regulator-approved indication may be a necessary applicability/safety fact, but it is not sufficient by itself for this class.
 
 ### `EMERGING_EVIDENCE`
-Peer-reviewed evidence or a draft/updated consensus that may inform research, review or clinician discussion but has not crossed IAmina's promotion gate into patient rule authority.
+Peer-reviewed evidence or draft/non-final guidance that may inform research, review or clinician discussion but has not crossed IAmina's promotion gate into patient rule authority.
 
 ### `INVESTIGATIONAL`
 Preprints, early trials, exploratory biomarkers/models, unapproved indications/devices or future-facing hypotheses. These may be tracked by horizon-scanning work only.
 
-A newer publication date alone does not promote evidence maturity.
+A newer publication date or a regulatory approval alone does not promote evidence maturity.
 
 ## Source hierarchy
 Prefer, in order appropriate to the question:
 
 1. Current final clinical-practice guidelines and consensus from authoritative professional bodies (for example ADA, ISPAD, KDIGO, IDF/DaR).
-2. Regulators and official product labeling for approved indications, contraindications, warnings and jurisdictional availability.
+2. Regulators and official product labeling for approved indications, contraindications, warnings and jurisdictional availability; treat these as regulatory/applicability authority, not automatic standard-of-care authority.
 3. High-quality systematic reviews/meta-analyses and pivotal peer-reviewed randomized or prospective studies.
 4. Peer-reviewed observational/real-world evidence with explicit limitations.
 5. Official device/manufacturer documentation for device behavior and compatibility, never as an independent clinical-effectiveness authority.
@@ -38,11 +38,11 @@ Before changing a clinical claim that could have changed:
 2. Record publication/version date and whether the source is final, corrected, updated, draft or superseded.
 3. Check for errata/corrections when the rule contains a numeric threshold or score.
 4. Confirm the population: diabetes type, age, pregnancy, CKD/comorbidity context, treatment/device context and care setting.
-5. Confirm jurisdiction/regulatory scope where applicable.
+5. Confirm jurisdiction/regulatory scope where applicable, separately from evidence maturity.
 6. Compare against the repository's current rule and identify whether the proposed change is additive, superseding or only horizon evidence.
 7. Require clinical-safety review and regression evidence before a patient-facing rule changes.
 
-If source status is uncertain, fail closed to the less authoritative evidence class.
+If source status is uncertain, fail closed to the less authoritative evidence class and do not infer regulatory permission.
 
 ## Evidence record contract
 A governed evidence item should be able to express:
@@ -58,6 +58,7 @@ A governed evidence item should be able to express:
 - `population`
 - `modality_or_device_context`
 - `jurisdiction`
+- `regulatory_status` when applicable
 - `evidence_grade_or_strength` when the source provides one
 - `reviewed_at`
 - `supersedes`
@@ -66,12 +67,12 @@ A governed evidence item should be able to express:
 - `limitations`
 
 ## Promotion gate
-No paper, guideline update or horizon item may directly change a patient-facing deterministic rule merely because it is newer.
+No paper, guideline update, regulatory event or horizon item may directly change a patient-facing deterministic rule merely because it is newer or newly approved.
 
 Promotion to a governed rule requires:
 
 1. source/finality verification;
-2. population and jurisdiction applicability;
+2. population applicability and, where relevant, separate jurisdiction/regulatory compatibility;
 3. explicit mapping to the existing rule/contract;
 4. Clinical Safety Reviewer approval;
 5. positive and negative regression cases including insufficient-data behavior;
@@ -99,7 +100,7 @@ For emerging/investigational items, explicitly state:
 - what the study actually showed;
 - design/population and major limitation;
 - whether findings are replicated;
-- regulatory/guideline status;
+- regulatory status separately from guideline status;
 - what would be required before IAmina could use it clinically.
 
 Do not translate statistical prediction into a patient-specific clinical forecast without a separately validated model and release gate.
@@ -111,6 +112,7 @@ Use `.skills/diabetes-evidence-intelligence/CORE_SOURCES.md` as the starting sou
 Block the LOT if it:
 
 - presents a draft guideline as final;
+- equates regulatory approval with standard-of-care recommendation;
 - uses a superseded or corrected numeric rule without checking the update;
 - copies an adult target into a special population without applicability checks;
 - treats device marketing as clinical validation;
