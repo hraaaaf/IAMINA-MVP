@@ -1,0 +1,355 @@
+name: P1-EVIDENCE clinical review fix
+
+on:
+  push:
+    branches: [agent/p1-evidence-registry]
+    paths: [.github/workflows/p1-evidence-review-fix.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p1-evidence-registry
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Apply exact clinical-review remediation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          registry = Path('backend/diabetes/services/clinical/evidence_registry.py')
+          text = registry.read_text()
+
+          old = '''_SOURCE_GMI_2018 = EvidenceRecord(
+              evidence_id="source.bergenstal.2018.gmi",
+              kind=RecordKind.SOURCE,
+              topic="glucose management indicator",
+              claim_or_rule=(
+                  "GMI (%) = 3.31 + 0.02392 × mean sensor glucose (mg/dL), developed from CGM data."
+              ),
+              evidence_maturity=EvidenceMaturity.STANDARD_OF_CARE,
+              source_organization="Diabetes Care / American Diabetes Association",
+              source_title=(
+                  "Glucose Management Indicator (GMI): A New Term for Estimating A1C "
+                  "From Continuous Glucose Monitoring"
+              ),
+              identifier="DOI 10.2337/dc18-1581; PMID 30224348",
+              publication_or_version_date="2018-09-17",
+              finality_status=FinalityStatus.FINAL,
+              population=("people with diabetes represented in the CGM derivation cohorts",),
+              modality=("CGM",),
+              jurisdiction="not jurisdiction-specific",
+              regulatory_status="not_applicable",
+              reviewed_at=REVIEWED_AT,
+              clinical_authority=ClinicalAuthority.NONE,
+              limitations=(
+                  "GMI is CGM-derived and is not laboratory A1C. Individual discordance with "
+                  "laboratory A1C can be clinically meaningful."
+              ),
+              supporting_evidence_ids=("source.ada.2026.section6",),
+          )
+
+          '''
+          new = '''_SOURCE_GMI_2018 = EvidenceRecord(
+              evidence_id="source.bergenstal.2018.gmi",
+              kind=RecordKind.SOURCE,
+              topic="glucose management indicator",
+              claim_or_rule=(
+                  "GMI (%) = 3.31 + 0.02392 × mean sensor glucose (mg/dL), developed from CGM data."
+              ),
+              evidence_maturity=EvidenceMaturity.EMERGING_EVIDENCE,
+              source_organization="Diabetes Care / American Diabetes Association",
+              source_title=(
+                  "Glucose Management Indicator (GMI): A New Term for Estimating A1C "
+                  "From Continuous Glucose Monitoring"
+              ),
+              identifier="DOI 10.2337/dc18-1581; PMID 30224348",
+              publication_or_version_date="2018-09-17",
+              finality_status=FinalityStatus.FINAL,
+              population=("people with diabetes represented in the CGM derivation cohorts",),
+              modality=("CGM",),
+              jurisdiction="not jurisdiction-specific",
+              regulatory_status="not_applicable",
+              reviewed_at=REVIEWED_AT,
+              clinical_authority=ClinicalAuthority.NONE,
+              limitations=(
+                  "Foundational peer-reviewed GMI equation, not itself a current clinical-practice "
+                  "guideline. GMI is CGM-derived and is not laboratory A1C. A 2026 peer-reviewed "
+                  "updated-GMI study is tracked separately and requires an explicit promotion LOT "
+                  "before any runtime formula change."
+              ),
+              supporting_evidence_ids=("source.ada.2026.section6",),
+          )
+
+          _SOURCE_UGMI_2026 = EvidenceRecord(
+              evidence_id="source.bergenstal.2026.ugmi",
+              kind=RecordKind.SOURCE,
+              topic="updated glucose management indicator",
+              claim_or_rule=(
+                  "Peer-reviewed validation of an updated GMI model reporting improved population-level "
+                  "alignment with laboratory HbA1c compared with the 2018 linear GMI equation."
+              ),
+              evidence_maturity=EvidenceMaturity.EMERGING_EVIDENCE,
+              source_organization="Diabetologia / peer-reviewed study",
+              source_title=(
+                  "Updated glucose management indicator (GMI) better aligns with HbA1c than current GMI: "
+                  "implications for clinical practice and reporting"
+              ),
+              identifier="DOI 10.1007/s00125-026-06739-w; PMID 42029709",
+              publication_or_version_date="2026-04-24",
+              finality_status=FinalityStatus.FINAL,
+              population=(
+                  "clinical-trial and real-world CGM cohorts; applicability to an individual patient "
+                  "or special population still requires review",
+              ),
+              modality=("CGM; FreeStyle Libre and Dexcom data evaluated in the publication",),
+              jurisdiction="study evidence; not jurisdiction-specific guidance",
+              regulatory_status="not_applicable",
+              reviewed_at=REVIEWED_AT,
+              clinical_authority=ClinicalAuthority.NONE,
+              limitations=(
+                  "Emerging peer-reviewed evidence, not automatically a replacement for the current "
+                  "release-governed product formula. The publication reports manufacturer funding and "
+                  "author industry relationships. No patient-facing or deterministic formula changes "
+                  "without a separate evidence-promotion review."
+              ),
+          )
+
+          '''
+          if old not in text:
+              raise SystemExit('GMI 2018 block not found exactly')
+          text = text.replace(old, new, 1)
+
+          old_rule = '''_RULE_GMI = _internal_rule(
+              evidence_id="rule.metric.gmi-cgm.v1",
+              topic="glucose management indicator",
+              claim_or_rule=(
+                  "Use the Bergenstal GMI equation only when CGM modality and sufficient CGM "
+                  "coverage are independently verified."
+              ),
+              population=("people with diabetes for whom GMI is applicable",),
+              modality=("CGM with verified sufficiency",),
+              limitations=(
+                  "The current LogEntry schema records only source provenance and cannot prove "
+                  "wear-time/cadence coverage. Patient-facing GMI authority therefore fails closed "
+                  "until a real CGM coverage contract is available. GMI is not laboratory A1C."
+              ),
+              supporting=("source.bergenstal.2018.gmi", "source.ada.2026.section6"),
+          )
+          '''
+          new_rule = '''_RULE_GMI = _internal_rule(
+              evidence_id="rule.metric.gmi-cgm.v1",
+              topic="glucose management indicator",
+              claim_or_rule=(
+                  "Retain the legacy Bergenstal 2018 GMI equation as a non-promoted compatibility "
+                  "candidate only; do not publish GMI until both CGM sufficiency and formula promotion "
+                  "are explicitly approved."
+              ),
+              population=("people with diabetes for whom a promoted GMI rule is applicable",),
+              modality=("CGM with verified sufficiency",),
+              limitations=(
+                  "The current LogEntry schema cannot prove wear-time/cadence coverage, and newer 2026 "
+                  "peer-reviewed uGMI evidence is under evidence review. GMI therefore fails closed even "
+                  "if a future ingestion LOT proves CGM coverage, until a separate promotion gate chooses "
+                  "the release-governed formula. GMI is not laboratory A1C."
+              ),
+              supporting=(
+                  "source.bergenstal.2018.gmi",
+                  "source.bergenstal.2026.ugmi",
+                  "source.ada.2026.section6",
+              ),
+              authority=ClinicalAuthority.GOVERNED_RULE_CANDIDATE,
+          )
+          '''
+          if old_rule not in text:
+              raise SystemExit('GMI rule block not found exactly')
+          text = text.replace(old_rule, new_rule, 1)
+
+          old_records = '''    _SOURCE_ADA_2026_SECTION6,
+              _SOURCE_GMI_2018,
+              _SOURCE_PHNH_2025,
+          '''
+          new_records = '''    _SOURCE_ADA_2026_SECTION6,
+              _SOURCE_GMI_2018,
+              _SOURCE_UGMI_2026,
+              _SOURCE_PHNH_2025,
+          '''
+          if old_records not in text:
+              raise SystemExit('source registry tuple insertion point not found')
+          text = text.replace(old_records, new_records, 1)
+          registry.write_text(text)
+
+          projection = Path('backend/diabetes/services/clinical/evidence_projection.py')
+          ptext = projection.read_text()
+          ptext = ptext.replace(
+              'from diabetes.services.clinical.evidence_registry import evidence_for_kpi\n',
+              'from diabetes.services.clinical.evidence_registry import ClinicalAuthority, evidence_for_kpi\n',
+              1,
+          )
+          old_projection = '''_NORMATIVE_CGM_FIELDS = (
+              "cv_pct",
+              "tir_pct",
+              "tar_pct",
+              "tbr_pct",
+              "gmi",
+              "gri",
+              "gri_zone",
+              "gri_label",
+              "tbr_level2_pct",
+              "tbr_level1_pct",
+              "tar_level1_pct",
+              "tar_level2_pct",
+          )
+
+
+          def guard_normative_kpis(kpis: AnalyticalKPIs) -> AnalyticalKPIs:
+              """Return a KPI snapshot safe for normative clinical consumers.
+
+              Today the ingestion contract cannot prove sensor wear-time/cadence, so CGM
+              metrics fail closed. Descriptive mean/SD and record counts remain available.
+              A future CGM-ingestion LOT may unlock these fields only through
+              ``assess_cgm_sufficiency``.
+              """
+              if assess_cgm_sufficiency(kpis).verified:
+                  return kpis
+              guarded_values = {
+                  **vars(kpis),
+                  **{field: None for field in _NORMATIVE_CGM_FIELDS},
+              }
+              return AnalyticalKPIs(**guarded_values)
+          '''
+          new_projection = '''_NORMATIVE_CGM_FIELD_EVIDENCE = {
+              "cv_pct": "cv_pct",
+              "tir_pct": "tir_pct",
+              "tar_pct": "tar_pct",
+              "tbr_pct": "tbr_pct",
+              "gmi": "gmi",
+              "gri": "gri",
+              "gri_zone": "gri",
+              "gri_label": "gri",
+              "tbr_level2_pct": "tbr_level2_pct",
+              "tbr_level1_pct": "tbr_level1_pct",
+              "tar_level1_pct": "tar_level1_pct",
+              "tar_level2_pct": "tar_level2_pct",
+          }
+
+
+          def guard_normative_kpis(kpis: AnalyticalKPIs) -> AnalyticalKPIs:
+              """Return a KPI snapshot safe for normative clinical consumers.
+
+              A normative CGM field is released only when two independent gates pass:
+              actual CGM sufficiency is verified and the evidence registry marks the
+              corresponding runtime rule as ``GOVERNED_RULE``. Candidate rules remain
+              fail-closed even after a future ingestion LOT can prove sensor wear-time.
+              """
+              sufficiency = assess_cgm_sufficiency(kpis)
+              guarded_values = vars(kpis).copy()
+              for field, metric_name in _NORMATIVE_CGM_FIELD_EVIDENCE.items():
+                  evidence = evidence_for_kpi(metric_name)
+                  if not (
+                      sufficiency.verified
+                      and evidence.clinical_authority == ClinicalAuthority.GOVERNED_RULE
+                  ):
+                      guarded_values[field] = None
+              return AnalyticalKPIs(**guarded_values)
+          '''
+          if old_projection not in ptext:
+              raise SystemExit('projection gate block not found exactly')
+          ptext = ptext.replace(old_projection, new_projection, 1)
+          ptext = ptext.replace(
+              '"gmi_confidence": guarded.gmi_confidence if sufficiency.verified else None,\n'
+              '        "gmi_basis": guarded.gmi_basis if sufficiency.verified else "couverture CGM non vérifiée",',
+              '"gmi_confidence": guarded.gmi_confidence if guarded.gmi is not None else None,\n'
+              '        "gmi_basis": (\n'
+              '            guarded.gmi_basis\n'
+              '            if guarded.gmi is not None\n'
+              '            else (\n'
+              '                "couverture CGM non vérifiée"\n'
+              '                if not sufficiency.verified\n'
+              '                else "règle GMI non promue"\n'
+              '            )\n'
+              '        ),',
+              1,
+          )
+          projection.write_text(ptext)
+
+          tests = Path('backend/diabetes/tests/test_p1_evidence_runtime_authority.py')
+          ttext = tests.read_text()
+          ttext = ttext.replace(
+              'from diabetes.services.clinical.evidence_engine import EvidenceGuardedDiabetesEngine\n',
+              'from diabetes.services.clinical.cgm_eligibility import CgmSufficiency\n'
+              'from diabetes.services.clinical.evidence_engine import EvidenceGuardedDiabetesEngine\n',
+              1,
+          )
+          marker = '''    def test_projection_exposes_versioned_evidence_metadata(self):
+          '''
+          new_test = '''    @patch("diabetes.services.clinical.evidence_projection.assess_cgm_sufficiency")
+              def test_verified_coverage_cannot_auto_promote_candidate_metrics(self, sufficiency_mock):
+                  raw = _raw_cgm_like_kpis()
+                  sufficiency_mock.return_value = CgmSufficiency(
+                      verified=True,
+                      reason="synthetic future verified coverage",
+                      days_with_data=raw.days_with_data,
+                      cgm_row_fraction_pct=raw.cgm_active_pct,
+                      evidence_id="rule.metric.gmi-cgm.v1",
+                  )
+
+                  guarded = guard_normative_kpis(raw)
+                  public = project_public_kpis(raw)
+
+                  self.assertEqual(guarded.tir_pct, 68.0)
+                  self.assertEqual(guarded.cv_pct, 40.3)
+                  self.assertIsNone(guarded.gmi)
+                  self.assertIsNone(guarded.gri)
+                  self.assertIsNone(guarded.gri_zone)
+                  self.assertIsNone(public["gmi"])
+                  self.assertIsNone(public["gri"])
+                  self.assertIsNone(public["gmi_confidence"])
+                  self.assertEqual(public["gmi_basis"], "règle GMI non promue")
+
+              def test_projection_exposes_versioned_evidence_metadata(self):
+          '''
+          if marker not in ttext:
+              raise SystemExit('runtime test insertion point not found')
+          ttext = ttext.replace(marker, new_test, 1)
+          tests.write_text(ttext)
+
+          registry_tests = Path('backend/diabetes/tests/test_evidence_registry.py')
+          rtext = registry_tests.read_text()
+          marker = '''    def test_gmi_rule_requires_verified_cgm_and_is_not_lab_a1c(self):
+          '''
+          new_registry_test = '''    def test_gmi_sources_are_peer_reviewed_evidence_not_automatic_standard_of_care(self):
+                  legacy = get_evidence("source.bergenstal.2018.gmi")
+                  updated = get_evidence("source.bergenstal.2026.ugmi")
+                  rule = get_evidence("rule.metric.gmi-cgm.v1")
+
+                  self.assertEqual(legacy.evidence_maturity, EvidenceMaturity.EMERGING_EVIDENCE)
+                  self.assertEqual(updated.evidence_maturity, EvidenceMaturity.EMERGING_EVIDENCE)
+                  self.assertEqual(updated.clinical_authority, ClinicalAuthority.NONE)
+                  self.assertEqual(rule.clinical_authority, ClinicalAuthority.GOVERNED_RULE_CANDIDATE)
+                  self.assertIn(updated.evidence_id, rule.supporting_evidence_ids)
+
+              def test_gmi_rule_requires_verified_cgm_and_is_not_lab_a1c(self):
+          '''
+          if marker not in rtext:
+              raise SystemExit('registry test insertion point not found')
+          rtext = rtext.replace(marker, new_registry_test, 1)
+          registry_tests.write_text(rtext)
+          PY
+      - name: Commit remediation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/diabetes/services/clinical/evidence_registry.py \
+                  backend/diabetes/services/clinical/evidence_projection.py \
+                  backend/diabetes/tests/test_p1_evidence_runtime_authority.py \
+                  backend/diabetes/tests/test_evidence_registry.py
+          git commit -m "fix(p1-evidence): require explicit evidence promotion for CGM candidates"
+          git push origin HEAD:agent/p1-evidence-registry
