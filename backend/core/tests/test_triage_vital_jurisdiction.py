@@ -69,3 +69,20 @@ def test_darija_response_uses_same_confirmed_registry_contact():
 
     assert "150" in payload["reply"]
     assert "141" not in payload["reply"]
+
+
+def test_english_response_preserves_emergency_boundary_and_registry_contact():
+    payload = _pick_emergency_response(
+        "glucose 40 mg/dL",
+        locale=_locale(
+            country_code="MA",
+            confirmed=True,
+            response_language="en",
+        ),
+        language="en",
+    )
+
+    assert payload["is_emergency"] is True
+    assert "150" in payload["reply"]
+    assert "URGENT HEALTH SITUATION" in payload["reply"]
+    assert "does not replace emergency medical care" in payload["reply"]
