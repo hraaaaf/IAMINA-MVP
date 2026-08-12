@@ -86,7 +86,9 @@ Semantics:
 
 `IMPROVING` is not treatment effect, causality or recovery. `RESOLVED` is not disease/problem resolution. Sparse/missing data cannot create `RESOLVED`.
 
-Lifecycle transitions are driven by material source changes and governed time criteria, not API read frequency.
+Lifecycle transitions are driven by material source changes and governed time criteria, not API read frequency. A fresh **insufficient** dataset may switch the allowed next step to `COLLECT_MISSING_DATA`, but it cannot strengthen lifecycle state: an existing state is preserved and a newly initialized historical observation starts in `MONITORING` rather than being promoted from stale recurrence/baseline history.
+
+When a material active update contains both repeated activation and movement toward baseline, `PERSISTING` is the lifecycle state because recurrence is the stronger longitudinal fact. The baseline movement remains an explicit secondary reason code and does not become a treatment-effect claim.
 
 ## 6. Attention budget and idempotency
 
@@ -134,9 +136,10 @@ Certification must prove:
 - max-one attention budget with pending-candidate preservation;
 - material support re-surfacing;
 - recurrent activation → `PERSISTING` only on material change;
-- baseline movement → descriptive `IMPROVING` only;
+- simultaneous reactivation + baseline improvement remains `PERSISTING` while retaining the improvement reason;
+- baseline movement → descriptive `IMPROVING` only when recurrence does not dominate;
 - full eligible-horizon absence required for `RESOLVED`;
-- sparse data never resolves and may only request missing data;
+- sparse data never resolves, never strengthens lifecycle state and may only request missing data;
 - strict patient isolation;
 - direct ORM rejection of unapproved provenance, escalation and action;
 - explicit `PriorityVector` and absence of companion/scalar-score authority;
