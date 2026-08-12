@@ -17,6 +17,12 @@ const viewports = [
 ];
 const locales = [['fr', 'fr-FR'], ['ar', 'ar-MA']];
 
+async function openApp(page, url, settleMs) {
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForSelector('flutter-view', { timeout: 30000 });
+  await page.waitForTimeout(settleMs);
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   const report = [];
@@ -24,8 +30,7 @@ const locales = [['fr', 'fr-FR'], ['ar', 'ar-MA']];
     const context = await browser.newContext({ locale });
     const seed = await context.newPage();
     await seed.setViewportSize({ width: 390, height: 844 });
-    await seed.goto(`http://127.0.0.1:4173/?audit=ux12&lang=${lang}#/importer`, { waitUntil: 'networkidle' });
-    await seed.waitForTimeout(1800);
+    await openApp(seed, `http://127.0.0.1:4173/?audit=ux12&lang=${lang}#/importer`, 1800);
     const load = seed.getByRole('button', { name: /Charger|Load|تحميل/i });
     if (await load.count()) {
       try {
@@ -41,8 +46,11 @@ const locales = [['fr', 'fr-FR'], ['ar', 'ar-MA']];
         await page.setViewportSize({ width, height });
         const errors = [];
         page.on('pageerror', e => errors.push(String(e)));
-        await page.goto(`http://127.0.0.1:4173/?audit=ux12&lang=${lang}#${route}`, { waitUntil: 'networkidle' });
-        await page.waitForTimeout(name === 'summary' ? 3500 : 1800);
+        await openApp(
+          page,
+          `http://127.0.0.1:4173/?audit=ux12&lang=${lang}#${route}`,
+          name === 'summary' ? 3500 : 1800,
+        );
         const views = await page.locator('flutter-view').count();
         const file = `/tmp/ux12-captures/${vp}-${lang}__${name}.png`;
         await page.screenshot({ path: file, fullPage: false });
