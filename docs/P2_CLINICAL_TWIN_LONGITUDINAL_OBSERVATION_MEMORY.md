@@ -63,6 +63,8 @@ Changed support may update evidence-strength history while the observation remai
 
 A changing background/window median may update baseline-relative evolution without increasing recurrence when the supporting observation evidence itself did not change.
 
+Repeated reads with unchanged support and unchanged baseline do not rewrite `previous_evidence_strength`, `evidence_strength_trend`, `previous_baseline_delta_mg_dl` or `baseline_delta_change_mg_dl`. Those fields preserve the **last material transition** rather than reflecting API read frequency.
+
 If the canonical dataset is too sparse to be eligible for analysis, P2 preserves the previous lifecycle state rather than interpreting missing evidence as disappearance.
 
 ## 6. Patient/API boundary
@@ -90,7 +92,8 @@ P2 does not add or change:
 Certification must prove:
 
 - first sighting persistence with deterministic provenance;
-- same-evidence idempotency;
+- same-evidence semantic idempotency;
+- repeated reads preserve the last material evidence-strength and baseline-evolution transition;
 - continuous evidence strengthening/weakening does not inflate recurrence;
 - recurrence increases only on a true inactive-to-active lifecycle transition;
 - evidence-strength trend without probability semantics;
