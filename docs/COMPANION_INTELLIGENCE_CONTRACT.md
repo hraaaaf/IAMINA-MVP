@@ -161,8 +161,8 @@ The deterministic structured result is authoritative; narration is optional pres
 |---|---|---|
 | **P2-COMPANION-0** | **Companion Intelligence Contract** | Product/authority ceiling is canonical; consultation is explicitly a sub-capability; no doctor-replacement framing |
 | **P2-COMPANION-1** | **Change Since Last Review** | ✅ Certified in PR #147: governed explicit companion-review anchor + deterministic `new/persisting/improving/resolved/unknown`; post-merge CI #1913 + drift #1725 green |
-| **P2-COMPANION-2** | **Personal Pattern Intelligence** | 🟡 MERGE GATE: PR #149 read-only governed Clinical Twin projection; no causal/diagnostic/treatment-response upgrade |
-| P2-COMPANION-3 | Evidence + Uncertainty | Every material observation exposes provenance, evidence maturity, limitations and missing data |
+| **P2-COMPANION-2** | **Personal Pattern Intelligence** | ✅ Certified in PR #149: read-only governed Clinical Twin projection; post-merge CI #1922 + drift #1734 green |
+| **P2-COMPANION-3** | **Evidence + Uncertainty** | ▶️ NEXT: every material observation exposes provenance, evidence maturity, limitations and missing data |
 | P2-COMPANION-4 | Smart Suggestions | Non-prescriptive suggestions limited to understand/monitor/collect/learn/discuss/follow-up classes |
 | P2-COMPANION-5 | Consultation Companion | Prepare the patient for a clinician review using the inherited `consultation-brief.v1` authority contract |
 | P2-COMPANION-6 | After-Visit Continuity | Track the interval after a consultation without judging or changing the clinician's treatment decision |
