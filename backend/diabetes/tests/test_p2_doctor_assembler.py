@@ -342,14 +342,15 @@ class ConsultationBriefAssemblerTests(TestCase):
             )
 
     def test_checkpoint_at_or_after_window_end_fails_closed(self):
+        window_end = self.end + timedelta(days=1)
         checkpoint = ConsultationReviewCheckpoint(
-            reviewed_at=self.end,
+            reviewed_at=window_end,
             source="test.explicit-clinician-review",
         )
         with self.assertRaisesRegex(ValueError, "checkpoint must precede"):
             assemble_consultation_brief(
                 patient_id=self.patient.id,
                 window_start=self.end,
-                window_end=self.end + timedelta(days=1),
+                window_end=window_end,
                 review_checkpoint=checkpoint,
             )
