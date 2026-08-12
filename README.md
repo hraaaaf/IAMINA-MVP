@@ -10,27 +10,30 @@ IAmina is a **diabetes companion designed for the MENA region**. The product com
 - **User choice beats geolocation.** Country/location may suggest language, dialect, units, time zone, and emergency resources; it must never silently decide them.
 - **Deterministic engine first.** IAmina's approved clinical/safety logic decides structured outputs. Generative models may verbalize approved minimized context or perform explicitly permitted media tasks.
 - **No diagnosis or prescription.** Emergency handling is deterministic and must never depend on an LLM response.
-- **Sovereignty and minimization by design.** External model calls require sanctioned server-side authorization; the remaining payload/media governance work is tracked as P0-MENA-1.
+- **Sovereignty and minimization by design.** External model calls require the completed P0-MENA-1 server-side patient/purpose/modality authorization, payload minimization/allowlists, consent and processor-policy boundaries.
 - **Retention before expansion.** The first proof is a safe MENA pilot and measurable D90 retention, not feature count or number of disease modules.
 
 ## Current strategic status
 
-The repository is in a **MENA sovereignty + pilot-hardening phase** before the first real-patient cohort.
+The repository is in a **clinical-intelligence + MENA pilot-hardening phase** before the first real-patient cohort.
 
-### Recently closed P0 foundations
+### Recently closed foundations
 
 - **P0-A — API safety boundaries:** cookie/session API writes retain CSRF protection; unit normalization covers legacy + namespaced module routes and fails closed; deterministic triage authority sits on the shared safety side of the architecture boundary.
-- **P0-B — AI egress authorization:** currently wired live external AI/media operations require patient + purpose + modality scope and server-side consent at real egress time; missing authorization state fails closed; CI prevents new direct callsites from omitting the authorization assertion.
+- **P0-MENA-1 — AI/data egress governance:** live external AI/media operations require patient + purpose + modality scope, server-side consent, explicit minimization/allowlists and governed processor policy at real egress time; CI prevents bypassing the sanctioned boundary.
+- **P0-MENA-3 — Sovereign authentication migration:** Django-owned registration/login/logout and IAMINA bearer-token flows are implemented with guarded Firebase migration/reconciliation paths retained until the zero-Firebase operational gate is legitimately satisfied.
+- **P2-CLINICAL-TWIN — Longitudinal Observation Memory:** approved deterministic `personal_response` observations have a recomputable longitudinal lifecycle with governed provenance, data-erasure reconciliation and patient export/retention compatibility.
+- **P2-PROACTIVE — Prioritization + Insight Lifecycle:** approved Clinical Twin observations feed a bounded, auditable non-urgent proactive workflow; the current source cannot escalate, change treatment or gain generative clinical authority.
 
 ### Still open on the critical path
 
-1. Complete P0-MENA-1: explicit payload allowlists/minimization, granular raw-media consent, processor/residency/retention metadata, timeout/failure/fallback policy.
-2. Define and enforce the MENA locale + safety contract.
-3. Migrate sovereignty-critical authentication from legacy Firebase dependencies to Django-native auth without losing accounts.
-4. Benchmark text, STT, and vision providers independently for privacy, MENA quality, latency, availability, and cost.
-5. Certify clinical analytics against normative definitions and PostgreSQL source-of-truth behavior.
-6. Deploy a safety-equivalent pilot in one founder-selected MENA country/cohort.
-7. Measure D90 retention, then decide whether to expand.
+1. Build **P2-DOCTOR — Consultation Intelligence** on top of the certified Clinical Twin + proactive foundation.
+2. Complete P0-MENA-2 native-language safety review, including remaining Darija high-severity variants and multimodal/transliteration parity.
+3. Complete restricted pilot consent, processor/subprocessor, privacy/CNDP and Morocco residency/cross-border approvals.
+4. Remediate or explicitly supersede the pilot-blocking reachable Git-history secret finding tracked by issue #30 before a real-patient go/no-go.
+5. Run the deferred live text, STT and vision/OCR provider benchmarks and approve cutover only from evidence.
+6. Run the real-patient pilot go/no-go only after the safety/compliance gates are legitimately closed.
+7. Measure D90 retention, safety and clinical usefulness, then decide whether to expand.
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the live backlog and gates.
 
@@ -41,8 +44,8 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the live backlog and gates.
 | Frontend | Flutter — web, iOS, Android | Keep Flutter as the only frontend |
 | Backend | Django 6 + django-ninja | Keep modular monolith/chassis seams |
 | Database | PostgreSQL in Docker/staging path; SQLite manual-dev fallback | PostgreSQL authoritative outside lightweight local fallback |
-| Auth | Firebase bridge still present | Django-native authentication target |
-| AI | Provider-specific adapters still exist behind/alongside a central egress authorization layer | Fully policy-governed, provider-agnostic modality architecture |
+| Auth | Django-owned auth/token flows with controlled Firebase migration/reconciliation compatibility still present | Remove remaining Firebase dependencies only after the permanent zero-Firebase audit gate passes |
+| AI | Provider-specific adapters behind a central governed egress authorization/minimization boundary | Keep provider-agnostic policy authority and evidence-based provider selection |
 | Local state | Drift / SQLite | Offline-first sync retained |
 
 ## Quick start
