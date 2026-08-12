@@ -96,6 +96,19 @@ Approved longitudinal semantics include:
 
 These semantics do not by themselves establish diagnosis, causality, treatment response or future prediction.
 
+### 5.1 Change-since-review contract
+
+P2-COMPANION-1 makes review history an explicit governed product event rather than an inferred timestamp:
+
+- a review anchor is created server-side only when an explicit companion-review action is invoked; opening the app, reading data, chatting with IAmina or model output cannot create one;
+- the anchor is patient-scoped and snapshots only approved deterministic Clinical Twin observations under their existing producer/evidence authority;
+- the engine compares the latest anchor with current governed Clinical Twin state and may emit only `new`, `persisting`, `improving`, `resolved` or `unknown`; no anchor yields `insufficient_anchor`;
+- `improving` means a descriptive baseline-relative delta moved toward the patient's own governed window baseline. It must never be narrated as treatment response, therapeutic success or clinical outcome;
+- missing current state or insufficient post-review evidence is `unknown`, not silent resolution;
+- source erasure/replacement invalidates anchors that may encode the removed evidence before Clinical Twin rebuild;
+- persisted anchors/snapshots are patient-owned application records and remain subject to export, account deletion and retention governance;
+- the anchor records an IAmina **companion review**, not a clinician consultation. Consultation history remains a separate P2-COMPANION-5 concern.
+
 ## 6. Consultation is a sub-capability, not the product identity
 
 The certified `consultation-brief.v1` contract from PR #143 remains valid as a **restricted consultation-support sub-contract**.
@@ -133,7 +146,7 @@ The deterministic structured result is authoritative; narration is optional pres
 | LOT | One responsibility | Acceptance target |
 |---|---|---|
 | **P2-COMPANION-0** | **Companion Intelligence Contract** | Product/authority ceiling is canonical; consultation is explicitly a sub-capability; no doctor-replacement framing |
-| P2-COMPANION-1 | Change Since Last Review | Evidence-qualified current-vs-history change with explicit insufficient-data behavior |
+| P2-COMPANION-1 | Change Since Last Review | Governed explicit companion-review anchor + deterministic `new/persisting/improving/resolved/unknown`; runtime candidate in PR #147, merge gate pending |
 | P2-COMPANION-2 | Personal Pattern Intelligence | First/recurring/persisting/improving/resolved personal observations without causal or diagnostic upgrade |
 | P2-COMPANION-3 | Evidence + Uncertainty | Every material observation exposes provenance, evidence maturity, limitations and missing data |
 | P2-COMPANION-4 | Smart Suggestions | Non-prescriptive suggestions limited to understand/monitor/collect/learn/discuss/follow-up classes |
