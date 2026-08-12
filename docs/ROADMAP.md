@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-12 — P2-COMPANION-3 Evidence + Uncertainty has a Clinical-Safety-reviewed runtime candidate in PR #151. Material P2-COMPANION-1/2 observations now expose governed provenance, evidence maturity, explicit missing data and limitations without adding clinical confidence or authority. It remains in merge gate. UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-12 — P2-COMPANION-3 Evidence + Uncertainty is certified, merged and post-merge green. **P2-COMPANION-4 — Smart Suggestions is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -42,7 +42,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains a governance blocker despite being closed `not planned` |
-| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority + governed change/pattern projections + evidence/uncertainty candidate | 🟡 P2-COMPANION-3 merge gate | PR #151 runtime head reviewed; final docs-inclusive certification/merge/post-merge still required |
+| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority + governed change/pattern projections + evidence/uncertainty | 🟡 P2-COMPANION active — Smart Suggestions next | PR #151 merge `d8fe70d1…`; post-merge CI #1929 + drift #1741 green |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
@@ -230,7 +230,7 @@ Candidate contract:
 
 **Closure:** PR #149 final head `59401d82e9fa4dc20a5c5c6b53e59d59c19f3bd1` passed CI #1921 + migration drift #1733, Clinical Safety Reviewer FINAL PASS, Documentation/Architecture/Companion Safety review 9.8/10 and Release Certifier GO. Expected-head merge produced `a0560b38ba97c095dfdea4e6a210bd93cbbf0ae3`; post-merge `main` CI #1922 + migration drift #1734 passed.
 
-### 🟡 P2-COMPANION-3 — Evidence + Uncertainty — MERGE GATE
+### ✅ P2-COMPANION-3 — Evidence + Uncertainty — CLOSED
 
 PR #151 adds one deterministic evidence/uncertainty envelope to material P2-COMPANION-1 and P2-COMPANION-2 observations without creating new clinical truth.
 
@@ -246,9 +246,9 @@ Candidate contract:
 - P2-COMPANION-2 exposes absent prior density/baseline history and resolved-state lack of current active evidence instead of hiding those limitations;
 - P2-COMPANION-3 adds no detector, threshold, evidence source, database model/migration, endpoint, Flutter UX, model narration, suggestion, notification, prioritization, diagnosis, prediction, prescription, dose logic, treatment optimization/change or clinician override.
 
-**Runtime evidence before canonical-doc update:** exact head `a9e0fbda685c065ad85963fde757f98f31fc4bc4` passed CI #1925 + migration drift #1737 and Clinical Safety Reviewer PASS. These proofs become stale once docs change; final docs-inclusive exact-head gates, Documentation/Architecture review and Release Certifier remain mandatory before merge.
+**Closure:** PR #151 final head `4e9cfd0a8d6151fe7f72e1f32c449e7bd969aac3` passed CI #1928 + migration drift #1740, Clinical Safety Reviewer FINAL PASS, Documentation/Architecture/Companion Safety review 9.9/10 and Release Certifier GO. Expected-head merge produced `d8fe70d1803cbf035252ac4d9174e7ecc843b9aa`; post-merge `main` CI #1929 + migration drift #1741 passed.
 
-### ⏳ P2-COMPANION-4 — Smart Suggestions
+### ▶️ P2-COMPANION-4 — Smart Suggestions — NEXT
 
 Turn approved observations into bounded non-prescriptive suggestions only: understand, monitor, collect missing context, learn, prepare clinician discussion or follow-up recording.
 
@@ -281,8 +281,8 @@ Add permanent clinician-reviewed negative, longitudinal, false-positive and boun
 | **P2-COMPANION-0** | **Companion Intelligence Contract** | ✅ **CLOSED** | Canonical authority contract; former P2-DOCTOR framing superseded without rollback of certified PR #143 sub-contract |
 | **P2-COMPANION-1** | **Change Since Last Review** | ✅ **CLOSED** | PR #147 head `cb859128…`; merge `f689f63b…`; post-merge CI #1913 + drift #1725 green |
 | **P2-COMPANION-2** | **Personal Pattern Intelligence** | ✅ **CLOSED** | PR #149 head `59401d82…`; merge `a0560b38…`; post-merge CI #1922 + drift #1734 green |
-| **P2-COMPANION-3** | **Evidence + Uncertainty** | 🟡 **MERGE GATE** | PR #151 common governed provenance + uncertainty envelope for P2-COMPANION-1/2; final exact-head certification/merge/post-merge pending |
-| P2-COMPANION-4 | Smart Suggestions | ⏳ Planned | Suggestions remain within six non-prescriptive companion classes |
+| **P2-COMPANION-3** | **Evidence + Uncertainty** | ✅ **CLOSED** | PR #151 head `4e9cfd0a…`; merge `d8fe70d1…`; post-merge CI #1929 + drift #1741 green |
+| **P2-COMPANION-4** | **Smart Suggestions** | ▶️ **NEXT** | Suggestions remain within six non-prescriptive companion classes |
 | P2-COMPANION-5 | Consultation Companion | ⏳ Planned | Patient preparation reuses certified `consultation-brief.v1`; clinician remains medical authority |
 | P2-COMPANION-6 | After-Visit Continuity | ⏳ Planned | Interval follow-up records change without judging/altering treatment |
 | P2-COMPANION-7 | Companion UX | ⏳ Planned | Patient-first Understand → Follow → Prepare surfaces; no virtual-doctor framing |
