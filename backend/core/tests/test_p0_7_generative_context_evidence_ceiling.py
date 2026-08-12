@@ -1,8 +1,3 @@
-from core.contracts.domain_context import DomainContext
-from core.generative_context_safety import sanitize_unstructured_generative_context
-from core.llm_gateway import _build_user_prompt
-
-
 INTERNAL_CODE = "SOMOGYI_REBOUND"
 
 
@@ -47,7 +42,9 @@ def _pattern():
     )
 
 
-def _domain_context() -> DomainContext:
+def _domain_context():
+    from core.contracts.domain_context import DomainContext
+
     return DomainContext(
         kpi_summary={"tir_pct": 74.0},
         detected_patterns=[INTERNAL_CODE],
@@ -72,6 +69,8 @@ def test_chat_pivot_uses_descriptive_evidence_not_machine_code():
 
 
 def test_generic_narrate_prompt_does_not_append_detected_pattern_codes():
+    from core.llm_gateway import _build_user_prompt
+
     prompt = _build_user_prompt(_domain_context(), None)
 
     assert INTERNAL_CODE not in prompt
@@ -81,6 +80,8 @@ def test_generic_narrate_prompt_does_not_append_detected_pattern_codes():
 
 
 def test_last_mile_sanitizer_removes_legacy_unstructured_pattern_shapes():
+    from core.generative_context_safety import sanitize_unstructured_generative_context
+
     legacy = (
         "[CLINICAL_CONTEXT]\n"
         f"Evidence-qualified observation codes: {INTERNAL_CODE}, DAWN_PHENOMENON. "
@@ -100,6 +101,8 @@ def test_last_mile_sanitizer_removes_legacy_unstructured_pattern_shapes():
 
 
 def test_last_mile_sanitizer_does_not_rewrite_structured_p0_5a_formatter_contract():
+    from core.generative_context_safety import sanitize_unstructured_generative_context
+
     structured = (
         "Patterns cliniques détectés (données réelles, ne pas inventer):\n"
         f"code={INTERNAL_CODE} | observation=descriptive evidence"
