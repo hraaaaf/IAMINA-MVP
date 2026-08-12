@@ -5,6 +5,7 @@ That does not make every result eligible for normative CGM interpretation. This
 module is the single diabetes-owned boundary that converts raw analytics into
 patient/LLM-facing metric authority.
 """
+
 from __future__ import annotations
 
 from dataclasses import replace
