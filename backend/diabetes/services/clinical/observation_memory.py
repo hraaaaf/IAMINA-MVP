@@ -10,6 +10,7 @@ import hashlib
 import json
 from dataclasses import replace
 
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
@@ -127,6 +128,11 @@ def refresh_personal_response_memory(
         raise ValueError(
             f"{resolved_truth_kind.value} cannot enter the longitudinal clinical observation store"
         )
+
+    # Serialize canonical refreshes per patient. Explicit source erasure takes
+    # the same lock before purging/rebuilding derived state, so a concurrent
+    # refresh cannot re-materialize an aggregate computed from an erased source.
+    get_user_model().objects.select_for_update().only("pk").get(pk=patient_id)
 
     result = compute_personal_response(
         patient_id=patient_id,
