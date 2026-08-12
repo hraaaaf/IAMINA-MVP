@@ -1,5 +1,6 @@
 from .audit import AuditLog
 from .chat import AIChatMessage
+from .clinical_insight import ClinicalInsightState
 from .clinical_observation import ClinicalObservationState
 from .entry import LogEntry
 from .feedback import DemoFeedback
@@ -18,6 +19,7 @@ __all__ = [
     'IAminaMemorySnapshot',
     'IAminaDeepMemorySnapshot',
     'ClinicalObservationState',
+    'ClinicalInsightState',
     'AuditLog',
     'LabReport',
 ]
