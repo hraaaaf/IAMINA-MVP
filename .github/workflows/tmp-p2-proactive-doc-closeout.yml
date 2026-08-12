@@ -1,0 +1,128 @@
+name: Temporary P2 proactive doc closeout
+
+on:
+  push:
+    branches:
+      - agent/p2-proactive-insight-lifecycle
+
+permissions:
+  contents: write
+
+jobs:
+  update-docs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2-proactive-insight-lifecycle
+      - name: Update canonical contracts
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if text.count(old) != 1:
+                  raise SystemExit(f"expected one anchor in {path}, found {text.count(old)}")
+              p.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              "docs/ROADMAP.md",
+              "> **Last updated:** 2026-08-12 — P2-CLINICAL-TWIN is merged and post-merge green. P2-PROACTIVE is the next executable clinical-intelligence LOT. UX visual rebase remains closed through UX-11 at 9.8/10.",
+              "> **Last updated:** 2026-08-12 — P2-PROACTIVE has a reviewer-passed runtime candidate in PR #139. It remains open until exact-head certification, expected-head merge and post-merge CI + migration drift are complete. UX visual rebase remains closed through UX-11 at 9.8/10.",
+          )
+          replace_once(
+              "docs/ROADMAP.md",
+              "| Clinical intelligence / proactivity | P0 audit + semantics + skills foundation + evidence registry + clinical twin closed | 🟢 P2-PROACTIVE ready | PR #135 merge `00292e44…`; post-merge CI #1805 + drift #1617 green |",
+              "| Clinical intelligence / proactivity | P0 audit + semantics + skills foundation + evidence registry + clinical twin closed; proactive runtime candidate ready | 🟡 P2-PROACTIVE merge gate | PR #139; final exact-head certification + post-merge proof remain |",
+          )
+          twin_close = "**Closure:** PR #135 head `1058ee4a…` passed CI #1804 + drift #1616, Clinical Safety Reviewer and Release Certifier; merge `00292e44…` then passed post-merge `main` CI #1805 + drift #1617.\n\n## Ordered execution"
+          proactive_section = '''**Closure:** PR #135 head `1058ee4a…` passed CI #1804 + drift #1616, Clinical Safety Reviewer and Release Certifier; merge `00292e44…` then passed post-merge `main` CI #1805 + drift #1617.
+
+## 🟡 P2-PROACTIVE — Prioritization + Insight Lifecycle — RUNTIME CANDIDATE
+
+PR #139 adds a diabetes-owned proactive workflow **derived from** `ClinicalObservationState`; it does not replace or mutate the Clinical Twin as clinical truth.
+
+Candidate contract:
+
+- deterministic lifecycle: `NEW → MONITORING → PERSISTING / IMPROVING → RESOLVED`; the current descriptive `personal_response` source is not authorized to enter `ESCALATED`;
+- an explicit priority vector exposes non-urgent safety/time sensitivity, observational/review-worthy relevance, persistence, change from the patient baseline, evidence density, bounded actionability, evidence maturity and interruption cost rather than a black-box risk score;
+- the current source can emit only `MONITOR` or `PREPARE_CLINICIAN_DISCUSSION`; database constraints reject escalation and treatment-change authority;
+- unchanged material state does not re-surface, and the product attention budget allows at most one **non-urgent** item per 24 hours; this is interruption-cost policy, not a medically authoritative follow-up interval;
+- `RESOLVED` requires an eligible Clinical Twin refresh showing absence of the previously eligible observation; insufficient data cannot silently resolve prior state;
+- true reactivation cannot remain stale-`RESOLVED`, including a matching-fingerprint edge case;
+- protected `GET /api/v1/proactive-insights/` returns at most one evidence-qualified candidate plus an explicit observation-only safety notice;
+- deterministic emergency routing remains separate/upstream and is never suppressed by the non-urgent attention budget;
+- no diagnosis, prescription, dose calculation, causal attribution, treatment optimization or generative clinical authority is introduced.
+
+**Closure gate:** P2-PROACTIVE remains open until the final docs-inclusive head passes exact-head CI + PostgreSQL + migration drift, Clinical Safety + Database/Migration review, Release Certifier GO, expected-head merge, and post-merge `main` CI + migration drift.
+
+## Ordered execution'''
+          replace_once("docs/ROADMAP.md", twin_close, proactive_section)
+          replace_once(
+              "docs/ROADMAP.md",
+              "| **P2-PROACTIVE** | **Prioritization + Insight Lifecycle** | ▶️ **NEXT** | Clinical relevance, persistence, actionability, evidence density and interruption cost govern what surfaces and when |",
+              "| **P2-PROACTIVE** | **Prioritization + Insight Lifecycle** | 🟡 **RUNTIME CANDIDATE** | PR #139: explicit priority/lifecycle + attention budget implemented; final exact-head certification, merge and post-merge proof remain |",
+          )
+          replace_once(
+              "docs/ROADMAP.md",
+              "1. **Clinical intelligence product lane:** start **P2-PROACTIVE — Prioritization + Insight Lifecycle** from the post-merge-green P2-CLINICAL-TWIN baseline. This lane is executable without waiting for external MENA approvals.",
+              "1. **Clinical intelligence product lane:** finish **P2-PROACTIVE — Prioritization + Insight Lifecycle** through docs-inclusive exact-head certification, expected-head merge and post-merge CI + migration drift. Do not start P2-DOCTOR before that closeout.",
+          )
+
+          personal_anchor = "- the Journal shows one strongest pattern by default and makes secondary patterns explicitly expandable so longitudinal context does not crowd out the primary history task.\n\n\n### Post-save experience contract"
+          proactive_specs = '''- the Journal shows one strongest pattern by default and makes secondary patterns explicitly expandable so longitudinal context does not crowd out the primary history task.
+
+### Proactive insight lifecycle contract
+
+- proactive workflow state is derived only from approved deterministic `ClinicalObservationState`; it is separate delivery/product state and never becomes source clinical truth;
+- protected `GET /api/v1/proactive-insights/` returns at most one non-urgent evidence-qualified candidate for the authenticated patient and never accepts a client-supplied patient identity;
+- lifecycle states for the current source are `new`, `monitoring`, `persisting`, `improving` and `resolved`; `escalated` is part of the wider lifecycle vocabulary but is rejected by the database for the current descriptive `personal_response` source;
+- `resolved` requires eligible source-data refresh and eligible absence; missing/insufficient data returns `insufficient_data` and cannot erase a prior observation;
+- a reactivated Clinical Twin observation cannot remain stale-`resolved`, even if supporting evidence reproduces an earlier fingerprint;
+- unchanged material state does not re-surface; at most one non-urgent item may surface per 24 hours, and that 24-hour value is a product interruption-cost budget rather than a clinical follow-up recommendation;
+- prioritization is auditable through explicit dimensions rather than an opaque score: safety/time sensitivity, observational/review-worthy relevance, persistence, baseline-relative descriptive change, evidence density, actionability, evidence maturity and interruption cost;
+- the current source is bounded to `MONITOR` and `PREPARE_CLINICIAN_DISCUSSION`; database constraints reject clinician-handoff/escalation classes and treatment-change actions;
+- `limited` / `moderate` / `strong` retain their personal-response meaning as repetition density only and must not be narrated as probability or clinical confidence;
+- deterministic emergency classification/routing remains upstream and outside the non-urgent attention budget;
+- no proactive state or API output may diagnose, prescribe, calculate a dose, infer causality, optimize/change treatment or grant generative-model clinical authority.
+
+
+### Post-save experience contract'''
+          replace_once("docs/SPECS.md", personal_anchor, proactive_specs)
+
+          arch_anchor = '''The diabetes module owns:
+
+- diabetes-specific patient profile extension;
+- glucose/CGM/log data;
+- diabetes KPI queries and analytics;
+- diabetes clinical/pattern rules;
+- diabetes-specific structured context;
+- diabetes-specific API surfaces and domain behavior.
+
+It must consume shared contracts without creating hidden reverse dependencies from core back into diabetes.'''
+          arch_new = '''The diabetes module owns:
+
+- diabetes-specific patient profile extension;
+- glucose/CGM/log data;
+- diabetes KPI queries and analytics;
+- diabetes clinical/pattern rules;
+- diabetes-specific structured context;
+- diabetes-specific API surfaces and domain behavior;
+- recomputable longitudinal `ClinicalObservationState` for approved deterministic personal-response observations;
+- separate `ProactiveInsightState` workflow/delivery state derived from those observations, including bounded non-urgent prioritization and attention-budget bookkeeping.
+
+The Clinical Twin remains the clinical observation truth boundary. Proactive workflow state may decide **what to surface and when** within its approved authority, but it cannot create clinical truth, diagnose, prescribe, optimize treatment, calculate doses or take over deterministic emergency routing. The current `personal_response` source is constrained to monitoring or clinician-discussion preparation and cannot persist an escalated state.
+
+It must consume shared contracts without creating hidden reverse dependencies from core back into diabetes.'''
+          replace_once("docs/architecture/ARCHITECTURE.md", arch_anchor, arch_new)
+      - name: Commit canonical contract updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ROADMAP.md docs/SPECS.md docs/architecture/ARCHITECTURE.md
+          git diff --cached --quiet && exit 0
+          git commit -m "docs(clinical): align P2 proactive runtime candidate"
+          git push origin HEAD:agent/p2-proactive-insight-lifecycle
