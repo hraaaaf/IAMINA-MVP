@@ -104,6 +104,7 @@ void main() {
 
   test('GMI fails closed without verified CGM coverage and keeps disclosure', () {
     final source = _read('lib/features/dashboard/widgets/kpi_gmi_card.dart');
+    final compactSource = _read('lib/features/dashboard/widgets/kpi_cards.dart');
     final fr = _arb('fr');
     final en = _arb('en');
     final ar = _arb('ar');
@@ -121,9 +122,14 @@ void main() {
     }
 
     expect(source, contains("'--'"));
-    expect(source, isNot(contains('ClinicalEngine.calcGmi')));
+    expect(source, isNot(contains('ClinicalEngine.calcGMI')));
     expect(source, isNot(contains('l10n.dashboardGmiLimitedCoverage')));
     expect(source, isNot(contains('l10n.dashboardGmiCalculated')));
+
+    expect(compactSource, contains("value: '--'"));
+    expect(compactSource, contains('l10n.dashboardInsufficientData'));
+    expect(compactSource, isNot(contains('ClinicalEngine.calcGMI')));
+    expect(compactSource, isNot(contains('l10n.dashboardGmiLimitedCoverage')));
 
     expect(fr['dashboardGmiCoverage'], contains('Moyenne'));
     expect(fr['dashboardGmiDisclaimer'], contains('ne remplace pas une HbA1c de laboratoire'));
