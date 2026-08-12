@@ -15,12 +15,29 @@ logger = logging.getLogger(__name__)
 
 
 def _clinical_state_line(ctx) -> str:
-    """Build a condition-agnostic descriptive state line from the current contract."""
-    primary = ctx.tone_signals.get("primary")
-    stability = ctx.tone_signals.get("stability")
-    primary_label = ctx.primary_label or "primary"
-    primary_text = f"{primary_label}={primary:.1f}" if primary is not None else f"{primary_label}=unknown"
-    stability_text = f"stability={stability:.1f}" if stability is not None else "stability=unknown"
+    """Build descriptive state from current signals with numeric-only legacy fallback."""
+    tone_signals = getattr(ctx, "tone_signals", None) or {}
+    primary = tone_signals.get("primary")
+    stability = tone_signals.get("stability")
+    primary_label = getattr(ctx, "primary_label", None) or "TIR"
+
+    # Compatibility for older callers/tests. Numeric KPI values are descriptive
+    # evidence; legacy pattern identifiers are deliberately never consumed here.
+    if primary is None:
+        primary = getattr(ctx, "tir_pct", None)
+    if stability is None:
+        stability = getattr(ctx, "cv_pct", None)
+
+    primary_text = (
+        f"{primary_label}={primary:.1f}"
+        if primary is not None
+        else f"{primary_label}=unknown"
+    )
+    stability_text = (
+        f"stability={stability:.1f}"
+        if stability is not None
+        else "stability=unknown"
+    )
     return f"{primary_text}, {stability_text}"
 
 
