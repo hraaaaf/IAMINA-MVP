@@ -49,6 +49,17 @@ class ClinicalTwinDataLifecycleTests(TestCase):
         refresh_personal_response_memory(patient_id=self.patient.id)
         return supporting
 
+    def _proactive_child(self, observation: ClinicalObservationState) -> ProactiveInsightState:
+        return ProactiveInsightState.objects.create(
+            observation=observation,
+            state=ProactiveInsightState.STATE_NEW,
+            clinical_relevance=ProactiveInsightState.RELEVANCE_OBSERVATIONAL,
+            action_class=ProactiveInsightState.ACTION_MONITOR,
+            escalation_class=ProactiveInsightState.ESCALATION_NONE,
+            last_observation_fingerprint=observation.last_evidence_fingerprint,
+            current_signature="a" * 64,
+        )
+
     def test_explicit_source_erasure_does_not_leave_stale_derived_observation(self):
         supporting = self._seed_stress_observation()
         self.assertTrue(
@@ -78,6 +89,24 @@ class ClinicalTwinDataLifecycleTests(TestCase):
         self.assertFalse(
             ClinicalObservationState.objects.filter(patient=self.patient).exists()
         )
+
+    def test_non_clinical_patch_preserves_twin_and_proactive_identity(self):
+        supporting = self._seed_stress_observation()
+        observation = ClinicalObservationState.objects.get(patient=self.patient)
+        observation_id = observation.id
+        proactive_id = self._proactive_child(observation).id
+
+        response = self.client.patch(
+            f"/api/v1/logs/{supporting[0].id}",
+            data={"meal_description": "corrected note only"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            ClinicalObservationState.objects.filter(pk=observation_id).exists()
+        )
+        self.assertTrue(ProactiveInsightState.objects.filter(pk=proactive_id).exists())
 
     def test_batch_snapshot_that_erases_support_rebuilds_derived_state(self):
         target_uuid = uuid4()
@@ -123,15 +152,7 @@ class ClinicalTwinDataLifecycleTests(TestCase):
         before = ClinicalObservationState.objects.get(patient=self.patient)
         before_fingerprint = before.last_evidence_fingerprint
         self.assertEqual(before.observations, 4)
-        ProactiveInsightState.objects.create(
-            observation=before,
-            state=ProactiveInsightState.STATE_NEW,
-            clinical_relevance=ProactiveInsightState.RELEVANCE_OBSERVATIONAL,
-            action_class=ProactiveInsightState.ACTION_MONITOR,
-            escalation_class=ProactiveInsightState.ESCALATION_NONE,
-            last_observation_fingerprint=before.last_evidence_fingerprint,
-            current_signature="a" * 64,
-        )
+        self._proactive_child(before)
 
         response = self.client.delete(f"/api/v1/logs/{supporting[0].id}")
 
