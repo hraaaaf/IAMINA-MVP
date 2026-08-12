@@ -118,6 +118,20 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - no pattern detector may produce treatment optimization, insulin-dose advice, diagnosis or autonomous clinical recommendation;
 - the Journal shows one strongest pattern by default and makes secondary patterns explicitly expandable so longitudinal context does not crowd out the primary history task.
 
+### Proactive insight lifecycle contract
+
+- proactive workflow state is derived only from approved deterministic `ClinicalObservationState`; it is separate delivery/product state and never becomes source clinical truth;
+- protected `GET /api/v1/proactive-insights/` returns at most one non-urgent evidence-qualified candidate for the authenticated patient and never accepts a client-supplied patient identity;
+- lifecycle states for the current source are `new`, `monitoring`, `persisting`, `improving` and `resolved`; `escalated` is part of the wider lifecycle vocabulary but is rejected by the database for the current descriptive `personal_response` source;
+- `resolved` requires eligible source-data refresh and eligible absence; missing/insufficient data returns `insufficient_data` and cannot erase a prior observation;
+- a reactivated Clinical Twin observation cannot remain stale-`resolved`, even if supporting evidence reproduces an earlier fingerprint;
+- unchanged material state does not re-surface; at most one non-urgent item may surface per 24 hours, and that 24-hour value is a product interruption-cost budget rather than a clinical follow-up recommendation;
+- prioritization is auditable through explicit dimensions rather than an opaque score: safety/time sensitivity, observational/review-worthy relevance, persistence, baseline-relative descriptive change, evidence density, actionability, evidence maturity and interruption cost;
+- the current source is bounded to `MONITOR` and `PREPARE_CLINICIAN_DISCUSSION`; database constraints reject clinician-handoff/escalation classes and treatment-change actions;
+- `limited` / `moderate` / `strong` retain their personal-response meaning as repetition density only and must not be narrated as probability or clinical confidence;
+- deterministic emergency classification/routing remains upstream and outside the non-urgent attention budget;
+- no proactive state or API output may diagnose, prescribe, calculate a dose, infer causality, optimize/change treatment or grant generative-model clinical authority.
+
 
 ### Post-save experience contract
 
