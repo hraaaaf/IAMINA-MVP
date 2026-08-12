@@ -1,17 +1,25 @@
 """
-IAmina Clinical Engine - Hybrid Architecture
-============================================
-Step 1: Pure Python rules detect clinical patterns mathematically.
-Step 2: The capability-aware LLM gateway reformulates approved patterns for presentation.
-Step 3: Fallback to template messages if no API key is available.
+IAmina diabetes clinical observation engine.
+
+Authority contract
+------------------
+This module may surface deterministic, evidence-qualified observations. It must
+not diagnose a condition, infer causality from patient-entered context, prescribe
+or optimize treatment, or promote an unvalidated prediction into clinical truth.
+
+SQL-first KPI authority remains in ``sql_analytics``. Context associations that
+need longitudinal repetition are owned by ``personal_response``. Generative AI
+may only verbalize the structured observations produced here.
 """
+
+from __future__ import annotations
 
 import json
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from statistics import mean, stdev
-from typing import TYPE_CHECKING
+from statistics import mean, median
+from typing import TYPE_CHECKING, Iterable
 
 from core.contracts.capabilities import Capability
 from core.llm_gateway import get_gateway_llm
@@ -25,622 +33,569 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+ADA_2026_GLYCEMIC_SOURCE = "ADA Standards of Care in Diabetes—2026, section 6, DOI 10.2337/dc26-S006"
+PHNH_2025_SOURCE = "González-Vidal et al. 2025, DOI 10.1007/s42000-025-00680-0, PMID 40465171"
+PRODUCT_OBSERVATION_SOURCE = "IAmina deterministic observational rule v2026-08"
 
-# ─────────────────────────────────────────────
-# 1. DATA STRUCTURES
-# ─────────────────────────────────────────────
+_GENERIC_LIMITATION_FR = (
+    "Observation descriptive uniquement : elle ne démontre pas une cause, "
+    "ne pose pas de diagnostic et ne justifie pas de modifier un traitement."
+)
+_GENERIC_LIMITATION_DARIJA = (
+    "هاد غير ملاحظة وصفية فالمعطيات: ما كتثبتش السبب، ماشي تشخيص، "
+    "وما كتسمحش تبدل العلاج."
+)
 
 
 @dataclass
 class ClinicalPattern:
-    """A detected clinical pattern with context data for LLM formatting."""
+    """Evidence-qualified deterministic observation.
 
-    code: str  # Internal code, e.g. "DAWN_PHENOMENON"
-    priority: int  # 1 = critical, 2 = important, 3 = informational
-    icon: str  # Bootstrap icon name
-    title: str  # Short 1-line title (French)
-    evidence: str  # Raw numbers / evidence (shown to LLM — always French/English)
-    fallback_content: str  # French text used if no API key
-    fallback_action: str  # French recommendation text
-    # ── Darija (ar-MA) overrides — used when patient preferred_language == "ar-MA" ──
+    ``code`` is a neutral machine identifier, not a diagnosis. ``evidence`` is
+    the exact descriptive basis that may be passed to a narrator or clinician
+    brief. Treatment advice does not belong in this structure.
+    """
+
+    code: str
+    priority: int
+    icon: str
+    title: str
+    evidence: str
+    fallback_content: str
+    fallback_action: str
     title_darija: str = ""
     fallback_content_darija: str = ""
     fallback_action_darija: str = ""
+    evidence_count: int = 0
+    distinct_days: int = 0
+    data_scope: str = ""
+    evidence_maturity: str = "product_observation"
+    source_version: str = PRODUCT_OBSERVATION_SOURCE
+    limitations: str = _GENERIC_LIMITATION_FR
+
+    def narration_evidence(self) -> str:
+        """Minimal evidence packet safe for LLM narration."""
+        parts = [
+            f"code={self.code}",
+            f"observation={self.evidence}",
+            f"source={self.source_version}",
+            f"limitations={self.limitations}",
+        ]
+        if self.evidence_count:
+            parts.append(f"observations={self.evidence_count}")
+        if self.distinct_days:
+            parts.append(f"distinct_days={self.distinct_days}")
+        if self.data_scope:
+            parts.append(f"scope={self.data_scope}")
+        return " | ".join(parts)
 
 
 @dataclass
 class ClinicalReport:
-    """Full clinical analysis report returned by the engine."""
+    """Clinical analysis snapshot returned by the domain engine."""
 
-    kpis: AnalyticalKPIs  # All KPIs computed by SQL
+    kpis: AnalyticalKPIs
     patterns: list[ClinicalPattern] = field(default_factory=list)
-    insights: list[dict] = field(default_factory=list)  # Final formatted insights
+    insights: list[dict] = field(default_factory=list)
 
 
-# ─────────────────────────────────────────────
-# 3. PATTERN DETECTION RULES ENGINE
-# ─────────────────────────────────────────────
+def _event_days(entries: Iterable) -> int:
+    return len({e.effective_time.date() for e in entries})
 
 
 def _morning_entries(entries):
-    """Returns entries logged between 5 AM and 10 AM."""
     return [e for e in entries if 5 <= e.effective_time.hour <= 10]
 
 
 def _night_entries(entries):
-    """Returns entries logged between 10 PM and 2 AM."""
     return [e for e in entries if e.effective_time.hour >= 22 or e.effective_time.hour <= 2]
 
 
+def _neutral_action_fr() -> str:
+    return (
+        "Continue à noter le contexte si cela se reproduit. "
+        "Tu peux préparer cette observation pour en parler à ton professionnel de santé."
+    )
+
+
+def _neutral_action_darija() -> str:
+    return (
+        "إلا تكررات هاد الملاحظة، كمّل دوّن السياق ديالها. "
+        "تقدر توجدها باش تهضر عليها مع المختص الصحي ديالك."
+    )
+
+
+def _pattern(
+    *,
+    code: str,
+    priority: int,
+    icon: str,
+    title: str,
+    evidence: str,
+    content: str,
+    title_darija: str,
+    content_darija: str,
+    evidence_count: int,
+    distinct_days: int,
+    data_scope: str,
+    source_version: str = PRODUCT_OBSERVATION_SOURCE,
+    evidence_maturity: str = "product_observation",
+    limitations: str = _GENERIC_LIMITATION_FR,
+) -> ClinicalPattern:
+    return ClinicalPattern(
+        code=code,
+        priority=priority,
+        icon=icon,
+        title=title,
+        evidence=f"{evidence} {_GENERIC_LIMITATION_FR}",
+        fallback_content=f"{content} {_GENERIC_LIMITATION_FR}",
+        fallback_action=_neutral_action_fr(),
+        title_darija=title_darija,
+        fallback_content_darija=f"{content_darija} {_GENERIC_LIMITATION_DARIJA}",
+        fallback_action_darija=_neutral_action_darija(),
+        evidence_count=evidence_count,
+        distinct_days=distinct_days,
+        data_scope=data_scope,
+        evidence_maturity=evidence_maturity,
+        source_version=source_version,
+        limitations=limitations,
+    )
+
+
 def detect_dawn_phenomenon(entries) -> ClinicalPattern | None:
-    """
-    Dawn Phenomenon: High morning glucose (>140) while night glucose was normal (<130).
-    Requires at least 3 paired observations.
+    """Compatibility entry point for a neutral morning-vs-night observation.
+
+    This deliberately does *not* diagnose the dawn phenomenon. Sparse manually
+    sampled time-of-day readings cannot establish its mechanism.
     """
     morning = _morning_entries(entries)
     night = _night_entries(entries)
-
     if len(morning) < 3 or len(night) < 2:
         return None
 
     avg_morning = mean(float(e.blood_sugar) for e in morning)
     avg_night = mean(float(e.blood_sugar) for e in night)
+    delta = avg_morning - avg_night
+    if avg_morning <= 145 or avg_night >= 130 or delta <= 30:
+        return None
 
-    if avg_morning > 145 and avg_night < 130 and (avg_morning - avg_night) > 30:
-        return ClinicalPattern(
-            code="DAWN_PHENOMENON",
-            priority=2,
-            icon="sunrise",
-            title="Phénomène de l'Aube détecté",
-            evidence=f"Glycémie moyenne le matin : {avg_morning:.0f} mg/dL vs {avg_night:.0f} mg/dL la nuit.",
-            fallback_content=(
-                f"Vos glycémies matinales ({avg_morning:.0f} mg/dL en moyenne) sont "
-                f"significativement plus élevées que vos relevés nocturnes ({avg_night:.0f} mg/dL), "
-                "sans hypoglycémie nocturne identifiée. Ce pattern est caractéristique du "
-                "phénomène de l'aube, une poussée hormonale matinale (cortisol) naturelle mais "
-                "qui peut déséquilibrer votre glycémie."
-            ),
-            fallback_action="Discutez avec votre médecin d'un ajustement de votre dose d'insuline basale nocturne.",
-            title_darija="سكّر الصباح عالي (phénomène de l'aube)",
-            fallback_content_darija=(
-                f"سكّر ديالك فالصباح ({avg_morning:.0f} mg/dL) كيكون عالي بزاف "
-                f"على سكّر الليل ({avg_night:.0f} mg/dL). "
-                "هاد شي كيوقع حيت الجسم كيدير هورمونات فالصباح اللي كيزيدو السكّر — "
-                "عادي وكيوقع مع بزاف دالناس اللي عندهم السكّر."
-            ),
-            fallback_action_darija=(
-                "هضر مع طبيب ديالك على هاد النمط — هي معلومة مهمة اللي تعاونو يفهم واش وقع."
-            ),
-        )
-    return None
+    involved = morning + night
+    return _pattern(
+        code="MORNING_NIGHT_GLUCOSE_DIFFERENCE",
+        priority=2,
+        icon="sunrise",
+        title="Écart répété entre relevés du matin et de nuit",
+        evidence=(
+            f"{len(morning)} relevés matinaux : moyenne {avg_morning:.0f} mg/dL; "
+            f"{len(night)} relevés nocturnes : moyenne {avg_night:.0f} mg/dL; "
+            f"écart descriptif +{delta:.0f} mg/dL."
+        ),
+        content=(
+            "Dans la fenêtre analysée, les relevés enregistrés le matin sont plus élevés "
+            "que les relevés enregistrés la nuit. L'échantillonnage selon l'heure peut "
+            "influencer cette comparaison; ce résultat n'est pas un diagnostic de "
+            "« phénomène de l'aube »."
+        ),
+        title_darija="فرق متكرر بين قياسات الصباح والليل",
+        content_darija=(
+            "فالفترة اللي تحللات، القياسات اللي تسجلو فالصباح كانوا أعلى من قياسات الليل. "
+            "طريقة ووقت القياس يقدرو يأثرو على المقارنة، وهاد الشي ماشي تشخيص."
+        ),
+        evidence_count=len(involved),
+        distinct_days=_event_days(involved),
+        data_scope="time_of_day_glucose_observation",
+    )
 
 
 def detect_post_exercise_hypo(entries) -> ClinicalPattern | None:
-    """
-    Post-Exercise Hypoglycemia: Hypo (<70) within 8h of an exercise session.
-    """
-    exercise_days = set()
-    for e in entries:
-        if e.exercised == "yes":
-            exercise_days.add(e.effective_time.date())
+    """Neutral low-glucose observation on days with explicitly recorded activity."""
+    exercise_days = {
+        e.effective_time.date()
+        for e in entries
+        if getattr(e, "exercised", "") == "yes"
+    }
+    low_entries = [
+        e
+        for e in entries
+        if float(e.blood_sugar) < 70
+        and e.effective_time.date() in exercise_days
+    ]
+    if len(low_entries) < 3 or _event_days(low_entries) < 2:
+        return None
 
-    hypo_after_exercise = []
-    for e in entries:
-        if float(e.blood_sugar) < 72 and e.effective_time.date() in exercise_days:
-            hypo_after_exercise.append(e)
+    avg_low = mean(float(e.blood_sugar) for e in low_entries)
+    return _pattern(
+        code="LOW_GLUCOSE_WITH_RECORDED_ACTIVITY",
+        priority=1,
+        icon="activity",
+        title="Glycémies basses répétées les jours avec activité enregistrée",
+        evidence=(
+            f"{len(low_entries)} relevés <70 mg/dL sur {_event_days(low_entries)} jours "
+            f"où une activité a été explicitement enregistrée; moyenne {avg_low:.0f} mg/dL."
+        ),
+        content=(
+            "Des glycémies basses ont été enregistrées à plusieurs reprises les mêmes jours "
+            "qu'une activité physique. La chronologie disponible ne prouve pas que l'activité "
+            "a causé ces baisses."
+        ),
+        title_darija="قياسات سكر هابط تكررات فنهارات تسجلات فيها الرياضة",
+        content_darija=(
+            "تسجلو قياسات سكر هابط كثر من مرة فنفس النهارات اللي تسجلات فيها الرياضة. "
+            "المعطيات ما كتثبتش أن الرياضة هي السبب."
+        ),
+        evidence_count=len(low_entries),
+        distinct_days=_event_days(low_entries),
+        data_scope="explicit_activity_context",
+        source_version=ADA_2026_GLYCEMIC_SOURCE,
+        evidence_maturity="standard_threshold_observational_association",
+    )
 
-    if len(hypo_after_exercise) >= 2:
-        avg_hypo = mean(float(e.blood_sugar) for e in hypo_after_exercise)
-        return ClinicalPattern(
-            code="POST_EXERCISE_HYPO",
-            priority=1,
-            icon="activity",
-            title="Hypoglycémies post-effort récurrentes",
-            evidence=f"{len(hypo_after_exercise)} épisodes < 72 mg/dL les jours d'activité physique. Moyenne : {avg_hypo:.0f} mg/dL.",
-            fallback_content=(
-                f"IAmina a détecté {len(hypo_after_exercise)} épisodes hypoglycémiques "
-                f"(< 72 mg/dL, moyenne {avg_hypo:.0f} mg/dL) survenant les jours où vous "
-                "pratiquez une activité physique. Ce pattern suggère que l'effort augmente "
-                "votre sensibilité à l'insuline sans compensation glucidique adaptée."
-            ),
-            fallback_action="Consommez une collation de 20g de glucides lents (ex: avoine, pain complet) avant de dormir les soirs d'entraînement.",
-            title_darija="السكّر حابط بعد الرياضة",
-            fallback_content_darija=(
-                f"IAmina لقات {len(hypo_after_exercise)} مرّة سكّر ديالك حابط لتحت "
-                f"(< 72 mg/dL، معدّل {avg_hypo:.0f} mg/dL) في النهار اللي درتي فيه الرياضة. "
-                "الرياضة كتزيد الحساسية للأنسولين — هاد شي عادي وكيوقع مع بزاف دالناس."
-            ),
-            fallback_action_darija=(
-                "حاول تاكل شي حاجة صغيرة — خبز أو فاكهة — بعد الرياضة. "
-                "ولا إلا درتي رياضة فالعشية، تاكل شي حاجة قبل النعاس."
-            ),
-        )
-    return None
+
+def _positive_context_observation(
+    entries,
+    *,
+    field_name: str,
+    positive_value: str,
+    code: str,
+    title: str,
+    title_darija: str,
+    context_label: str,
+) -> ClinicalPattern | None:
+    """Describe repeated explicit context without manufacturing a control cohort."""
+    matching = [e for e in entries if getattr(e, field_name, "") == positive_value]
+    if len(matching) < 3 or _event_days(matching) < 2:
+        return None
+
+    values = [float(e.blood_sugar) for e in matching]
+    window_values = [float(e.blood_sugar) for e in entries]
+    if not window_values:
+        return None
+
+    matching_median = float(median(values))
+    window_median = float(median(window_values))
+    evidence = (
+        f"{len(matching)} mesures sur {_event_days(matching)} jours avec {context_label} "
+        f"explicitement déclaré; médiane {matching_median:.0f} mg/dL; "
+        f"médiane de la fenêtre {window_median:.0f} mg/dL."
+    )
+    return _pattern(
+        code=code,
+        priority=3,
+        icon="journal-check",
+        title=title,
+        evidence=evidence,
+        content=(
+            f"Le contexte « {context_label} » a été enregistré à plusieurs reprises avec "
+            "des mesures de glycémie. La comparaison est descriptive et n'utilise pas les "
+            "anciens champs négatifs/neutres comme groupe contrôle."
+        ),
+        title_darija=title_darija,
+        content_darija=(
+            "هاد السياق تسجل كثر من مرة مع قياسات السكر. المقارنة غير وصفية، "
+            "وما كتستعملش القيم القديمة السلبية بحال إلا كانت مجموعة contrôle."
+        ),
+        evidence_count=len(matching),
+        distinct_days=_event_days(matching),
+        data_scope=f"explicit_{field_name}_context",
+    )
 
 
 def detect_stress_correlation(entries) -> ClinicalPattern | None:
-    """
-    Stress hyperglycemia: Stressed days have significantly higher glucose.
-    """
-    stressed = [e for e in entries if e.stressed == "yes"]
-    calm = [e for e in entries if e.stressed == "no"]
-
-    if len(stressed) < 2 or len(calm) < 2:
-        return None
-
-    avg_stressed = mean(float(e.blood_sugar) for e in stressed)
-    avg_calm = mean(float(e.blood_sugar) for e in calm)
-    delta = avg_stressed - avg_calm
-
-    if delta > 25:
-        return ClinicalPattern(
-            code="STRESS_HYPERGLYCEMIA",
-            priority=2,
-            icon="emoji-dizzy",
-            title="Corrélation stress → hyperglycémie",
-            evidence=f"Jours stressés : {avg_stressed:.0f} mg/dL vs jours calmes : {avg_calm:.0f} mg/dL (différence : +{delta:.0f} mg/dL).",
-            fallback_content=(
-                f"Sur {len(stressed)} journées stressantes, votre glycémie moyenne atteint "
-                f"{avg_stressed:.0f} mg/dL, contre {avg_calm:.0f} mg/dL les jours calmes. "
-                f"Cette différence de +{delta:.0f} mg/dL est directement liée aux hormones "
-                "du stress (cortisol, adrénaline) qui stimulent la production de glucose par le foie."
-            ),
-            fallback_action="Pratiquez 5 minutes de cohérence cardiaque avant les réunions ou situations de stress identifiées. Cela peut réduire votre pic glycémique.",
-            title_darija="السكّر كيعلى مع الستريس",
-            fallback_content_darija=(
-                f"في النهارات اللي كنتي فيهم مع الستريس، سكّر ديالك كان {avg_stressed:.0f} mg/dL — "
-                f"وفالنهارات الهادية كان {avg_calm:.0f} mg/dL. "
-                f"فرق +{delta:.0f} mg/dL — هاد شي من هورمونات الستريس اللي كتزعزع السكّر."
-            ),
-            fallback_action_darija=(
-                "5-10 دالدقائق دالنفس العميق أو promenade قصيرة قبل situation الستريس — كتنفع بزاف."
-            ),
-        )
-    return None
+    """Compatibility name; returns a non-causal explicit-stress observation."""
+    return _positive_context_observation(
+        entries,
+        field_name="stressed",
+        positive_value="yes",
+        code="GLUCOSE_WITH_RECORDED_STRESS",
+        title="Mesures répétées avec stress explicitement déclaré",
+        title_darija="قياسات متكررة مع الستريس اللي تسجل",
+        context_label="stress",
+    )
 
 
 def detect_sleep_impact(entries) -> ClinicalPattern | None:
-    """
-    Poor sleep → higher next-morning glucose.
-    """
-    bad_sleep_mornings = []
-    good_sleep_mornings = []
-
-    # Group by day
-    by_day = defaultdict(list)
-    for e in entries:
-        by_day[e.effective_time.date()].append(e)
-
-    sorted_days = sorted(by_day.keys())
-    for i, day in enumerate(sorted_days[1:], 1):
-        prev_day = sorted_days[i - 1]
-        prev_entries = by_day[prev_day]
-        curr_morning = [e for e in by_day[day] if 5 <= e.effective_time.hour <= 10]
-
-        if not curr_morning:
-            continue
-
-        morning_avg = mean(float(e.blood_sugar) for e in curr_morning)
-        had_bad_sleep = any(e.sleep_quality == "bad" for e in prev_entries)
-
-        if had_bad_sleep:
-            bad_sleep_mornings.append(morning_avg)
-        else:
-            good_sleep_mornings.append(morning_avg)
-
-    if len(bad_sleep_mornings) >= 2 and len(good_sleep_mornings) >= 2:
-        avg_bad = mean(bad_sleep_mornings)
-        avg_good = mean(good_sleep_mornings)
-        delta = avg_bad - avg_good
-
-        if delta > 20:
-            return ClinicalPattern(
-                code="SLEEP_IMPACT",
-                priority=2,
-                icon="moon-stars",
-                title="Le manque de sommeil aggrave la glycémie",
-                evidence=f"Lendemain d'une mauvaise nuit : {avg_bad:.0f} mg/dL vs bonne nuit : {avg_good:.0f} mg/dL (delta : +{delta:.0f} mg/dL).",
-                fallback_content=(
-                    f"Le lendemain d'une nuit de mauvaise qualité, votre glycémie matinale "
-                    f"atteint en moyenne {avg_bad:.0f} mg/dL — soit +{delta:.0f} mg/dL de plus "
-                    f"qu'après une nuit réparatrice ({avg_good:.0f} mg/dL). "
-                    "Le manque de sommeil réduit la sensibilité à l'insuline et augmente le cortisol."
-                ),
-                fallback_action="Priorisez 7 à 8 heures de sommeil. Même une amélioration partielle du sommeil peut réduire notablement votre HbA1c sur le long terme.",
-                title_darija="النعاس ماشي مزيان → السكّر عالي فالصباح",
-                fallback_content_darija=(
-                    f"بعد ليلة ماشي مزيانة، سكّر ديالك فالصباح كيكون {avg_bad:.0f} mg/dL — "
-                    f"{delta:.0f} mg/dL زيادة على ليلة مزيانة ({avg_good:.0f} mg/dL). "
-                    "النعاس القليل كيقلّص الحساسية للأنسولين وكيزيد الكورتيزول."
-                ),
-                fallback_action_darija=(
-                    "حاول تنعس 7 ل-8 ساعات. حتى إلا ما وصلتيش، شي تحسين صغير كتنفع بزاف على السكّر."
-                ),
-            )
-    return None
+    """Compatibility name; returns a non-causal poor-sleep context observation."""
+    return _positive_context_observation(
+        entries,
+        field_name="sleep_quality",
+        positive_value="bad",
+        code="GLUCOSE_WITH_RECORDED_POOR_SLEEP",
+        title="Mesures répétées avec mauvais sommeil explicitement déclaré",
+        title_darija="قياسات متكررة مع نعاس ماشي مزيان اللي تسجل",
+        context_label="mauvais sommeil",
+    )
 
 
 def detect_high_variability(entries) -> ClinicalPattern | None:
+    """Retired raw-entry CV detector.
+
+    CV is a SQL-first CGM metric. Recomputing it from arbitrary manual Journal
+    samples here would create a second authority and can apply a CGM threshold to
+    the wrong modality. Kept as a compatibility symbol and fails closed.
     """
-    High glycemic variability: Coefficient of Variation (CV) > 36% (ADA threshold).
-    CV = SD / mean × 100 — normalises for different mean glucose levels.
-    A patient at mean=100 with SD=40 (CV=40%) is riskier than mean=200 with SD=55 (CV=27.5%).
-    """
-    if len(entries) < 5:
-        return None
-
-    values = [float(e.blood_sugar) for e in entries]
-    sd = stdev(values)
-    avg = mean(values)
-
-    if avg == 0:
-        return None
-
-    cv = (sd / avg) * 100  # Coefficient of Variation (ADA threshold: >36% = unstable)
-
-    if cv > 36:
-        return ClinicalPattern(
-            code="HIGH_VARIABILITY",
-            priority=1,
-            icon="graph-up-arrow",
-            title="Variabilité glycémique élevée détectée",
-            evidence=f"Écart-type : {sd:.0f} mg/dL, CV : {cv:.0f}%. Cible recommandée : CV < 36%.",
-            fallback_content=(
-                f"Votre variabilité glycémique est élevée (écart-type : {sd:.0f} mg/dL, "
-                f"CV : {cv:.0f}%). Un CV > 36% est associé à un risque accru d'hypoglycémies "
-                "non détectées et de complications cardiovasculaires, indépendamment de la "
-                "moyenne glycémique."
-            ),
-            fallback_action="Discutez avec votre médecin pour identifier les causes de ces variations : timing des doses, types d'aliments, ou ajustement de la basale.",
-            title_darija="السكّر ماشي مستقرّ (CV مرتفع)",
-            fallback_content_darija=(
-                f"سكّر ديالك كيتبدّل بزاف (SD: {sd:.0f} mg/dL، CV: {cv:.0f}%). "
-                f"إلا CV > 36%، كيكون خطر دالهيبو الخفية ومشكلات دالقلب — "
-                "حتى إلا المعدّل دالسكّر مزيان."
-            ),
-            fallback_action_darija=(
-                "هضر مع طبيب ديالك باش نشوفو سبب هاد التبدّلات — "
-                "فالماكلة، في التوقيت، أو في شي حاجة أخرى."
-            ),
-        )
+    _ = entries
     return None
+
+
+def _high_variability_from_kpis(kpis: AnalyticalKPIs) -> ClinicalPattern | None:
+    """Build a CV observation only when valid CGM wear eligibility is evidenced."""
+    if (
+        kpis.cv_pct is None
+        or kpis.cv_pct <= 36
+        or kpis.days_with_data < 14
+        or kpis.cgm_active_pct is None
+        or kpis.cgm_active_pct < 70
+    ):
+        return None
+
+    return _pattern(
+        code="CGM_HIGH_VARIABILITY",
+        priority=1,
+        icon="graph-up-arrow",
+        title="Variabilité CGM au-dessus de la référence",
+        evidence=(
+            f"CV SQL={kpis.cv_pct:.1f}%; couverture CGM={kpis.cgm_active_pct:.1f}%; "
+            f"{kpis.days_with_data} jours de données. Référence ADA 2026 : CV ≤36% "
+            "avec ≥14 jours et ≥70% de temps CGM actif pour l'interprétation des métriques CGM."
+        ),
+        content=(
+            "La variabilité calculée à partir d'une fenêtre CGM suffisamment couverte est "
+            "au-dessus de la référence générale. Cette observation doit être interprétée "
+            "avec le contexte clinique individuel."
+        ),
+        title_darija="التقلب ديال CGM فوق المرجع العام",
+        content_darija=(
+            "التقلب اللي تحسب من فترة CGM فيها تغطية كافية طالع على المرجع العام. "
+            "خاص هاد الملاحظة تتفهم مع السياق الصحي ديال الشخص."
+        ),
+        evidence_count=kpis.log_count,
+        distinct_days=kpis.days_with_data,
+        data_scope="eligible_cgm_window",
+        source_version=ADA_2026_GLYCEMIC_SOURCE,
+        evidence_maturity="standard_of_care_metric",
+    )
 
 
 def detect_food_sensitivity(entries) -> ClinicalPattern | None:
-    """
-    Food Sensitivity: Glucose peaks (>185 mg/dL) after specific high-carb meals.
-    Targets include common Moroccan high-GI foods alongside universal ones.
-
-    SAFETY NOTE: fallback_action MUST NOT prescribe insulin doses or dose changes.
-    Any insulin adjustment must be discussed exclusively with the treating physician.
-    """
-    targets = [
-        # Universal
-        "pizza",
-        "pasta",
-        "pâtes",
-        "riz",
-        "burger",
-        "fast food",
-        "baguette",
-        "pain blanc",
-        # Moroccan — high glycemic index
-        "couscous",
-        "harira",
-        "msemen",
-        "batbout",
-        "seffa",
-        "chebakia",
-        "rfissa",
-        "pastilla",
-        "briouats",
-        "ktefa",
-        "sellou",
-        "kaab ghzal",
-        # Moroccan sweets / drinks
-        "atay",
-        "jus d'orange",
-        "cornes de gazelle",
+    """Neutral repeated meal-text observation; never labels a food sensitivity."""
+    targets = (
+        "pizza", "pasta", "pâtes", "riz", "burger", "fast food", "baguette",
+        "pain blanc", "couscous", "harira", "msemen", "batbout", "seffa",
+        "chebakia", "rfissa", "pastilla", "briouats", "ktefa", "sellou",
+        "kaab ghzal", "atay", "jus d'orange", "cornes de gazelle",
+    )
+    matching = [
+        e
+        for e in entries
+        if any(t in (getattr(e, "meal_description", "") or "").lower() for t in targets)
+        and float(e.blood_sugar) > 185
     ]
-    sensitivity_logs = []
+    if len(matching) < 3 or _event_days(matching) < 2:
+        return None
 
-    for e in entries:
-        desc = (e.meal_description or "").lower()
-        if any(t in desc for t in targets) and float(e.blood_sugar) > 185:
-            sensitivity_logs.append(e)
+    from collections import Counter
 
-    if len(sensitivity_logs) >= 2:
-        # Most frequent offending meal (not simply the first chronological entry)
-        from collections import Counter
+    meal_counts = Counter(
+        (getattr(e, "meal_description", "") or "repas enregistré").strip().lower()
+        for e in matching
+    )
+    top_label = meal_counts.most_common(1)[0][0] or "repas enregistré"
+    return _pattern(
+        code="HIGH_GLUCOSE_WITH_RECORDED_MEAL_TEXT",
+        priority=3,
+        icon="egg-fried",
+        title="Glycémies élevées répétées avec certains repas enregistrés",
+        evidence=(
+            f"{len(matching)} mesures >185 mg/dL associées dans le Journal à des libellés "
+            f"de repas correspondants; libellé le plus fréquent : {top_label}."
+        ),
+        content=(
+            "Des mesures élevées et certains libellés de repas apparaissent ensemble à "
+            "plusieurs reprises. Sans paire pré/post-prandiale et sans contrôle des autres "
+            "facteurs, cela ne démontre ni une « sensibilité » alimentaire ni l'effet du repas."
+        ),
+        title_darija="قياسات طالعة تكررات مع شي وجبات مسجلة",
+        content_darija=(
+            "شي قياسات طالعة وشي أسماء ديال الماكلة بانوا مع بعضهم كثر من مرة. "
+            "بلا قياسات قبل/بعد الماكلة ومعلومات أخرى، ما نقدرش نقولو الماكلة هي السبب."
+        ),
+        evidence_count=len(matching),
+        distinct_days=_event_days(matching),
+        data_scope="meal_text_association",
+    )
 
-        meal_counts = Counter(
-            (e.meal_description or "repas riche en glucides").strip().lower()
-            for e in sensitivity_logs
-        )
-        top_culprit = meal_counts.most_common(1)[0][0] or "repas riche en glucides"
 
-        return ClinicalPattern(
-            code="FOOD_SENSITIVITY",
-            priority=2,
-            icon="egg-fried",
-            title="Sensibilité aux glucides rapides identifiée",
-            evidence=f"{len(sensitivity_logs)} pics détectés après des repas comme : {top_culprit}.",
-            fallback_content=(
-                f"IAmina a identifié {len(sensitivity_logs)} épisodes d'hyperglycémie "
-                "marqués survenant systématiquement après des repas riches en glucides "
-                f"(ex: {top_culprit}). Votre glycémie réagit fortement à ce type de charge "
-                "glucidique — des ajustements alimentaires ou de timing pourraient aider."
-            ),
-            # ⚠️  SAFETY: must never suggest an insulin dose change — that is the physician's role.
-            fallback_action=(
-                "Essayez de manger ce type de repas plus lentement, d'ajouter des légumes "
-                "ou des protéines pour ralentir l'absorption du glucose, et de faire une "
-                "marche de 10-15 minutes après le repas. Parlez à votre médecin ou "
-                "diététicien des ajustements possibles pour ces repas spécifiques."
-            ),
-            title_darija="السكّر كيطلع بزاف بعد شي ماكلة",
-            fallback_content_darija=(
-                f"IAmina لقات {len(sensitivity_logs)} مرّة سكّر ديالك طلع بزاف "
-                f"بعد ماكلة بحال {top_culprit}. "
-                "هاد الماكلة كتزعزم السكّر عندك — تزيد تاكل شوية شوية وتزيد خضرة أو بروتين."
-            ),
-            # ⚠️  SAFETY: la même règle s'applique en Darija
-            fallback_action_darija=(
-                "حاول تاكل شوية شوية وتزيد خضرة أو بروتين مع هاد الماكلة. "
-                "promenade 10-15 دالدقائق من بعد الماكلة — كتنفع بزاف. "
-                "هضر مع طبيب أو diététicien ديالك على هاد الماكلة بالذات."
-            ),
-        )
-    return None
+def _is_cgm_entry(entry) -> bool:
+    return getattr(entry, "source", "") == "cgm"
 
 
 def detect_somogyi_rebound(entries) -> ClinicalPattern | None:
-    """
-    Somogyi Effect: Hypo at night (<70) followed by hyper in the morning (>160).
-    """
-    # Requires sorted data
-    sorted_logs = sorted(entries, key=lambda x: x.effective_time)
-    rebounds = 0
+    """Neutral CGM observation: nocturnal low followed by later morning high.
 
+    The compatibility function name is retained for imports, but the returned
+    machine code and wording deliberately avoid diagnosing a Somogyi effect.
+    """
+    sorted_logs = sorted(entries, key=lambda x: x.effective_time)
+    pairs: list[tuple] = []
     for i in range(len(sorted_logs) - 1):
         curr = sorted_logs[i]
         nxt = sorted_logs[i + 1]
-
-        # Hypo at night
-        is_night_hypo = (curr.effective_time.hour >= 22 or curr.effective_time.hour <= 4) and float(
-            curr.blood_sugar
-        ) < 72
-        # Hyper in the morning (within 10 hours)
-        is_morning_hyper = (5 <= nxt.effective_time.hour <= 11) and float(nxt.blood_sugar) > 165
-
+        if not (_is_cgm_entry(curr) and _is_cgm_entry(nxt)):
+            continue
+        is_night_low = (
+            curr.effective_time.hour >= 22 or curr.effective_time.hour <= 4
+        ) and float(curr.blood_sugar) < 70
+        is_morning_high = 5 <= nxt.effective_time.hour <= 11 and float(nxt.blood_sugar) > 180
         time_diff = nxt.effective_time - curr.effective_time
-        if is_night_hypo and is_morning_hyper and time_diff.total_seconds() < 36000:
-            rebounds += 1
+        if (
+            is_night_low
+            and is_morning_high
+            and 0 < time_diff.total_seconds() <= 36000
+        ):
+            pairs.append((curr, nxt))
 
-    if rebounds >= 2:  # ≥ 2 events required — one could be coincidence (P1 fix)
-        return ClinicalPattern(
-            code="SOMOGYI_REBOUND",
-            priority=1,
-            icon="lightning-charge",
-            title="Effet rebond (Somogyi) détecté",
-            evidence=f"Hypoglycémie nocturne suivie d'une réaction hyperglycémique matinale ({rebounds} fois).",
-            fallback_content=(
-                "Votre corps semble réagir violemment à vos baisses de sucre nocturnes. "
-                "Pour compenser une hypoglycémie durant la nuit, votre foie libère du glucose "
-                "en urgence, provoquant un pic glycémique au réveil. C'est l'effet Somogyi."
-            ),
-            fallback_action="Ne corrigez pas l'hyperglycémie du matin trop agressivement. Traitez plutôt la cause en ajustant votre insuline basale du soir avec votre médecin.",
-            title_darija="السكّر حابط فاللّيل، طلع فالصباح (effet Somogyi)",
-            fallback_content_darija=(
-                f"الجسم ديالك كيرد من نقص السكّر فاللّيل بزيادة بزاف فالصباح "
-                f"({rebounds} مرّة). "
-                "هاد هو 'effet Somogyi' — الكبد كيحل غلوكوز كيفما السكّر هبط فاللّيل."
-            ),
-            fallback_action_darija=(
-                "ماتصرّرش السكّر فالصباح بشورة. هضر مع طبيب ديالك على هاد النمط دالليل."
-            ),
-        )
-    return None
-
-
-def detect_fatigue_correlation(entries) -> ClinicalPattern | None:
-    """
-    Fatigue correlation: days where fatigue_level is not 'ok' show significantly
-    higher glucose than non-fatigue days (delta > 20 mg/dL).
-    Requires at least 2 fatigue days and 2 non-fatigue days.
-    """
-    fatigue_days = [e for e in entries if getattr(e, "fatigue_level", "ok") != "ok"]
-    normal_days = [e for e in entries if getattr(e, "fatigue_level", "ok") == "ok"]
-
-    if len(fatigue_days) < 2 or len(normal_days) < 2:
+    if len(pairs) < 2:
         return None
 
-    avg_fatigue = mean(float(e.blood_sugar) for e in fatigue_days)
-    avg_normal = mean(float(e.blood_sugar) for e in normal_days)
-    delta = avg_fatigue - avg_normal
-
-    if delta > 20:
-        return ClinicalPattern(
-            code="FATIGUE_CORRELATION",
-            priority=2,
-            icon="battery-half",
-            title="La fatigue aggrave la glycémie",
-            evidence=(
-                f"Jours avec fatigue : {avg_fatigue:.0f} mg/dL vs jours normaux : "
-                f"{avg_normal:.0f} mg/dL (différence : +{delta:.0f} mg/dL)."
-            ),
-            fallback_content=(
-                f"Sur {len(fatigue_days)} journées avec fatigue, votre glycémie moyenne "
-                f"atteint {avg_fatigue:.0f} mg/dL, contre {avg_normal:.0f} mg/dL les jours "
-                f"sans fatigue. Cette différence de +{delta:.0f} mg/dL suggère que la fatigue "
-                "perturbe la régulation glycémique, possiblement via le cortisol ou un "
-                "sommeil non récupérateur."
-            ),
-            fallback_action=(
-                "Notez les heures de sommeil et la qualité de repos. Si la fatigue est "
-                "chronique, consultez votre médecin pour évaluer un lien avec votre "
-                "traitement ou d'autres causes sous-jacentes."
-            ),
-            title_darija="التعب كيزيد السكّر",
-            fallback_content_darija=(
-                f"فالنهارات اللي كنتي فيهم تعبانة، سكّر ديالك كان {avg_fatigue:.0f} mg/dL — "
-                f"وفالنهارات العادية كان {avg_normal:.0f} mg/dL. "
-                f"فرق +{delta:.0f} mg/dL — التعب كيزعزع السكّر عبر الكورتيزول."
-            ),
-            fallback_action_darija=(
-                "دوّن ساعات النعاس وجودتو. إلا التعب كيتكرّر، هضر مع طبيب ديالك."
-            ),
-        )
-    return None
-
-
-def detect_illness_impact(entries) -> ClinicalPattern | None:
-    """
-    ADA Sick Day Rules pattern: sick days (is_sick == 'yes') with significantly
-    higher glucose vs healthy days (delta > 40 mg/dL).
-    Escalated to priority=1 when delta > 80 mg/dL (severe hyperglycemia risk).
-    Requires at least 2 sick days and 2 healthy days.
-    """
-    sick_entries = [e for e in entries if getattr(e, "is_sick", "no") == "yes"]
-    healthy_entries = [e for e in entries if getattr(e, "is_sick", "no") == "no"]
-
-    if len(sick_entries) < 2 or len(healthy_entries) < 2:
-        return None
-
-    avg_sick = mean(float(e.blood_sugar) for e in sick_entries)
-    avg_healthy = mean(float(e.blood_sugar) for e in healthy_entries)
-    delta = avg_sick - avg_healthy
-
-    if delta <= 40:
-        return None
-
-    priority = 1 if delta > 80 else 2
-
-    return ClinicalPattern(
-        code="ILLNESS_IMPACT",
-        priority=priority,
-        icon="thermometer-half",
-        title="Impact de la maladie sur la glycémie",
+    involved = [item for pair in pairs for item in pair]
+    return _pattern(
+        code="NIGHT_LOW_THEN_MORNING_HIGH",
+        priority=1,
+        icon="moon-stars",
+        title="Baisses nocturnes suivies de hausses matinales observées",
         evidence=(
-            f"Jours de maladie : {avg_sick:.0f} mg/dL vs jours sains : "
-            f"{avg_healthy:.0f} mg/dL (différence : +{delta:.0f} mg/dL)."
+            f"{len(pairs)} séquences CGM avec <70 mg/dL la nuit puis >180 mg/dL le matin "
+            "dans les 10 heures suivantes. Le terme « Somogyi » n'est pas utilisé comme "
+            "diagnostic ou mécanisme déduit."
         ),
-        fallback_content=(
-            f"Lors de vos {len(sick_entries)} journées de maladie, votre glycémie "
-            f"a atteint {avg_sick:.0f} mg/dL en moyenne, soit +{delta:.0f} mg/dL "
-            f"de plus que les jours sains ({avg_healthy:.0f} mg/dL). "
-            "La maladie (infection, fièvre) augmente la résistance à l'insuline et "
-            "stimule la production hépatique de glucose — règles ADA Sick Day."
+        content=(
+            "La fenêtre CGM contient plusieurs séquences où une glycémie basse la nuit est "
+            "suivie d'une valeur élevée le matin. Ce motif décrit la chronologie observée; "
+            "il ne prouve pas pourquoi la hausse s'est produite."
         ),
-        fallback_action=(
-            "Mesurez votre glycémie toutes les 2-4 heures lors des épisodes de maladie. "
-            "Maintenez une hydratation suffisante et consultez votre médecin si la glycémie "
-            "dépasse 300 mg/dL ou si des corps cétoniques sont détectés."
+        title_darija="سكر هابط فالليل ومن بعدو قياس طالع فالصباح",
+        content_darija=(
+            "فبيانات CGM بانو كثر من مرة قياس هابط فالليل ومن بعدو قياس طالع فالصباح. "
+            "هاد الشي كيصف غير الترتيب اللي بان وما كيحددش السبب."
         ),
-        title_darija="المرض كيزيد السكّر بزاف",
-        fallback_content_darija=(
-            f"فالنهارات اللي كنتي فيهم مريضة، سكّر ديالك وصل {avg_sick:.0f} mg/dL — "
-            f"+{delta:.0f} mg/dL زيادة على النهارات الصحيحة ({avg_healthy:.0f} mg/dL). "
-            "المرض كيزيد مقاومة الأنسولين — هاد هو قاعدة ADA Sick Day."
-        ),
-        fallback_action_darija=(
-            "قيس السكّر كل 2-4 ساعات وأنتي مريضة. إلا السكّر فاق 300 mg/dL، هضري فوراً مع طبيب ديالك."
+        evidence_count=len(involved),
+        distinct_days=_event_days(involved),
+        data_scope="cgm_night_to_morning_sequence",
+        source_version=PHNH_2025_SOURCE,
+        evidence_maturity="emerging_evidence_observational_pattern",
+        limitations=(
+            "Séquence CGM descriptive uniquement. L'étude 2025 porte sur des adultes "
+            "avec DT1 et n'autorise pas à diagnostiquer un mécanisme chez un individu."
         ),
     )
 
 
+def detect_fatigue_correlation(entries) -> ClinicalPattern | None:
+    """Compatibility name; returns a non-causal explicit-fatigue observation."""
+    return _positive_context_observation(
+        entries,
+        field_name="fatigue_level",
+        positive_value="tired",
+        code="GLUCOSE_WITH_RECORDED_FATIGUE",
+        title="Mesures répétées avec fatigue explicitement déclarée",
+        title_darija="قياسات متكررة مع العيا اللي تسجل",
+        context_label="fatigue",
+    )
+
+
+def detect_illness_impact(entries) -> ClinicalPattern | None:
+    """Compatibility name; returns a non-causal explicit-illness observation."""
+    return _positive_context_observation(
+        entries,
+        field_name="is_sick",
+        positive_value="yes",
+        code="GLUCOSE_WITH_RECORDED_ILLNESS",
+        title="Mesures répétées pendant une maladie explicitement déclarée",
+        title_darija="قياسات متكررة فنهارات المرض اللي تسجل",
+        context_label="maladie",
+    )
+
+
 def detect_postmeal_spike(entries) -> ClinicalPattern | None:
-    """
-    Post-meal spike: glucose rises > 60 mg/dL within 2 hours of a logged meal.
-    Requires at least 2 paired readings (pre-meal + post-meal on the same day).
-    """
-    from collections import defaultdict
-    from datetime import timedelta
+    """Describe repeated explicit pre→post-meal rises without treatment advice."""
+    by_date: dict = defaultdict(list)
+    for entry in sorted(entries, key=lambda x: x.effective_time):
+        by_date[entry.effective_time.date()].append(entry)
 
-    meal_entries = [
-        e for e in entries if getattr(e, "meal_type", None) and float(e.blood_sugar) > 0
-    ]
-    if len(meal_entries) < 2:
-        return None
-
-    # Group by date to find same-day pairs
-    by_date = defaultdict(list)
-    for e in sorted(entries, key=lambda x: x.effective_time):
-        day = e.effective_time.date()
-        by_date[day].append(e)
-
-    spike_events = []
-    for day, day_entries in by_date.items():
-        # Look for a meal-tagged entry followed by a higher reading within 2 h
+    rises: list[float] = []
+    involved = []
+    for day_entries in by_date.values():
         for i, base in enumerate(day_entries):
-            if not getattr(base, "meal_type", None):
+            if getattr(base, "glycemic_context", "") != "pre_meal":
                 continue
             base_val = float(base.blood_sugar)
             for later in day_entries[i + 1 :]:
-                delta_h = (later.effective_time - base.effective_time).total_seconds() / 3600
-                if delta_h > 2:
+                hours = (later.effective_time - base.effective_time).total_seconds() / 3600
+                if hours > 2:
                     break
+                if getattr(later, "glycemic_context", "") != "post_meal":
+                    continue
                 rise = float(later.blood_sugar) - base_val
                 if rise > 60:
-                    spike_events.append(rise)
+                    rises.append(rise)
+                    involved.extend([base, later])
                     break
 
-    if len(spike_events) >= 2:
-        avg_rise = mean(spike_events)
-        return ClinicalPattern(
-            code="POSTMEAL_SPIKE",
-            priority=2,
-            icon="arrow-up-circle",
-            title="Pics post-prandiaux récurrents détectés",
-            evidence=(
-                f"{len(spike_events)} épisodes — hausse moyenne de +{avg_rise:.0f} mg/dL "
-                "dans les 2 h après le repas."
-            ),
-            fallback_content=(
-                f"IAmina a détecté {len(spike_events)} hausses de glycémie importantes "
-                f"(+{avg_rise:.0f} mg/dL en moyenne) dans les 2 heures suivant un repas. "
-                "Ces pics post-prandiaux répétés augmentent le stress oxydatif et le risque "
-                "cardiovasculaire indépendamment de l'HbA1c."
-            ),
-            fallback_action=(
-                "Essayez de prendre l'insuline rapide 10-15 minutes avant de manger, "
-                "de réduire les glucides à index glycémique élevé, ou de marcher "
-                "15 minutes après le repas."
-            ),
-            title_darija="السكّر كيطلع بزاف بعد الماكلة",
-            fallback_content_darija=(
-                f"IAmina لقات {len(spike_events)} مرّة سكّر ديالك طلع "
-                f"+{avg_rise:.0f} mg/dL في الساعتين من بعد الماكلة. "
-                "هاد الـpics كيزيدو الخطر على القلب والعروق — حتى إلا المعدّل دالسكّر مزيان."
-            ),
-            fallback_action_darija=(
-                "حاول تاكل شوية شوية وتزيد خضرة أو بروتين مع الوجبة. "
-                "promenade 15 دالدقائق من بعد الماكلة — كتنفع بزاف."
-            ),
-        )
-    return None
+    if len(rises) < 2 or _event_days(involved) < 2:
+        return None
+
+    avg_rise = mean(rises)
+    return _pattern(
+        code="REPEATED_PRE_POST_MEAL_RISE",
+        priority=2,
+        icon="arrow-up-circle",
+        title="Hausses répétées entre mesures avant et après repas",
+        evidence=(
+            f"{len(rises)} paires explicitement marquées pré/post-repas sur "
+            f"{_event_days(involved)} jours; hausse moyenne descriptive +{avg_rise:.0f} mg/dL "
+            "dans les 2 heures."
+        ),
+        content=(
+            "Plusieurs paires explicitement enregistrées avant et après un repas montrent "
+            "une hausse dans les deux heures. D'autres facteurs peuvent contribuer à ces "
+            "variations; l'observation ne détermine ni la cause ni une conduite thérapeutique."
+        ),
+        title_darija="زيادات تكررات بين قياس قبل وبعد الماكلة",
+        content_darija=(
+            "كاينين قياسات مسجلين بوضوح قبل وبعد الماكلة وبانو فيهم زيادات متكررة. "
+            "عوامل أخرى يقدرو يدخلو، وهاد الملاحظة ما كتحدد لا السبب لا العلاج."
+        ),
+        evidence_count=len(involved),
+        distinct_days=_event_days(involved),
+        data_scope="explicit_pre_post_meal_pairs",
+    )
 
 
-# ─────────────────────────────────────────────
-# 4. LLM REFORMULATOR (JSON contract)
-# ─────────────────────────────────────────────
+# Context-derived compatibility helpers remain callable, but are intentionally
+# excluded from the summary/doctor engine. The dedicated personal-response
+# service owns longitudinal context eligibility and avoids legacy negative
+# controls. Food-text and post-meal heuristic observations also stay out of the
+# active engine until the versioned evidence registry can govern them.
+_ACTIVE_ENTRY_DETECTORS = (
+    detect_dawn_phenomenon,
+    detect_post_exercise_hypo,
+    detect_somogyi_rebound,
+)
 
 
 def _build_patterns_data(patterns: list[ClinicalPattern]) -> str:
-    """Compact evidence block injected into FORMAT_USER."""
-    lines = []
-    for p in patterns:
-        lines.append(f"[{p.code}] {p.title} — {p.evidence}")
-    return "\n".join(lines)
+    """Evidence-only block injected into the narrator prompt."""
+    return "\n".join(p.narration_evidence() for p in patterns)
 
 
 def _parse_insights_json(
-    text: str, patterns: list[ClinicalPattern], language: str = "fr"
+    text: str,
+    patterns: list[ClinicalPattern],
+    language: str = "fr",
 ) -> list[dict]:
-    """Parse JSON array from LLM formatter. Fallback if malformed."""
+    """Parse narrator JSON. Structured output is sanitized before display."""
     clean = text.strip().removeprefix("```json").removesuffix("```").strip()
     pattern_map = {p.code: p for p in patterns}
-
     try:
         data = json.loads(clean)
         if not isinstance(data, list):
@@ -649,31 +604,36 @@ def _parse_insights_json(
         logger.warning("ClinicalEngine: formatter returned non-JSON: %s", text[:120])
         return _format_fallback(patterns, language)
 
-    result = []
+    result: list[dict] = []
     for item in data:
+        if not isinstance(item, dict):
+            continue
         code = item.get("code", "")
         pattern = pattern_map.get(code)
-        if pattern and item.get("content"):
-            # Title: use LLM output if provided, else pick by language
-            use_darija = language == "ar-MA"
-            title = item.get("title") or (
-                (pattern.title_darija or pattern.title) if use_darija else pattern.title
-            )
-            fallback_action = (
-                (pattern.fallback_action_darija or pattern.fallback_action)
-                if use_darija
-                else pattern.fallback_action
-            )
-            result.append(
-                {
-                    "code": code,
-                    "priority": pattern.priority,
-                    "icon": pattern.icon,
-                    "title": title,
-                    "content": item["content"],
-                    "action": item.get("action", fallback_action),
-                }
-            )
+        if pattern is None or not item.get("content"):
+            continue
+
+        use_darija = language == "ar-MA"
+        fallback_title = (
+            pattern.title_darija or pattern.title
+            if use_darija
+            else pattern.title
+        )
+        fallback_action = (
+            pattern.fallback_action_darija or pattern.fallback_action
+            if use_darija
+            else pattern.fallback_action
+        )
+        result.append(
+            {
+                "code": code,
+                "priority": pattern.priority,
+                "icon": pattern.icon,
+                "title": item.get("title") or fallback_title,
+                "content": item["content"],
+                "action": item.get("action") or fallback_action,
+            }
+        )
 
     return sanitize_patient_visible(
         result if result else _format_fallback(patterns, language),
@@ -682,22 +642,14 @@ def _parse_insights_json(
 
 
 def _format_with_llm(patterns: list[ClinicalPattern], language: str = "fr") -> list[dict]:
-    """Reformat detected patterns into empathetic insights via JSON contract.
-    Language is injected so the LLM reformulates in the patient's language."""
+    """Narrate approved deterministic observations; never create clinical authority."""
     if not patterns:
         return []
 
     from companion.prompts import FORMAT_USER, get_format_system
 
-    patterns_data = _build_patterns_data(patterns)
-    user_prompt = FORMAT_USER.format(patterns_data=patterns_data)
-
+    user_prompt = FORMAT_USER.format(patterns_data=_build_patterns_data(patterns))
     try:
-        # PHI-AUDIT(P1.3): verified no PHI in prompts at this callsite.
-        # FORMAT_USER contains only clinical pattern codes + evidence text (no name, CIN, DOB).
-        # get_format_system() injects language label only.
-        # The formatter keeps its endpoint-specific JSON schema while provider access goes
-        # through the shared capability-aware gateway.
         gateway = get_gateway_llm()
         response_text = gateway.complete(
             get_format_system(language),
@@ -711,95 +663,67 @@ def _format_with_llm(patterns: list[ClinicalPattern], language: str = "fr") -> l
 
 
 def _format_fallback(patterns: list[ClinicalPattern], language: str = "fr") -> list[dict]:
-    """Template-based fallback when no API is available.
-    Uses Darija strings when language == 'ar-MA' and the override is set;
-    falls back to French otherwise."""
+    """Deterministic observation-only fallback."""
     use_darija = language == "ar-MA"
     result = []
-    for p in patterns:
+    for pattern in patterns:
         result.append(
             {
-                "code": p.code,
-                "priority": p.priority,
-                "icon": p.icon,
-                "title": (p.title_darija or p.title) if use_darija else p.title,
-                "content": (p.fallback_content_darija or p.fallback_content)
-                if use_darija
-                else p.fallback_content,
-                "action": (p.fallback_action_darija or p.fallback_action)
-                if use_darija
-                else p.fallback_action,
+                "code": pattern.code,
+                "priority": pattern.priority,
+                "icon": pattern.icon,
+                "title": (
+                    pattern.title_darija or pattern.title
+                    if use_darija
+                    else pattern.title
+                ),
+                "content": (
+                    pattern.fallback_content_darija or pattern.fallback_content
+                    if use_darija
+                    else pattern.fallback_content
+                ),
+                "action": (
+                    pattern.fallback_action_darija or pattern.fallback_action
+                    if use_darija
+                    else pattern.fallback_action
+                ),
             }
         )
     return sanitize_patient_visible(result, language)
 
 
-# ─────────────────────────────────────────────
-# 5. MAIN ENGINE ENTRYPOINT
-# ─────────────────────────────────────────────
-
-
-def run_clinical_analysis(entries, kpis: AnalyticalKPIs, language: str = "fr") -> ClinicalReport:
-    """
-    Main entry point for the clinical analysis engine.
-
-    Args:
-        entries:  QuerySet or list of LogEntry objects.
-        kpis:     Pre-computed SQL KPIs from sql_analytics.compute_kpis().
-        language: Patient preferred_language code (e.g. 'fr', 'ar-MA', 'ar').
-                  Drives fallback text language and LLM reformulation language.
-    """
+def run_clinical_analysis(
+    entries,
+    kpis: AnalyticalKPIs,
+    language: str = "fr",
+) -> ClinicalReport:
+    """Return KPI-backed and conservative deterministic observations."""
     entries = list(entries)
+    patterns: list[ClinicalPattern] = []
 
-    if not entries:
-        return ClinicalReport(kpis=kpis)
+    cgm_variability = _high_variability_from_kpis(kpis)
+    if cgm_variability is not None:
+        patterns.append(cgm_variability)
 
-    # ── Pattern Detection ──
-    detectors = [
-        detect_dawn_phenomenon,
-        detect_post_exercise_hypo,
-        detect_stress_correlation,
-        detect_sleep_impact,
-        detect_high_variability,
-        detect_food_sensitivity,
-        detect_somogyi_rebound,
-        detect_postmeal_spike,
-        detect_fatigue_correlation,
-        detect_illness_impact,
-    ]
-
-    patterns = []
-    for detector in detectors:
+    for detector in _ACTIVE_ENTRY_DETECTORS:
         try:
             result = detector(entries)
-            if result:
+            if result is not None:
                 patterns.append(result)
-        except Exception as e:
+        except Exception as exc:
             detector_name = getattr(detector, "__name__", repr(detector))
-            logger.warning(f"ClinicalEngine: Detector {detector_name} failed: {e}")
+            logger.warning("ClinicalEngine: detector %s failed: %s", detector_name, exc)
 
-    # Sort by priority (1 = most critical first)
-    patterns.sort(key=lambda p: p.priority)
-
-    # ── LLM Formatting ──
+    patterns.sort(key=lambda p: (p.priority, p.code))
     insights = _format_with_llm(patterns, language) if patterns else []
-
-    return ClinicalReport(
-        kpis=kpis,
-        patterns=patterns,
-        insights=insights,
-    )
+    return ClinicalReport(kpis=kpis, patterns=patterns, insights=insights)
 
 
-# ─────────────────────────────────────────────
-# 6. DIABETESENGINE — BaseEngine WRAPPER (DA-03 S1)
-# ─────────────────────────────────────────────
-
-from core.engine.base import BaseEngine  # noqa: E402 — intentional bottom import to avoid circular
+from core.engine.base import BaseEngine  # noqa: E402
 
 
 def _trend_line(trend: dict) -> str:
-    """One-line English summary of week-over-week TIR for the pivot text."""
+    """One-line descriptive week-over-week TIR summary."""
     curr = trend.get("current_week_tir")
     prev = trend.get("prev_week_tir")
     delta = trend.get("tir_delta")
@@ -809,18 +733,12 @@ def _trend_line(trend: dict) -> str:
     if direction == "unknown" or prev is None:
         return f"TIR this week: {curr}%."
     arrow = {"up": "↑", "down": "↓", "stable": "→"}.get(direction, "")
-    sign = "+" if delta >= 0 else ""
+    sign = "+" if delta is not None and delta >= 0 else ""
     return f"Week-over-week TIR: {prev}% → {curr}% ({sign}{delta}pp {arrow})."
 
 
 class DiabetesEngine(BaseEngine):
-    """
-    Concrete :class:`BaseEngine` for diabetes (P4.5 single clinical contract).
-
-    analyze() fetches its own LogEntry data + SQL KPIs, runs the detector suite,
-    and returns an enriched :class:`DomainContext` consumed by both narrate() and
-    the companion runtime. evaluate_alert() wraps the offline glucose safety gate.
-    """
+    """Diabetes BaseEngine wrapper with deterministic observation authority."""
 
     def analyze(
         self,
@@ -845,14 +763,14 @@ class DiabetesEngine(BaseEngine):
         since = timezone.now() - timedelta(days=days)
         entries = list(
             LogEntry.objects.filter(
-                Q(logged_at__gte=since) | Q(logged_at__isnull=True, created_at__gte=since),
+                Q(logged_at__gte=since)
+                | Q(logged_at__isnull=True, created_at__gte=since),
                 patient_id=patient_id,
                 blood_sugar__isnull=False,
             ).order_by("logged_at", "created_at")
         )
 
         report = run_clinical_analysis(entries, kpis, language=language)
-
         pivot = build_chat_context(kpis, report.patterns)
         trend = compute_trend(patient_id=patient_id)
         trend_text = _trend_line(trend)
@@ -879,7 +797,15 @@ class DiabetesEngine(BaseEngine):
             trend=trend,
             primary_label="TIR",
             patterns_detail=[
-                {"code": p.code, "priority": p.priority, "evidence": p.evidence}
+                {
+                    "code": p.code,
+                    "priority": p.priority,
+                    "evidence": p.evidence,
+                    "evidence_count": p.evidence_count,
+                    "distinct_days": p.distinct_days,
+                    "source_version": p.source_version,
+                    "limitations": p.limitations,
+                }
                 for p in report.patterns
             ],
         )
@@ -889,22 +815,22 @@ class DiabetesEngine(BaseEngine):
         from diabetes.services.clinical.alerts import AlertLevel
         from diabetes.services.clinical.alerts import evaluate as evaluate_alert
 
-        g = getattr(entry, "blood_sugar", None)
-        if g is None:
+        glucose = getattr(entry, "blood_sugar", None)
+        if glucose is None:
             return None
-        g = float(g)
+        glucose = float(glucose)
 
-        resp = evaluate_alert(g)
-        if resp.level == AlertLevel.NONE:
+        response = evaluate_alert(glucose)
+        if response.level == AlertLevel.NONE:
             return None
 
-        blocking = resp.level in (AlertLevel.EMERGENCY, AlertLevel.CRITICAL)
-        message = resp.message_darija if language == "ar-MA" else resp.message_fr
+        blocking = response.level in (AlertLevel.EMERGENCY, AlertLevel.CRITICAL)
+        message = response.message_darija if language == "ar-MA" else response.message_fr
         return DomainAlert(
-            severity=resp.level.value,
+            severity=response.level.value,
             blocking=blocking,
             message=message,
             event_type="emergency",
-            event_description=f"Glucose critique : {g} mg/dL",
-            value=g,
+            event_description=f"Glucose critique : {glucose} mg/dL",
+            value=glucose,
         )
