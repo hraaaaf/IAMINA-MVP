@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 from companion.thinker import think_before_reply
 from core.contracts.domain_context import DomainContext
 from core.generative_context_safety import sanitize_unstructured_generative_context
@@ -10,6 +8,11 @@ from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
 
 
 INTERNAL_CODE = "SOMOGYI_REBOUND"
+
+
+class _Obj:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
 
 
 def _kpis() -> AnalyticalKPIs:
@@ -67,7 +70,7 @@ def test_chat_pivot_uses_descriptive_evidence_not_machine_code():
 
 
 def test_generic_narrate_prompt_does_not_append_detected_pattern_codes():
-    prompt = _build_user_prompt(_domain_context(), SimpleNamespace())
+    prompt = _build_user_prompt(_domain_context(), None)
 
     assert INTERNAL_CODE not in prompt
     assert "Patterns:" not in prompt
@@ -112,9 +115,9 @@ def test_thinker_uses_current_domain_context_fields_without_pattern_codes():
             captured["user"] = user
             return "internal thought", "unused"
 
-    memory = SimpleNamespace(emotional_signals=["fatigue"])
-    deep = SimpleNamespace(relationship_stage="building", communication_style="warm")
-    state = SimpleNamespace(satisfaction=0.6, concern_level=0.3, next_intention="écouter")
+    memory = _Obj(emotional_signals=["fatigue"])
+    deep = _Obj(relationship_stage="building", communication_style="warm")
+    state = _Obj(satisfaction=0.6, concern_level=0.3, next_intention="écouter")
     ctx = _domain_context()
 
     result = think_before_reply(
