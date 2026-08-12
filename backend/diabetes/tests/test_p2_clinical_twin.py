@@ -81,7 +81,7 @@ class ClinicalObservationMemoryTests(TestCase):
             {"source_field": "stressed", "recorded_value": "yes"},
         )
 
-    def test_same_supporting_evidence_is_idempotent(self):
+    def test_same_supporting_evidence_is_semantically_idempotent(self):
         self._stress_pattern()
 
         refresh_personal_response_memory(patient_id=self.patient.id)
@@ -93,7 +93,13 @@ class ClinicalObservationMemoryTests(TestCase):
 
         self.assertEqual(second.recurrence_count, 1)
         self.assertEqual(second.last_evidence_fingerprint, first_fingerprint)
-        self.assertEqual(second.evidence_strength_trend, ClinicalObservationState.TREND_STABLE)
+        self.assertEqual(second.previous_evidence_strength, "")
+        self.assertEqual(
+            second.evidence_strength_trend,
+            ClinicalObservationState.TREND_INITIAL,
+        )
+        self.assertIsNone(second.previous_baseline_delta_mg_dl)
+        self.assertIsNone(second.baseline_delta_change_mg_dl)
 
     def test_new_support_strengthens_evidence_without_inflating_recurrence(self):
         self._stress_pattern()
@@ -113,6 +119,16 @@ class ClinicalObservationMemoryTests(TestCase):
         )
         self.assertEqual(row.observations, 5)
 
+        refresh_personal_response_memory(patient_id=self.patient.id)
+        row.refresh_from_db()
+        self.assertEqual(row.recurrence_count, 1)
+        self.assertEqual(row.previous_evidence_strength, "limited")
+        self.assertEqual(row.evidence_strength, "moderate")
+        self.assertEqual(
+            row.evidence_strength_trend,
+            ClinicalObservationState.TREND_STRENGTHENING,
+        )
+
     def test_background_baseline_evolution_does_not_inflate_recurrence(self):
         self._stress_pattern()
         self._log(days_ago=3, glucose=100)
@@ -127,10 +143,14 @@ class ClinicalObservationMemoryTests(TestCase):
         self.assertEqual(after.recurrence_count, 1)
         self.assertNotEqual(after.baseline_delta_mg_dl, original_delta)
         self.assertEqual(after.previous_baseline_delta_mg_dl, original_delta)
-        self.assertEqual(
-            after.baseline_delta_change_mg_dl,
-            round(after.baseline_delta_mg_dl - original_delta, 1),
-        )
+        expected_change = round(after.baseline_delta_mg_dl - original_delta, 1)
+        self.assertEqual(after.baseline_delta_change_mg_dl, expected_change)
+
+        refresh_personal_response_memory(patient_id=self.patient.id)
+        after.refresh_from_db()
+        self.assertEqual(after.recurrence_count, 1)
+        self.assertEqual(after.previous_baseline_delta_mg_dl, original_delta)
+        self.assertEqual(after.baseline_delta_change_mg_dl, expected_change)
 
     def test_eligible_absence_and_true_reactivation_drive_lifecycle_recurrence(self):
         supporting = []
