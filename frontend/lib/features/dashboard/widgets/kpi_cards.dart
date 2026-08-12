@@ -16,14 +16,6 @@ class _MetricRow extends StatelessWidget {
     required this.range,
   });
 
-  int _daysWithData() => logs
-      .map((entry) {
-        final date = entry.loggedAt ?? entry.createdAt;
-        return '${date.year}-${date.month}-${date.day}';
-      })
-      .toSet()
-      .length;
-
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 900;
@@ -53,9 +45,6 @@ class _MetricRow extends StatelessWidget {
     final l10n = copy.l10n;
     final tir = ClinicalEngine.calcTIR(logs, low, high);
     final cv = ClinicalEngine.calcCV(logs);
-    final daysWithData = _daysWithData();
-    final gmiEligible = daysWithData >= 14 && logs.length >= 50;
-    final gmi = gmiEligible ? ClinicalEngine.calcGMI(logs) : null;
 
     return ClinicalCard(
       padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
@@ -119,8 +108,8 @@ class _MetricRow extends StatelessWidget {
                   child: _CompactMetricCell(
                     icon: Icons.local_fire_department_outlined,
                     label: l10n.dashboardGmiEstimated,
-                    value: gmi == null ? '--' : gmi.toStringAsFixed(1),
-                    suffix: gmi == null ? '' : '%',
+                    value: '--',
+                    suffix: '',
                     accent: AminaTheme.teal600,
                   ),
                 ),
@@ -135,15 +124,13 @@ class _MetricRow extends StatelessWidget {
                     label: l10n.dashboardCvTitle,
                     value: cv == 0 ? '--' : cv.toStringAsFixed(0),
                     suffix: cv == 0 ? '' : '%',
-                    accent: cv > 0 && cv < 36
-                        ? AminaTheme.teal600
-                        : AminaTheme.warningOrange,
+                    accent: AminaTheme.teal600,
                   ),
                 ),
               ],
             ),
           ),
-          if (!gmiEligible && logs.isNotEmpty) ...[
+          if (logs.isNotEmpty) ...[
             const SizedBox(height: 13),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
@@ -165,7 +152,7 @@ class _MetricRow extends StatelessWidget {
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(
-                      l10n.dashboardGmiLimitedCoverage,
+                      l10n.dashboardInsufficientData,
                       style: const TextStyle(
                         fontSize: 10.5,
                         color: AminaTheme.ambre700,

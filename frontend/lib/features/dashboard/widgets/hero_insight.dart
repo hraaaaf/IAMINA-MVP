@@ -1,7 +1,9 @@
 part of '../dashboard_screen.dart';
 
 // ── Hero Insight (default / longitudinal) ─────────────────────────────────────
-
+// P1-EVIDENCE: this surface is descriptive until true CGM sufficiency can be
+// verified by the backend. Local journal rows must never be promoted into TIR/CV
+// target judgements merely because enough rows exist.
 class _HeroInsight extends StatelessWidget {
   final List<LogEntryData> logs;
   final String unit;
@@ -16,38 +18,29 @@ class _HeroInsight extends StatelessWidget {
     required this.range,
   });
 
-  /// Prénom de l'utilisateur connecté, ou chaîne vide pour les comptes anonymes.
-  static String _firstName() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || user.isAnonymous) return '';
-    final name = user.displayName ?? user.email ?? '';
-    if (name.isEmpty) return '';
-    return name
-        .split(RegExp(r'[\s@.]'))
-        .firstWhere((p) => p.isNotEmpty, orElse: () => '');
-  }
+  int _daysWithData() => logs
+      .map((entry) {
+        final date = entry.loggedAt ?? entry.createdAt;
+        return '${date.year}-${date.month}-${date.day}';
+      })
+      .toSet()
+      .length;
 
   String _headline(BuildContext context) {
     final l10n = AuditedPageCopy.of(context).l10n;
     if (logs.isEmpty) return l10n.dashboardInsightStart;
-    final tir = ClinicalEngine.calcTIR(logs, low, high);
     final mean = ClinicalEngine.calcMean(logs);
-    if (tir >= 80) return l10n.dashboardInsightStrong(tir.round(), range);
-    if (tir >= 60) {
-      return l10n.dashboardInsightProgress(tir.round(), mean.round());
-    }
-    return l10n.dashboardInsightNeedsFocus(range);
+    return l10n.dashboardGmiCoverage(
+      mean.toStringAsFixed(0),
+      logs.length,
+      _daysWithData(),
+    );
   }
 
   String _subtitle(BuildContext context) {
     final l10n = AuditedPageCopy.of(context).l10n;
     if (logs.isEmpty) return l10n.dashboardInsightFirstMeasurement;
-    final cv = ClinicalEngine.calcCV(logs);
-    final discoveries = math.min(logs.length ~/ 20 + 1, 5);
-    final stability = cv < 36
-        ? l10n.dashboardVariabilityStable
-        : l10n.dashboardVariabilityWatch;
-    return l10n.dashboardInsightSummary(discoveries, stability, logs.length);
+    return l10n.dashboardMeasurementCoverage(logs.length, _daysWithData());
   }
 
   String _displayValue(double raw) {
@@ -188,11 +181,7 @@ class _HeroInsight extends StatelessWidget {
                           flex: 6,
                           child: SizedBox(
                             height: 88,
-                            child: _HeroSparkline(
-                              logs: logs,
-                              low: low,
-                              high: high,
-                            ),
+                            child: _HeroSparkline(logs: logs, low: low, high: high),
                           ),
                         ),
                       ],
@@ -213,16 +202,11 @@ class _HeroInsight extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.09),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.09),
-                          ),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
                         ),
                         child: Row(
                           children: [
@@ -293,11 +277,7 @@ class _HeroSparkline extends StatelessWidget {
   final List<LogEntryData> logs;
   final double low, high;
 
-  const _HeroSparkline({
-    required this.logs,
-    required this.low,
-    required this.high,
-  });
+  const _HeroSparkline({required this.logs, required this.low, required this.high});
 
   @override
   Widget build(BuildContext context) {

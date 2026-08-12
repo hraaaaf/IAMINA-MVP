@@ -971,7 +971,7 @@
             }
           }
         },
-        "description": "Returns canonical KPIs for the authenticated patient.\n\nComputed via SQL (ADR-0007). On SQLite, cv_pct and std_dev are null\n(STDDEV_SAMP not available). Full precision requires PostgreSQL.\n\nPhase 10: Response is Redis-cached for 5 min.\nCache miss is transparent \u2014 falls back to SQL query.\n\nQuery params:\n    days        \u2014 look-back window in days (default 21)\n    target_low  \u2014 lower TIR bound in mg/dL (default 70)\n    target_high \u2014 upper TIR bound in mg/dL (default 180)",
+        "description": "Return evidence-gated KPIs for the authenticated patient.\n\nRaw SQL remains descriptive source data. Normative CGM labels such as TIR,\nCV stability, GMI and GRI are returned only when the governed CGM sufficiency\ncontract verifies actual coverage. The current LogEntry schema cannot prove\nwear-time/cadence, so those fields fail closed to null rather than being\ninferred from the fraction of rows labelled ``source='cgm'``.",
         "tags": [
           "kpis"
         ],
