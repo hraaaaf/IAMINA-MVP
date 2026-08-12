@@ -156,6 +156,19 @@ Each detector requires:
 
 Do not add treatment-adjustment logic to pattern detectors.
 
+### 5.1 Consultation-intelligence evidence boundary
+
+Before any clinician brief is exposed, its structured source contract must be deterministic, provenance-qualified and fail closed:
+
+- `consultation-brief.v1` may carry only observed facts and deterministic derivations approved for this contract;
+- each deterministic derivation requires a registered evidence ID pointing to a versioned product rule with `GOVERNED_RULE` authority; raw literature/source records and candidate/narrative-only rules cannot become consultation truth merely by being cited;
+- source identity/version, evidence window where applicable, evidence density, missing data and limitations remain explicit; evidence density is not probability, statistical significance or clinical confidence;
+- a `since last review` statement requires an explicit authoritative review checkpoint. If none exists, the system must use current-snapshot semantics and disclose that change-since-review is unavailable;
+- model/heuristic/conversational inference and unverified user claims are outside v1 consultation truth; later support for patient-reported claims requires an explicit contract extension that preserves their claim provenance;
+- consultation actions are restricted to monitoring, collecting missing data or preparing clinician discussion. The contract contains no diagnosis, prescription, dose or treatment-change authority;
+- free-form model output may not be used to populate or override contract fields. Any future narrator may only reformulate a fully assembled approved structured brief;
+- P2-DOCTOR-0 defines this contract only. Persistence of review checkpoints, deterministic assembly, endpoint replacement and clinician UX require separate release-gated work.
+
 ## 6. Treatment and insulin data
 
 IAmina may store patient-entered treatment/insulin context when needed for logging and interpretation. In Journal, an insulin quantity is an **observed historical fact**: the amount the patient reports was already administered. It is not a recommendation, target, correction factor or optimization output.

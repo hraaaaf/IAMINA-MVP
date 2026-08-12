@@ -134,6 +134,18 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - deterministic emergency classification/routing remains upstream and outside the non-urgent attention budget;
 - no proactive state or API output may diagnose, prescribe, calculate a dose, infer causality, optimize/change treatment or grant generative-model clinical authority.
 
+### Consultation intelligence contract
+
+- P2-DOCTOR begins with versioned structured contract `consultation-brief.v1`; this contract is downstream review support and does not create new clinical truth;
+- v1 consultation evidence admits only authoritative `OBSERVED_FACT` values and approved `DETERMINISTIC_DERIVATION` values; deterministic derivations must reference an evidence-registry product rule with `GOVERNED_RULE` authority;
+- unknown evidence IDs, external source records, candidate/narrative-only rules, user claims, preferences, conversational state, heuristic inference and model inference are not authorized consultation-brief truth in v1;
+- contract values are immutable bounded scalars and all runtime enum/container types are validated rather than trusted from Python annotations; raw strings cannot inject treatment/dose actions or bypass comparison/truth validation;
+- `CURRENT_SNAPSHOT` cannot claim change since a prior consultation. `SINCE_REVIEW_CHECKPOINT` requires an explicit timezone-aware review checkpoint; absent checkpoint means the brief must expose that limitation rather than fabricate review history;
+- `limited` / `moderate` / `strong` is evidence density only; the consultation contract has no numeric clinical-confidence field;
+- allowed next steps are only `MONITOR`, `COLLECT_MISSING_DATA` and `PREPARE_CLINICIAN_DISCUSSION`; no treatment change, prescription, dose calculation or autonomous escalation action is part of the contract;
+- model narration, if later enabled, is constrained to `approved_structured_fields_only` under `clinician_review_support_only` authority; a model cannot add facts, change classifications or invent missing-data resolution;
+- P2-DOCTOR-0 does not replace the existing `/api/v1/ai/doctor-brief`, create a persisted review checkpoint, assemble a live brief, or add clinician/patient UX. Those capabilities require later separately certified LOTs.
+
 ### Post-save experience contract
 
 - a successful Add Log write transitions to a persistent factual receipt only after the local Drift insertion has completed successfully;

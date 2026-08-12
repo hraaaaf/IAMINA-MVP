@@ -97,6 +97,8 @@ The Clinical Twin remains the clinical observation truth boundary. Proactive wor
 
 Destructive mutation of clinically contributive source Journal rows is serialized against canonical Clinical Twin refresh. Persisted derived observation state is purged/rebuilt only from surviving authoritative source rows, while normal sparse refresh remains a distinct longitudinal-history behavior. Patient export/account deletion/retention govern the derived Clinical Twin state, and subordinate proactive workflow state cannot outlive deletion of its source observation.
 
+P2-DOCTOR adds a downstream versioned consultation-brief authority contract, not a new truth store. `consultation-brief.v1` accepts only bounded immutable observed facts plus evidence-registry-governed deterministic derivations, separates current-snapshot from explicit-review-checkpoint comparison semantics, and fixes model narration to approved structured fields only. The contract has no endpoint or persistence side effect in P2-DOCTOR-0; deterministic assembly, checkpoint persistence/selection and replacement of the legacy AI doctor-brief path remain later LOTs.
+
 It must consume shared contracts without creating hidden reverse dependencies from core back into diabetes.
 
 ### 3.4 External services
