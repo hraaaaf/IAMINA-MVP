@@ -28,15 +28,15 @@ class DiabetesConfig(AppConfig):
             )
         )
 
-        # P3: register diabetes module with chassis ModuleRegistry
+        # P1-EVIDENCE: register the evidence-gated diabetes authority boundary.
         from core.registry import ModuleRegistry
         from diabetes.api.v1.logs import router as _logs_router
         from diabetes.manifest import DIABETES_MANIFEST
-        from diabetes.services.clinical.engine import DiabetesEngine
-        ModuleRegistry.register(DIABETES_MANIFEST, DiabetesEngine, _logs_router)
+        from diabetes.services.clinical.evidence_engine import EvidenceGuardedDiabetesEngine
+        ModuleRegistry.register(DIABETES_MANIFEST, EvidenceGuardedDiabetesEngine, _logs_router)
 
         # Companion persistence ports (memory + conversation). Clinical data flows
-        # through the engine contract (DiabetesEngine), not through ports.
+        # through the registered diabetes engine contract, not through ports.
         from core.companion.ports import (
             register_conversation_store,
             register_snapshot_store,
