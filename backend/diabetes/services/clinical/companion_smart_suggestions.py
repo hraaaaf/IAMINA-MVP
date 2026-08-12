@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
+from django.db import transaction
+
 from diabetes.models.proactive_insight import ProactiveInsightState
 from diabetes.services.clinical.companion_change import (
     compare_since_last_companion_review,
@@ -194,6 +196,7 @@ def _dedupe(values: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(values))
 
 
+@transaction.atomic
 def evaluate_companion_smart_suggestion(
     *,
     patient_id: int,
@@ -205,6 +208,10 @@ def evaluate_companion_smart_suggestion(
     canonical companion class vocabulary but are intentionally not emitted in V1:
     their prerequisite authorities are not yet implemented. Unknown authority
     therefore fails closed rather than being improvised here.
+
+    The transaction is intentionally wider than the proactive delivery write: if
+    provenance or companion-envelope validation fails afterwards, the attention
+    budget is not consumed by a suggestion that was never safely produced.
     """
 
     _validate_patient_id(patient_id)
