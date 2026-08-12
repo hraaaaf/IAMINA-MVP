@@ -11,6 +11,9 @@ from ninja.errors import HttpError
 
 from core.observability import EVT_LOG_CREATED, track
 from diabetes.models import LogEntry
+from diabetes.services.clinical.observation_erasure import (
+    reconcile_personal_response_memory_after_source_erasure,
+)
 from diabetes.services.session_cache import invalidate as _invalidate_ctx
 
 from .kpis import invalidate_kpi_cache as _invalidate_kpis
@@ -141,7 +144,11 @@ def update_log(request, log_id: int, data: LogEntryUpdateSchema):
 @router.delete("/logs/{log_id}", response={204: None, 404: Error})
 def delete_log(request, log_id: int):
     log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
-    log.delete()
+    with transaction.atomic():
+        log.delete()
+        reconcile_personal_response_memory_after_source_erasure(
+            patient_id=request.user.id,
+        )
     _invalidate_ctx(request.user.id)
     _invalidate_kpis(request.user.id)
     return Status(204, None)
