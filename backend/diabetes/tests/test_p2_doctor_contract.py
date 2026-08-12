@@ -98,6 +98,28 @@ def test_deterministic_derivation_requires_evidence_provenance():
         _deterministic_item(evidence_id=None)
 
 
+def test_deterministic_derivation_rejects_unknown_evidence_id():
+    with pytest.raises(ValueError, match="evidence_id is not registered"):
+        _deterministic_item(evidence_id="rule.unknown.v1")
+
+
+def test_deterministic_derivation_rejects_external_source_record():
+    with pytest.raises(ValueError, match="must reference a product rule"):
+        _deterministic_item(evidence_id="source.ada.2026.section6")
+
+
+@pytest.mark.parametrize(
+    "evidence_id",
+    [
+        "rule.metric.gmi-cgm.v1",
+        "rule.pattern.night-low-later-morning-high.v1",
+    ],
+)
+def test_deterministic_derivation_rejects_non_governed_rule_authority(evidence_id):
+    with pytest.raises(ValueError, match="requires governed_rule clinical authority"):
+        _deterministic_item(evidence_id=evidence_id)
+
+
 def test_observed_fact_cannot_masquerade_as_governed_derivation():
     with pytest.raises(ValueError, match="must not masquerade"):
         ConsultationEvidenceItem(
@@ -196,6 +218,26 @@ def test_invalid_or_future_review_checkpoint_is_rejected():
                 source="clinician.review_checkpoint",
             ),
             items=(_deterministic_item(),),
+        )
+
+
+def test_naive_datetimes_are_rejected_before_temporal_comparison():
+    start, end = _now_window()
+    naive_start = start.replace(tzinfo=None)
+    naive_review = (start - timedelta(days=1)).replace(tzinfo=None)
+
+    with pytest.raises(ValueError, match="window datetimes must be timezone-aware"):
+        ConsultationBriefEnvelope(
+            window_start=naive_start,
+            window_end=end,
+            comparison_basis=ConsultationComparisonBasis.CURRENT_SNAPSHOT,
+            items=(),
+        )
+
+    with pytest.raises(ValueError, match="reviewed_at must be timezone-aware"):
+        ConsultationReviewCheckpoint(
+            reviewed_at=naive_review,
+            source="clinician.review_checkpoint",
         )
 
 
