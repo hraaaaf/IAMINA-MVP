@@ -99,7 +99,7 @@ class ClinicalObservationState(models.Model):
                 name="uniq_patient_clinical_observation_key",
             ),
             models.CheckConstraint(
-                condition=models.Q(truth_kind=DETERMINISTIC_TRUTH_KIND),
+                condition=models.Q(truth_kind="deterministic_derivation"),
                 name="clinical_obs_truth_deterministic",
             ),
         ]
