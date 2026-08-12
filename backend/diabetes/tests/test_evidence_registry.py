@@ -132,5 +132,8 @@ class RuntimeEvidenceCoverageTests(SimpleTestCase):
     def test_hyperglycemia_product_thresholds_are_not_mislabeled_standard_of_care(self):
         record = evidence_for_alert("hyperglycemia_critical")
         self.assertEqual(record.evidence_maturity, EvidenceMaturity.INTERNAL_GOVERNED_RULE)
-        self.assertIn("not diagnostic", record.claim_or_rule.lower())
-        self.assertIn("not present", "not present")  # keep assertion body explicit/no external source promotion
+        self.assertEqual(record.supporting_evidence_ids, ())
+        combined = " ".join((record.claim_or_rule, record.limitations)).lower()
+        self.assertIn("product", combined)
+        self.assertIn("not diagnostic", combined)
+        self.assertIn("not universal", combined)
