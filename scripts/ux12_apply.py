@@ -18,58 +18,6 @@ replace(theme, "static const double radius2XL = 20.0;", "static const double rad
 
 p = Path(theme)
 text = p.read_text()
-light_marker = """      cardTheme: CardThemeData(\n        elevation: 0,"""
-light_input = """      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: cardBg,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        labelStyle: const TextStyle(color: ink500, fontSize: 12.5),
-        hintStyle: const TextStyle(color: ink400),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: ink100),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: ink100),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: teal700, width: 1.4),
-        ),
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,"""
-if light_marker not in text:
-    raise SystemExit("missing light card marker")
-text = text.replace(light_marker, light_input, 1)
-
-dark_marker = """      cardTheme: CardThemeData(\n        elevation: 0,"""
-dark_input = """      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: darkCardElevated,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        labelStyle: const TextStyle(color: dark300, fontSize: 12.5),
-        hintStyle: const TextStyle(color: dark400),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: dark600),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: dark600),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: teal400, width: 1.4),
-        ),
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,"""
-if dark_marker not in text:
-    raise SystemExit("missing dark card marker")
-text = text.replace(dark_marker, dark_input, 1)
-
 old_light_button = """      filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: teal500,
