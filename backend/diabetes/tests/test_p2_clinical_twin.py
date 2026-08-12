@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from django.contrib.auth.models import User
+from django.db import IntegrityError, transaction
 from django.test import Client, TestCase
 from django.utils import timezone
 
@@ -220,6 +221,27 @@ class ClinicalObservationMemoryTests(TestCase):
                 )
 
         self.assertFalse(ClinicalObservationState.objects.exists())
+
+    def test_database_rejects_unapproved_producer_and_evidence_id(self):
+        self._stress_pattern()
+        refresh_personal_response_memory(patient_id=self.patient.id)
+        row = ClinicalObservationState.objects.get(patient=self.patient)
+
+        for field, value in (
+            ("producer", "companion.deep_memory"),
+            ("evidence_id", "rule.unreviewed.observation.v0"),
+            ("truth_kind", TruthKind.MODEL_INFERENCE.value),
+        ):
+            with self.assertRaises(IntegrityError):
+                with transaction.atomic():
+                    ClinicalObservationState.objects.filter(pk=row.pk).update(
+                        **{field: value}
+                    )
+            row.refresh_from_db()
+
+        self.assertEqual(row.producer, PRODUCER_ID)
+        self.assertEqual(row.evidence_id, PERSONAL_RESPONSE_EVIDENCE_ID)
+        self.assertEqual(row.truth_kind, TruthKind.DETERMINISTIC_DERIVATION.value)
 
 
 class ClinicalObservationMemoryApiTests(TestCase):
