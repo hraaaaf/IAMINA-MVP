@@ -121,7 +121,7 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 ### Proactive insight lifecycle contract
 
 - proactive workflow state is derived only from approved deterministic `ClinicalObservationState`; it is separate delivery/product state and never becomes source clinical truth;
-- protected `GET /api/v1/proactive-insights/` returns at most one non-urgent evidence-qualified candidate for the authenticated patient and never accepts a client-supplied patient identity;
+- protected `POST /api/v1/proactive-insights/evaluate/` explicitly evaluates and consumes at most one non-urgent evidence-qualified candidate for the authenticated patient; safe GET requests cannot mutate delivery state or consume the attention budget, and the command never accepts a client-supplied patient identity;
 - lifecycle states for the current source are `new`, `monitoring`, `persisting`, `improving` and `resolved`; `escalated` is part of the wider lifecycle vocabulary but is rejected by the database for the current descriptive `personal_response` source;
 - `resolved` requires eligible source-data refresh and eligible absence; missing/insufficient data returns `insufficient_data` and cannot erase a prior observation;
 - a reactivated Clinical Twin observation cannot remain stale-`resolved`, even if supporting evidence reproduces an earlier fingerprint;

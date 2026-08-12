@@ -1027,10 +1027,10 @@
         ]
       }
     },
-    "/api/v1/proactive-insights/": {
-      "get": {
-        "operationId": "diabetes_api_v1_proactive_get_proactive_insights",
-        "summary": "Get Proactive Insights",
+    "/api/v1/proactive-insights/evaluate/": {
+      "post": {
+        "operationId": "diabetes_api_v1_proactive_evaluate_proactive_insight",
+        "summary": "Evaluate Proactive Insight",
         "parameters": [],
         "responses": {
           "200": {
@@ -1044,7 +1044,7 @@
             }
           }
         },
-        "description": "Return at most one non-urgent evidence-qualified insight candidate.",
+        "description": "Explicitly evaluate and consume at most one non-urgent insight candidate.\n\nThis is intentionally a POST because a surfaced item updates deterministic\ndelivery bookkeeping (`last_surfaced_at` and delivery signature). Safe GET\nrequests must not consume the patient's attention budget.",
         "tags": [
           "proactive-insights"
         ],
