@@ -197,7 +197,7 @@ Certified contract:
 
 ### ▶️ P2-DOCTOR-1 — Deterministic Brief Assembler — NEXT
 
-Build the deterministic assembler from approved synchronized observed facts, governed KPI/Clinical Twin derivations and an authoritative prior-review checkpoint source. The assembler must produce `consultation-brief.v1` without model-authored fields, must fail closed when the checkpoint or governed evidence is unavailable, and must not replace the legacy narrator endpoint until separately certified.
+Build the deterministic assembler from approved synchronized observed facts, governed KPI/Clinical Twin derivations and an authoritative prior-review checkpoint source. The assembler must produce `consultation-brief.v1` without model-authored fields; `SINCE_REVIEW_CHECKPOINT` semantics must fail closed when the checkpoint is unavailable, while `CURRENT_SNAPSHOT` may still be emitted with the missing-checkpoint limitation made explicit. Ungoverned derivations remain ineligible, and the legacy narrator endpoint must not be replaced until separately certified.
 
 ## Ordered execution
 
