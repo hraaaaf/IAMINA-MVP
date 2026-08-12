@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
+from diabetes.services.clinical.cgm_eligibility import CgmSufficiency
 from diabetes.services.clinical.evidence_engine import EvidenceGuardedDiabetesEngine
 from diabetes.services.clinical.evidence_projection import (
     guard_normative_kpis,
@@ -71,6 +72,30 @@ class EvidenceProjectionTests(SimpleTestCase):
         self.assertEqual(guarded.avg_glucose, 154.0)
         self.assertEqual(guarded.std_dev, 62.0)
         self.assertEqual(guarded.log_count, 100)
+
+    @patch("diabetes.services.clinical.evidence_projection.assess_cgm_sufficiency")
+    def test_verified_coverage_cannot_auto_promote_candidate_metrics(self, sufficiency_mock):
+        raw = _raw_cgm_like_kpis()
+        sufficiency_mock.return_value = CgmSufficiency(
+            verified=True,
+            reason="synthetic future verified coverage",
+            days_with_data=raw.days_with_data,
+            cgm_row_fraction_pct=raw.cgm_active_pct,
+            evidence_id="rule.metric.gmi-cgm.v1",
+        )
+
+        guarded = guard_normative_kpis(raw)
+        public = project_public_kpis(raw)
+
+        self.assertEqual(guarded.tir_pct, 68.0)
+        self.assertEqual(guarded.cv_pct, 40.3)
+        self.assertIsNone(guarded.gmi)
+        self.assertIsNone(guarded.gri)
+        self.assertIsNone(guarded.gri_zone)
+        self.assertIsNone(public["gmi"])
+        self.assertIsNone(public["gri"])
+        self.assertIsNone(public["gmi_confidence"])
+        self.assertEqual(public["gmi_basis"], "règle GMI non promue")
 
     def test_projection_exposes_versioned_evidence_metadata(self):
         evidence = project_public_kpis(_raw_cgm_like_kpis())["evidence"]

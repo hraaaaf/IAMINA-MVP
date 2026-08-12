@@ -136,6 +136,17 @@ class RuntimeEvidenceCoverageTests(SimpleTestCase):
         self.assertEqual(record.kind, RecordKind.RULE)
         self.assertEqual(record.clinical_authority, ClinicalAuthority.GOVERNED_RULE)
 
+    def test_gmi_sources_are_peer_reviewed_evidence_not_automatic_standard_of_care(self):
+        legacy = get_evidence("source.bergenstal.2018.gmi")
+        updated = get_evidence("source.bergenstal.2026.ugmi")
+        rule = get_evidence("rule.metric.gmi-cgm.v1")
+
+        self.assertEqual(legacy.evidence_maturity, EvidenceMaturity.EMERGING_EVIDENCE)
+        self.assertEqual(updated.evidence_maturity, EvidenceMaturity.EMERGING_EVIDENCE)
+        self.assertEqual(updated.clinical_authority, ClinicalAuthority.NONE)
+        self.assertEqual(rule.clinical_authority, ClinicalAuthority.GOVERNED_RULE_CANDIDATE)
+        self.assertIn(updated.evidence_id, rule.supporting_evidence_ids)
+
     def test_gmi_rule_requires_verified_cgm_and_is_not_lab_a1c(self):
         record = get_evidence("rule.metric.gmi-cgm.v1")
         combined = " ".join((record.claim_or_rule, record.limitations)).lower()
