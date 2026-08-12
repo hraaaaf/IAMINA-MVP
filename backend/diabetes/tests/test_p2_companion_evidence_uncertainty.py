@@ -157,22 +157,33 @@ class CompanionEvidenceUncertaintyTests(TestCase):
         self.assertEqual(change.missing_data, ())
         self.assertEqual(change.evidence_context.uncertainty.missing_data, ())
 
-    def test_external_source_maturity_remains_separate_from_product_rule_maturity(self):
-        context = build_companion_evidence_context(
-            evidence_id="rule.metric.recorded-range-fractions.v1",
-            producer="test-governed-producer",
-            evidence_density="moderate",
-            evidence_density_trend=None,
-            missing_data=(),
-            limitations=("descriptive_test_only",),
-        )
+    def test_other_governed_rule_is_not_automatically_companion_authority(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "not registered for material companion observations",
+        ):
+            build_companion_evidence_context(
+                evidence_id="rule.metric.recorded-range-fractions.v1",
+                producer="test-governed-producer",
+                evidence_density="moderate",
+                evidence_density_trend=None,
+                missing_data=(),
+                limitations=("descriptive_test_only",),
+            )
 
-        self.assertEqual(context.provenance.evidence_maturity, "internal_governed_rule")
-        self.assertEqual(len(context.provenance.supporting_evidence), 1)
-        supporting = context.provenance.supporting_evidence[0]
-        self.assertEqual(supporting.evidence_id, "source.ada.2026.section6")
-        self.assertEqual(supporting.evidence_maturity, "standard_of_care")
-        self.assertEqual(supporting.finality_status, "final")
+    def test_wrong_producer_for_approved_companion_rule_fails_closed(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            "producer is not approved for this companion evidence rule",
+        ):
+            build_companion_evidence_context(
+                evidence_id=ClinicalObservationState.APPROVED_EVIDENCE_ID,
+                producer="wrong.producer.v1",
+                evidence_density="moderate",
+                evidence_density_trend=None,
+                missing_data=(),
+                limitations=("wrong_producer_test",),
+            )
 
     def test_candidate_rule_cannot_authorize_material_companion_observation(self):
         with self.assertRaisesRegex(ValueError, "requires governed runtime authority"):
