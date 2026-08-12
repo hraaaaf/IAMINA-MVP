@@ -21,8 +21,8 @@ from diabetes.models.clinical_insight import ClinicalInsightState
 from diabetes.models.clinical_observation import ClinicalObservationState
 from diabetes.services.clinical.evidence_registry import (
     ClinicalAuthority,
-    PERSONAL_RESPONSE_EVIDENCE_ID,
     get_evidence,
+    PERSONAL_RESPONSE_EVIDENCE_ID,
 )
 from diabetes.services.clinical.observation_memory import (
     PRODUCER_ID as OBSERVATION_PRODUCER_ID,
