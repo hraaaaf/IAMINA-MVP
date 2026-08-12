@@ -125,6 +125,7 @@ def compute_personal_response(
     *,
     patient_id: int,
     window_days: int = DEFAULT_WINDOW_DAYS,
+    max_patterns: int | None = MAX_PATTERNS,
 ) -> PersonalResponseResult:
     """Return repeated observational patterns for one authenticated patient.
 
@@ -136,6 +137,10 @@ def compute_personal_response(
     - demo entries are excluded;
     - no negative/neutral context is ever treated as a control cohort;
     - analysis is bounded to 90 days to keep patient-scoped reads predictable.
+
+    ``max_patterns=None`` is reserved for internal deterministic consumers such as
+    the P2 clinical observation lifecycle. Patient-facing callers keep the capped
+    default so presentation ranking cannot accidentally become persistence logic.
     """
     window_days = max(7, min(int(window_days), MAX_WINDOW_DAYS))
     entries = list(_window_queryset(patient_id, window_days))
@@ -193,6 +198,11 @@ def compute_personal_response(
         reverse=True,
     )
 
+    if max_patterns is None:
+        selected_patterns = tuple(patterns)
+    else:
+        selected_patterns = tuple(patterns[: max(0, int(max_patterns))])
+
     return PersonalResponseResult(
         status="ready" if patterns else "insufficient_data",
         window_days=window_days,
@@ -201,5 +211,5 @@ def compute_personal_response(
         window_median_glucose_mg_dl=window_median,
         minimum_observations=MIN_OBSERVATIONS,
         minimum_distinct_days=MIN_DISTINCT_DAYS,
-        patterns=tuple(patterns[:MAX_PATTERNS]),
+        patterns=selected_patterns,
     )
