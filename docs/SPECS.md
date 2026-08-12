@@ -116,6 +116,8 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - `limited` / `moderate` / `strong` describe only product repeatability/evidence density. They are not a probability, p-value, statistical significance test, diagnosis or clinical confidence score;
 - the patient-facing surface must state that association does not establish cause and must not guide treatment or dosing;
 - no pattern detector may produce treatment optimization, insulin-dose advice, diagnosis or autonomous clinical recommendation;
+- explicit destructive mutation of clinically contributive source rows must purge/rebuild persisted Clinical Twin derivation only from surviving authoritative sources; normal sparse refresh semantics remain distinct and may preserve historical lifecycle state;
+- patient export/account-deletion/retention governance applies to persisted Clinical Twin state, and subordinate proactive state cannot survive destruction of its source derivation;
 - the Journal shows one strongest pattern by default and makes secondary patterns explicitly expandable so longitudinal context does not crowd out the primary history task.
 
 ### Proactive insight lifecycle contract
@@ -131,7 +133,6 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - `limited` / `moderate` / `strong` retain their personal-response meaning as repetition density only and must not be narrated as probability or clinical confidence;
 - deterministic emergency classification/routing remains upstream and outside the non-urgent attention budget;
 - no proactive state or API output may diagnose, prescribe, calculate a dose, infer causality, optimize/change treatment or grant generative-model clinical authority.
-
 
 ### Post-save experience contract
 
@@ -201,7 +202,7 @@ No locale/dialect is enabled for a real-patient pilot until it passes:
 
 ### Current
 
-A Firebase JWT bridge exists in the current codebase and maps authenticated identities into Django users/accounts.
+P0-MENA-3 delivered Django-owned registration/login/logout, signed expiring IAMINA bearer tokens, global token revocation, password establishment/recovery and controlled Firebase identity migration/link/unlink/reconciliation. Legacy Firebase compatibility remains only while the permanent migration audit has not legitimately reached the zero-Firebase removal gate.
 
 P0-A hardened API write security:
 
@@ -209,11 +210,9 @@ P0-A hardened API write security:
 - narrow Bearer/bootstrap exemptions remain where required;
 - protected clinical routes use fail-closed unit normalization across legacy and namespaced module paths.
 
-### Target
+### Decommission gate
 
-Django-native authentication becomes the sovereignty-critical source of truth under P0-MENA-3.
-
-Do not remove Firebase dependencies until account-preserving migration, reconciliation, and rollback are proven.
+Do not remove remaining Firebase dependencies until account-preserving migration/reconciliation/rollback requirements are satisfied and `python manage.py audit_auth_migration --require-zero-firebase` legitimately passes.
 
 ## 5. Diabetes data contract
 
@@ -319,44 +318,42 @@ IAmina must not:
 
 ## 9. AI / model contract
 
-### Current enforced capability after P0-B
+### Current enforced contract after P0-MENA-1
 
-Currently wired live external AI/model/media operations use a central server-side authorization boundary.
+Currently wired live external AI/model/media operations use the completed central server-side egress governance boundary.
 
 Before real external egress, the boundary requires:
 
 - authenticated patient scope;
 - registered purpose;
 - declared/authorized modality;
-- server-side patient AI consent.
+- server-side patient AI consent;
+- purpose-specific payload allowlisting/minimization;
+- applicable granular raw-media consent/policy;
+- governed processor/provider policy for the path.
 
 The following fail closed:
 
 - no active egress scope;
 - missing consent record or no consent;
 - unknown purpose;
-- modality not allowed for the purpose.
+- modality not allowed for the purpose;
+- payload outside the sanctioned purpose contract;
+- provider/path outside the governed egress policy.
 
 The authorization is evaluated lazily at actual provider egress so deterministic emergency/safety behavior remains available when AI consent is absent, provided no external call is attempted.
 
-For shared text-gateway calls, P0.2 adds a separate authority check: egress permission does not grant a forbidden clinical capability, and an allowed narrative capability still requires the ordinary egress/consent boundary.
+For shared text-gateway calls, the capability matrix adds a separate authority check: egress permission does not grant a forbidden clinical capability, and an allowed narrative capability still requires the ordinary egress/consent/minimization boundary.
 
 Currently inventoried/wired surfaces include text/gateway narration, chat, summary/doctor brief, structured diabetes insight formatting, STT/audio, vision/OCR, and document-processing paths.
 
 CI prevents new direct external model/provider callsites from omitting the central authorization assertion. Focused IAmina tests additionally prevent the AI API/doctor-brief and structured diabetes formatter surfaces from reverting to direct `get_llm()` access.
 
-### Remaining target contract
+### Remaining readiness work
 
-The authorization layer is not yet the complete sovereignty contract. P0-MENA-1 must still enforce consistently:
+Repository implementation of the P0-MENA-1 contract does not itself approve a provider or a real-patient deployment. Remaining readiness is external/governance work tracked in `docs/ROADMAP.md`, including restricted processor/subprocessor and consent approval, Morocco residency/cross-border approval, native-language safety parity and the P0-MENA-4 live provider benchmarks.
 
-- allowlisted payload fields/media per purpose;
-- minimization/redaction;
-- purpose/modality-granular media consent where required;
-- processor/subprocessor metadata;
-- residency and retention/no-training terms;
-- timeout/failure/fallback policy.
-
-Provider selection is per modality and must follow the P0-MENA-4 benchmark.
+Provider selection remains per modality and must follow the P0-MENA-4 benchmark; no provider is approved merely because an adapter exists.
 
 ## 10. API surface — summary
 
@@ -364,7 +361,7 @@ Current code exposes versioned `/api/v1/` routes. Representative surfaces includ
 
 ### Account/profile
 
-- authentication bridge/current auth endpoints;
+- Django-owned authentication/session/token endpoints with guarded legacy migration compatibility where still required;
 - profile read/update;
 - consent read/update/revoke;
 - account deletion.
@@ -384,7 +381,7 @@ Current code includes flows for some combination of:
 - image/OCR-assisted capture;
 - audio transcription/voice input.
 
-External model/media portions of these flows must pass the P0-B authorization boundary and remain subject to the unfinished P0-MENA-1 payload/media policy.
+External model/media portions of these flows must pass the completed P0-MENA-1 patient/purpose/modality/consent, minimization and provider-policy boundary.
 
 ### IAmina companion
 
