@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-12 — product authority is rebased from the former P2-DOCTOR lane to **P2-COMPANION — Companion Intelligence**. P2-COMPANION-0 defines the canonical companion ceiling; the certified `consultation-brief.v1` from PR #143 is preserved as a restricted future consultation sub-capability, not as IAmina's product identity. **P2-COMPANION-1 — Change Since Last Review is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-12 — P2-COMPANION-1 Change Since Last Review has a Clinical-Safety- and Database-reviewed runtime candidate in PR #147. It uses a server-captured explicit companion-review anchor and remains in merge gate; no endpoint/UX is claimed. UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -42,7 +42,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains a governance blocker despite being closed `not planned` |
-| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority contract | 🟡 P2-COMPANION active — Change Since Last Review next | P2-COMPANION-0 canonical contract; PR #143 consultation contract retained as P2-COMPANION-5 foundation |
+| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority contract; change-since-review runtime candidate | 🟡 P2-COMPANION-1 merge gate | PR #147 exact runtime head reviewed; final docs-inclusive certification/merge/post-merge still required |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
@@ -193,9 +193,24 @@ Durable authority:
 - generative models may narrate approved structured output but cannot create facts, urgency, diagnosis, causality or treatment authority;
 - the certified PR #143 `consultation-brief.v1` contract is preserved without rollback as a restricted **P2-COMPANION-5 Consultation Companion** foundation; its `clinician_review_support_only` ceiling remains valid and does not define the product as a doctor.
 
-### ▶️ P2-COMPANION-1 — Change Since Last Review — NEXT
+### 🟡 P2-COMPANION-1 — Change Since Last Review — MERGE GATE
 
-Build evidence-qualified current-vs-history comparison for the patient. The engine must identify what is new, persisting, improving, resolved or unknown relative to an explicit governed comparison anchor; it must fail closed when eligible data or the anchor is insufficient and must not infer diagnosis, causality, treatment response or clinician judgment.
+PR #147 adds the deterministic runtime foundation for comparing current governed Clinical Twin state with the patient's last explicit IAmina companion review.
+
+Candidate contract:
+
+- the comparison anchor is a server-timestamped `CompanionReviewAnchor` created by an explicit companion-review action; app-open activity, conversation state, a model or a client-supplied timestamp cannot manufacture review history;
+- each anchor snapshots only approved deterministic `ClinicalObservationState` fields and retains the existing `diabetes.personal_response.v1` / `rule.personal-response.repetition.v1` authority;
+- anchor capture and comparison share the canonical patient-row serialization lock with Clinical Twin refresh/erasure;
+- bounded change states are `new`, `persisting`, `improving`, `resolved` and `unknown`; missing anchor returns `insufficient_anchor`;
+- `improving` means only that the descriptive baseline-relative delta moved toward the patient's governed personal-window baseline; it is not treatment response, clinical outcome or causality;
+- missing current state, absent eligible post-review evidence or an unprovable transition returns `unknown` rather than fabricating persistence or resolution;
+- reactivation is represented as `new` with explicit reactivation provenance;
+- explicit source erasure/replacement invalidates companion-review anchors before Clinical Twin rebuild so removed source evidence cannot survive in historical comparison snapshots;
+- patient export and account-deletion cascade include the persisted anchor/snapshot state;
+- P2-COMPANION-1 does not add an endpoint, Flutter UX, model narration, notification behavior, diagnosis, prescription, dose logic, causal attribution, treatment optimization or clinician override.
+
+**Runtime evidence before canonical-doc update:** exact head `b5c18b5988def4466afd3585aae2c155175e433a` passed CI #1906 + migration drift #1718, Clinical Safety Reviewer and Database/Migration Reviewer. These proofs become stale once docs change; final docs-inclusive exact-head gates and Release Certifier remain mandatory before merge.
 
 ### ⏳ P2-COMPANION-2 — Personal Pattern Intelligence
 
@@ -236,7 +251,7 @@ Add permanent clinician-reviewed negative, longitudinal, false-positive and boun
 | **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | ✅ **CLOSED** | PR #135 runtime + PR #140 lifecycle hardening; post-merge green |
 | **P2-PROACTIVE** | **Prioritization + Insight Lifecycle** | ✅ **CLOSED** | PR #139 merge `752f5543…`; post-merge CI #1845 + drift #1657 green |
 | **P2-COMPANION-0** | **Companion Intelligence Contract** | ✅ **CLOSED** | Canonical authority contract; former P2-DOCTOR framing superseded without rollback of certified PR #143 sub-contract |
-| **P2-COMPANION-1** | **Change Since Last Review** | ▶️ **NEXT** | Evidence-qualified current-vs-history change; insufficient anchor/data fail closed; no diagnosis/causality/treatment response |
+| **P2-COMPANION-1** | **Change Since Last Review** | 🟡 **MERGE GATE** | PR #147 governed explicit-review anchor + deterministic comparison; final exact-head certification/merge/post-merge pending |
 | P2-COMPANION-2 | Personal Pattern Intelligence | ⏳ Planned | Governed first/recurring/persisting/improving/resolved semantics remain descriptive |
 | P2-COMPANION-3 | Evidence + Uncertainty | ⏳ Planned | Material observations expose provenance, maturity, missing data and limitations |
 | P2-COMPANION-4 | Smart Suggestions | ⏳ Planned | Suggestions remain within six non-prescriptive companion classes |
@@ -326,7 +341,7 @@ Preparation/executable gates do not imply that external legal, processor, lingui
 
 # Current blockers and next sequence
 
-1. **Companion intelligence product lane:** execute **P2-COMPANION-1 — Change Since Last Review**. Do not resume the superseded P2-DOCTOR assembler-first sequence.
+1. **Companion intelligence product lane:** finish **P2-COMPANION-1 — Change Since Last Review** certification/merge/post-merge. Only after canonical closeout does P2-COMPANION-2 become NEXT; do not resume the superseded P2-DOCTOR assembler-first sequence.
 2. **Pilot security blocker:** issue #30 is closed `not planned` but explicitly not remediated; either complete the documented history remediation/verification path or supersede the pilot policy through normal governance before any real-patient go/no-go.
 3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
 4. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
