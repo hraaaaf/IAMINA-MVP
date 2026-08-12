@@ -18,6 +18,7 @@ from core.emergency_resources import (
 )
 from core.input_safety import URGENT, InputSafetyDecision
 from core.locale import ResolvedLocale, resolve_patient_locale
+from core.triage_classification import crisis_support_response
 
 _ARABIC_SCRIPT_MARKERS = (
     "ا",
@@ -45,26 +46,6 @@ _ARABIC_SCRIPT_MARKERS = (
 _DARIJA_LATIN_MARKERS = frozenset(
     {"wach", "bghit", "sukkar", "3ndi", "3ndek", "daba", "bzaf", "mzyan"}
 )
-
-_CRISIS_MESSAGES = {
-    "fr": (
-        "Ton message indique que tu peux avoir besoin d’une aide humaine immédiate. "
-        "Contacte maintenant les services d’urgence locaux ou une personne de confiance "
-        "près de toi."
-    ),
-    "en": (
-        "Your message suggests you may need immediate human support. Contact local "
-        "emergency services or a trusted person near you now."
-    ),
-    "ar": (
-        "تشير رسالتك إلى أنك قد تحتاج إلى دعم بشري فوري. تواصل الآن مع خدمات الطوارئ "
-        "المحلية أو مع شخص موثوق قريب منك."
-    ),
-    "ar-MA": (
-        "الرسالة ديالك كاتبين باللي يمكن تحتاج دعم من شي إنسان دابا. تاصل دابا "
-        "بالمستعجلات المحلية ولا بشي واحد كتثق فيه وقريب ليك."
-    ),
-}
 
 
 @dataclass(frozen=True, slots=True)
@@ -197,6 +178,17 @@ def _medical_reply(locale: ResolvedLocale, language: str) -> str:
     )
 
 
+def _crisis_reply(locale: ResolvedLocale, language: str) -> tuple[str, str]:
+    """Preserve the pre-P0.6 deterministic crisis copy; do not silently rewrite it."""
+    region = (
+        locale.country_code
+        if locale.country_confirmed and locale.country_code in {"MA", "FR"}
+        else "MA"
+    )
+    effective_language = language if language in {"fr", "ar", "ar-MA"} else "fr"
+    return crisis_support_response(region=region, lang=effective_language), effective_language
+
+
 def compose_emergency_response(
     decision: InputSafetyDecision,
     *,
@@ -214,7 +206,7 @@ def compose_emergency_response(
     response_class = _response_class(decision.reason)
     resources = resolve_emergency_resources(locale)
     if response_class == "crisis":
-        reply = _CRISIS_MESSAGES[language]
+        reply, language = _crisis_reply(locale, language)
     else:
         reply = _medical_reply(locale, language)
     reply = append_emergency_disclosure(reply, language)
