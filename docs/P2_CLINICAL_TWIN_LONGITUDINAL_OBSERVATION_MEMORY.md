@@ -1,6 +1,6 @@
 # P2-CLINICAL-TWIN — Longitudinal Observation Memory
 
-> **Status:** certification candidate in PR #135. This document describes the proposed as-built boundary; closure requires exact-head review, merge and post-merge CI + migration drift.
+> **Status:** ✅ CLOSED / CERTIFIED. PR #135 exact head `1058ee4a9d1e1a5b9ddcb936b7ef205e9a87e060` passed CI #1804 + migration drift #1616, Clinical Safety Reviewer and Release Certifier; merge `00292e4414f9fe9035cdc067eece5db8cfb5337b` passed post-merge `main` CI #1805 + drift #1617.
 
 ## 1. Purpose
 
@@ -87,9 +87,9 @@ P2 does not add or change:
 - generative-model clinical memory writes;
 - proactive notification behavior.
 
-## 8. Required regression gates
+## 8. Permanent regression gates
 
-Certification must prove:
+The certified implementation proves:
 
 - first sighting persistence with deterministic provenance;
 - same-evidence semantic idempotency;
