@@ -15,6 +15,8 @@ import re
 from django.http import JsonResponse
 from django.utils import timezone
 
+from core.emergency_response import compose_emergency_response
+from core.input_safety import URGENT, InputSafetyDecision, evaluate_input_safety
 from core.locale import ResolvedLocale, resolve_patient_locale
 
 logger = logging.getLogger(__name__)
@@ -179,9 +181,6 @@ def _pick_emergency_response(
     language: str | None = None,
 ) -> dict:
     """Compatibility helper delegated to the canonical emergency composer."""
-    from core.emergency_response import compose_emergency_response
-    from core.input_safety import InputSafetyDecision, URGENT
-
     resolved_locale = locale or _generic_locale()
     reply_language = language or _message_language(message)
     if reply_language != resolved_locale.response_language:
@@ -225,10 +224,6 @@ class TriageVitalMiddleware:
     def __call__(self, request):
         if self._is_chat_endpoint(request):
             user_message = self._read_message(request)
-
-            from core.emergency_response import compose_emergency_response
-            from core.input_safety import URGENT, evaluate_input_safety
-
             decision = evaluate_input_safety(user_message)
             if decision.action == URGENT:
                 self._log_emergency(request, user_message, kind=decision.reason or "urgent")
