@@ -20,6 +20,10 @@ from diabetes.models.companion_review import (
     CompanionReviewAnchor,
     CompanionReviewObservationSnapshot,
 )
+from diabetes.services.clinical.companion_evidence_uncertainty import (
+    CompanionEvidenceContext,
+    build_companion_evidence_context,
+)
 
 ChangeKind = Literal["new", "persisting", "improving", "resolved", "unknown"]
 ComparisonStatus = Literal["ready", "insufficient_anchor"]
@@ -45,6 +49,8 @@ class CompanionChangeItem:
     baseline_delta_at_review_mg_dl: float | None
     baseline_delta_now_mg_dl: float | None
     limitations: tuple[str, ...]
+    missing_data: tuple[str, ...]
+    evidence_context: CompanionEvidenceContext
     source_version: str = ENGINE_VERSION
 
 
@@ -150,6 +156,44 @@ def capture_companion_review_anchor(*, patient_id: int) -> CompanionReviewAnchor
     return anchor
 
 
+def _build_change_item(
+    *,
+    observation_key: str,
+    change_kind: ChangeKind,
+    evidence_id: str,
+    producer: str,
+    evidence_strength: str,
+    first_seen_at: datetime | None,
+    last_seen_at: datetime | None,
+    baseline_delta_at_review_mg_dl: float | None,
+    baseline_delta_now_mg_dl: float | None,
+    limitations: tuple[str, ...],
+    missing_data: tuple[str, ...] = (),
+) -> CompanionChangeItem:
+    evidence_context = build_companion_evidence_context(
+        evidence_id=evidence_id,
+        producer=producer,
+        evidence_density=evidence_strength,
+        evidence_density_trend=None,
+        missing_data=missing_data,
+        limitations=limitations,
+    )
+    return _build_change_item(
+        observation_key=observation_key,
+        change_kind=change_kind,
+        evidence_id=evidence_id,
+        producer=producer,
+        evidence_strength=evidence_strength,
+        first_seen_at=first_seen_at,
+        last_seen_at=last_seen_at,
+        baseline_delta_at_review_mg_dl=baseline_delta_at_review_mg_dl,
+        baseline_delta_now_mg_dl=baseline_delta_now_mg_dl,
+        limitations=limitations,
+        missing_data=missing_data,
+        evidence_context=evidence_context,
+    )
+
+
 def _unknown_item(
     *,
     key: str,
@@ -159,7 +203,8 @@ def _unknown_item(
 ) -> CompanionChangeItem:
     source = current or previous
     assert source is not None
-    return CompanionChangeItem(
+    limitations = _COMMON_LIMITATIONS + (reason,)
+    return _build_change_item(
         observation_key=key,
         change_kind="unknown",
         evidence_id=source.evidence_id,
@@ -175,7 +220,8 @@ def _unknown_item(
         baseline_delta_now_mg_dl=(
             float(current.baseline_delta_mg_dl) if current is not None else None
         ),
-        limitations=_COMMON_LIMITATIONS + (reason,),
+        limitations=limitations,
+        missing_data=(reason,),
     )
 
 
@@ -213,7 +259,7 @@ def _classify_change(
                 current=current,
                 reason="post_review_transition_not_provable",
             )
-        return CompanionChangeItem(
+        return _build_change_item(
             observation_key=key,
             change_kind=change_kind,
             evidence_id=current.evidence_id,
@@ -241,7 +287,7 @@ def _classify_change(
             current.status_changed_at > anchor.captured_at
             and current.last_seen_at > anchor.captured_at
         ):
-            return CompanionChangeItem(
+            return _build_change_item(
                 observation_key=key,
                 change_kind="new",
                 evidence_id=current.evidence_id,
@@ -265,7 +311,7 @@ def _classify_change(
             current.status_changed_at > anchor.captured_at
             and current.last_refreshed_at > anchor.captured_at
         ):
-            return CompanionChangeItem(
+            return _build_change_item(
                 observation_key=key,
                 change_kind="resolved",
                 evidence_id=current.evidence_id,
@@ -309,7 +355,7 @@ def _classify_change(
         change_kind = "persisting"
         extra = ("eligible_observation_remains_active_after_review",)
 
-    return CompanionChangeItem(
+    return _build_change_item(
         observation_key=key,
         change_kind=change_kind,
         evidence_id=current.evidence_id,
