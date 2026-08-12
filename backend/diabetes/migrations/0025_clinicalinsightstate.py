@@ -92,6 +92,7 @@ class Migration(migrations.Migration):
                 ('last_material_fingerprint', models.CharField(blank=True, default='', max_length=64)),
                 ('last_decision_fingerprint', models.CharField(blank=True, default='', max_length=64)),
                 ('last_surfaced_decision_fingerprint', models.CharField(blank=True, default='', max_length=64)),
+                ('pending_reason_codes', models.JSONField(default=list)),
                 ('first_surfaced_at', models.DateTimeField(blank=True, null=True)),
                 ('last_surfaced_at', models.DateTimeField(blank=True, null=True)),
                 ('surface_count', models.PositiveIntegerField(default=0)),
