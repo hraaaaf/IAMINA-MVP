@@ -6,6 +6,7 @@ from .feedback import DemoFeedback
 from .lab_report import LabReport
 from .memory import IAminaDeepMemorySnapshot, IAminaMemorySnapshot
 from .patient import DiabetesProfile, PatientProfile
+from .proactive_insight import ProactiveInsightState
 from .summary import AISummary
 
 __all__ = [
@@ -18,6 +19,7 @@ __all__ = [
     'IAminaMemorySnapshot',
     'IAminaDeepMemorySnapshot',
     'ClinicalObservationState',
+    'ProactiveInsightState',
     'AuditLog',
     'LabReport',
 ]
