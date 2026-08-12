@@ -6,9 +6,9 @@ module is the single diabetes-owned boundary that converts raw analytics into
 patient/LLM-facing metric authority.
 """
 
-from .cgm_eligibility import assess_cgm_sufficiency
-from .evidence_registry import evidence_for_kpi
-from .sql_analytics import AnalyticalKPIs
+from diabetes.services.clinical.cgm_eligibility import assess_cgm_sufficiency
+from diabetes.services.clinical.evidence_registry import evidence_for_kpi
+from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
 
 
 _NORMATIVE_CGM_FIELDS = (
