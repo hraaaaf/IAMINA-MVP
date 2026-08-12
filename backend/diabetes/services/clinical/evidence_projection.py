@@ -7,39 +7,42 @@ patient/LLM-facing metric authority.
 """
 
 from diabetes.services.clinical.cgm_eligibility import assess_cgm_sufficiency
-from diabetes.services.clinical.evidence_registry import evidence_for_kpi
+from diabetes.services.clinical.evidence_registry import ClinicalAuthority, evidence_for_kpi
 from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
 
-_NORMATIVE_CGM_FIELDS = (
-    "cv_pct",
-    "tir_pct",
-    "tar_pct",
-    "tbr_pct",
-    "gmi",
-    "gri",
-    "gri_zone",
-    "gri_label",
-    "tbr_level2_pct",
-    "tbr_level1_pct",
-    "tar_level1_pct",
-    "tar_level2_pct",
-)
+_NORMATIVE_CGM_FIELD_EVIDENCE = {
+    "cv_pct": "cv_pct",
+    "tir_pct": "tir_pct",
+    "tar_pct": "tar_pct",
+    "tbr_pct": "tbr_pct",
+    "gmi": "gmi",
+    "gri": "gri",
+    "gri_zone": "gri",
+    "gri_label": "gri",
+    "tbr_level2_pct": "tbr_level2_pct",
+    "tbr_level1_pct": "tbr_level1_pct",
+    "tar_level1_pct": "tar_level1_pct",
+    "tar_level2_pct": "tar_level2_pct",
+}
 
 
 def guard_normative_kpis(kpis: AnalyticalKPIs) -> AnalyticalKPIs:
     """Return a KPI snapshot safe for normative clinical consumers.
 
-    Today the ingestion contract cannot prove sensor wear-time/cadence, so CGM
-    metrics fail closed. Descriptive mean/SD and record counts remain available.
-    A future CGM-ingestion LOT may unlock these fields only through
-    ``assess_cgm_sufficiency``.
+    A normative CGM field is released only when two independent gates pass:
+    actual CGM sufficiency is verified and the evidence registry marks the
+    corresponding runtime rule as ``GOVERNED_RULE``. Candidate rules remain
+    fail-closed even after a future ingestion LOT can prove sensor wear-time.
     """
-    if assess_cgm_sufficiency(kpis).verified:
-        return kpis
-    guarded_values = {
-        **vars(kpis),
-        **{field: None for field in _NORMATIVE_CGM_FIELDS},
-    }
+    sufficiency = assess_cgm_sufficiency(kpis)
+    guarded_values = vars(kpis).copy()
+    for field, metric_name in _NORMATIVE_CGM_FIELD_EVIDENCE.items():
+        evidence = evidence_for_kpi(metric_name)
+        if not (
+            sufficiency.verified
+            and evidence.clinical_authority == ClinicalAuthority.GOVERNED_RULE
+        ):
+            guarded_values[field] = None
     return AnalyticalKPIs(**guarded_values)
 
 
@@ -77,8 +80,16 @@ def project_public_kpis(kpis: AnalyticalKPIs) -> dict[str, object]:
         "gri": guarded.gri,
         "gri_zone": guarded.gri_zone,
         "gri_label_fr": guarded.gri_label,
-        "gmi_confidence": guarded.gmi_confidence if sufficiency.verified else None,
-        "gmi_basis": guarded.gmi_basis if sufficiency.verified else "couverture CGM non vérifiée",
+        "gmi_confidence": guarded.gmi_confidence if guarded.gmi is not None else None,
+        "gmi_basis": (
+            guarded.gmi_basis
+            if guarded.gmi is not None
+            else (
+                "couverture CGM non vérifiée"
+                if not sufficiency.verified
+                else "règle GMI non promue"
+            )
+        ),
         "log_count": kpis.log_count,
         "days_with_data": kpis.days_with_data,
         "has_sufficient_data": kpis.has_sufficient_data,

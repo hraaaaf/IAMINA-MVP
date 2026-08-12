@@ -134,7 +134,7 @@ _SOURCE_GMI_2018 = EvidenceRecord(
     claim_or_rule=(
         "GMI (%) = 3.31 + 0.02392 × mean sensor glucose (mg/dL), developed from CGM data."
     ),
-    evidence_maturity=EvidenceMaturity.STANDARD_OF_CARE,
+    evidence_maturity=EvidenceMaturity.EMERGING_EVIDENCE,
     source_organization="Diabetes Care / American Diabetes Association",
     source_title=(
         "Glucose Management Indicator (GMI): A New Term for Estimating A1C "
@@ -150,10 +150,46 @@ _SOURCE_GMI_2018 = EvidenceRecord(
     reviewed_at=REVIEWED_AT,
     clinical_authority=ClinicalAuthority.NONE,
     limitations=(
-        "GMI is CGM-derived and is not laboratory A1C. Individual discordance with "
-        "laboratory A1C can be clinically meaningful."
+        "Foundational peer-reviewed GMI equation, not itself a current clinical-practice "
+        "guideline. GMI is CGM-derived and is not laboratory A1C. A 2026 peer-reviewed "
+        "updated-GMI study is tracked separately and requires an explicit promotion LOT "
+        "before any runtime formula change."
     ),
     supporting_evidence_ids=("source.ada.2026.section6",),
+)
+
+_SOURCE_UGMI_2026 = EvidenceRecord(
+    evidence_id="source.bergenstal.2026.ugmi",
+    kind=RecordKind.SOURCE,
+    topic="updated glucose management indicator",
+    claim_or_rule=(
+        "Peer-reviewed validation of an updated GMI model reporting improved population-level "
+        "alignment with laboratory HbA1c compared with the 2018 linear GMI equation."
+    ),
+    evidence_maturity=EvidenceMaturity.EMERGING_EVIDENCE,
+    source_organization="Diabetologia / peer-reviewed study",
+    source_title=(
+        "Updated glucose management indicator (GMI) better aligns with HbA1c than current GMI: "
+        "implications for clinical practice and reporting"
+    ),
+    identifier="DOI 10.1007/s00125-026-06739-w; PMID 42029709",
+    publication_or_version_date="2026-04-24",
+    finality_status=FinalityStatus.FINAL,
+    population=(
+        "clinical-trial and real-world CGM cohorts; applicability to an individual patient "
+        "or special population still requires review",
+    ),
+    modality=("CGM; FreeStyle Libre and Dexcom data evaluated in the publication",),
+    jurisdiction="study evidence; not jurisdiction-specific guidance",
+    regulatory_status="not_applicable",
+    reviewed_at=REVIEWED_AT,
+    clinical_authority=ClinicalAuthority.NONE,
+    limitations=(
+        "Emerging peer-reviewed evidence, not automatically a replacement for the current "
+        "release-governed product formula. The publication reports manufacturer funding and "
+        "author industry relationships. No patient-facing or deterministic formula changes "
+        "without a separate evidence-promotion review."
+    ),
 )
 
 _SOURCE_PHNH_2025 = EvidenceRecord(
@@ -280,17 +316,24 @@ _RULE_GMI = _internal_rule(
     evidence_id="rule.metric.gmi-cgm.v1",
     topic="glucose management indicator",
     claim_or_rule=(
-        "Use the Bergenstal GMI equation only when CGM modality and sufficient CGM "
-        "coverage are independently verified."
+        "Retain the legacy Bergenstal 2018 GMI equation as a non-promoted compatibility "
+        "candidate only; do not publish GMI until both CGM sufficiency and formula promotion "
+        "are explicitly approved."
     ),
-    population=("people with diabetes for whom GMI is applicable",),
+    population=("people with diabetes for whom a promoted GMI rule is applicable",),
     modality=("CGM with verified sufficiency",),
     limitations=(
-        "The current LogEntry schema records only source provenance and cannot prove "
-        "wear-time/cadence coverage. Patient-facing GMI authority therefore fails closed "
-        "until a real CGM coverage contract is available. GMI is not laboratory A1C."
+        "The current LogEntry schema cannot prove wear-time/cadence coverage, and newer 2026 "
+        "peer-reviewed uGMI evidence is under evidence review. GMI therefore fails closed even "
+        "if a future ingestion LOT proves CGM coverage, until a separate promotion gate chooses "
+        "the release-governed formula. GMI is not laboratory A1C."
     ),
-    supporting=("source.bergenstal.2018.gmi", "source.ada.2026.section6"),
+    supporting=(
+        "source.bergenstal.2018.gmi",
+        "source.bergenstal.2026.ugmi",
+        "source.ada.2026.section6",
+    ),
+    authority=ClinicalAuthority.GOVERNED_RULE_CANDIDATE,
 )
 
 _RULE_CGM_VARIABILITY = _internal_rule(
@@ -470,6 +513,7 @@ _RULE_PERSONAL_RESPONSE = _internal_rule(
 _RECORDS = (
     _SOURCE_ADA_2026_SECTION6,
     _SOURCE_GMI_2018,
+    _SOURCE_UGMI_2026,
     _SOURCE_PHNH_2025,
     _SOURCE_GRI_2026,
     _RULE_RECORDED_STATS,
