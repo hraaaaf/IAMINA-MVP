@@ -69,6 +69,7 @@ Shared core responsibilities include:
 - account/identity contracts;
 - authentication bridge/current auth surface;
 - safety middleware/registries;
+- canonical deterministic patient-facing emergency response composition;
 - shared module contracts;
 - IAmina truth-provenance and capability/authority contracts;
 - AI/media egress authorization policy;
@@ -151,6 +152,14 @@ Generative AI must never be the authority for:
 - Unit normalization covers legacy and registry-mounted module routes, including `/api/v1/diabetes/...`.
 - Unexpected unit-normalization failures are fail-closed.
 - Authoritative deterministic triage classification belongs to shared `core` safety ownership; compatibility shims may remain for historical imports, but core safety must not depend on the diabetes module.
+
+### P0.6 emergency response authority now as-built
+
+- Deterministic emergency classification remains owned by shared `core.input_safety`; P0.6 does not change clinical thresholds or triage classes.
+- `core.emergency_response` is the single patient-facing emergency response composer used by triage POST interception, the urgent SSE response boundary, and direct `IAmina.chat` / `IAmina.stream_chat` orchestration.
+- Country-specific medical emergency contacts continue to come only from the versioned shared emergency-resource registry; missing, unconfirmed, unknown or stale jurisdiction fails closed without inventing a number.
+- The former `core.middleware.triage_vital -> diabetes.middleware.triage_classification` import-linter exemption is removed because shared core no longer needs that reverse dependency.
+- Generative models have no emergency classification or emergency response-composition authority.
 
 ### P0.2/P0.3 truth and capability boundary now as-built
 
@@ -290,6 +299,7 @@ A locale/dialect is disabled for patient pilot until it has:
 | Invariant | Reason |
 |---|---|
 | Deterministic emergency gate before generative AI | Patient safety |
+| One shared patient-facing emergency response composer in core | Consistent safety behavior across POST, SSE and companion paths |
 | Unit normalization before clinical/AI logic, fail-closed on unexpected normalization failure | Data integrity |
 | Cookie/session API writes retain CSRF protection | Web/API security |
 | No diagnosis/prescription/treatment optimization | Product/regulatory boundary |
