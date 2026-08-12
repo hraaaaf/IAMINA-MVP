@@ -251,6 +251,85 @@ class ProactiveAttentionTests(TestCase):
         self.assertIn("data_became_insufficient", sparse.candidate.what_changed)
         self.assertIsNone(repeated.candidate)
 
+    def test_insufficient_data_cannot_promote_existing_lifecycle(self):
+        supporting = self._stress_pattern(values=(200, 210, 220))
+        background = self._neutral_background(values=(100, 110, 120))
+        self._clear()
+
+        source = ClinicalObservationState.objects.get(
+            patient=self.patient,
+            observation_key="context:stress",
+        )
+        state = ClinicalInsightState.objects.get(observation=source)
+        self.assertEqual(state.lifecycle_state, ClinicalInsightState.STATE_MONITORING)
+
+        # Simulate already-known historical recurrence/baseline evolution. The fresh
+        # dataset then becomes insufficient. Neither stale signal may promote the
+        # proactive lifecycle during that insufficient refresh.
+        ClinicalObservationState.objects.filter(pk=source.pk).update(
+            recurrence_count=2,
+            previous_baseline_delta_mg_dl=50.0,
+            baseline_delta_mg_dl=20.0,
+            baseline_delta_change_mg_dl=-30.0,
+        )
+        ClinicalInsightState.objects.filter(pk=state.pk).update(
+            recurrence_count_snapshot=2,
+            baseline_delta_snapshot_mg_dl=20.0,
+        )
+        LogEntry.objects.filter(
+            pk__in=[entry.pk for entry in supporting + background]
+        ).update(logged_at=self.now - timedelta(days=100))
+
+        sparse = self._clear()
+        state.refresh_from_db()
+
+        self.assertIsNotNone(sparse.candidate)
+        assert sparse.candidate is not None
+        self.assertEqual(
+            sparse.candidate.allowed_next_step,
+            ClinicalInsightState.ACTION_COLLECT_MISSING_DATA,
+        )
+        self.assertEqual(sparse.candidate.lifecycle_state, ClinicalInsightState.STATE_MONITORING)
+        self.assertEqual(state.lifecycle_state, ClinicalInsightState.STATE_MONITORING)
+        self.assertNotEqual(state.lifecycle_state, ClinicalInsightState.STATE_PERSISTING)
+        self.assertNotEqual(state.lifecycle_state, ClinicalInsightState.STATE_IMPROVING)
+
+    def test_reactivation_dominates_simultaneous_baseline_improvement(self):
+        supporting = self._stress_pattern(values=(200, 210, 220))
+        self._neutral_background(values=(100, 110, 120))
+        self._clear()
+
+        source = ClinicalObservationState.objects.get(
+            patient=self.patient,
+            observation_key="context:stress",
+        )
+        original_delta = source.baseline_delta_mg_dl
+
+        LogEntry.objects.filter(pk__in=[entry.pk for entry in supporting]).update(
+            logged_at=self.now - timedelta(days=100)
+        )
+        self._clear()
+        source.refresh_from_db()
+        self.assertEqual(source.status, ClinicalObservationState.STATUS_INACTIVE)
+
+        for day, glucose in ((7, 130), (8, 140), (9, 150)):
+            self._log(days_ago=day, glucose=glucose, stressed="yes")
+
+        reactivated = self._clear()
+        source.refresh_from_db()
+
+        self.assertIsNotNone(reactivated.candidate)
+        assert reactivated.candidate is not None
+        self.assertEqual(source.recurrence_count, 2)
+        self.assertLess(abs(source.baseline_delta_mg_dl), abs(original_delta))
+        self.assertEqual(
+            reactivated.candidate.lifecycle_state,
+            ClinicalInsightState.STATE_PERSISTING,
+        )
+        self.assertIn("observation_reactivated", reactivated.candidate.what_changed)
+        self.assertIn("activation_episode_recurred", reactivated.candidate.what_changed)
+        self.assertIn("moved_toward_recorded_baseline", reactivated.candidate.what_changed)
+
     def test_patient_scope_is_strict(self):
         self._stress_pattern(patient=self.patient, values=(140, 150, 160))
         self._stress_pattern(patient=self.other_patient, values=(220, 230, 240))
