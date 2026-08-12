@@ -66,6 +66,7 @@ def create_log(request, data: LogEntryCreateSchema):
 def batch_create_logs(request, data: List[LogEntryCreateSchema]):
     synced_uuids = []
     errors = []
+    mutated_existing_source = False
 
     with transaction.atomic():
         for entry_data in data:
@@ -88,6 +89,7 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
                     for field, value in snapshot.items():
                         setattr(existing, field, value)
                     existing.save()
+                    mutated_existing_source = True
                 else:
                     LogEntry.objects.create(patient=request.user, **entry_data.dict())
                     track(
@@ -98,6 +100,13 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
                 synced_uuids.append(entry_data.client_uuid)
             except Exception as e:
                 errors.append(f"Error syncing {entry_data.client_uuid}: {str(e)}")
+
+        if mutated_existing_source:
+            # A full-snapshot edit may remove or replace evidence that was already
+            # materialized in ClinicalObservationState. Rebuild once for the batch.
+            reconcile_personal_response_memory_after_source_erasure(
+                patient_id=request.user.id,
+            )
 
     if synced_uuids:
         _invalidate_ctx(request.user.id)
@@ -131,11 +140,17 @@ def _validate_patch_portion_links(log: LogEntry, data: LogEntryUpdateSchema) -> 
 @router.patch("/logs/{log_id}", response=LogEntrySchema)
 def update_log(request, log_id: int, data: LogEntryUpdateSchema):
     """Partial update — only supplied fields are written.  404 on cross-patient access."""
-    log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
-    _validate_patch_portion_links(log, data)
-    for field, value in data.model_dump(exclude_none=True).items():
-        setattr(log, field, value)
-    log.save()
+    with transaction.atomic():
+        log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
+        _validate_patch_portion_links(log, data)
+        for field, value in data.model_dump(exclude_none=True).items():
+            setattr(log, field, value)
+        log.save()
+        # A patch may explicitly erase/replace source fields that contributed to
+        # a durable observation. Rebuild from the surviving authoritative row.
+        reconcile_personal_response_memory_after_source_erasure(
+            patient_id=request.user.id,
+        )
     _invalidate_ctx(request.user.id)
     _invalidate_kpis(request.user.id)
     return log
