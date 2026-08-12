@@ -57,6 +57,13 @@ def _domain_context():
     )
 
 
+def _thinking_fixture(ctx):
+    memory = _Obj(emotional_signals=["fatigue"])
+    deep = _Obj(relationship_stage="building", communication_style="warm")
+    state = _Obj(satisfaction=0.6, concern_level=0.3, next_intention="écouter")
+    return memory, deep, state, ctx
+
+
 def test_chat_pivot_uses_descriptive_evidence_not_machine_code():
     from diabetes.services.clinical.semantic_compressor import build_chat_context
 
@@ -122,11 +129,7 @@ def test_thinker_uses_current_domain_context_fields_without_pattern_codes():
             captured["user"] = user
             return "internal thought", "unused"
 
-    memory = _Obj(emotional_signals=["fatigue"])
-    deep = _Obj(relationship_stage="building", communication_style="warm")
-    state = _Obj(satisfaction=0.6, concern_level=0.3, next_intention="écouter")
-    ctx = _domain_context()
-
+    memory, deep, state, ctx = _thinking_fixture(_domain_context())
     result = think_before_reply(
         "message pseudonymisé",
         memory,
@@ -141,3 +144,36 @@ def test_thinker_uses_current_domain_context_fields_without_pattern_codes():
     assert INTERNAL_CODE not in captured["user"]
     assert "TIR=74.0" in captured["user"]
     assert "stability=21.2" in captured["user"]
+
+
+def test_thinker_legacy_numeric_fallback_never_reauthorizes_pattern_codes():
+    from companion.thinker import think_before_reply
+
+    captured = {}
+
+    class FakeLLM:
+        def think(self, system, user):
+            captured["user"] = user
+            return "legacy-compatible thought", "unused"
+
+    legacy_ctx = _Obj(
+        tir_pct=55.0,
+        cv_pct=42.0,
+        pattern_codes=[INTERNAL_CODE, "DAWN_PHENOMENON"],
+    )
+    memory, deep, state, ctx = _thinking_fixture(legacy_ctx)
+    result = think_before_reply(
+        "message pseudonymisé",
+        memory,
+        deep,
+        state,
+        ctx,
+        llm=FakeLLM(),
+        language="fr",
+    )
+
+    assert result == "legacy-compatible thought"
+    assert "TIR=55.0" in captured["user"]
+    assert "stability=42.0" in captured["user"]
+    assert INTERNAL_CODE not in captured["user"]
+    assert "DAWN_PHENOMENON" not in captured["user"]
