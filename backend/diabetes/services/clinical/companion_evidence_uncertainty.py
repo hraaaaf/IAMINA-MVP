@@ -28,6 +28,12 @@ _ALLOWED_EVIDENCE_DENSITY_TRENDS = {
     "weakening",
 }
 
+# Material companion observations must be explicitly admitted here. A product
+# rule being governed elsewhere does not automatically make it companion truth.
+_APPROVED_COMPANION_RULE_PRODUCERS = {
+    "rule.personal-response.repetition.v1": "diabetes.personal_response.v1",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class CompanionSupportingEvidence:
@@ -72,7 +78,11 @@ class CompanionEvidenceContext:
     source_version: str = SOURCE_VERSION
 
 
-def _validated_string_tuple(values: tuple[str, ...], *, field: str) -> tuple[str, ...]:
+def _validated_string_tuple(
+    values: tuple[str, ...],
+    *,
+    field: str,
+) -> tuple[str, ...]:
     if type(values) is not tuple:
         raise ValueError(f"{field} must be an immutable tuple")
     if any(type(value) is not str or not value.strip() for value in values):
@@ -82,7 +92,9 @@ def _validated_string_tuple(values: tuple[str, ...], *, field: str) -> tuple[str
     return values
 
 
-def _supporting_evidence(evidence_ids: tuple[str, ...]) -> tuple[CompanionSupportingEvidence, ...]:
+def _supporting_evidence(
+    evidence_ids: tuple[str, ...],
+) -> tuple[CompanionSupportingEvidence, ...]:
     items: list[CompanionSupportingEvidence] = []
     for evidence_id in evidence_ids:
         record = get_evidence(evidence_id)
@@ -116,9 +128,10 @@ def build_companion_evidence_context(
     """Build a fail-closed evidence/uncertainty envelope for a material observation.
 
     Material companion observations may only use current IAmina product rules that
-    have already crossed the evidence registry's ``GOVERNED_RULE`` promotion gate.
-    External sources remain supporting evidence and retain their own maturity;
-    their presence never upgrades them to runtime authority.
+    have already crossed the evidence registry's ``GOVERNED_RULE`` promotion gate
+    and are explicitly registered for a companion producer. External sources remain
+    supporting evidence and retain their own maturity; their presence never upgrades
+    them to runtime authority.
     """
 
     if type(evidence_id) is not str or not evidence_id.strip():
@@ -147,6 +160,15 @@ def build_companion_evidence_context(
         raise ValueError("material companion observation requires governed runtime authority")
     if record.supersession_state != "current":
         raise ValueError("material companion observation cannot use a superseded rule")
+
+    try:
+        approved_producer = _APPROVED_COMPANION_RULE_PRODUCERS[record.evidence_id]
+    except KeyError as exc:
+        raise ValueError(
+            "evidence rule is not registered for material companion observations"
+        ) from exc
+    if producer != approved_producer:
+        raise ValueError("producer is not approved for this companion evidence rule")
 
     provenance = CompanionEvidenceProvenance(
         evidence_id=record.evidence_id,
