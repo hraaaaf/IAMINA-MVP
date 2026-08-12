@@ -7,6 +7,7 @@ from typing import Literal
 from ninja import Router
 from pydantic import BaseModel
 
+from diabetes.services.clinical.observation_memory import refresh_personal_response_memory
 from diabetes.services.clinical.personal_response import compute_personal_response
 
 router = Router(tags=["personal-response"])
@@ -43,6 +44,7 @@ def get_personal_response(request, days: int = 90):
         patient_id=request.user.id,
         window_days=days,
     )
+    refresh_personal_response_memory(patient_id=request.user.id)
     return {
         "status": result.status,
         "data_scope": "server_synced_logs",
