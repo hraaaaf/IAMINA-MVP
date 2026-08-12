@@ -152,7 +152,7 @@ class _MetricRow extends StatelessWidget {
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(
-                      l10n.dashboardGmiLimitedCoverage,
+                      l10n.dashboardInsufficientData,
                       style: const TextStyle(
                         fontSize: 10.5,
                         color: AminaTheme.ambre700,
