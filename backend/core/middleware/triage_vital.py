@@ -1,21 +1,11 @@
 """
-IAmina — Triage Vital Middleware (Phase 6 Clinical Shield — P0 Safety)
-========================================================================
-Medical emergency detection layer that sits BEFORE the LLM pipeline.
+IAmina — deterministic vital-triage middleware.
 
-If the patient's message contains distress keywords (loss of consciousness,
-severe hypoglycemia symptoms, cardiac events, etc.), the system:
-
-1. Bypasses the LLM entirely (zero AI latency in emergencies).
-2. Returns a fixed, pre-validated emergency response with national emergency numbers.
-3. Logs the event with severity=CRITICAL for clinical audit.
-
-This is a P0 safety feature. Any regression here must block deployment.
-
-Coverage: French, Darija transliterations, and common medical terms.
-
-Paths where triage applies are registered via TRIAGE_REGISTRY (core.safety_registry)
-during AppConfig.ready() — no hardcoded path tuples in this file.
+This layer runs before generative AI on registered triage paths. Glycemic
+emergency classification remains deterministic. Patient-visible emergency
+numbers are never hard-coded here: they are selected by the versioned
+``core.emergency_resources`` registry only when the patient's country is
+explicitly confirmed and the resource policy is current.
 """
 from __future__ import annotations
 
@@ -26,183 +16,218 @@ import re
 from django.http import JsonResponse
 from django.utils import timezone
 
+from core.emergency_resources import render_medical_emergency_contact
+from core.locale import ResolvedLocale, resolve_patient_locale
+
 logger = logging.getLogger(__name__)
 
 
-# ──────────────────────────────────────────────────────────────
-# 1. KEYWORD TAXONOMY (multi-lingual)
-# ──────────────────────────────────────────────────────────────
+_FR_CRITICAL = frozenset(
+    [
+        "inconscient",
+        "inconsciente",
+        "perd connaissance",
+        "perdu connaissance",
+        "perte de connaissance",
+        "coma",
+        "comateux",
+        "convulsion",
+        "convulsions",
+        "épilepsie",
+        "crise d'épilepsie",
+        "arrêt cardiaque",
+        "infarctus",
+        "crise cardiaque",
+        "hypoglycémie sévère",
+        "très bas",
+        "glycémie très basse",
+        "j'appelle le samu",
+        "je tombe dans les pommes",
+        "ne répond plus",
+        "ne bouge plus",
+        "j'ai du mal à respirer",
+        "difficulté à respirer",
+        "essoufflement grave",
+        "AVC",
+        "accident vasculaire",
+        "vomissements incontrôlables",
+        "vomissement continu",
+        "déshydratation grave",
+        "déshydraté",
+    ]
+)
 
-# French medical distress terms
-_FR_CRITICAL = frozenset([
-    "inconscient", "inconsciente", "perd connaissance", "perdu connaissance",
-    "perte de connaissance", "coma", "comateux",
-    "convulsion", "convulsions", "épilepsie", "crise d'épilepsie",
-    "arrêt cardiaque", "infarctus", "crise cardiaque",
-    "hypoglycémie sévère", "très bas", "glycémie très basse",
-    "j'appelle le samu", "je tombe dans les pommes",
-    "ne répond plus", "ne bouge plus", "j'ai du mal à respirer",
-    "difficulté à respirer", "essoufflement grave",
-    "AVC", "accident vasculaire",
-    "vomissements incontrôlables", "vomissement continu",
-    "déshydratation grave", "déshydraté",
-])
+_DARIJA_CRITICAL = frozenset(
+    [
+        "ma3endouch l7al",
+        "tayb3ed 3lik",
+        "ghrib",
+        "mchi mezyan",
+        "khrj mn raso",
+        "m3ih",
+        "tay7 fl7al",
+        "fqad l3ql",
+        "mabghach y3aweb",
+        "sukkar bhal zero",
+        "sukkar bayna",
+        "waqt l7al",
+        "3yyan bzaf",
+        "safi",
+        "wqe3",
+    ]
+)
 
-# Darija transliterations (common phonetic spellings — Latin script).
-# Death idioms ("kan nmout", "ghad nmout", "imkan mort", "bghit nmout") REMOVED
-# from this set on 2026-05-29 — they're now handled by triage_classification with
-# hyperbole-aware logic. Keeping them here re-introduced the original bug:
-# "kan nmout 3la l7loua" (= I love this cake) firing as glycemic emergency.
-_DARIJA_CRITICAL = frozenset([
-    "ma3endouch l7al", "tayb3ed 3lik", "ghrib",
-    "mchi mezyan", "khrj mn raso", "m3ih",
-    "tay7 fl7al", "fqad l3ql", "mabghach y3aweb",
-    "sukkar bhal zero", "sukkar bayna", "waqt l7al",
-    "3yyan bzaf", "safi", "wqe3",
-])
+_ARABIC_CRITICAL = frozenset(
+    [
+        "فقدان الوعي",
+        "فقد الوعي",
+        "غيبوبة",
+        "تشنج",
+        "تشنجات",
+        "نوبة قلبية",
+        "سكتة قلبية",
+        "أزمة قلبية",
+        "صعوبة التنفس",
+        "لا يتنفس",
+        "هبوط حاد",
+        "انهيار",
+        "مغشي عليه",
+        "سكتة دماغية",
+        "جلطة",
+        "سكريتي وطا",
+        "السكر وطا",
+        "سكر واطي",
+        "كنزووم",
+        "كانزووم",
+        "ساقط",
+        "طايح",
+        "ما كنشعرش",
+        "ما كنقدرش",
+        "كيدوخني",
+    ]
+)
 
-# Arabic script Darija/MSA emergency keywords
-# Patients who type in actual Arabic Unicode (not Latin transliteration) must be covered.
-_ARABIC_CRITICAL = frozenset([
-    "فقدان الوعي", "فقد الوعي", "غيبوبة",
-    "تشنج", "تشنجات", "نوبة قلبية", "سكتة قلبية",
-    "أزمة قلبية", "صعوبة التنفس", "لا يتنفس",
-    "هبوط حاد", "انهيار", "مغشي عليه",
-    "سكتة دماغية", "جلطة",
-    # Darija Arabic: glycemic distress phrases
-    "سكريتي وطا", "السكر وطا", "سكر واطي",
-    "كنزووم", "كانزووم",
-    "ساقط", "طايح",
-    "ما كنشعرش", "ما كنقدرش", "كيدوخني",
-    # NOTE: "غادي نموت" and "بغيت نموت" REMOVED (2026-05-29) — now handled by
-    # triage_classification (Class 2: suicidal ideation) with hyperbole-aware logic.
-])
-
-# Numeric thresholds detected in natural language (regex patterns)
-# Requires a glucose-related keyword to be CLOSE to the number (within 20 chars)
-# to reduce false positives on non-medical contexts ("40g de sucre glace", "14h").
-# Covers Latin-script and Arabic-script glucose terms.
 _NUMERIC_PATTERNS: list[re.Pattern] = [
-    re.compile(r"(glycémie|glucose|sukkar|sucre\s+de\s+sang|taux\s+de\s+sucre|سكر|سكري|السكر).{0,20}\b[1-4]\d\b", re.IGNORECASE),
-    re.compile(r"\b[1-4]\d\b.{0,20}(glycémie|glucose|mg.?dl|sukkar|سكر|سكري|السكر)", re.IGNORECASE),
+    re.compile(
+        r"(glycémie|glucose|sukkar|sucre\s+de\s+sang|taux\s+de\s+sucre|سكر|سكري|السكر)"
+        r".{0,20}\b[1-4]\d\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b[1-4]\d\b.{0,20}(glycémie|glucose|mg.?dl|sukkar|سكر|سكري|السكر)",
+        re.IGNORECASE,
+    ),
 ]
 
 _ALL_KEYWORDS = _FR_CRITICAL | _DARIJA_CRITICAL | _ARABIC_CRITICAL
 
-
-# ──────────────────────────────────────────────────────────────
-# 2. EMERGENCY RESPONSE (fixed, validated by medical advisor)
-# ──────────────────────────────────────────────────────────────
-
-_EMERGENCY_RESPONSE_FR = {
-    "reply": (
-        "⚠️ SITUATION D'URGENCE DÉTECTÉE — Je suspends mon analyse IA.\n\n"
-        "🚨 APPELEZ IMMÉDIATEMENT :\n"
-        "• 🇫🇷 France : SAMU → 15 | Urgences → 112\n"
-        "• 🇲🇦 Maroc : SAMU → 141 | Urgences → 15\n\n"
-        "Si le patient est inconscient ou en hypoglycémie sévère :\n"
-        "1. Allongez la personne sur le côté (position latérale de sécurité).\n"
-        "2. Si consciente et peut avaler : donnez 15g de sucre rapide "
-        "(3 sucres, 150mL de jus de fruit).\n"
-        "3. Ne donnez RIEN par la bouche si perte de conscience.\n"
-        "4. Restez avec le patient jusqu'à l'arrivée des secours.\n\n"
-        "IAmina ne peut pas remplacer les soins médicaux d'urgence."
-    ),
-    "conversation_id": "TRIAGE_VITAL",
-    "is_emergency": True,
-}
-
-_EMERGENCY_RESPONSE_DARIJA = {
-    "reply": (
-        "⚠️ KHATR — IAmina waqfat l-analyse dyal AI.\n\n"
-        "🚨 ATTISSEL DABA:\n"
-        "• 🇲🇦 Maroc : SAMU → 141 | Tawari → 15\n"
-        "• 🇫🇷 France : SAMU → 15 | Urgences → 112\n\n"
-        "Ila kan lmrid ma3endouch l7al (fqad l3ql aw sukkar wata):\n"
-        "1. Dir-o f-janbo (position latérale de sécurité).\n"
-        "2. Ila kan sahran w yqder yebla3: 3tih 15g dyal l7elwa "
-        "(3 morceaux de sucre aw 150mL dyal 3sir).\n"
-        "3. Ma3tih walo mn l-fomm ila kan faqed l7al.\n"
-        "4. Bqa m3ah hta ywsel l-mssaada.\n\n"
-        "IAmina ma tqderch tbdel l-t3la wriya dyal lwaqt."
-    ),
-    "conversation_id": "TRIAGE_VITAL",
-    "is_emergency": True,
-}
-
-# Simple Darija indicator tokens — enough to recognise the language.
-# Covers both Latin transliteration and Arabic Unicode script.
-# Low-threshold: if any one token matches, reply in Darija (patient's native language).
-_DARIJA_INDICATORS = frozenset([
-    "wach", "bghit", "nta", "nti", "hna", "huwa",
-    "3ndek", "3ndi", "bhal", "dyal", "wqila",
-    "sukkar", "3yyan", "bzaf", "ma3endouch", "kan", "lmrid",
-    # Arabic-script tokens — single words that unmistakably signal Arabic input
-    "سكريتي", "سكري", "كانزووم", "كنزووم", "عندي", "واش", "بغيت",
-])
+_DARIJA_INDICATORS = frozenset(
+    [
+        "wach",
+        "bghit",
+        "nta",
+        "nti",
+        "hna",
+        "huwa",
+        "3ndek",
+        "3ndi",
+        "bhal",
+        "dyal",
+        "wqila",
+        "sukkar",
+        "3yyan",
+        "bzaf",
+        "ma3endouch",
+        "kan",
+        "lmrid",
+        "سكريتي",
+        "سكري",
+        "كانزووم",
+        "كنزووم",
+        "عندي",
+        "واش",
+        "بغيت",
+    ]
+)
 
 
-# ──────────────────────────────────────────────────────────────
-# 3. LANGUAGE SELECTION
-# ──────────────────────────────────────────────────────────────
+def _generic_locale() -> ResolvedLocale:
+    """Number-free locale used when no confirmed profile can be resolved."""
+    return ResolvedLocale(
+        country_code=None,
+        ui_language="fr",
+        response_language="fr",
+        script_preference="latin",
+        transliteration_preference="none",
+        dialect=None,
+        glucose_unit="mg/dL",
+        timezone=None,
+        country_confirmed=False,
+        timezone_confirmed=False,
+    )
 
-def _pick_emergency_response(message: str) -> dict:
-    """
-    Returns the Darija emergency response if the message appears to be in Darija,
-    otherwise returns the French response.
 
-    Detection: if any _DARIJA_INDICATORS token appears as a whole word → Darija.
-    Intentionally low threshold: in an emergency we prefer the patient's native
-    language when there is any signal for it.
-    """
+def _message_language(message: str) -> str:
     lowered = message.lower()
     for token in _DARIJA_INDICATORS:
         if re.search(r"\b" + re.escape(token) + r"\b", lowered):
-            return _EMERGENCY_RESPONSE_DARIJA
-    return _EMERGENCY_RESPONSE_FR
+            return "ar-MA"
+    return "fr"
 
 
-# ──────────────────────────────────────────────────────────────
-# 4. DETECTION LOGIC
-# ──────────────────────────────────────────────────────────────
+def _pick_emergency_response(
+    message: str,
+    *,
+    locale: ResolvedLocale | None = None,
+    language: str | None = None,
+) -> dict:
+    """Build deterministic glycemic emergency copy with jurisdiction-safe contact."""
+    resolved_locale = locale or _generic_locale()
+    reply_language = language or _message_language(message)
+    contact_line = render_medical_emergency_contact(
+        resolved_locale,
+        language=reply_language,
+    )
+
+    if reply_language in ("ar-MA", "ar"):
+        reply = (
+            "⚠️ تنبيه صحي عاجل — IAmina وقفات التحليل الآلي.\n\n"
+            f"🚨 {contact_line}\n\n"
+            "إلا كان الشخص واعي ويقدر يبلع، طبقو خطة نقص السكر اللي سبق شرحها الفريق الصحي. "
+            "إلا كان فاقد الوعي، ما تعطيوه والو من الفم وبقاو معاه حتى توصل المساعدة.\n\n"
+            "IAmina ما كتبدلش الرعاية الطبية المستعجلة."
+        )
+    else:
+        reply = (
+            "⚠️ SITUATION D'URGENCE DÉTECTÉE — IAmina suspend l'analyse IA.\n\n"
+            f"🚨 {contact_line}\n\n"
+            "Si la personne est consciente et peut avaler, suivez le plan d'hypoglycémie "
+            "déjà validé avec son équipe soignante. Si elle est inconsciente, ne donnez rien "
+            "par la bouche et restez avec elle jusqu'à l'arrivée des secours.\n\n"
+            "IAmina ne remplace pas les soins médicaux d'urgence."
+        )
+
+    return {
+        "reply": reply,
+        "conversation_id": "TRIAGE_VITAL",
+        "is_emergency": True,
+    }
+
 
 def detect_vital_distress(text: str) -> bool:
-    """
-    Returns True if the text contains any critical distress signal.
-    Performs case-insensitive, accent-tolerant keyword matching.
-    """
+    """Return True when the legacy deterministic distress corpus matches."""
     lowered = text.lower()
-
-    # Keyword match
     for keyword in _ALL_KEYWORDS:
         if keyword in lowered:
             return True
-
-    # Numeric pattern match — patterns already require a glucose keyword nearby
     for pattern in _NUMERIC_PATTERNS:
         if pattern.search(lowered):
             return True
-
     return False
 
 
-# ──────────────────────────────────────────────────────────────
-# 5. DJANGO MIDDLEWARE
-# ──────────────────────────────────────────────────────────────
-
 class TriageVitalMiddleware:
-    """
-    Intercepts POST requests to registered triage paths.
-    If vital distress is detected, returns the emergency response immediately,
-    bypassing the view and any LLM call.
-
-    Paths are registered via TRIAGE_REGISTRY (core.safety_registry) in each
-    module's AppConfig.ready(). No hardcoded path tuples in this file.
-
-    Activation: add 'core.middleware.triage_vital.TriageVitalMiddleware'
-    to MIDDLEWARE in settings.py BEFORE the view dispatch (after auth middleware).
-    Order matters: UnitGuard → TriageVital → Views.
-    """
+    """Intercept registered emergency-capable routes before any LLM call."""
 
     def __init__(self, get_response) -> None:
         self.get_response = get_response
@@ -211,12 +236,9 @@ class TriageVitalMiddleware:
         if self._is_chat_endpoint(request):
             user_message = self._read_message(request)
 
-            # ── 2-class classifier (NEW) — runs BEFORE legacy keyword match.
-            # SUICIDAL_IDEATION → crisis support template (NEVER glycemic instructions).
-            # GLYCEMIC_EMERGENCY → glycemic template (same as legacy path).
-            # NONE → fall through to legacy keyword match for backward compatibility.
             from core.input_safety import URGENT, evaluate_input_safety
             from diabetes.middleware.triage_classification import crisis_support_response
+
             decision = evaluate_input_safety(user_message)
 
             if decision.action == URGENT and decision.reason == "suicidal_ideation":
@@ -233,54 +255,68 @@ class TriageVitalMiddleware:
 
             if decision.action == URGENT and decision.reason == "glycemic_emergency":
                 self._log_emergency(request, user_message, kind="glycemic_classified")
+                locale = self._patient_locale(request)
+                lang = self._patient_lang(request, user_message, locale=locale)
                 response_payload = {
-                    **_pick_emergency_response(user_message),
+                    **_pick_emergency_response(
+                        user_message,
+                        locale=locale,
+                        language=lang,
+                    ),
                     "timestamp": timezone.now().isoformat(),
                 }
                 return JsonResponse(response_payload, status=200)
 
-            # ── Legacy keyword match (kept for backward compat with existing tests
-            #    and frozensets that may catch cases the new classifier doesn't yet).
             if decision.action == URGENT:
                 self._log_emergency(request, user_message, kind="legacy_keyword")
+                locale = self._patient_locale(request)
+                lang = self._patient_lang(request, user_message, locale=locale)
                 response_payload = {
-                    **_pick_emergency_response(user_message),
+                    **_pick_emergency_response(
+                        user_message,
+                        locale=locale,
+                        language=lang,
+                    ),
                     "timestamp": timezone.now().isoformat(),
                 }
                 return JsonResponse(response_payload, status=200)
 
         return self.get_response(request)
 
-    # ── private ──
-
     def _is_chat_endpoint(self, request) -> bool:
         from core.safety_registry import TRIAGE_REGISTRY
-        return (
-            request.method == "POST"
-            and any(request.path.startswith(p) for p in TRIAGE_REGISTRY._paths)
+
+        return request.method == "POST" and any(
+            request.path.startswith(path) for path in TRIAGE_REGISTRY._paths
         )
 
     def _inspect_body(self, request) -> tuple[bool, str]:
-        """Returns (distress_detected, user_message_text). Kept for backward compat."""
+        """Return legacy `(distress_detected, message)` compatibility shape."""
         message = self._read_message(request)
         return detect_vital_distress(message), message
 
     def _read_message(self, request) -> str:
-        """Parse the request body once; safe on malformed JSON."""
         try:
             payload = json.loads(request.body or b"{}")
             return str(payload.get("message", ""))
         except Exception:
             return ""
 
-    def _patient_region(self, request) -> str:
-        """
-        Best-effort region detection from patient profile. Defaults to MA
-        (target market). Crisis resources differ by region — getting this
-        wrong sends a French 3114 number to a Moroccan patient.
-        """
+    def _patient_locale(self, request) -> ResolvedLocale:
+        """Resolve country only from the explicit locale-preference provenance contract."""
         try:
             from core.models import BasePatientProfile
+
+            profile = BasePatientProfile.objects.get(patient=request.user)
+            return resolve_patient_locale(profile)
+        except Exception:
+            return _generic_locale()
+
+    def _patient_region(self, request) -> str:
+        """Legacy non-glycemic crisis-resource region helper; unchanged in this LOT."""
+        try:
+            from core.models import BasePatientProfile
+
             base = BasePatientProfile.objects.get(patient=request.user)
             region = (getattr(base, "region", "") or "").upper()
             if region in ("MA", "FR"):
@@ -289,33 +325,35 @@ class TriageVitalMiddleware:
             pass
         return "MA"
 
-    def _patient_lang(self, request, message: str) -> str:
-        """
-        Pick reply language: profile preference first, else simple heuristic
-        on the message (Arabic indicators → ar-MA, otherwise fr).
-        """
+    def _patient_lang(
+        self,
+        request,
+        message: str,
+        *,
+        locale: ResolvedLocale | None = None,
+    ) -> str:
+        """Prefer confirmed response locale, then legacy profile preference, then message."""
+        if locale is not None and locale.response_language in ("fr", "ar", "en"):
+            if locale.response_language == "ar" and locale.dialect == "ar-MA":
+                return "ar-MA"
+            return locale.response_language
         try:
             from core.models import BasePatientProfile
+
             base = BasePatientProfile.objects.get(patient=request.user)
             pref = (getattr(base, "preferred_language", "") or "").lower()
             if pref in ("fr", "ar", "ar-ma"):
                 return pref
         except Exception:
             pass
-        # Light fallback: any Darija indicator → ar-MA
-        lowered = message.lower()
-        for tok in _DARIJA_INDICATORS:
-            if re.search(r"\b" + re.escape(tok) + r"\b", lowered):
-                return "ar-MA"
-        return "fr"
+        return _message_language(message)
 
     def _log_emergency(self, request, message: str, kind: str = "legacy") -> None:
-        """Logs the distress event. Critical severity for clinical audit trail."""
         user_id = getattr(request.user, "id", "anonymous")
         logger.critical(
             "TriageVital: EMERGENCY DETECTED — kind=%s | user_id=%s | path=%s | snippet='%s'",
             kind,
             user_id,
             request.path,
-            message[:120],  # truncate PII risk
+            message[:120],
         )
