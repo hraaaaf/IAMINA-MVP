@@ -1,5 +1,6 @@
 from datetime import timedelta
 from io import StringIO
+from uuid import uuid4
 
 from django.contrib.auth.models import User
 from django.core.management import call_command
@@ -21,16 +22,24 @@ class ClinicalTwinDataLifecycleTests(TestCase):
         self.client.force_login(self.patient)
         self.now = timezone.now()
 
-    def _log(self, *, days_ago: int, glucose: int, stressed: str = "") -> LogEntry:
+    def _log(
+        self,
+        *,
+        days_ago: int,
+        glucose: int,
+        stressed: str = "",
+        client_uuid=None,
+    ) -> LogEntry:
         return LogEntry.objects.create(
             patient=self.patient,
             logged_at=self.now - timedelta(days=days_ago),
             blood_sugar=glucose,
             stressed=stressed,
             source="manual",
+            client_uuid=client_uuid,
         )
 
-    def test_explicit_source_erasure_does_not_leave_stale_derived_observation(self):
+    def _seed_stress_observation(self) -> list[LogEntry]:
         supporting = [
             self._log(days_ago=0, glucose=150, stressed="yes"),
             self._log(days_ago=1, glucose=160, stressed="yes"),
@@ -38,6 +47,10 @@ class ClinicalTwinDataLifecycleTests(TestCase):
         ]
         self._log(days_ago=3, glucose=110)
         refresh_personal_response_memory(patient_id=self.patient.id)
+        return supporting
+
+    def test_explicit_source_erasure_does_not_leave_stale_derived_observation(self):
+        supporting = self._seed_stress_observation()
         self.assertTrue(
             ClinicalObservationState.objects.filter(
                 patient=self.patient,
@@ -48,6 +61,53 @@ class ClinicalTwinDataLifecycleTests(TestCase):
         response = self.client.delete(f"/api/v1/logs/{supporting[0].id}")
 
         self.assertEqual(response.status_code, 204)
+        self.assertFalse(
+            ClinicalObservationState.objects.filter(patient=self.patient).exists()
+        )
+
+    def test_patch_that_erases_support_rebuilds_derived_state(self):
+        supporting = self._seed_stress_observation()
+
+        response = self.client.patch(
+            f"/api/v1/logs/{supporting[0].id}",
+            data={"stressed": ""},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(
+            ClinicalObservationState.objects.filter(patient=self.patient).exists()
+        )
+
+    def test_batch_snapshot_that_erases_support_rebuilds_derived_state(self):
+        target_uuid = uuid4()
+        target = self._log(
+            days_ago=0,
+            glucose=150,
+            stressed="yes",
+            client_uuid=target_uuid,
+        )
+        self._log(days_ago=1, glucose=160, stressed="yes")
+        self._log(days_ago=2, glucose=170, stressed="yes")
+        self._log(days_ago=3, glucose=110)
+        refresh_personal_response_memory(patient_id=self.patient.id)
+
+        response = self.client.post(
+            "/api/v1/logs/batch",
+            data=[
+                {
+                    "client_uuid": str(target_uuid),
+                    "logged_at": target.logged_at.isoformat(),
+                    "blood_sugar": 150,
+                    "stressed": "",
+                    "source": "manual",
+                }
+            ],
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["errors"], [])
         self.assertFalse(
             ClinicalObservationState.objects.filter(patient=self.patient).exists()
         )
