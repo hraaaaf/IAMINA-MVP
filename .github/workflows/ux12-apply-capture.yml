@@ -1,5 +1,4 @@
-# UX-12 visual gate revision 6 — certified audit access
-name: UX-12 global visual convergence
+name: UX-12 final global visual certification
 
 on:
   push:
@@ -8,15 +7,22 @@ on:
     paths:
       - .github/workflows/ux12-apply-capture.yml
 
+permissions:
+  contents: write
+
 jobs:
-  capture:
+  certify:
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ux/12-global-visual-consistency
           fetch-depth: 0
+
+      - name: Apply final locale and page-semantic polish
+        run: python scripts/ux12_polish.py
 
       - uses: subosito/flutter-action@v2
         with:
@@ -24,11 +30,26 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Resolve dependencies and record source
+      - name: Verify full frontend
         working-directory: frontend
         run: |
+          dart format lib/features/journal/ai_summary_screen.dart lib/features/import/import_screen.dart
           flutter pub get
-          git -C .. rev-parse HEAD > /tmp/ux12-source-sha.txt
+          flutter analyze --no-fatal-infos
+          flutter test
+
+      - name: Commit final product polish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/lib/features/journal/ai_summary_screen.dart frontend/lib/features/import/import_screen.dart
+          if git diff --cached --quiet; then
+            echo "No final polish changes produced" >&2
+            exit 1
+          fi
+          git commit -m "feat(ux): finish localized page consistency"
+          git push origin HEAD:ux/12-global-visual-consistency
+          git rev-parse HEAD > /tmp/ux12-source-sha.txt
 
       - name: Build audit web
         working-directory: frontend
@@ -48,15 +69,23 @@ jobs:
           done
           exit 1
 
-      - name: Capture primary mobile surfaces
+      - name: Capture all primary mobile surfaces
         run: |
           mkdir -p /tmp/ux12-captures
           node scripts/ux12_capture.cjs
           cp /tmp/ux12-source-sha.txt /tmp/ux12-captures/source-sha.txt
           cp /tmp/ux12-server.log /tmp/ux12-captures/server.log
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path('/tmp/ux12-captures/report.json').read_text())
+          assert len(report)==32, len(report)
+          assert all(x['views']==1 for x in report)
+          assert all(not x['errors'] for x in report), [x for x in report if x['errors']]
+          PY
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ux12-global-visual-captures
+          name: ux12-final-global-visual-captures
           path: /tmp/ux12-captures
           retention-days: 14
