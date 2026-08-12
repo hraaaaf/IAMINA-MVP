@@ -7,6 +7,7 @@ PHI is stripped before reaching the model; the response is unmasked after.
 Data flow:
   ModulePatientContext + DomainContext + CompanionIdentity
     → build system/user prompts
+    → unstructured generative-context evidence ceiling
     → PHIPseudonymizer.mask() on both prompts
     → LLMPipeline (PHIStrippingMiddleware → LoggingMiddleware → inner provider)
     → PHIPseudonymizer.unmask_medical_report() on response.content
@@ -26,6 +27,7 @@ from core.contracts.capabilities import (
 from core.contracts.companion_identity import CompanionIdentity
 from core.contracts.domain_context import DomainContext
 from core.contracts.patient_context import ModulePatientContext
+from core.generative_context_safety import sanitize_unstructured_generative_context
 from core.medical_safety import medical_streaming_enabled
 from llm.factory import get_llm
 from llm.middleware.logging import LoggingMiddleware
@@ -40,6 +42,12 @@ def _assert_generative_capability(capability: Capability) -> None:
     """Fail closed if a caller asks the LLM gateway to perform a forbidden action."""
 
     assert_capability_allowed(capability, Authority.GENERATIVE_MODEL)
+
+
+def _prepare_unstructured_prompt(text: str, pseudonymizer: PHIPseudonymizer) -> str:
+    """Apply P0.7 evidence minimization before the existing PHI boundary."""
+
+    return pseudonymizer.mask(sanitize_unstructured_generative_context(text))
 
 
 class GatewayLLM:
@@ -65,8 +73,8 @@ class GatewayLLM:
     ):
         _assert_generative_capability(capability)
         assert_ai_egress_allowed(TEXT)
-        safe_system = self._pseudonymizer.mask(system)
-        safe_user = self._pseudonymizer.mask(user)
+        safe_system = _prepare_unstructured_prompt(system, self._pseudonymizer)
+        safe_user = _prepare_unstructured_prompt(user, self._pseudonymizer)
         response = self._pipeline.complete(safe_system, safe_user)
         response.content = self._pseudonymizer.unmask_medical_report(response.content)
         return response
@@ -83,8 +91,8 @@ class GatewayLLM:
             return
 
         assert_ai_egress_allowed(TEXT)
-        safe_system = self._pseudonymizer.mask(system)
-        safe_user = self._pseudonymizer.mask(user)
+        safe_system = _prepare_unstructured_prompt(system, self._pseudonymizer)
+        safe_user = _prepare_unstructured_prompt(user, self._pseudonymizer)
         chunks = list(self._provider.stream(safe_system, safe_user))
         restored = self._pseudonymizer.unmask_medical_report("".join(chunks))
         yield restored
@@ -97,8 +105,8 @@ class GatewayLLM:
     ) -> tuple[str, str]:
         _assert_generative_capability(capability)
         assert_ai_egress_allowed(TEXT)
-        safe_system = self._pseudonymizer.mask(system)
-        safe_user = self._pseudonymizer.mask(user)
+        safe_system = _prepare_unstructured_prompt(system, self._pseudonymizer)
+        safe_user = _prepare_unstructured_prompt(user, self._pseudonymizer)
         thinking, response = self._provider.think(safe_system, safe_user)
         return (
             self._pseudonymizer.unmask_medical_report(thinking),
@@ -143,9 +151,10 @@ def narrate(
     system = _build_system_prompt(companion_identity, language)
     user = _build_user_prompt(domain_context, patient_context)
 
-    # Strip PHI before sending to the LLM pipeline
-    system = pseudonymizer.mask(system)
-    user = pseudonymizer.mask(user)
+    # P0.7 evidence ceiling runs before the existing PHI boundary so legacy
+    # cached prompt shapes cannot expose internal detector identifiers.
+    system = _prepare_unstructured_prompt(system, pseudonymizer)
+    user = _prepare_unstructured_prompt(user, pseudonymizer)
 
     response = llm.complete(system, user)
 
@@ -156,6 +165,7 @@ def narrate(
 def _build_system_prompt(identity: CompanionIdentity, language: str) -> str:
     """Build the system prompt from companion identity and target language."""
     from companion.prompts import build_system_prompt
+
     return build_system_prompt(identity, language, tone="encouraging")
 
 
@@ -163,12 +173,11 @@ def _build_user_prompt(
     domain_context: DomainContext,
     patient_context: ModulePatientContext,
 ) -> str:
-    """Build the user prompt from domain context and patient context."""
+    """Build unstructured narration input from approved descriptive evidence only."""
+    del patient_context
     lines = []
     if domain_context.pivot_text:
         lines.append(domain_context.pivot_text)
     if domain_context.kpi_summary:
         lines.append(f"KPIs: {domain_context.kpi_summary}")
-    if domain_context.detected_patterns:
-        lines.append(f"Patterns: {', '.join(domain_context.detected_patterns)}")
     return "\n".join(lines) if lines else "No clinical data available."
