@@ -11,6 +11,9 @@ from ninja.errors import HttpError
 
 from core.observability import EVT_LOG_CREATED, track
 from diabetes.models import LogEntry
+from diabetes.services.clinical.observation_erasure import (
+    reconcile_personal_response_memory_after_source_erasure,
+)
 from diabetes.services.session_cache import invalidate as _invalidate_ctx
 
 from .kpis import invalidate_kpi_cache as _invalidate_kpis
@@ -26,6 +29,30 @@ from .schemas import (
 )
 
 router = Router(tags=["logs"])
+
+# Only fields consumed by the canonical personal-response derivation can make a
+# persisted ClinicalObservationState stale when an existing source is replaced.
+_CLINICAL_TWIN_SOURCE_FIELDS = frozenset(
+    {
+        "blood_sugar",
+        "logged_at",
+        "glycemic_context",
+        "meal_type",
+        "stressed",
+        "exercised",
+        "is_sick",
+        "sleep_quality",
+        "fatigue_level",
+        "source",
+    }
+)
+
+
+def _changes_clinical_twin_source(log: LogEntry, values: dict) -> bool:
+    return any(
+        field in _CLINICAL_TWIN_SOURCE_FIELDS and getattr(log, field) != value
+        for field, value in values.items()
+    )
 
 
 @router.get("/logs", response=PaginatedLogsResponse)
@@ -63,6 +90,7 @@ def create_log(request, data: LogEntryCreateSchema):
 def batch_create_logs(request, data: List[LogEntryCreateSchema]):
     synced_uuids = []
     errors = []
+    mutated_existing_source = False
 
     with transaction.atomic():
         for entry_data in data:
@@ -82,9 +110,16 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
                         continue
                     snapshot = entry_data.dict()
                     snapshot.pop("client_uuid", None)
+                    clinical_source_changed = _changes_clinical_twin_source(
+                        existing,
+                        snapshot,
+                    )
                     for field, value in snapshot.items():
                         setattr(existing, field, value)
                     existing.save()
+                    mutated_existing_source = (
+                        mutated_existing_source or clinical_source_changed
+                    )
                 else:
                     LogEntry.objects.create(patient=request.user, **entry_data.dict())
                     track(
@@ -95,6 +130,13 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
                 synced_uuids.append(entry_data.client_uuid)
             except Exception as e:
                 errors.append(f"Error syncing {entry_data.client_uuid}: {str(e)}")
+
+        if mutated_existing_source:
+            # A full-snapshot edit may remove or replace evidence that was already
+            # materialized in ClinicalObservationState. Rebuild once for the batch.
+            reconcile_personal_response_memory_after_source_erasure(
+                patient_id=request.user.id,
+            )
 
     if synced_uuids:
         _invalidate_ctx(request.user.id)
@@ -128,11 +170,20 @@ def _validate_patch_portion_links(log: LogEntry, data: LogEntryUpdateSchema) -> 
 @router.patch("/logs/{log_id}", response=LogEntrySchema)
 def update_log(request, log_id: int, data: LogEntryUpdateSchema):
     """Partial update — only supplied fields are written.  404 on cross-patient access."""
-    log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
-    _validate_patch_portion_links(log, data)
-    for field, value in data.model_dump(exclude_none=True).items():
-        setattr(log, field, value)
-    log.save()
+    with transaction.atomic():
+        log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
+        _validate_patch_portion_links(log, data)
+        updates = data.model_dump(exclude_none=True)
+        clinical_source_changed = _changes_clinical_twin_source(log, updates)
+        for field, value in updates.items():
+            setattr(log, field, value)
+        log.save()
+        if clinical_source_changed:
+            # A patch may explicitly erase/replace source fields that contributed
+            # to a durable observation. Rebuild from surviving authoritative rows.
+            reconcile_personal_response_memory_after_source_erasure(
+                patient_id=request.user.id,
+            )
     _invalidate_ctx(request.user.id)
     _invalidate_kpis(request.user.id)
     return log
@@ -141,7 +192,11 @@ def update_log(request, log_id: int, data: LogEntryUpdateSchema):
 @router.delete("/logs/{log_id}", response={204: None, 404: Error})
 def delete_log(request, log_id: int):
     log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
-    log.delete()
+    with transaction.atomic():
+        log.delete()
+        reconcile_personal_response_memory_after_source_erasure(
+            patient_id=request.user.id,
+        )
     _invalidate_ctx(request.user.id)
     _invalidate_kpis(request.user.id)
     return Status(204, None)
