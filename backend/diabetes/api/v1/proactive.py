@@ -1,4 +1,4 @@
-"""Patient-scoped deterministic proactive insight feed."""
+"""Patient-scoped deterministic proactive insight command surface."""
 
 from __future__ import annotations
 
@@ -54,9 +54,14 @@ class ProactiveFeedOut(BaseModel):
     item: ProactiveInsightOut | None
 
 
-@router.get("/proactive-insights/", response=ProactiveFeedOut)
-def get_proactive_insights(request):
-    """Return at most one non-urgent evidence-qualified insight candidate."""
+@router.post("/proactive-insights/evaluate/", response=ProactiveFeedOut)
+def evaluate_proactive_insight(request):
+    """Explicitly evaluate and consume at most one non-urgent insight candidate.
+
+    This is intentionally a POST because a surfaced item updates deterministic
+    delivery bookkeeping (`last_surfaced_at` and delivery signature). Safe GET
+    requests must not consume the patient's attention budget.
+    """
     result = evaluate_proactive_insights(patient_id=request.user.id)
     return {
         "status": result.status,
