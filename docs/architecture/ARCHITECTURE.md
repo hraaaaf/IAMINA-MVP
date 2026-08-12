@@ -9,7 +9,7 @@
 
 ## 1. Product architecture in one sentence
 
-IAmina is a **Flutter + Django modular monolith for one live diabetes companion**, with existing chassis/module seams, deterministic clinical/safety logic, offline-first data capture, a server-enforced AI egress authorization boundary, and legacy provider/auth integrations being migrated toward a MENA-focused sovereignty architecture.
+IAmina is a **Flutter + Django modular monolith for one live diabetes companion**, with existing chassis/module seams, deterministic clinical/safety logic, offline-first data capture, Django-owned auth/token flows with guarded legacy migration compatibility, and a server-enforced AI/data-egress governance boundary for external model/media operations.
 
 The existence of platform seams does **not** mean IAmina is currently a multi-condition platform.
 
@@ -22,18 +22,18 @@ The existence of platform seams does **not** mean IAmina is currently a multi-co
 - Django + django-ninja backend.
 - Diabetes-specific clinical data, KPI logic, pattern detection, and companion context.
 - Shared core contracts, safety registry/middleware, account/auth infrastructure, observability, and retention instrumentation.
-- Legacy Firebase authentication bridge.
-- Provider-specific AI/STT/vision/document adapters still exist.
-- A central `core.ai_egress` boundary now authorizes live external model/media operations by patient, purpose, modality, and server-side consent.
+- Django-owned registration/login/logout, signed IAMINA bearer-token flows, revocation and password lifecycle; controlled Firebase migration/link/unlink compatibility remains until the zero-Firebase gate legitimately passes.
+- Provider-specific AI/STT/vision/document adapters still exist behind governed egress boundaries.
+- The completed `core.ai_egress` / P0-MENA-1 boundary governs live external model/media operations by authenticated patient, purpose, modality, consent, payload minimization/allowlisting and applicable provider/processor policy.
 - IAmina has an executable truth-provenance and capability/authority contract: generative models may narrate approved data but are not clinical decision authorities.
 - CI blocks new direct external AI callsites that omit the central authorization assertion.
 
 ### Target direction
 
 - MENA country-by-country/locale-by-locale rollout.
-- Django-native identity as sovereignty-critical source of truth.
-- Complete outbound AI/media policy contract with explicit payload allowlists, minimization/redaction, granular media consent, processor/subprocessor metadata, residency/retention/no-training terms, and timeout/failure policy.
-- Provider-agnostic text/STT/vision architecture selected independently by benchmark.
+- Retire remaining Firebase compatibility only after account-preserving reconciliation/rollback requirements and the permanent zero-Firebase audit gate pass.
+- Keep outbound AI/media policy provider-agnostic while completing external processor/residency/legal approvals for the pilot.
+- Select text/STT/vision providers independently by the prepared live benchmark rather than adapter availability.
 - No second condition until the Retention Gate passes.
 
 ## 3. Layer model
@@ -67,12 +67,12 @@ Rules:
 Shared core responsibilities include:
 
 - account/identity contracts;
-- authentication bridge/current auth surface;
+- Django-owned auth/token surface plus controlled legacy identity migration compatibility;
 - safety middleware/registries;
 - canonical deterministic patient-facing emergency response composition;
 - shared module contracts;
 - IAmina truth-provenance and capability/authority contracts;
-- AI/media egress authorization policy;
+- AI/media egress authorization and payload-governance policy;
 - unstructured generative clinical-context evidence minimization;
 - observability and retention instrumentation;
 - account deletion/consent hooks;
@@ -94,6 +94,8 @@ The diabetes module owns:
 - separate `ProactiveInsightState` workflow/delivery state derived from those observations, including bounded non-urgent prioritization and attention-budget bookkeeping.
 
 The Clinical Twin remains the clinical observation truth boundary. Proactive workflow state may decide **what to surface and when** within its approved authority, but it cannot create clinical truth, diagnose, prescribe, optimize treatment, calculate doses or take over deterministic emergency routing. The current `personal_response` source is constrained to monitoring or clinician-discussion preparation and cannot persist an escalated state.
+
+Destructive mutation of clinically contributive source Journal rows is serialized against canonical Clinical Twin refresh. Persisted derived observation state is purged/rebuilt only from surviving authoritative source rows, while normal sparse refresh remains a distinct longitudinal-history behavior. Patient export/account deletion/retention govern the derived Clinical Twin state, and subordinate proactive workflow state cannot outlive deletion of its source observation.
 
 It must consume shared contracts without creating hidden reverse dependencies from core back into diabetes.
 
@@ -136,7 +138,8 @@ patient input
        → unstructured generative-context evidence minimization where applicable
        → patient/purpose/modality egress scope
        → server-side consent authorization
-       → payload minimization/redaction where implemented
+       → purpose-specific payload minimization/allowlisting
+       → governed provider/processor policy
        → provider call
   → output safety policy
   → patient UI
@@ -190,23 +193,28 @@ Generative AI must never be the authority for:
 
 ## 6. AI / model boundary
 
-### Current state after P0-B, P0.2, P0.3 and P0.7
+### Current state after P0-MENA-1, P0.2, P0.3 and P0.7
 
-`core.ai_egress` is the central authorization layer for currently wired live external model/media operations.
+`core.ai_egress` is the central governance boundary for currently wired live external model/media operations.
 
-It enforces before real egress:
+It requires before real egress:
 
 - valid authenticated patient scope;
 - registered purpose;
 - declared/allowed modality;
-- server-side consent from the patient profile.
+- server-side consent from the patient profile;
+- purpose-specific payload allowlisting/minimization;
+- applicable raw-media policy/consent;
+- governed provider/processor policy.
 
 Default-deny conditions include:
 
 - no egress scope;
 - missing patient consent record/consent;
 - unknown purpose;
-- modality not authorized for that purpose.
+- modality not authorized for that purpose;
+- payload outside the sanctioned purpose contract;
+- provider/path outside governed policy.
 
 The boundary is intentionally **lazy**: entering a request scope does not itself require AI consent. Deterministic emergency/safety behavior can still complete for a patient who declined AI as long as no external provider call is attempted.
 
@@ -220,21 +228,17 @@ CI contains an AI-egress anti-bypass gate so new direct model/provider callsites
 
 ### Important remaining limitations
 
-P0-B does **not** mean the complete sovereignty/data-egress program is finished.
+Completion of P0-MENA-1 is an implementation/governance boundary, not a provider-selection or real-patient deployment approval.
 
-Still required under P0-MENA-1:
+Still open outside that runtime contract:
 
-- structured payload/field allowlists per purpose;
-- uniformly enforced minimization/redaction contracts;
-- purpose/modality-granular raw-media consent where required;
-- processor/subprocessor and residency metadata;
-- retention/no-training terms;
-- timeout/failure/fallback policy;
-- final removal/isolation of provider-specific seams.
+- restricted pilot processor/subprocessor and consent approval;
+- Morocco residency/cross-border deployment approval;
+- native-language safety parity gates;
+- live P0-MENA-4 text/STT/vision benchmark and evidence-based provider selection;
+- final decommission of legacy provider/auth compatibility seams only after their explicit operational gates pass.
 
-The remaining IAmina truth follow-up is to classify/migrate legacy companion-memory snapshots before treating those stores as typed clinical truth.
-
-Therefore the currently migrated shared text paths are capability-bounded, while provider-specific non-text and legacy integration seams remain governed by their existing egress contracts until their dedicated migrations are complete.
+Therefore adapter existence does not imply provider approval, and external legal/deployment readiness remains fail-closed under `docs/ROADMAP.md`.
 
 ## 7. Data-egress policy
 
@@ -250,29 +254,27 @@ Do not send by default:
 - raw unrelated clinical logs;
 - unrelated health data.
 
-Raw audio/images/documents may disclose sensitive information even without explicit text fields, so media transmission requires an approved purpose and the consent/policy level defined by P0-MENA-1.
+Raw audio/images/documents may disclose sensitive information even without explicit text fields, so media transmission requires an approved purpose and the consent/policy level defined by the completed P0-MENA-1 contract.
 
 ## 8. Authentication
 
 ### Current
 
-Firebase-based identity/token handling remains present as legacy infrastructure.
+P0-MENA-3 delivered Django-owned registration/login/logout, signed expiring IAMINA bearer tokens, global token revocation, password establishment/recovery, controlled Firebase identity migration/link/unlink, collision/readiness/rollback contracts, native-first Flutter initialization and secure token storage.
 
-The API safety hardening from P0-A distinguishes Bearer/bootstrap behavior from cookie/session CSRF behavior; it does **not** complete the Firebase → Django sovereignty migration.
+The API safety hardening from P0-A continues to distinguish Bearer/bootstrap behavior from cookie/session CSRF behavior.
 
-### Target
+Legacy Firebase dependencies may remain only as controlled migration/reconciliation compatibility while the permanent operational zero-Firebase gate is not yet legitimately satisfied.
 
-Django-native authentication/identity becomes sovereignty-critical source of truth with explicit lifecycle for:
+### Decommission target
 
-- account creation/invite;
-- verification;
-- sessions/tokens;
-- password reset/recovery;
-- abuse controls/rate limiting;
-- deletion/export;
-- staff/professional strong authentication.
+Remove remaining Firebase dependencies only after account identity preservation, reconciliation and rollback are proven and:
 
-Migration must preserve account identity and provide reconciliation + rollback before Firebase dependencies are removed.
+```bash
+python manage.py audit_auth_migration --require-zero-firebase
+```
+
+passes legitimately. Decommissioning must not fabricate completion merely because Django-native auth is already the primary implemented direction.
 
 ## 9. Locale architecture
 
@@ -310,7 +312,7 @@ A locale/dialect is disabled for patient pilot until it has:
 - KPI calculations covered by ADR-0007 remain SQL-first.
 - Clinical data ownership stays inside the diabetes domain unless a clearly shared concept is proven.
 - Normative clinical metrics require source/version, eligibility rules, and regression fixtures; SQLite-only success is insufficient evidence for PostgreSQL-specific raw SQL.
-- Deterministic derived metrics/patterns remain derived truth and should be recomputed from authoritative source data rather than promoted to immutable patient facts.
+- Deterministic derived metrics/patterns remain derived truth and should be recomputed from authoritative source data rather than promoted to immutable patient facts. Approved `ClinicalObservationState` is a recomputable materialized lifecycle, not immutable clinical fact.
 
 ## 11. Key invariants
 
@@ -327,7 +329,9 @@ A locale/dialect is disabled for patient pilot until it has:
 | Forbidden generative capabilities fail closed before shared-gateway provider egress | AI authority boundary |
 | Every live external model/media call requires sanctioned egress authorization | Privacy + sovereignty |
 | Missing scope/consent/purpose/modality authorization denies egress | Default-deny safety |
-| Default-deny sensitive outbound data/media | Data minimization |
+| Purpose-specific minimization/allowlisting governs external payloads | Data minimization |
+| Clinical Twin derivation remains recomputable and source-erasure consistent | Data lifecycle / provenance integrity |
+| Proactive workflow state cannot widen Clinical Twin authority | Clinical safety |
 | SQL-first KPI authority where ADR-0007 applies | Single analytical source of truth |
 | `client_uuid` preserved | Offline sync idempotency |
 | Native safety parity before locale enablement | MENA safety equivalence |
