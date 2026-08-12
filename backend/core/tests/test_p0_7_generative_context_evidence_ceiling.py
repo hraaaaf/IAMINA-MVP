@@ -2,7 +2,9 @@ from types import SimpleNamespace
 
 from companion.thinker import think_before_reply
 from core.contracts.domain_context import DomainContext
-from core.generative_context_safety import sanitize_unstructured_generative_context
+from core.generative_context_safety import (
+    sanitize_unstructured_generative_context,
+)
 from core.llm_gateway import _build_user_prompt
 from diabetes.services.clinical.engine import ClinicalPattern
 from diabetes.services.clinical.semantic_compressor import build_chat_context
