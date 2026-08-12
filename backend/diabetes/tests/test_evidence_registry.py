@@ -66,6 +66,20 @@ class EvidenceRegistryInvariantTests(SimpleTestCase):
         self.assertEqual(ada.regulatory_status, "not_applicable")
         self.assertEqual(ada.evidence_maturity, EvidenceMaturity.STANDARD_OF_CARE)
 
+    def test_phnh_source_metadata_matches_published_record(self):
+        phnh = get_evidence("source.gonzalez-vidal.2025.phnh")
+        self.assertEqual(
+            phnh.source_title,
+            "Post-hypoglycemic nocturnal hyperglycemia in type 1 diabetes: "
+            "the Somogyi hypothesis revisited",
+        )
+        self.assertEqual(
+            phnh.identifier,
+            "DOI 10.1007/s42000-025-00680-0; PMID 40465171",
+        )
+        self.assertEqual(phnh.evidence_maturity, EvidenceMaturity.EMERGING_EVIDENCE)
+        self.assertEqual(phnh.clinical_authority, ClinicalAuthority.NONE)
+
     def test_metadata_contains_required_acceptance_fields(self):
         metadata = get_evidence("rule.metric.gmi-cgm.v1").to_metadata()
         for field in (
