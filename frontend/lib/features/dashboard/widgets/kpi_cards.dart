@@ -16,14 +16,6 @@ class _MetricRow extends StatelessWidget {
     required this.range,
   });
 
-  int _daysWithData() => logs
-      .map((entry) {
-        final date = entry.loggedAt ?? entry.createdAt;
-        return '${date.year}-${date.month}-${date.day}';
-      })
-      .toSet()
-      .length;
-
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width >= 900;
@@ -53,9 +45,6 @@ class _MetricRow extends StatelessWidget {
     final l10n = copy.l10n;
     final tir = ClinicalEngine.calcTIR(logs, low, high);
     final cv = ClinicalEngine.calcCV(logs);
-    final daysWithData = _daysWithData();
-    final gmiEligible = daysWithData >= 14 && logs.length >= 50;
-    final gmi = gmiEligible ? ClinicalEngine.calcGMI(logs) : null;
 
     return ClinicalCard(
       padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
@@ -119,8 +108,8 @@ class _MetricRow extends StatelessWidget {
                   child: _CompactMetricCell(
                     icon: Icons.local_fire_department_outlined,
                     label: l10n.dashboardGmiEstimated,
-                    value: gmi == null ? '--' : gmi.toStringAsFixed(1),
-                    suffix: gmi == null ? '' : '%',
+                    value: '--',
+                    suffix: '',
                     accent: AminaTheme.teal600,
                   ),
                 ),
@@ -135,15 +124,13 @@ class _MetricRow extends StatelessWidget {
                     label: l10n.dashboardCvTitle,
                     value: cv == 0 ? '--' : cv.toStringAsFixed(0),
                     suffix: cv == 0 ? '' : '%',
-                    accent: cv > 0 && cv < 36
-                        ? AminaTheme.teal600
-                        : AminaTheme.warningOrange,
+                    accent: AminaTheme.teal600,
                   ),
                 ),
               ],
             ),
           ),
-          if (!gmiEligible && logs.isNotEmpty) ...[
+          if (logs.isNotEmpty) ...[
             const SizedBox(height: 13),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
@@ -257,86 +244,4 @@ class _CompactMetricCell extends StatelessWidget {
       ],
     );
   }
-}
-
-// ── Delta chip ────────────────────────────────────────────────────────────────
-
-class _DeltaChip extends StatelessWidget {
-  final String label;
-  final bool positive;
-  const _DeltaChip({required this.label, required this.positive});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = positive ? AminaTheme.teal500 : AminaTheme.dangerRed;
-    final bg = positive ? AminaTheme.teal50 : AminaTheme.dangerBg;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(99),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            positive ? Icons.arrow_upward : Icons.arrow_downward,
-            size: 9,
-            color: color,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Legend dot ────────────────────────────────────────────────────────────────
-
-class _LegendDot extends StatelessWidget {
-  final Color color;
-  final String label;
-  final String value;
-  const _LegendDot({
-    required this.color,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 5),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: AminaTheme.textSecondary(context),
-              ),
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AminaTheme.textPrimary(context),
-            ),
-          ),
-        ],
-      );
 }
