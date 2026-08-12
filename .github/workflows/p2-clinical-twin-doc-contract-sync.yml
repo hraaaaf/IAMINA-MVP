@@ -1,0 +1,93 @@
+name: P2 Clinical Twin canonical docs sync
+
+on:
+  push:
+    branches: [p2-clinical-twin-observation-memory]
+    paths: [.github/workflows/p2-clinical-twin-doc-contract-sync.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p2-clinical-twin-observation-memory
+          fetch-depth: 0
+      - name: Update canonical specs and roadmap exactly
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one match, found {count}: {old[:100]!r}")
+              file.write_text(text.replace(old, new))
+
+          replace_exact(
+              "docs/SPECS.md",
+              "- personal-response patterns are deterministic derived observations recalculated from authoritative synchronized source logs; they are not persisted as clinical facts;",
+              "- personal-response patterns remain deterministic derived observations recalculated from authoritative synchronized source logs; P2 may persist only a recomputable materialized lifecycle (`ClinicalObservationState`) for those approved derivations, never promote it into a diagnosis/problem-list fact;",
+          )
+          replace_exact(
+              "docs/SPECS.md",
+              "- the analysis window is bounded to 90 days and the UI/API disclose that only server-synchronized logs are analyzed;",
+              "- the analysis window is bounded to 90 days and the UI/API disclose that only server-synchronized logs are analyzed;\n- the durable clinical-twin refresh uses the canonical 90-day window independently of shorter display queries, so `?days=7` cannot toggle longitudinal active/inactive state;\n- only the approved `personal_response` deterministic producer may materialize this lifecycle; companion memory, patient claims, `HEURISTIC_INFERENCE`, `MODEL_INFERENCE` and conversational state cannot write clinical-twin truth;\n- lifecycle status is `active` or `inactive` only; `recurrence_count` counts activation episodes (first eligible sighting = 1, increment only on `inactive → active`), while support growth/decay, evidence-strength trend and baseline evolution are tracked separately;",
+          )
+          replace_exact(
+              "docs/SPECS.md",
+              "- `DETERMINISTIC_DERIVATION` — KPI/pattern/result produced by approved deterministic logic;\n- `PREFERENCE` — explicit product preference;",
+              "- `DETERMINISTIC_DERIVATION` — KPI/pattern/result produced by approved deterministic logic;\n- `HEURISTIC_INFERENCE` — compatibility/quarantine inference that must not be promoted into governed clinical truth;\n- `PREFERENCE` — explicit product preference;",
+          )
+          replace_exact(
+              "docs/SPECS.md",
+              "- deterministic derivations should be recomputed from source truth rather than promoted to immutable patient facts;",
+              "- deterministic derivations should be recomputed from source truth rather than promoted to immutable patient facts; a diabetes-owned materialized lifecycle may persist approved deterministic derivations only while remaining recomputable, provenance-locked and non-diagnostic;",
+          )
+          replace_exact(
+              "docs/SPECS.md",
+              "- model inference and conversational state must not become patient clinical facts;",
+              "- model inference, heuristic inference and conversational state must not become patient clinical facts or clinical-twin writes;",
+          )
+
+          replace_exact(
+              "docs/ROADMAP.md",
+              "> **Last updated:** 2026-08-12 — P1-EVIDENCE is merged and post-merge green. P2-CLINICAL-TWIN is the next executable clinical-intelligence LOT. UX visual rebase remains closed through UX-11 at 9.8/10.",
+              "> **Last updated:** 2026-08-12 — P1-EVIDENCE is merged and post-merge green. P2-CLINICAL-TWIN is the active certification unit in PR #135. UX visual rebase remains closed through UX-11 at 9.8/10.",
+          )
+          replace_exact(
+              "docs/ROADMAP.md",
+              "| Clinical intelligence / proactivity | P0 audit + semantics + skills foundation + evidence registry closed | 🟢 P2 ready | PR #132 merged as `9d7add2b…`; post-merge CI #1785 + drift #1597 green |",
+              "| Clinical intelligence / proactivity | P0 audit + semantics + skills foundation + evidence registry closed; clinical twin active | 🟡 P2 certification | PR #135 — Longitudinal Observation Memory |",
+          )
+          replace_exact(
+              "docs/ROADMAP.md",
+              "**Closure:** PR #132 head `2ff13282…` passed CI #1784 + drift #1596, Clinical Safety Reviewer and Release Certifier; merge `9d7add2b…` then passed post-merge `main` CI #1785 + drift #1597.\n\n## Ordered execution",
+              "**Closure:** PR #132 head `2ff13282…` passed CI #1784 + drift #1596, Clinical Safety Reviewer and Release Certifier; merge `9d7add2b…` then passed post-merge `main` CI #1785 + drift #1597.\n\n## P2-CLINICAL-TWIN — Longitudinal Observation Memory — PR #135 CERTIFICATION\n\nP2 persists a diabetes-owned, recomputable lifecycle for approved deterministic `personal_response` observations without reusing companion/deep-memory state as clinical truth. The candidate stores first/last seen timestamps, activation-episode recurrence, active/inactive lifecycle state, evidence-strength evolution, baseline-relative descriptive evolution, evidence provenance and whitelisted recorded context. A short display window cannot change the canonical 90-day lifecycle. `USER_CLAIM`, `HEURISTIC_INFERENCE`, `MODEL_INFERENCE`, `CONVERSATIONAL_STATE` and other non-deterministic truth kinds are rejected as direct clinical-twin writes. No diagnosis, prediction, causal attribution, medication/dose/treatment semantics or patient-visible proactive behavior is introduced.\n\n**Certification gate:** exact-head full CI + PostgreSQL + migration drift, Clinical Safety Reviewer, Release Certifier, expected-head locked merge, then post-merge `main` CI + drift before closure.\n\n## Ordered execution",
+          )
+          replace_exact(
+              "docs/ROADMAP.md",
+              "| **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | ▶️ **NEXT** | Recurring evidence-qualified observations can be followed without promoting model inference to patient fact |",
+              "| **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | 🟡 **CERTIFICATION — PR #135** | Recurring evidence-qualified observations are persisted as recomputable deterministic lifecycle state; exact-head specialist/release review + merge/post-merge gates required |",
+          )
+          replace_exact(
+              "docs/ROADMAP.md",
+              "1. **Clinical intelligence product lane:** start **P2-CLINICAL-TWIN — Longitudinal Observation Memory** from the post-merge-green P1-EVIDENCE baseline. This lane is executable without waiting for external MENA approvals.",
+              "1. **Clinical intelligence product lane:** certify and merge **PR #135 — P2-CLINICAL-TWIN**, then proceed to **P2-PROACTIVE — Prioritization + Insight Lifecycle**. This lane is executable without waiting for external MENA approvals.",
+          )
+          PY
+      - name: Commit canonical contract update and remove helper
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/p2-clinical-twin-doc-contract-sync.yml
+          git add docs/SPECS.md docs/ROADMAP.md
+          git commit -m "docs(p2-clinical-twin): align canonical contracts"
+          git pull --rebase origin p2-clinical-twin-observation-memory
+          git push origin HEAD:p2-clinical-twin-observation-memory
