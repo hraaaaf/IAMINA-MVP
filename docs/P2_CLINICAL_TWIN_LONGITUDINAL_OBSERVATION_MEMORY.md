@@ -37,7 +37,7 @@ No generative model writes or mutates the clinical twin.
 Each row stores:
 
 - `first_seen_at` / `last_seen_at` from supporting observations;
-- `recurrence_count` for materially changed supporting evidence;
+- `recurrence_count` as the number of distinct **activation episodes**: first eligible sighting is `1`, and the count increases only when an inactive observation becomes active again;
 - lifecycle `status`: `active` or `inactive` only;
 - current and previous repeatability grade plus descriptive grade trend;
 - observation count and distinct-day count;
@@ -46,8 +46,10 @@ Each row stores:
 - canonical evidence-window length;
 - evidence registry ID and producer ID;
 - whitelisted structured context modifiers only;
-- SHA-256 evidence fingerprint for idempotency;
+- SHA-256 evidence fingerprint for idempotency and evidence-change tracking;
 - refresh/status timestamps.
+
+A continuously active observation does **not** gain recurrence merely because additional support arrives, old support ages out of the rolling window, the repeatability grade changes or the background median changes. Those changes belong to the evidence-strength/baseline fields, not recurrence.
 
 `inactive` means only that a previously persisted observation is absent from a later **eligible canonical refresh**. It does not mean resolved disease, treatment response or clinical normalization.
 
@@ -55,7 +57,9 @@ Each row stores:
 
 Clinical-twin refresh always uses the producer's canonical 90-day horizon. A display request such as `?days=7` cannot change longitudinal active/inactive state.
 
-A support fingerprint is built from the observation key, supporting count, distinct days, observation median and first/last supporting timestamps. Repeating the same refresh does not increase `recurrence_count`.
+A support fingerprint is built from the observation key, supporting count, distinct days, observation median and first/last supporting timestamps. Repeating the same refresh does not change the activation-episode count.
+
+Changed support may update evidence-strength history while the observation remains active, without increasing `recurrence_count`. A true `inactive → active` transition increments recurrence even if the reactivated observation returns with the same evidence grade.
 
 A changing background/window median may update baseline-relative evolution without increasing recurrence when the supporting observation evidence itself did not change.
 
@@ -87,7 +91,8 @@ Certification must prove:
 
 - first sighting persistence with deterministic provenance;
 - same-evidence idempotency;
-- recurrence only when supporting evidence changes;
+- continuous evidence strengthening/weakening does not inflate recurrence;
+- recurrence increases only on a true inactive-to-active lifecycle transition;
 - evidence-strength trend without probability semantics;
 - baseline-relative evolution without recurrence inflation;
 - inactive transition only after an eligible canonical refresh;
