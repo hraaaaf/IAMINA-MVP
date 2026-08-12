@@ -251,12 +251,26 @@ class ProactiveInsightApiTests(TestCase):
             source="manual",
         )
 
-    def test_feed_is_patient_scoped_and_returns_at_most_one_nonurgent_item(self):
+    def test_command_is_patient_scoped_and_safe_get_cannot_consume_attention_budget(self):
         self._pattern(self.patient, base=150)
         self._pattern(self.other, base=220)
         self.client.force_login(self.patient)
 
-        response = self.client.get("/api/v1/proactive-insights/")
+        safe_get = self.client.get("/api/v1/proactive-insights/evaluate/")
+
+        self.assertEqual(safe_get.status_code, 405)
+        self.assertEqual(
+            ProactiveInsightState.objects.filter(
+                observation__patient=self.patient
+            ).count(),
+            0,
+        )
+
+        response = self.client.post(
+            "/api/v1/proactive-insights/evaluate/",
+            data="{}",
+            content_type="application/json",
+        )
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
