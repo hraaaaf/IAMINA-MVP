@@ -16,7 +16,7 @@ The only allowed durable provenance is:
 
 The P2 service rejects `OBSERVED_FACT`, `USER_CLAIM`, `PREFERENCE`, `CONVERSATIONAL_STATE`, `HEURISTIC_INFERENCE` and `MODEL_INFERENCE` as direct clinical-twin writes. Raw observations and patient claims may remain inputs to approved deterministic logic under the existing truth contract; P2 persists only the resulting governed observation lifecycle.
 
-The database also carries a check constraint requiring `deterministic_derivation` provenance.
+The database independently fails closed on all three v1 provenance dimensions: `truth_kind=deterministic_derivation`, `producer=diabetes.personal_response.v1`, and `evidence_id=rule.personal-response.repetition.v1`. An ORM write that bypasses the service cannot silently substitute a companion/model producer or an unreviewed evidence rule.
 
 Legacy companion fields such as `food_sensitivities` and `peak_hours` remain quarantine-only `HEURISTIC_INFERENCE` and are outside P2.
 
@@ -102,6 +102,7 @@ Certification must prove:
 - sparse/insufficient refresh does not falsely mark inactive;
 - strict cross-patient isolation;
 - short display windows cannot toggle canonical memory;
-- all non-deterministic truth kinds fail before write;
+- service-level rejection of all non-deterministic truth kinds;
+- database rejection of non-approved truth kind, producer and evidence ID even through direct ORM updates;
 - PostgreSQL migration and full suite remain green;
 - permanent migration-drift gate remains green.
