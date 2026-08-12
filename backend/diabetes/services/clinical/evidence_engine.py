@@ -14,14 +14,12 @@ from django.utils import timezone
 
 from core.contracts.domain_context import DomainContext
 from diabetes.models import LogEntry
-from diabetes.services.clinical.evidence_projection import (
-    guard_normative_kpis,
-    project_public_kpis,
-)
-from diabetes.services.clinical.evidence_registry import evidence_for_pattern
-from diabetes.services.clinical.engine import DiabetesEngine, run_clinical_analysis
-from diabetes.services.clinical.semantic_compressor import build_chat_context
-from diabetes.services.clinical.sql_analytics import compute_kpis, compute_trend
+
+from .engine import DiabetesEngine, run_clinical_analysis
+from .evidence_projection import guard_normative_kpis, project_public_kpis
+from .evidence_registry import evidence_for_pattern
+from .semantic_compressor import build_chat_context
+from .sql_analytics import compute_kpis, compute_trend
 
 
 class EvidenceGuardedDiabetesEngine(DiabetesEngine):
@@ -39,7 +37,10 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
 
         public_kpis = project_public_kpis(raw_kpis)
         guarded_kpis = guard_normative_kpis(raw_kpis)
-        cgm_verified = bool(public_kpis["cgm_sufficiency"]["verified"])
+        sufficiency = public_kpis["cgm_sufficiency"]
+        cgm_verified = bool(
+            isinstance(sufficiency, dict) and sufficiency.get("verified") is True
+        )
 
         since = timezone.now() - timedelta(days=days)
         entries = list(
