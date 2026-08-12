@@ -1,0 +1,59 @@
+name: P1-EVIDENCE roadmap sync
+
+on:
+  push:
+    branches: [agent/p1-evidence-registry]
+    paths: [.github/workflows/p1-evidence-openapi-sync.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  sync-roadmap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p1-evidence-registry
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Update canonical forward tracker
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/ROADMAP.md')
+          text = path.read_text()
+          replacements = {
+              '> **Last updated:** 2026-08-12 — P0-CLIN-INTEL-1 is merged and post-merge green. P1-CLIN-SKILLS is the active certification unit in PR #127; P1-EVIDENCE follows after closure. UX visual rebase remains closed through UX-11 at 9.8/10.':
+              '> **Last updated:** 2026-08-12 — P1-CLIN-SKILLS is merged and post-merge green. P1-EVIDENCE is the active certification unit in PR #132. UX visual rebase remains closed through UX-11 at 9.8/10.',
+              '| Clinical intelligence / proactivity | P0 audit + semantics closed; skills foundation built | 🟡 Certification | PR #124 audit; PR #126 merged/post-merge green; PR #127 exact-head certification |':
+              '| Clinical intelligence / proactivity | P0 audit + semantics + skills foundation closed; evidence registry built | 🟡 Certification | PR #127 merged/post-merge green; PR #132 P1-EVIDENCE certification |',
+              '## P1-CLIN-SKILLS — Diabetologist Skills Foundation — PR #127 CERTIFICATION UNIT':
+              '## ✅ P1-CLIN-SKILLS — Diabetologist Skills Foundation — CLOSED',
+              'Built on the PR branch:':
+              'Delivered in PR #127:',
+              '**Acceptance gate:** exact-head CI + PostgreSQL + migration drift + Clinical Safety Reviewer + Release Certifier, expected-head merge, then post-merge `main` CI + migration drift. Until those gates pass, PR #127 is not closed.':
+              '**Closure:** PR #127 head `763664f5…` passed CI #1731 + drift #1543, Clinical Safety Reviewer and Release Certifier; merge `572b53c3…` then passed post-merge CI #1732 + drift #1544.',
+              '| **P1-CLIN-SKILLS** | **Diabetologist Skills Foundation** | 🟡 **CERTIFICATION** | PR #127; exact-head + specialist review + merge/post-merge required |':
+              '| **P1-CLIN-SKILLS** | **Diabetologist Skills Foundation** | ✅ **CLOSED** | PR #127 merged and post-merge green |',
+              '| **P1-EVIDENCE** | **Versioned Diabetes Evidence Registry** | 🔴 **NEXT AFTER #127** | Every governed clinical metric/rule/observation records source/version, population, modality, evidence maturity, review date and supersession state |':
+              '| **P1-EVIDENCE** | **Versioned Diabetes Evidence Registry** | 🟡 **CERTIFICATION** | PR #132; exact-head + Clinical Safety Reviewer + Release Certifier + merge/post-merge required |',
+              '1. **Clinical intelligence product lane:** certify and merge PR #127, then start **P1-EVIDENCE — Versioned Diabetes Evidence Registry** immediately. This lane is executable without waiting for external MENA approvals.':
+              '1. **Clinical intelligence product lane:** certify and merge PR #132 — **P1-EVIDENCE — Versioned Diabetes Evidence Registry** — then start **P2-CLINICAL-TWIN — Longitudinal Observation Memory**. This lane is executable without waiting for external MENA approvals.',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'Expected ROADMAP text not found: {old}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+      - name: Commit roadmap sync
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ROADMAP.md
+          git commit -m "docs(p1-evidence): advance canonical roadmap" 
+          git push origin HEAD:agent/p1-evidence-registry
