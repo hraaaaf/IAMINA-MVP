@@ -11,7 +11,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from core.emergency_operating_mode import PILOT_EMERGENCY_POLICY, append_emergency_disclosure
-from core.emergency_resources import ResolvedEmergencyResources, resolve_emergency_resources
+from core.emergency_resources import (
+    ResolvedEmergencyResources,
+    render_medical_emergency_contact,
+    resolve_emergency_resources,
+)
 from core.input_safety import URGENT, InputSafetyDecision
 from core.locale import ResolvedLocale, resolve_patient_locale
 
@@ -42,52 +46,24 @@ _DARIJA_LATIN_MARKERS = frozenset(
     {"wach", "bghit", "sukkar", "3ndi", "3ndek", "daba", "bzaf", "mzyan"}
 )
 
-_MESSAGES: dict[str, dict[str, str]] = {
-    "medical": {
-        "fr": (
-            "Une situation médicale urgente peut être présente. Arrête le chat et "
-            "contacte immédiatement les services d’urgence ou une personne de confiance "
-            "près de toi."
-        ),
-        "en": (
-            "An urgent medical situation may be present. Stop the chat and contact "
-            "emergency services or a trusted person near you now."
-        ),
-        "ar": (
-            "قد تكون هناك حالة طبية طارئة. أوقف المحادثة وتواصل الآن مع خدمات الطوارئ "
-            "أو مع شخص موثوق قريب منك."
-        ),
-        "ar-MA": (
-            "يمكن تكون حالة طبية مستعجلة. وقف الشات وتاصل دابا بالمستعجلات ولا بشي "
-            "واحد كتثق فيه وقريب ليك."
-        ),
-    },
-    "crisis": {
-        "fr": (
-            "Ton message indique que tu peux avoir besoin d’une aide humaine immédiate. "
-            "Ne reste pas seul·e avec ça : contacte maintenant les services d’urgence "
-            "ou une personne de confiance près de toi."
-        ),
-        "en": (
-            "Your message suggests you may need immediate human support. Do not handle "
-            "this alone: contact emergency services or a trusted person near you now."
-        ),
-        "ar": (
-            "تشير رسالتك إلى أنك قد تحتاج إلى دعم بشري فوري. لا تبق وحدك مع هذا الأمر: "
-            "تواصل الآن مع خدمات الطوارئ أو مع شخص موثوق قريب منك."
-        ),
-        "ar-MA": (
-            "الرسالة ديالك كاتبين باللي يمكن تحتاج دعم من شي إنسان دابا. ما تبقاش "
-            "بوحدك مع هاد الشي: تاصل بالمستعجلات ولا بشي واحد كتثق فيه وقريب ليك."
-        ),
-    },
-}
-
-_RESOURCE_PREFIX = {
-    "fr": "Contacts d’urgence confirmés",
-    "en": "Confirmed emergency contacts",
-    "ar": "جهات اتصال الطوارئ المؤكدة",
-    "ar-MA": "أرقام المستعجلات المؤكدة",
+_CRISIS_MESSAGES = {
+    "fr": (
+        "Ton message indique que tu peux avoir besoin d’une aide humaine immédiate. "
+        "Contacte maintenant les services d’urgence locaux ou une personne de confiance "
+        "près de toi."
+    ),
+    "en": (
+        "Your message suggests you may need immediate human support. Contact local "
+        "emergency services or a trusted person near you now."
+    ),
+    "ar": (
+        "تشير رسالتك إلى أنك قد تحتاج إلى دعم بشري فوري. تواصل الآن مع خدمات الطوارئ "
+        "المحلية أو مع شخص موثوق قريب منك."
+    ),
+    "ar-MA": (
+        "الرسالة ديالك كاتبين باللي يمكن تحتاج دعم من شي إنسان دابا. تاصل دابا "
+        "بالمستعجلات المحلية ولا بشي واحد كتثق فيه وقريب ليك."
+    ),
 }
 
 
@@ -176,7 +152,7 @@ def resolve_emergency_locale(
     language: str | None = None,
     message: str = "",
 ) -> ResolvedLocale:
-    """Prefer the patient's confirmed locale contract, otherwise fail closed generically."""
+    """Prefer confirmed patient locale; otherwise fail closed to generic jurisdiction."""
     if patient is not None:
         try:
             from core.models import BasePatientProfile
@@ -192,11 +168,33 @@ def _response_class(reason: str | None) -> str:
     return "crisis" if reason == "suicidal_ideation" else "medical"
 
 
-def _render_resources(resources: ResolvedEmergencyResources, language: str) -> str:
-    if not resources.country_specific or not resources.contacts:
-        return ""
-    contacts = " · ".join(f"{item.service}: {item.number}" for item in resources.contacts)
-    return f"\n\n{_RESOURCE_PREFIX[language]}: {contacts}."
+def _medical_reply(locale: ResolvedLocale, language: str) -> str:
+    contact_line = render_medical_emergency_contact(locale, language=language)
+    if language in {"ar-MA", "ar"}:
+        return (
+            "⚠️ تنبيه صحي عاجل — IAmina وقفات التحليل الآلي.\n\n"
+            f"🚨 {contact_line}\n\n"
+            "إلا كان الشخص واعي ويقدر يبلع، طبقو خطة نقص السكر اللي سبق شرحها الفريق الصحي. "
+            "إلا كان فاقد الوعي، ما تعطيوه والو من الفم وبقاو معاه حتى توصل المساعدة.\n\n"
+            "IAmina ما كتبدلش الرعاية الطبية المستعجلة."
+        )
+    if language == "en":
+        return (
+            "⚠️ URGENT HEALTH SITUATION DETECTED — IAmina has stopped AI analysis.\n\n"
+            f"🚨 {contact_line}\n\n"
+            "If the person is conscious and can swallow, follow the hypoglycemia plan "
+            "already agreed with their care team. If they are unconscious, give nothing "
+            "by mouth and stay with them until emergency help arrives.\n\n"
+            "IAmina does not replace emergency medical care."
+        )
+    return (
+        "⚠️ SITUATION D'URGENCE DÉTECTÉE — IAmina suspend l'analyse IA.\n\n"
+        f"🚨 {contact_line}\n\n"
+        "Si la personne est consciente et peut avaler, suivez le plan d'hypoglycémie "
+        "déjà validé avec son équipe soignante. Si elle est inconsciente, ne donnez rien "
+        "par la bouche et restez avec elle jusqu'à l'arrivée des secours.\n\n"
+        "IAmina ne remplace pas les soins médicaux d'urgence."
+    )
 
 
 def compose_emergency_response(
@@ -205,11 +203,7 @@ def compose_emergency_response(
     locale: ResolvedLocale,
     message: str = "",
 ) -> EmergencyResponse:
-    """Compose the one canonical patient-facing urgent response.
-
-    Classification is deliberately not performed here. Callers must first use
-    ``evaluate_input_safety`` and pass the resulting URGENT decision.
-    """
+    """Compose the one canonical patient-facing urgent response."""
     if decision.action != URGENT:
         raise ValueError("Emergency response composition requires an URGENT decision")
 
@@ -219,7 +213,10 @@ def compose_emergency_response(
     )
     response_class = _response_class(decision.reason)
     resources = resolve_emergency_resources(locale)
-    reply = _MESSAGES[response_class][language] + _render_resources(resources, language)
+    if response_class == "crisis":
+        reply = _CRISIS_MESSAGES[language]
+    else:
+        reply = _medical_reply(locale, language)
     reply = append_emergency_disclosure(reply, language)
 
     return EmergencyResponse(
