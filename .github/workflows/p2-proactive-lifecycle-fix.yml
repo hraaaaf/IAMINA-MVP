@@ -1,0 +1,120 @@
+name: P2 proactive lifecycle patch
+
+on:
+  push:
+    branches: [p2-proactive-attention-lifecycle]
+    paths: [.github/workflows/p2-proactive-lifecycle-fix.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p2-proactive-attention-lifecycle
+          fetch-depth: 0
+      - name: Make lifecycle transitions material-change driven
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('backend/diabetes/services/clinical/proactive_attention.py')
+          text = p.read_text()
+          old = '''def _lifecycle_state(
+              observation: ClinicalObservationState,
+              insight: ClinicalInsightState,
+              *,
+              created: bool,
+              dataset_eligible: bool,
+              now: datetime,
+          ) -> str:'''.replace('          ', '')
+          new = '''def _lifecycle_state(
+              observation: ClinicalObservationState,
+              insight: ClinicalInsightState,
+              *,
+              created: bool,
+              material_changed: bool,
+              dataset_eligible: bool,
+              now: datetime,
+          ) -> str:'''.replace('          ', '')
+          if text.count(old) != 1:
+              raise SystemExit('lifecycle signature match failed')
+          text = text.replace(old, new)
+
+          old = '''    if (
+        insight.lifecycle_state == ClinicalInsightState.STATE_NEW
+        and not insight.last_surfaced_decision_fingerprint
+    ):
+        return ClinicalInsightState.STATE_NEW
+
+    if _moves_toward_recorded_baseline(observation):
+        return ClinicalInsightState.STATE_IMPROVING
+
+    if observation.recurrence_count >= 2:
+        return ClinicalInsightState.STATE_PERSISTING
+
+    return ClinicalInsightState.STATE_MONITORING
+'''
+          new = '''    if (
+        insight.lifecycle_state == ClinicalInsightState.STATE_NEW
+        and not insight.last_surfaced_decision_fingerprint
+    ):
+        return ClinicalInsightState.STATE_NEW
+
+    if not material_changed:
+        if insight.lifecycle_state in (
+            ClinicalInsightState.STATE_PERSISTING,
+            ClinicalInsightState.STATE_IMPROVING,
+        ):
+            return insight.lifecycle_state
+        return ClinicalInsightState.STATE_MONITORING
+
+    if _moves_toward_recorded_baseline(observation):
+        return ClinicalInsightState.STATE_IMPROVING
+
+    if observation.recurrence_count >= 2:
+        return ClinicalInsightState.STATE_PERSISTING
+
+    return ClinicalInsightState.STATE_MONITORING
+'''
+          if text.count(old) != 1:
+              raise SystemExit('active lifecycle block match failed')
+          text = text.replace(old, new)
+
+          old = '''        lifecycle_state = _lifecycle_state(
+            observation,
+            insight,
+            created=created,
+            dataset_eligible=dataset_eligible,
+            now=now,
+        )
+'''
+          new = '''        material_changed = (
+            created or material_fingerprint != insight.last_material_fingerprint
+        )
+        lifecycle_state = _lifecycle_state(
+            observation,
+            insight,
+            created=created,
+            material_changed=material_changed,
+            dataset_eligible=dataset_eligible,
+            now=now,
+        )
+'''
+          if text.count(old) != 1:
+              raise SystemExit('lifecycle call match failed')
+          text = text.replace(old, new)
+          p.write_text(text)
+          PY
+      - name: Commit patch and remove helper
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/p2-proactive-lifecycle-fix.yml
+          git add backend/diabetes/services/clinical/proactive_attention.py
+          git commit -m "fix(p2-proactive): require material change for lifecycle transitions"
+          git pull --rebase origin p2-proactive-attention-lifecycle
+          git push origin HEAD:p2-proactive-attention-lifecycle
