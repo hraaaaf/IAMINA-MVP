@@ -1,186 +1,166 @@
 """
-IAmina — Semantic Compressor (Phase 6)
-========================================
-Transforms structured SQL KPIs + clinical patterns into a compact English
-technical summary. This summary is the ONLY input sent to the LLM, replacing
-raw number lists.
+IAmina semantic compressor.
 
-English Pivot rationale:
-- LLMs benchmark 15-20% higher on clinical reasoning tasks in English.
-- Token density is higher in English → lower API costs.
-- PHIPseudonymizer has already stripped PII before this layer is called.
-
-See docs/adr/0007-analytical-sql-over-llm.md
+Transforms SQL-first KPIs plus approved deterministic observations into a compact
+narration context. It never upgrades insufficient/manual data into a CGM target
+judgment and never treats the absence of an eligible observation as proof that
+"everything is normal".
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from ..clinical.engine import ClinicalPattern
 from .sql_analytics import AnalyticalKPIs
 
-# ──────────────────────────────────────────────────────────────
-# 1. OUTPUT STRUCTURE
-# ──────────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class CompressedContext:
-    """
-    The minimal, LLM-ready English summary produced by the compressor.
-    No raw number arrays are passed further — only this object.
-    """
-    kpi_summary: str            # One paragraph: KPI narrative
-    pattern_summary: str        # Bullet-list: detected clinical patterns
-    full_pivot_text: str        # Combined text sent to LLM
+    kpi_summary: str
+    pattern_summary: str
+    full_pivot_text: str
 
 
-# ──────────────────────────────────────────────────────────────
-# 2. KPI NARRATIVE BUILDER
-# ──────────────────────────────────────────────────────────────
+def _eligible_cgm_window(kpis: AnalyticalKPIs) -> bool:
+    return (
+        kpis.days_with_data >= 14
+        and kpis.cgm_active_pct is not None
+        and kpis.cgm_active_pct >= 70.0
+    )
+
 
 def _build_kpi_narrative(kpis: AnalyticalKPIs) -> str:
-    """
-    Converts AnalyticalKPIs into a dense, medically precise English sentence block.
-    Units are always explicit to prevent Unit Guard bypass at the LLM layer.
-    """
+    """Build a descriptive KPI packet without unsupported target claims."""
     if not kpis.has_sufficient_data:
         return (
-            f"Insufficient data: only {kpis.log_count} glucose readings recorded "
-            f"over {kpis.days_with_data} day(s). Clinical analysis requires ≥5 entries. "
-            "Encourage the patient to log more frequently before generating a full report."
+            f"DATA SUFFICIENCY: insufficient for the current analytical snapshot "
+            f"({kpis.log_count} readings across {kpis.days_with_data} day(s)). "
+            "Do not infer normality, deterioration, causality, or treatment action."
         )
 
-    lines: list[str] = [
-        f"ANALYSIS WINDOW: {kpis.days_with_data} days | {kpis.log_count} readings (all values in mg/dL).",
-        "",
-        "GLYCEMIC CONTROL METRICS:",
+    lines = [
+        f"ANALYSIS WINDOW: {kpis.days_with_data} days | {kpis.log_count} recorded readings.",
+        "DETERMINISTIC SQL METRICS:",
     ]
 
-    # Average glucose
     if kpis.avg_glucose is not None:
-        gmi_note = (
-            f" → Estimated HbA1c (GMI): {kpis.gmi}%"
-            if kpis.gmi is not None else ""
-        )
-        lines.append(f"  • Mean glucose: {kpis.avg_glucose} mg/dL.{gmi_note}")
+        lines.append(f"  • Recorded mean glucose: {kpis.avg_glucose} mg/dL.")
 
-    # Variability
-    if kpis.std_dev is not None and kpis.cv_pct is not None:
-        stability = "STABLE" if kpis.is_stable else "UNSTABLE (above ADA threshold)"
+    if kpis.gmi is not None:
         lines.append(
-            f"  • Glycemic variability: SD={kpis.std_dev} mg/dL, CV={kpis.cv_pct}% "
-            f"[ADA target ≤36%] → {stability}."
+            f"  • GMI estimate: {kpis.gmi}% ({kpis.gmi_basis}). "
+            "GMI is an estimate from glucose data and is not equivalent to a laboratory A1C."
         )
 
-    # TIR / TAR / TBR
+    cgm_eligible = _eligible_cgm_window(kpis)
+    if kpis.cv_pct is not None:
+        if cgm_eligible:
+            cv_context = (
+                "within the ADA 2026 general CGM reference (≤36%)"
+                if kpis.cv_pct <= 36.0
+                else "above the ADA 2026 general CGM reference (>36%)"
+            )
+            lines.append(
+                f"  • CGM coefficient of variation: {kpis.cv_pct}% — {cv_context}; "
+                f"CGM active {kpis.cgm_active_pct}% across {kpis.days_with_data} days."
+            )
+        else:
+            lines.append(
+                f"  • Recorded-data coefficient of variation: {kpis.cv_pct}%. "
+                "Do not apply the CGM ≤36% reference because valid ≥14-day/≥70% CGM "
+                "wear has not been established for this window."
+            )
+
     if kpis.tir_pct is not None:
-        tir_status = "MEETS TARGET" if kpis.tir_pct >= 70 else "BELOW TARGET (needs improvement)"
-        lines.append(
-            f"  • Time In Range (70-180 mg/dL): {kpis.tir_pct}% "
-            f"[ADA target ≥70%] → {tir_status}."
-        )
+        if cgm_eligible:
+            lines.append(
+                f"  • CGM Time In Range 70–180 mg/dL: {kpis.tir_pct}%. "
+                "General targets require individual clinical context."
+            )
+        else:
+            lines.append(
+                f"  • Fraction of recorded values in 70–180 mg/dL: {kpis.tir_pct}%. "
+                "Do not present this sparse/manual ratio as a validated CGM TIR target assessment."
+            )
+
     if kpis.tar_pct is not None:
-        lines.append(f"  • Time Above Range (>180 mg/dL): {kpis.tar_pct}%.")
+        lines.append(f"  • Fraction of recorded values >180 mg/dL: {kpis.tar_pct}%.")
     if kpis.tbr_pct is not None:
-        hypoglycemia_flag = " ⚠ HYPOGLYCEMIA RISK" if (kpis.tbr_pct or 0) > 4 else ""
-        lines.append(f"  • Time Below Range (<70 mg/dL): {kpis.tbr_pct}%.{hypoglycemia_flag}")
+        lines.append(f"  • Fraction of recorded values <70 mg/dL: {kpis.tbr_pct}%.")
 
+    lines.append(
+        "INTERPRETATION LIMIT: metrics describe the eligible recorded data; they do not "
+        "diagnose a condition or authorize a medication/dose change."
+    )
     return "\n".join(lines)
-
-
-# ──────────────────────────────────────────────────────────────
-# 3. PATTERN SUMMARY BUILDER
-# ──────────────────────────────────────────────────────────────
-
-_PRIORITY_LABEL = {1: "CRITICAL", 2: "IMPORTANT", 3: "INFORMATIONAL"}
 
 
 def _build_pattern_summary(patterns: list[ClinicalPattern]) -> str:
-    """
-    Converts detected clinical patterns into a structured English bullet list.
-    Only evidence strings (already in EN or bilingual) are used — no French UI text.
-    """
+    """Serialize evidence-qualified observations for narration."""
     if not patterns:
-        return "DETECTED PATTERNS: None. All clinical indicators are within normal range."
-
-    lines = ["DETECTED CLINICAL PATTERNS (in order of priority):"]
-    for i, p in enumerate(patterns, 1):
-        priority_str = _PRIORITY_LABEL.get(p.priority, f"P{p.priority}")
-        lines.append(
-            f"  {i}. [{priority_str}] {p.code}: {p.evidence}"
+        return (
+            "ELIGIBLE DETERMINISTIC OBSERVATIONS: none surfaced by the currently enabled "
+            "rules. This does NOT mean all clinical indicators are normal."
         )
+
+    lines = ["ELIGIBLE DETERMINISTIC OBSERVATIONS:"]
+    for index, pattern in enumerate(patterns, 1):
+        lines.append(f"  {index}. {pattern.narration_evidence()}")
     return "\n".join(lines)
 
 
-# ──────────────────────────────────────────────────────────────
-# 4. CHAT CONTEXT BUILDER (for conversational endpoint)
-# ──────────────────────────────────────────────────────────────
-
 def build_chat_context(kpis: AnalyticalKPIs, patterns: list[ClinicalPattern]) -> str:
-    """
-    Minimal context injected into chat prompts.
-    Intentionally shorter than the summary context to reduce token cost per turn.
-    """
+    """Minimal chat context; no clinical-alert or treatment language."""
     if not kpis.has_sufficient_data:
-        return f"Patient has only {kpis.log_count} glucose log(s). Encourage more frequent logging."
+        return (
+            f"Recorded data are limited ({kpis.log_count} glucose log(s)). "
+            "Do not infer normality or causality."
+        )
 
     parts: list[str] = []
+    if kpis.avg_glucose is not None:
+        parts.append(f"recorded mean glucose {kpis.avg_glucose} mg/dL")
+    if kpis.gmi is not None:
+        parts.append(f"GMI estimate {kpis.gmi}%")
+    if _eligible_cgm_window(kpis) and kpis.tir_pct is not None:
+        parts.append(f"eligible CGM TIR {kpis.tir_pct}%")
 
-    if kpis.avg_glucose:
-        parts.append(f"avg glucose {kpis.avg_glucose} mg/dL")
-    if kpis.tir_pct is not None:
-        parts.append(f"TIR {kpis.tir_pct}%")
-    if kpis.gmi:
-        parts.append(f"GMI {kpis.gmi}%")
-    if kpis.cv_pct is not None:
-        stability = "stable" if kpis.is_stable else f"unstable (CV {kpis.cv_pct}%)"
-        parts.append(f"variability {stability}")
-
-    kpi_line = "Current KPIs: " + ", ".join(parts) + "." if parts else ""
-
-    pattern_line = ""
+    kpi_line = "Current deterministic metrics: " + ", ".join(parts) + "." if parts else ""
+    observation_line = ""
     if patterns:
-        codes = ", ".join(p.code for p in patterns[:3])  # max 3 to keep context tight
-        pattern_line = f"Active clinical alerts: {codes}."
+        codes = ", ".join(pattern.code for pattern in patterns[:3])
+        observation_line = (
+            f"Evidence-qualified observation codes: {codes}. "
+            "They are observations, not diagnoses or treatment instructions."
+        )
+    return " ".join(filter(None, [kpi_line, observation_line]))
 
-    return " ".join(filter(None, [kpi_line, pattern_line]))
-
-
-# ──────────────────────────────────────────────────────────────
-# 5. MAIN COMPRESSOR
-# ──────────────────────────────────────────────────────────────
 
 def compress(
     kpis: AnalyticalKPIs,
     patterns: list[ClinicalPattern],
     patient_language: str = "fr",
 ) -> CompressedContext:
-    """
-    Main compressor entry point.
-
-    Args:
-        kpis: Pre-computed SQL KPIs.
-        patterns: Detected clinical patterns from the rules engine.
-        patient_language: Patient's preferred language (fr | ar-MA).
-                          Used only for the LLM output instruction, not the input.
-
-    Returns:
-        CompressedContext with the full English pivot text ready for LLM injection.
-    """
+    """Return the minimized, evidence-qualified text passed to the narrator."""
     kpi_summary = _build_kpi_narrative(kpis)
     pattern_summary = _build_pattern_summary(patterns)
 
-    # Language instruction appended so the LLM knows which language to respond in
-    language_map = {"fr": "French", "ar-MA": "Moroccan Darija (Arabic dialect)"}
-    output_lang = language_map.get(patient_language, "French")
-    output_instruction = (
-        f"\nOUTPUT LANGUAGE: Respond in {output_lang}. "
-        "Use empathetic, medically precise language. Never prescribe; recommend consulting the physician."
+    language_map = {
+        "fr": "French",
+        "ar-MA": "Moroccan Darija",
+        "ar": "Modern Standard Arabic",
+        "en": "English",
+    }
+    output_language = language_map.get(patient_language, "French")
+    instruction = (
+        f"OUTPUT LANGUAGE: Respond in {output_language}. "
+        "Explain only the supplied deterministic metrics/observations. "
+        "Do not add a diagnosis, causal mechanism, prescription, dose, treatment change, "
+        "or unsupported normality claim. Preserve uncertainty and data-sufficiency limits."
     )
 
-    full_pivot_text = "\n\n".join([kpi_summary, pattern_summary, output_instruction])
-
+    full_pivot_text = "\n\n".join([kpi_summary, pattern_summary, instruction])
     return CompressedContext(
         kpi_summary=kpi_summary,
         pattern_summary=pattern_summary,
