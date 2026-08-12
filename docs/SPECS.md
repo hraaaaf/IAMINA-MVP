@@ -145,6 +145,12 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - allowed next steps are only `MONITOR`, `COLLECT_MISSING_DATA` and `PREPARE_CLINICIAN_DISCUSSION`; no treatment change, prescription, dose calculation or autonomous escalation action is part of the contract;
 - model narration, if later enabled, is constrained to `approved_structured_fields_only` under `clinician_review_support_only` authority; a model cannot add facts, change classifications or invent missing-data resolution;
 - P2-DOCTOR-0 does not replace the existing `/api/v1/ai/doctor-brief`, create a persisted review checkpoint, assemble a live brief, or add clinician/patient UX. Those capabilities require later separately certified LOTs.
+- P2-DOCTOR-1 adds a read-only deterministic assembler for `CURRENT_SNAPSHOT` only; it is not an API surface and it does not call or refresh Clinical Twin/proactive state;
+- the assembler excludes demo Journal rows and scopes recorded data to the requested patient and explicit timezone-aware window; latest glucose/timestamp/capture-source remain observed facts;
+- exact-window average glucose is computed database-side and uses governed `rule.metric.recorded-glucose-stats.v1` solely as descriptive recorded-row statistics, never as CGM time-weighting or target assessment;
+- Clinical Twin state may enter only from already-persisted governed derivations; historical briefs reject state refreshed after their `window_end`, and old inactive state outside the brief window is not reintroduced;
+- because no authoritative clinician-review checkpoint provider exists yet, every non-null checkpoint input fails closed. The assembler always exposes `no_authoritative_review_checkpoint` and `since_review_comparison_unavailable`;
+- adding a real checkpoint provider and `SINCE_REVIEW_CHECKPOINT` semantics requires a separate certified LOT. Endpoint/narrator/UX integration remains later work.
 
 ### Post-save experience contract
 
