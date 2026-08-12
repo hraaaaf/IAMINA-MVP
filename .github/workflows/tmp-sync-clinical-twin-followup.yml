@@ -1,0 +1,49 @@
+name: Temporary sync Clinical Twin lifecycle closeout
+
+on:
+  push:
+    branches:
+      - agent/p2-proactive-closeout
+
+permissions:
+  contents: write
+
+jobs:
+  sync-roadmap:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2-proactive-closeout
+      - name: Record certified data-lifecycle follow-up
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('docs/ROADMAP.md')
+          text = p.read_text()
+          replacements = [
+              (
+                  '**Closure:** PR #135 head `1058ee4a…` passed CI #1804 + drift #1616, Clinical Safety Reviewer and Release Certifier; merge `00292e44…` then passed post-merge `main` CI #1805 + drift #1617.',
+                  '**Closure:** PR #135 head `1058ee4a…` passed CI #1804 + drift #1616, Clinical Safety Reviewer and Release Certifier; merge `00292e44…` then passed post-merge `main` CI #1805 + drift #1617. Data-lifecycle safety follow-up PR #140 head `3d87940e…` closed the derived-data erasure/export/retention gap, passed CI #1867 + drift #1679 and certification, merged as `55d6b171…`, then passed post-merge `main` CI #1868 + drift #1680.'
+              ),
+              (
+                  '| **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | ✅ **CLOSED** | PR #135 merge `00292e44…`; post-merge CI #1805 + drift #1617 green |',
+                  '| **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | ✅ **CLOSED** | PR #135 + data-lifecycle follow-up PR #140; latest merge `55d6b171…`; post-merge CI #1868 + drift #1680 green |'
+              ),
+          ]
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected one anchor, found {count}: {old[:100]}')
+              text = text.replace(old, new, 1)
+          p.write_text(text)
+          PY
+      - name: Commit roadmap truth sync
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ROADMAP.md
+          git diff --cached --quiet && exit 0
+          git commit -m "docs(clinical): record Clinical Twin data lifecycle follow-up"
+          git push origin HEAD:agent/p2-proactive-closeout
