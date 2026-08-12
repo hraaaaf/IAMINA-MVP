@@ -156,7 +156,20 @@ Each detector requires:
 
 Do not add treatment-adjustment logic to pattern detectors.
 
-### 5.1 Consultation-intelligence evidence boundary
+### 5.1 Companion longitudinal-comparison boundary
+
+A claim about what changed since a prior IAmina review requires a governed comparison anchor; review history must never be inferred from app activity or model context:
+
+- the anchor is server-timestamped only after an explicit companion-review action and is patient-scoped;
+- the anchor snapshots only already-governed deterministic Clinical Twin observations and carries no independent clinical authority;
+- only `new`, `persisting`, descriptive `improving`, governed `resolved` and `unknown` are permitted comparison states;
+- `improving` means movement of the descriptive baseline-relative delta toward the patient's own eligible window baseline; it is not evidence of treatment response, clinical outcome or causality;
+- no anchor is `insufficient_anchor`; missing current state, insufficient post-review evidence or ambiguous transition is `unknown`; missing data must not become resolution;
+- explicit deletion/replacement of clinically contributive source data invalidates derived review anchors before Clinical Twin recomputation so erased evidence cannot remain in historical comparison state;
+- anchor/snapshot persistence remains patient-owned application data subject to export, account deletion and retention rules;
+- this product review anchor is not a clinician consultation checkpoint and cannot be used to fabricate consultation history.
+
+### 5.2 Consultation-intelligence evidence boundary
 
 Before any clinician brief is exposed, its structured source contract must be deterministic, provenance-qualified and fail closed:
 
