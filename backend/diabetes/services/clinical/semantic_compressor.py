@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..clinical.engine import ClinicalPattern
+from .cgm_eligibility import assess_cgm_sufficiency
 from .sql_analytics import AnalyticalKPIs
 
 
@@ -23,11 +24,8 @@ class CompressedContext:
 
 
 def _eligible_cgm_window(kpis: AnalyticalKPIs) -> bool:
-    return (
-        kpis.days_with_data >= 14
-        and kpis.cgm_active_pct is not None
-        and kpis.cgm_active_pct >= 70.0
-    )
+    """Use the shared fail-closed CGM sufficiency contract."""
+    return assess_cgm_sufficiency(kpis).verified
 
 
 def _build_kpi_narrative(kpis: AnalyticalKPIs) -> str:
@@ -47,33 +45,38 @@ def _build_kpi_narrative(kpis: AnalyticalKPIs) -> str:
     if kpis.avg_glucose is not None:
         lines.append(f"  • Recorded mean glucose: {kpis.avg_glucose} mg/dL.")
 
+    cgm_sufficiency = assess_cgm_sufficiency(kpis)
     if kpis.gmi is not None:
-        lines.append(
-            f"  • GMI estimate: {kpis.gmi}% ({kpis.gmi_basis}). "
-            "GMI is an estimate from glucose data and is not equivalent to a laboratory A1C."
-        )
+        if cgm_sufficiency.verified:
+            lines.append(
+                f"  • GMI: {kpis.gmi}% ({kpis.gmi_basis}). "
+                "GMI is derived from CGM mean glucose and is not equivalent to a laboratory A1C."
+            )
+        else:
+            lines.append(
+                "  • GMI not surfaced: the current data model cannot verify sensor wear-time/cadence "
+                "coverage required for a clinically governed CGM interpretation."
+            )
 
-    cgm_eligible = _eligible_cgm_window(kpis)
     if kpis.cv_pct is not None:
-        if cgm_eligible:
+        if cgm_sufficiency.verified:
             cv_context = (
                 "within the ADA 2026 general CGM reference (≤36%)"
                 if kpis.cv_pct <= 36.0
                 else "above the ADA 2026 general CGM reference (>36%)"
             )
             lines.append(
-                f"  • CGM coefficient of variation: {kpis.cv_pct}% — {cv_context}; "
-                f"CGM active {kpis.cgm_active_pct}% across {kpis.days_with_data} days."
+                f"  • CGM coefficient of variation: {kpis.cv_pct}% — {cv_context}."
             )
         else:
             lines.append(
                 f"  • Recorded-data coefficient of variation: {kpis.cv_pct}%. "
-                "Do not apply the CGM ≤36% reference because valid ≥14-day/≥70% CGM "
-                "wear has not been established for this window."
+                "Do not apply a normative CGM variability reference because true sensor "
+                "wear-time/cadence coverage is not available in the current schema."
             )
 
     if kpis.tir_pct is not None:
-        if cgm_eligible:
+        if cgm_sufficiency.verified:
             lines.append(
                 f"  • CGM Time In Range 70–180 mg/dL: {kpis.tir_pct}%. "
                 "General targets require individual clinical context."
@@ -81,13 +84,19 @@ def _build_kpi_narrative(kpis: AnalyticalKPIs) -> str:
         else:
             lines.append(
                 f"  • Fraction of recorded values in 70–180 mg/dL: {kpis.tir_pct}%. "
-                "Do not present this sparse/manual ratio as a validated CGM TIR target assessment."
+                "Do not present this as validated CGM TIR or as a population target assessment."
             )
 
     if kpis.tar_pct is not None:
         lines.append(f"  • Fraction of recorded values >180 mg/dL: {kpis.tar_pct}%.")
     if kpis.tbr_pct is not None:
         lines.append(f"  • Fraction of recorded values <70 mg/dL: {kpis.tbr_pct}%.")
+
+    if kpis.cgm_active_pct is not None:
+        lines.append(
+            f"  • Rows carrying CGM provenance: {kpis.cgm_active_pct}% of stored readings. "
+            "This is provenance, not sensor wear-time."
+        )
 
     lines.append(
         "INTERPRETATION LIMIT: metrics describe the eligible recorded data; they do not "
@@ -118,12 +127,13 @@ def build_chat_context(kpis: AnalyticalKPIs, patterns: list[ClinicalPattern]) ->
             "Do not infer normality or causality."
         )
 
+    cgm_sufficiency = assess_cgm_sufficiency(kpis)
     parts: list[str] = []
     if kpis.avg_glucose is not None:
         parts.append(f"recorded mean glucose {kpis.avg_glucose} mg/dL")
-    if kpis.gmi is not None:
-        parts.append(f"GMI estimate {kpis.gmi}%")
-    if _eligible_cgm_window(kpis) and kpis.tir_pct is not None:
+    if cgm_sufficiency.verified and kpis.gmi is not None:
+        parts.append(f"eligible CGM GMI {kpis.gmi}%")
+    if cgm_sufficiency.verified and kpis.tir_pct is not None:
         parts.append(f"eligible CGM TIR {kpis.tir_pct}%")
 
     kpi_line = "Current deterministic metrics: " + ", ".join(parts) + "." if parts else ""
