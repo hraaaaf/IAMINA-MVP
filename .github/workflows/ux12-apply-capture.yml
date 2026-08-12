@@ -1,4 +1,4 @@
-# UX-12 visual gate revision 4
+# UX-12 visual gate revision 5 — capture-only after product convergence
 name: UX-12 global visual convergence
 
 on:
@@ -8,22 +8,15 @@ on:
     paths:
       - .github/workflows/ux12-apply-capture.yml
 
-permissions:
-  contents: write
-
 jobs:
-  converge-and-capture:
-    if: ${{ github.actor != 'github-actions[bot]' }}
+  capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ux/12-global-visual-consistency
           fetch-depth: 0
-
-      - name: Apply canonical Dashboard tokens
-        run: python scripts/ux12_apply.py
 
       - uses: subosito/flutter-action@v2
         with:
@@ -31,36 +24,11 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Format and verify frontend
+      - name: Resolve dependencies and record source
         working-directory: frontend
         run: |
-          dart format \
-            lib/core/theme/app_theme.dart \
-            lib/core/widgets/mobile_page_header.dart \
-            lib/core/widgets/first_use_panel.dart \
-            lib/core/widgets/clinical_card.dart \
-            lib/features/journal/journal_screen.dart \
-            lib/features/profile/profile_screen.dart \
-            lib/features/import/import_screen.dart \
-            lib/features/dashboard/widgets/add_log_sheet.dart \
-            lib/features/medications/medication_screen.dart \
-            lib/features/reminders/reminders_screen.dart
           flutter pub get
-          flutter analyze --no-fatal-infos
-          flutter test
-
-      - name: Commit UX-12 product convergence
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/lib
-          if git diff --cached --quiet; then
-            echo "No product changes produced" >&2
-            exit 1
-          fi
-          git commit -m "feat(ux): align primary surfaces with Dashboard design system"
-          git push origin HEAD:ux/12-global-visual-consistency
-          git rev-parse HEAD > /tmp/ux12-source-sha.txt
+          git -C .. rev-parse HEAD > /tmp/ux12-source-sha.txt
 
       - name: Build audit web
         working-directory: frontend
