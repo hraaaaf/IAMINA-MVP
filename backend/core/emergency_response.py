@@ -8,6 +8,8 @@ provenance.
 """
 from __future__ import annotations
 
+from django.core.exceptions import ObjectDoesNotExist
+
 from core.emergency_resources import render_medical_emergency_contact
 from core.locale import ResolvedLocale, resolve_patient_locale
 
@@ -39,7 +41,7 @@ def render_patient_medical_emergency_response(patient, *, language: str = "fr") 
     if patient is not None:
         try:
             profile = patient.base_profile
-        except (AttributeError, patient.base_profile.RelatedObjectDoesNotExist):
+        except (AttributeError, ObjectDoesNotExist):
             profile = None
         if profile is not None:
             locale = resolve_patient_locale(profile)
