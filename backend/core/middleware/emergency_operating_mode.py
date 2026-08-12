@@ -1,4 +1,8 @@
-"""Response-boundary enforcement of the pilot emergency operating mode."""
+"""Response-boundary enforcement of the pilot emergency operating mode.
+
+P0.6 makes this middleware a compatibility boundary, not a second wording owner:
+any urgent JSON or SSE response is re-composed by ``core.emergency_response``.
+"""
 
 from __future__ import annotations
 
@@ -7,16 +11,13 @@ from collections.abc import Iterable, Iterator
 
 from django.http import HttpResponse, StreamingHttpResponse
 
-from core.emergency_operating_mode import (
-    PILOT_EMERGENCY_POLICY,
-    append_emergency_disclosure,
-    decorate_emergency_payload,
-)
+from core.emergency_operating_mode import decorate_emergency_payload
+from core.emergency_response import compose_emergency_for_patient
 from core.input_safety import URGENT, evaluate_input_safety
 
 
 class EmergencyOperatingModeMiddleware:
-    """Decorate every user-facing emergency response with truthful mode details."""
+    """Guarantee canonical emergency output at the final HTTP response boundary."""
 
     def __init__(self, get_response) -> None:
         self.get_response = get_response
@@ -24,10 +25,12 @@ class EmergencyOperatingModeMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
         if isinstance(response, StreamingHttpResponse):
-            if self._is_urgent_stream(request, response):
+            message = request.GET.get("message", "")
+            if self._is_urgent_stream(response, message):
                 response.streaming_content = self._decorate_stream(
                     response.streaming_content,
-                    language=self._language_for_message(request.GET.get("message", "")),
+                    request=request,
+                    message=message,
                 )
             return response
 
@@ -40,12 +43,9 @@ class EmergencyOperatingModeMiddleware:
         return response.get("Content-Type", "").split(";", 1)[0] == "application/json"
 
     @staticmethod
-    def _is_urgent_stream(request, response: StreamingHttpResponse) -> bool:
+    def _is_urgent_stream(response: StreamingHttpResponse, message: str) -> bool:
         content_type = response.get("Content-Type", "").split(";", 1)[0]
-        if content_type != "text/event-stream":
-            return False
-        message = request.GET.get("message", "")
-        return evaluate_input_safety(message).action == URGENT
+        return content_type == "text/event-stream" and evaluate_input_safety(message).action == URGENT
 
     def _decorate_json_response(self, response: HttpResponse, request) -> None:
         try:
@@ -55,10 +55,26 @@ class EmergencyOperatingModeMiddleware:
         if not isinstance(payload, dict) or payload.get("is_emergency") is not True:
             return
 
-        language = self._language_for_message(
-            str(payload.get("transcript") or self._request_message(request))
-        )
-        decorated = decorate_emergency_payload(payload, language=language)
+        message = str(payload.get("transcript") or self._request_message(request))
+        language = str(payload.get("reply_language") or self._language_for_message(message))
+        decision = evaluate_input_safety(message)
+
+        if decision.action == URGENT:
+            canonical = compose_emergency_for_patient(
+                decision,
+                patient=getattr(request, "user", None),
+                language=language,
+                message=message,
+            )
+            timestamp = payload.get("timestamp")
+            canonical_payload = canonical.as_payload(
+                timestamp=str(timestamp) if timestamp is not None else None
+            )
+            decorated = dict(payload)
+            decorated.update(canonical_payload)
+        else:
+            decorated = decorate_emergency_payload(payload, language=language)
+
         encoded = json.dumps(decorated, ensure_ascii=False).encode(response.charset or "utf-8")
         response.content = encoded
         response["Content-Length"] = str(len(encoded))
@@ -76,23 +92,42 @@ class EmergencyOperatingModeMiddleware:
     @staticmethod
     def _language_for_message(message: str) -> str:
         if any("\u0600" <= char <= "\u06ff" for char in message):
-            return "ar"
+            return "ar-MA"
         lowered = message.lower()
         if any(token in lowered.split() for token in ("wach", "ch7al", "sukkar", "dyal")):
             return "ar-MA"
         return "fr"
 
     @staticmethod
+    def _decode_chunk(chunk: bytes | str) -> tuple[str, bool]:
+        if isinstance(chunk, bytes):
+            return chunk.decode("utf-8"), True
+        return str(chunk), False
+
     def _decorate_stream(
+        self,
         chunks: Iterable[bytes | str],
         *,
-        language: str,
+        request,
+        message: str,
     ) -> Iterator[bytes | str]:
-        decorated_first_json = False
+        decision = evaluate_input_safety(message)
+        if decision.action != URGENT:
+            yield from chunks
+            return
+
+        canonical = compose_emergency_for_patient(
+            decision,
+            patient=getattr(request, "user", None),
+            language=self._language_for_message(message),
+            message=message,
+        )
+        canonical_event = canonical.as_stream_event()
+        replaced_first_json = False
+
         for chunk in chunks:
-            is_bytes = isinstance(chunk, bytes)
-            text = chunk.decode("utf-8") if is_bytes else str(chunk)
-            if not decorated_first_json and text.startswith("data: {"):
+            text, is_bytes = self._decode_chunk(chunk)
+            if not replaced_first_json and text.startswith("data: {"):
                 raw = text[len("data: ") :].strip()
                 try:
                     event = json.loads(raw)
@@ -100,9 +135,8 @@ class EmergencyOperatingModeMiddleware:
                     pass
                 else:
                     if isinstance(event, dict) and isinstance(event.get("token"), str):
-                        event["token"] = append_emergency_disclosure(event["token"], language)
-                        event["emergency_operating_mode"] = PILOT_EMERGENCY_POLICY.mode
-                        event["human_monitoring"] = PILOT_EMERGENCY_POLICY.human_monitoring
-                        text = f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-                        decorated_first_json = True
+                        merged = dict(event)
+                        merged.update(canonical_event)
+                        text = f"data: {json.dumps(merged, ensure_ascii=False)}\n\n"
+                        replaced_first_json = True
             yield text.encode("utf-8") if is_bytes else text
