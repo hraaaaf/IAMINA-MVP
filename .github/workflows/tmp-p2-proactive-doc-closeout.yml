@@ -17,15 +17,16 @@ jobs:
         with:
           ref: agent/p2-proactive-insight-lifecycle
       - name: Update canonical contracts
-        shell: python
         run: |
+          python - <<'PY'
           from pathlib import Path
 
           def replace_once(path, old, new):
               p = Path(path)
               text = p.read_text()
-              if text.count(old) != 1:
-                  raise SystemExit(f"expected one anchor in {path}, found {text.count(old)}")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected one anchor in {path}, found {count}")
               p.write_text(text.replace(old, new, 1))
 
           replace_once(
@@ -118,6 +119,7 @@ The Clinical Twin remains the clinical observation truth boundary. Proactive wor
 
 It must consume shared contracts without creating hidden reverse dependencies from core back into diabetes.'''
           replace_once("docs/architecture/ARCHITECTURE.md", arch_anchor, arch_new)
+          PY
       - name: Commit canonical contract updates
         run: |
           git config user.name "github-actions[bot]"
