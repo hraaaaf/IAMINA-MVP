@@ -1,0 +1,75 @@
+name: P2 Clinical Twin closeout sync
+
+on:
+  push:
+    branches: [p2-clinical-twin-closeout]
+    paths: [.github/workflows/p2-clinical-twin-closeout-sync.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p2-clinical-twin-closeout
+          fetch-depth: 0
+      - name: Close P2 in canonical roadmap
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/ROADMAP.md')
+          text = path.read_text()
+
+          replacements = [
+              (
+                  '> **Last updated:** 2026-08-12 — P1-EVIDENCE is merged and post-merge green. P2-CLINICAL-TWIN is the active certification unit in PR #135. UX visual rebase remains closed through UX-11 at 9.8/10.',
+                  '> **Last updated:** 2026-08-12 — P2-CLINICAL-TWIN is merged and post-merge green. P2-PROACTIVE is the next executable clinical-intelligence LOT. UX visual rebase remains closed through UX-11 at 9.8/10.',
+              ),
+              (
+                  '| Clinical intelligence / proactivity | P0 audit + semantics + skills foundation + evidence registry closed; clinical twin active | 🟡 P2 certification | PR #135 — Longitudinal Observation Memory |',
+                  '| Clinical intelligence / proactivity | P0 audit + semantics + skills foundation + evidence registry + clinical twin closed | 🟢 P2-PROACTIVE ready | PR #135 merge `00292e44…`; post-merge CI #1805 + drift #1617 green |',
+              ),
+              (
+                  '## P2-CLINICAL-TWIN — Longitudinal Observation Memory — PR #135 CERTIFICATION',
+                  '## ✅ P2-CLINICAL-TWIN — Longitudinal Observation Memory — CLOSED',
+              ),
+              (
+                  'P2 persists a diabetes-owned, recomputable lifecycle for approved deterministic `personal_response` observations without reusing companion/deep-memory state as clinical truth. The candidate stores first/last seen timestamps, activation-episode recurrence, active/inactive lifecycle state, evidence-strength evolution, baseline-relative descriptive evolution, evidence provenance and whitelisted recorded context. A short display window cannot change the canonical 90-day lifecycle. `USER_CLAIM`, `HEURISTIC_INFERENCE`, `MODEL_INFERENCE`, `CONVERSATIONAL_STATE` and other non-deterministic truth kinds are rejected as direct clinical-twin writes. No diagnosis, prediction, causal attribution, medication/dose/treatment semantics or patient-visible proactive behavior is introduced.\n\n**Certification gate:** exact-head full CI + PostgreSQL + migration drift, Clinical Safety Reviewer, Release Certifier, expected-head locked merge, then post-merge `main` CI + drift before closure.',
+                  'P2 persists a diabetes-owned, recomputable lifecycle for approved deterministic `personal_response` observations without reusing companion/deep-memory state as clinical truth. The certified runtime stores first/last seen timestamps, activation-episode recurrence, active/inactive lifecycle state, evidence-strength evolution, baseline-relative descriptive evolution, evidence provenance and whitelisted recorded context. A short display window cannot change the canonical 90-day lifecycle. `USER_CLAIM`, `HEURISTIC_INFERENCE`, `MODEL_INFERENCE`, `CONVERSATIONAL_STATE` and other non-deterministic truth kinds are rejected as direct clinical-twin writes. Database constraints also reject unapproved truth kind, producer and evidence ID. No diagnosis, prediction, causal attribution, medication/dose/treatment semantics or patient-visible proactive behavior is introduced.\n\n**Closure:** PR #135 head `1058ee4a…` passed CI #1804 + drift #1616, Clinical Safety Reviewer and Release Certifier; merge `00292e44…` then passed post-merge `main` CI #1805 + drift #1617.',
+              ),
+              (
+                  '| **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | 🟡 **CERTIFICATION — PR #135** | Recurring evidence-qualified observations are persisted as recomputable deterministic lifecycle state; exact-head specialist/release review + merge/post-merge gates required |',
+                  '| **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | ✅ **CLOSED** | PR #135 merge `00292e44…`; post-merge CI #1805 + drift #1617 green |',
+              ),
+              (
+                  '| P2-PROACTIVE | Prioritization + Insight Lifecycle | ⏳ Planned | Clinical relevance, persistence, actionability, evidence density and interruption cost govern what surfaces and when |',
+                  '| **P2-PROACTIVE** | **Prioritization + Insight Lifecycle** | ▶️ **NEXT** | Clinical relevance, persistence, actionability, evidence density and interruption cost govern what surfaces and when |',
+              ),
+              (
+                  '1. **Clinical intelligence product lane:** certify and merge **PR #135 — P2-CLINICAL-TWIN**, then proceed to **P2-PROACTIVE — Prioritization + Insight Lifecycle**. This lane is executable without waiting for external MENA approvals.',
+                  '1. **Clinical intelligence product lane:** start **P2-PROACTIVE — Prioritization + Insight Lifecycle** from the post-merge-green P2-CLINICAL-TWIN baseline. This lane is executable without waiting for external MENA approvals.',
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected exactly one roadmap match, found {count}: {old[:120]!r}')
+              text = text.replace(old, new)
+
+          path.write_text(text)
+          PY
+      - name: Commit closeout and remove helper
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/p2-clinical-twin-closeout-sync.yml
+          git add docs/ROADMAP.md
+          git commit -m "docs(p2-clinical-twin): close roadmap status"
+          git pull --rebase origin p2-clinical-twin-closeout
+          git push origin HEAD:p2-clinical-twin-closeout
