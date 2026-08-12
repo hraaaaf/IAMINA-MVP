@@ -1,10 +1,6 @@
-from companion.thinker import think_before_reply
 from core.contracts.domain_context import DomainContext
 from core.generative_context_safety import sanitize_unstructured_generative_context
 from core.llm_gateway import _build_user_prompt
-from diabetes.services.clinical.engine import ClinicalPattern
-from diabetes.services.clinical.semantic_compressor import build_chat_context
-from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
 
 
 INTERNAL_CODE = "SOMOGYI_REBOUND"
@@ -15,7 +11,9 @@ class _Obj:
         self.__dict__.update(kwargs)
 
 
-def _kpis() -> AnalyticalKPIs:
+def _kpis():
+    from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
+
     return AnalyticalKPIs(
         avg_glucose=132.0,
         std_dev=28.0,
@@ -30,7 +28,9 @@ def _kpis() -> AnalyticalKPIs:
     )
 
 
-def _pattern() -> ClinicalPattern:
+def _pattern():
+    from diabetes.services.clinical.engine import ClinicalPattern
+
     return ClinicalPattern(
         code=INTERNAL_CODE,
         priority=2,
@@ -61,6 +61,8 @@ def _domain_context() -> DomainContext:
 
 
 def test_chat_pivot_uses_descriptive_evidence_not_machine_code():
+    from diabetes.services.clinical.semantic_compressor import build_chat_context
+
     prompt = build_chat_context(_kpis(), [_pattern()])
 
     assert INTERNAL_CODE not in prompt
@@ -107,6 +109,8 @@ def test_last_mile_sanitizer_does_not_rewrite_structured_p0_5a_formatter_contrac
 
 
 def test_thinker_uses_current_domain_context_fields_without_pattern_codes():
+    from companion.thinker import think_before_reply
+
     captured = {}
 
     class FakeLLM:
