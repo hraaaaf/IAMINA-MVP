@@ -23,7 +23,7 @@ class ProactiveEvidenceAuthorityTests(TestCase):
         refresh_memory,
     ):
         get_evidence.return_value = SimpleNamespace(
-            clinical_authority=ClinicalAuthority.REFERENCE_ONLY,
+            clinical_authority=ClinicalAuthority.NARRATIVE_ONLY,
             supersession_state="current",
         )
 
