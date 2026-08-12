@@ -106,14 +106,6 @@ Rules:
 - **Risk:** hidden failures and expensive regression surface.
 - **Resolution:** refactor opportunistically in focused PRs; typed/logged error handling first, cosmetic decomposition second.
 
-## TD-013 — Clinical analytics lack complete PostgreSQL source-of-truth certification
-
-- **Area:** Clinical analytics / database parity
-- **Priority:** Critical before real-patient pilot
-- **Current compromise:** production-authoritative SQL includes PostgreSQL-specific behavior while the historical main CI path has relied heavily on SQLite. At least one GRI implementation issue and one daily-average SQL divergence were identified during the P0 audit.
-- **Risk:** a metric can be mathematically wrong or pass SQLite tests while failing/diverging on PostgreSQL.
-- **Resolution:** P0-C — normative formula verification, metric eligibility rules, PostgreSQL CI execution, and regression fixtures. Remove this debt only after P0-C is merged and green.
-
 ## Documentation closeout rule
 
 After every merged task/phase:
@@ -128,3 +120,5 @@ Do not leave a debt entry worded as “not implemented” after the foundation h
 ## Removed obsolete debt
 
 The old **“migrate Gemini → Kimi”** item is intentionally deleted. It conflicts with the current provider-agnostic MENA strategy. Provider selection now happens per modality only after the privacy/quality benchmark in `docs/ROADMAP.md`.
+
+The former PostgreSQL clinical-analytics parity debt was removed after P0-C established normative formula correction, permanent PostgreSQL source-of-truth CI and migration-drift gates.
