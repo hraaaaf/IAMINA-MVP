@@ -88,7 +88,10 @@ class AminaMobilePageHeader extends StatelessWidget {
                 Container(
                   width: 44,
                   height: 44,
-                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                  constraints: const BoxConstraints(
+                    minWidth: 44,
+                    minHeight: 44,
+                  ),
                   alignment: AlignmentDirectional.centerEnd,
                   decoration: BoxDecoration(
                     color: AminaTheme.surface(context),

@@ -34,7 +34,7 @@ class _JournalScreenState extends State<JournalScreen> {
         ? (viewportWidth - 980) / 2
         : viewportWidth >= 700
         ? 28.0
-        : 20.0;
+        : 18.0;
 
     final now = DateTime.now();
     final start = _selectedFilterDays == 0

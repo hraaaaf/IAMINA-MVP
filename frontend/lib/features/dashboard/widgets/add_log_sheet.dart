@@ -150,7 +150,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
           child: Stack(
             children: <Widget>[
               SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 112),
+                padding: const EdgeInsetsDirectional.fromSTEB(18, 10, 18, 112),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 1080),
@@ -225,8 +225,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
               l10n.journalAddTitle,
               style: TextStyle(
                 color: AminaTheme.textPrimary(context),
-                fontSize: 24,
+                fontSize: 26,
+                height: 1.05,
                 fontWeight: FontWeight.w800,
+                letterSpacing: -0.8,
               ),
             ),
             const SizedBox(height: 3),
@@ -269,7 +271,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isLow ? const Color(0xFFFFF7ED) : AminaTheme.subtleBg(context),
+          color: isLow ? const Color(0xFFFFF7ED) : AminaTheme.surface(context),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isLow

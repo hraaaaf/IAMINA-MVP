@@ -70,7 +70,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: ResponsiveContentSurface(
               maxWidth: 1040,
               child: SingleChildScrollView(
-                padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 24, 40),
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  isMobile ? 18 : 24,
+                  isMobile ? 6 : 20,
+                  isMobile ? 18 : 24,
+                  isMobile ? 112 : 40,
+                ),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final sections = Column(

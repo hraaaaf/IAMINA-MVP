@@ -144,7 +144,9 @@ class _RemindersScreenState extends State<RemindersScreen> {
                             'Reminder title',
                             'عنوان التذكير',
                           ),
-                          prefixIcon: const Icon(Icons.notifications_none_rounded),
+                          prefixIcon: const Icon(
+                            Icons.notifications_none_rounded,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -202,7 +204,9 @@ class _RemindersScreenState extends State<RemindersScreen> {
                       return _ReminderPanel(
                         child: Row(
                           children: [
-                            const _IconBadge(icon: Icons.notifications_none_rounded),
+                            const _IconBadge(
+                              icon: Icons.notifications_none_rounded,
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
@@ -245,12 +249,15 @@ class _RemindersScreenState extends State<RemindersScreen> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             item.title,
                                             style: TextStyle(
-                                              color: AminaTheme.textPrimary(context),
+                                              color: AminaTheme.textPrimary(
+                                                context,
+                                              ),
                                               fontSize: 14,
                                               fontWeight: FontWeight.w800,
                                             ),
@@ -283,9 +290,12 @@ class _RemindersScreenState extends State<RemindersScreen> {
                                         'Delete',
                                         'حذف',
                                       ),
-                                      icon: const Icon(Icons.delete_outline_rounded),
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                      ),
                                       color: AminaTheme.textSecondary(context),
-                                      onPressed: () => db.deleteReminder(item.id),
+                                      onPressed: () =>
+                                          db.deleteReminder(item.id),
                                     ),
                                   ],
                                 ),

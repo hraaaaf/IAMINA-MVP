@@ -158,9 +158,10 @@ class _MedicationScreenState extends State<MedicationScreen> {
                           Expanded(
                             child: TextField(
                               controller: _dose,
-                              keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true,
-                              ),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                               decoration: InputDecoration(
                                 labelText: _mt(
                                   context,
@@ -176,7 +177,12 @@ class _MedicationScreenState extends State<MedicationScreen> {
                             child: TextField(
                               controller: _unit,
                               decoration: InputDecoration(
-                                labelText: _mt(context, 'Unité', 'Unit', 'الوحدة'),
+                                labelText: _mt(
+                                  context,
+                                  'Unité',
+                                  'Unit',
+                                  'الوحدة',
+                                ),
                               ),
                             ),
                           ),
@@ -191,7 +197,9 @@ class _MedicationScreenState extends State<MedicationScreen> {
                           'Time taken',
                           'وقت التناول',
                         ),
-                        value: DateFormat('dd/MM/yyyy · HH:mm').format(_takenAt),
+                        value: DateFormat(
+                          'dd/MM/yyyy · HH:mm',
+                        ).format(_takenAt),
                         onTap: _pickTakenAt,
                       ),
                       const SizedBox(height: 12),
@@ -241,7 +249,8 @@ class _MedicationScreenState extends State<MedicationScreen> {
                 StreamBuilder<List<MedicationEventData>>(
                   stream: db.watchMedicationEvents(),
                   builder: (context, snapshot) {
-                    final items = snapshot.data ?? const <MedicationEventData>[];
+                    final items =
+                        snapshot.data ?? const <MedicationEventData>[];
                     if (items.isEmpty) {
                       return _DashboardPanel(
                         child: Row(
@@ -290,12 +299,15 @@ class _MedicationScreenState extends State<MedicationScreen> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '${item.label}$dose',
                                         style: TextStyle(
-                                          color: AminaTheme.textPrimary(context),
+                                          color: AminaTheme.textPrimary(
+                                            context,
+                                          ),
                                           fontSize: 14,
                                           fontWeight: FontWeight.w800,
                                         ),
@@ -306,7 +318,9 @@ class _MedicationScreenState extends State<MedicationScreen> {
                                           'dd/MM/yyyy · HH:mm',
                                         ).format(item.takenAt),
                                         style: TextStyle(
-                                          color: AminaTheme.textSecondary(context),
+                                          color: AminaTheme.textSecondary(
+                                            context,
+                                          ),
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -315,10 +329,18 @@ class _MedicationScreenState extends State<MedicationScreen> {
                                   ),
                                 ),
                                 IconButton(
-                                  tooltip: _mt(context, 'Supprimer', 'Delete', 'حذف'),
-                                  icon: const Icon(Icons.delete_outline_rounded),
+                                  tooltip: _mt(
+                                    context,
+                                    'Supprimer',
+                                    'Delete',
+                                    'حذف',
+                                  ),
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                  ),
                                   color: AminaTheme.textSecondary(context),
-                                  onPressed: () => db.deleteMedicationEvent(item.id),
+                                  onPressed: () =>
+                                      db.deleteMedicationEvent(item.id),
                                 ),
                               ],
                             ),

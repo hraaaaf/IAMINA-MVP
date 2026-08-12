@@ -76,7 +76,7 @@ class _ImportScreenState extends State<ImportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AminaTheme.paper,
+      backgroundColor: AminaTheme.bg(context),
       body: Column(
         children: [
           _TopBar(),
@@ -84,7 +84,7 @@ class _ImportScreenState extends State<ImportScreen> {
             child: ResponsiveContentSurface(
               maxWidth: 1160,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsetsDirectional.fromSTEB(18, 6, 18, 112),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
