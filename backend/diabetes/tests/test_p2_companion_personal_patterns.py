@@ -11,6 +11,20 @@ from diabetes.services.clinical.companion_pattern_intelligence import (
 
 
 class CompanionPersonalPatternIntelligenceTests(TestCase):
+    _RECORDED_CONTEXT = {
+        "context:stress": {"source_field": "stressed", "recorded_value": "yes"},
+        "context:activity": {"source_field": "exercised", "recorded_value": "yes"},
+        "context:illness": {"source_field": "is_sick", "recorded_value": "yes"},
+        "context:poor_sleep": {"source_field": "sleep_quality", "recorded_value": "bad"},
+        "context:fatigue": {"source_field": "fatigue_level", "recorded_value": "tired"},
+        "meal:breakfast": {"glycemic_context": "post_meal", "meal_type": "breakfast"},
+        "meal:lunch": {"glycemic_context": "post_meal", "meal_type": "lunch"},
+        "meal:dinner": {"glycemic_context": "post_meal", "meal_type": "dinner"},
+        "meal:snack": {"glycemic_context": "post_meal", "meal_type": "snack"},
+        "meal:suhoor": {"glycemic_context": "post_meal", "meal_type": "suhoor"},
+        "meal:iftar": {"glycemic_context": "post_meal", "meal_type": "iftar"},
+    }
+
     def setUp(self):
         self.patient = User.objects.create_user(username="p2-pattern-intelligence")
         self.other = User.objects.create_user(username="p2-pattern-other")
@@ -65,7 +79,7 @@ class CompanionPersonalPatternIntelligenceTests(TestCase):
             context_modifiers=(
                 context_modifiers
                 if context_modifiers is not None
-                else {"source_field": "stressed", "recorded_value": "yes"}
+                else dict(self._RECORDED_CONTEXT[key])
             ),
             last_evidence_fingerprint="a" * 64,
         )
@@ -244,6 +258,24 @@ class CompanionPersonalPatternIntelligenceTests(TestCase):
         )
 
         with self.assertRaisesRegex(ValueError, "canonical evidence window"):
+            project_personal_pattern_intelligence(patient_id=self.patient.id)
+
+    def test_unapproved_recorded_context_fails_closed(self):
+        row = self._observation(self.patient)
+        ClinicalObservationState.objects.filter(pk=row.pk).update(
+            context_modifiers={"source_field": "stressed", "recorded_value": "no"}
+        )
+
+        with self.assertRaisesRegex(ValueError, "does not match governed key"):
+            project_personal_pattern_intelligence(patient_id=self.patient.id)
+
+    def test_observation_key_kind_mismatch_fails_closed(self):
+        row = self._observation(self.patient)
+        ClinicalObservationState.objects.filter(pk=row.pk).update(
+            kind=ClinicalObservationState.KIND_MEAL
+        )
+
+        with self.assertRaisesRegex(ValueError, "kind does not match governed observation key"):
             project_personal_pattern_intelligence(patient_id=self.patient.id)
 
     def test_invalid_patient_identity_fails_closed(self):
