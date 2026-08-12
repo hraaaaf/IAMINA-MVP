@@ -11,9 +11,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..clinical.engine import ClinicalPattern
-from .cgm_eligibility import assess_cgm_sufficiency
-from .sql_analytics import AnalyticalKPIs
+from diabetes.services.clinical.cgm_eligibility import assess_cgm_sufficiency
+from diabetes.services.clinical.engine import ClinicalPattern
+from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
 
 
 @dataclass(frozen=True)
