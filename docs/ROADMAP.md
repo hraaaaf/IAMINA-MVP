@@ -154,7 +154,7 @@ Delivered in PR #132:
 
 P2 persists a diabetes-owned, recomputable lifecycle for approved deterministic `personal_response` observations without reusing companion/deep-memory state as clinical truth. The certified runtime stores first/last seen timestamps, activation-episode recurrence, active/inactive lifecycle state, evidence-strength evolution, baseline-relative descriptive evolution, evidence provenance and whitelisted recorded context. A short display window cannot change the canonical 90-day lifecycle. `USER_CLAIM`, `HEURISTIC_INFERENCE`, `MODEL_INFERENCE`, `CONVERSATIONAL_STATE` and other non-deterministic truth kinds are rejected as direct clinical-twin writes. Database constraints also reject unapproved truth kind, producer and evidence ID. No diagnosis, prediction, causal attribution, medication/dose/treatment semantics or patient-visible proactive behavior is introduced.
 
-**Closure:** PR #135 head `1058ee4a…` passed CI #1804 + drift #1616, Clinical Safety Reviewer and Release Certifier; merge `00292e44…` then passed post-merge `main` CI #1805 + drift #1617.
+**Closure:** PR #135 head `1058ee4a…` passed CI #1804 + drift #1616, Clinical Safety Reviewer and Release Certifier; merge `00292e44…` then passed post-merge `main` CI #1805 + drift #1617. Data-lifecycle safety follow-up PR #140 head `3d87940e…` closed the derived-data erasure/export/retention gap, passed CI #1867 + drift #1679 and certification, merged as `55d6b171…`, then passed post-merge `main` CI #1868 + drift #1680.
 
 ## ✅ P2-PROACTIVE — Prioritization + Insight Lifecycle — CLOSED
 
@@ -182,7 +182,7 @@ Delivered contract:
 | P0-CLIN-INTEL-1 | Clinical semantics hardening | ✅ Closed | PR #126 merged and post-merge green |
 | **P1-CLIN-SKILLS** | **Diabetologist Skills Foundation** | ✅ **CLOSED** | PR #127 merged and post-merge green |
 | **P1-EVIDENCE** | **Versioned Diabetes Evidence Registry** | ✅ **CLOSED** | PR #132 merged as `9d7add2b…`; post-merge CI #1785 + drift #1597 green |
-| **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | ✅ **CLOSED** | PR #135 merge `00292e44…`; post-merge CI #1805 + drift #1617 green |
+| **P2-CLINICAL-TWIN** | **Longitudinal Observation Memory** | ✅ **CLOSED** | PR #135 + data-lifecycle follow-up PR #140; latest merge `55d6b171…`; post-merge CI #1868 + drift #1680 green |
 | **P2-PROACTIVE** | **Prioritization + Insight Lifecycle** | ✅ **CLOSED** | PR #139 merge `752f5543…`; post-merge CI #1845 + drift #1657 green |
 | **P2-DOCTOR** | **Consultation Intelligence** | ▶️ **NEXT** | Clinician brief reports evidence-qualified change since last review with uncertainty and provenance |
 | P3-HORIZON | Evidence Horizon Scanner | ⏳ Planned | Standard-of-care, emerging and investigational evidence remain explicitly separated; papers cannot silently alter patient rules |
