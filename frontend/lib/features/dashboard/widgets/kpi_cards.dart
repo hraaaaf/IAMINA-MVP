@@ -245,3 +245,85 @@ class _CompactMetricCell extends StatelessWidget {
     );
   }
 }
+
+// ── Delta chip ────────────────────────────────────────────────────────────────
+
+class _DeltaChip extends StatelessWidget {
+  final String label;
+  final bool positive;
+  const _DeltaChip({required this.label, required this.positive});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = positive ? AminaTheme.teal500 : AminaTheme.dangerRed;
+    final bg = positive ? AminaTheme.teal50 : AminaTheme.dangerBg;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            positive ? Icons.arrow_upward : Icons.arrow_downward,
+            size: 9,
+            color: color,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Legend dot ────────────────────────────────────────────────────────────────
+
+class _LegendDot extends StatelessWidget {
+  final Color color;
+  final String label;
+  final String value;
+  const _LegendDot({
+    required this.color,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: AminaTheme.textSecondary(context),
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AminaTheme.textPrimary(context),
+            ),
+          ),
+        ],
+      );
+}
