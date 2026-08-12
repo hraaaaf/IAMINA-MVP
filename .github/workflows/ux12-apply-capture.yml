@@ -1,3 +1,4 @@
+# UX-12 final certification revision 2
 name: UX-12 final global visual certification
 
 on:
@@ -22,7 +23,7 @@ jobs:
           fetch-depth: 0
 
       - name: Apply final locale and page-semantic polish
-        run: python scripts/ux12_polish.py
+        run: python scripts/ux12_polish_fixed.py
 
       - uses: subosito/flutter-action@v2
         with:
