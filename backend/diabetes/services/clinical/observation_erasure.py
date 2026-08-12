@@ -11,10 +11,8 @@ from __future__ import annotations
 from django.db import transaction
 
 from diabetes.models.clinical_observation import ClinicalObservationState
-from diabetes.services.clinical.observation_memory import (
-    PersonalResponseResult,
-    refresh_personal_response_memory,
-)
+from diabetes.services.clinical.observation_memory import refresh_personal_response_memory
+from diabetes.services.clinical.personal_response import PersonalResponseResult
 
 
 @transaction.atomic
