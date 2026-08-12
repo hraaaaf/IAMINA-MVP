@@ -1,8 +1,8 @@
 """Executable authority contract for clinician consultation briefs.
 
 P2-DOCTOR starts with a deterministic structured contract before any new
-clinician/patient UX or narrator integration.  The contract deliberately carries
-facts/derivations, provenance, comparison semantics and uncertainty only.  It is
+clinician/patient UX or narrator integration. The contract deliberately carries
+facts/derivations, provenance, comparison semantics and uncertainty only. It is
 not a diagnosis, prescription, treatment plan or free-form clinical reasoning
 surface.
 """
@@ -128,7 +128,10 @@ class ConsultationEvidenceItem:
             raise ValueError("observed facts must not masquerade as governed derivations")
         if self.evidence_window_days is not None and self.evidence_window_days <= 0:
             raise ValueError("evidence_window_days must be positive when present")
-        if self.evidence_density is not None and self.truth_kind is not TruthKind.DETERMINISTIC_DERIVATION:
+        if (
+            self.evidence_density is not None
+            and self.truth_kind is not TruthKind.DETERMINISTIC_DERIVATION
+        ):
             raise ValueError(
                 "evidence_density is reserved for approved deterministic derivations"
             )
