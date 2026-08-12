@@ -1,0 +1,32 @@
+name: P2 proactive clinical-safety patch
+
+on:
+  push:
+    branches: [p2-proactive-attention-lifecycle]
+    paths:
+      - .github/workflows/p2-proactive-clinical-safety-run.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p2-proactive-attention-lifecycle
+          fetch-depth: 0
+      - name: Apply clinical-safety patch
+        run: python scripts/_p2_proactive_clinical_safety_patch.py
+      - name: Commit patch and remove temporary files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/p2-proactive-clinical-safety-run.yml
+          git rm scripts/_p2_proactive_clinical_safety_patch.py
+          git add backend/diabetes/services/clinical/proactive_attention.py backend/diabetes/tests/test_p2_proactive_attention.py
+          git commit -m "fix(p2-proactive): freeze lifecycle on insufficient data"
+          git pull --rebase origin p2-proactive-attention-lifecycle
+          git push origin HEAD:p2-proactive-attention-lifecycle
