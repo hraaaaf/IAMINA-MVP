@@ -102,7 +102,7 @@ void main() {
     }
   });
 
-  test('GMI always discloses method, coverage and laboratory limitation', () {
+  test('GMI fails closed without verified CGM coverage and keeps disclosure', () {
     final source = _read('lib/features/dashboard/widgets/kpi_gmi_card.dart');
     final fr = _arb('fr');
     final en = _arb('en');
@@ -110,27 +110,26 @@ void main() {
 
     for (final key in <String>[
       'dashboardGmiCoverage',
-      'dashboardGmiLimitedCoverage',
-      'dashboardGmiCalculated',
+      'dashboardInsufficientData',
       'dashboardGmiDisclaimer',
     ]) {
       expect(
         source,
         contains('l10n.$key'),
-        reason: 'GMI must consume localized explainability key $key',
+        reason: 'Fail-closed GMI must consume localized key $key',
       );
     }
 
+    expect(source, contains("'--'"));
+    expect(source, isNot(contains('ClinicalEngine.calcGmi')));
+    expect(source, isNot(contains('l10n.dashboardGmiLimitedCoverage')));
+    expect(source, isNot(contains('l10n.dashboardGmiCalculated')));
+
     expect(fr['dashboardGmiCoverage'], contains('Moyenne'));
-    expect(fr['dashboardGmiLimitedCoverage'], contains('moins de 14 jours ou 50 mesures'));
     expect(fr['dashboardGmiDisclaimer'], contains('ne remplace pas une HbA1c de laboratoire'));
-
     expect(en['dashboardGmiCoverage'], contains('Average'));
-    expect(en['dashboardGmiLimitedCoverage'], contains('fewer than 14 days or 50 readings'));
     expect(en['dashboardGmiDisclaimer'], contains('does not replace a laboratory HbA1c'));
-
     expect(ar['dashboardGmiCoverage'], contains('المتوسط'));
-    expect(ar['dashboardGmiLimitedCoverage'], contains('أقل من 14 يومًا أو 50 قياسًا'));
     expect(ar['dashboardGmiDisclaimer'], contains('لا يغني هذا التقدير عن فحص HbA1c المخبري'));
 
     for (final forbidden in <String>[
@@ -148,41 +147,18 @@ void main() {
     }
   });
 
-  test('CV is a general reference, never a personalized success claim', () {
+  test('CV remains descriptive without verified sensor coverage', () {
     final source = _read('lib/features/dashboard/widgets/kpi_cv_card.dart');
-    final fr = _arb('fr');
-    final en = _arb('en');
-    final ar = _arb('ar');
 
-    for (final key in <String>[
-      'dashboardCvReferenceShort',
-      'dashboardCvBelowReference',
-      'dashboardCvAboveReference',
-      'dashboardCvReferenceExplanation',
-    ]) {
-      expect(
-        source,
-        contains('l10n.$key'),
-        reason: 'CV must consume localized reference key $key',
-      );
-    }
-
-    expect(fr['dashboardCvReferenceShort'], contains('Repère général <36 %'));
-    expect(fr['dashboardCvBelowReference'], contains('Sous le repère général'));
-    expect(fr['dashboardCvAboveReference'], contains('Au-dessus du repère général'));
-    expect(fr['dashboardCvReferenceExplanation'], contains('Votre objectif personnel peut être différent'));
-
-    expect(en['dashboardCvReferenceShort'], contains('General reference <36%'));
-    expect(en['dashboardCvBelowReference'], contains('Below the general reference'));
-    expect(en['dashboardCvAboveReference'], contains('Above the general reference'));
-    expect(en['dashboardCvReferenceExplanation'], contains('Your personal target may differ'));
-
-    expect(ar['dashboardCvReferenceShort'], contains('مرجع عام <36٪'));
-    expect(ar['dashboardCvBelowReference'], contains('أقل من المرجع العام'));
-    expect(ar['dashboardCvAboveReference'], contains('أعلى من المرجع العام'));
-    expect(ar['dashboardCvReferenceExplanation'], contains('قد يختلف هدفك الشخصي'));
+    expect(source, contains('ClinicalEngine.calcCV'));
+    expect(source, contains('l10n.dashboardCvTitle'));
+    expect(source, contains('l10n.dashboardMeasurementCoverage'));
 
     for (final forbidden in <String>[
+      'l10n.dashboardCvReferenceShort',
+      'l10n.dashboardCvBelowReference',
+      'l10n.dashboardCvAboveReference',
+      'l10n.dashboardCvReferenceExplanation',
       'Variabilité maîtrisée',
       'Objectif <36% atteint',
       "'Stable'",
@@ -191,7 +167,7 @@ void main() {
       expect(
         source,
         isNot(contains(forbidden)),
-        reason: 'Personalized CV claim remains: $forbidden',
+        reason: 'CV must stay descriptive without verified CGM coverage: $forbidden',
       );
     }
   });
