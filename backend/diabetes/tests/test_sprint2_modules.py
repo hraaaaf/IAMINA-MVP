@@ -4,7 +4,7 @@ conversation._trim_history, compute_trend, evidence-qualified pre/post-meal
 observation, LLM rate guard, AGP percentile helper, and AuditLog.
 """
 
-from datetime import datetime, timedelta, timezone as dt_timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 from django.contrib.auth.models import User
@@ -232,7 +232,7 @@ class PostmealSpikeDetectorTest(TestCase):
     def test_two_explicit_pairs_trigger_neutral_observation(self):
         from diabetes.services.clinical.engine import detect_postmeal_spike
 
-        base = datetime(2024, 1, 10, 12, 0, 0, tzinfo=dt_timezone.utc)
+        base = datetime(2024, 1, 10, 12, 0, 0, tzinfo=UTC)
 
         def _e(val, context, delta_h, day_offset=0):
             e = MagicMock()
@@ -259,7 +259,7 @@ class PostmealSpikeDetectorTest(TestCase):
     def test_missing_pre_post_context_fails_closed(self):
         from diabetes.services.clinical.engine import detect_postmeal_spike
 
-        base = datetime(2024, 1, 10, 12, 0, 0, tzinfo=dt_timezone.utc)
+        base = datetime(2024, 1, 10, 12, 0, 0, tzinfo=UTC)
 
         def _e(val, meal, delta_h, day_offset=0):
             e = MagicMock()
@@ -280,7 +280,7 @@ class PostmealSpikeDetectorTest(TestCase):
     def test_no_pattern_when_rise_below_threshold(self):
         from diabetes.services.clinical.engine import detect_postmeal_spike
 
-        base = datetime(2024, 1, 10, 12, 0, 0, tzinfo=dt_timezone.utc)
+        base = datetime(2024, 1, 10, 12, 0, 0, tzinfo=UTC)
 
         def _e(val, context, delta_h, day_offset=0):
             e = MagicMock()
