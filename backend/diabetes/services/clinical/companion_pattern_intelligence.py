@@ -16,6 +16,10 @@ from datetime import datetime
 from typing import Literal
 
 from diabetes.models.clinical_observation import ClinicalObservationState
+from diabetes.services.clinical.companion_evidence_uncertainty import (
+    CompanionEvidenceContext,
+    build_companion_evidence_context,
+)
 from diabetes.services.clinical.personal_response import (
     MAX_WINDOW_DAYS,
     MIN_DISTINCT_DAYS,
@@ -90,6 +94,7 @@ class CompanionPatternItem:
     producer: str
     recorded_context: tuple[tuple[str, str], ...]
     limitations: tuple[str, ...]
+    evidence_context: CompanionEvidenceContext
     source_version: str = SOURCE_VERSION
 
 
@@ -251,6 +256,22 @@ def _markers(
     return tuple(markers)
 
 
+def _pattern_missing_data(
+    row: ClinicalObservationState,
+    *,
+    movement: BaselineMovement,
+    current_state: PatternCurrentState,
+) -> tuple[str, ...]:
+    missing: list[str] = []
+    if row.evidence_strength_trend == ClinicalObservationState.TREND_INITIAL:
+        missing.append("previous_evidence_density_not_available")
+    if movement == "initial_or_unknown":
+        missing.append("previous_baseline_relative_delta_not_available")
+    if current_state == "resolved":
+        missing.append("current_active_evidence_not_available_after_resolution")
+    return tuple(missing)
+
+
 def _project(row: ClinicalObservationState) -> CompanionPatternItem:
     _validate_observation(row)
     baseline_delta = float(row.baseline_delta_mg_dl)
@@ -269,6 +290,20 @@ def _project(row: ClinicalObservationState) -> CompanionPatternItem:
         limitations.append(
             "improving_descriptively_does_not_mean_treatment_response_or_outcome"
         )
+
+    limitations_tuple = tuple(limitations)
+    evidence_context = build_companion_evidence_context(
+        evidence_id=row.evidence_id,
+        producer=row.producer,
+        evidence_density=row.evidence_strength,
+        evidence_density_trend=row.evidence_strength_trend,
+        missing_data=_pattern_missing_data(
+            row,
+            movement=movement,
+            current_state=current_state,
+        ),
+        limitations=limitations_tuple,
+    )
 
     return CompanionPatternItem(
         observation_key=row.observation_key,
@@ -296,7 +331,8 @@ def _project(row: ClinicalObservationState) -> CompanionPatternItem:
         evidence_id=row.evidence_id,
         producer=row.producer,
         recorded_context=tuple(sorted(row.context_modifiers.items())),
-        limitations=tuple(limitations),
+        limitations=limitations_tuple,
+        evidence_context=evidence_context,
     )
 
 
