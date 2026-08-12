@@ -2,20 +2,22 @@
 
 IAmina is a **diabetes companion designed for the MENA region**. The product combines deterministic clinical logic, longitudinal patient context, offline-first tracking, and multilingual conversation to help people understand and follow their diabetes data more consistently.
 
-> **Current product scope:** diabetes only. IAmina is a companion, not a diagnostic or prescribing system. A second condition is explicitly gated behind real retention and payer evidence.
+> **Current product scope:** diabetes only. IAmina is a companion, not a diagnostic or prescribing system. It helps the patient understand, follow and prepare; it does not replace the physician. A second condition is explicitly gated behind real retention and payer evidence.
 
 ## Product doctrine
 
+- **Companion, never physician replacement.** IAmina may observe, compare, explain and propose safe non-prescriptive next steps; the qualified clinician remains the medical decision authority.
 - **MENA-first, not translation-first.** French, Modern Standard Arabic, and English are baseline languages. Country dialects are enabled only after native review and safety-parity validation.
 - **User choice beats geolocation.** Country/location may suggest language, dialect, units, time zone, and emergency resources; it must never silently decide them.
 - **Deterministic engine first.** IAmina's approved clinical/safety logic decides structured outputs. Generative models may verbalize approved minimized context or perform explicitly permitted media tasks.
-- **No diagnosis or prescription.** Emergency handling is deterministic and must never depend on an LLM response.
+- **No diagnosis or prescription.** IAmina does not diagnose, prescribe, calculate doses, optimize/change treatment or present itself as a medical consultation. Emergency handling is deterministic and must never depend on an LLM response.
+- **Suggestions stay non-prescriptive.** Personalized suggestions are limited to understanding data, monitoring, collecting missing context, approved education, preparing clinician discussion and follow-up recording.
 - **Sovereignty and minimization by design.** External model calls require the completed P0-MENA-1 server-side patient/purpose/modality authorization, payload minimization/allowlists, consent and processor-policy boundaries.
 - **Retention before expansion.** The first proof is a safe MENA pilot and measurable D90 retention, not feature count or number of disease modules.
 
 ## Current strategic status
 
-The repository is in a **clinical-intelligence + MENA pilot-hardening phase** before the first real-patient cohort.
+The repository is in a **companion-intelligence + MENA pilot-hardening phase** before the first real-patient cohort.
 
 ### Recently closed foundations
 
@@ -24,10 +26,11 @@ The repository is in a **clinical-intelligence + MENA pilot-hardening phase** be
 - **P0-MENA-3 — Sovereign authentication migration:** Django-owned registration/login/logout and IAMINA bearer-token flows are implemented with guarded Firebase migration/reconciliation paths retained until the zero-Firebase operational gate is legitimately satisfied.
 - **P2-CLINICAL-TWIN — Longitudinal Observation Memory:** approved deterministic `personal_response` observations have a recomputable longitudinal lifecycle with governed provenance, data-erasure reconciliation and patient export/retention compatibility.
 - **P2-PROACTIVE — Prioritization + Insight Lifecycle:** approved Clinical Twin observations feed a bounded, auditable non-urgent proactive workflow; the current source cannot escalate, change treatment or gain generative clinical authority.
+- **Consultation Brief Contract v1:** PR #143 delivered a certified restricted consultation-support sub-contract. It is preserved as a future P2-COMPANION consultation capability; it does not define IAmina as a doctor or doctor-facing product.
 
 ### Still open on the critical path
 
-1. Build **P2-DOCTOR — Consultation Intelligence** on top of the certified Clinical Twin + proactive foundation.
+1. Build **P2-COMPANION — Companion Intelligence** on top of the certified Clinical Twin + proactive foundation, beginning with the canonical companion authority contract and then patient-specific longitudinal understanding.
 2. Complete P0-MENA-2 native-language safety review, including remaining Darija high-severity variants and multimodal/transliteration parity.
 3. Complete restricted pilot consent, processor/subprocessor, privacy/CNDP and Morocco residency/cross-border approvals.
 4. Remediate or explicitly supersede the pilot-blocking reachable Git-history secret finding tracked by issue #30 before a real-patient go/no-go.
@@ -35,7 +38,7 @@ The repository is in a **clinical-intelligence + MENA pilot-hardening phase** be
 6. Run the real-patient pilot go/no-go only after the safety/compliance gates are legitimately closed.
 7. Measure D90 retention, safety and clinical usefulness, then decide whether to expand.
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the live backlog and gates.
+See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the live backlog and gates and [`docs/COMPANION_INTELLIGENCE_CONTRACT.md`](docs/COMPANION_INTELLIGENCE_CONTRACT.md) for the product/authority ceiling.
 
 ## Stack
 
@@ -87,6 +90,7 @@ docs/                  Product, architecture, safety, roadmap, ADRs, technical d
 | Document | Authority |
 |---|---|
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Single forward backlog, priorities, gates, current closeout state |
+| [`docs/COMPANION_INTELLIGENCE_CONTRACT.md`](docs/COMPANION_INTELLIGENCE_CONTRACT.md) | Companion product identity, authority ceiling, allowed suggestion classes and P2-COMPANION sequence |
 | [`docs/architecture/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) | Current as-built architecture + target boundaries |
 | [`docs/SPECS.md`](docs/SPECS.md) | Current product/API capability contract |
 | [`docs/MEDICAL_DATA_PLAN.md`](docs/MEDICAL_DATA_PLAN.md) | Clinical-data and safety boundaries |
@@ -100,6 +104,8 @@ Dated assessments and deleted legacy plans remain available through git history 
 
 ## Non-negotiable safety rules
 
+- Never present IAmina as a physician, medical consultation or replacement for qualified professional care.
+- Never allow a personalized suggestion to become diagnosis, prescription, dose calculation, treatment optimization/change or autonomous medical instruction.
 - Never bypass or reorder deterministic emergency and unit-normalization safety gates without an explicit architecture decision.
 - Never weaken cookie/session CSRF protection with a blanket API exemption.
 - Never send medical emergencies to a generative model for decision-making.
