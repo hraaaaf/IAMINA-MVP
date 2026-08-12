@@ -145,6 +145,14 @@ def resolve_emergency_locale(
     return fallback_emergency_locale(language, message)
 
 
+def _preferred_emergency_language(locale: ResolvedLocale, message: str) -> str:
+    """Respect confirmed response language; Darija refines only an Arabic choice."""
+    preferred = locale.response_language
+    if preferred == "ar" and locale.dialect == "ar-MA":
+        preferred = "ar-MA"
+    return normalize_emergency_language(preferred, message)
+
+
 def _response_class(reason: str | None) -> str:
     return "crisis" if reason == "suicidal_ideation" else "medical"
 
@@ -199,10 +207,7 @@ def compose_emergency_response(
     if decision.action != URGENT:
         raise ValueError("Emergency response composition requires an URGENT decision")
 
-    language = normalize_emergency_language(
-        locale.dialect or locale.response_language,
-        message,
-    )
+    language = _preferred_emergency_language(locale, message)
     response_class = _response_class(decision.reason)
     resources = resolve_emergency_resources(locale)
     if response_class == "crisis":
