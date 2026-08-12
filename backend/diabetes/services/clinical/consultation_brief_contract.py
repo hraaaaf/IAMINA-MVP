@@ -15,6 +15,11 @@ from enum import Enum
 from typing import Any
 
 from core.contracts.truth import TruthKind
+from diabetes.services.clinical.evidence_registry import (
+    ClinicalAuthority,
+    RecordKind,
+    get_evidence,
+)
 
 CONSULTATION_BRIEF_SCHEMA_VERSION = "consultation-brief.v1"
 
@@ -78,6 +83,24 @@ _CHANGE_KINDS_REQUIRING_REVIEW_CHECKPOINT = frozenset(
 )
 
 
+def _is_timezone_aware(value: datetime) -> bool:
+    return value.tzinfo is not None and value.utcoffset() is not None
+
+
+def _validate_governed_evidence_id(evidence_id: str) -> None:
+    try:
+        record = get_evidence(evidence_id)
+    except KeyError as exc:
+        raise ValueError("consultation derivation evidence_id is not registered") from exc
+
+    if record.kind is not RecordKind.RULE:
+        raise ValueError("consultation derivation evidence_id must reference a product rule")
+    if record.clinical_authority is not ClinicalAuthority.GOVERNED_RULE:
+        raise ValueError(
+            "consultation derivation requires governed_rule clinical authority"
+        )
+
+
 @dataclass(frozen=True)
 class ConsultationReviewCheckpoint:
     """Explicit prior-review anchor required for any since-review statement."""
@@ -88,6 +111,8 @@ class ConsultationReviewCheckpoint:
     def __post_init__(self) -> None:
         if not self.source or not self.source.strip():
             raise ValueError("review checkpoint source is required")
+        if not _is_timezone_aware(self.reviewed_at):
+            raise ValueError("review checkpoint reviewed_at must be timezone-aware")
 
 
 @dataclass(frozen=True)
@@ -124,6 +149,7 @@ class ConsultationEvidenceItem:
                 raise ValueError(
                     "deterministic consultation derivations require an evidence_id"
                 )
+            _validate_governed_evidence_id(self.evidence_id)
         elif self.evidence_id is not None:
             raise ValueError("observed facts must not masquerade as governed derivations")
         if self.evidence_window_days is not None and self.evidence_window_days <= 0:
@@ -157,6 +183,10 @@ class ConsultationBriefEnvelope:
     def __post_init__(self) -> None:
         if self.schema_version != CONSULTATION_BRIEF_SCHEMA_VERSION:
             raise ValueError("unsupported consultation brief schema version")
+        if not _is_timezone_aware(self.window_start) or not _is_timezone_aware(
+            self.window_end
+        ):
+            raise ValueError("consultation brief window datetimes must be timezone-aware")
         if self.window_start >= self.window_end:
             raise ValueError("consultation brief window_start must precede window_end")
         if self.comparison_basis is ConsultationComparisonBasis.CURRENT_SNAPSHOT:
