@@ -1,7 +1,9 @@
 part of '../dashboard_screen.dart';
 
 // ── GMI Card ──────────────────────────────────────────────────────────────────
-
+// P1-EVIDENCE: GMI is CGM-derived. Local journal rows do not carry a validated
+// sensor wear-time/cadence contract, so this offline surface must fail closed
+// instead of computing GMI from manual or mixed readings.
 class _GMICard extends StatelessWidget {
   final List<LogEntryData> logs;
   final List<LogEntryData> prevLogs;
@@ -24,17 +26,8 @@ class _GMICard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AuditedPageCopy.of(context).l10n;
-    final gmi = ClinicalEngine.calcGMI(logs);
-    final mean = ClinicalEngine.calcMean(logs);
     final daysCount = _daysWithData(logs);
-    final hasLimitedCoverage = daysCount < 14 || logs.length < 50;
-    final spots = logs.reversed
-        .toList()
-        .asMap()
-        .entries
-        .where((entry) => entry.key % math.max(1, logs.length ~/ 20) == 0)
-        .map((entry) => FlSpot(entry.key.toDouble(), entry.value.bloodSugar))
-        .toList();
+    final mean = logs.isEmpty ? null : ClinicalEngine.calcMean(logs);
 
     return ClinicalCard(
       padding: const EdgeInsets.all(20),
@@ -46,48 +39,18 @@ class _GMICard extends StatelessWidget {
             meta: '$range ${l10n.dayShort}',
           ),
           const SizedBox(height: 16),
-          Builder(
-            builder: (context) {
-              final prevGmi = ClinicalEngine.calcGMI(prevLogs);
-              final delta = gmi - prevGmi;
-              final hasComparablePeriod =
-                  prevLogs.isNotEmpty && logs.isNotEmpty;
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    logs.isEmpty ? '--' : gmi.toStringAsFixed(1),
-                    style: TextStyle(
-                      fontSize: 60,
-                      fontWeight: FontWeight.w800,
-                      color: AminaTheme.textPrimary(context),
-                      letterSpacing: -2,
-                      height: 0.9,
-                    ),
-                  ),
-                  const Text(
-                    '%',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: AminaTheme.ink400,
-                    ),
-                  ),
-                  if (hasComparablePeriod) ...[
-                    const SizedBox(width: 10),
-                    _DeltaChip(
-                      label:
-                          '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(1)} pt',
-                      positive: delta <= 0,
-                    ),
-                  ],
-                ],
-              );
-            },
+          Text(
+            '--',
+            style: TextStyle(
+              fontSize: 60,
+              fontWeight: FontWeight.w800,
+              color: AminaTheme.textPrimary(context),
+              letterSpacing: -2,
+              height: 0.9,
+            ),
           ),
-          if (logs.isNotEmpty) ...[
-            const SizedBox(height: 6),
+          const SizedBox(height: 8),
+          if (mean != null)
             Text(
               l10n.dashboardGmiCoverage(
                 mean.toStringAsFixed(0),
@@ -100,107 +63,60 @@ class _GMICard extends StatelessWidget {
                 height: 1.35,
               ),
             ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-              decoration: BoxDecoration(
-                color: hasLimitedCoverage
-                    ? AminaTheme.ambre50
-                    : AminaTheme.teal50,
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(
-                  color: hasLimitedCoverage
-                      ? AminaTheme.ambre500.withValues(alpha: 0.25)
-                      : AminaTheme.teal200,
-                ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            decoration: BoxDecoration(
+              color: AminaTheme.ambre50,
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(
+                color: AminaTheme.ambre500.withValues(alpha: 0.25),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    hasLimitedCoverage
-                        ? Icons.info_outline
-                        : Icons.calculate_outlined,
-                    size: 14,
-                    color: hasLimitedCoverage
-                        ? AminaTheme.ambre700
-                        : AminaTheme.teal700,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      hasLimitedCoverage
-                          ? l10n.dashboardGmiLimitedCoverage
-                          : l10n.dashboardGmiCalculated,
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        color: hasLimitedCoverage
-                            ? AminaTheme.ambre700
-                            : AminaTheme.teal700,
-                        height: 1.35,
-                      ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.sensors_off_outlined,
+                  size: 15,
+                  color: AminaTheme.ambre700,
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    l10n.dashboardInsufficientData,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AminaTheme.ambre700,
+                      height: 1.35,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.dashboardGmiDisclaimer,
-              style: TextStyle(
-                fontSize: 10.5,
-                color: AminaTheme.textSecondary(context),
-                height: 1.35,
-              ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.dashboardGmiDisclaimer,
+            style: TextStyle(
+              fontSize: 10.5,
+              color: AminaTheme.textSecondary(context),
+              height: 1.35,
             ),
-          ],
+          ),
           const SizedBox(height: 14),
-          if (spots.length >= 2)
-            SizedBox(
-              height: 44,
-              child: LineChart(
-                LineChartData(
-                  gridData: const FlGridData(show: false),
-                  titlesData: const FlTitlesData(show: false),
-                  borderData: FlBorderData(show: false),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: spots,
-                      isCurved: true,
-                      curveSmoothness: 0.4,
-                      color: AminaTheme.teal500,
-                      barWidth: 2,
-                      isStrokeCapRound: true,
-                      dotData: const FlDotData(show: false),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        gradient: LinearGradient(
-                          colors: [
-                            AminaTheme.teal500.withValues(alpha: 0.14),
-                            AminaTheme.teal500.withValues(alpha: 0.0),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            SizedBox(
-              height: 44,
-              child: Center(
-                child: Text(
-                  l10n.dashboardInsufficientData,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AminaTheme.textSecondary(context),
-                  ),
-                ),
+          SizedBox(
+            height: 44,
+            child: Center(
+              child: Icon(
+                Icons.sensors_off_outlined,
+                size: 24,
+                color: AminaTheme.textSecondary(context),
               ),
             ),
+          ),
         ],
       ),
     );
