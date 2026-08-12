@@ -119,6 +119,14 @@ class Migration(migrations.Migration):
                         condition=models.Q(('truth_kind', 'deterministic_derivation')),
                         name='clinical_obs_truth_deterministic',
                     ),
+                    models.CheckConstraint(
+                        condition=models.Q(('producer', 'diabetes.personal_response.v1')),
+                        name='clinical_obs_producer_personal_response',
+                    ),
+                    models.CheckConstraint(
+                        condition=models.Q(('evidence_id', 'rule.personal-response.repetition.v1')),
+                        name='clinical_obs_evidence_personal_response',
+                    ),
                 ],
             },
         ),
