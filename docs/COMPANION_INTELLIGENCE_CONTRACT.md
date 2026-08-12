@@ -96,7 +96,21 @@ Approved longitudinal semantics include:
 
 These semantics do not by themselves establish diagnosis, causality, treatment response or future prediction.
 
-### 5.1 Change-since-review contract
+### 5.1 Personal-pattern projection contract
+
+P2-COMPANION-2 may make existing governed Clinical Twin observations easier to understand, but it cannot create or upgrade clinical truth:
+
+- the projection is read-only and patient-scoped; it consumes only already-persisted governed `ClinicalObservationState`;
+- first observed, activation-episode recurrence, active/resolved lifecycle, evidence density/trend and baseline-relative values come directly from the governed Clinical Twin state;
+- observation key, kind and recorded context must match the existing approved personal-response vocabulary exactly; malformed or ungoverned stored state fails closed;
+- `persisting`, `recurring`, `improving_descriptively` and `resolved` are bounded descriptive markers only;
+- `improving_descriptively` means movement of the absolute baseline-relative delta toward the patient's own eligible window median. That median is descriptive rather than a clinical target, and the marker does not establish treatment response, therapeutic success, clinical outcome or causality;
+- evidence density and its trend describe repetition density only, never probability, statistical significance or clinical confidence;
+- resolved rows must disclose that numeric values describe their last eligible active evidence rather than current physiology;
+- no governed patterns is not evidence that no disease or clinical issue exists, and presentation order must not be treated as clinical priority;
+- this projection adds no detector, write, clinical threshold, prioritization, suggestion, narration or autonomous medical authority.
+
+### 5.2 Change-since-review contract
 
 P2-COMPANION-1 makes review history an explicit governed product event rather than an inferred timestamp:
 
@@ -147,7 +161,7 @@ The deterministic structured result is authoritative; narration is optional pres
 |---|---|---|
 | **P2-COMPANION-0** | **Companion Intelligence Contract** | Product/authority ceiling is canonical; consultation is explicitly a sub-capability; no doctor-replacement framing |
 | **P2-COMPANION-1** | **Change Since Last Review** | ✅ Certified in PR #147: governed explicit companion-review anchor + deterministic `new/persisting/improving/resolved/unknown`; post-merge CI #1913 + drift #1725 green |
-| **P2-COMPANION-2** | **Personal Pattern Intelligence** | ▶️ NEXT: first/recurring/persisting/improving/resolved personal observations without causal or diagnostic upgrade |
+| **P2-COMPANION-2** | **Personal Pattern Intelligence** | 🟡 MERGE GATE: PR #149 read-only governed Clinical Twin projection; no causal/diagnostic/treatment-response upgrade |
 | P2-COMPANION-3 | Evidence + Uncertainty | Every material observation exposes provenance, evidence maturity, limitations and missing data |
 | P2-COMPANION-4 | Smart Suggestions | Non-prescriptive suggestions limited to understand/monitor/collect/learn/discuss/follow-up classes |
 | P2-COMPANION-5 | Consultation Companion | Prepare the patient for a clinician review using the inherited `consultation-brief.v1` authority contract |

@@ -134,6 +134,18 @@ The existence of an input field does not authorize IAmina to advise a dose or mo
 - deterministic emergency classification/routing remains upstream and outside the non-urgent attention budget;
 - no proactive state or API output may diagnose, prescribe, calculate a dose, infer causality, optimize/change treatment or grant generative-model clinical authority.
 
+### Companion personal-pattern intelligence contract
+
+- P2-COMPANION-2 is a read-only projection of already-governed `ClinicalObservationState`; it does not run a new detector, refresh Clinical Twin state or persist new clinical truth;
+- patient scope is explicit server-side and every projected row must retain the approved deterministic truth kind, `diabetes.personal_response.v1` producer and `rule.personal-response.repetition.v1` evidence ID;
+- observation key, kind and recorded-context payload must exactly match the governed personal-response vocabulary; noncanonical 90-day windows, malformed evidence-density history, inconsistent baseline history or non-finite numeric state fail closed;
+- projected longitudinal fields may include first-observed time, recurrence count, active/resolved state, evidence density + repeatability trend, eligible observation/distinct-day counts and personal-window baseline-relative descriptive values;
+- bounded markers are `persisting`, `recurring`, `improving_descriptively` and `resolved`; `recurring` means activation-episode recurrence already tracked by Clinical Twin;
+- `improving_descriptively` means absolute baseline-relative delta moved toward the patient's own eligible window median. The window median is not a clinical target and this marker is not treatment response, clinical outcome or causality;
+- resolved patterns must identify numeric values as last-eligible-active evidence rather than current physiology; `no_governed_patterns` must not be presented as absence of disease/clinical issue;
+- evidence density/trend is repeatability only and output order is not clinical priority;
+- P2-COMPANION-2 introduces no endpoint, Flutter UX, narration, notification, ranking/prioritization, diagnosis, prediction, prescription, dose calculation, treatment optimization/change or clinician override.
+
 ### Companion change-since-review contract
 
 - `CompanionReviewAnchor` is patient-owned product workflow state created by a server-side explicit companion-review action; it is not a clinician consultation, diagnosis or medical record authored by a professional;
