@@ -147,11 +147,13 @@ class RuntimeEvidenceCoverageTests(SimpleTestCase):
         self.assertEqual(rule.clinical_authority, ClinicalAuthority.GOVERNED_RULE_CANDIDATE)
         self.assertIn(updated.evidence_id, rule.supporting_evidence_ids)
 
-    def test_gmi_rule_requires_verified_cgm_and_is_not_lab_a1c(self):
+    def test_gmi_rule_requires_verified_cgm_and_formula_promotion(self):
         record = get_evidence("rule.metric.gmi-cgm.v1")
         combined = " ".join((record.claim_or_rule, record.limitations)).lower()
+        modality = " ".join(record.modality).lower()
         self.assertIn("cgm", combined)
-        self.assertIn("verified", combined)
+        self.assertIn("verified", modality)
+        self.assertIn("promotion", combined)
         self.assertIn("not laboratory a1c", combined)
 
     def test_hyperglycemia_product_thresholds_are_not_mislabeled_standard_of_care(self):
