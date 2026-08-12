@@ -1,0 +1,194 @@
+name: Temporary P2 companion 1 docs
+
+on:
+  push:
+    branches:
+      - agent/p2-companion-change-since-review
+
+permissions:
+  contents: write
+
+jobs:
+  sync-docs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2-companion-change-since-review
+      - name: Align canonical companion comparison contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected one anchor in {path}, found {count}")
+              p.write_text(text.replace(old, new, 1))
+
+          roadmap = "docs/ROADMAP.md"
+          replace_once(
+              roadmap,
+              "> **Last updated:** 2026-08-12 — product authority is rebased from the former P2-DOCTOR lane to **P2-COMPANION — Companion Intelligence**. P2-COMPANION-0 defines the canonical companion ceiling; the certified `consultation-brief.v1` from PR #143 is preserved as a restricted future consultation sub-capability, not as IAmina's product identity. **P2-COMPANION-1 — Change Since Last Review is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.",
+              "> **Last updated:** 2026-08-12 — P2-COMPANION-1 Change Since Last Review has a Clinical-Safety- and Database-reviewed runtime candidate in PR #147. It uses a server-captured explicit companion-review anchor and remains in merge gate; no endpoint/UX is claimed. UX visual rebase remains closed through UX-11 at 9.8/10.",
+          )
+          replace_once(
+              roadmap,
+              "| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority contract | 🟡 P2-COMPANION active — Change Since Last Review next | P2-COMPANION-0 canonical contract; PR #143 consultation contract retained as P2-COMPANION-5 foundation |",
+              "| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority contract; change-since-review runtime candidate | 🟡 P2-COMPANION-1 merge gate | PR #147 exact runtime head reviewed; final docs-inclusive certification/merge/post-merge still required |",
+          )
+          old_p2_1 = "\n".join([
+              "### ▶️ P2-COMPANION-1 — Change Since Last Review — NEXT",
+              "",
+              "Build evidence-qualified current-vs-history comparison for the patient. The engine must identify what is new, persisting, improving, resolved or unknown relative to an explicit governed comparison anchor; it must fail closed when eligible data or the anchor is insufficient and must not infer diagnosis, causality, treatment response or clinician judgment.",
+          ])
+          new_p2_1 = "\n".join([
+              "### 🟡 P2-COMPANION-1 — Change Since Last Review — MERGE GATE",
+              "",
+              "PR #147 adds the deterministic runtime foundation for comparing current governed Clinical Twin state with the patient's last explicit IAmina companion review.",
+              "",
+              "Candidate contract:",
+              "",
+              "- the comparison anchor is a server-timestamped `CompanionReviewAnchor` created by an explicit companion-review action; app-open activity, conversation state, a model or a client-supplied timestamp cannot manufacture review history;",
+              "- each anchor snapshots only approved deterministic `ClinicalObservationState` fields and retains the existing `diabetes.personal_response.v1` / `rule.personal-response.repetition.v1` authority;",
+              "- anchor capture and comparison share the canonical patient-row serialization lock with Clinical Twin refresh/erasure;",
+              "- bounded change states are `new`, `persisting`, `improving`, `resolved` and `unknown`; missing anchor returns `insufficient_anchor`;",
+              "- `improving` means only that the descriptive baseline-relative delta moved toward the patient's governed personal-window baseline; it is not treatment response, clinical outcome or causality;",
+              "- missing current state, absent eligible post-review evidence or an unprovable transition returns `unknown` rather than fabricating persistence or resolution;",
+              "- reactivation is represented as `new` with explicit reactivation provenance;",
+              "- explicit source erasure/replacement invalidates companion-review anchors before Clinical Twin rebuild so removed source evidence cannot survive in historical comparison snapshots;",
+              "- patient export and account-deletion cascade include the persisted anchor/snapshot state;",
+              "- P2-COMPANION-1 does not add an endpoint, Flutter UX, model narration, notification behavior, diagnosis, prescription, dose logic, causal attribution, treatment optimization or clinician override.",
+              "",
+              "**Runtime evidence before canonical-doc update:** exact head `b5c18b5988def4466afd3585aae2c155175e433a` passed CI #1906 + migration drift #1718, Clinical Safety Reviewer and Database/Migration Reviewer. These proofs become stale once docs change; final docs-inclusive exact-head gates and Release Certifier remain mandatory before merge.",
+          ])
+          replace_once(roadmap, old_p2_1, new_p2_1)
+          replace_once(
+              roadmap,
+              "| **P2-COMPANION-1** | **Change Since Last Review** | ▶️ **NEXT** | Evidence-qualified current-vs-history change; insufficient anchor/data fail closed; no diagnosis/causality/treatment response |",
+              "| **P2-COMPANION-1** | **Change Since Last Review** | 🟡 **MERGE GATE** | PR #147 governed explicit-review anchor + deterministic comparison; final exact-head certification/merge/post-merge pending |",
+          )
+          replace_once(
+              roadmap,
+              "1. **Companion intelligence product lane:** execute **P2-COMPANION-1 — Change Since Last Review**. Do not resume the superseded P2-DOCTOR assembler-first sequence.",
+              "1. **Companion intelligence product lane:** finish **P2-COMPANION-1 — Change Since Last Review** certification/merge/post-merge. Only after canonical closeout does P2-COMPANION-2 become NEXT; do not resume the superseded P2-DOCTOR assembler-first sequence.",
+          )
+
+          companion = "docs/COMPANION_INTELLIGENCE_CONTRACT.md"
+          old_longitudinal = "\n".join([
+              "## 5. Longitudinal behavior",
+              "",
+              "IAmina should become more useful through governed history, not by pretending certainty.",
+              "",
+              "Approved longitudinal semantics include:",
+              "",
+              "- first observed;",
+              "- recurring;",
+              "- persisting;",
+              "- improving descriptively;",
+              "- resolved after eligible evidence;",
+              "- changed relative to the patient's own baseline;",
+              "- unknown because eligible evidence is insufficient.",
+              "",
+              "These semantics do not by themselves establish diagnosis, causality, treatment response or future prediction.",
+          ])
+          new_longitudinal = "\n".join([
+              "## 5. Longitudinal behavior",
+              "",
+              "IAmina should become more useful through governed history, not by pretending certainty.",
+              "",
+              "Approved longitudinal semantics include:",
+              "",
+              "- first observed;",
+              "- recurring;",
+              "- persisting;",
+              "- improving descriptively;",
+              "- resolved after eligible evidence;",
+              "- changed relative to the patient's own baseline;",
+              "- unknown because eligible evidence is insufficient.",
+              "",
+              "These semantics do not by themselves establish diagnosis, causality, treatment response or future prediction.",
+              "",
+              "### 5.1 Change-since-review contract",
+              "",
+              "P2-COMPANION-1 makes review history an explicit governed product event rather than an inferred timestamp:",
+              "",
+              "- a review anchor is created server-side only when an explicit companion-review action is invoked; opening the app, reading data, chatting with IAmina or model output cannot create one;",
+              "- the anchor is patient-scoped and snapshots only approved deterministic Clinical Twin observations under their existing producer/evidence authority;",
+              "- the engine compares the latest anchor with current governed Clinical Twin state and may emit only `new`, `persisting`, `improving`, `resolved` or `unknown`; no anchor yields `insufficient_anchor`;",
+              "- `improving` means a descriptive baseline-relative delta moved toward the patient's own governed window baseline. It must never be narrated as treatment response, therapeutic success or clinical outcome;",
+              "- missing current state or insufficient post-review evidence is `unknown`, not silent resolution;",
+              "- source erasure/replacement invalidates anchors that may encode the removed evidence before Clinical Twin rebuild;",
+              "- persisted anchors/snapshots are patient-owned application records and remain subject to export, account deletion and retention governance;",
+              "- the anchor records an IAmina **companion review**, not a clinician consultation. Consultation history remains a separate P2-COMPANION-5 concern.",
+          ])
+          replace_once(companion, old_longitudinal, new_longitudinal)
+          replace_once(
+              companion,
+              "| P2-COMPANION-1 | Change Since Last Review | Evidence-qualified current-vs-history change with explicit insufficient-data behavior |",
+              "| P2-COMPANION-1 | Change Since Last Review | Governed explicit companion-review anchor + deterministic `new/persisting/improving/resolved/unknown`; runtime candidate in PR #147, merge gate pending |",
+          )
+
+          specs = "docs/SPECS.md"
+          specs_anchor = "### Consultation intelligence contract"
+          specs_section = "\n".join([
+              "### Companion change-since-review contract",
+              "",
+              "- `CompanionReviewAnchor` is patient-owned product workflow state created by a server-side explicit companion-review action; it is not a clinician consultation, diagnosis or medical record authored by a professional;",
+              "- anchor timestamps are server-generated and cannot be supplied by the client, inferred from app-open/read activity, conversation state or generated by a model;",
+              "- anchor snapshots admit only the existing governed `ClinicalObservationState` truth kind, producer, evidence ID, lifecycle status and evidence-density vocabulary;",
+              "- anchor capture and comparison serialize on the same patient-row lock used by canonical Clinical Twin refresh/erasure;",
+              "- comparison output is bounded to `new`, `persisting`, `improving`, `resolved` and `unknown`; absence of an anchor returns `insufficient_anchor`;",
+              "- `improving` is descriptive only: absolute baseline-relative delta moved toward the patient's governed personal-window baseline. It does not establish treatment response, clinical outcome or causality;",
+              "- missing current state, missing eligible post-review evidence or an unprovable transition fails closed to `unknown`; resolution cannot be inferred from silence;",
+              "- explicit source erasure/replacement invalidates all patient companion-review anchors before Clinical Twin rebuild; patient export/account deletion/retention governance applies to anchor and snapshot rows;",
+              "- P2-COMPANION-1 introduces no endpoint, Flutter UX, model narration, notification behavior, diagnosis, prescription, dose calculation, treatment optimization or clinician override.",
+              "",
+              specs_anchor,
+          ])
+          replace_once(specs, specs_anchor, specs_section)
+
+          medical = "docs/MEDICAL_DATA_PLAN.md"
+          medical_anchor = "### 5.1 Consultation-intelligence evidence boundary"
+          medical_section = "\n".join([
+              "### 5.1 Companion longitudinal-comparison boundary",
+              "",
+              "A claim about what changed since a prior IAmina review requires a governed comparison anchor; review history must never be inferred from app activity or model context:",
+              "",
+              "- the anchor is server-timestamped only after an explicit companion-review action and is patient-scoped;",
+              "- the anchor snapshots only already-governed deterministic Clinical Twin observations and carries no independent clinical authority;",
+              "- only `new`, `persisting`, descriptive `improving`, governed `resolved` and `unknown` are permitted comparison states;",
+              "- `improving` means movement of the descriptive baseline-relative delta toward the patient's own eligible window baseline; it is not evidence of treatment response, clinical outcome or causality;",
+              "- no anchor is `insufficient_anchor`; missing current state, insufficient post-review evidence or ambiguous transition is `unknown`; missing data must not become resolution;",
+              "- explicit deletion/replacement of clinically contributive source data invalidates derived review anchors before Clinical Twin recomputation so erased evidence cannot remain in historical comparison state;",
+              "- anchor/snapshot persistence remains patient-owned application data subject to export, account deletion and retention rules;",
+              "- this product review anchor is not a clinician consultation checkpoint and cannot be used to fabricate consultation history.",
+              "",
+              "### 5.2 Consultation-intelligence evidence boundary",
+          ])
+          replace_once(medical, medical_anchor, medical_section)
+
+          architecture = "docs/architecture/ARCHITECTURE.md"
+          arch_anchor = "Destructive mutation of clinically contributive source Journal rows is serialized against canonical Clinical Twin refresh. Persisted derived observation state is purged/rebuilt only from surviving authoritative source rows, while normal sparse refresh remains a distinct longitudinal-history behavior. Patient export/account deletion/retention govern the derived Clinical Twin state, and subordinate proactive workflow state cannot outlive deletion of its source observation."
+          arch_replacement = "\n\n".join([
+              arch_anchor,
+              "P2-COMPANION-1 adds a diabetes-owned `CompanionReviewAnchor` workflow checkpoint plus immutable observation snapshots for deterministic longitudinal comparison. The anchor does not create clinical truth: it copies only already-governed Clinical Twin state at a server-generated explicit companion-review event. Capture/comparison share the canonical patient-row serialization lock. Explicit source erasure/replacement deletes affected patient anchors before Clinical Twin rebuild because historical snapshots may encode erased source evidence. No app-open/read event, client timestamp, conversation state or model output may become a review anchor. The comparison layer may classify only `new`, `persisting`, descriptive `improving`, governed `resolved` or `unknown`; missing evidence fails closed. This state is patient-owned application data and remains under portability/deletion/retention governance.",
+          ])
+          replace_once(architecture, arch_anchor, arch_replacement)
+          replace_once(
+              architecture,
+              "P2-DOCTOR adds a downstream versioned consultation-brief authority contract, not a new truth store. `consultation-brief.v1` accepts only bounded immutable observed facts plus evidence-registry-governed deterministic derivations, separates current-snapshot from explicit-review-checkpoint comparison semantics, and fixes model narration to approved structured fields only. The contract has no endpoint or persistence side effect in P2-DOCTOR-0; deterministic assembly, checkpoint persistence/selection and replacement of the legacy AI doctor-brief path remain later LOTs.",
+              "The inherited PR #143 `consultation-brief.v1` contract remains a downstream restricted P2-COMPANION-5 consultation-support sub-contract, not a new truth store and not IAmina's product identity. It accepts only bounded immutable observed facts plus evidence-registry-governed deterministic derivations and keeps model narration subordinate to approved structured fields. The P2-COMPANION-1 review anchor is explicitly a patient companion-review checkpoint; it must not be relabeled as a clinician consultation checkpoint. Consultation assembly, endpoint replacement and clinician-facing/patient-preparation UX remain later separately certified work.",
+          )
+          PY
+      - name: Commit canonical docs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ROADMAP.md docs/COMPANION_INTELLIGENCE_CONTRACT.md docs/SPECS.md docs/MEDICAL_DATA_PLAN.md docs/architecture/ARCHITECTURE.md
+          git diff --cached --quiet && exit 0
+          git commit -m "docs(companion): align change since review contract"
+          git push origin HEAD:agent/p2-companion-change-since-review
