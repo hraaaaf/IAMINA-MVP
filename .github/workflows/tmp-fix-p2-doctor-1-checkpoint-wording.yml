@@ -1,0 +1,38 @@
+name: Temporary fix P2 doctor 1 checkpoint wording
+
+on:
+  push:
+    branches:
+      - agent/p2-doctor-contract-closeout
+
+permissions:
+  contents: write
+
+jobs:
+  fix-wording:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2-doctor-contract-closeout
+      - name: Fix current snapshot vs since-review wording
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('docs/ROADMAP.md')
+          text = p.read_text()
+          old = 'Build the deterministic assembler from approved synchronized observed facts, governed KPI/Clinical Twin derivations and an authoritative prior-review checkpoint source. The assembler must produce `consultation-brief.v1` without model-authored fields, must fail closed when the checkpoint or governed evidence is unavailable, and must not replace the legacy narrator endpoint until separately certified.'
+          new = 'Build the deterministic assembler from approved synchronized observed facts, governed KPI/Clinical Twin derivations and an authoritative prior-review checkpoint source. The assembler must produce `consultation-brief.v1` without model-authored fields; `SINCE_REVIEW_CHECKPOINT` semantics must fail closed when the checkpoint is unavailable, while `CURRENT_SNAPSHOT` may still be emitted with the missing-checkpoint limitation made explicit. Ungoverned derivations remain ineligible, and the legacy narrator endpoint must not be replaced until separately certified.'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one anchor, found {text.count(old)}')
+          p.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit wording fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ROADMAP.md
+          git diff --cached --quiet && exit 0
+          git commit -m "docs(clinical): clarify P2 doctor checkpoint fail-closed semantics"
+          git push origin HEAD:agent/p2-doctor-contract-closeout
