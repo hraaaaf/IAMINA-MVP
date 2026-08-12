@@ -152,7 +152,6 @@ _DARIJA_INDICATORS = frozenset(
 
 
 def _generic_locale() -> ResolvedLocale:
-    """Number-free locale used when no confirmed profile can be resolved."""
     return ResolvedLocale(
         country_code=None,
         ui_language="fr",
@@ -197,6 +196,15 @@ def _pick_emergency_response(
             "إلا كان فاقد الوعي، ما تعطيوه والو من الفم وبقاو معاه حتى توصل المساعدة.\n\n"
             "IAmina ما كتبدلش الرعاية الطبية المستعجلة."
         )
+    elif reply_language == "en":
+        reply = (
+            "⚠️ URGENT HEALTH SITUATION DETECTED — IAmina has stopped AI analysis.\n\n"
+            f"🚨 {contact_line}\n\n"
+            "If the person is conscious and can swallow, follow the hypoglycemia plan "
+            "already agreed with their care team. If they are unconscious, give nothing "
+            "by mouth and stay with them until emergency help arrives.\n\n"
+            "IAmina does not replace emergency medical care."
+        )
     else:
         reply = (
             "⚠️ SITUATION D'URGENCE DÉTECTÉE — IAmina suspend l'analyse IA.\n\n"
@@ -215,7 +223,6 @@ def _pick_emergency_response(
 
 
 def detect_vital_distress(text: str) -> bool:
-    """Return True when the legacy deterministic distress corpus matches."""
     lowered = text.lower()
     for keyword in _ALL_KEYWORDS:
         if keyword in lowered:
@@ -256,7 +263,7 @@ class TriageVitalMiddleware:
             if decision.action == URGENT and decision.reason == "glycemic_emergency":
                 self._log_emergency(request, user_message, kind="glycemic_classified")
                 locale = self._patient_locale(request)
-                lang = self._patient_lang(request, user_message, locale=locale)
+                lang = self._patient_lang(request, user_message)
                 response_payload = {
                     **_pick_emergency_response(
                         user_message,
@@ -270,7 +277,7 @@ class TriageVitalMiddleware:
             if decision.action == URGENT:
                 self._log_emergency(request, user_message, kind="legacy_keyword")
                 locale = self._patient_locale(request)
-                lang = self._patient_lang(request, user_message, locale=locale)
+                lang = self._patient_lang(request, user_message)
                 response_payload = {
                     **_pick_emergency_response(
                         user_message,
@@ -291,7 +298,6 @@ class TriageVitalMiddleware:
         )
 
     def _inspect_body(self, request) -> tuple[bool, str]:
-        """Return legacy `(distress_detected, message)` compatibility shape."""
         message = self._read_message(request)
         return detect_vital_distress(message), message
 
@@ -303,7 +309,7 @@ class TriageVitalMiddleware:
             return ""
 
     def _patient_locale(self, request) -> ResolvedLocale:
-        """Resolve country only from the explicit locale-preference provenance contract."""
+        """Resolve country only through explicit locale-preference provenance."""
         try:
             from core.models import BasePatientProfile
 
@@ -325,24 +331,32 @@ class TriageVitalMiddleware:
             pass
         return "MA"
 
-    def _patient_lang(
-        self,
-        request,
-        message: str,
-        *,
-        locale: ResolvedLocale | None = None,
-    ) -> str:
-        """Prefer confirmed response locale, then legacy profile preference, then message."""
-        if locale is not None and locale.response_language in ("fr", "ar", "en"):
-            if locale.response_language == "ar" and locale.dialect == "ar-MA":
-                return "ar-MA"
-            return locale.response_language
+    def _patient_lang(self, request, message: str) -> str:
+        """Use confirmed locale language, then legacy preference, then message heuristic."""
         try:
             from core.models import BasePatientProfile
 
             base = BasePatientProfile.objects.get(patient=request.user)
+            try:
+                preference = base.locale_preference
+            except Exception:
+                preference = None
+
+            if (
+                preference is not None
+                and preference.response_language_provenance == "user_confirmed"
+                and preference.response_language in ("fr", "ar", "en")
+            ):
+                if (
+                    preference.response_language == "ar"
+                    and preference.dialect_provenance == "user_confirmed"
+                    and preference.dialect == "ar-MA"
+                ):
+                    return "ar-MA"
+                return preference.response_language
+
             pref = (getattr(base, "preferred_language", "") or "").lower()
-            if pref in ("fr", "ar", "ar-ma"):
+            if pref in ("fr", "ar", "ar-ma", "en"):
                 return pref
         except Exception:
             pass
