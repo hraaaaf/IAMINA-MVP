@@ -156,7 +156,19 @@ Each detector requires:
 
 Do not add treatment-adjustment logic to pattern detectors.
 
-### 5.1 Companion longitudinal-comparison boundary
+### 5.1 Companion personal-pattern projection boundary
+
+A personal-pattern explanation may only project already-governed Clinical Twin state; it cannot create a stronger clinical claim:
+
+- accepted source rows remain deterministic `personal_response` observations with the existing evidence ID, producer, minimum repetition criteria and canonical 90-day window;
+- key/kind/recorded-context provenance, evidence-density history and baseline history must be internally consistent or the projection fails closed;
+- first-observed time, activation recurrence, persistence/resolution, evidence density/trend and baseline-relative descriptive values may be exposed as structured facts/derivations;
+- a move toward the patient's own eligible window median may be labelled only `improving_descriptively`; the median is not a clinical target and the movement is not treatment response, outcome or causality;
+- inactive patterns retain historical last-eligible-active numeric evidence only with that limitation explicit;
+- absence of governed patterns does not establish absence of disease/clinical issue; output order does not establish clinical priority;
+- no detector, threshold, causal inference, prediction, treatment optimization, dose advice or model-created clinical authority may be introduced by the projection layer.
+
+### 5.2 Companion longitudinal-comparison boundary
 
 A claim about what changed since a prior IAmina review requires a governed comparison anchor; review history must never be inferred from app activity or model context:
 
@@ -169,7 +181,7 @@ A claim about what changed since a prior IAmina review requires a governed compa
 - anchor/snapshot persistence remains patient-owned application data subject to export, account deletion and retention rules;
 - this product review anchor is not a clinician consultation checkpoint and cannot be used to fabricate consultation history.
 
-### 5.2 Consultation-intelligence evidence boundary
+### 5.3 Consultation-intelligence evidence boundary
 
 Before any clinician brief is exposed, its structured source contract must be deterministic, provenance-qualified and fail closed:
 
