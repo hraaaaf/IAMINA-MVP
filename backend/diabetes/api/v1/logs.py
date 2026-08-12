@@ -30,6 +30,30 @@ from .schemas import (
 
 router = Router(tags=["logs"])
 
+# Only fields consumed by the canonical personal-response derivation can make a
+# persisted ClinicalObservationState stale when an existing source is replaced.
+_CLINICAL_TWIN_SOURCE_FIELDS = frozenset(
+    {
+        "blood_sugar",
+        "logged_at",
+        "glycemic_context",
+        "meal_type",
+        "stressed",
+        "exercised",
+        "is_sick",
+        "sleep_quality",
+        "fatigue_level",
+        "source",
+    }
+)
+
+
+def _changes_clinical_twin_source(log: LogEntry, values: dict) -> bool:
+    return any(
+        field in _CLINICAL_TWIN_SOURCE_FIELDS and getattr(log, field) != value
+        for field, value in values.items()
+    )
+
 
 @router.get("/logs", response=PaginatedLogsResponse)
 def list_logs(request, page: int = 1, page_size: int = 50):
@@ -86,10 +110,16 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
                         continue
                     snapshot = entry_data.dict()
                     snapshot.pop("client_uuid", None)
+                    clinical_source_changed = _changes_clinical_twin_source(
+                        existing,
+                        snapshot,
+                    )
                     for field, value in snapshot.items():
                         setattr(existing, field, value)
                     existing.save()
-                    mutated_existing_source = True
+                    mutated_existing_source = (
+                        mutated_existing_source or clinical_source_changed
+                    )
                 else:
                     LogEntry.objects.create(patient=request.user, **entry_data.dict())
                     track(
@@ -143,14 +173,17 @@ def update_log(request, log_id: int, data: LogEntryUpdateSchema):
     with transaction.atomic():
         log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
         _validate_patch_portion_links(log, data)
-        for field, value in data.model_dump(exclude_none=True).items():
+        updates = data.model_dump(exclude_none=True)
+        clinical_source_changed = _changes_clinical_twin_source(log, updates)
+        for field, value in updates.items():
             setattr(log, field, value)
         log.save()
-        # A patch may explicitly erase/replace source fields that contributed to
-        # a durable observation. Rebuild from the surviving authoritative row.
-        reconcile_personal_response_memory_after_source_erasure(
-            patient_id=request.user.id,
-        )
+        if clinical_source_changed:
+            # A patch may explicitly erase/replace source fields that contributed
+            # to a durable observation. Rebuild from surviving authoritative rows.
+            reconcile_personal_response_memory_after_source_erasure(
+                patient_id=request.user.id,
+            )
     _invalidate_ctx(request.user.id)
     _invalidate_kpis(request.user.id)
     return log
