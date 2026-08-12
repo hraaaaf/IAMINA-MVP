@@ -7,6 +7,7 @@ from django.utils import timezone
 from core.data_portability import build_patient_export
 from diabetes.models.clinical_observation import ClinicalObservationState
 from diabetes.models.entry import LogEntry
+from diabetes.models.proactive_insight import ProactiveInsightState
 from diabetes.services.clinical.observation_memory import refresh_personal_response_memory
 
 
@@ -59,6 +60,15 @@ class ClinicalTwinDataLifecycleTests(TestCase):
         before = ClinicalObservationState.objects.get(patient=self.patient)
         before_fingerprint = before.last_evidence_fingerprint
         self.assertEqual(before.observations, 4)
+        ProactiveInsightState.objects.create(
+            observation=before,
+            state=ProactiveInsightState.STATE_NEW,
+            clinical_relevance=ProactiveInsightState.RELEVANCE_OBSERVATIONAL,
+            action_class=ProactiveInsightState.ACTION_MONITOR,
+            escalation_class=ProactiveInsightState.ESCALATION_NONE,
+            last_observation_fingerprint=before.last_evidence_fingerprint,
+            current_signature="a" * 64,
+        )
 
         response = self.client.delete(f"/api/v1/logs/{supporting[0].id}")
 
@@ -70,6 +80,7 @@ class ClinicalTwinDataLifecycleTests(TestCase):
         self.assertEqual(after.observations, 3)
         self.assertEqual(after.recurrence_count, 1)
         self.assertNotEqual(after.last_evidence_fingerprint, before_fingerprint)
+        self.assertFalse(ProactiveInsightState.objects.exists())
 
     def test_patient_export_contains_persisted_clinical_observation_state(self):
         for day, glucose in enumerate((150, 160, 170)):
