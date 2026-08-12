@@ -4,7 +4,7 @@ conversation._trim_history, compute_trend, evidence-qualified pre/post-meal
 observation, LLM rate guard, AGP percentile helper, and AuditLog.
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 from unittest.mock import MagicMock
 
 from django.contrib.auth.models import User
@@ -230,8 +230,6 @@ class PostmealSpikeDetectorTest(TestCase):
         self.assertIsNone(detect_postmeal_spike(entries))
 
     def test_two_explicit_pairs_trigger_neutral_observation(self):
-        from datetime import datetime, timezone as dt_timezone
-
         from diabetes.services.clinical.engine import detect_postmeal_spike
 
         base = datetime(2024, 1, 10, 12, 0, 0, tzinfo=dt_timezone.utc)
@@ -259,8 +257,6 @@ class PostmealSpikeDetectorTest(TestCase):
         self.assertNotIn("insuline", result.fallback_action.lower())
 
     def test_missing_pre_post_context_fails_closed(self):
-        from datetime import datetime, timezone as dt_timezone
-
         from diabetes.services.clinical.engine import detect_postmeal_spike
 
         base = datetime(2024, 1, 10, 12, 0, 0, tzinfo=dt_timezone.utc)
@@ -282,8 +278,6 @@ class PostmealSpikeDetectorTest(TestCase):
         self.assertIsNone(detect_postmeal_spike(entries))
 
     def test_no_pattern_when_rise_below_threshold(self):
-        from datetime import datetime, timezone as dt_timezone
-
         from diabetes.services.clinical.engine import detect_postmeal_spike
 
         base = datetime(2024, 1, 10, 12, 0, 0, tzinfo=dt_timezone.utc)
@@ -308,6 +302,7 @@ class PostmealSpikeDetectorTest(TestCase):
 class RateGuardTest(TestCase):
     def setUp(self):
         from django.core.cache import cache
+
         from llm.rate_guard import _clear_local_count, _counter_key
 
         cache.delete(_counter_key())
