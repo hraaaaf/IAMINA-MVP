@@ -222,11 +222,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         isLoading: _isLoading,
                         onSubmit: _handleLogin,
                         onForgotPassword: _handleForgotPassword,
+                        onDemo: () => _handleLogin(isDemo: true),
+                        onSignup: _handleSignup,
                       ),
-                      const SizedBox(height: 16),
-                      _SignupRow(isLoading: _isLoading, onTap: _handleSignup),
-                      const SizedBox(height: 20),
-                      _DemoButton(isLoading: _isLoading, onTap: () => _handleLogin(isDemo: true)),
                       const SizedBox(height: 32),
                       _Footer(),
                     ],
@@ -352,6 +350,8 @@ class _LoginCard extends StatelessWidget {
   final bool isLoading;
   final void Function({bool isDemo}) onSubmit;
   final VoidCallback onForgotPassword;
+  final VoidCallback onDemo;
+  final VoidCallback onSignup;
 
   const _LoginCard({
     required this.emailCtrl,
@@ -362,6 +362,8 @@ class _LoginCard extends StatelessWidget {
     required this.isLoading,
     required this.onSubmit,
     required this.onForgotPassword,
+    required this.onDemo,
+    required this.onSignup,
   });
 
   @override
@@ -456,6 +458,10 @@ class _LoginCard extends StatelessWidget {
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : Text(l10n.signIn, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
           ),
+          const SizedBox(height: 20),
+          _DemoButton(isLoading: isLoading, onTap: onDemo),
+          const SizedBox(height: 20),
+          _SignupRow(isLoading: isLoading, onTap: onSignup),
         ],
       ),
     );
