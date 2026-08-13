@@ -42,14 +42,14 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name="aftervisitanchor",
-            constraint=models.CheckConstraint(condition=models.Q(("source__in", ("after-visit.patient-recorded.v1", "after-visit.clinician-recorded.v1"))), name="after_visit_anchor_source_safe"),
+            constraint=models.CheckConstraint(condition=models.Q(source__in=("after-visit.patient-recorded.v1", "after-visit.clinician-recorded.v1")), name="after_visit_anchor_source_safe"),
         ),
         migrations.AddConstraint(
             model_name="aftervisitfactrecord",
-            constraint=models.CheckConstraint(condition=models.Q(("fact_kind__in", ("patient_recorded", "clinician_recorded", "governed_derivation"))), name="after_visit_fact_kind_safe"),
+            constraint=models.CheckConstraint(condition=models.Q(fact_kind__in=("patient_recorded", "clinician_recorded", "governed_derivation")), name="after_visit_fact_kind_safe"),
         ),
         migrations.AddConstraint(
             model_name="aftervisitfactrecord",
-            constraint=models.CheckConstraint(condition=models.Q(("fact_kind", "governed_derivation"), _negated=True) | models.Q(("evidence_id", ""), _negated=True), name="after_visit_governed_evidence_required"),
+            constraint=models.CheckConstraint(condition=~models.Q(fact_kind="governed_derivation") | ~models.Q(evidence_id=""), name="after_visit_governed_evidence_required"),
         ),
     ]
