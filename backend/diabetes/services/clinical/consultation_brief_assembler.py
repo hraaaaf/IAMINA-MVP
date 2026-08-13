@@ -21,8 +21,10 @@ from core.contracts.truth import TruthKind
 from diabetes.models.clinical_observation import ClinicalObservationState
 from diabetes.models.entry import LogEntry
 from diabetes.services.clinical.companion_change import (
+    ENGINE_VERSION as COMPANION_CHANGE_SOURCE,
     compare_since_last_companion_review,
 )
+from diabetes.models.companion_review import CompanionReviewAnchor
 from diabetes.services.clinical.consultation_brief_contract import (
     ConsultationBriefEnvelope,
     ConsultationChangeKind,
@@ -37,8 +39,7 @@ SOURCE_ADAPTER_VERSION = "consultation-companion-assembler.v1"
 LOG_ENTRY_SOURCE = "diabetes.log-entry"
 RECORDED_STATS_SOURCE = "diabetes.log-entry.sql-average"
 RECORDED_STATS_EVIDENCE_ID = "rule.metric.recorded-glucose-stats.v1"
-COMPANION_CHANGE_SOURCE = "companion-change-since-review.v1"
-COMPANION_REVIEW_SOURCE = "companion.explicit-review.v1"
+COMPANION_REVIEW_SOURCE = CompanionReviewAnchor.SOURCE_EXPLICIT_REVIEW
 
 _EVIDENCE_DENSITY = {
     ClinicalObservationState.EVIDENCE_LIMITED: ConsultationEvidenceDensity.LIMITED,
@@ -181,11 +182,8 @@ def _clinical_twin_items(
                     "evidence_density_is_repeatability_not_probability",
                     "no_causality_diagnosis_or_treatment_inference",
                 ),
-                allowed_next_step=(
-                    ConsultationNextStep.PREPARE_CLINICIAN_DISCUSSION
-                    if observation.status == ClinicalObservationState.STATUS_ACTIVE
-                    else ConsultationNextStep.MONITOR
-                ),
+                # A current observation alone does not create discussion authority.
+                allowed_next_step=ConsultationNextStep.MONITOR,
             )
         )
     return tuple(items)
@@ -221,10 +219,13 @@ def _companion_change_items(*, patient_id: int):
                 evidence_density=density,
                 missing_data=change.missing_data,
                 limitations=change.limitations,
+                # Missing evidence may justify collecting context. Every other
+                # longitudinal state remains MONITOR unless another certified
+                # upstream engine already grants stronger action authority.
                 allowed_next_step=(
                     ConsultationNextStep.COLLECT_MISSING_DATA
                     if change.change_kind == "unknown"
-                    else ConsultationNextStep.PREPARE_CLINICIAN_DISCUSSION
+                    else ConsultationNextStep.MONITOR
                 ),
             )
         )
