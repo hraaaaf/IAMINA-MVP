@@ -6,7 +6,10 @@ from diabetes.services.clinical.evidence_horizon_certification import (
     HorizonCertificationStatus,
     certify_horizon_batch,
 )
-from diabetes.services.clinical.evidence_horizon_contract import HorizonFinality, HorizonVerification
+from diabetes.services.clinical.evidence_horizon_contract import (
+    HorizonFinality,
+    HorizonVerification,
+)
 from diabetes.services.clinical.evidence_horizon_scanner import HorizonScanState
 
 
