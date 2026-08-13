@@ -1,6 +1,6 @@
 # P3-HORIZON — Evidence Horizon Scanner Contract
 
-Status: CONTRACT CANDIDATE
+Status: CERTIFIED / CLOSED
 
 ## Objective
 
@@ -70,3 +70,16 @@ Promotion is a separate reviewed repository change. A promoted item must receive
 3. P3-HORIZON-2 — known-registry comparison, supersession hints and review queue.
 4. P3-HORIZON-3 — source verification and failure-state certification.
 5. Closeout before P3-EVALS.
+
+## Certified implementation
+
+- H0 candidate contract/schema: merge `098f87dc…`; post-merge CI #1988 + drift #1800 green.
+- H1 read-only complete/incomplete scan semantics: merge `074dc414…`; post-merge CI #1990 + drift #1802 green.
+- H2 source-only comparison and review hints: merge `9c54e3cf…`; post-merge CI #2002 + drift #1814 green.
+- H3 fail-closed verification state: merge `100445b2…`; post-merge CI #2007 + drift #1819 green.
+
+No horizon component mutates the governed registry, promotes a candidate or changes runtime authority. Promotion remains a separate reviewed repository change.
+
+## Next
+
+P3-EVALS — Companion Intelligence Evals.
