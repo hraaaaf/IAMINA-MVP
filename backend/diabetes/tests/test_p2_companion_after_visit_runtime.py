@@ -129,3 +129,27 @@ def test_empty_interval_is_truthful_missing_data_not_false_resolution():
 
     assert envelope.facts == ()
     assert envelope.missing_data == ("no_after_visit_facts_recorded",)
+
+
+def test_account_deletion_cascades_after_visit_patient_records():
+    patient = _patient()
+    occurred_at = timezone.now() - timedelta(days=1)
+    anchor = record_after_visit_anchor(
+        patient_id=patient.id,
+        occurred_at=occurred_at,
+        source=AfterVisitAnchor.SOURCE_PATIENT_RECORDED,
+    )
+    record_after_visit_fact(
+        patient_id=patient.id,
+        anchor_id=anchor.id,
+        key="patient_note_recorded",
+        value=True,
+        fact_kind=AfterVisitFactKind.PATIENT_RECORDED,
+        source="patient.explicit-record.v1",
+        recorded_at=occurred_at + timedelta(minutes=1),
+    )
+
+    patient.delete()
+
+    assert AfterVisitAnchor.objects.count() == 0
+    assert AfterVisitFactRecord.objects.count() == 0
