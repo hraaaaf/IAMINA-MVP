@@ -638,7 +638,8 @@ class _GlucoseHero extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           InkWell(
-            onTap: () => GoRouter.of(context).go('/summary'),
+            key: const ValueKey('dashboard-companion-insight'),
+            onTap: () => GoRouter.of(context).go('/companion'),
             borderRadius: BorderRadius.circular(13),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
