@@ -1,0 +1,38 @@
+name: P2 Companion Dashboard Entry
+
+on:
+  push:
+    branches:
+      - agent/p2-companion-7-dashboard-entry
+    paths-ignore:
+      - frontend/lib/features/dashboard/dashboard_convergent_screen.dart
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Route primary dashboard insight to companion
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/lib/features/dashboard/dashboard_convergent_screen.dart')
+          text = path.read_text()
+          old = """          InkWell(\n            onTap: () => GoRouter.of(context).go('/summary'),\n            borderRadius: BorderRadius.circular(13),"""
+          new = """          InkWell(\n            key: const ValueKey('dashboard-companion-insight'),\n            onTap: () => GoRouter.of(context).go('/companion'),\n            borderRadius: BorderRadius.circular(13),"""
+          if text.count(old) < 1:
+              raise SystemExit('expected dashboard insight block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/lib/features/dashboard/dashboard_convergent_screen.dart
+          git diff --cached --quiet && exit 0
+          git commit -m "feat(companion): link dashboard insight to companion"
+          git push
