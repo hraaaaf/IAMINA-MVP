@@ -279,7 +279,15 @@ class _Brand extends StatelessWidget {
     return Semantics(
       label: l10n.appTitle,
       image: true,
-      child: Image.asset('assets/images/logo_amina.png', width: 138, fit: BoxFit.contain, filterQuality: FilterQuality.high),
+      child: SizedBox(
+        width: 138,
+        height: 124,
+        child: Image.asset(
+          'assets/images/logo_amina.png',
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+        ),
+      ),
     );
   }
 }
