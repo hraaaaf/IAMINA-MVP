@@ -174,6 +174,10 @@ Certified runtime boundaries:
 
 P2-COMPANION-6 and P2-COMPANION-7 preserve the same authority ceiling through persistence, API and patient UX. Final P2-COMPANION-7 dashboard merge `bb5b9cb87fdd48197657cb38011509876756b5ea` passed post-merge CI #1966 and migration drift #1778.
 
+### 5.7 Safety + Certification closure
+
+P2-COMPANION-8 makes the certified companion boundaries permanent release evidence through `docs/P2_COMPANION_8_CERTIFICATION_MATRIX.md` and the pytest release manifest. No runtime behavior changed in this lot. PR #166 merged as `7e4bfe367c9cdd908024c9ca8dbd907add84fc49`; post-merge CI #1980 and migration drift #1792 passed.
+
 ## 6. Consultation is a sub-capability, not the product identity
 
 The certified `consultation-brief.v1` contract from PR #143 remains valid as a **restricted consultation-support sub-contract**, now implemented by the P2-COMPANION-5 deterministic assembler.
@@ -216,7 +220,7 @@ The deterministic structured result is authoritative; narration is optional pres
 | **P2-COMPANION-5** | **Consultation Companion** | ✅ Certified in PR #155: deterministic `consultation-brief.v1` assembler; merge `135d284a…`; post-merge CI #1946 + drift #1758 green |
 | **P2-COMPANION-6** | **After-Visit Continuity** | ✅ Certified: explicit visit/fact continuity with provenance and no treatment-efficacy inference from chronology |
 | **P2-COMPANION-7** | **Companion UX** | ✅ Certified: read-only overview API + FR/EN/AR patient-first Flutter surface + dashboard discoverability; final merge `bb5b9cb8…`; post-merge CI #1966 + drift #1778 green |
-| **P2-COMPANION-8** | **Safety + Certification** | ▶️ NEXT: permanent negative/safety evals prevent diagnosis, prescription, dosing, treatment-change, false-certainty and doctor-replacement drift |
+| **P2-COMPANION-8** | **Safety + Certification** | ✅ Certified in PR #166; merge `7e4bfe36…`; post-merge CI #1980 + drift #1792 green |
 
 ## 10. Permanent regression expectations
 
