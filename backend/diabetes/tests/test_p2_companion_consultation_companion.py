@@ -43,6 +43,11 @@ class ConsultationCompanionAssemblerTests(TestCase):
         status: str = ClinicalObservationState.STATUS_ACTIVE,
         baseline_delta: float = 40.0,
     ) -> ClinicalObservationState:
+        recorded_context = (
+            {"source_field": "exercised", "recorded_value": "yes"}
+            if key == "context:activity"
+            else {"source_field": "stressed", "recorded_value": "yes"}
+        )
         return ClinicalObservationState.objects.create(
             patient=patient,
             observation_key=key,
@@ -65,7 +70,7 @@ class ConsultationCompanionAssemblerTests(TestCase):
             evidence_window_days=90,
             evidence_id=ClinicalObservationState.APPROVED_EVIDENCE_ID,
             producer=ClinicalObservationState.APPROVED_PRODUCER,
-            context_modifiers={"source_field": "stressed", "recorded_value": "yes"},
+            context_modifiers=recorded_context,
             last_evidence_fingerprint="a" * 64,
         )
 
@@ -92,10 +97,9 @@ class ConsultationCompanionAssemblerTests(TestCase):
         by_key = {item.key: item for item in brief.items}
         self.assertEqual(by_key["recorded_glucose.latest_mg_dl"].value, 180.0)
         self.assertEqual(by_key["recorded_glucose.average_mg_dl"].value, 150.0)
-        self.assertEqual(
-            by_key["clinical_twin.context:stress.status"].truth_kind,
-            TruthKind.DETERMINISTIC_DERIVATION,
-        )
+        twin = by_key["clinical_twin.context:stress.status"]
+        self.assertEqual(twin.truth_kind, TruthKind.DETERMINISTIC_DERIVATION)
+        self.assertEqual(twin.allowed_next_step, ConsultationNextStep.MONITOR)
 
     def test_authoritative_companion_anchor_enables_bounded_since_review_semantics(self):
         self._log(self.patient, days_ago=1, glucose=170)
@@ -129,10 +133,7 @@ class ConsultationCompanionAssemblerTests(TestCase):
             change.change_kind,
             ConsultationChangeKind.PERSISTING_SINCE_REVIEW,
         )
-        self.assertEqual(
-            change.allowed_next_step,
-            ConsultationNextStep.PREPARE_CLINICIAN_DISCUSSION,
-        )
+        self.assertEqual(change.allowed_next_step, ConsultationNextStep.MONITOR)
         self.assertIn("observational_association_only", change.limitations)
         self.assertTrue(brief.has_since_review_claims)
 
