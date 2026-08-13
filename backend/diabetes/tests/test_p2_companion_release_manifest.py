@@ -1,6 +1,3 @@
-from pathlib import Path
-
-
 REQUIRED_RELEASE_TESTS = (
     "test_p2_companion_smart_suggestions.py",
     "test_p2_companion_consultation_companion.py",
@@ -18,6 +15,7 @@ REQUIRED_RELEASE_TESTS = (
 
 
 def test_companion_release_regression_manifest_is_complete() -> None:
-    tests_dir = Path(__file__).resolve().parent
+    path_type = __import__("pathlib").Path
+    tests_dir = path_type(__file__).resolve().parent
     missing = [name for name in REQUIRED_RELEASE_TESTS if not (tests_dir / name).is_file()]
     assert missing == [], f"missing required release regression tests: {missing}"
