@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-13 — P2-COMPANION-5 Consultation Companion runtime is certified, merged and post-merge green. **P2-COMPANION-8 — Safety + Certification is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-13 — P2-COMPANION-7 Companion UX is certified, merged and post-merge green. **P2-COMPANION-8 — Safety + Certification is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -42,7 +42,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains a governance blocker despite being closed `not planned` |
-| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority + governed change/pattern/evidence/suggestion projections + consultation preparation | 🟡 P2-COMPANION active — After-Visit Continuity next | PR #155 merge `135d284a…`; post-merge CI #1946 + drift #1758 green |
+| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority + governed change/pattern/evidence/suggestion projections + consultation preparation + after-visit continuity + patient UX | 🟡 P2-COMPANION active — Safety + Certification next | P2-7 final merge `bb5b9cb8…`; post-merge CI #1966 + drift #1778 green |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
@@ -397,7 +397,7 @@ Preparation/executable gates do not imply that external legal, processor, lingui
 
 # Current blockers and next sequence
 
-1. **Companion intelligence product lane:** execute **P2-COMPANION-8 — Safety + Certification**, preserving the certified consultation/companion authority ceiling and preventing temporal association from becoming inferred treatment efficacy.
+1. **Companion intelligence product lane:** execute **P2-COMPANION-8 — Safety + Certification**, turning the existing no-diagnosis/no-prescription/no-dose/no-treatment-change/no-doctor-replacement boundaries into permanent blocking release evals.
 2. **Pilot security blocker:** issue #30 is closed `not planned` but explicitly not remediated; either complete the documented history remediation/verification path or supersede the pilot policy through normal governance before any real-patient go/no-go.
 3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
 4. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
