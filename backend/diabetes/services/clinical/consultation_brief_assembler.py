@@ -26,6 +26,7 @@ from diabetes.services.clinical.companion_change import (
     compare_since_last_companion_review,
 )
 from diabetes.services.clinical.companion_pattern_intelligence import (
+    CompanionPatternItem,
     project_personal_pattern_intelligence,
 )
 from diabetes.services.clinical.consultation_brief_contract import (
@@ -155,21 +156,38 @@ def _average_glucose_item(logs) -> ConsultationEvidenceItem | None:
     )
 
 
+def _pattern_is_eligible_for_window(
+    pattern: CompanionPatternItem,
+    *,
+    window_start: datetime,
+    window_end: datetime,
+) -> bool:
+    """Prevent current P2-2 state from leaking evidence beyond dossier time bounds."""
+
+    if pattern.first_observed_at > window_end or pattern.last_observed_at > window_end:
+        return False
+    if pattern.state_changed_at > window_end:
+        return False
+    if pattern.current_state == "resolved" and pattern.state_changed_at < window_start:
+        return False
+    return True
+
+
 def _clinical_twin_items(
-    *, patient_id: int, window_start: datetime, window_end: datetime
+    *,
+    patterns: tuple[CompanionPatternItem, ...],
+    window_start: datetime,
+    window_end: datetime,
 ) -> tuple[ConsultationEvidenceItem, ...]:
     """Project material Twin state only through certified Companion P2-2/3."""
 
-    result = project_personal_pattern_intelligence(patient_id=patient_id)
     items: list[ConsultationEvidenceItem] = []
-    for pattern in result.patterns:
-        # P2-COMPANION-2 is a current-state projection, not a historical snapshot.
-        # Never leak evidence/state that is known to post-date the requested dossier.
-        if pattern.first_observed_at > window_end or pattern.last_observed_at > window_end:
-            continue
-        if pattern.state_changed_at > window_end:
-            continue
-        if pattern.current_state == "resolved" and pattern.state_changed_at < window_start:
+    for pattern in patterns:
+        if not _pattern_is_eligible_for_window(
+            pattern,
+            window_start=window_start,
+            window_end=window_end,
+        ):
             continue
 
         context = pattern.evidence_context
@@ -202,7 +220,11 @@ def _clinical_twin_items(
 
 
 def _companion_change_items(
-    *, patient_id: int, window_start: datetime, window_end: datetime
+    *,
+    patient_id: int,
+    patterns_by_key: dict[str, CompanionPatternItem],
+    window_start: datetime,
+    window_end: datetime,
 ):
     result = compare_since_last_companion_review(patient_id=patient_id)
     if result.status != "ready":
@@ -217,11 +239,27 @@ def _companion_change_items(
         source=COMPANION_REVIEW_SOURCE,
     )
     items: list[ConsultationEvidenceItem] = []
+    missing: list[str] = []
     for change in result.changes:
         try:
             change_kind = _CHANGE_KIND[change.change_kind]
         except KeyError as exc:
             raise ValueError("companion change contains unapproved consultation vocabulary") from exc
+
+        pattern = patterns_by_key.get(change.observation_key)
+        if pattern is None:
+            if change.change_kind != "unknown":
+                raise ValueError("material companion change has no governed pattern projection")
+        else:
+            if pattern.evidence_id != change.evidence_id or pattern.producer != change.producer:
+                raise ValueError("change provenance differs from governed pattern projection")
+            if not _pattern_is_eligible_for_window(
+                pattern,
+                window_start=window_start,
+                window_end=window_end,
+            ):
+                missing.append("governed_change_evidence_postdates_requested_window")
+                continue
 
         context = change.evidence_context
         if context.provenance.evidence_id != change.evidence_id:
@@ -255,7 +293,7 @@ def _companion_change_items(
                 ),
             )
         )
-    return checkpoint, tuple(items), ()
+    return checkpoint, tuple(items), tuple(dict.fromkeys(missing))
 
 
 def assemble_consultation_brief(
@@ -283,13 +321,19 @@ def assemble_consultation_brief(
     )
     latest_items = _latest_glucose_items(logs)
     average = _average_glucose_item(logs)
+
+    pattern_result = project_personal_pattern_intelligence(patient_id=patient_id)
+    patterns_by_key = {pattern.observation_key: pattern for pattern in pattern_result.patterns}
+    if len(patterns_by_key) != len(pattern_result.patterns):
+        raise ValueError("governed pattern projection contains duplicate observation keys")
     clinical_twin = _clinical_twin_items(
-        patient_id=patient_id,
+        patterns=pattern_result.patterns,
         window_start=window_start,
         window_end=window_end,
     )
     checkpoint, change_items, change_missing = _companion_change_items(
         patient_id=patient_id,
+        patterns_by_key=patterns_by_key,
         window_start=window_start,
         window_end=window_end,
     )
