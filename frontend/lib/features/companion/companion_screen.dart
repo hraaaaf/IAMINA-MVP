@@ -22,7 +22,7 @@ class CompanionScreen extends StatefulWidget {
 
 class _CompanionScreenState extends State<CompanionScreen> {
   late final CompanionService _service = widget.service ?? CompanionService();
-  late Future<CompanionOverview?> _overview = _service.fetchOverview();
+  late Future<CompanionOverview?> _future = _service.fetchOverview();
 
   @override
   void dispose() {
@@ -30,9 +30,7 @@ class _CompanionScreenState extends State<CompanionScreen> {
     super.dispose();
   }
 
-  void _reload() {
-    setState(() => _overview = _service.fetchOverview());
-  }
+  void _reload() => setState(() => _future = _service.fetchOverview());
 
   @override
   Widget build(BuildContext context) {
@@ -50,50 +48,35 @@ class _CompanionScreenState extends State<CompanionScreen> {
         ),
       ),
       body: FutureBuilder<CompanionOverview?>(
-        future: _overview,
+        future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
           final overview = snapshot.data;
           if (overview == null) {
-            return _StateMessage(
-              icon: Icons.cloud_off_outlined,
-              title: _t(
-                context,
-                'Données indisponibles',
-                'Data unavailable',
-                'البيانات غير متاحة',
-              ),
-              body: _t(
-                context,
-                'IAmina ne peut pas charger votre suivi pour le moment.',
-                'IAmina cannot load your companion view right now.',
-                'يتعذر على IAmina تحميل المتابعة حالياً.',
-              ),
-              onRetry: _reload,
-            );
+            return _Unavailable(onRetry: _reload);
           }
-          return _OverviewBody(overview: overview);
+          return _Overview(overview: overview);
         },
       ),
     );
   }
 }
 
-class _OverviewBody extends StatelessWidget {
+class _Overview extends StatelessWidget {
   final CompanionOverview overview;
 
-  const _OverviewBody({required this.overview});
+  const _Overview({required this.overview});
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsetsDirectional.fromSTEB(18, 8, 18, 32),
       children: [
-        _SafetyBanner(notice: overview.safetyNotice),
-        const SizedBox(height: 16),
-        _SectionHeader(
+        const _SafetyCard(),
+        const SizedBox(height: 18),
+        _SectionTitle(
           eyebrow: _t(context, 'COMPRENDRE', 'UNDERSTAND', 'افهم'),
           title: _t(
             context,
@@ -102,9 +85,9 @@ class _OverviewBody extends StatelessWidget {
             'ما الذي تظهره بياناتك',
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 9),
         if (overview.patterns.isEmpty)
-          _EmptyCard(
+          _MessageCard(
             text: _t(
               context,
               'Pas encore assez de données répétées pour afficher un schéma personnel gouverné.',
@@ -113,9 +96,9 @@ class _OverviewBody extends StatelessWidget {
             ),
           )
         else
-          ...overview.patterns.map((item) => _PatternCard(pattern: item)),
-        const SizedBox(height: 22),
-        _SectionHeader(
+          ...overview.patterns.map((pattern) => _PatternCard(pattern: pattern)),
+        const SizedBox(height: 20),
+        _SectionTitle(
           eyebrow: _t(context, 'SUIVRE', 'FOLLOW', 'تابع'),
           title: _t(
             context,
@@ -124,9 +107,9 @@ class _OverviewBody extends StatelessWidget {
             'منذ آخر مراجعة لك',
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 9),
         if (overview.reviewStatus != 'ready')
-          _EmptyCard(
+          _MessageCard(
             text: _t(
               context,
               'Aucune revue précédente fiable à comparer. IAmina ne fabrique pas d’historique.',
@@ -135,7 +118,7 @@ class _OverviewBody extends StatelessWidget {
             ),
           )
         else if (overview.changesSinceReview.isEmpty)
-          _EmptyCard(
+          _MessageCard(
             text: _t(
               context,
               'Aucun changement gouverné à afficher depuis la dernière revue.',
@@ -144,9 +127,9 @@ class _OverviewBody extends StatelessWidget {
             ),
           )
         else
-          ...overview.changesSinceReview.map((item) => _ChangeCard(change: item)),
-        const SizedBox(height: 22),
-        _SectionHeader(
+          ...overview.changesSinceReview.map((change) => _ChangeCard(change: change)),
+        const SizedBox(height: 20),
+        _SectionTitle(
           eyebrow: _t(context, 'PRÉPARER', 'PREPARE', 'استعد'),
           title: _t(
             context,
@@ -155,27 +138,19 @@ class _OverviewBody extends StatelessWidget {
             'المتابعة بعد الاستشارة',
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 9),
         _AfterVisitCard(afterVisit: overview.afterVisit),
       ],
     );
   }
 }
 
-class _SafetyBanner extends StatelessWidget {
-  final String notice;
-
-  const _SafetyBanner({required this.notice});
+class _SafetyCard extends StatelessWidget {
+  const _SafetyCard();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AminaTheme.surface(context),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AminaTheme.divider(context)),
-      ),
+    return _SurfaceCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -183,17 +158,15 @@ class _SafetyBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              notice.isEmpty
-                  ? _t(
-                      context,
-                      'IAmina vous aide à comprendre et suivre vos données. Les décisions médicales restent avec votre professionnel de santé.',
-                      'IAmina helps you understand and follow your data. Medical decisions remain with your clinician.',
-                      'تساعدك IAmina على فهم بياناتك ومتابعتها. تبقى القرارات الطبية مع طبيبك.',
-                    )
-                  : notice,
+              _t(
+                context,
+                'IAmina vous aide à comprendre et suivre vos données. Les décisions médicales restent avec votre professionnel de santé.',
+                'IAmina helps you understand and follow your data. Medical decisions remain with your clinician.',
+                'تساعدك IAmina على فهم بياناتك ومتابعتها. تبقى القرارات الطبية مع طبيبك.',
+              ),
               style: TextStyle(
-                height: 1.35,
                 fontSize: 12.5,
+                height: 1.4,
                 color: AminaTheme.textSecondary(context),
               ),
             ),
@@ -204,11 +177,11 @@ class _SafetyBanner extends StatelessWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
+class _SectionTitle extends StatelessWidget {
   final String eyebrow;
   final String title;
 
-  const _SectionHeader({required this.eyebrow, required this.title});
+  const _SectionTitle({required this.eyebrow, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -218,10 +191,10 @@ class _SectionHeader extends StatelessWidget {
         Text(
           eyebrow,
           style: const TextStyle(
+            color: Color(0xFF0B6B70),
             fontSize: 10.5,
             fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-            color: Color(0xFF0B6B70),
+            letterSpacing: 1.1,
           ),
         ),
         const SizedBox(height: 4),
@@ -245,7 +218,7 @@ class _PatternCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _Card(
+    return _SurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -255,33 +228,35 @@ class _PatternCard extends StatelessWidget {
                 child: Text(
                   _friendlyKey(context, pattern.observationKey),
                   style: TextStyle(
-                    fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: AminaTheme.textPrimary(context),
                   ),
                 ),
               ),
-              _EvidencePill(density: pattern.evidenceDensity),
+              _RepeatabilityPill(density: pattern.evidenceDensity),
             ],
-          ),
-          const SizedBox(height: 9),
-          Text(
-            _movement(context, pattern.baselineMovement),
-            style: TextStyle(
-              fontSize: 13,
-              height: 1.35,
-              color: AminaTheme.textSecondary(context),
-            ),
           ),
           const SizedBox(height: 8),
           Text(
+            _movement(context, pattern.baselineMovement),
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.4,
+              color: AminaTheme.textSecondary(context),
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
             _t(
               context,
-              '${pattern.recurrenceCount} occurrence(s) observée(s) dans votre historique gouverné.',
-              '${pattern.recurrenceCount} occurrence(s) observed in your governed history.',
-              'تمت ملاحظة ${pattern.recurrenceCount} حالة في سجلك الموثوق.',
+              '${pattern.recurrenceCount} occurrence(s) dans votre historique gouverné.',
+              '${pattern.recurrenceCount} occurrence(s) in your governed history.',
+              '${pattern.recurrenceCount} حالة في سجلك الموثوق.',
             ),
-            style: TextStyle(fontSize: 11.5, color: AminaTheme.textSecondary(context)),
+            style: TextStyle(
+              fontSize: 11.5,
+              color: AminaTheme.textSecondary(context),
+            ),
           ),
         ],
       ),
@@ -296,11 +271,11 @@ class _ChangeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _Card(
+    return _SurfaceCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(_changeIcon(change.changeKind), color: const Color(0xFF0B6B70), size: 20),
+          Icon(_changeIcon(change.changeKind), size: 20, color: const Color(0xFF0B6B70)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -316,7 +291,11 @@ class _ChangeCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   _changeLabel(context, change.changeKind),
-                  style: TextStyle(fontSize: 12.5, color: AminaTheme.textSecondary(context)),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.35,
+                    color: AminaTheme.textSecondary(context),
+                  ),
                 ),
                 if (change.missingData.isNotEmpty) ...[
                   const SizedBox(height: 6),
@@ -327,13 +306,17 @@ class _ChangeCard extends StatelessWidget {
                       'Missing data: ${change.missingData.join(', ')}',
                       'بيانات ناقصة: ${change.missingData.join(', ')}',
                     ),
-                    style: TextStyle(fontSize: 11.5, color: AminaTheme.textSecondary(context)),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: AminaTheme.textSecondary(context),
+                    ),
                   ),
                 ],
               ],
             ),
           ),
-          _EvidencePill(density: change.evidenceStrength),
+          const SizedBox(width: 8),
+          _RepeatabilityPill(density: change.evidenceStrength),
         ],
       ),
     );
@@ -348,7 +331,7 @@ class _AfterVisitCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (afterVisit.status != 'recorded') {
-      return _EmptyCard(
+      return _MessageCard(
         text: _t(
           context,
           'Aucune consultation n’a été explicitement enregistrée. IAmina ne la déduit pas de votre activité.',
@@ -357,19 +340,18 @@ class _AfterVisitCard extends StatelessWidget {
         ),
       );
     }
-    return _Card(
+    return _SurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             _t(context, 'Consultation enregistrée', 'Recorded consultation', 'استشارة مسجلة'),
             style: TextStyle(
-              fontSize: 15,
               fontWeight: FontWeight.w800,
               color: AminaTheme.textPrimary(context),
             ),
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 6),
           Text(
             _t(
               context,
@@ -383,11 +365,15 @@ class _AfterVisitCard extends StatelessWidget {
           Text(
             _t(
               context,
-              'Le fait qu’une mesure change après la consultation ne signifie pas que le traitement en est la cause.',
-              'A change after the visit does not mean the treatment caused it.',
-              'حدوث تغير بعد الاستشارة لا يعني أن العلاج هو السبب.',
+              'Un changement après la consultation ne prouve pas que le traitement en est la cause.',
+              'A change after the visit does not prove that treatment caused it.',
+              'حدوث تغير بعد الاستشارة لا يثبت أن العلاج هو السبب.',
             ),
-            style: TextStyle(fontSize: 11.5, height: 1.35, color: AminaTheme.textSecondary(context)),
+            style: TextStyle(
+              fontSize: 11.5,
+              height: 1.4,
+              color: AminaTheme.textSecondary(context),
+            ),
           ),
         ],
       ),
@@ -395,31 +381,40 @@ class _AfterVisitCard extends StatelessWidget {
   }
 }
 
-class _EvidencePill extends StatelessWidget {
+class _RepeatabilityPill extends StatelessWidget {
   final String density;
 
-  const _EvidencePill({required this.density});
+  const _RepeatabilityPill({required this.density});
 
   @override
   Widget build(BuildContext context) {
+    final label = switch (density) {
+      'strong' => _t(context, 'Répétabilité forte', 'Strong repeatability', 'تكرار قوي'),
+      'moderate' => _t(context, 'Répétabilité modérée', 'Moderate repeatability', 'تكرار متوسط'),
+      _ => _t(context, 'Répétabilité limitée', 'Limited repeatability', 'تكرار محدود'),
+    };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: const Color(0xFF0B6B70).withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Text(
-        _evidenceLabel(context, density),
-        style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Color(0xFF0B6B70)),
+        label,
+        style: const TextStyle(
+          color: Color(0xFF0B6B70),
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
 }
 
-class _Card extends StatelessWidget {
+class _SurfaceCard extends StatelessWidget {
   final Widget child;
 
-  const _Card({required this.child});
+  const _SurfaceCard({required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -437,34 +432,30 @@ class _Card extends StatelessWidget {
   }
 }
 
-class _EmptyCard extends StatelessWidget {
+class _MessageCard extends StatelessWidget {
   final String text;
 
-  const _EmptyCard({required this.text});
+  const _MessageCard({required this.text});
 
   @override
   Widget build(BuildContext context) {
-    return _Card(
+    return _SurfaceCard(
       child: Text(
         text,
-        style: TextStyle(fontSize: 13, height: 1.4, color: AminaTheme.textSecondary(context)),
+        style: TextStyle(
+          fontSize: 12.5,
+          height: 1.4,
+          color: AminaTheme.textSecondary(context),
+        ),
       ),
     );
   }
 }
 
-class _StateMessage extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String body;
+class _Unavailable extends StatelessWidget {
   final VoidCallback onRetry;
 
-  const _StateMessage({
-    required this.icon,
-    required this.title,
-    required this.body,
-    required this.onRetry,
-  });
+  const _Unavailable({required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -474,13 +465,32 @@ class _StateMessage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 34, color: AminaTheme.textSecondary(context)),
+            Icon(Icons.cloud_off_outlined, size: 34, color: AminaTheme.textSecondary(context)),
             const SizedBox(height: 12),
-            Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AminaTheme.textPrimary(context))),
+            Text(
+              _t(context, 'Données indisponibles', 'Data unavailable', 'البيانات غير متاحة'),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AminaTheme.textPrimary(context),
+              ),
+            ),
             const SizedBox(height: 7),
-            Text(body, textAlign: TextAlign.center, style: TextStyle(height: 1.4, color: AminaTheme.textSecondary(context))),
+            Text(
+              _t(
+                context,
+                'IAmina ne peut pas charger votre suivi pour le moment.',
+                'IAmina cannot load your companion view right now.',
+                'يتعذر على IAmina تحميل المتابعة حالياً.',
+              ),
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AminaTheme.textSecondary(context)),
+            ),
             const SizedBox(height: 14),
-            OutlinedButton(onPressed: onRetry, child: Text(_t(context, 'Réessayer', 'Retry', 'إعادة المحاولة'))),
+            OutlinedButton(
+              onPressed: onRetry,
+              child: Text(_t(context, 'Réessayer', 'Retry', 'إعادة المحاولة')),
+            ),
           ],
         ),
       ),
@@ -489,7 +499,7 @@ class _StateMessage extends StatelessWidget {
 }
 
 String _friendlyKey(BuildContext context, String key) {
-  final labels = <String, List<String>>{
+  const values = <String, List<String>>{
     'context:stress': ['Stress', 'Stress', 'التوتر'],
     'context:activity': ['Activité', 'Activity', 'النشاط'],
     'context:illness': ['Maladie déclarée', 'Recorded illness', 'مرض مسجل'],
@@ -502,19 +512,13 @@ String _friendlyKey(BuildContext context, String key) {
     'meal:suhoor': ['Suhoor', 'Suhoor', 'السحور'],
     'meal:iftar': ['Iftar', 'Iftar', 'الإفطار'],
   };
-  final item = labels[key];
-  if (item == null) return key;
+  final value = values[key];
+  if (value == null) return key;
   final code = Localizations.localeOf(context).languageCode;
-  return code == 'ar' ? item[2] : code == 'en' ? item[1] : item[0];
+  return code == 'ar' ? value[2] : code == 'en' ? value[1] : value[0];
 }
 
-String _evidenceLabel(BuildContext context, String density) => switch (density) {
-  'strong' => _t(context, 'Preuve répétée forte', 'Strong repeatability', 'تكرار قوي'),
-  'moderate' => _t(context, 'Preuve répétée modérée', 'Moderate repeatability', 'تكرار متوسط'),
-  _ => _t(context, 'Preuve répétée limitée', 'Limited repeatability', 'تكرار محدود'),
-};
-
-String _movement(BuildContext context, String movement) => switch (movement) {
+String _movement(BuildContext context, String value) => switch (value) {
   'toward_personal_window_baseline' => _t(
       context,
       'Le signal descriptif s’est rapproché de votre référence personnelle sur la fenêtre observée.',
@@ -544,7 +548,12 @@ String _movement(BuildContext context, String movement) => switch (movement) {
 String _changeLabel(BuildContext context, String kind) => switch (kind) {
   'new' => _t(context, 'Nouveau depuis votre dernière revue.', 'New since your last review.', 'جديد منذ آخر مراجعة.'),
   'persisting' => _t(context, 'Toujours observé depuis votre dernière revue.', 'Still observed since your last review.', 'ما زال ملاحظاً منذ آخر مراجعة.'),
-  'improving' => _t(context, 'Mouvement descriptif vers votre référence personnelle.', 'Descriptive movement toward your personal baseline.', 'تحرك وصفي نحو مرجعك الشخصي.'),
+  'improving' => _t(
+      context,
+      'Mouvement descriptif vers votre référence personnelle, sans conclure à un effet du traitement.',
+      'Descriptive movement toward your personal baseline, without inferring a treatment effect.',
+      'تحرك وصفي نحو مرجعك الشخصي دون استنتاج تأثير للعلاج.',
+    ),
   'resolved' => _t(context, 'Non retrouvé dans les données gouvernées actuelles.', 'Not present in current governed data.', 'لم يعد موجوداً في البيانات الموثوقة الحالية.'),
   _ => _t(context, 'Changement non déterminable avec les données disponibles.', 'Change cannot be determined from available data.', 'لا يمكن تحديد التغير من البيانات المتاحة.'),
 };
