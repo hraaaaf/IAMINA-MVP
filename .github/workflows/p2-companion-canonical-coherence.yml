@@ -1,0 +1,48 @@
+name: P2 Companion canonical coherence sync
+on:
+  push:
+    branches: [agent/p2-companion-7-dashboard-entry]
+    paths: [.github/workflows/p2-companion-canonical-coherence.yml]
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/p2-companion-7-dashboard-entry
+      - name: Fix canonical coherence
+        shell: python
+        run: |
+          from pathlib import Path
+          roadmap = Path('docs/ROADMAP.md')
+          text = roadmap.read_text()
+          text = text.replace(
+              '> **Last updated:** 2026-08-13 — P2-COMPANION-5 Consultation Companion runtime is certified, merged and post-merge green. **P2-COMPANION-8 — Safety + Certification is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.',
+              '> **Last updated:** 2026-08-13 — P2-COMPANION-7 Companion UX is certified, merged and post-merge green. **P2-COMPANION-8 — Safety + Certification is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.'
+          )
+          text = text.replace(
+              '| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority + governed change/pattern/evidence/suggestion projections + consultation preparation | 🟡 P2-COMPANION active — After-Visit Continuity next | PR #155 merge `135d284a…`; post-merge CI #1946 + drift #1758 green |',
+              '| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority + governed change/pattern/evidence/suggestion projections + consultation preparation + after-visit continuity + patient UX | 🟡 P2-COMPANION active — Safety + Certification next | P2-7 final merge `bb5b9cb8…`; post-merge CI #1966 + drift #1778 green |'
+          )
+          text = text.replace(
+              '1. **Companion intelligence product lane:** execute **P2-COMPANION-8 — Safety + Certification**, preserving the certified consultation/companion authority ceiling and preventing temporal association from becoming inferred treatment efficacy.',
+              '1. **Companion intelligence product lane:** execute **P2-COMPANION-8 — Safety + Certification**, turning the existing no-diagnosis/no-prescription/no-dose/no-treatment-change/no-doctor-replacement boundaries into permanent blocking release evals.'
+          )
+          roadmap.write_text(text)
+
+          contract = Path('docs/COMPANION_INTELLIGENCE_CONTRACT.md')
+          text = contract.read_text()
+          block = '''### 5.6 After-Visit Continuity and Companion UX closure\n\nP2-COMPANION-6 and P2-COMPANION-7 preserve the same authority ceiling through persistence, API and patient UX. Final P2-COMPANION-7 dashboard merge `bb5b9cb87fdd48197657cb38011509876756b5ea` passed post-merge CI #1966 and migration drift #1778.\n\n'''
+          text = text.replace(block, '')
+          marker = '## 6. Consultation is a sub-capability, not the product identity\n'
+          text = text.replace(marker, block + marker)
+          contract.write_text(text)
+      - name: Commit canonical coherence
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/ROADMAP.md docs/COMPANION_INTELLIGENCE_CONTRACT.md
+          git diff --cached --quiet || git commit -m 'docs(companion): align P2-7 canonical state'
+          git push origin HEAD:agent/p2-companion-7-dashboard-entry
