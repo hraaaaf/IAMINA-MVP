@@ -65,8 +65,17 @@ class _LogoReadyLoginScreenState extends State<_LogoReadyLoginScreen> {
   @override
   Widget build(BuildContext context) {
     if (_preloadError != null) {
-      return const Scaffold(
-        body: Center(child: Text('Logo preload failed')),
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: SelectableText(
+              'Logo preload failed:\n${_preloadError.runtimeType}\n${_preloadError.toString()}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+        ),
       );
     }
 
