@@ -170,6 +170,10 @@ Certified runtime boundaries:
 
 **Runtime closure:** PR #155 exact head `d15d35592fb1e118951cde4f806c3e30d12c40e2` passed Clinical Safety Reviewer, CI #1945 + migration drift #1757, zero review threads and Release Certifier GO. Expected-head merge produced `135d284a5b16df853d74ef791233060b4fffe815`; post-merge `main` CI #1946 + migration drift #1758 passed.
 
+### 5.6 After-Visit Continuity and Companion UX closure
+
+P2-COMPANION-6 and P2-COMPANION-7 preserve the same authority ceiling through persistence, API and patient UX. Final P2-COMPANION-7 dashboard merge `bb5b9cb87fdd48197657cb38011509876756b5ea` passed post-merge CI #1966 and migration drift #1778.
+
 ## 6. Consultation is a sub-capability, not the product identity
 
 The certified `consultation-brief.v1` contract from PR #143 remains valid as a **restricted consultation-support sub-contract**, now implemented by the P2-COMPANION-5 deterministic assembler.
@@ -213,10 +217,6 @@ The deterministic structured result is authoritative; narration is optional pres
 | **P2-COMPANION-6** | **After-Visit Continuity** | ✅ Certified: explicit visit/fact continuity with provenance and no treatment-efficacy inference from chronology |
 | **P2-COMPANION-7** | **Companion UX** | ✅ Certified: read-only overview API + FR/EN/AR patient-first Flutter surface + dashboard discoverability; final merge `bb5b9cb8…`; post-merge CI #1966 + drift #1778 green |
 | **P2-COMPANION-8** | **Safety + Certification** | ▶️ NEXT: permanent negative/safety evals prevent diagnosis, prescription, dosing, treatment-change, false-certainty and doctor-replacement drift |
-
-### 5.6 After-Visit Continuity and Companion UX closure
-
-P2-COMPANION-6 and P2-COMPANION-7 preserve the same authority ceiling through persistence, API and patient UX. Final P2-COMPANION-7 dashboard merge `bb5b9cb87fdd48197657cb38011509876756b5ea` passed post-merge CI #1966 and migration drift #1778.
 
 ## 10. Permanent regression expectations
 
