@@ -1,0 +1,52 @@
+name: p3-doc-sync
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: sync
+        shell: python
+        run: |
+          from pathlib import Path
+
+          roadmap = Path('docs/ROADMAP.md')
+          text = roadmap.read_text()
+          text = text.replace(
+              'P2-COMPANION-8 is certified, merged and post-merge green. **P3-HORIZON — Evidence Horizon Scanner is NEXT.**',
+              'P3-HORIZON is certified, merged and post-merge green. **P3-EVALS — Companion Intelligence Evals is NEXT.**',
+          )
+          text = text.replace(
+              '✅ P2-COMPANION closed — P3-HORIZON next | P2-8 merge `7e4bfe36…`; post-merge CI #1980 + drift #1792 green',
+              '✅ P3-HORIZON closed — P3-EVALS next | H0..H3 merged; final H3 merge `100445b2…`; post-merge CI #2007 + drift #1819 green',
+          )
+          text = text.replace(
+              '| **P3-HORIZON** | **Evidence Horizon Scanner** | ▶️ **NEXT** | Keep maturity classes separated; external sources cannot alter runtime rules without separate promotion review |',
+              '| **P3-HORIZON** | **Evidence Horizon Scanner** | ✅ **CLOSED** | H0..H3 merged; final H3 merge `100445b2…`; post-merge CI #2007 + drift #1819 green |',
+          )
+          text = text.replace(
+              '| P3-EVALS | Companion Intelligence Evals | ⏳ Planned | Clinician-reviewed longitudinal, negative, false-positive and safety scenarios provide measurable release gates |',
+              '| **P3-EVALS** | **Companion Intelligence Evals** | ▶️ **NEXT** | Clinician-reviewed longitudinal, negative, false-positive and safety scenarios provide measurable release gates |',
+          )
+          text = text.replace(
+              '1. **Companion intelligence product lane:** P2-COMPANION-0..8 is closed; execute **P3-HORIZON — Evidence Horizon Scanner** next.',
+              '1. **Companion intelligence product lane:** P2-COMPANION-0..8 and P3-HORIZON are closed; execute **P3-EVALS — Companion Intelligence Evals** next.',
+          )
+          roadmap.write_text(text)
+
+          contract = Path('docs/P3_HORIZON_CONTRACT.md')
+          text = contract.read_text().replace('Status: CONTRACT CANDIDATE', 'Status: CERTIFIED / CLOSED')
+          text += '''\n## Certified implementation\n\n- H0 candidate contract/schema: merge `098f87dc…`; post-merge CI #1988 + drift #1800 green.\n- H1 read-only complete/incomplete scan semantics: merge `074dc414…`; post-merge CI #1990 + drift #1802 green.\n- H2 source-only comparison and review hints: merge `9c54e3cf…`; post-merge CI #2002 + drift #1814 green.\n- H3 fail-closed verification state: merge `100445b2…`; post-merge CI #2007 + drift #1819 green.\n\nNo horizon component mutates the governed registry, promotes a candidate or changes runtime authority. Promotion remains a separate reviewed repository change.\n\n## Next\n\nP3-EVALS — Companion Intelligence Evals.\n'''
+          contract.write_text(text)
+
+          Path('docs/P3_HORIZON_CLOSEOUT.md').write_text('''# P3-HORIZON Closeout\n\nStatus: CLOSED\n\n- H0 merge `098f87dc…`; post-merge CI #1988 + drift #1800 green.\n- H1 merge `074dc414…`; post-merge CI #1990 + drift #1802 green.\n- H2 merge `9c54e3cf…`; post-merge CI #2002 + drift #1814 green.\n- H3 merge `100445b2…`; post-merge CI #2007 + drift #1819 green.\n\nDiscovery remains read-only relative to the governed registry. Incomplete scans cannot prove absence of updates. Newer sources are review hints, not automatic supersession. Candidate metadata never grants runtime authority. Promotion remains a separate reviewed change.\n\nNext: P3-EVALS.\n''')
+      - name: commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/ROADMAP.md docs/P3_HORIZON_CONTRACT.md docs/P3_HORIZON_CLOSEOUT.md
+          git diff --cached --quiet || git commit -m 'docs: sync P3 horizon closeout'
+          git push
