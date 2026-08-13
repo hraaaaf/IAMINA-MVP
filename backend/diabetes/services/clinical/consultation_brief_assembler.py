@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Avg
 from django.db.models.functions import Coalesce
 
@@ -253,6 +255,13 @@ def _companion_change_items(
         else:
             if pattern.evidence_id != change.evidence_id or pattern.producer != change.producer:
                 raise ValueError("change provenance differs from governed pattern projection")
+            if change.change_kind == "resolved" and pattern.current_state != "resolved":
+                raise ValueError("resolved change does not match governed pattern lifecycle")
+            if (
+                change.change_kind in {"new", "persisting", "improving"}
+                and pattern.current_state != "active"
+            ):
+                raise ValueError("active change does not match governed pattern lifecycle")
             if not _pattern_is_eligible_for_window(
                 pattern,
                 window_start=window_start,
@@ -296,6 +305,7 @@ def _companion_change_items(
     return checkpoint, tuple(items), tuple(dict.fromkeys(missing))
 
 
+@transaction.atomic
 def assemble_consultation_brief(
     *, patient_id: int, window_start: datetime, window_end: datetime
 ) -> ConsultationBriefEnvelope:
@@ -313,6 +323,8 @@ def assemble_consultation_brief(
         window_start=window_start,
         window_end=window_end,
     )
+    # Shared serialization boundary with Clinical Twin refresh/erasure and review capture.
+    get_user_model().objects.select_for_update().only("pk").get(pk=patient_id)
 
     logs = _eligible_logs(
         patient_id=patient_id,
@@ -323,7 +335,9 @@ def assemble_consultation_brief(
     average = _average_glucose_item(logs)
 
     pattern_result = project_personal_pattern_intelligence(patient_id=patient_id)
-    patterns_by_key = {pattern.observation_key: pattern for pattern in pattern_result.patterns}
+    patterns_by_key = {
+        pattern.observation_key: pattern for pattern in pattern_result.patterns
+    }
     if len(patterns_by_key) != len(pattern_result.patterns):
         raise ValueError("governed pattern projection contains duplicate observation keys")
     clinical_twin = _clinical_twin_items(
