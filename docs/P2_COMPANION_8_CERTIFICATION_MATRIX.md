@@ -1,6 +1,6 @@
 # P2-COMPANION-8 — Safety + Certification Matrix
 
-Status: IN PROGRESS
+Status: CLOSED
 
 ## Release rule
 
@@ -36,6 +36,10 @@ A P2-COMPANION-8 release is GO only when all of the following are true on the ex
 7. Release Certifier records GO on the exact head.
 8. Zero unresolved review threads remain before merge.
 9. Post-merge CI and migration drift succeed on the merge SHA.
+
+## Closure evidence
+
+PR #166 exact head `1925eef3c8f5b2fb0db34f0112c0d288daf95ee5` passed CI #1979 and migration drift #1791 and merged as `7e4bfe367c9cdd908024c9ca8dbd907add84fc49`. Post-merge CI #1980 and migration drift #1792 succeeded.
 
 ## Non-goals
 
