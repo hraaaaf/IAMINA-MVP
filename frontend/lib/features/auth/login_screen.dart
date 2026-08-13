@@ -22,13 +22,8 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
 
   Future<void> _handleForgotPassword() async {
-    // Pre-fill with email already typed, or ask for it.
-    final emailForReset = _emailCtrl.text.trim().isNotEmpty
-        ? _emailCtrl.text.trim()
-        : null;
-
+    final emailForReset = _emailCtrl.text.trim().isNotEmpty ? _emailCtrl.text.trim() : null;
     final emailCtrl = TextEditingController(text: emailForReset);
-
     final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -40,23 +35,13 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                dl10n.resetPasswordDescription,
-                style: const TextStyle(fontSize: 13, height: 1.45),
-              ),
+              Text(dl10n.resetPasswordDescription, style: const TextStyle(fontSize: 13, height: 1.45)),
               const SizedBox(height: 14),
-              _Field(
-                controller: emailCtrl,
-                hint: dl10n.emailPlaceholder,
-                keyboardType: TextInputType.emailAddress,
-              ),
+              _Field(controller: emailCtrl, hint: dl10n.emailPlaceholder, keyboardType: TextInputType.emailAddress),
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(dl10n.cancel),
-            ),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(dl10n.cancel)),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: FilledButton.styleFrom(backgroundColor: AminaTheme.teal500),
@@ -66,22 +51,16 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       },
     );
-
     if (confirmed != true || !mounted) return;
     final email = emailCtrl.text.trim();
     if (email.isEmpty) return;
-
     setState(() { _isLoading = true; _error = null; });
     try {
       final auth = context.read<AuthService>();
       await auth.sendPasswordResetEmail(email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.resetEmailSent),
-          backgroundColor: AminaTheme.teal600,
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(content: Text(l10n.resetEmailSent), backgroundColor: AminaTheme.teal600, behavior: SnackBarBehavior.floating),
       );
     } catch (_) {
       if (mounted) setState(() => _error = l10n.emailNotFound);
@@ -92,11 +71,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleSignup() async {
     final l10n = AppLocalizations.of(context)!;
-    final emailCtrl    = TextEditingController(text: _emailCtrl.text);
+    final emailCtrl = TextEditingController(text: _emailCtrl.text);
     final passwordCtrl = TextEditingController();
-    final confirmCtrl  = TextEditingController();
+    final confirmCtrl = TextEditingController();
     bool obscure = true;
-
     await showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -133,9 +111,9 @@ class _LoginScreenState extends State<LoginScreen> {
               FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: AminaTheme.teal500),
                 onPressed: () async {
-                  final email    = emailCtrl.text.trim();
+                  final email = emailCtrl.text.trim();
                   final password = passwordCtrl.text;
-                  final confirm  = confirmCtrl.text;
+                  final confirm = confirmCtrl.text;
                   if (email.isEmpty || password.isEmpty) return;
                   if (password != confirm) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -171,9 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final api = context.read<ApiClient>();
     try {
       if (isDemo) {
-        // Anonymous sign-in — no Firebase account needed for the demo.
         await auth.signInAnonymously();
-        // Seed backend (creates PatientProfile + 30 days of logs) and local Drift DB.
         await api.seedDemoData();
         final count = await db.countLogs();
         if (count == 0) await db.seedDemoData();
@@ -222,11 +198,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         isLoading: _isLoading,
                         onSubmit: _handleLogin,
                         onForgotPassword: _handleForgotPassword,
+                        onDemo: () => _handleLogin(isDemo: true),
+                        onSignup: _handleSignup,
                       ),
-                      const SizedBox(height: 16),
-                      _SignupRow(isLoading: _isLoading, onTap: _handleSignup),
-                      const SizedBox(height: 20),
-                      _DemoButton(isLoading: _isLoading, onTap: () => _handleLogin(isDemo: true)),
                       const SizedBox(height: 32),
                       _Footer(),
                     ],
@@ -241,17 +215,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// ── Login visual foundation ───────────────────────────────────────────────────
-
 class _LoginBackdrop extends StatelessWidget {
   const _LoginBackdrop();
 
   @override
   Widget build(BuildContext context) {
     final isDark = AminaTheme.isDark(context);
-    return IgnorePointer(
-      child: CustomPaint(painter: _LoginBackdropPainter(isDark: isDark)),
-    );
+    return IgnorePointer(child: CustomPaint(painter: _LoginBackdropPainter(isDark: isDark)));
   }
 }
 
@@ -261,10 +231,7 @@ class _LoginBackdropPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..color = isDark ? AminaTheme.darkPaper : AminaTheme.paper,
-    );
+    canvas.drawRect(Offset.zero & size, Paint()..color = isDark ? AminaTheme.darkPaper : AminaTheme.paper);
     if (isDark) return;
 
     void drawGlow(Offset center, double radius, double opacity) {
@@ -322,8 +289,6 @@ class _LoginBackdropPainter extends CustomPainter {
   bool shouldRepaint(covariant _LoginBackdropPainter oldDelegate) => oldDelegate.isDark != isDark;
 }
 
-// ── Brand ─────────────────────────────────────────────────────────────────────
-
 class _Brand extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -331,17 +296,10 @@ class _Brand extends StatelessWidget {
     return Semantics(
       label: l10n.appTitle,
       image: true,
-      child: Image.asset(
-        'assets/images/logo_amina.png',
-        width: 176,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.high,
-      ),
+      child: Image.asset('assets/images/logo_amina.png', width: 176, fit: BoxFit.contain, filterQuality: FilterQuality.high),
     );
   }
 }
-
-// ── Login card ────────────────────────────────────────────────────────────────
 
 class _LoginCard extends StatelessWidget {
   final TextEditingController emailCtrl;
@@ -352,6 +310,8 @@ class _LoginCard extends StatelessWidget {
   final bool isLoading;
   final void Function({bool isDemo}) onSubmit;
   final VoidCallback onForgotPassword;
+  final VoidCallback onDemo;
+  final VoidCallback onSignup;
 
   const _LoginCard({
     required this.emailCtrl,
@@ -362,6 +322,8 @@ class _LoginCard extends StatelessWidget {
     required this.isLoading,
     required this.onSubmit,
     required this.onForgotPassword,
+    required this.onDemo,
+    required this.onSignup,
   });
 
   @override
@@ -378,28 +340,14 @@ class _LoginCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            l10n.welcome,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AminaTheme.ink900),
-          ),
+          Text(l10n.welcome, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AminaTheme.ink900)),
           const SizedBox(height: 6),
-          Text(
-            l10n.loginSubtitle,
-            style: const TextStyle(fontSize: 13, color: AminaTheme.ink500),
-          ),
+          Text(l10n.loginSubtitle, style: const TextStyle(fontSize: 13, color: AminaTheme.ink500)),
           const SizedBox(height: 24),
-
-          // Email
           _FieldLabel(l10n.emailLabel),
           const SizedBox(height: 6),
-          _Field(
-            controller: emailCtrl,
-            hint: l10n.emailPlaceholder,
-            keyboardType: TextInputType.emailAddress,
-          ),
+          _Field(controller: emailCtrl, hint: l10n.emailPlaceholder, keyboardType: TextInputType.emailAddress),
           const SizedBox(height: 16),
-
-          // Password
           _FieldLabel(l10n.passwordLabel),
           const SizedBox(height: 6),
           _Field(
@@ -412,21 +360,15 @@ class _LoginCard extends StatelessWidget {
             ),
             onSubmit: (_) => onSubmit(),
           ),
-
           const SizedBox(height: 8),
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: TextButton(
               onPressed: onForgotPassword,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                minimumSize: Size.zero,
-              ),
+              style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2), minimumSize: Size.zero),
               child: Text(l10n.forgotPassword, style: const TextStyle(fontSize: 12, color: AminaTheme.teal600, fontWeight: FontWeight.w600)),
             ),
           ),
-
-          // Error
           if (error != null) ...[
             const SizedBox(height: 10),
             Container(
@@ -441,10 +383,7 @@ class _LoginCard extends StatelessWidget {
               ),
             ),
           ],
-
           const SizedBox(height: 20),
-
-          // Submit
           FilledButton(
             onPressed: isLoading ? null : () => onSubmit(),
             style: FilledButton.styleFrom(
@@ -456,6 +395,10 @@ class _LoginCard extends StatelessWidget {
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : Text(l10n.signIn, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
           ),
+          const SizedBox(height: 20),
+          _DemoButton(isLoading: isLoading, onTap: onDemo),
+          const SizedBox(height: 20),
+          _SignupRow(isLoading: isLoading, onTap: onSignup),
         ],
       ),
     );
@@ -464,7 +407,6 @@ class _LoginCard extends StatelessWidget {
 
 class _FieldLabel extends StatelessWidget {
   final String text;
-  // ignore: prefer_const_constructors_in_immutables
   _FieldLabel(this.text);
 
   @override
@@ -481,14 +423,7 @@ class _Field extends StatelessWidget {
   final Widget? suffix;
   final void Function(String)? onSubmit;
 
-  const _Field({
-    required this.controller,
-    required this.hint,
-    this.obscureText = false,
-    this.keyboardType,
-    this.suffix,
-    this.onSubmit,
-  });
+  const _Field({required this.controller, required this.hint, this.obscureText = false, this.keyboardType, this.suffix, this.onSubmit});
 
   @override
   Widget build(BuildContext context) {
@@ -516,8 +451,6 @@ class _Field extends StatelessWidget {
     );
   }
 }
-
-// ── Demo button ───────────────────────────────────────────────────────────────
 
 class _DemoButton extends StatelessWidget {
   final bool isLoading;
@@ -560,8 +493,6 @@ class _DemoButton extends StatelessWidget {
   }
 }
 
-// ── Sign-up row ───────────────────────────────────────────────────────────────
-
 class _SignupRow extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onTap;
@@ -576,17 +507,12 @@ class _SignupRow extends StatelessWidget {
         const SizedBox(width: 6),
         GestureDetector(
           onTap: isLoading ? null : onTap,
-          child: const Text(
-            'Créer un compte',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AminaTheme.teal600),
-          ),
+          child: const Text('Créer un compte', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AminaTheme.teal600)),
         ),
       ],
     );
   }
 }
-
-// ── Footer ────────────────────────────────────────────────────────────────────
 
 class _Footer extends StatelessWidget {
   @override
