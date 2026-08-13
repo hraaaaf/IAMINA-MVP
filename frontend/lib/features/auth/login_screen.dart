@@ -522,13 +522,33 @@ class _SignupRow extends StatelessWidget {
 class _Footer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(Icons.shield_outlined, size: 13, color: AminaTheme.ink300),
-        const SizedBox(width: 6),
-        Flexible(child: Text(AppLocalizations.of(context)!.dataPrivacyNote, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: AminaTheme.ink300))),
-      ],
+    final isDark = AminaTheme.isDark(context);
+    final foreground = isDark ? AminaTheme.dark300 : AminaTheme.ink500;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 360),
+      child: Container(
+        padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 14, 10),
+        decoration: BoxDecoration(
+          color: AminaTheme.surface(context).withValues(alpha: isDark ? 0.54 : 0.72),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AminaTheme.divider(context).withValues(alpha: isDark ? 0.7 : 0.8)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(Icons.shield_outlined, size: 16, color: isDark ? AminaTheme.teal400 : AminaTheme.teal700),
+            const SizedBox(width: 9),
+            Flexible(
+              child: Text(
+                AppLocalizations.of(context)!.dataPrivacyNote,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11.5, height: 1.35, color: foreground),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
