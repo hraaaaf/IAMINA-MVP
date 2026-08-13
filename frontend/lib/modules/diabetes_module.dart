@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../features/companion/companion_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/dashboard/dashboard_convergent_screen.dart';
 import '../features/dashboard/widgets/add_log_sheet.dart';
@@ -72,6 +73,10 @@ final ModuleConfig diabetesModule = ModuleConfig(
     ModuleShellRoute(path: '/importer', builder: () => const ImportScreen()),
   ],
   fullScreenRoutes: [
+    ModuleFullScreenRoute(
+      path: '/companion',
+      builder: (s) => const CompanionScreen(),
+    ),
     ModuleFullScreenRoute(
       path: '/ajouter',
       builder: (s) =>
