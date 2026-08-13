@@ -210,9 +210,13 @@ The deterministic structured result is authoritative; narration is optional pres
 | **P2-COMPANION-3** | **Evidence + Uncertainty** | ✅ Certified in PR #151: governed evidence/uncertainty envelope for material P2-COMPANION-1/2 observations; post-merge CI #1929 + drift #1741 green |
 | **P2-COMPANION-4** | **Smart Suggestions** | ✅ Certified in PR #153: bounded transactional projection reusing proactive priority/anti-repeat authority; merge `71c63ef8…`; post-merge CI #1933 + drift #1745 green |
 | **P2-COMPANION-5** | **Consultation Companion** | ✅ Certified in PR #155: deterministic `consultation-brief.v1` assembler; merge `135d284a…`; post-merge CI #1946 + drift #1758 green |
-| **P2-COMPANION-6** | **After-Visit Continuity** | ▶️ NEXT: record and compare the post-consultation interval without judging, overriding or optimizing treatment |
-| P2-COMPANION-7 | Companion UX | Patient-first surfaces organized around understand, follow and prepare rather than medical-software authority |
-| P2-COMPANION-8 | Safety + Certification | Permanent negative/safety evals prevent diagnosis, prescription, dosing, treatment-change and doctor-replacement drift |
+| **P2-COMPANION-6** | **After-Visit Continuity** | ✅ Certified: explicit visit/fact continuity with provenance and no treatment-efficacy inference from chronology |
+| **P2-COMPANION-7** | **Companion UX** | ✅ Certified: read-only overview API + FR/EN/AR patient-first Flutter surface + dashboard discoverability; final merge `bb5b9cb8…`; post-merge CI #1966 + drift #1778 green |
+| **P2-COMPANION-8** | **Safety + Certification** | ▶️ NEXT: permanent negative/safety evals prevent diagnosis, prescription, dosing, treatment-change, false-certainty and doctor-replacement drift |
+
+### 5.6 After-Visit Continuity and Companion UX closure
+
+P2-COMPANION-6 and P2-COMPANION-7 preserve the same authority ceiling through persistence, API and patient UX. Final P2-COMPANION-7 dashboard merge `bb5b9cb87fdd48197657cb38011509876756b5ea` passed post-merge CI #1966 and migration drift #1778.
 
 ## 10. Permanent regression expectations
 
