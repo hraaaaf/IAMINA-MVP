@@ -1,0 +1,1 @@
+{"buildCommand":"cd frontend && bash vercel_build.sh","outputDirectory":"frontend/build/web"}
