@@ -62,7 +62,7 @@ Patient-facing suggestions under the companion lane are limited to non-prescript
 5. `PREPARE_CLINICIAN_DISCUSSION` — turn an observation into a question or discussion point for a qualified clinician.
 6. `FOLLOW_UP_RECORD` — help the patient track what happened after a consultation or over a defined period without judging treatment efficacy beyond governed descriptive evidence.
 
-The class vocabulary is broader than any individual runtime LOT. **P2-COMPANION-4 V1 activates only `UNDERSTAND_DATA`, `MONITOR` and `PREPARE_CLINICIAN_DISCUSSION` because those classes can reuse already-certified proactive authority.** `COLLECT_MISSING_DATA`, `LEARN` and `FOLLOW_UP_RECORD` remain fail-closed until a later LOT introduces their prerequisite governed action authority; the runtime must not invent filler suggestions merely to make all six classes reachable.
+The class vocabulary is broader than any individual runtime LOT. **P2-COMPANION-4 Smart Suggestions V1 activates only `UNDERSTAND_DATA`, `MONITOR` and `PREPARE_CLINICIAN_DISCUSSION` because those classes can reuse already-certified proactive authority.** `COLLECT_MISSING_DATA`, `LEARN` and `FOLLOW_UP_RECORD` remain fail-closed in Smart Suggestions V1 unless a later LOT explicitly adds their prerequisite governed action authority. P2-COMPANION-5 may use `COLLECT_MISSING_DATA` only inside the certified consultation-brief sub-contract when a bounded change is explicitly `unknown`; that does not silently expand Smart Suggestions authority.
 
 A suggestion must never silently become a treatment recommendation merely because it is personalized.
 
@@ -123,7 +123,7 @@ P2-COMPANION-1 makes review history an explicit governed product event rather th
 - missing current state or insufficient post-review evidence is `unknown`, not silent resolution;
 - source erasure/replacement invalidates anchors that may encode the removed evidence before Clinical Twin rebuild;
 - persisted anchors/snapshots are patient-owned application records and remain subject to export, account deletion and retention governance;
-- the anchor records an IAmina **companion review**, not a clinician consultation. Consultation history remains a separate P2-COMPANION-5 concern.
+- the anchor records an IAmina **companion review**, not a clinician consultation. Consultation history remains a separate concern from this review anchor.
 
 ### 5.3 Evidence + uncertainty contract
 
@@ -145,19 +145,36 @@ P2-COMPANION-4 translates **existing** governed observation/proactive authority 
 - the projection consumes the one non-urgent item already selected by the certified P2-PROACTIVE engine, then requires exactly one matching P2-COMPANION-2 governed pattern and its P2-COMPANION-3 evidence/uncertainty envelope;
 - the existing proactive priority vector, material-state delivery signature and `one_non_urgent_item_per_24h` attention budget remain authoritative. The companion layer does not calculate another risk, urgency, relevance or confidence score;
 - current V1 mappings are deterministic: a first eligible proactive `MONITOR` observation maps to `UNDERSTAND_DATA`; eligible `MONITORING` / `IMPROVING` / `RESOLVED` proactive states map to `MONITOR`; existing proactive `PREPARE_CLINICIAN_DISCUSSION` authority maps to the identically named companion class;
-- `COLLECT_MISSING_DATA`, `LEARN` and `FOLLOW_UP_RECORD` are valid canonical classes but are intentionally not emitted by V1 because their action authority is not yet implemented; unsupported class/state/action combinations fail closed;
+- `COLLECT_MISSING_DATA`, `LEARN` and `FOLLOW_UP_RECORD` are valid canonical classes but are intentionally not emitted by Smart Suggestions V1; unsupported class/state/action combinations fail closed;
 - the matched evidence ID and approved producer must agree across proactive output, personal-pattern projection and evidence envelope. Optional P2-COMPANION-1 `change_since_review` is descriptive metadata only and cannot grant suggestion authority;
 - the suggestion projection wraps proactive delivery and downstream provenance validation in one transaction so a failed validation cannot consume the attention budget for a suggestion that was never safely produced;
 - every emitted suggestion carries explicit limitations preserving the no-diagnosis/no-causality/no-prediction/no-treatment/no-dose ceiling and the separate upstream emergency boundary;
 - P2-COMPANION-4 adds no detector, clinical threshold, database model/migration, endpoint, Flutter surface, generative/free-text authority input, medication/dose logic, treatment optimization/change or clinician override.
 
+### 5.5 Consultation Companion contract
+
+P2-COMPANION-5 deterministically assembles a patient consultation-preparation dossier into the already-certified `consultation-brief.v1` contract. It is a read-only projection and does not create a new clinical reasoning authority.
+
+Certified runtime boundaries:
+
+- public assembly accepts only `patient_id`, `window_start` and `window_end`; callers cannot supply a review checkpoint, free text, diagnosis, action, model output or medical conclusion;
+- synchronized non-demo glucose rows may contribute latest recorded value, timestamp, capture provenance and a descriptive arithmetic average only; the average is explicitly not CGM time-weighted and not a target assessment;
+- Clinical Twin content is consumed only through the governed P2-COMPANION-2/3 projection, with producer/evidence/density consistency checks and dossier-window bounds;
+- since-review semantics require the persisted server-captured P2-COMPANION-1 review anchor to fall inside the requested dossier window; otherwise the dossier truthfully falls back to `CURRENT_SNAPSHOT` rather than fabricating history;
+- bounded `new`, `persisting`, `improving` and `resolved` change states authorize only `MONITOR` in this consultation assembler; change state alone cannot manufacture clinician-discussion authority;
+- `unknown` may authorize only `COLLECT_MISSING_DATA`, with missing evidence preserved explicitly;
+- evidence that postdates the requested dossier window is excluded/fails closed rather than leaking future state into the brief;
+- patient-row serialization prevents consultation reads from racing governed Clinical Twin refresh/erasure or companion-review capture;
+- all output remains under `clinician_review_support_only` and `approved_structured_fields_only`; no diagnosis, causality, prediction, urgency, prescription, dose, treatment optimization/change or clinician override is introduced;
+- no endpoint, Flutter surface, database model/migration, notification behavior or LLM/provider change was introduced by this runtime LOT.
+
+**Runtime closure:** PR #155 exact head `d15d35592fb1e118951cde4f806c3e30d12c40e2` passed Clinical Safety Reviewer, CI #1945 + migration drift #1757, zero review threads and Release Certifier GO. Expected-head merge produced `135d284a5b16df853d74ef791233060b4fffe815`; post-merge `main` CI #1946 + migration drift #1758 passed.
+
 ## 6. Consultation is a sub-capability, not the product identity
 
-The certified `consultation-brief.v1` contract from PR #143 remains valid as a **restricted consultation-support sub-contract**.
+The certified `consultation-brief.v1` contract from PR #143 remains valid as a **restricted consultation-support sub-contract**, now implemented by the P2-COMPANION-5 deterministic assembler.
 
-It does not define IAmina as a doctor-facing or doctor-replacement product. Under the P2-COMPANION roadmap it belongs to **P2-COMPANION-5 — Consultation Companion**.
-
-The consultation surface exists to help the patient arrive better prepared and to organize evidence-qualified information for review. The clinician remains the medical decision authority.
+It does not define IAmina as a doctor-facing or doctor-replacement product. The consultation surface exists to help the patient arrive better prepared and to organize evidence-qualified information for review. The clinician remains the medical decision authority.
 
 Existing `clinician_review_support_only` and `approved_structured_fields_only` limits remain valid and are stricter than, not exceptions to, this companion ceiling.
 
@@ -192,8 +209,8 @@ The deterministic structured result is authoritative; narration is optional pres
 | **P2-COMPANION-2** | **Personal Pattern Intelligence** | ✅ Certified in PR #149: read-only governed Clinical Twin projection; post-merge CI #1922 + drift #1734 green |
 | **P2-COMPANION-3** | **Evidence + Uncertainty** | ✅ Certified in PR #151: governed evidence/uncertainty envelope for material P2-COMPANION-1/2 observations; post-merge CI #1929 + drift #1741 green |
 | **P2-COMPANION-4** | **Smart Suggestions** | ✅ Certified in PR #153: bounded transactional projection reusing proactive priority/anti-repeat authority; merge `71c63ef8…`; post-merge CI #1933 + drift #1745 green |
-| **P2-COMPANION-5** | **Consultation Companion** | ▶️ NEXT: prepare the patient for clinician review using inherited `consultation-brief.v1` authority; clinician remains medical decision authority |
-| P2-COMPANION-6 | After-Visit Continuity | Track the interval after a consultation without judging or changing the clinician's treatment decision |
+| **P2-COMPANION-5** | **Consultation Companion** | ✅ Certified in PR #155: deterministic `consultation-brief.v1` assembler; merge `135d284a…`; post-merge CI #1946 + drift #1758 green |
+| **P2-COMPANION-6** | **After-Visit Continuity** | ▶️ NEXT: record and compare the post-consultation interval without judging, overriding or optimizing treatment |
 | P2-COMPANION-7 | Companion UX | Patient-first surfaces organized around understand, follow and prepare rather than medical-software authority |
 | P2-COMPANION-8 | Safety + Certification | Permanent negative/safety evals prevent diagnosis, prescription, dosing, treatment-change and doctor-replacement drift |
 
