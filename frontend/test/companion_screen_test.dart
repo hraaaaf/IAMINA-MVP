@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:amina/data/models/companion_models.dart';
@@ -59,14 +60,20 @@ CompanionOverview _overview() {
   );
 }
 
+Widget _harness(Locale locale) => MaterialApp(
+  locale: locale,
+  supportedLocales: const [Locale('fr'), Locale('en'), Locale('ar')],
+  localizationsDelegates: const [
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
+  home: CompanionScreen(service: _FakeCompanionService(_overview())),
+);
+
 void main() {
   testWidgets('renders patient-first governed companion sections', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        locale: const Locale('fr'),
-        home: CompanionScreen(service: _FakeCompanionService(_overview())),
-      ),
-    );
+    await tester.pumpWidget(_harness(const Locale('fr')));
     await tester.pumpAndSettle();
 
     expect(find.text('Mon compagnon'), findsOneWidget);
@@ -85,13 +92,7 @@ void main() {
   });
 
   testWidgets('renders governed Arabic companion copy in RTL', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        locale: const Locale('ar'),
-        supportedLocales: const [Locale('fr'), Locale('en'), Locale('ar')],
-        home: CompanionScreen(service: _FakeCompanionService(_overview())),
-      ),
-    );
+    await tester.pumpWidget(_harness(const Locale('ar')));
     await tester.pumpAndSettle();
 
     expect(Directionality.of(tester.element(find.byType(CompanionScreen))), TextDirection.rtl);
