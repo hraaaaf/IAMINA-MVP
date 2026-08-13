@@ -241,15 +241,14 @@ class _Brand extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     return Column(
       children: [
-        Container(
-          width: 64, height: 64,
-          decoration: BoxDecoration(
-            gradient: AminaTheme.heroGradient,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(color: AminaTheme.teal500.withValues(alpha: 0.25), blurRadius: 16, offset: const Offset(0, 6))],
-          ),
-          child: CustomPaint(
-            painter: _GlucoseCurvePainter(),
+        Semantics(
+          label: l10n.appTitle,
+          image: true,
+          child: Image.asset(
+            'assets/images/logo_amina.png',
+            width: 160,
+            height: 160,
+            fit: BoxFit.contain,
           ),
         ),
         const SizedBox(height: 20),
@@ -266,40 +265,6 @@ class _Brand extends StatelessWidget {
       ],
     );
   }
-}
-
-class _GlucoseCurvePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.9)
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final path = Path();
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-
-    // Stylized glucose curve: flat → spike → descent → flat
-    path.moveTo(cx - 22, cy + 4);
-    path.lineTo(cx - 10, cy + 4);
-    path.cubicTo(cx - 6, cy + 4, cx - 4, cy - 14, cx, cy - 16);
-    path.cubicTo(cx + 4, cy - 14, cx + 6, cy + 4, cx + 10, cy + 4);
-    path.lineTo(cx + 22, cy + 4);
-
-    canvas.drawPath(path, paint);
-
-    // Target zone dots
-    final dotPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.5)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(cx - 20, cy + 4), 2, dotPaint);
-    canvas.drawCircle(Offset(cx + 20, cy + 4), 2, dotPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ── Login card ────────────────────────────────────────────────────────────────
