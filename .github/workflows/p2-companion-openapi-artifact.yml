@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - agent/p2-companion-7-api
+    paths-ignore:
+      - docs/api/openapi.json
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   export:
@@ -34,10 +36,16 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Export OpenAPI
-        run: python manage.py export_openapi > ../openapi-generated.json
-      - name: Upload generated schema
-        uses: actions/upload-artifact@v4
-        with:
-          name: p2-companion-openapi
-          path: openapi-generated.json
-          if-no-files-found: error
+        run: python manage.py export_openapi > ../docs/api/openapi.json
+      - name: Commit generated schema
+        working-directory: .
+        run: |
+          if git diff --quiet -- docs/api/openapi.json; then
+            echo "OpenAPI already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/api/openapi.json
+          git commit -m "docs(api): sync companion overview OpenAPI"
+          git push
