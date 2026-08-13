@@ -199,38 +199,127 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AminaTheme.bg(context),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Column(
-              children: [
-                _Brand(),
-                const SizedBox(height: 40),
-                _LoginCard(
-                  emailCtrl: _emailCtrl,
-                  passwordCtrl: _passwordCtrl,
-                  obscure: _obscure,
-                  onToggleObscure: () => setState(() => _obscure = !_obscure),
-                  error: _error,
-                  isLoading: _isLoading,
-                  onSubmit: _handleLogin,
-                  onForgotPassword: _handleForgotPassword,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const _LoginBackdrop(),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Column(
+                    children: [
+                      _Brand(),
+                      const SizedBox(height: 28),
+                      _LoginCard(
+                        emailCtrl: _emailCtrl,
+                        passwordCtrl: _passwordCtrl,
+                        obscure: _obscure,
+                        onToggleObscure: () => setState(() => _obscure = !_obscure),
+                        error: _error,
+                        isLoading: _isLoading,
+                        onSubmit: _handleLogin,
+                        onForgotPassword: _handleForgotPassword,
+                      ),
+                      const SizedBox(height: 16),
+                      _SignupRow(isLoading: _isLoading, onTap: _handleSignup),
+                      const SizedBox(height: 20),
+                      _DemoButton(isLoading: _isLoading, onTap: () => _handleLogin(isDemo: true)),
+                      const SizedBox(height: 32),
+                      _Footer(),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                _SignupRow(isLoading: _isLoading, onTap: _handleSignup),
-                const SizedBox(height: 20),
-                _DemoButton(isLoading: _isLoading, onTap: () => _handleLogin(isDemo: true)),
-                const SizedBox(height: 32),
-                _Footer(),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
+}
+
+// ── Login visual foundation ───────────────────────────────────────────────────
+
+class _LoginBackdrop extends StatelessWidget {
+  const _LoginBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AminaTheme.isDark(context);
+    return IgnorePointer(
+      child: CustomPaint(painter: _LoginBackdropPainter(isDark: isDark)),
+    );
+  }
+}
+
+class _LoginBackdropPainter extends CustomPainter {
+  final bool isDark;
+  const _LoginBackdropPainter({required this.isDark});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = isDark ? AminaTheme.darkPaper : AminaTheme.paper,
+    );
+    if (isDark) return;
+
+    void drawGlow(Offset center, double radius, double opacity) {
+      final rect = Rect.fromCircle(center: center, radius: radius);
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              AminaTheme.teal100.withValues(alpha: opacity),
+              AminaTheme.teal50.withValues(alpha: opacity * 0.42),
+              Colors.transparent,
+            ],
+            stops: const [0, 0.48, 1],
+          ).createShader(rect),
+      );
+    }
+
+    drawGlow(Offset(-size.width * 0.07, size.height * 0.17), size.width * 0.43, 0.58);
+    drawGlow(Offset(size.width * 1.02, size.height * 0.20), size.width * 0.30, 0.46);
+    drawGlow(Offset(size.width * 0.92, size.height * 0.73), size.width * 0.34, 0.22);
+
+    final wave = Path()
+      ..moveTo(0, size.height * 0.93)
+      ..cubicTo(size.width * 0.20, size.height * 0.95, size.width * 0.45, size.height * 1.02, size.width * 0.68, size.height * 0.975)
+      ..cubicTo(size.width * 0.84, size.height * 0.94, size.width * 0.94, size.height * 0.90, size.width, size.height * 0.89)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(
+      wave,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFDDF8F1), Color(0xFFB9F0E5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(Rect.fromLTWH(0, size.height * 0.86, size.width, size.height * 0.14)),
+    );
+
+    final highlight = Path()
+      ..moveTo(0, size.height * 0.928)
+      ..cubicTo(size.width * 0.20, size.height * 0.95, size.width * 0.45, size.height * 1.01, size.width * 0.68, size.height * 0.968)
+      ..cubicTo(size.width * 0.84, size.height * 0.935, size.width * 0.94, size.height * 0.897, size.width, size.height * 0.885);
+    canvas.drawPath(
+      highlight,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.86)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _LoginBackdropPainter oldDelegate) => oldDelegate.isDark != isDark;
 }
 
 // ── Brand ─────────────────────────────────────────────────────────────────────
@@ -239,30 +328,15 @@ class _Brand extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Column(
-      children: [
-        Semantics(
-          label: l10n.appTitle,
-          image: true,
-          child: Image.asset(
-            'assets/images/logo_amina.png',
-            width: 160,
-            height: 160,
-            fit: BoxFit.contain,
-          ),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          l10n.appTitle,
-          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AminaTheme.ink900, letterSpacing: -0.8),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          l10n.appTagline,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13, color: AminaTheme.ink500, height: 1.4),
-        ),
-      ],
+    return Semantics(
+      label: l10n.appTitle,
+      image: true,
+      child: Image.asset(
+        'assets/images/logo_amina.png',
+        width: 176,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+      ),
     );
   }
 }
@@ -522,7 +596,13 @@ class _Footer extends StatelessWidget {
       children: [
         const Icon(Icons.shield_outlined, size: 13, color: AminaTheme.ink300),
         const SizedBox(width: 6),
-        Text(AppLocalizations.of(context)!.dataPrivacyNote, style: const TextStyle(fontSize: 11, color: AminaTheme.ink300)),
+        Flexible(
+          child: Text(
+            AppLocalizations.of(context)!.dataPrivacyNote,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 11, color: AminaTheme.ink300),
+          ),
+        ),
       ],
     );
   }
