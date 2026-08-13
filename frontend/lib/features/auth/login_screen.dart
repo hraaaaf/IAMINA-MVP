@@ -182,15 +182,15 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           const _LoginBackdrop(),
           SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsetsDirectional.fromSTEB(24, 24, 24, 32),
+            child: SingleChildScrollView(
+              padding: const EdgeInsetsDirectional.fromSTEB(24, 14, 24, 28),
+              child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 400),
                   child: Column(
                     children: [
                       _Brand(),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 18),
                       _LoginCard(
                         emailCtrl: _emailCtrl,
                         passwordCtrl: _passwordCtrl,
@@ -203,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         onDemo: () => _handleLogin(isDemo: true),
                         onSignup: _handleSignup,
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 22),
                       _Footer(),
                     ],
                   ),
@@ -279,7 +279,7 @@ class _Brand extends StatelessWidget {
     return Semantics(
       label: l10n.appTitle,
       image: true,
-      child: Image.asset('assets/images/logo_amina.png', width: 176, fit: BoxFit.contain, filterQuality: FilterQuality.high),
+      child: Image.asset('assets/images/logo_amina.png', width: 138, fit: BoxFit.contain, filterQuality: FilterQuality.high),
     );
   }
 }
@@ -302,10 +302,10 @@ class _LoginCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final isDark = AminaTheme.isDark(context);
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(26, 28, 26, 26),
+      padding: const EdgeInsetsDirectional.fromSTEB(22, 24, 22, 22),
       decoration: BoxDecoration(
         color: AminaTheme.surface(context).withValues(alpha: isDark ? 0.98 : 0.96),
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(26),
         border: Border.all(color: AminaTheme.divider(context).withValues(alpha: isDark ? 0.72 : 0.58)),
         boxShadow: isDark ? AminaTheme.shadowDark : const [
           BoxShadow(color: Color(0x0F0D1A17), blurRadius: 34, spreadRadius: -10, offset: Offset(0, 18)),
@@ -315,16 +315,16 @@ class _LoginCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l10n.welcome, style: TextStyle(fontSize: 26, height: 1.08, fontWeight: FontWeight.w700, letterSpacing: -0.6, color: isDark ? AminaTheme.dark100 : AminaTheme.ink900)),
-          const SizedBox(height: 8),
-          Text(l10n.loginSubtitle, style: TextStyle(fontSize: 14, height: 1.45, color: isDark ? AminaTheme.dark300 : AminaTheme.ink500)),
-          const SizedBox(height: 24),
+          Text(l10n.welcome, style: TextStyle(fontSize: 25, height: 1.08, fontWeight: FontWeight.w700, letterSpacing: -0.6, color: isDark ? AminaTheme.dark100 : AminaTheme.ink900)),
+          const SizedBox(height: 6),
+          Text(l10n.loginSubtitle, style: TextStyle(fontSize: 13.5, height: 1.4, color: isDark ? AminaTheme.dark300 : AminaTheme.ink500)),
+          const SizedBox(height: 20),
           _FieldLabel(l10n.emailLabel),
-          const SizedBox(height: 7),
+          const SizedBox(height: 6),
           _Field(controller: emailCtrl, hint: l10n.emailPlaceholder, keyboardType: TextInputType.emailAddress, prefix: const Icon(Icons.mail_outline_rounded)),
-          const SizedBox(height: 17),
+          const SizedBox(height: 14),
           _FieldLabel(l10n.passwordLabel),
-          const SizedBox(height: 7),
+          const SizedBox(height: 6),
           _Field(
             controller: passwordCtrl,
             hint: '••••••••',
@@ -336,17 +336,17 @@ class _LoginCard extends StatelessWidget {
             ),
             onSubmit: (_) => onSubmit(),
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 4),
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: TextButton(
               onPressed: onForgotPassword,
-              style: TextButton.styleFrom(padding: const EdgeInsetsDirectional.fromSTEB(6, 4, 6, 4), minimumSize: const Size(44, 44), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              style: TextButton.styleFrom(padding: const EdgeInsetsDirectional.fromSTEB(6, 2, 6, 2), minimumSize: const Size(44, 40), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
               child: Text(l10n.forgotPassword, style: const TextStyle(fontSize: 12.5, color: AminaTheme.teal700, fontWeight: FontWeight.w600)),
             ),
           ),
           if (error != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(color: AminaTheme.dangerBg, borderRadius: BorderRadius.circular(10)),
@@ -357,11 +357,11 @@ class _LoginCard extends StatelessWidget {
               ]),
             ),
           ],
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           _PrimaryLoginButton(isLoading: isLoading, label: l10n.signIn, onTap: () => onSubmit()),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           _DemoButton(isLoading: isLoading, onTap: onDemo),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           _SignupRow(isLoading: isLoading, onTap: onSignup),
         ],
       ),
@@ -394,7 +394,7 @@ class _Field extends StatelessWidget {
     final isDark = AminaTheme.isDark(context);
     final iconColor = isDark ? AminaTheme.dark300 : AminaTheme.ink400;
     return SizedBox(
-      height: 56,
+      height: 52,
       child: TextField(
         controller: controller,
         obscureText: obscureText,
@@ -406,7 +406,7 @@ class _Field extends StatelessWidget {
           hintStyle: TextStyle(color: AminaTheme.textSecondary(context), fontSize: 14),
           filled: true,
           fillColor: isDark ? AminaTheme.darkCard : Colors.white.withValues(alpha: 0.86),
-          contentPadding: const EdgeInsetsDirectional.fromSTEB(15, 16, 15, 16),
+          contentPadding: const EdgeInsetsDirectional.fromSTEB(15, 14, 15, 14),
           prefixIcon: prefix == null ? null : IconTheme(data: IconThemeData(size: 20, color: iconColor), child: prefix!),
           suffixIcon: suffix,
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AminaTheme.divider(context))),
@@ -438,7 +438,7 @@ class _PrimaryLoginButton extends StatelessWidget {
           onTap: isLoading ? null : onTap,
           borderRadius: BorderRadius.circular(15),
           child: SizedBox(
-            height: 56,
+            height: 52,
             child: Center(
               child: isLoading
                   ? const SizedBox(width: 19, height: 19, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
@@ -469,8 +469,8 @@ class _DemoButton extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Container(
-            width: 32,
-            height: 32,
+            width: 30,
+            height: 30,
             alignment: Alignment.center,
             decoration: BoxDecoration(color: AminaTheme.surface(context), shape: BoxShape.circle, border: Border.all(color: AminaTheme.divider(context))),
             child: Text(l10n.or, style: TextStyle(fontSize: 11.5, color: isDark ? AminaTheme.dark300 : AminaTheme.ink400)),
@@ -478,10 +478,10 @@ class _DemoButton extends StatelessWidget {
         ),
         Expanded(child: Divider(color: AminaTheme.divider(context))),
       ]),
-      const SizedBox(height: 16),
+      const SizedBox(height: 13),
       SizedBox(
         width: double.infinity,
-        height: 56,
+        height: 52,
         child: OutlinedButton.icon(
           onPressed: isLoading ? null : onTap,
           icon: const Icon(Icons.eco_outlined, size: 18, color: AminaTheme.teal700),
@@ -511,7 +511,7 @@ class _SignupRow extends StatelessWidget {
         Text('Pas encore de compte ?', style: TextStyle(fontSize: 13, color: AminaTheme.textSecondary(context))),
         TextButton(
           onPressed: isLoading ? null : onTap,
-          style: TextButton.styleFrom(minimumSize: const Size(44, 44), padding: const EdgeInsetsDirectional.fromSTEB(6, 4, 6, 4), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+          style: TextButton.styleFrom(minimumSize: const Size(44, 40), padding: const EdgeInsetsDirectional.fromSTEB(6, 2, 6, 2), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
           child: const Text('Créer un compte', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AminaTheme.teal700, decoration: TextDecoration.underline, decorationThickness: 1.2)),
         ),
       ],
@@ -525,29 +525,26 @@ class _Footer extends StatelessWidget {
     final isDark = AminaTheme.isDark(context);
     final foreground = isDark ? AminaTheme.dark300 : AminaTheme.ink500;
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 360),
-      child: Container(
-        padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 14, 10),
-        decoration: BoxDecoration(
-          color: AminaTheme.surface(context).withValues(alpha: isDark ? 0.54 : 0.72),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AminaTheme.divider(context).withValues(alpha: isDark ? 0.7 : 0.8)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(Icons.shield_outlined, size: 16, color: isDark ? AminaTheme.teal400 : AminaTheme.teal700),
-            const SizedBox(width: 9),
-            Flexible(
-              child: Text(
-                AppLocalizations.of(context)!.dataPrivacyNote,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11.5, height: 1.35, color: foreground),
-              ),
+      constraints: const BoxConstraints(maxWidth: 300),
+      child: Column(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AminaTheme.teal50.withValues(alpha: isDark ? 0.10 : 0.92),
+              shape: BoxShape.circle,
+              border: Border.all(color: AminaTheme.teal200.withValues(alpha: isDark ? 0.38 : 0.72)),
             ),
-          ],
-        ),
+            child: Icon(Icons.shield_outlined, size: 20, color: isDark ? AminaTheme.teal400 : AminaTheme.teal700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            AppLocalizations.of(context)!.dataPrivacyNote,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11.5, height: 1.35, color: foreground),
+          ),
+        ],
       ),
     );
   }
