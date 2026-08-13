@@ -100,6 +100,15 @@ class ConsultationCompanionAssemblerTests(TestCase):
         twin = by_key["clinical_twin.context:stress.status"]
         self.assertEqual(twin.truth_kind, TruthKind.DETERMINISTIC_DERIVATION)
         self.assertEqual(twin.allowed_next_step, ConsultationNextStep.MONITOR)
+        self.assertEqual(
+            twin.source_version,
+            "companion-personal-pattern-intelligence.v1",
+        )
+        self.assertIn("previous_evidence_density_not_available", twin.missing_data)
+        self.assertIn(
+            "previous_baseline_relative_delta_not_available",
+            twin.missing_data,
+        )
 
     def test_authoritative_companion_anchor_enables_bounded_since_review_semantics(self):
         self._log(self.patient, days_ago=1, glucose=170)
@@ -173,6 +182,45 @@ class ConsultationCompanionAssemblerTests(TestCase):
 
         self.assertEqual(by_key["recorded_glucose.latest_mg_dl"].value, 140.0)
         self.assertNotIn("clinical_twin.context:activity.status", by_key)
+
+    def test_malformed_twin_state_cannot_bypass_companion_projection_validation(self):
+        observation = self._observation(self.patient)
+        ClinicalObservationState.objects.filter(pk=observation.pk).update(
+            context_modifiers={"source_field": "stressed", "recorded_value": "no"}
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "recorded context does not match governed key",
+        ):
+            assemble_consultation_brief(
+                patient_id=self.patient.id,
+                window_start=self.start,
+                window_end=self.end,
+            )
+
+    def test_anchor_outside_requested_window_cannot_create_since_review_claims(self):
+        self._observation(self.patient)
+        anchor = capture_companion_review_anchor(patient_id=self.patient.id)
+        future_start = anchor.captured_at + timedelta(minutes=1)
+        future_end = future_start + timedelta(days=1)
+
+        brief = assemble_consultation_brief(
+            patient_id=self.patient.id,
+            window_start=future_start,
+            window_end=future_end,
+        )
+
+        self.assertEqual(
+            brief.comparison_basis,
+            ConsultationComparisonBasis.CURRENT_SNAPSHOT,
+        )
+        self.assertIsNone(brief.review_checkpoint)
+        self.assertFalse(brief.has_since_review_claims)
+        self.assertIn(
+            "no_explicit_companion_review_anchor_inside_requested_window",
+            brief.missing_data,
+        )
 
     def test_public_entrypoint_has_no_free_text_model_or_caller_checkpoint_authority(self):
         self.assertEqual(
