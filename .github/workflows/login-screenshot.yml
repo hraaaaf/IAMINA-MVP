@@ -1,0 +1,77 @@
+name: Login screenshot
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/lib/features/auth/login_screen.dart'
+      - 'frontend/assets/images/logo_amina.png'
+      - 'frontend/lib/login_screenshot_main.dart'
+      - '.github/workflows/login-screenshot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  screenshot:
+    name: Login 390x844
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build isolated login web render
+        run: flutter build web --release -t lib/login_screenshot_main.dart
+
+      - name: Capture login screenshot
+        run: |
+          python3 -m http.server 7357 --directory build/web >/tmp/iamina-login-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          READY=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7357 >/dev/null; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          test "$READY" = "1"
+
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --hide-scrollbars \
+            --force-device-scale-factor=1 \
+            --window-size=390,844 \
+            --virtual-time-budget=5000 \
+            --screenshot="$GITHUB_WORKSPACE/login-390x844.png" \
+            http://127.0.0.1:7357
+          test -s "$GITHUB_WORKSPACE/login-390x844.png"
+
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-login-390x844
+          path: login-390x844.png
+          if-no-files-found: error
+          retention-days: 7
