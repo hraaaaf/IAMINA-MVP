@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../features/companion/companion_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
-import '../features/dashboard/dashboard_convergent_screen.dart';
+import '../features/dashboard/dashboard_companion_entry_screen.dart';
 import '../features/dashboard/widgets/add_log_sheet.dart';
 import '../features/journal/journal_screen.dart';
 import '../features/journal/ai_summary_screen.dart';
@@ -64,7 +64,7 @@ final ModuleConfig diabetesModule = ModuleConfig(
       path: '/dashboard',
       builder: () => LayoutBuilder(
         builder: (context, constraints) => constraints.maxWidth < 700
-            ? const DashboardConvergentScreen()
+            ? const DashboardCompanionEntryScreen()
             : const DashboardScreen(),
       ),
     ),
