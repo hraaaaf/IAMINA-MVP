@@ -2,29 +2,32 @@
 
 P2-COMPANION-5 is patient consultation preparation, not autonomous medical
 reasoning. The assembler is read-only: it consumes synchronized non-demo glucose
-rows plus already-governed Companion / Clinical Twin state and emits only the
-bounded review-support contract certified in PR #143.
+rows plus already-governed Companion projections and emits only the bounded
+review-support contract certified in PR #143.
 
 Since-review semantics are authorized only by P2-COMPANION-1's persisted,
 server-captured CompanionReviewAnchor. Caller-supplied checkpoint objects are not
-accepted as authority.
+accepted as authority. Clinical Twin material state is consumed through the
+certified P2-COMPANION-2/3 projection so its validation and uncertainty cannot be
+silently bypassed.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
 
-from django.db.models import Avg, Q
+from django.db.models import Avg
 from django.db.models.functions import Coalesce
 
 from core.contracts.truth import TruthKind
-from diabetes.models.clinical_observation import ClinicalObservationState
+from diabetes.models.companion_review import CompanionReviewAnchor
 from diabetes.models.entry import LogEntry
 from diabetes.services.clinical.companion_change import (
-    ENGINE_VERSION as COMPANION_CHANGE_SOURCE,
     compare_since_last_companion_review,
 )
-from diabetes.models.companion_review import CompanionReviewAnchor
+from diabetes.services.clinical.companion_pattern_intelligence import (
+    project_personal_pattern_intelligence,
+)
 from diabetes.services.clinical.consultation_brief_contract import (
     ConsultationBriefEnvelope,
     ConsultationChangeKind,
@@ -42,9 +45,9 @@ RECORDED_STATS_EVIDENCE_ID = "rule.metric.recorded-glucose-stats.v1"
 COMPANION_REVIEW_SOURCE = CompanionReviewAnchor.SOURCE_EXPLICIT_REVIEW
 
 _EVIDENCE_DENSITY = {
-    ClinicalObservationState.EVIDENCE_LIMITED: ConsultationEvidenceDensity.LIMITED,
-    ClinicalObservationState.EVIDENCE_MODERATE: ConsultationEvidenceDensity.MODERATE,
-    ClinicalObservationState.EVIDENCE_STRONG: ConsultationEvidenceDensity.STRONG,
+    "limited": ConsultationEvidenceDensity.LIMITED,
+    "moderate": ConsultationEvidenceDensity.MODERATE,
+    "strong": ConsultationEvidenceDensity.STRONG,
 }
 _CHANGE_KIND = {
     "new": ConsultationChangeKind.NEW_SINCE_REVIEW,
@@ -70,6 +73,17 @@ def _validate_inputs(*, patient_id: int, window_start: datetime, window_end: dat
         raise ValueError("consultation assembly window must be timezone-aware")
     if window_start >= window_end:
         raise ValueError("consultation assembly window_start must precede window_end")
+
+
+def _consultation_density(value: str) -> ConsultationEvidenceDensity:
+    try:
+        return _EVIDENCE_DENSITY[value]
+    except KeyError as exc:
+        raise ValueError("companion item has unapproved evidence density") from exc
+
+
+def _dedupe(values: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(values))
 
 
 def _eligible_logs(*, patient_id: int, window_start: datetime, window_end: datetime):
@@ -144,57 +158,60 @@ def _average_glucose_item(logs) -> ConsultationEvidenceItem | None:
 def _clinical_twin_items(
     *, patient_id: int, window_start: datetime, window_end: datetime
 ) -> tuple[ConsultationEvidenceItem, ...]:
-    observations = (
-        ClinicalObservationState.objects.filter(
-            patient_id=patient_id,
-            first_seen_at__lte=window_end,
-            last_refreshed_at__lte=window_end,
-        )
-        .filter(
-            Q(status=ClinicalObservationState.STATUS_ACTIVE)
-            | Q(
-                status=ClinicalObservationState.STATUS_INACTIVE,
-                status_changed_at__gte=window_start,
-                status_changed_at__lte=window_end,
-            )
-        )
-        .order_by("observation_key")
-    )
+    """Project material Twin state only through certified Companion P2-2/3."""
 
+    result = project_personal_pattern_intelligence(patient_id=patient_id)
     items: list[ConsultationEvidenceItem] = []
-    for observation in observations:
-        try:
-            density = _EVIDENCE_DENSITY[observation.evidence_strength]
-        except KeyError as exc:
-            raise ValueError("clinical twin observation has unapproved evidence density") from exc
+    for pattern in result.patterns:
+        # P2-COMPANION-2 is a current-state projection, not a historical snapshot.
+        # Never leak evidence/state that is known to post-date the requested dossier.
+        if pattern.first_observed_at > window_end or pattern.last_observed_at > window_end:
+            continue
+        if pattern.state_changed_at > window_end:
+            continue
+        if pattern.current_state == "resolved" and pattern.state_changed_at < window_start:
+            continue
+
+        context = pattern.evidence_context
+        if context.provenance.evidence_id != pattern.evidence_id:
+            raise ValueError("pattern evidence envelope does not match evidence ID")
+        if context.provenance.producer != pattern.producer:
+            raise ValueError("pattern evidence envelope does not match producer")
+        if context.uncertainty.evidence_density != pattern.evidence_density:
+            raise ValueError("pattern evidence envelope does not match evidence density")
+
         items.append(
             ConsultationEvidenceItem(
-                key=f"clinical_twin.{observation.observation_key}.status",
-                value=observation.status,
+                key=f"clinical_twin.{pattern.observation_key}.status",
+                value=("active" if pattern.current_state == "active" else "inactive"),
                 truth_kind=TruthKind.DETERMINISTIC_DERIVATION,
-                source=observation.producer,
-                source_version=SOURCE_ADAPTER_VERSION,
-                evidence_id=observation.evidence_id,
-                evidence_window_days=observation.evidence_window_days,
-                evidence_density=density,
-                limitations=(
-                    "observational_association_only",
-                    "evidence_density_is_repeatability_not_probability",
-                    "no_causality_diagnosis_or_treatment_inference",
+                source=pattern.producer,
+                source_version=pattern.source_version,
+                evidence_id=pattern.evidence_id,
+                evidence_window_days=pattern.evidence_window_days,
+                evidence_density=_consultation_density(pattern.evidence_density),
+                missing_data=context.uncertainty.missing_data,
+                limitations=_dedupe(
+                    pattern.limitations + context.uncertainty.limitations
                 ),
-                # A current observation alone does not create discussion authority.
+                # Current observation state alone does not create discussion authority.
                 allowed_next_step=ConsultationNextStep.MONITOR,
             )
         )
     return tuple(items)
 
 
-def _companion_change_items(*, patient_id: int):
+def _companion_change_items(
+    *, patient_id: int, window_start: datetime, window_end: datetime
+):
     result = compare_since_last_companion_review(patient_id=patient_id)
     if result.status != "ready":
         return None, (), result.missing_data
 
     assert result.anchor_captured_at is not None
+    if not (window_start <= result.anchor_captured_at < window_end):
+        return None, (), ("no_explicit_companion_review_anchor_inside_requested_window",)
+
     checkpoint = ConsultationReviewCheckpoint(
         reviewed_at=result.anchor_captured_at,
         source=COMPANION_REVIEW_SOURCE,
@@ -202,10 +219,17 @@ def _companion_change_items(*, patient_id: int):
     items: list[ConsultationEvidenceItem] = []
     for change in result.changes:
         try:
-            density = _EVIDENCE_DENSITY[change.evidence_strength]
             change_kind = _CHANGE_KIND[change.change_kind]
         except KeyError as exc:
             raise ValueError("companion change contains unapproved consultation vocabulary") from exc
+
+        context = change.evidence_context
+        if context.provenance.evidence_id != change.evidence_id:
+            raise ValueError("change evidence envelope does not match evidence ID")
+        if context.provenance.producer != change.producer:
+            raise ValueError("change evidence envelope does not match producer")
+        if context.uncertainty.evidence_density != change.evidence_strength:
+            raise ValueError("change evidence envelope does not match evidence density")
 
         items.append(
             ConsultationEvidenceItem(
@@ -213,12 +237,14 @@ def _companion_change_items(*, patient_id: int):
                 value=change.change_kind,
                 truth_kind=TruthKind.DETERMINISTIC_DERIVATION,
                 source=change.producer,
-                source_version=COMPANION_CHANGE_SOURCE,
+                source_version=change.source_version,
                 change_kind=change_kind,
                 evidence_id=change.evidence_id,
-                evidence_density=density,
-                missing_data=change.missing_data,
-                limitations=change.limitations,
+                evidence_density=_consultation_density(change.evidence_strength),
+                missing_data=context.uncertainty.missing_data,
+                limitations=_dedupe(
+                    change.limitations + context.uncertainty.limitations
+                ),
                 # Missing evidence may justify collecting context. Every other
                 # longitudinal state remains MONITOR unless another certified
                 # upstream engine already grants stronger action authority.
@@ -238,9 +264,10 @@ def assemble_consultation_brief(
     """Assemble one deterministic patient consultation-preparation dossier.
 
     The function accepts no caller-provided checkpoint, diagnosis, action, free text
-    or model output. When an authoritative Companion review anchor exists, bounded
-    P2-COMPANION-1 since-review semantics are projected into the certified contract.
-    Otherwise the brief remains a truthful current snapshot.
+    or model output. When an authoritative Companion review anchor exists inside the
+    requested dossier window, bounded P2-COMPANION-1 since-review semantics are
+    projected into the certified contract. Otherwise the brief remains a truthful
+    current snapshot.
     """
 
     _validate_inputs(
@@ -262,7 +289,9 @@ def assemble_consultation_brief(
         window_end=window_end,
     )
     checkpoint, change_items, change_missing = _companion_change_items(
-        patient_id=patient_id
+        patient_id=patient_id,
+        window_start=window_start,
+        window_end=window_end,
     )
 
     items = latest_items
