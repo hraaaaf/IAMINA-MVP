@@ -5,6 +5,10 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from diabetes.api.v1.companion import companion_overview
+from diabetes.services.clinical.companion_overview import (
+    CompanionOverview,
+    CompanionOverviewAfterVisit,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -15,13 +19,13 @@ def test_companion_overview_handler_is_patient_scoped_and_read_only():
         password="x",
     )
     request = SimpleNamespace(user=patient)
-    expected = SimpleNamespace(
+    expected = CompanionOverview(
         pattern_status="no_governed_patterns",
         review_status="insufficient_anchor",
         review_anchor_captured_at=None,
         patterns=(),
         changes_since_review=(),
-        after_visit=SimpleNamespace(
+        after_visit=CompanionOverviewAfterVisit(
             status="no_recorded_visit",
             anchor_id=None,
             occurred_at=None,
@@ -29,8 +33,6 @@ def test_companion_overview_handler_is_patient_scoped_and_read_only():
             fact_count=0,
             latest_fact_at=None,
         ),
-        safety_notice="bounded companion support only",
-        source_version="companion-overview.v1",
     )
 
     with patch(
