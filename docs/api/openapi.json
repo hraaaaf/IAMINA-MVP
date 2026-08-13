@@ -1058,6 +1058,37 @@
         ]
       }
     },
+    "/api/v1/companion/overview": {
+      "get": {
+        "operationId": "diabetes_api_v1_companion_companion_overview",
+        "summary": "Companion Overview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanionOverviewOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return governed companion state without consuming proactive attention budget.",
+        "tags": [
+          "companion"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/account/consent": {
       "get": {
         "operationId": "core_api_v1_account_get_consent_status",
@@ -3564,6 +3595,252 @@
           "priority"
         ],
         "title": "ProactiveInsightOut",
+        "type": "object"
+      },
+      "CompanionAfterVisitOut": {
+        "properties": {
+          "status": {
+            "enum": [
+              "recorded",
+              "no_recorded_visit"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "anchor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anchor Id"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "fact_count": {
+            "title": "Fact Count",
+            "type": "integer"
+          },
+          "latest_fact_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Fact At"
+          }
+        },
+        "required": [
+          "status",
+          "anchor_id",
+          "occurred_at",
+          "source",
+          "fact_count",
+          "latest_fact_at"
+        ],
+        "title": "CompanionAfterVisitOut",
+        "type": "object"
+      },
+      "CompanionChangeOut": {
+        "properties": {
+          "observation_key": {
+            "title": "Observation Key",
+            "type": "string"
+          },
+          "change_kind": {
+            "title": "Change Kind",
+            "type": "string"
+          },
+          "evidence_strength": {
+            "title": "Evidence Strength",
+            "type": "string"
+          },
+          "missing_data": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Data",
+            "type": "array"
+          },
+          "source_version": {
+            "title": "Source Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation_key",
+          "change_kind",
+          "evidence_strength",
+          "missing_data",
+          "source_version"
+        ],
+        "title": "CompanionChangeOut",
+        "type": "object"
+      },
+      "CompanionOverviewOut": {
+        "properties": {
+          "pattern_status": {
+            "title": "Pattern Status",
+            "type": "string"
+          },
+          "review_status": {
+            "title": "Review Status",
+            "type": "string"
+          },
+          "review_anchor_captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Anchor Captured At"
+          },
+          "patterns": {
+            "items": {
+              "$ref": "#/components/schemas/CompanionPatternOut"
+            },
+            "title": "Patterns",
+            "type": "array"
+          },
+          "changes_since_review": {
+            "items": {
+              "$ref": "#/components/schemas/CompanionChangeOut"
+            },
+            "title": "Changes Since Review",
+            "type": "array"
+          },
+          "after_visit": {
+            "$ref": "#/components/schemas/CompanionAfterVisitOut"
+          },
+          "safety_notice": {
+            "title": "Safety Notice",
+            "type": "string"
+          },
+          "source_version": {
+            "const": "companion-overview.v1",
+            "title": "Source Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern_status",
+          "review_status",
+          "review_anchor_captured_at",
+          "patterns",
+          "changes_since_review",
+          "after_visit",
+          "safety_notice",
+          "source_version"
+        ],
+        "title": "CompanionOverviewOut",
+        "type": "object"
+      },
+      "CompanionPatternOut": {
+        "properties": {
+          "observation_key": {
+            "title": "Observation Key",
+            "type": "string"
+          },
+          "current_state": {
+            "title": "Current State",
+            "type": "string"
+          },
+          "markers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Markers",
+            "type": "array"
+          },
+          "evidence_density": {
+            "title": "Evidence Density",
+            "type": "string"
+          },
+          "recurrence_count": {
+            "title": "Recurrence Count",
+            "type": "integer"
+          },
+          "baseline_direction": {
+            "title": "Baseline Direction",
+            "type": "string"
+          },
+          "baseline_movement": {
+            "title": "Baseline Movement",
+            "type": "string"
+          },
+          "first_observed_at": {
+            "format": "date-time",
+            "title": "First Observed At",
+            "type": "string"
+          },
+          "last_observed_at": {
+            "format": "date-time",
+            "title": "Last Observed At",
+            "type": "string"
+          },
+          "evidence_id": {
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "source_version": {
+            "title": "Source Version",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "observation_key",
+          "current_state",
+          "markers",
+          "evidence_density",
+          "recurrence_count",
+          "baseline_direction",
+          "baseline_movement",
+          "first_observed_at",
+          "last_observed_at",
+          "evidence_id",
+          "source_version",
+          "limitations"
+        ],
+        "title": "CompanionPatternOut",
         "type": "object"
       },
       "ConsentStatusSchema": {
