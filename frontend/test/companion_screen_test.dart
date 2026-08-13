@@ -55,7 +55,7 @@ void main() {
         factCount: 1,
         latestFactAt: now.subtract(const Duration(days: 1)),
       ),
-      safetyNotice: 'Companion support only. Medical decisions remain with your clinician.',
+      safetyNotice: 'Server safety copy is intentionally not rendered verbatim.',
       sourceVersion: 'companion-overview.v1',
     );
 
@@ -72,6 +72,12 @@ void main() {
     expect(find.text('Depuis votre dernière revue'), findsOneWidget);
     expect(find.text('Continuité après consultation'), findsOneWidget);
     expect(find.text('Stress'), findsWidgets);
+    expect(find.text('Répétabilité modérée'), findsWidgets);
+    expect(
+      find.textContaining('Les décisions médicales restent avec votre professionnel de santé.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Server safety copy'), findsNothing);
     expect(find.textContaining('médecin virtuel'), findsNothing);
     expect(find.textContaining('modifier votre traitement'), findsNothing);
   });
