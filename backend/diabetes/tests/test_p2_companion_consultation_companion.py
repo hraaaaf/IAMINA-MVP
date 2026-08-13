@@ -134,6 +134,10 @@ class ConsultationCompanionAssemblerTests(TestCase):
         assert brief.review_checkpoint is not None
         self.assertEqual(brief.review_checkpoint.reviewed_at, anchor.captured_at)
         self.assertEqual(brief.review_checkpoint.source, "companion.explicit-review.v1")
+        self.assertIn(
+            "companion_review_checkpoint_is_not_clinician_consultation_history",
+            brief.limitations,
+        )
 
         change = {
             item.key: item for item in brief.items
@@ -170,7 +174,7 @@ class ConsultationCompanionAssemblerTests(TestCase):
         self.assertNotIn("companion_change.context:stress", by_key)
         self.assertFalse(brief.has_since_review_claims)
         self.assertIn(
-            "governed_change_evidence_postdates_requested_window",
+            "governed_change_not_eligible_for_requested_window",
             brief.missing_data,
         )
         self.assertLess(anchor.captured_at, self.end)
