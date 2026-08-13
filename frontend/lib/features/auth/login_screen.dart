@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
 import '../../data/drift/database.dart';
 import '../../core/theme/app_theme.dart';
+import 'login_logo_asset.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -282,10 +283,11 @@ class _Brand extends StatelessWidget {
       child: SizedBox(
         width: 138,
         height: 124,
-        child: Image.asset(
-          'assets/images/logo_amina.png',
+        child: Image.memory(
+          loginLogoBytes,
           fit: BoxFit.contain,
           filterQuality: FilterQuality.high,
+          gaplessPlayback: true,
         ),
       ),
     );

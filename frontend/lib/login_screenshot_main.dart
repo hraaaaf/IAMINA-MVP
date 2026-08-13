@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/theme/app_theme.dart';
+import 'features/auth/login_logo_asset.dart';
 import 'features/auth/login_screen.dart';
 import 'l10n/app_localizations.dart';
 
@@ -50,7 +51,7 @@ class _LogoReadyLoginScreenState extends State<_LogoReadyLoginScreen> {
     _preloadStarted = true;
 
     precacheImage(
-      const AssetImage('assets/images/logo_amina.png'),
+      MemoryImage(loginLogoBytes),
       context,
       onError: (Object error, StackTrace? stackTrace) {
         if (!mounted) return;
