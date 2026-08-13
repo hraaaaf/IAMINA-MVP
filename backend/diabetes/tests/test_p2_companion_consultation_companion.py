@@ -115,8 +115,8 @@ class ConsultationCompanionAssemblerTests(TestCase):
         observation = self._observation(self.patient, baseline_delta=40.0)
         anchor = capture_companion_review_anchor(patient_id=self.patient.id)
         ClinicalObservationState.objects.filter(pk=observation.pk).update(
-            last_seen_at=anchor.captured_at + timedelta(hours=2),
-            last_refreshed_at=anchor.captured_at + timedelta(hours=2),
+            last_seen_at=anchor.captured_at + timedelta(minutes=2),
+            last_refreshed_at=anchor.captured_at + timedelta(minutes=2),
             baseline_delta_mg_dl=45.0,
         )
 
@@ -145,6 +145,35 @@ class ConsultationCompanionAssemblerTests(TestCase):
         self.assertEqual(change.allowed_next_step, ConsultationNextStep.MONITOR)
         self.assertIn("observational_association_only", change.limitations)
         self.assertTrue(brief.has_since_review_claims)
+
+    def test_post_window_pattern_evidence_cannot_leak_into_since_review_claim(self):
+        observation = self._observation(self.patient)
+        anchor = capture_companion_review_anchor(patient_id=self.patient.id)
+        ClinicalObservationState.objects.filter(pk=observation.pk).update(
+            last_seen_at=self.end + timedelta(minutes=1),
+            last_refreshed_at=self.end + timedelta(minutes=1),
+            baseline_delta_mg_dl=45.0,
+        )
+
+        brief = assemble_consultation_brief(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=self.end,
+        )
+        by_key = {item.key: item for item in brief.items}
+
+        self.assertEqual(
+            brief.comparison_basis,
+            ConsultationComparisonBasis.SINCE_REVIEW_CHECKPOINT,
+        )
+        self.assertNotIn("clinical_twin.context:stress.status", by_key)
+        self.assertNotIn("companion_change.context:stress", by_key)
+        self.assertFalse(brief.has_since_review_claims)
+        self.assertIn(
+            "governed_change_evidence_postdates_requested_window",
+            brief.missing_data,
+        )
+        self.assertLess(anchor.captured_at, self.end)
 
     def test_unknown_change_stays_unknown_and_only_authorizes_missing_data_collection(self):
         observation = self._observation(self.patient)
