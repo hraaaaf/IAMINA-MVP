@@ -1,6 +1,6 @@
 # P3-EVALS — Companion Intelligence Evaluation Contract
 
-Status: CONTRACT CANDIDATE
+Status: AUTOMATED IMPLEMENTATION COMPLETE — HUMAN REVIEW REQUIRED
 
 ## Objective
 
@@ -23,10 +23,10 @@ Automated success does not replace the human-review requirement already present 
 
 The evaluation lane reuses the existing companion, semantics, shield and advice regression suites already executed by full backend pytest CI. It does not duplicate their underlying logic.
 
-## Planned implementation
+## Implementation state
 
-- P3-EVALS-0 — contract, taxonomy and blocking manifest.
-- P3-EVALS-1 — deterministic scenario runner and machine-readable report.
-- P3-EVALS-2 — longitudinal, negative and false-positive scenario corpus.
-- P3-EVALS-3 — human-review provenance and release certification.
-- Canonical closeout only after every hard scenario passes and required human review evidence exists.
+- EVALS-0 implemented and merged.
+- EVALS-1 implemented and merged.
+- EVALS-2 implemented and merged; post-merge CI #2034 and drift #1846 passed.
+- EVALS-3 implemented and merged as `58f5dd4b…`; exact-head CI #2035 + drift #1847 passed; post-merge CI #2037 + drift #1849 passed.
+- Final human review remains required before closeout.
