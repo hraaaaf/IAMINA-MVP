@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -276,17 +277,24 @@ class _Brand extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final logo = kIsWeb
+        ? Image.network(
+            'assets/assets/images/logo_amina.png',
+            fit: BoxFit.contain,
+            webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+          )
+        : Image.asset(
+            'assets/images/logo_amina.png',
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+          );
     return Semantics(
       label: l10n.appTitle,
       image: true,
       child: SizedBox(
         width: 138,
         height: 124,
-        child: Image.asset(
-          'assets/images/logo_amina.png',
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.high,
-        ),
+        child: logo,
       ),
     );
   }
