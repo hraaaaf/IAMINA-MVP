@@ -1,6 +1,6 @@
 # P2-COMPANION-8 — Closeout
 
-Status: PENDING POST-MERGE
+Status: CLOSED
 
 ## Scope
 
@@ -24,10 +24,10 @@ PR #166 exact head: `1925eef3c8f5b2fb0db34f0112c0d288daf95ee5`
 
 Merge SHA: `7e4bfe367c9cdd908024c9ca8dbd907add84fc49`
 
-## Remaining closeout gate
+## Post-merge evidence
 
-Post-merge CI and Django migration drift on the merge SHA must both succeed before P2-COMPANION-8 can be marked CLOSED.
-
+- CI #1980: SUCCESS
+- Django migration drift #1792: SUCCESS
 ## Next canonical lot
 
 P3-HORIZON — Evidence Horizon Scanner.
