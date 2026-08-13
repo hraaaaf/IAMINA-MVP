@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-13 — P2-COMPANION-4 Smart Suggestions runtime is certified, merged and post-merge green. **P2-COMPANION-5 — Consultation Companion is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-13 — P2-COMPANION-5 Consultation Companion runtime is certified, merged and post-merge green. **P2-COMPANION-6 — After-Visit Continuity is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -42,7 +42,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains a governance blocker despite being closed `not planned` |
-| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority + governed change/pattern projections + evidence/uncertainty + bounded smart suggestions | 🟡 P2-COMPANION active — Consultation Companion next | PR #153 merge `71c63ef8…`; post-merge CI #1933 + drift #1745 green |
+| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + companion authority + governed change/pattern/evidence/suggestion projections + consultation preparation | 🟡 P2-COMPANION active — After-Visit Continuity next | PR #155 merge `135d284a…`; post-merge CI #1946 + drift #1758 green |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
@@ -264,13 +264,29 @@ Certified contract:
 
 **Closure:** PR #153 exact head `afb13fabc4424c20ad88f1f13ea4d1f93bb8eb1a` passed Clinical Safety Reviewer, CI #1932 + migration drift #1744, zero review threads and Release Certifier GO. Expected-head merge produced `71c63ef852ca2c84b7cee86099ed69a762e700ec`; post-merge `main` CI #1933 + drift #1745 passed.
 
-### ▶️ P2-COMPANION-5 — Consultation Companion — NEXT
+### ✅ P2-COMPANION-5 — Consultation Companion — CLOSED
 
-Prepare the patient for a clinician review. Reuse the certified `consultation-brief.v1` authority/provenance contract from PR #143 as a sub-capability; do not transform it into autonomous medical decision support.
+PR #155 adds the deterministic read-only consultation dossier assembler over already-governed glucose facts, P2-COMPANION-2/3 pattern evidence and authoritative P2-COMPANION-1 review history.
 
-### ⏳ P2-COMPANION-6 — After-Visit Continuity
+Certified contract:
 
-Track what happened after a consultation and what changed over the interval without judging, overriding or optimizing the clinician's treatment decision.
+- reuses the certified `consultation-brief.v1` contract from PR #143 rather than inventing a second clinical-summary authority;
+- public assembly accepts only patient identity plus dossier window; no caller checkpoint, diagnosis, free text, model output or action authority is accepted;
+- non-demo glucose rows contribute only recorded facts and a descriptive arithmetic average, never CGM target assessment;
+- Clinical Twin evidence is accepted only through governed Companion pattern/evidence projection with provenance, density and dossier-window consistency checks;
+- since-review semantics require the persisted server-captured companion review anchor inside the requested dossier window; otherwise the brief remains a truthful `CURRENT_SNAPSHOT`;
+- `new`, `persisting`, `improving` and `resolved` remain descriptive and authorize only `MONITOR`; change state alone cannot manufacture clinician-discussion authority;
+- `unknown` may authorize only `COLLECT_MISSING_DATA` and must preserve explicit missing evidence;
+- future/post-window evidence cannot leak backward into the dossier;
+- patient-row serialization protects consultation reads against concurrent Clinical Twin refresh/erasure and companion-review capture;
+- the clinician remains the medical decision authority; no diagnosis, causality, prediction, urgency, prescription, dose, treatment optimization/change or clinician override is introduced;
+- no endpoint, Flutter surface, database migration, notification behavior or LLM/provider change is introduced.
+
+**Closure:** PR #155 exact head `d15d35592fb1e118951cde4f806c3e30d12c40e2` passed Clinical Safety Reviewer, CI #1945 + migration drift #1757, zero review threads and Release Certifier GO. Expected-head merge produced `135d284a5b16df853d74ef791233060b4fffe815`; post-merge `main` CI #1946 + drift #1758 passed.
+
+### ▶️ P2-COMPANION-6 — After-Visit Continuity — NEXT
+
+Track what happened after a consultation and what changed over the interval without judging, overriding or optimizing the clinician's treatment decision. The runtime must distinguish patient/clinician-recorded facts from governed descriptive derivations and must not infer treatment efficacy merely from temporal association.
 
 ### ⏳ P2-COMPANION-7 — Companion UX
 
@@ -295,8 +311,8 @@ Add permanent clinician-reviewed negative, longitudinal, false-positive and boun
 | **P2-COMPANION-2** | **Personal Pattern Intelligence** | ✅ **CLOSED** | PR #149 head `59401d82…`; merge `a0560b38…`; post-merge CI #1922 + drift #1734 green |
 | **P2-COMPANION-3** | **Evidence + Uncertainty** | ✅ **CLOSED** | PR #151 head `4e9cfd0a…`; merge `d8fe70d1…`; post-merge CI #1929 + drift #1741 green |
 | **P2-COMPANION-4** | **Smart Suggestions** | ✅ **CLOSED** | PR #153 head `afb13fab…`; merge `71c63ef8…`; post-merge CI #1933 + drift #1745 green |
-| **P2-COMPANION-5** | **Consultation Companion** | ▶️ **NEXT** | Patient preparation reuses certified `consultation-brief.v1`; clinician remains medical authority |
-| P2-COMPANION-6 | After-Visit Continuity | ⏳ Planned | Interval follow-up records change without judging/altering treatment |
+| **P2-COMPANION-5** | **Consultation Companion** | ✅ **CLOSED** | PR #155 head `d15d3559…`; merge `135d284a…`; post-merge CI #1946 + drift #1758 green |
+| **P2-COMPANION-6** | **After-Visit Continuity** | ▶️ **NEXT** | Interval follow-up records change without judging/altering treatment |
 | P2-COMPANION-7 | Companion UX | ⏳ Planned | Patient-first Understand → Follow → Prepare surfaces; no virtual-doctor framing |
 | P2-COMPANION-8 | Safety + Certification | ⏳ Planned | Permanent boundary/false-positive/longitudinal release gates |
 | P3-HORIZON | Evidence Horizon Scanner | ⏳ Planned | Standard-of-care, emerging and investigational evidence remain explicitly separated; papers cannot silently alter patient rules |
@@ -304,7 +320,7 @@ Add permanent clinician-reviewed negative, longitudinal, false-positive and boun
 
 ### Inherited consultation sub-contract
 
-PR #143 and its executable `consultation-brief.v1` contract remain certified historical/runtime foundations. They are **not deleted or weakened** by the P2-COMPANION rebase. P2-COMPANION-5 may now reuse that narrow authority as a patient consultation-preparation sub-capability. It must not revive the superseded P2-DOCTOR product framing or expand the inherited brief into autonomous diagnosis, treatment or clinician-override authority.
+PR #143 and its executable `consultation-brief.v1` contract remain certified historical/runtime foundations. They are **not deleted or weakened** by the P2-COMPANION rebase. P2-COMPANION-5 now implements that narrow authority as a patient consultation-preparation sub-capability without reviving the superseded P2-DOCTOR product framing or expanding the inherited brief into autonomous diagnosis, treatment or clinician-override authority.
 
 ---
 
@@ -381,7 +397,7 @@ Preparation/executable gates do not imply that external legal, processor, lingui
 
 # Current blockers and next sequence
 
-1. **Companion intelligence product lane:** execute **P2-COMPANION-5 — Consultation Companion**, reusing the certified `consultation-brief.v1` sub-contract without reviving doctor-replacement framing.
+1. **Companion intelligence product lane:** execute **P2-COMPANION-6 — After-Visit Continuity**, preserving the certified consultation/companion authority ceiling and preventing temporal association from becoming inferred treatment efficacy.
 2. **Pilot security blocker:** issue #30 is closed `not planned` but explicitly not remediated; either complete the documented history remediation/verification path or supersede the pilot policy through normal governance before any real-patient go/no-go.
 3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
 4. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
