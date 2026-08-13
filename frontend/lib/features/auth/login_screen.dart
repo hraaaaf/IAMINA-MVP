@@ -206,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                padding: const EdgeInsetsDirectional.fromSTEB(24, 24, 24, 32),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 400),
                   child: Column(
@@ -300,8 +300,8 @@ class _LoginBackdropPainter extends CustomPainter {
       Paint()
         ..shader = const LinearGradient(
           colors: [Color(0xFFDDF8F1), Color(0xFFB9F0E5)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
         ).createShader(Rect.fromLTWH(0, size.height * 0.86, size.width, size.height * 0.14)),
     );
 
