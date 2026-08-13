@@ -1,0 +1,34 @@
+name: IAMINA web preview build
+
+on:
+  push:
+    branches: [build/iamina-vercel-review]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Build Flutter web
+        run: flutter build web --release
+      - name: Upload Flutter web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-web-preview
+          path: frontend/build/web
+          if-no-files-found: error
+          retention-days: 1
