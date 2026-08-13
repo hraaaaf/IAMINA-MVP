@@ -28,6 +28,9 @@ AddLogFocus _focusFromState(String? value) => switch (value) {
   _ => AddLogFocus.none,
 };
 
+/// Diabetes condition module. Mobile navigation is filtered by MainShell
+/// to preserve the approved four-destination + central-add composition;
+/// Import remains available in desktop navigation and by direct route.
 final ModuleConfig diabetesModule = ModuleConfig(
   id: 'diabetes',
   navDestinations: [
