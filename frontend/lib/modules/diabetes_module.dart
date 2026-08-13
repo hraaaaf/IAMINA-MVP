@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../features/companion/companion_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/dashboard/dashboard_convergent_screen.dart';
 import '../features/dashboard/widgets/add_log_sheet.dart';
@@ -27,9 +28,6 @@ AddLogFocus _focusFromState(String? value) => switch (value) {
   _ => AddLogFocus.none,
 };
 
-/// Diabetes condition module. Mobile navigation is filtered by MainShell
-/// to preserve the approved four-destination + central-add composition;
-/// Import remains available in desktop navigation and by direct route.
 final ModuleConfig diabetesModule = ModuleConfig(
   id: 'diabetes',
   navDestinations: [
@@ -72,6 +70,10 @@ final ModuleConfig diabetesModule = ModuleConfig(
     ModuleShellRoute(path: '/importer', builder: () => const ImportScreen()),
   ],
   fullScreenRoutes: [
+    ModuleFullScreenRoute(
+      path: '/companion',
+      builder: (s) => const CompanionScreen(),
+    ),
     ModuleFullScreenRoute(
       path: '/ajouter',
       builder: (s) =>
