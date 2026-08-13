@@ -267,7 +267,7 @@ def _companion_change_items(
                 window_start=window_start,
                 window_end=window_end,
             ):
-                missing.append("governed_change_evidence_postdates_requested_window")
+                missing.append("governed_change_not_eligible_for_requested_window")
                 continue
 
         context = change.evidence_context
@@ -364,6 +364,10 @@ def assemble_consultation_brief(
         "no_model_authored_contract_fields",
         "no_diagnosis_prescription_dose_or_treatment_change_authority",
     ]
+    if checkpoint is not None:
+        limitations.append(
+            "companion_review_checkpoint_is_not_clinician_consultation_history"
+        )
     if not latest_items:
         missing_data.append("no_synchronized_non_demo_glucose_in_window")
     if not clinical_twin:
