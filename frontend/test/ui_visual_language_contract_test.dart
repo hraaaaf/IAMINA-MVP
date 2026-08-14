@@ -52,6 +52,11 @@ void main() {
       'lib/features/companion/companion_premium_screen.dart',
     );
     final header = _read('lib/core/widgets/mobile_page_header.dart');
+    final overlay = _read('lib/core/widgets/premium_task_brand_overlay.dart');
+    final addLog = _read('lib/features/journal/add_log_screen.dart');
+    final documentImport = _read(
+      'lib/features/documents/document_import_premium_screen.dart',
+    );
     final module = _read('lib/modules/diabetes_module.dart');
 
     expect(dashboardEntry, contains('DashboardPremiumScreen'));
@@ -60,7 +65,11 @@ void main() {
     expect(dashboard, contains(logo));
     expect(companion, contains(logo));
     expect(header, contains(logo));
+    expect(overlay, contains(logo));
+    expect(addLog, contains('PremiumTaskBrandOverlay'));
+    expect(documentImport, contains('PremiumTaskBrandOverlay'));
     expect(module, contains('CompanionPremiumScreen'));
+    expect(module, contains('DocumentImportPremiumScreen'));
   });
 
   test('visual certification harnesses stay isolated from production main', () {
@@ -88,6 +97,7 @@ void main() {
     expect(browserMain, contains('addPostFrameCallback'));
     expect(browserMain, contains('await db.seedDemoData()'));
     expect(browserMain, contains("queryParameters['surface']"));
+    expect(browserMain, contains('DocumentImportPremiumScreen'));
     expect(browserMain, isNot(contains("import 'main.dart'")));
     expect(browserWorkflow, contains('lib/ui_browser_audit_main.dart'));
     expect(browserWorkflow, contains('flutter build web --release'));
