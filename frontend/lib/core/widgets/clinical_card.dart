@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../theme/amina_visual_language.dart';
 import '../theme/app_theme.dart';
 
 class ClinicalCard extends StatelessWidget {
@@ -27,11 +29,11 @@ class ClinicalCard extends StatelessWidget {
       width: width,
       height: height,
       padding: padding,
-      decoration: BoxDecoration(
-        color: backgroundColor ?? AminaTheme.cardBg,
-        borderRadius: BorderRadius.circular(borderRadius ?? AminaTheme.radius2XL),
-        border: border ?? Border.all(color: AminaTheme.ink100),
-        boxShadow: AminaTheme.shadowClinical,
+      decoration: AminaVisualLanguage.cardDecoration(
+        context,
+        radius: borderRadius ?? AminaVisualLanguage.cardRadius,
+        color: backgroundColor,
+        borderOverride: border,
       ),
       child: child,
     );
@@ -53,10 +55,12 @@ class CardHead extends StatelessWidget {
         Flexible(
           child: Text(
             title.toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AminaTheme.ink500,
+              fontWeight: FontWeight.w700,
+              color: AminaTheme.isDark(context)
+                  ? AminaTheme.dark300
+                  : AminaVisualLanguage.actionGreen,
               letterSpacing: 0.08,
             ),
             overflow: TextOverflow.ellipsis,
@@ -69,10 +73,10 @@ class CardHead extends StatelessWidget {
             if (meta != null)
               Text(
                 meta!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: AminaTheme.ink400,
-                  fontFeatures: [FontFeature.tabularFigures()],
+                  color: AminaVisualLanguage.secondary(context),
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             if (trailing != null) ...[

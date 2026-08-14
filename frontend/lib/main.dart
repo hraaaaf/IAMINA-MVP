@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'core/localization/app_shell_localized_copy.dart';
+import 'core/theme/amina_visual_language.dart';
 import 'core/theme/app_theme.dart';
 import 'data/drift/database.dart';
 import 'firebase_options.dart';
@@ -100,8 +101,8 @@ class _AminaAppState extends State<AminaApp> {
 
     return MaterialApp.router(
       title: 'IAmina',
-      theme: AminaTheme.light,
-      darkTheme: AminaTheme.dark,
+      theme: AminaVisualLanguage.harmonize(AminaTheme.light),
+      darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
       themeMode: tweaks.isDark ? ThemeMode.dark : ThemeMode.light,
       routerConfig: widget.router,
       locale: localePreference.locale,

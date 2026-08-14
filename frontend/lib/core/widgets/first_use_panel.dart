@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/amina_visual_language.dart';
 import '../theme/app_theme.dart';
 
 /// Shared first-use surface for truthful empty states.
@@ -57,12 +58,14 @@ class AminaFirstUsePanel extends StatelessWidget {
             Container(
               width: iconSize,
               height: iconSize,
-              decoration: BoxDecoration(
-                gradient: AminaTheme.heroGradient,
-                borderRadius: BorderRadius.circular(dense ? 14 : 16),
-                boxShadow: AminaTheme.shadowClinical,
+              decoration: AminaVisualLanguage.mintIconDecoration(context),
+              child: Icon(
+                icon,
+                color: AminaTheme.isDark(context)
+                    ? AminaTheme.teal400
+                    : AminaVisualLanguage.actionGreen,
+                size: dense ? 23 : 27,
               ),
-              child: Icon(icon, color: Colors.white, size: dense ? 23 : 27),
             ),
             SizedBox(width: dense ? 14 : 18),
             Expanded(
@@ -73,10 +76,12 @@ class AminaFirstUsePanel extends StatelessWidget {
                     Text(
                       eyebrow!,
                       style: TextStyle(
-                        color: AminaTheme.teal700,
+                        color: AminaTheme.isDark(context)
+                            ? AminaTheme.teal400
+                            : AminaVisualLanguage.actionGreen,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: 0.35,
+                        letterSpacing: .32,
                       ),
                     ),
                     const SizedBox(height: 5),
@@ -84,20 +89,20 @@ class AminaFirstUsePanel extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      color: AminaTheme.textPrimary(context),
+                      color: AminaVisualLanguage.primaryText(context),
                       fontSize: dense ? 18 : 20,
-                      height: 1.2,
+                      height: 1.18,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: -0.25,
+                      letterSpacing: -.3,
                     ),
                   ),
                   const SizedBox(height: 7),
                   Text(
                     body,
                     style: TextStyle(
-                      color: AminaTheme.textSecondary(context),
+                      color: AminaVisualLanguage.secondary(context),
                       fontSize: dense ? 12.5 : 13.5,
-                      height: 1.48,
+                      height: 1.46,
                     ),
                   ),
                 ],
@@ -110,31 +115,57 @@ class AminaFirstUsePanel extends StatelessWidget {
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  FilledButton.icon(
-                    onPressed: onPrimaryAction,
-                    icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                    label: Text(primaryActionLabel!),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AminaTheme.teal500,
-                      minimumSize: const Size.fromHeight(48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AminaVisualLanguage.primaryGradient,
+                      borderRadius: BorderRadius.circular(
+                        AminaVisualLanguage.controlRadius,
+                      ),
+                      boxShadow: AminaVisualLanguage.controlShadowLight,
+                    ),
+                    child: FilledButton.icon(
+                      onPressed: onPrimaryAction,
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                      label: Text(primaryActionLabel!),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shadowColor: Colors.transparent,
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            AminaVisualLanguage.controlRadius,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                   if (secondaryActionLabel != null) ...[
                     const SizedBox(height: 8),
-                    OutlinedButton(
-                      onPressed: onSecondaryAction,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AminaTheme.teal700,
-                        minimumSize: const Size.fromHeight(48),
-                        side: BorderSide(color: AminaTheme.divider(context)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                    SizedBox(
+                      height: 48,
+                      child: OutlinedButton(
+                        onPressed: onSecondaryAction,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AminaTheme.isDark(context)
+                              ? AminaTheme.teal400
+                              : AminaVisualLanguage.actionGreen,
+                          side: BorderSide(
+                            color: AminaTheme.isDark(context)
+                                ? AminaTheme.teal400
+                                : AminaVisualLanguage.actionGreen,
+                            width: 1.15,
+                          ),
+                          backgroundColor:
+                              AminaVisualLanguage.controlSurface(context),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              AminaVisualLanguage.controlRadius,
+                            ),
+                          ),
                         ),
+                        child: Text(secondaryActionLabel!),
                       ),
-                      child: Text(secondaryActionLabel!),
                     ),
                   ],
                 ],
@@ -147,24 +178,34 @@ class AminaFirstUsePanel extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 12, 10),
                 decoration: BoxDecoration(
-                  color: AminaTheme.teal50,
+                  color: AminaVisualLanguage.mintSurface.withValues(
+                    alpha: AminaTheme.isDark(context) ? .08 : .72,
+                  ),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AminaTheme.teal100),
+                  border: Border.all(
+                    color: AminaVisualLanguage.mintBorder.withValues(
+                      alpha: AminaTheme.isDark(context) ? .3 : .72,
+                    ),
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.verified_user_outlined,
                       size: 16,
-                      color: AminaTheme.teal700,
+                      color: AminaTheme.isDark(context)
+                          ? AminaTheme.teal400
+                          : AminaVisualLanguage.actionGreen,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         note!,
-                        style: const TextStyle(
-                          color: AminaTheme.teal700,
+                        style: TextStyle(
+                          color: AminaTheme.isDark(context)
+                              ? AminaTheme.dark300
+                              : AminaVisualLanguage.actionGreen,
                           fontSize: 11.5,
                           height: 1.4,
                         ),
@@ -180,11 +221,9 @@ class AminaFirstUsePanel extends StatelessWidget {
           child: Container(
             width: double.infinity,
             padding: EdgeInsets.all(padding),
-            decoration: BoxDecoration(
-              color: AminaTheme.surface(context),
-              borderRadius: BorderRadius.circular(dense ? 18 : 22),
-              border: Border.all(color: AminaTheme.divider(context)),
-              boxShadow: AminaTheme.shadowClinical,
+            decoration: AminaVisualLanguage.cardDecoration(
+              context,
+              radius: AminaVisualLanguage.cardRadius,
             ),
             child: wide
                 ? Row(
