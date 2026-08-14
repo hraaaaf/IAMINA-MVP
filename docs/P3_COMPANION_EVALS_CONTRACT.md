@@ -1,6 +1,6 @@
 # P3-EVALS — Companion Intelligence Evaluation Contract
 
-Status: AUTOMATED IMPLEMENTATION COMPLETE — HUMAN REVIEW REQUIRED
+Status: CLOSED — AUTOMATED + HUMAN REVIEW COMPLETE
 
 ## Objective
 
@@ -29,4 +29,7 @@ The evaluation lane reuses the existing companion, semantics, shield and advice 
 - EVALS-1 implemented and merged.
 - EVALS-2 implemented and merged; post-merge CI #2034 and drift #1846 passed.
 - EVALS-3 implemented and merged as `58f5dd4b…`; exact-head CI #2035 + drift #1847 passed; post-merge CI #2037 + drift #1849 passed.
-- Final human review remains required before closeout.
+- Human review completed on `2026-08-14T00:42:00+01:00` with explicit `PASS ALL` across LONGITUDINAL, NEGATIVE, FALSE_POSITIVE and BOUNDARY; provenance is recorded in `docs/P3_EVALS_HUMAN_REVIEW_RECEIPT.md`.
+- Human-review closeout PR #204 head `9fb10dd0…` passed exact-head CI #2111 + drift #1923, merged as `f508cccb…`, then passed post-merge CI #2116 + drift #1928.
+
+P3-EVALS is CLOSED without expanding runtime authority. The companion remains non-diagnostic and non-prescriptive; deterministic clinical and safety logic remains authoritative.
