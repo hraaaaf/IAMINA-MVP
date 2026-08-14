@@ -15,6 +15,7 @@ The Builder may not certify its own LOT. When orchestration supports separate ag
 | Any LOT | Lead Engineer | at least one scope-appropriate Reviewer |
 | UX/UI, navigation, responsive, i18n presentation | Lead Engineer | UX Auditor |
 | Clinical calculation, medical wording, safety behavior | Lead Engineer | Clinical Safety Reviewer |
+| MENA safety corpus, Darija/Arabic/transliteration or multilingual emergency parity | Lead Engineer | MENA Clinical-Linguistic Safety Reviewer + Clinical Safety Reviewer |
 | Models, migrations, persistence, PostgreSQL-sensitive behavior | Lead Engineer | Database & Migration Reviewer |
 | Auth, authorization, privacy, secrets, external egress | Lead Engineer | Security Auditor |
 | Mixed high-risk change | Lead Engineer | every applicable specialist Reviewer |
@@ -24,8 +25,11 @@ The Builder may not certify its own LOT. When orchestration supports separate ag
 - `lead-engineer.md`
 - `ux-auditor.md`
 - `clinical-safety-reviewer.md`
+- `mena-clinical-linguistic-safety-reviewer.md`
 - `database-migration-reviewer.md`
 - `security-auditor.md`
 - `release-certifier.md`
 
 Reviewer findings are evidence, not suggestions: blocking findings must be remediated before certification unless the human owner explicitly accepts the risk and the repository's safety rules permit that acceptance.
+
+The MENA Clinical-Linguistic Safety Reviewer is an AI secondary reviewer. It strengthens corpus evidence but cannot impersonate or replace restricted native-human, clinical-human or safety-owner approval.
