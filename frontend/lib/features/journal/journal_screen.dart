@@ -253,9 +253,10 @@ class _JournalScreenState extends State<JournalScreen> {
     final isToday =
         date.year == now.year && date.month == now.month && date.day == now.day;
     final l10n = AppLocalizations.of(context)!;
+    final localeTag = Localizations.localeOf(context).toLanguageTag();
     final label = isToday
         ? l10n.today
-        : DateFormat('EEEE d MMMM', 'fr_FR').format(date).toUpperCase();
+        : DateFormat('EEEE d MMMM', localeTag).format(date).toUpperCase();
 
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(4, 32, 4, 12),
@@ -394,7 +395,6 @@ class _JournalScreenState extends State<JournalScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             child: Row(
               children: [
-                // BS Value (Text-only colored, transparent bg)
                 SizedBox(
                   width: 52,
                   child: Center(
@@ -414,7 +414,6 @@ class _JournalScreenState extends State<JournalScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Prominent Meal Label + Ramadan Icon
                       Row(
                         children: [
                           Text(
@@ -435,7 +434,6 @@ class _JournalScreenState extends State<JournalScreen> {
                         ],
                       ),
                       const SizedBox(height: 2),
-                      // Secondary Time
                       Text(
                         DateFormat.Hm().format(log.loggedAt ?? log.createdAt),
                         style: TextStyle(
@@ -502,7 +500,6 @@ class _JournalScreenState extends State<JournalScreen> {
                     ],
                   ),
                 ),
-                // Insulin dose + Status + Life State Icons
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -539,7 +536,6 @@ class _JournalScreenState extends State<JournalScreen> {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    // Life State Icons (New)
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -600,8 +596,6 @@ class _LifeIcon extends StatelessWidget {
   }
 }
 
-// ── Journal skeleton sliver ───────────────────────────────────────────────────
-
 class _JournalSkeletonSliver extends StatelessWidget {
   const _JournalSkeletonSliver();
 
@@ -622,12 +616,10 @@ class _SkeletonGroup extends StatelessWidget {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Day header
         Padding(
           padding: EdgeInsetsDirectional.fromSTEB(0, 20, 0, 10),
           child: _SkeletonBox(width: 100, height: 13, radius: 6),
         ),
-        // 2-3 entry capsules
         _SkeletonCapsule(),
         SizedBox(height: 8),
         _SkeletonCapsule(narrowRight: true),
