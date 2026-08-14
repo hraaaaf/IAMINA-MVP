@@ -369,25 +369,41 @@ class _LoginCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isDark = AminaTheme.isDark(context);
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsetsDirectional.fromSTEB(26, 28, 26, 26),
       decoration: BoxDecoration(
-        color: AminaTheme.surface(context),
-        borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
-        border: Border.all(color: AminaTheme.divider(context)),
-        boxShadow: AminaTheme.shadowClinicalLg,
+        color: AminaTheme.surface(context).withValues(alpha: isDark ? 0.98 : 0.96),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: AminaTheme.divider(context).withValues(alpha: isDark ? 0.72 : 0.58)),
+        boxShadow: isDark
+            ? AminaTheme.shadowDark
+            : const [
+                BoxShadow(color: Color(0x0F0D1A17), blurRadius: 34, spreadRadius: -10, offset: Offset(0, 18)),
+                BoxShadow(color: Color(0x080D1A17), blurRadius: 10, spreadRadius: -4, offset: Offset(0, 4)),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
             l10n.welcome,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AminaTheme.ink900),
+            style: TextStyle(
+              fontSize: 26,
+              height: 1.08,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.6,
+              color: isDark ? AminaTheme.dark100 : AminaTheme.ink900,
+            ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             l10n.loginSubtitle,
-            style: const TextStyle(fontSize: 13, color: AminaTheme.ink500),
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.45,
+              color: isDark ? AminaTheme.dark300 : AminaTheme.ink500,
+            ),
           ),
           const SizedBox(height: 24),
 
