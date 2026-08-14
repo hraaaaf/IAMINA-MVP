@@ -7,7 +7,7 @@ IAmina is a **diabetes companion designed for the MENA region**. The product com
 ## Product doctrine
 
 - **Companion, never physician replacement.** IAmina may observe, compare, explain and propose safe non-prescriptive next steps; the qualified clinician remains the medical decision authority.
-- **MENA-first, not translation-first.** French, Modern Standard Arabic, and English are baseline languages. Country dialects are enabled only after native review and safety-parity validation.
+- **MENA-first, not translation-first.** French, Modern Standard Arabic, and English are baseline languages. The technical English baseline is complete across the 16 active patient-facing surfaces; country dialects still require native review and safety-parity validation.
 - **User choice beats geolocation.** Country/location may suggest language, dialect, units, time zone, and emergency resources; it must never silently decide them.
 - **Deterministic engine first.** IAmina's approved clinical/safety logic decides structured outputs. Generative models may verbalize approved minimized context or perform explicitly permitted media tasks.
 - **No diagnosis or prescription.** IAmina does not diagnose, prescribe, calculate doses, optimize/change treatment or present itself as a medical consultation. Emergency handling is deterministic and must never depend on an LLM response.
@@ -17,11 +17,12 @@ IAmina is a **diabetes companion designed for the MENA region**. The product com
 
 ## Current strategic status
 
-The repository is in a **MENA pilot-hardening phase** before the first real-patient cohort. The companion-intelligence product lane is closed through P3-EVALS. **Gate A — Secure Core is certified at 9.0/10** on a ten-dimension engineering rubric; the single failed dimension is reachable Git-history hygiene tracked by issue #30. This Gate A result does not waive or close the separate real-patient pilot security/compliance gate. The remaining critical path is pilot security remediation, native-language review, restricted compliance/deployment approvals and deferred live provider benchmarking.
+The repository is in a **MENA pilot-hardening phase** before the first real-patient cohort. The companion-intelligence product lane is closed through P3-EVALS. **Gate A — Secure Core is certified at 9.0/10** on a ten-dimension engineering rubric; the single failed dimension is reachable Git-history hygiene tracked by issue #30. The **technical English baseline is now complete across 16/16 active patient-facing surfaces**, including explicit English selection, persistence, FR/EN/AR runtime-key parity, locale-aware formatting and app-shell/platform copy. This does not waive the remaining restricted native-language, safety, compliance or deployment approvals. The remaining critical path is pilot security remediation, native-language review, restricted compliance/deployment approvals and deferred live provider benchmarking.
 
 ### Recently closed foundations
 
 - **Gate A — Secure Core:** engineering threshold met at **9.0/10**. API/session safety, deterministic clinical authority, refusal/emergency boundaries, governed AI egress and minimization, sovereign auth, database integrity, current-tree SAST/anti-bypass and tracked-secret hygiene pass. Reachable Git-history hygiene remains FAIL under issue #30 and stays a pilot blocker. Evidence: `docs/assessments/2026-08-14-gate-a-secure-core-certification.md`.
+- **P0-MENA-2 English baseline:** technical active-surface English coverage is **16/16 = 100%**. English is explicitly selectable and persistable; FR/EN/AR runtime ARB keys are parity-gated; known French hardcoded-copy gaps, forced French date formatting, AI Summary static copy, import/document-import copy, dashboard companion context, global fallback and iOS permission prompts were remediated. Evidence: `docs/assessments/2026-08-14-english-baseline-completeness-certification.md`. The restricted native/clinical/safety-owner approvals remain open and continue to hold P0-MENA-2 at its existing roadmap status.
 - **P0-A — API safety boundaries:** cookie/session API writes retain CSRF protection; unit normalization covers legacy + namespaced module routes and fails closed; deterministic triage authority sits on the shared safety side of the architecture boundary.
 - **P0-MENA-1 — AI/data egress governance:** live external AI/media operations require patient + purpose + modality scope, server-side consent, explicit minimization/allowlists and governed processor policy at real egress time; CI prevents bypassing the sanctioned boundary.
 - **P0-MENA-3 — Sovereign authentication migration:** Django-owned registration/login/logout and IAMINA bearer-token flows are implemented with guarded Firebase migration/reconciliation paths retained until the zero-Firebase operational gate is legitimately satisfied.
@@ -33,7 +34,7 @@ The repository is in a **MENA pilot-hardening phase** before the first real-pati
 ### Still open on the critical path
 
 1. Resolve the **pilot security blocker #30**: the current tracked tree is clean, but reachable Git history still contains the historical local-agent settings material and the dedicated full-history scanner remains fail-closed. The issue is closed `not planned`, not remediated; provider ownership/provenance must be resolved before any irreversible history rewrite.
-2. Complete P0-MENA-2 native-language safety review, including remaining Darija high-severity variants and multimodal/transliteration parity.
+2. Complete P0-MENA-2 native-language safety review, including remaining Darija high-severity variants and multimodal/transliteration parity. The English technical baseline is closed; this item now refers only to the remaining restricted human-language/safety approvals.
 3. Complete restricted pilot consent, processor/subprocessor, privacy/CNDP and Morocco residency/cross-border approvals.
 4. Run the deferred live text, STT and vision/OCR provider benchmarks and approve cutover only from evidence.
 5. Run the real-patient pilot go/no-go only after the safety/compliance gates are legitimately closed.
