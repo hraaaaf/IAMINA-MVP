@@ -23,7 +23,7 @@ jobs:
   browser-cert:
     name: Real Chrome patient surfaces 390x844
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
 
     defaults:
       run:
@@ -64,6 +64,8 @@ jobs:
             sleep 1
           done
           test "$READY" = "1"
+          curl -fsSI http://127.0.0.1:7358/sqlite3.wasm >/dev/null
+          curl -fsSI http://127.0.0.1:7358/drift_worker.js >/dev/null
 
           CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME"
@@ -78,7 +80,7 @@ jobs:
               --hide-scrollbars \
               --force-device-scale-factor=1 \
               --window-size=390,844 \
-              --virtual-time-budget=10000 \
+              --timeout=15000 \
               --screenshot="$target" \
               "http://127.0.0.1:7358/?surface=${surface}"
             test -s "$target"
