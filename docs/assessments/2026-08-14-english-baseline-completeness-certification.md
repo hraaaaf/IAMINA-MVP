@@ -70,8 +70,10 @@ Dedicated regression contracts now protect:
 - pre-merge migration drift: **#2042 — SUCCESS**
 - diff at certification: **1 test file, +44/-0, 0 runtime**
 - merge commit: `876cfacafc2374cd1e658197a3c9e03d02ebc108`
+- post-merge CI: **#2240 — SUCCESS**
+- post-merge migration drift: **#2052 — SUCCESS**
 
-The post-merge CI/drift run on `876cfaca…` must remain green for final administrative closeout.
+The runtime/test merge is therefore post-merge certified. The remaining administrative step is to merge this documentation closeout with exact-head CI/drift green.
 
 ## Scope boundary
 
@@ -102,4 +104,4 @@ The English baseline was added as a **technical gate inside P0-MENA-2**, not as 
 
 **English implementation coverage: 100% (16/16 active surfaces).**
 
-Final administrative status becomes CLOSED only after post-merge CI/drift are green and the canonical roadmap/README are synchronized to this assessment.
+The technical English baseline is CLOSED. Administrative closeout is complete once this assessment, `docs/ROADMAP.md` and `README.md` are merged with exact-head CI/drift green.
