@@ -8,7 +8,7 @@ import '../features/journal/ai_summary_screen.dart';
 import '../features/journal/add_log_screen.dart';
 import '../features/journal/edit_log_screen.dart';
 import '../features/import/import_screen.dart';
-import '../features/documents/document_import_screen.dart';
+import '../features/documents/document_import_premium_screen.dart';
 import '../features/medications/medication_screen.dart';
 import '../features/reminders/reminders_screen.dart';
 import '../l10n/app_localizations.dart';
@@ -92,7 +92,7 @@ final ModuleConfig diabetesModule = ModuleConfig(
     ),
     ModuleFullScreenRoute(
       path: '/pulper',
-      builder: (s) => const DocumentImportScreen(),
+      builder: (s) => const DocumentImportPremiumScreen(),
     ),
     ModuleFullScreenRoute(
       path: '/journal/:id/edit',
