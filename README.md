@@ -17,10 +17,11 @@ IAmina is a **diabetes companion designed for the MENA region**. The product com
 
 ## Current strategic status
 
-The repository is in a **MENA pilot-hardening phase** before the first real-patient cohort. The companion-intelligence product lane is closed through P3-EVALS; the remaining critical path is pilot security, native-language review, restricted compliance/deployment approvals and deferred live provider benchmarking.
+The repository is in a **MENA pilot-hardening phase** before the first real-patient cohort. The companion-intelligence product lane is closed through P3-EVALS. **Gate A — Secure Core is certified at 9.0/10** on a ten-dimension engineering rubric; the single failed dimension is reachable Git-history hygiene tracked by issue #30. This Gate A result does not waive or close the separate real-patient pilot security/compliance gate. The remaining critical path is pilot security remediation, native-language review, restricted compliance/deployment approvals and deferred live provider benchmarking.
 
 ### Recently closed foundations
 
+- **Gate A — Secure Core:** engineering threshold met at **9.0/10**. API/session safety, deterministic clinical authority, refusal/emergency boundaries, governed AI egress and minimization, sovereign auth, database integrity, current-tree SAST/anti-bypass and tracked-secret hygiene pass. Reachable Git-history hygiene remains FAIL under issue #30 and stays a pilot blocker. Evidence: `docs/assessments/2026-08-14-gate-a-secure-core-certification.md`.
 - **P0-A — API safety boundaries:** cookie/session API writes retain CSRF protection; unit normalization covers legacy + namespaced module routes and fails closed; deterministic triage authority sits on the shared safety side of the architecture boundary.
 - **P0-MENA-1 — AI/data egress governance:** live external AI/media operations require patient + purpose + modality scope, server-side consent, explicit minimization/allowlists and governed processor policy at real egress time; CI prevents bypassing the sanctioned boundary.
 - **P0-MENA-3 — Sovereign authentication migration:** Django-owned registration/login/logout and IAMINA bearer-token flows are implemented with guarded Firebase migration/reconciliation paths retained until the zero-Firebase operational gate is legitimately satisfied.
