@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-14 — Gate A Secure Core is certified at 9.0/10 on a ten-dimension engineering rubric; reachable Git-history hygiene remains the single failed dimension and still blocks real-patient pilot authorization. P3-EVALS is certified, human-reviewed PASS ALL, merged and post-merge green. Companion intelligence is closed through P3-EVALS. The P0-MENA-2 technical English baseline is certified complete across 16/16 active patient-facing surfaces; restricted human linguistic/parity gates remain open. The active critical path is MENA pilot hardening. UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-14 — Gate A Secure Core is certified at 10.0/10 after issue #30 reachable Git-history remediation was completed and independently fresh-clone verified; the remaining real-patient pilot blockers are restricted linguistic/compliance/deployment approvals and live provider evidence. P3-EVALS is certified, human-reviewed PASS ALL, merged and post-merge green. Companion intelligence is closed through P3-EVALS. The P0-MENA-2 technical English baseline is certified complete across 16/16 active patient-facing surfaces; restricted human linguistic/parity gates remain open. The active critical path is MENA pilot hardening. UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -31,7 +31,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 
 | Workstream | Progress | Status | Evidence |
 |---|---:|---|---|
-| Gate A — Secure Core engineering certification | 9.0/10 | ✅ Threshold met | `docs/assessments/2026-08-14-gate-a-secure-core-certification.md`; 9/10 dimensions PASS, issue #30 remains FAIL/pilot blocker |
+| Gate A — Secure Core engineering certification | 10.0/10 | ✅ Certified | Original rubric: `docs/assessments/2026-08-14-gate-a-secure-core-certification.md`; issue #30 remediation: `docs/assessments/2026-08-14-security-30-history-rewrite-certification.md` |
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43 |
 | P0 agent governance | 100% | ✅ Closed | PR #63; Builder → Reviewer → Release Certifier protocol |
@@ -42,7 +42,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 English technical gate closed; human review open | English baseline 16/16 certified in `docs/assessments/2026-08-14-english-baseline-completeness-certification.md`; PR #226 closes selection/persistence/ARB parity; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
-| Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains a governance blocker despite being closed `not planned` |
+| Pilot safety/compliance gate | 77% | 🟡 Restricted approvals remain | 10/13 explicit gates complete; issue #30 reachable-history remediation is closed and fresh-clone verified |
 | Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + P2-COMPANION-0..8 + P3-HORIZON + P3-EVALS | ✅ Closed through P3-EVALS | P3-EVALS human PASS ALL; PR #204 merge `f508cccb…`; post-merge CI #2116 + drift #1928 green |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
@@ -51,12 +51,12 @@ Gate A is an engineering certification over already-counted foundations and ther
 
 ---
 
-# Gate A — Secure Core — CERTIFIED 9.0/10
+# Gate A — Secure Core — CERTIFIED 10.0/10
 
-Gate A uses ten equally weighted, independently checkable secure-core dimensions. Nine pass: API/session safety; deterministic clinical authority; high-risk refusal parity; emergency truthfulness; governed AI/data egress; minimization/DLP/raw-media consent; sovereign authentication; PostgreSQL/migration integrity; and current-tree SAST/anti-bypass/secret hygiene. Reachable Git-history secret hygiene fails because issue #30 is explicitly not remediated.
+Gate A uses ten equally weighted, independently checkable secure-core dimensions. All ten now pass: API/session safety; deterministic clinical authority; high-risk refusal parity; emergency truthfulness; governed AI/data egress; minimization/DLP/raw-media consent; sovereign authentication; PostgreSQL/migration integrity; current-tree SAST/anti-bypass/secret hygiene; and reachable Git-history hygiene. Issue #30 removed `.claude/settings.local.json` from all reachable branch history and was fresh-clone verified after the force-update.
 
-**Engineering threshold:** met at **9.0/10**.  
-**Real-patient pilot security gate:** remains **OPEN**. Gate A does not waive issue #30, restricted approvals, or native-language safety review.
+**Engineering certification:** **10.0/10**.  
+**Reachable-history security blocker:** **CLOSED** by issue #30 remediation. Gate A still does not waive restricted compliance/deployment approvals, native-language safety review, or live provider evidence.
 
 Canonical evidence: `docs/assessments/2026-08-14-gate-a-secure-core-certification.md`.
 
@@ -409,7 +409,7 @@ No provider score, decision or production approval may be inferred from preparat
 - [x] Versioned retention/deletion schedule and guarded deletion.
 - [x] Incident-response/escalation procedure.
 - [x] Pilot onboarding/monitoring/escalation/exit checklist framework.
-- [ ] Prove no reachable committed secrets remain and rotate affected keys; issue #30 was closed `not planned`, not remediated, so this pilot gate remains open unless governance explicitly supersedes it.
+- [x] Prove no reachable committed secrets remain; issue #30 rewrote all reachable branch history, passed tracked-tree + full-history scans before force-update, and passed an independent fresh-clone full-history verification afterward. Provider-side rotation was not applicable on the recorded owner attestation that the historical PekPik material was public/test access rather than a private IAMINA credential.
 
 Preparation/executable gates do not imply that external legal, processor, linguistic, security or production-deployment approvals have occurred.
 
@@ -418,9 +418,9 @@ Preparation/executable gates do not imply that external legal, processor, lingui
 # Current blockers and next sequence
 
 1. **Companion intelligence product lane:** P2-COMPANION-0..8, P3-HORIZON and P3-EVALS are closed; no further companion-intelligence LOT is currently queued in this roadmap.
-2. **Gate A Secure Core:** engineering threshold is certified at 9.0/10; no further Gate A engineering work is queued unless a regression appears. This does not supersede the next pilot-security blocker.
+2. **Gate A Secure Core:** certified at 10.0/10 after issue #30 reachable-history remediation; no further Gate A engineering work is queued unless a regression appears.
 3. **P0-MENA-2 English baseline:** technical gate is closed at 16/16 active surfaces with selection/persistence and FR/EN/AR parity regression coverage; no further English-baseline work is queued unless a regression or new active surface appears. Restricted human-language approvals remain separate and open below.
-4. **Pilot security blocker:** issue #30 is closed `not planned` but explicitly not remediated; either complete the documented history remediation/verification path or supersede the pilot policy through normal governance before any real-patient go/no-go.
+4. **Pilot security blocker:** issue #30 reachable-history remediation is closed and fresh-clone verified; continue with the remaining restricted pilot approvals below.
 5. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
 6. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
 7. Run deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
