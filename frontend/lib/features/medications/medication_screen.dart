@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/localization/locale_formatting.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 
@@ -132,7 +132,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
             title: Text(
               _mt(context, 'Heure de prise', 'Time taken', 'وقت التناول'),
             ),
-            subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(_takenAt)),
+            subtitle: Text(formatLocalizedDateTime(context, _takenAt)),
             onTap: () async {
               final date = await showDatePicker(
                 context: context,
@@ -208,7 +208,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
                     leading: const Icon(Icons.medication_outlined),
                     title: Text('${item.label}$dose'),
                     subtitle: Text(
-                      DateFormat('dd/MM/yyyy HH:mm').format(item.takenAt),
+                      formatLocalizedDateTime(context, item.takenAt),
                     ),
                     trailing: IconButton(
                       tooltip: _mt(context, 'Supprimer', 'Delete', 'حذف'),
