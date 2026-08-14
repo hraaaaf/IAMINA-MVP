@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../theme/amina_visual_language.dart';
 import '../theme/app_theme.dart';
 
 /// Canonical compact page chrome for patient-facing mobile surfaces.
 ///
-/// The component intentionally owns safe-area spacing, visual hierarchy and
-/// directional padding so each screen does not invent its own mobile header.
+/// The component owns safe-area spacing, visual hierarchy and directional
+/// padding so screens inherit the same calm premium language as LOGIN.
 class AminaMobilePageHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -26,17 +27,34 @@ class AminaMobilePageHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final top = includeSafeArea ? MediaQuery.paddingOf(context).top : 0.0;
     final hasSubtitle = subtitle != null && subtitle!.trim().isNotEmpty;
+    final dark = AminaTheme.isDark(context);
 
     return Container(
       decoration: BoxDecoration(
-        color: AminaTheme.surface(context),
-        border: Border(bottom: BorderSide(color: AminaTheme.divider(context))),
+        color: AminaTheme.bg(context),
+        border: Border(
+          bottom: BorderSide(
+            color: AminaTheme.divider(context).withValues(alpha: .7),
+          ),
+        ),
+        gradient: dark
+            ? null
+            : LinearGradient(
+                colors: [
+                  AminaVisualLanguage.mintSurface.withValues(alpha: .34),
+                  AminaTheme.paper.withValues(alpha: .98),
+                  AminaTheme.paper,
+                ],
+                stops: const [0, .42, 1],
+                begin: AlignmentDirectional.topStart,
+                end: AlignmentDirectional.bottomEnd,
+              ),
       ),
       padding: EdgeInsetsDirectional.fromSTEB(
-        20,
-        top + 12,
-        20,
-        bottom == null ? 14 : 12,
+        24,
+        top + 14,
+        24,
+        bottom == null ? 16 : 13,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -49,10 +67,10 @@ class AminaMobilePageHeader extends StatelessWidget {
             children: [
               ExcludeSemantics(
                 child: Container(
-                  width: 4,
-                  height: hasSubtitle ? 38 : 30,
+                  width: 3,
+                  height: hasSubtitle ? 38 : 31,
                   decoration: BoxDecoration(
-                    gradient: AminaTheme.heroGradient,
+                    gradient: AminaVisualLanguage.primaryGradient,
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
@@ -70,11 +88,11 @@ class AminaMobilePageHeader extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: AminaTheme.textPrimary(context),
-                          fontSize: 20,
-                          height: 1.1,
+                          color: AminaVisualLanguage.primaryText(context),
+                          fontSize: 21,
+                          height: 1.08,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: -0.35,
+                          letterSpacing: -.45,
                         ),
                       ),
                     ),
@@ -85,9 +103,9 @@ class AminaMobilePageHeader extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: AminaTheme.textSecondary(context),
+                          color: AminaVisualLanguage.secondary(context),
                           fontSize: 12.5,
-                          height: 1.3,
+                          height: 1.34,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
