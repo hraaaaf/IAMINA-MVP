@@ -12,20 +12,34 @@ void main() {
     'summary exposes coverage and never fabricates confidence or trends',
     () {
       final source = _read('lib/features/journal/ai_summary_screen.dart');
+      final localizedCopy =
+          _read('lib/core/localization/ai_summary_localized_copy.dart');
 
       for (final required in <String>[
-        'Repères généraux non personnalisés',
         'kpis.logCount',
         'kpis.daysWithData',
-        'Observation automatique',
-        'estimation, pas HbA1c laboratoire',
+        'l10n.coverageDisclosure',
+        'l10n.automaticObservation',
+        'l10n.gmiBasis',
         'constraints.maxWidth < 720',
-        'Les données manquantes peuvent modifier l’interprétation',
       ]) {
         expect(
           source,
           contains(required),
           reason: 'Missing explainability contract: $required',
+        );
+      }
+
+      for (final required in <String>[
+        'Repères généraux non personnalisés',
+        'Observation automatique',
+        'estimation, pas HbA1c laboratoire',
+        'Les données manquantes peuvent modifier l’interprétation',
+      ]) {
+        expect(
+          localizedCopy,
+          contains(required),
+          reason: 'Missing localized explainability wording: $required',
         );
       }
 

@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../core/localization/ai_summary_localized_copy.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../core/widgets/mobile_page_header.dart';
@@ -375,7 +376,6 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
     return _buildNarrowLayout(summary, cards, kpis);
   }
 
-  // ── Mobile layout ──────────────────────────────────────────────────────────
   Widget _buildNarrowLayout(
     SummaryResponse summary,
     List<InsightCard> cards,
@@ -408,7 +408,6 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
     );
   }
 
-  // ── Desktop layout ─────────────────────────────────────────────────────────
   Widget _buildWideLayout(
     SummaryResponse summary,
     List<InsightCard> cards,
@@ -491,10 +490,11 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
   }
 
   List<Widget> _buildInsightsSection(List<InsightCard> cards) {
+    final l10n = AppLocalizations.of(context)!;
     return [
       _SectionHeader(
-        title: 'ÉVÉNEMENTS CLÉS',
-        subtitle: '${cards.length} priorité${cards.length > 1 ? 's' : ''}',
+        title: l10n.keyEvents,
+        subtitle: l10n.priorities(cards.length),
         icon: Icons.flag_outlined,
       ),
       const SizedBox(height: 12),
@@ -504,7 +504,7 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: Text(
-                'Aucune découverte pour le moment.',
+                l10n.noDiscoveryYet,
                 style: TextStyle(color: AminaTheme.textSecondary(context)),
               ),
             ),
@@ -520,12 +520,6 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
     ];
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Top Bar
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _SummaryTopBar extends StatelessWidget {
   final int periodDays;
@@ -660,7 +654,6 @@ class _GreetingHeader extends StatelessWidget {
   final int periodDays;
   const _GreetingHeader({required this.periodDays});
 
-  /// Returns the user's first name from Firebase, or empty string if unknown.
   String _firstName() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || user.isAnonymous) return '';
@@ -716,7 +709,11 @@ class _HeroInsightCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final tir = kpis?.tirPct ?? 0.0;
+    final discussionCount = summary.insightCards
+        .where((c) => c.action.isNotEmpty)
+        .length;
 
     return Container(
       width: double.infinity,
@@ -760,9 +757,7 @@ class _HeroInsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Text(
-            tir >= 70
-                ? 'Une majorité des mesures disponibles\nse situe dans le repère 70–180 mg/dL.'
-                : 'Certaines mesures disponibles\nméritent d’être examinées.',
+            tir >= 70 ? l10n.mostlyInTarget : l10n.someReadingsNeedReview,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
@@ -773,7 +768,11 @@ class _HeroInsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            '${summary.insightCards.length} observations prioritaires, ${summary.insightCards.where((c) => c.action.isNotEmpty).length} pistes à discuter. Basé sur ${kpis?.logCount ?? 0} mesures disponibles.',
+            l10n.heroObservationSummary(
+              summary.insightCards.length,
+              discussionCount,
+              kpis?.logCount ?? 0,
+            ),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.8),
               fontSize: 13,
@@ -784,13 +783,13 @@ class _HeroInsightCard extends StatelessWidget {
           Row(
             children: [
               _HeroButton(
-                label: 'Voir mes découvertes',
+                label: l10n.seeFindings,
                 onTap: onDiscoverTap,
                 isPrimary: true,
               ),
               const SizedBox(width: 12),
               _HeroButton(
-                label: 'Discuter avec IAmina',
+                label: l10n.discussWithIamina,
                 onTap: onChatTap,
                 isPrimary: false,
               ),
@@ -838,42 +837,38 @@ class _HeroButton extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// KPI Row
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _KpiRow extends StatelessWidget {
   final KpisResponse kpis;
   const _KpiRow({required this.kpis});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final tir = kpis.tirPct ?? 0.0;
     final gmi = kpis.gmi ?? 0.0;
     final cv = kpis.cvPct ?? 0.0;
-    final coverage =
-        '${kpis.logCount} mesures sur ${kpis.daysWithData} jour${kpis.daysWithData > 1 ? 's' : ''}';
+    final coverage = l10n.coverage(kpis.logCount, kpis.daysWithData);
 
     final cards = <Widget>[
       _KpiCard(
-        label: 'MESURES DANS LA CIBLE',
+        label: l10n.readingsInRange,
         value: '${tir.toStringAsFixed(0)}%',
         color: AminaTheme.teal500,
-        reference: 'Repère général 70–180 mg/dL',
+        reference: l10n.generalRangeReference,
       ),
       _KpiCard(
-        label: 'GMI ESTIMÉE',
+        label: l10n.estimatedGmi,
         value: '${gmi.toStringAsFixed(1)}%',
         color: AminaTheme.ocean500,
         reference: kpis.gmiBasis.isNotEmpty
-            ? '${kpis.gmiBasis} · estimation, pas HbA1c laboratoire'
-            : 'Moyenne disponible · estimation, pas HbA1c laboratoire',
+            ? l10n.gmiBasis(kpis.gmiBasis)
+            : l10n.gmiAvailableMean,
       ),
       _KpiCard(
-        label: 'VARIABILITÉ (CV)',
+        label: l10n.variabilityCv,
         value: '${cv.toStringAsFixed(0)}%',
         color: AminaTheme.ambre500,
-        reference: 'Repère général <36 %',
+        reference: l10n.generalCvReference,
       ),
     ];
 
@@ -905,7 +900,7 @@ class _KpiRow extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          'Repères généraux non personnalisés · $coverage. Les données manquantes peuvent modifier l’interprétation.',
+          l10n.coverageDisclosure(coverage),
           style: TextStyle(
             fontSize: 10.5,
             color: AminaTheme.textSecondary(context),
@@ -992,10 +987,6 @@ class _KpiCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AGP Card — inchangée, dark-mode adapté
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _AgpCard extends StatelessWidget {
   final List<dynamic> agpData;
   final bool isHourly;
@@ -1011,6 +1002,7 @@ class _AgpCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final hasData = agpData.any((e) {
       final m = e as Map<String, dynamic>;
       final v = (m['p50'] ?? m['avg'] ?? m['avg_glucose'] ?? 0);
@@ -1039,7 +1031,7 @@ class _AgpCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'PROFIL GLYCÉMIQUE AMBULATOIRE',
+                    l10n.ambulatoryGlucoseProfile,
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
@@ -1058,7 +1050,7 @@ class _AgpCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(99),
                   ),
                   child: Text(
-                    '${periodDays}j',
+                    l10n.periodDays(periodDays),
                     style: const TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -1115,24 +1107,24 @@ class _AgpCard extends StatelessWidget {
                     children: [
                       _TirLegend(
                         color: AminaTheme.teal500,
-                        label: 'En cible',
+                        label: l10n.inTarget,
                         value: '${tir.toStringAsFixed(0)}%',
                       ),
                       const SizedBox(width: 10),
                       _TirLegend(
                         color: AminaTheme.ambre500,
-                        label: 'Élevé',
+                        label: l10n.elevated,
                         value: '${tar.toStringAsFixed(0)}%',
                       ),
                       const SizedBox(width: 10),
                       _TirLegend(
                         color: AminaTheme.dangerFg,
-                        label: 'Bas',
+                        label: l10n.lowLabel,
                         value: '${tbr.toStringAsFixed(0)}%',
                       ),
                       const Spacer(),
                       Text(
-                        'Objectif ADA > 70%',
+                        l10n.adaReference,
                         style: TextStyle(
                           fontSize: 9,
                           color: tir >= 70
@@ -1159,7 +1151,7 @@ class _AgpCard extends StatelessWidget {
               padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 16),
               child: Center(
                 child: Text(
-                  'Données insuffisantes.',
+                  l10n.insufficientData,
                   style: TextStyle(
                     color: AminaTheme.textSecondary(context),
                     fontSize: 12,
@@ -1171,8 +1163,6 @@ class _AgpCard extends StatelessWidget {
             Builder(
               builder: (ctx) {
                 final isDark = ctx.watch<TweaksNotifier>().isDark;
-                // Parse server AGP points — filter out hours with no p50 data
-                // Convert server Map data → canonical AgpPoint list
                 const minY = 40.0;
                 const maxY = 280.0;
                 final pts = agpData
@@ -1199,7 +1189,6 @@ class _AgpCard extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Y-axis labels
                         SizedBox(
                           width: 30,
                           child: AgpYAxis(
@@ -1208,7 +1197,6 @@ class _AgpCard extends StatelessWidget {
                             isDark: isDark,
                           ),
                         ),
-                        // Chart + X-axis
                         Expanded(
                           child: Column(
                             children: [
@@ -1244,7 +1232,7 @@ class _AgpCard extends StatelessWidget {
             padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 12),
             child: Row(
               children: [
-                const _LegendDot(color: AminaTheme.teal700, label: 'Médiane'),
+                _LegendDot(color: AminaTheme.teal700, label: l10n.median),
                 const SizedBox(width: 10),
                 _LegendDot(
                   color: AminaTheme.teal400.withValues(alpha: 0.55),
@@ -1257,7 +1245,7 @@ class _AgpCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  'Repère général 70–180',
+                  l10n.generalRangeShort,
                   style: TextStyle(
                     fontSize: 9,
                     color: AminaTheme.textSecondary(context),
@@ -1296,9 +1284,6 @@ class _LegendDot extends StatelessWidget {
   );
 }
 
-// _AgpSummaryPainter, _AgpSummaryYAxis, _AgpSummaryXAxis extracted to
-// agp_chart.dart — use AgpPainter, AgpYAxis, AgpXAxis from that shared module.
-
 class _TirLegend extends StatelessWidget {
   final Color color;
   final String label, value;
@@ -1336,10 +1321,6 @@ class _TirLegend extends StatelessWidget {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Action Plan (nouveau)
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _ActionPlan extends StatelessWidget {
   final List<InsightCard> cards;
   const _ActionPlan({required this.cards});
@@ -1358,33 +1339,32 @@ class _ActionPlan extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Generate plan items from cards that have an action, up to 7
+    final l10n = AppLocalizations.of(context)!;
     final actionCards = cards
         .where((c) => c.action.isNotEmpty)
         .take(7)
         .toList();
 
-    // Fallback static plans when no AI cards
     final List<_PlanItem> plans = actionCards.isEmpty
         ? [
-            const _PlanItem(
-              day: 'J+1',
-              title: 'Documenter les repas glucidiques',
-              sub: 'Ajouter le contexte et les horaires du repas',
+            _PlanItem(
+              day: l10n.planDay(1),
+              title: l10n.documentCarbMeals,
+              sub: l10n.addMealContextTiming,
               bg: AminaTheme.warnBg,
-              dot: Color(0xFFF59E0B),
+              dot: const Color(0xFFF59E0B),
             ),
-            const _PlanItem(
-              day: 'J+3',
-              title: 'Documenter les valeurs nocturnes',
-              sub: 'Noter activité, sommeil et symptômes associés',
+            _PlanItem(
+              day: l10n.planDay(3),
+              title: l10n.documentNightValues,
+              sub: l10n.noteActivitySleepSymptoms,
               bg: AminaTheme.dangerBg,
-              dot: Color(0xFFDC2626),
+              dot: const Color(0xFFDC2626),
             ),
-            const _PlanItem(
-              day: 'J+7',
-              title: 'Préparer le bilan TIR',
-              sub: 'Comparer les périodes avec votre professionnel',
+            _PlanItem(
+              day: l10n.planDay(7),
+              title: l10n.prepareTirReview,
+              sub: l10n.compareWithProfessional,
               bg: AminaTheme.goodBg,
               dot: AminaTheme.teal500,
             ),
@@ -1394,7 +1374,7 @@ class _ActionPlan extends StatelessWidget {
             final card = e.value;
             final dayOffset = [1, 2, 3, 5, 6, 7, 7][i.clamp(0, 6)];
             return _PlanItem(
-              day: 'J+$dayOffset',
+              day: l10n.planDay(dayOffset),
               title: card.action,
               sub: card.body.length > 60
                   ? '${card.body.substring(0, 60)}…'
@@ -1419,7 +1399,7 @@ class _ActionPlan extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'POINTS À DISCUTER',
+                      l10n.discussionPoints,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
@@ -1429,7 +1409,7 @@ class _ActionPlan extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$count point${count > 1 ? 's' : ''} à examiner sur 7 jours',
+                      l10n.discussionCount(count),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -1449,7 +1429,7 @@ class _ActionPlan extends StatelessWidget {
                   borderRadius: BorderRadius.circular(99),
                 ),
                 child: Text(
-                  'À discuter avec le médecin',
+                  l10n.discussWithDoctor,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -1472,7 +1452,6 @@ class _ActionPlan extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    // Day badge
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
@@ -1546,10 +1525,6 @@ class _PlanItem {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Section header
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _SectionHeader extends StatelessWidget {
   final String title, subtitle;
   final IconData icon;
@@ -1600,10 +1575,6 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Insight Card widget
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _InsightCardWidget extends StatefulWidget {
   final InsightCard card;
   final VoidCallback onAskWhy;
@@ -1617,6 +1588,7 @@ class _InsightCardWidgetState extends State<_InsightCardWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final InsightCard card = widget.card;
     final (
       barColor,
@@ -1627,19 +1599,19 @@ class _InsightCardWidgetState extends State<_InsightCardWidget> {
       InsightSeverity.good => (
         AminaTheme.goodFg,
         AminaTheme.goodBg,
-        'Positif',
+        l10n.positive,
         Icons.check_circle_outline,
       ),
       InsightSeverity.warn => (
         AminaTheme.warnFg,
         AminaTheme.warnBg,
-        'À surveiller',
+        l10n.watch,
         Icons.radio_button_unchecked,
       ),
       InsightSeverity.danger => (
         AminaTheme.dangerFg,
         AminaTheme.dangerBg,
-        'Priorité haute',
+        l10n.highPriority,
         Icons.warning_amber_rounded,
       ),
     };
@@ -1705,7 +1677,7 @@ class _InsightCardWidgetState extends State<_InsightCardWidget> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Observation automatique',
+                              l10n.automaticObservation,
                               style: TextStyle(
                                 fontSize: 10,
                                 color: AminaTheme.textSecondary(context),
@@ -1769,7 +1741,7 @@ class _InsightCardWidgetState extends State<_InsightCardWidget> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Piste à discuter : ${card.action}',
+                              l10n.discussionSuggestion(card.action),
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -1788,7 +1760,7 @@ class _InsightCardWidgetState extends State<_InsightCardWidget> {
                     child: TextButton.icon(
                       onPressed: widget.onAskWhy,
                       icon: const Icon(Icons.help_outline, size: 14),
-                      label: const Text('Demander pourquoi'),
+                      label: Text(l10n.askWhy),
                       style: TextButton.styleFrom(
                         foregroundColor: AminaTheme.teal600,
                       ),
@@ -1805,16 +1777,13 @@ class _InsightCardWidgetState extends State<_InsightCardWidget> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Chat CTA card + Chat FAB animé
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _ChatCta extends StatelessWidget {
   final VoidCallback onTap;
   const _ChatCta({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -1825,22 +1794,22 @@ class _ChatCta extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Discuter avec IAmina',
-                  style: TextStyle(
+                  l10n.discussWithIamina,
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Posez vos questions ou demandez une explication des données disponibles.',
-                  style: TextStyle(
+                  l10n.chatCtaBody,
+                  style: const TextStyle(
                     fontSize: 12,
                     color: Colors.white70,
                     height: 1.4,
@@ -1858,9 +1827,9 @@ class _ChatCta extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               minimumSize: Size.zero,
             ),
-            child: const Text(
-              'Démarrer',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            child: Text(
+              l10n.start,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -1869,7 +1838,6 @@ class _ChatCta extends StatelessWidget {
   }
 }
 
-/// FAB pulsant "Parler à IAmina" (floating)
 class _ChatFab extends StatefulWidget {
   final VoidCallback onTap;
   const _ChatFab({required this.onTap});
@@ -1943,10 +1911,6 @@ class _ChatFabState extends State<_ChatFab>
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Signal Bars + Pulse Animation (inchangés)
-// ─────────────────────────────────────────────────────────────────────────────
 
 class _PulseAnimation extends StatefulWidget {
   final Widget child;
