@@ -19,11 +19,11 @@ void main() {
   });
 
   test('iOS privacy prompts are bundled in EN FR AR', () {
-    final info = _read('../ios/Runner/Info.plist');
-    final project = _read('../ios/Runner.xcodeproj/project.pbxproj');
-    final en = _read('../ios/Runner/en.lproj/InfoPlist.strings');
-    final fr = _read('../ios/Runner/fr.lproj/InfoPlist.strings');
-    final ar = _read('../ios/Runner/ar.lproj/InfoPlist.strings');
+    final info = _read('ios/Runner/Info.plist');
+    final project = _read('ios/Runner.xcodeproj/project.pbxproj');
+    final en = _read('ios/Runner/en.lproj/InfoPlist.strings');
+    final fr = _read('ios/Runner/fr.lproj/InfoPlist.strings');
+    final ar = _read('ios/Runner/ar.lproj/InfoPlist.strings');
 
     expect(info, contains('<key>CFBundleLocalizations</key>'));
     for (final locale in <String>['en', 'fr', 'ar']) {
