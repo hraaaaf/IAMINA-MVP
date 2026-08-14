@@ -660,7 +660,7 @@ class _DocumentImportIcon extends StatelessWidget {
     return Container(
       width: compactHeight ? 84 : 100,
       height: compactHeight ? 84 : 100,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: AminaTheme.heroGradient,
         shape: BoxShape.circle,
       ),
