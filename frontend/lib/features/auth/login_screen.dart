@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
 import '../../data/drift/database.dart';
+import '../../core/localization/auth_localized_copy.dart';
 import '../../core/theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -82,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) {
           return AlertDialog(
-            title: const Text('Créer un compte'),
+            title: Text(l10n.createAccount),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 6),
                 _Field(
                   controller: passwordCtrl,
-                  hint: '••••••••  (min. 6 caractères)',
+                  hint: l10n.signupPasswordHint,
                   obscureText: obscure,
                   suffix: IconButton(
                     onPressed: () => setDlgState(() => obscure = !obscure),
@@ -103,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _FieldLabel('Confirmer le mot de passe'),
+                _FieldLabel(l10n.confirmPassword),
                 const SizedBox(height: 6),
                 _Field(controller: confirmCtrl, hint: '••••••••', obscureText: obscure),
               ],
@@ -119,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (email.isEmpty || password.isEmpty) return;
                   if (password != confirm) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Les mots de passe ne correspondent pas'), behavior: SnackBarBehavior.floating),
+                      SnackBar(content: Text(l10n.passwordsDoNotMatch), behavior: SnackBarBehavior.floating),
                     );
                     return;
                   }
@@ -130,12 +131,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     await auth.registerWithEmail(email, password);
                     if (mounted) context.go('/onboarding');
                   } catch (e) {
-                    if (mounted) setState(() => _error = 'Échec de la création du compte — vérifiez l\'e-mail et le mot de passe.');
+                    if (mounted) setState(() => _error = l10n.accountCreationFailed);
                   } finally {
                     if (mounted) setState(() => _isLoading = false);
                   }
                 },
-                child: const Text('Créer'),
+                child: Text(l10n.createAction),
               ),
             ],
           );
@@ -511,16 +512,17 @@ class _SignupRow extends StatelessWidget {
   const _SignupRow({required this.isLoading, required this.onTap});
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Wrap(
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 2,
       children: [
-        Text('Pas encore de compte ?', style: TextStyle(fontSize: 13, color: AminaTheme.textSecondary(context))),
+        Text(l10n.noAccountYet, style: TextStyle(fontSize: 13, color: AminaTheme.textSecondary(context))),
         TextButton(
           onPressed: isLoading ? null : onTap,
           style: TextButton.styleFrom(minimumSize: const Size(44, 40), padding: const EdgeInsetsDirectional.fromSTEB(6, 2, 6, 2), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-          child: const Text('Créer un compte', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AminaTheme.teal700, decoration: TextDecoration.underline, decorationThickness: 1.2)),
+          child: Text(l10n.createAccount, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AminaTheme.teal700, decoration: TextDecoration.underline, decorationThickness: 1.2)),
         ),
       ],
     );
