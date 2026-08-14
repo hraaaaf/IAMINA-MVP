@@ -1,0 +1,2 @@
+"NSCameraUsageDescription" = "IAmina uses the camera to read your glucose value directly from your glucose meter.";
+"NSPhotoLibraryUsageDescription" = "IAmina can read a photo of your glucose meter to extract the value automatically.";
