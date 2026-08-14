@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-14 — P3-EVALS is certified, human-reviewed PASS ALL, merged and post-merge green. Companion intelligence is closed through P3-EVALS. The active critical path is now MENA pilot hardening. UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-14 — Gate A Secure Core is certified at 9.0/10 on a ten-dimension engineering rubric; reachable Git-history hygiene remains the single failed dimension and still blocks real-patient pilot authorization. P3-EVALS is certified, human-reviewed PASS ALL, merged and post-merge green. Companion intelligence is closed through P3-EVALS. The active critical path is MENA pilot hardening. UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -31,6 +31,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 
 | Workstream | Progress | Status | Evidence |
 |---|---:|---|---|
+| Gate A — Secure Core engineering certification | 9.0/10 | ✅ Threshold met | `docs/assessments/2026-08-14-gate-a-secure-core-certification.md`; 9/10 dimensions PASS, issue #30 remains FAIL/pilot blocker |
 | P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
 | P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43 |
 | P0 agent governance | 100% | ✅ Closed | PR #63; Builder → Reviewer → Release Certifier protocol |
@@ -46,7 +47,18 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
-Clinical-intelligence, Journal and UX quality lanes are tracked separately and do not alter the MENA critical-path numerator unless a later pilot gate explicitly depends on them.
+Gate A is an engineering certification over already-counted foundations and therefore does **not** change the MENA critical-path numerator. Clinical-intelligence, Journal and UX quality lanes are tracked separately and do not alter the MENA critical-path numerator unless a later pilot gate explicitly depends on them.
+
+---
+
+# Gate A — Secure Core — CERTIFIED 9.0/10
+
+Gate A uses ten equally weighted, independently checkable secure-core dimensions. Nine pass: API/session safety; deterministic clinical authority; high-risk refusal parity; emergency truthfulness; governed AI/data egress; minimization/DLP/raw-media consent; sovereign authentication; PostgreSQL/migration integrity; and current-tree SAST/anti-bypass/secret hygiene. Reachable Git-history secret hygiene fails because issue #30 is explicitly not remediated.
+
+**Engineering threshold:** met at **9.0/10**.  
+**Real-patient pilot security gate:** remains **OPEN**. Gate A does not waive issue #30, restricted approvals, or native-language safety review.
+
+Canonical evidence: `docs/assessments/2026-08-14-gate-a-secure-core-certification.md`.
 
 ---
 
@@ -397,9 +409,10 @@ Preparation/executable gates do not imply that external legal, processor, lingui
 # Current blockers and next sequence
 
 1. **Companion intelligence product lane:** P2-COMPANION-0..8, P3-HORIZON and P3-EVALS are closed; no further companion-intelligence LOT is currently queued in this roadmap.
-2. **Pilot security blocker:** issue #30 is closed `not planned` but explicitly not remediated; either complete the documented history remediation/verification path or supersede the pilot policy through normal governance before any real-patient go/no-go.
-3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
-4. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
-5. Run deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
-6. UX visual rebase and Journal redesign remain closed. Reopen them only when fresh evidence or a new companion-intelligence requirement changes a certified surface.
-7. After pilot blockers are cleared, run the real-patient pilot go/no-go and cohort execution gates.
+2. **Gate A Secure Core:** engineering threshold is certified at 9.0/10; no further Gate A engineering work is queued unless a regression appears. This does not supersede the next pilot-security blocker.
+3. **Pilot security blocker:** issue #30 is closed `not planned` but explicitly not remediated; either complete the documented history remediation/verification path or supersede the pilot policy through normal governance before any real-patient go/no-go.
+4. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
+5. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
+6. Run deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
+7. UX visual rebase and Journal redesign remain closed. Reopen them only when fresh evidence or a new companion-intelligence requirement changes a certified surface.
+8. After pilot blockers are cleared, run the real-patient pilot go/no-go and cohort execution gates.
