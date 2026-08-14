@@ -1,0 +1,73 @@
+name: SECURITY post-rewrite verification
+
+on:
+  push:
+    branches:
+      - security/history-rewrite-verify
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout verification branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fresh-clone all rewritten refs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}"
+          rm -rf verify-clone
+          git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" \
+            clone --no-single-branch "https://github.com/${GITHUB_REPOSITORY}.git" verify-clone
+          cd verify-clone
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*' --prune --force
+          test "$(git rev-parse --is-shallow-repository)" = "false"
+          if git rev-list --objects --all | grep -F ' .claude/settings.local.json'; then
+            echo 'Forbidden historical path remains reachable from GitHub.' >&2
+            exit 1
+          fi
+          python scripts/check_secrets.py
+          python - <<'PY'
+          from pathlib import Path
+          import scripts.audit_git_history_secrets as audit
+
+          def bounded_read_blobs(repo, object_ids):
+              for offset in range(0, len(object_ids), 256):
+                  batch = object_ids[offset:offset + 256]
+                  request = ("\n".join(batch) + "\n").encode("ascii")
+                  output = audit._git(repo, "cat-file", "--batch", input_bytes=request)
+                  cursor = 0
+                  for expected_id in batch:
+                      line_end = output.find(b"\n", cursor)
+                      if line_end < 0:
+                          raise RuntimeError(f"missing cat-file header for {expected_id}")
+                      parts = output[cursor:line_end].decode("ascii", errors="replace").split()
+                      cursor = line_end + 1
+                      if len(parts) != 3 or parts[1] != "blob":
+                          raise RuntimeError(f"unexpected cat-file response for {expected_id}")
+                      object_id, _, raw_size = parts
+                      size = int(raw_size)
+                      content = output[cursor:cursor + size]
+                      cursor += size
+                      if output[cursor:cursor + 1] != b"\n":
+                          raise RuntimeError(f"invalid cat-file blob terminator for {object_id}")
+                      cursor += 1
+                      yield object_id, content
+
+          audit._read_blobs = bounded_read_blobs
+          findings = audit.audit_repository(Path('.'))
+          if findings:
+              print(f"Fresh-clone full-history scanner still has {len(findings)} non-sensitive finding(s).")
+              for finding in findings:
+                  print(f"- {finding}")
+              raise SystemExit(1)
+          print("Fresh-clone full-history scanner PASS.")
+          PY
