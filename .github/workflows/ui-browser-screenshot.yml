@@ -51,6 +51,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/ui-browser-cert"
+          python3 -m pip install --quiet websocket-client
           python3 -m http.server 7358 --directory build/web >/tmp/iamina-ui-browser-http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
@@ -70,19 +71,89 @@ jobs:
           CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME"
 
+          cat > /tmp/capture_cdp.py <<'PY'
+          import base64
+          import json
+          import sys
+          import time
+          import urllib.request
+          from websocket import create_connection
+
+          target = sys.argv[1]
+          endpoint = 'http://127.0.0.1:9222/json/list'
+          pages = json.load(urllib.request.urlopen(endpoint))
+          page = next(item for item in pages if item.get('type') == 'page')
+          ws = create_connection(page['webSocketDebuggerUrl'], timeout=20)
+          counter = 0
+
+          def call(method, params=None):
+              global counter
+              counter += 1
+              ws.send(json.dumps({'id': counter, 'method': method, 'params': params or {}}))
+              while True:
+                  response = json.loads(ws.recv())
+                  if response.get('id') == counter:
+                      return response
+
+          call('Page.enable')
+          call('Emulation.setDeviceMetricsOverride', {
+              'width': 390,
+              'height': 844,
+              'deviceScaleFactor': 1,
+              'mobile': True,
+          })
+          call('Page.reload', {'ignoreCache': True})
+          time.sleep(15)
+          shot = call('Page.captureScreenshot', {
+              'format': 'png',
+              'captureBeyondViewport': False,
+              'fromSurface': True,
+          })
+          data = shot.get('result', {}).get('data')
+          if not data:
+              raise RuntimeError(f'No screenshot payload: {shot}')
+          with open(target, 'wb') as fh:
+              fh.write(base64.b64decode(data))
+          ws.close()
+          PY
+
           surfaces=(dashboard companion summary profile journal importer document-import add-log medications reminders)
           for surface in "${surfaces[@]}"; do
             target="$GITHUB_WORKSPACE/ui-browser-cert/${surface}-390x844.png"
+            profile_dir="$(mktemp -d)"
             "$CHROME" \
               --headless=new \
               --no-sandbox \
               --enable-unsafe-swiftshader \
               --hide-scrollbars \
-              --force-device-scale-factor=1 \
+              --remote-allow-origins='*' \
+              --remote-debugging-port=9222 \
+              --user-data-dir="$profile_dir" \
               --window-size=390,844 \
-              --timeout=15000 \
-              --screenshot="$target" \
-              "http://127.0.0.1:7358/?surface=${surface}"
+              "http://127.0.0.1:7358/?surface=${surface}" \
+              >/tmp/iamina-chrome-${surface}.log 2>&1 &
+            CHROME_PID=$!
+
+            DEVTOOLS=0
+            for _ in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:9222/json/list >/dev/null; then
+                DEVTOOLS=1
+                break
+              fi
+              sleep 1
+            done
+            if [ "$DEVTOOLS" != "1" ]; then
+              cat "/tmp/iamina-chrome-${surface}.log" >&2 || true
+              kill "$CHROME_PID" 2>/dev/null || true
+              rm -rf "$profile_dir"
+              exit 1
+            fi
+
+            python3 /tmp/capture_cdp.py "$target"
+            kill "$CHROME_PID" 2>/dev/null || true
+            wait "$CHROME_PID" 2>/dev/null || true
+            rm -rf "$profile_dir"
+
             test -s "$target"
             bytes="$(stat -c%s "$target")"
             if [ "$bytes" -lt 10000 ]; then
