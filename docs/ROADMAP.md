@@ -39,7 +39,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 | UX visual rebase | 100% | ✅ Closed | UX-0–11; UX-11 reference parity 9.8/10; PR #110 |
 | Journal metabolic-event redesign | 100% | ✅ Closed | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 + P2-JOURNAL-8/9; PRs #67–#77 |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
-| P0-MENA-2 — locale + safety contract | 63% | 🟡 Native review blocked | PR #16, #36, #37; three human linguistic/parity gates remain |
+| P0-MENA-2 — locale + safety contract | 63% | 🟡 EN completeness + native review open | English active-surface completeness is now an explicit gate; PRs #16, #36, #37; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains a governance blocker despite being closed `not planned` |
@@ -345,6 +345,15 @@ PR #143 and its executable `consultation-brief.v1` contract remain certified his
 - [x] Versioned Morocco emergency-resource registry with confirmed-country-only selection.
 - [x] Complete technical RTL coverage screen by screen (PR #36).
 
+## Open technical locale gate
+
+- [ ] Complete the English baseline across every active production surface, including routed screens and nested/wrapper-rendered UI.
+- [ ] Remove unintended French user-visible hardcoded copy in English mode; proper nouns, user-provided data and deliberately localized content are exempt.
+- [ ] Make dates and numbers locale-aware instead of forcing French formatting.
+- [ ] Add regression coverage proving active-surface FR/EN/AR parity without weakening Arabic RTL or safety contracts.
+
+Current verified English gaps include Login/signup, Reset Password, Journal date locale, AI Summary, Import, Document Import and the desktop Dashboard assistant context. This gate strengthens the existing P0-MENA-2 acceptance criteria and does **not** add a new numbered MENA task; the critical-path numerator therefore remains 32/41 until an existing explicit task closes.
+
 ## Remaining human-language gates
 
 - [ ] Obtain native-speaker approval for every enabled safety corpus; PR #37 exports the exact fingerprinted corpus and requires qualified review evidence.
@@ -410,9 +419,10 @@ Preparation/executable gates do not imply that external legal, processor, lingui
 
 1. **Companion intelligence product lane:** P2-COMPANION-0..8, P3-HORIZON and P3-EVALS are closed; no further companion-intelligence LOT is currently queued in this roadmap.
 2. **Gate A Secure Core:** engineering threshold is certified at 9.0/10; no further Gate A engineering work is queued unless a regression appears. This does not supersede the next pilot-security blocker.
-3. **Pilot security blocker:** issue #30 is closed `not planned` but explicitly not remediated; either complete the documented history remediation/verification path or supersede the pilot policy through normal governance before any real-patient go/no-go.
-4. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
-5. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
-6. Run deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
-7. UX visual rebase and Journal redesign remain closed. Reopen them only when fresh evidence or a new companion-intelligence requirement changes a certified surface.
-8. After pilot blockers are cleared, run the real-patient pilot go/no-go and cohort execution gates.
+3. **P0-MENA-2 English baseline:** close active-surface English completeness and FR/EN/AR parity regressions; this technical locale gate does not substitute for the restricted human-language approvals below.
+4. **Pilot security blocker:** issue #30 is closed `not planned` but explicitly not remediated; either complete the documented history remediation/verification path or supersede the pilot policy through normal governance before any real-patient go/no-go.
+5. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
+6. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
+7. Run deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
+8. UX visual rebase and Journal redesign remain closed. Reopen them only when fresh evidence or a new companion-intelligence requirement changes a certified surface.
+9. After pilot blockers are cleared, run the real-patient pilot go/no-go and cohort execution gates.
