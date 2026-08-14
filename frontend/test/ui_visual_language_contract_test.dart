@@ -91,9 +91,10 @@ void main() {
     expect(browserMain, isNot(contains("import 'main.dart'")));
     expect(browserWorkflow, contains('lib/ui_browser_audit_main.dart'));
     expect(browserWorkflow, contains('flutter build web --release'));
-    expect(browserWorkflow, contains('--window-size=390,844'));
-    expect(browserWorkflow, contains('iamina-ui-browser-cert-390x844'));
-    expect(browserWorkflow, contains('Capture ${surface} is suspiciously small'));
+    expect(browserWorkflow, contains('Page.captureScreenshot'));
+    expect(browserWorkflow, contains('Emulation.setDeviceMetricsOverride'));
+    expect(browserWorkflow, contains('suspiciously small'));
     expect(browserWorkflow, contains('distinct renders'));
+    expect(browserWorkflow, contains('iamina-ui-browser-cert-390x844'));
   });
 }
