@@ -70,25 +70,39 @@ jobs:
 
           surfaces=(dashboard companion summary profile journal importer document-import add-log medications reminders)
           for surface in "${surfaces[@]}"; do
+            target="$GITHUB_WORKSPACE/ui-browser-cert/${surface}-390x844.png"
             "$CHROME" \
               --headless=new \
               --no-sandbox \
-              --disable-gpu \
+              --enable-unsafe-swiftshader \
               --hide-scrollbars \
               --force-device-scale-factor=1 \
               --window-size=390,844 \
-              --virtual-time-budget=7000 \
-              --screenshot="$GITHUB_WORKSPACE/ui-browser-cert/${surface}-390x844.png" \
+              --virtual-time-budget=10000 \
+              --screenshot="$target" \
               "http://127.0.0.1:7358/?surface=${surface}"
-            test -s "$GITHUB_WORKSPACE/ui-browser-cert/${surface}-390x844.png"
+            test -s "$target"
+            bytes="$(stat -c%s "$target")"
+            if [ "$bytes" -lt 10000 ]; then
+              echo "Capture ${surface} is suspiciously small (${bytes} bytes)" >&2
+              exit 1
+            fi
           done
 
-          test "$(find "$GITHUB_WORKSPACE/ui-browser-cert" -name '*-390x844.png' | wc -l)" -eq 10
+          count="$(find "$GITHUB_WORKSPACE/ui-browser-cert" -name '*-390x844.png' | wc -l)"
+          test "$count" -eq 10
+
+          unique="$(sha256sum "$GITHUB_WORKSPACE"/ui-browser-cert/*-390x844.png | awk '{print $1}' | sort -u | wc -l)"
+          if [ "$unique" -lt 8 ]; then
+            echo "Browser certification produced only ${unique} distinct renders" >&2
+            exit 1
+          fi
 
       - name: Upload real browser screenshots
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: iamina-ui-browser-cert-390x844
           path: ui-browser-cert/*.png
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7
