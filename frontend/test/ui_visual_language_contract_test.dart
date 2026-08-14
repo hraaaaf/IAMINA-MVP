@@ -84,12 +84,16 @@ void main() {
     expect(nativeWorkflow, contains('--update-goldens'));
     expect(nativeWorkflow, contains('test/ui_visual_screenshot_test.dart'));
 
+    expect(browserMain, contains('runApp('));
+    expect(browserMain, contains('addPostFrameCallback'));
     expect(browserMain, contains('await db.seedDemoData()'));
-    expect(browserMain, contains('auth.enterAuditSession()'));
     expect(browserMain, contains("queryParameters['surface']"));
+    expect(browserMain, isNot(contains("import 'main.dart'")));
     expect(browserWorkflow, contains('lib/ui_browser_audit_main.dart'));
     expect(browserWorkflow, contains('flutter build web --release'));
     expect(browserWorkflow, contains('--window-size=390,844'));
     expect(browserWorkflow, contains('iamina-ui-browser-cert-390x844'));
+    expect(browserWorkflow, contains('Capture ${surface} is suspiciously small'));
+    expect(browserWorkflow, contains('distinct renders'));
   });
 }
