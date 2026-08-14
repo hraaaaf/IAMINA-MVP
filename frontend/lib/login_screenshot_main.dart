@@ -26,63 +26,7 @@ class _LoginScreenshotApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const _LogoReadyLoginScreen(),
+      home: const LoginScreen(),
     );
-  }
-}
-
-class _LogoReadyLoginScreen extends StatefulWidget {
-  const _LogoReadyLoginScreen();
-
-  @override
-  State<_LogoReadyLoginScreen> createState() => _LogoReadyLoginScreenState();
-}
-
-class _LogoReadyLoginScreenState extends State<_LogoReadyLoginScreen> {
-  bool _preloadStarted = false;
-  bool _ready = false;
-  Object? _preloadError;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_preloadStarted) return;
-    _preloadStarted = true;
-
-    precacheImage(
-      const AssetImage('assets/images/logo_amina.png'),
-      context,
-      onError: (Object error, StackTrace? stackTrace) {
-        if (!mounted) return;
-        setState(() => _preloadError = error);
-      },
-    ).then((_) {
-      if (!mounted || _preloadError != null) return;
-      setState(() => _ready = true);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_preloadError != null) {
-      return Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: SelectableText(
-              'Logo preload failed:\n${_preloadError.runtimeType}\n${_preloadError.toString()}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12),
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (!_ready) {
-      return const Scaffold(body: SizedBox.expand());
-    }
-
-    return const LoginScreen();
   }
 }

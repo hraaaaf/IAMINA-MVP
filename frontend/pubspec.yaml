@@ -77,3 +77,9 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+
+  fonts:
+    - family: Georgia
+      fonts:
+        - asset: assets/fonts/IAMINASerif-Bold-subset.ttf
+          weight: 700
