@@ -8,6 +8,7 @@ result, but core safety must not depend on a condition module to make the gate.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from enum import Enum
 
@@ -132,6 +133,14 @@ _NUMERIC_GLUCOSE = re.compile(
     re.IGNORECASE,
 )
 
+# Arabic diacritics and tatweel do not change the lexical emergency phrase.
+# Normalizing them protects text/voice-transcript parity without adding new
+# vocabulary or relaxing the high-severity phrase inventory.
+_ARABIC_DIACRITICS = re.compile(
+    r"[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed]"
+)
+_ARABIC_TATWEEL = "\u0640"
+
 
 def glycemic_emergency_variant_inventory() -> tuple[GlycemicSafetyVariant, ...]:
     """Return every exact phrase used by the deterministic high-severity gate.
@@ -163,6 +172,13 @@ def _normalize(message: str) -> str:
     return re.sub(r"\s+", " ", message.strip().lower())
 
 
+def _normalize_arabic(message: str) -> str:
+    normalized = unicodedata.normalize("NFKC", message)
+    normalized = normalized.replace(_ARABIC_TATWEEL, "")
+    normalized = _ARABIC_DIACRITICS.sub("", normalized)
+    return _normalize(normalized)
+
+
 def classify(message: str) -> TriageClass:
     """Classify a message using deterministic safety-first ordering.
 
@@ -185,7 +201,12 @@ def classify(message: str) -> TriageClass:
         return TriageClass.GLYCEMIC_EMERGENCY
     if any(keyword in normalized for keyword in _GLYCEMIC_DARIJA):
         return TriageClass.GLYCEMIC_EMERGENCY
-    if any(keyword in message for keyword in _GLYCEMIC_ARABIC):
+
+    normalized_arabic = _normalize_arabic(message)
+    if any(
+        _normalize_arabic(keyword) in normalized_arabic
+        for keyword in _GLYCEMIC_ARABIC
+    ):
         return TriageClass.GLYCEMIC_EMERGENCY
 
     return TriageClass.NONE
