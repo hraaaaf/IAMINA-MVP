@@ -40,18 +40,20 @@ void main() {
     }
   });
 
-  test('visual certification stays deterministic and isolated from production main', () {
+  test('visual certification stays native and isolated from production main', () {
     final main = _read('lib/main.dart');
-    final harness = _read('lib/ui_audit_main.dart');
+    final golden = _read('test/ui_visual_screenshot_test.dart');
     final workflow = _read('../.github/workflows/ui-screenshot-audit.yml');
 
     expect(main, isNot(contains('await db.seedDemoData()')));
-    expect(harness, contains("import 'package:drift/wasm.dart';"));
-    expect(harness, contains('await db.seedDemoData()'));
-    expect(harness, isNot(contains("package:firebase_core/firebase_core.dart")));
+    expect(golden, contains('NativeDatabase.memory()'));
+    expect(golden, contains('await db.seedDemoData()'));
+    expect(golden, isNot(contains("package:firebase_core/firebase_core.dart")));
     expect(
       workflow,
-      contains('flutter build web --release -t lib/ui_audit_main.dart'),
+      contains(
+        'flutter test --update-goldens --reporter expanded test/ui_visual_screenshot_test.dart',
+      ),
     );
     expect(workflow, contains('Capture $NAME is suspiciously small'));
     expect(
