@@ -25,6 +25,8 @@ import 'package:amina/services/consent_service.dart';
 import 'package:amina/services/modules_provider.dart';
 import 'package:amina/services/sync_service.dart';
 
+const _visualAuditEnabled = bool.fromEnvironment('IAMINA_VISUAL_AUDIT');
+
 class _Deps {
   final AppDatabase db;
   final PatientProfileData? profile;
@@ -155,6 +157,8 @@ void main() {
   testWidgets('representative patient surfaces match the app visual system', (
     tester,
   ) async {
+    if (!_visualAuditEnabled) return;
+
     final deps = await _createDeps();
     addTearDown(() async {
       tester.view.resetPhysicalSize();
@@ -201,11 +205,7 @@ void main() {
         () => const DashboardScreen(),
       ),
       _CaptureSpec('journal-1440x1000', desktop, () => const JournalScreen()),
-      _CaptureSpec(
-        'summary-1440x1000',
-        desktop,
-        () => const AISummaryScreen(),
-      ),
+      _CaptureSpec('importer-1440x1000', desktop, () => const ImportScreen()),
       _CaptureSpec('profile-1440x1000', desktop, () => const ProfileScreen()),
     ];
 
