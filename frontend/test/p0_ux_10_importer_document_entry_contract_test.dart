@@ -7,12 +7,16 @@ String _read(String path) => File(path).readAsStringSync();
 void main() {
   test('Importer is the only primary navigation entry for acquisition', () {
     final module = _read('lib/modules/diabetes_module.dart');
+    final premium = _read(
+      'lib/features/documents/document_import_premium_screen.dart',
+    );
     final navBlock = module.split('shellRoutes:').first;
 
     expect(navBlock, contains("route: '/importer'"));
     expect(navBlock, isNot(contains("route: '/pulper'")));
     expect(module, contains("path: '/pulper'"));
-    expect(module, contains("DocumentImportScreen"));
+    expect(module, contains('DocumentImportPremiumScreen'));
+    expect(premium, contains('DocumentImportScreen'));
   });
 
   test('document import is entered from Importer with task-first wording', () {

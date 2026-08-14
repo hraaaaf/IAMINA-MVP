@@ -7,7 +7,7 @@ import 'core/theme/app_theme.dart';
 import 'data/drift/database.dart';
 import 'features/companion/companion_premium_screen.dart';
 import 'features/dashboard/dashboard_companion_entry_screen.dart';
-import 'features/documents/document_import_screen.dart';
+import 'features/documents/document_import_premium_screen.dart';
 import 'features/import/import_screen.dart';
 import 'features/journal/add_log_screen.dart';
 import 'features/journal/ai_summary_screen.dart';
@@ -75,7 +75,7 @@ class _BrowserAuditApp extends StatelessWidget {
       'profile' => const ProfileScreen(),
       'journal' => const JournalScreen(),
       'importer' => const ImportScreen(),
-      'document-import' => const DocumentImportScreen(),
+      'document-import' => const DocumentImportPremiumScreen(),
       'add-log' => const AddLogScreen(),
       'medications' => const MedicationScreen(),
       'reminders' => const RemindersScreen(),
