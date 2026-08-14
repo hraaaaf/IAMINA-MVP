@@ -1,0 +1,94 @@
+name: UI browser screenshot certification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'frontend/lib/**'
+      - 'frontend/assets/**'
+      - 'frontend/pubspec.yaml'
+      - '.github/workflows/ui-browser-screenshot.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/lib/**'
+      - 'frontend/assets/**'
+      - 'frontend/pubspec.yaml'
+      - '.github/workflows/ui-browser-screenshot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  browser-cert:
+    name: Real Chrome patient surfaces 390x844
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze isolated browser audit entrypoint
+        run: flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart
+
+      - name: Build isolated browser audit
+        run: flutter build web --release -t lib/ui_browser_audit_main.dart
+
+      - name: Capture real Chrome surfaces
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/ui-browser-cert"
+          python3 -m http.server 7358 --directory build/web >/tmp/iamina-ui-browser-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          READY=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7358 >/dev/null; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          test "$READY" = "1"
+
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+
+          surfaces=(dashboard companion summary profile journal importer document-import add-log medications reminders)
+          for surface in "${surfaces[@]}"; do
+            "$CHROME" \
+              --headless=new \
+              --no-sandbox \
+              --disable-gpu \
+              --hide-scrollbars \
+              --force-device-scale-factor=1 \
+              --window-size=390,844 \
+              --virtual-time-budget=7000 \
+              --screenshot="$GITHUB_WORKSPACE/ui-browser-cert/${surface}-390x844.png" \
+              "http://127.0.0.1:7358/?surface=${surface}"
+            test -s "$GITHUB_WORKSPACE/ui-browser-cert/${surface}-390x844.png"
+          done
+
+          test "$(find "$GITHUB_WORKSPACE/ui-browser-cert" -name '*-390x844.png' | wc -l)" -eq 10
+
+      - name: Upload real browser screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-ui-browser-cert-390x844
+          path: ui-browser-cert/*.png
+          if-no-files-found: error
+          retention-days: 7
