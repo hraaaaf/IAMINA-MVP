@@ -48,13 +48,11 @@ void main() {
     expect(main, isNot(contains('await db.seedDemoData()')));
     expect(golden, contains('NativeDatabase.memory()'));
     expect(golden, contains('await db.seedDemoData()'));
+    expect(golden, contains("bool.fromEnvironment('IAMINA_VISUAL_AUDIT')"));
     expect(golden, isNot(contains("package:firebase_core/firebase_core.dart")));
-    expect(
-      workflow,
-      contains(
-        'flutter test --update-goldens --reporter expanded test/ui_visual_screenshot_test.dart',
-      ),
-    );
+    expect(workflow, contains('--dart-define=IAMINA_VISUAL_AUDIT=true'));
+    expect(workflow, contains('--update-goldens'));
+    expect(workflow, contains('test/ui_visual_screenshot_test.dart'));
     expect(workflow, contains('Capture \$NAME is suspiciously small'));
     expect(
       workflow,
