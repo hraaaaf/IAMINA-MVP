@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'frontend/lib/ui_audit_main.dart'
       - 'frontend/lib/main.dart'
       - 'frontend/lib/core/theme/**'
       - 'frontend/lib/core/widgets/**'
@@ -17,11 +16,11 @@ on:
       - 'frontend/lib/features/companion/**'
       - 'frontend/lib/features/medications/**'
       - 'frontend/lib/features/reminders/**'
+      - 'frontend/test/ui_visual_screenshot_test.dart'
       - '.github/workflows/ui-screenshot-audit.yml'
   push:
     branches: [main]
     paths:
-      - 'frontend/lib/ui_audit_main.dart'
       - 'frontend/lib/main.dart'
       - 'frontend/lib/core/theme/**'
       - 'frontend/lib/core/widgets/**'
@@ -34,6 +33,7 @@ on:
       - 'frontend/lib/features/companion/**'
       - 'frontend/lib/features/medications/**'
       - 'frontend/lib/features/reminders/**'
+      - 'frontend/test/ui_visual_screenshot_test.dart'
       - '.github/workflows/ui-screenshot-audit.yml'
 
 permissions:
@@ -61,79 +61,34 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Build deterministic visual audit app
+      - name: Render native deterministic goldens
+        run: flutter test --update-goldens --reporter expanded test/ui_visual_screenshot_test.dart
+
+      - name: Validate visual evidence
         run: |
-          flutter build web --release -t lib/ui_audit_main.dart
-          curl -fL --retry 3 \
-            https://github.com/simolus3/drift/releases/download/drift-2.31.0/drift_worker.js \
-            -o build/web/drift_worker.js
-          curl -fL --retry 3 \
-            https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-2.9.4/sqlite3.wasm \
-            -o build/web/sqlite3.wasm
-          test "$(stat -c%s build/web/drift_worker.js)" -gt 300000
-          test "$(stat -c%s build/web/sqlite3.wasm)" -gt 700000
+          set -euo pipefail
+          GOLDENS="test/goldens"
+          test -d "$GOLDENS"
+          COUNT="$(find "$GOLDENS" -maxdepth 1 -name '*.png' | wc -l)"
+          if [ "$COUNT" -ne 14 ]; then
+            echo "Expected 14 visual captures, found $COUNT" >&2
+            exit 1
+          fi
 
-      - name: Capture representative screenshots
-        run: |
-          python3 -m http.server 7358 --directory build/web >/tmp/iamina-ui-http.log 2>&1 &
-          SERVER_PID=$!
-          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
-
-          READY=0
-          for _ in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:7358 >/dev/null; then
-              READY=1
-              break
-            fi
-            sleep 1
-          done
-          test "$READY" = "1"
-
-          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
-          test -n "$CHROME"
-
-          capture() {
-            NAME="$1"
-            SIZE="$2"
-            SCREEN="$3"
-            MIN_BYTES="$4"
-            PROFILE="/tmp/iamina-ui-${NAME}"
-            mkdir -p "$PROFILE"
-            "$CHROME" \
-              --headless=new \
-              --no-sandbox \
-              --enable-unsafe-swiftshader \
-              --hide-scrollbars \
-              --force-device-scale-factor=1 \
-              --user-data-dir="$PROFILE" \
-              --window-size="$SIZE" \
-              --virtual-time-budget=14000 \
-              --screenshot="$GITHUB_WORKSPACE/${NAME}.png" \
-              "http://127.0.0.1:7358/?screen=${SCREEN}"
-            test -s "$GITHUB_WORKSPACE/${NAME}.png"
-            BYTES="$(stat -c%s "$GITHUB_WORKSPACE/${NAME}.png")"
+          for FILE in "$GOLDENS"/*.png; do
+            BYTES="$(stat -c%s "$FILE")"
+            NAME="$(basename "$FILE")"
+            MIN_BYTES=8000
+            case "$NAME" in
+              *1440x1000*) MIN_BYTES=12000 ;;
+            esac
             if [ "$BYTES" -lt "$MIN_BYTES" ]; then
               echo "Capture $NAME is suspiciously small: $BYTES bytes" >&2
               exit 1
             fi
-          }
+          done
 
-          capture dashboard-390x844 390,844 dashboard 8000
-          capture journal-390x844 390,844 journal 8000
-          capture summary-390x844 390,844 summary 8000
-          capture profile-390x844 390,844 profile 8000
-          capture importer-390x844 390,844 importer 8000
-          capture document-import-390x844 390,844 document-import 8000
-          capture companion-390x844 390,844 companion 8000
-          capture add-log-390x844 390,844 add-log 8000
-          capture medications-390x844 390,844 medications 8000
-          capture reminders-390x844 390,844 reminders 8000
-          capture dashboard-1440x1000 1440,1000 dashboard 12000
-          capture journal-1440x1000 1440,1000 journal 12000
-          capture summary-1440x1000 1440,1000 summary 12000
-          capture profile-1440x1000 1440,1000 profile 12000
-
-          MOBILE_UNIQUE="$(sha256sum "$GITHUB_WORKSPACE"/*-390x844.png | awk '{print $1}' | sort -u | wc -l)"
+          MOBILE_UNIQUE="$(sha256sum "$GOLDENS"/*-390x844.png | awk '{print $1}' | sort -u | wc -l)"
           if [ "$MOBILE_UNIQUE" -lt 8 ]; then
             echo "Visual audit produced too few distinct mobile renders: $MOBILE_UNIQUE" >&2
             exit 1
@@ -143,20 +98,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: iamina-ui-visual-audit
-          path: |
-            dashboard-390x844.png
-            journal-390x844.png
-            summary-390x844.png
-            profile-390x844.png
-            importer-390x844.png
-            document-import-390x844.png
-            companion-390x844.png
-            add-log-390x844.png
-            medications-390x844.png
-            reminders-390x844.png
-            dashboard-1440x1000.png
-            journal-1440x1000.png
-            summary-1440x1000.png
-            profile-1440x1000.png
+          path: frontend/test/goldens/*.png
           if-no-files-found: error
           retention-days: 7
