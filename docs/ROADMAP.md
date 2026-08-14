@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-13 — P3-HORIZON is certified, merged and post-merge green. **P3-EVALS — Companion Intelligence Evals is NEXT.** UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-14 — P3-EVALS is certified, human-reviewed PASS ALL, merged and post-merge green. Companion intelligence is closed through P3-EVALS. UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -42,7 +42,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains a governance blocker despite being closed `not planned` |
-| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + P2-COMPANION-0..8 | ✅ P3-HORIZON closed — P3-EVALS next | H0..H3 merged; final H3 merge `100445b2…`; post-merge CI #2007 + drift #1819 green |
+| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + P2-COMPANION-0..8 + P3-HORIZON + P3-EVALS | ✅ Closed through P3-EVALS | P3-EVALS human PASS ALL; PR #204 merge `f508cccb…`; post-merge CI #2116 + drift #1928 green |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
@@ -315,7 +315,7 @@ Add permanent clinician-reviewed negative, longitudinal, false-positive and boun
 | **P2-COMPANION-7** | **Companion UX** | ✅ **CLOSED** | P2-7A/B/C/D delivered; final merge `bb5b9cb8…`; post-merge CI #1966 + drift #1778 green |
 | **P2-COMPANION-8** | **Safety + Certification** | ✅ **CLOSED** | PR #166 merge `7e4bfe36…`; release matrix + pytest manifest; post-merge CI #1980 + drift #1792 green |
 | **P3-HORIZON** | **Evidence Horizon Scanner** | ✅ **CLOSED** | H0..H3 merged; final H3 merge `100445b2…`; post-merge CI #2007 + drift #1819 green |
-| **P3-EVALS** | **Companion Intelligence Evals** | ▶️ **NEXT** | Clinician-reviewed longitudinal, negative, false-positive and safety scenarios provide measurable release gates |
+| **P3-EVALS** | **Companion Intelligence Evals** | ✅ **CLOSED** | Human PASS ALL; PR #204 head `9fb10dd0…`; merge `f508cccb…`; exact-head CI #2111 + drift #1923; post-merge CI #2116 + drift #1928 green |
 
 ### Inherited consultation sub-contract
 
@@ -396,7 +396,7 @@ Preparation/executable gates do not imply that external legal, processor, lingui
 
 # Current blockers and next sequence
 
-1. **Companion intelligence product lane:** P2-COMPANION-0..8 and P3-HORIZON are closed; execute **P3-EVALS — Companion Intelligence Evals** next.
+1. **Companion intelligence product lane:** P2-COMPANION-0..8, P3-HORIZON and P3-EVALS are closed; no further companion-intelligence LOT is currently queued in this roadmap.
 2. **Pilot security blocker:** issue #30 is closed `not planned` but explicitly not remediated; either complete the documented history remediation/verification path or supersede the pilot policy through normal governance before any real-patient go/no-go.
 3. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
 4. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
