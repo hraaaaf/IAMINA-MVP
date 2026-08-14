@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../theme/amina_visual_language.dart';
 import '../theme/app_theme.dart';
 
 class AminaButton extends StatefulWidget {
@@ -8,7 +10,7 @@ class AminaButton extends StatefulWidget {
   final IconData? icon;
   final double? borderRadius;
   final bool isLoading;
-  final bool pulse; // New property to enable the IA pulse effect
+  final bool pulse;
 
   const AminaButton({
     super.key,
@@ -18,16 +20,17 @@ class AminaButton extends StatefulWidget {
     this.icon,
     this.borderRadius,
     this.isLoading = false,
-    this.pulse = true,
+    this.pulse = false,
   });
 
   @override
   State<AminaButton> createState() => _AminaButtonState();
 }
 
-class _AminaButtonState extends State<AminaButton> with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
+class _AminaButtonState extends State<AminaButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnimation;
 
   @override
   void initState() {
@@ -36,13 +39,28 @@ class _AminaButtonState extends State<AminaButton> with SingleTickerProviderStat
       vsync: this,
       duration: const Duration(seconds: 2),
     );
-    
-    _pulseAnimation = Tween<double>(begin: 0.0, end: 12.0).animate(
+    _pulseAnimation = Tween<double>(begin: 0, end: 6).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
     );
+    _syncPulse();
+  }
 
-    if (widget.isPrimary && widget.pulse) {
+  @override
+  void didUpdateWidget(covariant AminaButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pulse != widget.pulse ||
+        oldWidget.isPrimary != widget.isPrimary ||
+        oldWidget.onPressed != widget.onPressed) {
+      _syncPulse();
+    }
+  }
+
+  void _syncPulse() {
+    if (widget.isPrimary && widget.pulse && widget.onPressed != null) {
       _pulseController.repeat(reverse: true);
+    } else {
+      _pulseController.stop();
+      _pulseController.value = 0;
     }
   }
 
@@ -54,64 +72,73 @@ class _AminaButtonState extends State<AminaButton> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final radius = widget.borderRadius ?? AminaVisualLanguage.controlRadius;
     if (widget.isPrimary) {
       return AnimatedBuilder(
         animation: _pulseAnimation,
         builder: (context, child) {
           return Container(
-            height: 52,
+            height: 44,
             decoration: BoxDecoration(
-              gradient: AminaTheme.heroGradient,
-              borderRadius: BorderRadius.circular(widget.borderRadius ?? AminaTheme.radius2XL),
-              boxShadow: widget.onPressed == null 
-                ? null 
-                : [
-                    BoxShadow(
-                      color: AminaTheme.primaryTeal.withValues(alpha: 0.4),
-                      blurRadius: 12 + _pulseAnimation.value,
-                      spreadRadius: _pulseAnimation.value / 4,
-                    ),
-                  ],
+              gradient: AminaVisualLanguage.primaryGradient,
+              borderRadius: BorderRadius.circular(radius),
+              boxShadow: widget.onPressed == null
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: const Color(0xFF034A39).withValues(alpha: .28),
+                        blurRadius: 18 + _pulseAnimation.value,
+                        spreadRadius: -7 + (_pulseAnimation.value / 6),
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
             ),
             child: ElevatedButton(
               onPressed: widget.isLoading ? null : widget.onPressed,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
+                disabledBackgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(widget.borderRadius ?? AminaTheme.radius2XL)
+                  borderRadius: BorderRadius.circular(radius),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
               ),
               child: _buildContent(Colors.white),
             ),
           );
         },
       );
-    } else {
-      return SizedBox(
-        height: 52,
-        child: OutlinedButton(
-          onPressed: widget.isLoading ? null : widget.onPressed,
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: AminaTheme.borderLight, width: 2),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(widget.borderRadius ?? AminaTheme.radius2XL)
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            backgroundColor: AminaTheme.surfaceWhite,
-          ),
-          child: _buildContent(AminaTheme.textMuted),
-        ),
-      );
     }
+
+    final foreground = AminaTheme.isDark(context)
+        ? AminaTheme.teal400
+        : AminaVisualLanguage.actionGreen;
+    return SizedBox(
+      height: 42,
+      child: OutlinedButton(
+        onPressed: widget.isLoading ? null : widget.onPressed,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: foreground,
+          side: BorderSide(color: foreground, width: 1.15),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          backgroundColor: AminaVisualLanguage.controlSurface(context),
+          surfaceTintColor: Colors.transparent,
+        ),
+        child: _buildContent(foreground),
+      ),
+    );
   }
 
   Widget _buildContent(Color textColor) {
     if (widget.isLoading) {
       return SizedBox(
-        width: 20,
-        height: 20,
+        width: 18,
+        height: 18,
         child: CircularProgressIndicator(
           strokeWidth: 2,
           valueColor: AlwaysStoppedAnimation<Color>(textColor),
@@ -124,16 +151,16 @@ class _AminaButtonState extends State<AminaButton> with SingleTickerProviderStat
       mainAxisSize: MainAxisSize.min,
       children: [
         if (widget.icon != null) ...[
-          Icon(widget.icon, size: 20, color: textColor),
-          const SizedBox(width: 8),
+          Icon(widget.icon, size: 18, color: textColor),
+          const SizedBox(width: 9),
         ],
         Text(
           widget.label,
           style: TextStyle(
             color: textColor,
-            fontSize: 16,
+            fontSize: 14.5,
             fontWeight: FontWeight.w700,
-            letterSpacing: -0.2,
+            letterSpacing: -0.1,
           ),
         ),
       ],
