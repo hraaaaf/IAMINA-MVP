@@ -7,10 +7,12 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/drift/database.dart';
+import '../../core/localization/dashboard_localized_copy.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
+import '../../l10n/app_localizations.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../services/sync_service.dart';
 import 'clinical_engine.dart';
@@ -19,29 +21,21 @@ import '../journal/widgets/amina_chat_view.dart';
 import '../../data/models/ai_models.dart';
 import '../../services/api_client.dart';
 
-// Widget parts — private classes split by concern to stay ≤200 lines each.
-// All share the imports above via the Dart library part mechanism.
 part 'widgets/top_bar.dart';
-// Hero section split into focused part-files
-part 'widgets/hero_section.dart'; // PageHead + HeroContextual orchestrator
-part 'widgets/hero_ecg.dart'; // ECG painter + AnimatedEcg
-part 'widgets/hero_atoms.dart'; // Badge / Chip / Btn / DotsPainter atoms
-part 'widgets/hero_live.dart'; // HeroLive — post-meal <90 min card
-part 'widgets/hero_insight.dart'; // HeroInsight — morning / default card
-part 'widgets/hero_tir.dart'; // HeroTIR — midday TIR card
-// KPI cards split into focused part-files
-part 'widgets/kpi_cards.dart'; // MetricRow layout + DeltaChip + LegendDot
-part 'widgets/kpi_tir_card.dart'; // TIRCard
-part 'widgets/kpi_gmi_card.dart'; // GMICard + GmiConfidenceBadge
-part 'widgets/kpi_cv_card.dart'; // CVCard
+part 'widgets/hero_section.dart';
+part 'widgets/hero_ecg.dart';
+part 'widgets/hero_atoms.dart';
+part 'widgets/hero_live.dart';
+part 'widgets/hero_insight.dart';
+part 'widgets/hero_tir.dart';
+part 'widgets/kpi_cards.dart';
+part 'widgets/kpi_tir_card.dart';
+part 'widgets/kpi_gmi_card.dart';
+part 'widgets/kpi_cv_card.dart';
 part 'widgets/chart_section.dart';
 part 'widgets/insights_section.dart';
 part 'widgets/recent_entries.dart';
 part 'widgets/speed_dial.dart';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DashboardScreen
-// ─────────────────────────────────────────────────────────────────────────────
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -60,7 +54,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   SummaryResponse? _aiSummary;
   bool _isLoadingSummary = false;
 
-  // C1: last known logs cached so _openChat can build a context message
   List<LogEntryData> _cachedLogs = [];
   String? _cachedUnit;
 
@@ -97,7 +90,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       if (!mounted) return;
       final db = context.read<AppDatabase>();
       final count = await db.select(db.logEntries).get().then((r) => r.length);
-      // Seed only in debug — production users must see their own real data.
       if (count == 0 && kDebugMode) await db.seedDemoData();
       _fetchAiSummary();
     });
@@ -131,9 +123,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  /// Builds a context string from the most recent log entry so IAmina
-  /// has immediate clinical context when the chat opens from the dashboard.
-  String? _buildChatContext() {
+  String? _buildChatContext(BuildContext context) {
     if (_cachedLogs.isEmpty) return null;
     final latest = _cachedLogs.reduce((a, b) {
       final aTime = a.loggedAt ?? a.createdAt;
@@ -144,14 +134,14 @@ class _DashboardScreenState extends State<DashboardScreen>
     final val = unit == 'mmol/L'
         ? '${(latest.bloodSugar / 18.0).toStringAsFixed(1)} mmol/L'
         : '${latest.bloodSugar.toInt()} mg/dL';
-    final mealPart = latest.mealType != null && latest.mealType!.isNotEmpty
-        ? ' — ${latest.mealType}'
-        : '';
-    return 'Ma dernière mesure est $val$mealPart. Peux-tu analyser ma situation actuelle ?';
+    return AppLocalizations.of(context)!.dashboardChatContext(
+      value: val,
+      meal: latest.mealType,
+    );
   }
 
   void _openChat() {
-    final ctx = _buildChatContext();
+    final ctx = _buildChatContext(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -190,12 +180,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                 profileSnap.connectionState == ConnectionState.waiting ||
                 logsSnap.connectionState == ConnectionState.waiting;
             final localDataError = profileSnap.hasError || logsSnap.hasError;
-            // Cache logs + unit for _buildChatContext (no setState — read-only cache)
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _cachedLogs = logs;
               _cachedUnit = unit;
             });
-            // Previous period for delta chips (same window, shifted back)
             final prevStart = start.subtract(Duration(days: _range));
             return StreamBuilder<List<LogEntryData>>(
               stream: db.watchLogsInRange(prevStart, start),
@@ -339,8 +327,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 }
 
-// ── Seed Banner (debug only) ──────────────────────────────────────────────────
-
 class _SeedBanner extends StatefulWidget {
   final AppDatabase db;
   const _SeedBanner({required this.db});
@@ -353,6 +339,7 @@ class _SeedBannerState extends State<_SeedBanner> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       margin: const EdgeInsets.only(bottom: 14),
@@ -369,10 +356,10 @@ class _SeedBannerState extends State<_SeedBanner> {
             color: AminaTheme.warnFg,
           ),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Mode dev — aucune donnée patient.',
-              style: TextStyle(
+              l10n.debugNoPatientData,
+              style: const TextStyle(
                 fontSize: 12,
                 color: AminaTheme.warnFg,
                 fontWeight: FontWeight.w500,
@@ -396,9 +383,9 @@ class _SeedBannerState extends State<_SeedBanner> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      'Charger démo',
-                      style: TextStyle(
+                  : Text(
+                      l10n.loadDemo,
+                      style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
@@ -417,8 +404,6 @@ class _SeedBannerState extends State<_SeedBanner> {
     if (mounted) setState(() => _loading = false);
   }
 }
-
-// ── Dashboard local states + first use ────────────────────────────────────────
 
 class _DashboardLocalState extends StatelessWidget {
   final bool isError;
