@@ -141,6 +141,11 @@ Future<void> _capture(
       child: spec.builder(),
     ),
   );
+  final context = tester.element(find.byKey(ValueKey<String>(spec.name)));
+  await precacheImage(
+    const AssetImage('assets/images/logo_amina.png'),
+    context,
+  );
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 1800));
   await expectLater(
