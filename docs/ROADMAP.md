@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-14 — Gate A Secure Core is certified at 9.0/10 on a ten-dimension engineering rubric; reachable Git-history hygiene remains the single failed dimension and still blocks real-patient pilot authorization. P3-EVALS is certified, human-reviewed PASS ALL, merged and post-merge green. Companion intelligence is closed through P3-EVALS. The active critical path is MENA pilot hardening. UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-14 — Gate A Secure Core is certified at 9.0/10 on a ten-dimension engineering rubric; reachable Git-history hygiene remains the single failed dimension and still blocks real-patient pilot authorization. P3-EVALS is certified, human-reviewed PASS ALL, merged and post-merge green. Companion intelligence is closed through P3-EVALS. The P0-MENA-2 technical English baseline is certified complete across 16/16 active patient-facing surfaces; restricted human linguistic/parity gates remain open. The active critical path is MENA pilot hardening. UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -39,7 +39,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 | UX visual rebase | 100% | ✅ Closed | UX-0–11; UX-11 reference parity 9.8/10; PR #110 |
 | Journal metabolic-event redesign | 100% | ✅ Closed | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 + P2-JOURNAL-8/9; PRs #67–#77 |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
-| P0-MENA-2 — locale + safety contract | 63% | 🟡 EN completeness + native review open | English active-surface completeness is now an explicit gate; PRs #16, #36, #37; three human linguistic/parity gates remain |
+| P0-MENA-2 — locale + safety contract | 63% | 🟡 English technical gate closed; human review open | English baseline 16/16 certified in `docs/assessments/2026-08-14-english-baseline-completeness-certification.md`; PR #226 closes selection/persistence/ARB parity; three human linguistic/parity gates remain |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 69% | 🟡 External approvals/remediation remain | 9/13 explicit gates complete; issue #30 remains a governance blocker despite being closed `not planned` |
@@ -47,7 +47,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
-Gate A is an engineering certification over already-counted foundations and therefore does **not** change the MENA critical-path numerator. Clinical-intelligence, Journal and UX quality lanes are tracked separately and do not alter the MENA critical-path numerator unless a later pilot gate explicitly depends on them.
+Gate A is an engineering certification over already-counted foundations and therefore does **not** change the MENA critical-path numerator. The English technical baseline is a gate inside P0-MENA-2 rather than a new numbered MENA task, so its closure also does **not** change the 32/41 numerator. Clinical-intelligence, Journal and UX quality lanes are tracked separately and do not alter the MENA critical-path numerator unless a later pilot gate explicitly depends on them.
 
 ---
 
@@ -345,14 +345,14 @@ PR #143 and its executable `consultation-brief.v1` contract remain certified his
 - [x] Versioned Morocco emergency-resource registry with confirmed-country-only selection.
 - [x] Complete technical RTL coverage screen by screen (PR #36).
 
-## Open technical locale gate
+## Closed technical locale gate
 
-- [ ] Complete the English baseline across every active production surface, including routed screens and nested/wrapper-rendered UI.
-- [ ] Remove unintended French user-visible hardcoded copy in English mode; proper nouns, user-provided data and deliberately localized content are exempt.
-- [ ] Make dates and numbers locale-aware instead of forcing French formatting.
-- [ ] Add regression coverage proving active-surface FR/EN/AR parity without weakening Arabic RTL or safety contracts.
+- [x] Complete the English baseline across every active production surface, including routed screens and nested/wrapper-rendered UI.
+- [x] Remove unintended French user-visible hardcoded copy in English mode; proper nouns, user-provided data and deliberately localized content are exempt.
+- [x] Make dates and numbers locale-aware instead of forcing French formatting.
+- [x] Add regression coverage proving active-surface FR/EN/AR parity without weakening Arabic RTL or safety contracts.
 
-Current verified English gaps include Login/signup, Reset Password, Journal date locale, AI Summary, Import, Document Import and the desktop Dashboard assistant context. This gate strengthens the existing P0-MENA-2 acceptance criteria and does **not** add a new numbered MENA task; the critical-path numerator therefore remains 32/41 until an existing explicit task closes.
+Technical English baseline evidence: **16/16 active patient-facing surfaces = 100%**, explicit English selection and persistence are regression-gated, FR/EN/AR runtime ARB key sets are parity-gated, and the previously identified Login/signup, Reset Password, Journal date locale, AI Summary, Import, Document Import, Dashboard companion context, global fallback and iOS permission-copy gaps are remediated. Canonical evidence: `docs/assessments/2026-08-14-english-baseline-completeness-certification.md`; final selection/parity contract PR #226. This gate is inside P0-MENA-2 and does **not** add a numbered MENA task, so the critical-path numerator remains 32/41.
 
 ## Remaining human-language gates
 
@@ -419,7 +419,7 @@ Preparation/executable gates do not imply that external legal, processor, lingui
 
 1. **Companion intelligence product lane:** P2-COMPANION-0..8, P3-HORIZON and P3-EVALS are closed; no further companion-intelligence LOT is currently queued in this roadmap.
 2. **Gate A Secure Core:** engineering threshold is certified at 9.0/10; no further Gate A engineering work is queued unless a regression appears. This does not supersede the next pilot-security blocker.
-3. **P0-MENA-2 English baseline:** close active-surface English completeness and FR/EN/AR parity regressions; this technical locale gate does not substitute for the restricted human-language approvals below.
+3. **P0-MENA-2 English baseline:** technical gate is closed at 16/16 active surfaces with selection/persistence and FR/EN/AR parity regression coverage; no further English-baseline work is queued unless a regression or new active surface appears. Restricted human-language approvals remain separate and open below.
 4. **Pilot security blocker:** issue #30 is closed `not planned` but explicitly not remediated; either complete the documented history remediation/verification path or supersede the pilot policy through normal governance before any real-patient go/no-go.
 5. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
 6. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
