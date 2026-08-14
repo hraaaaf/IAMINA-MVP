@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../services/auth_service.dart';
-import '../../services/api_client.dart';
-import '../../data/drift/database.dart';
+
 import '../../core/theme/app_theme.dart';
+import '../../data/drift/database.dart';
+import '../../services/api_client.dart';
+import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,16 +17,15 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailCtrl    = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  bool _obscure   = true;
+  bool _obscure = true;
   bool _isLoading = false;
   String? _error;
 
   Future<void> _handleForgotPassword() async {
-    final emailForReset = _emailCtrl.text.trim().isNotEmpty
-        ? _emailCtrl.text.trim()
-        : null;
+    final emailForReset =
+        _emailCtrl.text.trim().isNotEmpty ? _emailCtrl.text.trim() : null;
     final emailCtrl = TextEditingController(text: emailForReset);
     final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
@@ -38,16 +38,27 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(dl10n.resetPasswordDescription, style: const TextStyle(fontSize: 13, height: 1.45)),
+              Text(
+                dl10n.resetPasswordDescription,
+                style: const TextStyle(fontSize: 13, height: 1.45),
+              ),
               const SizedBox(height: 14),
-              _Field(controller: emailCtrl, hint: dl10n.emailPlaceholder, keyboardType: TextInputType.emailAddress),
+              _Field(
+                controller: emailCtrl,
+                hint: dl10n.emailPlaceholder,
+                keyboardType: TextInputType.emailAddress,
+              ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(dl10n.cancel)),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(dl10n.cancel),
+            ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(backgroundColor: AminaTheme.teal500),
+              style:
+                  FilledButton.styleFrom(backgroundColor: AminaTheme.teal500),
               child: Text(dl10n.send),
             ),
           ],
@@ -57,13 +68,20 @@ class _LoginScreenState extends State<LoginScreen> {
     if (confirmed != true || !mounted) return;
     final email = emailCtrl.text.trim();
     if (email.isEmpty) return;
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final auth = context.read<AuthService>();
       await auth.sendPasswordResetEmail(email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.resetEmailSent), backgroundColor: AminaTheme.teal600, behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(l10n.resetEmailSent),
+          backgroundColor: AminaTheme.teal600,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } catch (_) {
       if (mounted) setState(() => _error = l10n.emailNotFound);
@@ -74,9 +92,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleSignup() async {
     final l10n = AppLocalizations.of(context)!;
-    final emailCtrl    = TextEditingController(text: _emailCtrl.text);
+    final emailCtrl = TextEditingController(text: _emailCtrl.text);
     final passwordCtrl = TextEditingController();
-    final confirmCtrl  = TextEditingController();
+    final confirmCtrl = TextEditingController();
     bool obscure = true;
     await showDialog<void>(
       context: context,
@@ -90,7 +108,11 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 _FieldLabel(l10n.emailLabel),
                 const SizedBox(height: 6),
-                _Field(controller: emailCtrl, hint: l10n.emailPlaceholder, keyboardType: TextInputType.emailAddress),
+                _Field(
+                  controller: emailCtrl,
+                  hint: l10n.emailPlaceholder,
+                  keyboardType: TextInputType.emailAddress,
+                ),
                 const SizedBox(height: 12),
                 _FieldLabel(l10n.passwordLabel),
                 const SizedBox(height: 6),
@@ -100,38 +122,63 @@ class _LoginScreenState extends State<LoginScreen> {
                   obscureText: obscure,
                   suffix: IconButton(
                     onPressed: () => setDlgState(() => obscure = !obscure),
-                    icon: Icon(obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 16),
+                    icon: Icon(
+                      obscure
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 16,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
                 _FieldLabel('Confirmer le mot de passe'),
                 const SizedBox(height: 6),
-                _Field(controller: confirmCtrl, hint: '••••••••', obscureText: obscure),
+                _Field(
+                  controller: confirmCtrl,
+                  hint: '••••••••',
+                  obscureText: obscure,
+                ),
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(l10n.cancel),
+              ),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: AminaTheme.teal500),
+                style:
+                    FilledButton.styleFrom(backgroundColor: AminaTheme.teal500),
                 onPressed: () async {
-                  final email    = emailCtrl.text.trim();
+                  final email = emailCtrl.text.trim();
                   final password = passwordCtrl.text;
-                  final confirm  = confirmCtrl.text;
+                  final confirm = confirmCtrl.text;
                   if (email.isEmpty || password.isEmpty) return;
                   if (password != confirm) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Les mots de passe ne correspondent pas'), behavior: SnackBarBehavior.floating),
+                      const SnackBar(
+                        content:
+                            Text('Les mots de passe ne correspondent pas'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
                     );
                     return;
                   }
                   Navigator.pop(ctx);
-                  setState(() { _isLoading = true; _error = null; });
+                  setState(() {
+                    _isLoading = true;
+                    _error = null;
+                  });
                   try {
                     final auth = context.read<AuthService>();
                     await auth.registerWithEmail(email, password);
                     if (mounted) context.go('/onboarding');
-                  } catch (e) {
-                    if (mounted) setState(() => _error = 'Échec de la création du compte — vérifiez l\'e-mail et le mot de passe.');
+                  } catch (_) {
+                    if (mounted) {
+                      setState(
+                        () => _error =
+                            'Échec de la création du compte — vérifiez l\'e-mail et le mot de passe.',
+                      );
+                    }
                   } finally {
                     if (mounted) setState(() => _isLoading = false);
                   }
@@ -146,7 +193,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin({bool isDemo = false}) async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     final auth = context.read<AuthService>();
     final db = context.read<AppDatabase>();
     final api = context.read<ApiClient>();
@@ -157,11 +207,16 @@ class _LoginScreenState extends State<LoginScreen> {
         final count = await db.countLogs();
         if (count == 0) await db.seedDemoData();
       } else {
-        await auth.signInWithEmail(_emailCtrl.text.trim(), _passwordCtrl.text);
+        await auth.signInWithEmail(
+          _emailCtrl.text.trim(),
+          _passwordCtrl.text,
+        );
       }
       if (mounted) context.go('/dashboard');
-    } catch (e) {
-      if (mounted) setState(() => _error = AppLocalizations.of(context)!.loginError);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = AppLocalizations.of(context)!.loginError);
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -176,6 +231,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isFrench = Localizations.localeOf(context).languageCode == 'fr';
     return Scaffold(
       backgroundColor: AminaTheme.bg(context),
       body: Stack(
@@ -184,28 +241,38 @@ class _LoginScreenState extends State<LoginScreen> {
           const _LoginBackdrop(),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsetsDirectional.fromSTEB(24, 14, 24, 28),
+              padding: const EdgeInsetsDirectional.fromSTEB(24, 18, 24, 24),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
+                  constraints: const BoxConstraints(maxWidth: 390),
                   child: Column(
                     children: [
-                      _Brand(),
+                      const _Brand(),
                       const SizedBox(height: 18),
                       _LoginCard(
                         emailCtrl: _emailCtrl,
                         passwordCtrl: _passwordCtrl,
                         obscure: _obscure,
-                        onToggleObscure: () => setState(() => _obscure = !_obscure),
+                        onToggleObscure: () =>
+                            setState(() => _obscure = !_obscure),
                         error: _error,
                         isLoading: _isLoading,
                         onSubmit: _handleLogin,
                         onForgotPassword: _handleForgotPassword,
                         onDemo: () => _handleLogin(isDemo: true),
                         onSignup: _handleSignup,
+                        welcome: isFrench ? 'Bienvenue' : l10n.welcome,
+                        subtitle: isFrench
+                            ? 'Connectez-vous pour accéder à votre compagnon intelligent du diabète'
+                            : l10n.loginSubtitle,
+                        demoLabel: isFrench ? 'Accès démo' : l10n.demoAccess,
                       ),
                       const SizedBox(height: 22),
-                      _Footer(),
+                      _Footer(
+                        label: isFrench
+                            ? 'Vos données de santé sont sécurisées et confidentielles.'
+                            : l10n.dataPrivacyNote,
+                      ),
                     ],
                   ),
                 ),
@@ -220,82 +287,119 @@ class _LoginScreenState extends State<LoginScreen> {
 
 class _LoginBackdrop extends StatelessWidget {
   const _LoginBackdrop();
+
   @override
   Widget build(BuildContext context) {
     final isDark = AminaTheme.isDark(context);
-    return IgnorePointer(child: CustomPaint(painter: _LoginBackdropPainter(isDark: isDark)));
+    return IgnorePointer(
+      child: CustomPaint(
+        painter: _LoginBackdropPainter(isDark: isDark),
+      ),
+    );
   }
 }
 
 class _LoginBackdropPainter extends CustomPainter {
   final bool isDark;
   const _LoginBackdropPainter({required this.isDark});
+
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = isDark ? AminaTheme.darkPaper : AminaTheme.paper);
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = isDark ? AminaTheme.darkPaper : AminaTheme.paper,
+    );
     if (isDark) return;
-    void drawGlow(Offset center, double radius, double opacity) {
+
+    void glow(Offset center, double radius, Color color) {
       final rect = Rect.fromCircle(center: center, radius: radius);
       canvas.drawCircle(
         center,
         radius,
-        Paint()..shader = RadialGradient(
-          colors: [AminaTheme.teal100.withValues(alpha: opacity), AminaTheme.teal50.withValues(alpha: opacity * 0.42), Colors.transparent],
-          stops: const [0, 0.48, 1],
-        ).createShader(rect),
+        Paint()
+          ..shader = RadialGradient(
+            colors: [color, color.withValues(alpha: 0.20), Colors.transparent],
+            stops: const [0, 0.48, 1],
+          ).createShader(rect),
       );
     }
-    drawGlow(Offset(-size.width * 0.07, size.height * 0.17), size.width * 0.43, 0.58);
-    drawGlow(Offset(size.width * 1.02, size.height * 0.20), size.width * 0.30, 0.46);
-    drawGlow(Offset(size.width * 0.92, size.height * 0.73), size.width * 0.34, 0.22);
+
+    glow(Offset(-size.width * .10, size.height * .18), size.width * .46,
+        const Color(0x6628D8C2));
+    glow(Offset(size.width * 1.05, size.height * .20), size.width * .30,
+        const Color(0x5537E4D0));
+    glow(Offset(size.width * .98, size.height * .72), size.width * .32,
+        const Color(0x3328D8C2));
+
     final wave = Path()
-      ..moveTo(0, size.height * 0.93)
-      ..cubicTo(size.width * 0.20, size.height * 0.95, size.width * 0.45, size.height * 1.02, size.width * 0.68, size.height * 0.975)
-      ..cubicTo(size.width * 0.84, size.height * 0.94, size.width * 0.94, size.height * 0.90, size.width, size.height * 0.89)
+      ..moveTo(0, size.height * .93)
+      ..cubicTo(size.width * .20, size.height * .95, size.width * .44,
+          size.height * 1.02, size.width * .66, size.height * .975)
+      ..cubicTo(size.width * .82, size.height * .94, size.width * .94,
+          size.height * .90, size.width, size.height * .885)
       ..lineTo(size.width, size.height)
       ..lineTo(0, size.height)
       ..close();
+
     canvas.drawPath(
       wave,
-      Paint()..shader = const LinearGradient(
-        colors: [Color(0xFFDDF8F1), Color(0xFFB9F0E5)],
-        begin: AlignmentDirectional.topStart,
-        end: AlignmentDirectional.bottomEnd,
-      ).createShader(Rect.fromLTWH(0, size.height * 0.86, size.width, size.height * 0.14)),
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFD7F8F2), Color(0xFF9DE8DD)],
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
+        ).createShader(Rect.fromLTWH(
+            0, size.height * .86, size.width, size.height * .14)),
     );
-    final highlight = Path()
-      ..moveTo(0, size.height * 0.928)
-      ..cubicTo(size.width * 0.20, size.height * 0.95, size.width * 0.45, size.height * 1.01, size.width * 0.68, size.height * 0.968)
-      ..cubicTo(size.width * 0.84, size.height * 0.935, size.width * 0.94, size.height * 0.897, size.width, size.height * 0.885);
-    canvas.drawPath(highlight, Paint()..color = Colors.white.withValues(alpha: 0.86)..style = PaintingStyle.stroke..strokeWidth = 1.2);
   }
+
   @override
-  bool shouldRepaint(covariant _LoginBackdropPainter oldDelegate) => oldDelegate.isDark != isDark;
+  bool shouldRepaint(covariant _LoginBackdropPainter oldDelegate) =>
+      oldDelegate.isDark != isDark;
 }
 
 class _Brand extends StatelessWidget {
+  const _Brand();
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final logo = kIsWeb
+    final image = kIsWeb
         ? Image.network(
             'assets/assets/images/logo_amina.png',
             fit: BoxFit.contain,
-            webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
+            webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+            errorBuilder: (_, __, ___) => const _BrandFallback(),
           )
         : Image.asset(
             'assets/images/logo_amina.png',
             fit: BoxFit.contain,
             filterQuality: FilterQuality.high,
+            errorBuilder: (_, __, ___) => const _BrandFallback(),
           );
     return Semantics(
       label: l10n.appTitle,
       image: true,
-      child: SizedBox(
-        width: 138,
-        height: 124,
-        child: logo,
-      ),
+      child: SizedBox(width: 146, height: 166, child: image),
+    );
+  }
+}
+
+class _BrandFallback extends StatelessWidget {
+  const _BrandFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text('IA', style: TextStyle(fontFamily: 'Georgia', fontSize: 58,
+            height: .92, fontWeight: FontWeight.w600, color: Color(0xFF075A45))),
+        SizedBox(height: 6),
+        Text('آمينة', textDirection: TextDirection.rtl,
+            style: TextStyle(fontSize: 35, height: 1,
+                fontWeight: FontWeight.w500, color: Color(0xFF075A45))),
+      ],
     );
   }
 }
@@ -311,73 +415,110 @@ class _LoginCard extends StatelessWidget {
   final VoidCallback onForgotPassword;
   final VoidCallback onDemo;
   final VoidCallback onSignup;
-  const _LoginCard({required this.emailCtrl, required this.passwordCtrl, required this.obscure, required this.onToggleObscure, required this.error, required this.isLoading, required this.onSubmit, required this.onForgotPassword, required this.onDemo, required this.onSignup});
+  final String welcome;
+  final String subtitle;
+  final String demoLabel;
+
+  const _LoginCard({
+    required this.emailCtrl,
+    required this.passwordCtrl,
+    required this.obscure,
+    required this.onToggleObscure,
+    required this.error,
+    required this.isLoading,
+    required this.onSubmit,
+    required this.onForgotPassword,
+    required this.onDemo,
+    required this.onSignup,
+    required this.welcome,
+    required this.subtitle,
+    required this.demoLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isDark = AminaTheme.isDark(context);
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(22, 24, 22, 22),
+      padding: const EdgeInsetsDirectional.fromSTEB(24, 24, 24, 22),
       decoration: BoxDecoration(
-        color: AminaTheme.surface(context).withValues(alpha: isDark ? 0.98 : 0.96),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: AminaTheme.divider(context).withValues(alpha: isDark ? 0.72 : 0.58)),
+        color: AminaTheme.surface(context).withValues(alpha: isDark ? .98 : .965),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: isDark
+            ? AminaTheme.divider(context).withValues(alpha: .58)
+            : Colors.white.withValues(alpha: .86)),
         boxShadow: isDark ? AminaTheme.shadowDark : const [
-          BoxShadow(color: Color(0x0F0D1A17), blurRadius: 34, spreadRadius: -10, offset: Offset(0, 18)),
-          BoxShadow(color: Color(0x080D1A17), blurRadius: 10, spreadRadius: -4, offset: Offset(0, 4)),
+          BoxShadow(color: Color(0x1211423A), blurRadius: 36,
+              spreadRadius: -12, offset: Offset(0, 18)),
+          BoxShadow(color: Color(0x090D1A17), blurRadius: 12,
+              spreadRadius: -5, offset: Offset(0, 5)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l10n.welcome, style: TextStyle(fontSize: 25, height: 1.08, fontWeight: FontWeight.w700, letterSpacing: -0.6, color: isDark ? AminaTheme.dark100 : AminaTheme.ink900)),
-          const SizedBox(height: 6),
-          Text(l10n.loginSubtitle, style: TextStyle(fontSize: 13.5, height: 1.4, color: isDark ? AminaTheme.dark300 : AminaTheme.ink500)),
-          const SizedBox(height: 20),
+          Text(welcome, style: TextStyle(
+            fontFamily: 'Georgia', fontFamilyFallback: const ['Times New Roman', 'serif'],
+            fontSize: 31, height: 1.08, fontWeight: FontWeight.w700,
+            letterSpacing: -.7,
+            color: isDark ? AminaTheme.dark100 : const Color(0xFF073D31))),
+          const SizedBox(height: 8),
+          Text(subtitle, style: TextStyle(fontSize: 13.5, height: 1.48,
+              color: isDark ? AminaTheme.dark300 : const Color(0xFF566B68))),
+          const SizedBox(height: 22),
           _FieldLabel(l10n.emailLabel),
-          const SizedBox(height: 6),
-          _Field(controller: emailCtrl, hint: l10n.emailPlaceholder, keyboardType: TextInputType.emailAddress, prefix: const Icon(Icons.mail_outline_rounded)),
-          const SizedBox(height: 14),
+          const SizedBox(height: 7),
+          _Field(controller: emailCtrl, hint: l10n.emailPlaceholder,
+              keyboardType: TextInputType.emailAddress,
+              prefix: const Icon(Icons.mail_outline_rounded)),
+          const SizedBox(height: 16),
           _FieldLabel(l10n.passwordLabel),
-          const SizedBox(height: 6),
+          const SizedBox(height: 7),
           _Field(
-            controller: passwordCtrl,
-            hint: '••••••••',
-            obscureText: obscure,
+            controller: passwordCtrl, hint: '••••••••••••', obscureText: obscure,
             prefix: const Icon(Icons.lock_outline_rounded),
             suffix: IconButton(
               onPressed: onToggleObscure,
-              icon: Icon(obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 19, color: AminaTheme.ink400),
+              icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  size: 20, color: AminaTheme.ink400),
             ),
             onSubmit: (_) => onSubmit(),
           ),
-          const SizedBox(height: 4),
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: TextButton(
               onPressed: onForgotPassword,
-              style: TextButton.styleFrom(padding: const EdgeInsetsDirectional.fromSTEB(6, 2, 6, 2), minimumSize: const Size(44, 40), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-              child: Text(l10n.forgotPassword, style: const TextStyle(fontSize: 12.5, color: AminaTheme.teal700, fontWeight: FontWeight.w600)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsetsDirectional.fromSTEB(6, 2, 0, 2),
+                minimumSize: const Size(44, 38),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(l10n.forgotPassword, style: const TextStyle(
+                  fontSize: 12.5, color: Color(0xFF0B735F), fontWeight: FontWeight.w500)),
             ),
           ),
           if (error != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(color: AminaTheme.dangerBg, borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(color: AminaTheme.dangerBg,
+                  borderRadius: BorderRadius.circular(10)),
               child: Row(children: [
                 const Icon(Icons.error_outline, size: 14, color: AminaTheme.dangerFg),
                 const SizedBox(width: 8),
-                Expanded(child: Text(error!, style: const TextStyle(fontSize: 12, color: AminaTheme.dangerFg))),
+                Expanded(child: Text(error!, style: const TextStyle(
+                    fontSize: 12, color: AminaTheme.dangerFg))),
               ]),
             ),
           ],
-          const SizedBox(height: 12),
-          _PrimaryLoginButton(isLoading: isLoading, label: l10n.signIn, onTap: () => onSubmit()),
-          const SizedBox(height: 16),
-          _DemoButton(isLoading: isLoading, onTap: onDemo),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
+          _PrimaryLoginButton(isLoading: isLoading, label: l10n.signIn,
+              onTap: () => onSubmit()),
+          const SizedBox(height: 15),
+          _DividerOr(label: l10n.or),
+          const SizedBox(height: 15),
+          _DemoButton(isLoading: isLoading, label: demoLabel, onTap: onDemo),
+          const SizedBox(height: 13),
           _SignupRow(isLoading: isLoading, onTap: onSignup),
         ],
       ),
@@ -387,11 +528,12 @@ class _LoginCard extends StatelessWidget {
 
 class _FieldLabel extends StatelessWidget {
   final String text;
-  _FieldLabel(this.text);
+  const _FieldLabel(this.text);
   @override
   Widget build(BuildContext context) {
     final isDark = AminaTheme.isDark(context);
-    return Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? AminaTheme.dark200 : AminaTheme.ink700));
+    return Text(text, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600,
+        color: isDark ? AminaTheme.dark200 : const Color(0xFF075A45)));
   }
 }
 
@@ -403,31 +545,37 @@ class _Field extends StatelessWidget {
   final Widget? prefix;
   final Widget? suffix;
   final void Function(String)? onSubmit;
-  const _Field({required this.controller, required this.hint, this.obscureText = false, this.keyboardType, this.prefix, this.suffix, this.onSubmit});
+  const _Field({required this.controller, required this.hint,
+      this.obscureText = false, this.keyboardType, this.prefix, this.suffix, this.onSubmit});
 
   @override
   Widget build(BuildContext context) {
     final isDark = AminaTheme.isDark(context);
-    final iconColor = isDark ? AminaTheme.dark300 : AminaTheme.ink400;
+    final iconColor = isDark ? AminaTheme.dark300 : const Color(0xFF0B735F);
     return SizedBox(
-      height: 52,
+      height: 54,
       child: TextField(
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
         onSubmitted: onSubmit,
-        style: TextStyle(fontSize: 14, color: isDark ? AminaTheme.dark100 : AminaTheme.ink900),
+        style: TextStyle(fontSize: 14,
+            color: isDark ? AminaTheme.dark100 : AminaTheme.ink900),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(color: AminaTheme.textSecondary(context), fontSize: 14),
           filled: true,
-          fillColor: isDark ? AminaTheme.darkCard : Colors.white.withValues(alpha: 0.86),
-          contentPadding: const EdgeInsetsDirectional.fromSTEB(15, 14, 15, 14),
-          prefixIcon: prefix == null ? null : IconTheme(data: IconThemeData(size: 20, color: iconColor), child: prefix!),
+          fillColor: isDark ? AminaTheme.darkCard : Colors.white.withValues(alpha: .90),
+          contentPadding: const EdgeInsetsDirectional.fromSTEB(15, 15, 15, 15),
+          prefixIcon: prefix == null ? null : IconTheme(
+              data: IconThemeData(size: 20, color: iconColor), child: prefix!),
           suffixIcon: suffix,
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AminaTheme.divider(context))),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AminaTheme.teal500, width: 1.4)),
-          errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AminaTheme.dangerFg)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFC5CECC), width: 1.15)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AminaTheme.teal500, width: 1.5)),
+          errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AminaTheme.dangerFg, width: 1.2)),
         ),
       ),
     );
@@ -439,29 +587,34 @@ class _PrimaryLoginButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   const _PrimaryLoginButton({required this.isLoading, required this.label, required this.onTap});
+
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF176B5D), Color(0xFF22877A)], begin: AlignmentDirectional.centerStart, end: AlignmentDirectional.centerEnd),
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: const [BoxShadow(color: Color(0x24176B5D), blurRadius: 18, spreadRadius: -8, offset: Offset(0, 10))],
+        gradient: const LinearGradient(colors: [Color(0xFF075F4A), Color(0xFF027260)],
+            begin: AlignmentDirectional.centerStart, end: AlignmentDirectional.centerEnd),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [BoxShadow(color: Color(0x2A075F4A), blurRadius: 18,
+            spreadRadius: -8, offset: Offset(0, 10))],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: isLoading ? null : onTap,
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(14),
           child: SizedBox(
-            height: 52,
+            height: 54,
             child: Center(
               child: isLoading
-                  ? const SizedBox(width: 19, height: 19, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(width: 19, height: 19,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : Row(mainAxisSize: MainAxisSize.min, children: [
                       const Icon(Icons.lock_outline_rounded, size: 18, color: Colors.white),
-                      const SizedBox(width: 9),
-                      Text(label, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: Colors.white)),
+                      const SizedBox(width: 10),
+                      Text(label, style: const TextStyle(fontSize: 15,
+                          fontWeight: FontWeight.w700, color: Colors.white)),
                     ]),
             ),
           ),
@@ -471,45 +624,49 @@ class _PrimaryLoginButton extends StatelessWidget {
   }
 }
 
-class _DemoButton extends StatelessWidget {
-  final bool isLoading;
-  final VoidCallback onTap;
-  const _DemoButton({required this.isLoading, required this.onTap});
+class _DividerOr extends StatelessWidget {
+  final String label;
+  const _DividerOr({required this.label});
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final isDark = AminaTheme.isDark(context);
-    return Column(children: [
-      Row(children: [
-        Expanded(child: Divider(color: AminaTheme.divider(context))),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Container(
-            width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: AminaTheme.surface(context), shape: BoxShape.circle, border: Border.all(color: AminaTheme.divider(context))),
-            child: Text(l10n.or, style: TextStyle(fontSize: 11.5, color: isDark ? AminaTheme.dark300 : AminaTheme.ink400)),
-          ),
-        ),
-        Expanded(child: Divider(color: AminaTheme.divider(context))),
-      ]),
-      const SizedBox(height: 13),
-      SizedBox(
-        width: double.infinity,
-        height: 52,
-        child: OutlinedButton.icon(
-          onPressed: isLoading ? null : onTap,
-          icon: const Icon(Icons.eco_outlined, size: 18, color: AminaTheme.teal700),
-          label: Text(l10n.demoAccess, style: const TextStyle(color: AminaTheme.teal700, fontWeight: FontWeight.w700, fontSize: 13.5)),
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: isDark ? AminaTheme.teal600 : AminaTheme.teal200),
-            backgroundColor: AminaTheme.surface(context).withValues(alpha: isDark ? 0.54 : 0.78),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          ),
+    final divider = AminaTheme.divider(context);
+    return Row(children: [
+      Expanded(child: Divider(color: divider, height: 1)),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: Container(width: 30, height: 30, alignment: Alignment.center,
+          decoration: BoxDecoration(color: AminaTheme.surface(context),
+              shape: BoxShape.circle, border: Border.all(color: divider)),
+          child: Text(label, style: TextStyle(fontSize: 11.5,
+              color: AminaTheme.textSecondary(context)))),
+      ),
+      Expanded(child: Divider(color: divider, height: 1)),
+    ]);
+  }
+}
+
+class _DemoButton extends StatelessWidget {
+  final bool isLoading;
+  final String label;
+  final VoidCallback onTap;
+  const _DemoButton({required this.isLoading, required this.label, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton.icon(
+        onPressed: isLoading ? null : onTap,
+        icon: const Icon(Icons.eco_outlined, size: 18, color: Color(0xFF075F4A)),
+        label: Text(label, style: const TextStyle(color: Color(0xFF075F4A),
+            fontWeight: FontWeight.w700, fontSize: 14)),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Color(0xFF0B735F), width: 1.2),
+          backgroundColor: AminaTheme.surface(context).withValues(alpha: .84),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
-    ]);
+    );
   }
 }
 
@@ -524,11 +681,16 @@ class _SignupRow extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 2,
       children: [
-        Text('Pas encore de compte ?', style: TextStyle(fontSize: 13, color: AminaTheme.textSecondary(context))),
+        Text('Pas encore de compte ?', style: TextStyle(fontSize: 12.8,
+            color: AminaTheme.textSecondary(context))),
         TextButton(
           onPressed: isLoading ? null : onTap,
-          style: TextButton.styleFrom(minimumSize: const Size(44, 40), padding: const EdgeInsetsDirectional.fromSTEB(6, 2, 6, 2), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-          child: const Text('Créer un compte', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AminaTheme.teal700, decoration: TextDecoration.underline, decorationThickness: 1.2)),
+          style: TextButton.styleFrom(minimumSize: const Size(44, 38),
+              padding: const EdgeInsetsDirectional.fromSTEB(5, 2, 5, 2),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+          child: const Text('Créer un compte', style: TextStyle(fontSize: 12.8,
+              fontWeight: FontWeight.w500, color: Color(0xFF0B735F),
+              decoration: TextDecoration.underline, decorationThickness: 1.1)),
         ),
       ],
     );
@@ -536,32 +698,30 @@ class _SignupRow extends StatelessWidget {
 }
 
 class _Footer extends StatelessWidget {
+  final String label;
+  const _Footer({required this.label});
   @override
   Widget build(BuildContext context) {
     final isDark = AminaTheme.isDark(context);
-    final foreground = isDark ? AminaTheme.dark300 : AminaTheme.ink500;
+    final foreground = isDark ? AminaTheme.dark300 : const Color(0xFF526865);
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 300),
-      child: Column(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AminaTheme.teal50.withValues(alpha: isDark ? 0.10 : 0.92),
-              shape: BoxShape.circle,
-              border: Border.all(color: AminaTheme.teal200.withValues(alpha: isDark ? 0.38 : 0.72)),
-            ),
-            child: Icon(Icons.shield_outlined, size: 20, color: isDark ? AminaTheme.teal400 : AminaTheme.teal700),
+      constraints: const BoxConstraints(maxWidth: 260),
+      child: Column(children: [
+        Container(
+          width: 44, height: 44,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE4F7F2).withValues(alpha: isDark ? .10 : .92),
+            shape: BoxShape.circle,
+            border: Border.all(color: const Color(0xFFB8E9DE).withValues(
+                alpha: isDark ? .38 : .78)),
           ),
-          const SizedBox(height: 8),
-          Text(
-            AppLocalizations.of(context)!.dataPrivacyNote,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 11.5, height: 1.35, color: foreground),
-          ),
-        ],
-      ),
+          child: Icon(Icons.shield_outlined, size: 21,
+              color: isDark ? AminaTheme.teal400 : const Color(0xFF0B735F)),
+        ),
+        const SizedBox(height: 9),
+        Text(label, textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11.7, height: 1.38, color: foreground)),
+      ]),
     );
   }
 }
