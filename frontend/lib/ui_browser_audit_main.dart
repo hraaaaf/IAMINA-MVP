@@ -22,20 +22,14 @@ import 'services/consent_service.dart';
 import 'services/modules_provider.dart';
 import 'services/sync_service.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   final db = AppDatabase.defaults();
-  await db.seedDemoData();
-  final profile =
-      await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull();
-
   final auth = AuthService();
-  await auth.initialize();
-  auth.enterAuditSession();
   final api = ApiClient(authService: auth);
   final consent = ConsentService()
-    ..seedInitialProfile(profile)
+    ..seedInitialProfile(null)
     ..attachStream(db.watchProfile());
   final modules = ModulesProvider(api);
   final sync = SyncService(db, api);
@@ -52,12 +46,20 @@ Future<void> main() async {
         ChangeNotifierProvider<TweaksNotifier>(create: (_) => TweaksNotifier()),
         StreamProvider<PatientProfileData?>(
           create: (_) => db.watchProfile(),
-          initialData: profile,
+          initialData: null,
         ),
       ],
       child: const _BrowserAuditApp(),
     ),
   );
+
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    try {
+      await db.seedDemoData();
+    } catch (error) {
+      debugPrint('Browser audit demo seed unavailable: $error');
+    }
+  });
 }
 
 class _BrowserAuditApp extends StatelessWidget {
