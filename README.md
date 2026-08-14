@@ -17,7 +17,7 @@ IAmina is a **diabetes companion designed for the MENA region**. The product com
 
 ## Current strategic status
 
-The repository is in a **companion-intelligence + MENA pilot-hardening phase** before the first real-patient cohort.
+The repository is in a **MENA pilot-hardening phase** before the first real-patient cohort. The companion-intelligence product lane is closed through P3-EVALS; the remaining critical path is pilot security, native-language review, restricted compliance/deployment approvals and deferred live provider benchmarking.
 
 ### Recently closed foundations
 
@@ -26,17 +26,17 @@ The repository is in a **companion-intelligence + MENA pilot-hardening phase** b
 - **P0-MENA-3 — Sovereign authentication migration:** Django-owned registration/login/logout and IAMINA bearer-token flows are implemented with guarded Firebase migration/reconciliation paths retained until the zero-Firebase operational gate is legitimately satisfied.
 - **P2-CLINICAL-TWIN — Longitudinal Observation Memory:** approved deterministic `personal_response` observations have a recomputable longitudinal lifecycle with governed provenance, data-erasure reconciliation and patient export/retention compatibility.
 - **P2-PROACTIVE — Prioritization + Insight Lifecycle:** approved Clinical Twin observations feed a bounded, auditable non-urgent proactive workflow; the current source cannot escalate, change treatment or gain generative clinical authority.
-- **Consultation Brief Contract v1:** PR #143 delivered a certified restricted consultation-support sub-contract. It is preserved as a future P2-COMPANION consultation capability; it does not define IAmina as a doctor or doctor-facing product.
+- **P2-COMPANION-0..8 + P3-HORIZON + P3-EVALS:** the companion-intelligence lane is closed. P3-EVALS completed explicit human PASS ALL review across longitudinal, negative, false-positive and boundary dimensions; canonical closeout is merged and post-merge certified.
+- **Consultation Brief Contract v1:** PR #143 delivered a certified restricted consultation-support sub-contract. It remains part of the closed P2-COMPANION consultation capability; it does not define IAmina as a doctor or doctor-facing product.
 
 ### Still open on the critical path
 
-1. Build **P2-COMPANION — Companion Intelligence** on top of the certified Clinical Twin + proactive foundation, beginning with the canonical companion authority contract and then patient-specific longitudinal understanding.
+1. Resolve the **pilot security blocker #30**: the current tracked tree is clean, but reachable Git history still contains the historical local-agent settings material and the dedicated full-history scanner remains fail-closed. The issue is closed `not planned`, not remediated; provider ownership/provenance must be resolved before any irreversible history rewrite.
 2. Complete P0-MENA-2 native-language safety review, including remaining Darija high-severity variants and multimodal/transliteration parity.
 3. Complete restricted pilot consent, processor/subprocessor, privacy/CNDP and Morocco residency/cross-border approvals.
-4. Remediate or explicitly supersede the pilot-blocking reachable Git-history secret finding tracked by issue #30 before a real-patient go/no-go.
-5. Run the deferred live text, STT and vision/OCR provider benchmarks and approve cutover only from evidence.
-6. Run the real-patient pilot go/no-go only after the safety/compliance gates are legitimately closed.
-7. Measure D90 retention, safety and clinical usefulness, then decide whether to expand.
+4. Run the deferred live text, STT and vision/OCR provider benchmarks and approve cutover only from evidence.
+5. Run the real-patient pilot go/no-go only after the safety/compliance gates are legitimately closed.
+6. Measure D90 retention, safety and clinical usefulness, then decide whether to expand.
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the live backlog and gates and [`docs/COMPANION_INTELLIGENCE_CONTRACT.md`](docs/COMPANION_INTELLIGENCE_CONTRACT.md) for the product/authority ceiling.
 
