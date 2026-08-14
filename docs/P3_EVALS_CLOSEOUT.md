@@ -1,6 +1,6 @@
 # P3-EVALS — Companion Intelligence Evals Closeout
 
-Status: HUMAN REVIEW COMPLETE — PASS ALL; MERGE/POST-MERGE CERTIFICATION PENDING
+Status: CLOSED — PASS ALL; MERGE/POST-MERGE CERTIFIED
 
 ## Automated evidence
 
@@ -25,13 +25,11 @@ Detailed human-review provenance is recorded in `docs/P3_EVALS_HUMAN_REVIEW_RECE
 
 The review does not expand IAMINA authority. The companion remains non-diagnostic and non-prescriptive. No causality, prediction, prescription, dose calculation, treatment optimization/change or clinician override is authorized. Deterministic clinical/safety logic remains authoritative.
 
-## Final closure gate
+## Final closure evidence
 
-P3-EVALS may be marked CLOSED only after:
+- Human-review closeout PR #204 head `9fb10dd0…` passed exact-head CI #2111 and migration drift #1923.
+- PR #204 merged as `f508cccb…`.
+- Post-merge `main` passed CI #2116 and migration drift #1928.
+- `docs/ROADMAP.md`, `docs/P3_EVALS_HUMAN_REVIEW_CHECKLIST.md` and `docs/P3_COMPANION_EVALS_CONTRACT.md` are synchronized to this evidence in the canonical closeout update.
 
-1. this closeout branch passes exact-head CI and migration drift;
-2. the closeout PR merges against the expected head;
-3. post-merge `main` CI and migration drift pass;
-4. `docs/ROADMAP.md` and the existing P3-EVALS checklist/contract are synchronized to the merged evidence.
-
-Until those steps are proven, this document must not be interpreted as final release closure.
+P3-EVALS is CLOSED. This closeout records release evidence only and does not create new clinical authority.
