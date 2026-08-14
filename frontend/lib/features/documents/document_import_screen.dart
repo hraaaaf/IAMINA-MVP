@@ -5,19 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/localization/document_import_localized_copy.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/responsive_content_surface.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/models/document_models.dart';
 import '../../services/api_client.dart';
-
-// ── Document Import Screen ─────────────────────────────────────────────────────
-//
-// Two-step flow (anti-hallucination):
-//   1. User picks a file → app calls /ingest → preview is shown
-//   2. User reviews extracted data → taps Confirmer → /confirm/{batchId}
-//
-// Nothing is persisted until explicit user confirmation.
 
 class DocumentImportScreen extends StatefulWidget {
   const DocumentImportScreen({super.key});
@@ -34,7 +27,6 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
   PulperConfirmResult? _result;
   String _fileName = '';
 
-  // ── File pick ──────────────────────────────────────────────────────────────
   Future<void> _pickFile() async {
     setState(() {
       _loading = true;
@@ -70,7 +62,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
       if (bytes == null) {
         setState(() {
           _loading = false;
-          _error = 'Impossible de lire le fichier.';
+          _error = AppLocalizations.of(context)!.fileReadFailed;
         });
         return;
       }
@@ -80,7 +72,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
     } catch (e) {
       setState(() {
         _loading = false;
-        _error = 'Erreur: $e';
+        _error = AppLocalizations.of(context)!.documentError(e);
       });
     }
   }
@@ -92,8 +84,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
     setState(() {
       _loading = false;
       if (preview == null) {
-        _error =
-            'Le serveur n\'a pas pu analyser ce document. Veuillez réessayer.';
+        _error = AppLocalizations.of(context)!.documentAnalysisFailed;
       } else {
         _preview = preview;
         _phase = _Phase.preview;
@@ -101,7 +92,6 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
     });
   }
 
-  // ── Confirm ────────────────────────────────────────────────────────────────
   Future<void> _confirm() async {
     if (_preview == null) return;
     setState(() {
@@ -115,8 +105,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
     setState(() {
       _loading = false;
       if (result == null) {
-        _error =
-            'La confirmation a échoué. Le document n\'a pas été enregistré.';
+        _error = AppLocalizations.of(context)!.documentConfirmationFailed;
       } else {
         _result = result;
         _phase = _Phase.done;
@@ -124,7 +113,6 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
     });
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,26 +137,28 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
       body: ResponsiveContentSurface(
         maxWidth: 980,
         child: SafeArea(
-        child: _loading
-            ? _buildLoading()
-            : switch (_phase) {
-                _Phase.pick => _buildPick(),
-                _Phase.preview => _buildPreview(),
-                _Phase.done => _buildDone(),
-              },
+          child: _loading
+              ? _buildLoading()
+              : switch (_phase) {
+                  _Phase.pick => _buildPick(),
+                  _Phase.preview => _buildPreview(),
+                  _Phase.done => _buildDone(),
+                },
         ),
       ),
     );
   }
 
-  // ── Phase 1: Pick ──────────────────────────────────────────────────────────
   Widget _buildPick() {
     final compactHeight = MediaQuery.sizeOf(context).height <= 600;
     final verticalPadding = compactHeight ? 12.0 : 24.0;
     return LayoutBuilder(
       builder: (context, constraints) => SingleChildScrollView(
         key: const ValueKey('document-import-pick-scroll'),
-        padding: EdgeInsets.symmetric(horizontal: compactHeight ? 20 : 24, vertical: verticalPadding),
+        padding: EdgeInsets.symmetric(
+          horizontal: compactHeight ? 20 : 24,
+          vertical: verticalPadding,
+        ),
         child: ConstrainedBox(
           constraints: BoxConstraints(
             minHeight: constraints.maxHeight > verticalPadding * 2
@@ -190,7 +180,6 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                 ),
               ),
               SizedBox(height: compactHeight ? 20 : 32),
-              // Format chips
               const Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -215,7 +204,9 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AminaTheme.teal600,
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: compactHeight ? 13 : 16),
+                    padding: EdgeInsets.symmetric(
+                      vertical: compactHeight ? 13 : 16,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -237,74 +228,63 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
     );
   }
 
-  // ── Phase 2: Preview ───────────────────────────────────────────────────────
   Widget _buildPreview() {
     final p = _preview!;
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           _ConfidenceBanner(
             confidence: p.confidence,
             needsReview: p.needsReview,
           ),
           const SizedBox(height: 16),
-          _SectionTitle(title: 'Document analysé', subtitle: _fileName),
+          _SectionTitle(title: l10n.analyzedDocument, subtitle: _fileName),
           const SizedBox(height: 20),
-
-          // Errors (critical)
           if (p.errors.isNotEmpty) ...[
             _ErrorCard(message: p.errors.join('\n')),
             const SizedBox(height: 16),
           ],
-
-          // Glucose readings
           if (p.glucoseReadings.isNotEmpty) ...[
-            _SectionHeader(title: 'Glycémies', count: p.glucoseReadings.length),
+            _SectionHeader(
+              title: l10n.glucoseReadings,
+              count: p.glucoseReadings.length,
+            ),
             const SizedBox(height: 8),
             _GlucoseReadingsList(readings: p.glucoseReadings),
             const SizedBox(height: 16),
           ],
-
-          // Lab values
           if (!p.labValues.isEmpty) ...[
-            const _SectionHeader(title: 'Bilan biologique'),
+            _SectionHeader(title: l10n.labResults),
             const SizedBox(height: 8),
             _LabValuesCard(values: p.labValues),
             const SizedBox(height: 16),
           ],
-
-          // Medications
           if (p.medications.isNotEmpty) ...[
-            _SectionHeader(title: 'Médicaments', count: p.medications.length),
+            _SectionHeader(
+              title: l10n.medicines,
+              count: p.medications.length,
+            ),
             const SizedBox(height: 8),
             ...p.medications.map((m) => _MedicationTile(med: m)),
             const SizedBox(height: 16),
           ],
-
-          // Clinical notes
           if (p.clinicalNotes.isNotEmpty) ...[
-            const _SectionHeader(title: 'Observations cliniques'),
+            _SectionHeader(title: l10n.clinicalNotes),
             const SizedBox(height: 8),
             _NotesCard(notes: p.clinicalNotes),
             const SizedBox(height: 16),
           ],
-
-          // Warnings
           if (p.warnings.isNotEmpty) ...[
             ...p.warnings.map((w) => _WarningTile(warning: w)),
             const SizedBox(height: 16),
           ],
-
-          // Nothing found
           if (!p.hasUsefulData) ...[
             const _EmptyCard(),
             const SizedBox(height: 16),
           ],
-
-          // Action buttons
           if (p.hasUsefulData) ...[
             SizedBox(
               width: double.infinity,
@@ -322,7 +302,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                child: const Text('✓ Confirmer l\'import'),
+                child: Text(l10n.confirmImport),
               ),
             ),
           ],
@@ -341,7 +321,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              child: const Text('Annuler'),
+              child: Text(l10n.cancelImport),
             ),
           ),
           const SizedBox(height: 40),
@@ -350,9 +330,9 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
     );
   }
 
-  // ── Phase 3: Done ──────────────────────────────────────────────────────────
   Widget _buildDone() {
     final r = _result!;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -365,7 +345,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            r.ok ? 'Document importé !' : 'Erreur lors de l\'import',
+            r.ok ? l10n.documentImported : l10n.importFailed,
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
@@ -375,12 +355,12 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
           const SizedBox(height: 12),
           if (r.ok) ...[
             _StatRow(
-              label: 'Glycémies importées',
+              label: l10n.importedGlucoseReadings,
               value: '${r.glucoseReadingsSaved}',
             ),
             if (r.glucoseDuplicates > 0)
               _StatRow(
-                label: 'Doublons ignorés',
+                label: l10n.duplicatesIgnored,
                 value: '${r.glucoseDuplicates}',
               ),
           ],
@@ -405,7 +385,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              child: const Text('Retour au tableau de bord'),
+              child: Text(l10n.backToDashboard),
             ),
           ),
           const SizedBox(height: 12),
@@ -416,28 +396,31 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
               _result = null;
               _error = null;
             }),
-            child: const Text('Importer un autre document'),
+            child: Text(l10n.importAnotherDocument),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLoading() => Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const CircularProgressIndicator(),
-        const SizedBox(height: 20),
-        Text(
-          _phase == _Phase.pick
-              ? 'Analyse du document en cours…'
-              : 'Enregistrement en cours…',
-          style: TextStyle(color: AminaTheme.textSecondary(context)),
-        ),
-      ],
-    ),
-  );
+  Widget _buildLoading() {
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 20),
+          Text(
+            _phase == _Phase.pick
+                ? l10n.analyzingDocument
+                : l10n.savingDocument,
+            style: TextStyle(color: AminaTheme.textSecondary(context)),
+          ),
+        ],
+      ),
+    );
+  }
 
   String _mimeFromExt(String ext) =>
       const {
@@ -459,8 +442,6 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
 }
 
 enum _Phase { pick, preview, done }
-
-// ── Sub-widgets ────────────────────────────────────────────────────────────────
 
 class _PrivacyGateNotice extends StatelessWidget {
   const _PrivacyGateNotice();
@@ -559,6 +540,7 @@ class _ConfidenceBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final pct = (confidence * 100).round();
     final color = confidence >= 0.7
         ? AminaTheme.teal500
@@ -585,13 +567,13 @@ class _ConfidenceBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Confiance: $pct%',
+                  l10n.confidencePercent(pct),
                   style: TextStyle(fontWeight: FontWeight.w700, color: color),
                 ),
                 if (needsReview)
-                  const Text(
-                    'Vérifiez les données ci-dessous avant de confirmer.',
-                    style: TextStyle(fontSize: 12),
+                  Text(
+                    l10n.verifyBeforeConfirming,
+                    style: const TextStyle(fontSize: 12),
                   ),
               ],
             ),
@@ -657,12 +639,12 @@ class _SectionHeader extends StatelessWidget {
           ),
           child: Text(
             '$count',
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: AminaTheme.teal600,
             ),
-          ), // ignore: prefer_const_constructors
+          ),
         ),
       ],
     ],
@@ -682,7 +664,11 @@ class _DocumentImportIcon extends StatelessWidget {
         gradient: AminaTheme.heroGradient,
         shape: BoxShape.circle,
       ),
-      child: Icon(Icons.upload_file, color: Colors.white, size: compactHeight ? 40 : 48),
+      child: Icon(
+        Icons.upload_file,
+        color: Colors.white,
+        size: compactHeight ? 40 : 48,
+      ),
     );
   }
 }
@@ -694,6 +680,7 @@ class _GlucoseReadingsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shown = readings.take(5).toList();
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       children: [
         ...shown.map((r) => _GlucoseRow(reading: r)),
@@ -701,7 +688,7 @@ class _GlucoseReadingsList extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              '+ ${readings.length - 5} autres mesures',
+              l10n.additionalReadings(readings.length - 5),
               style: TextStyle(
                 fontSize: 12,
                 color: AminaTheme.textSecondary(context),
@@ -763,55 +750,58 @@ class _LabValuesCard extends StatelessWidget {
   const _LabValuesCard({required this.values});
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: AminaTheme.cardBg,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AminaTheme.divider(context)),
-    ),
-    child: Column(
-      children: [
-        if (values.hba1cPct != null)
-          _LabRow(
-            label: 'HbA1c',
-            value: '${values.hba1cPct!.toStringAsFixed(1)} %',
-          ),
-        if (values.fastingGlucoseMgdl != null)
-          _LabRow(
-            label: 'Glucose à jeun',
-            value: '${values.fastingGlucoseMgdl!.toStringAsFixed(0)} mg/dL',
-          ),
-        if (values.totalCholesterolMgdl != null)
-          _LabRow(
-            label: 'Cholestérol total',
-            value: '${values.totalCholesterolMgdl!.toStringAsFixed(0)} mg/dL',
-          ),
-        if (values.hdlMgdl != null)
-          _LabRow(
-            label: 'HDL',
-            value: '${values.hdlMgdl!.toStringAsFixed(0)} mg/dL',
-          ),
-        if (values.ldlMgdl != null)
-          _LabRow(
-            label: 'LDL',
-            value: '${values.ldlMgdl!.toStringAsFixed(0)} mg/dL',
-          ),
-        if (values.triglyceridesMgdl != null)
-          _LabRow(
-            label: 'Triglycérides',
-            value: '${values.triglyceridesMgdl!.toStringAsFixed(0)} mg/dL',
-          ),
-        if (values.creatinineUmol != null)
-          _LabRow(
-            label: 'Créatinine',
-            value: '${values.creatinineUmol!.toStringAsFixed(0)} µmol/L',
-          ),
-        if (values.reportDate != null)
-          _LabRow(label: 'Date du bilan', value: values.reportDate!),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AminaTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AminaTheme.divider(context)),
+      ),
+      child: Column(
+        children: [
+          if (values.hba1cPct != null)
+            _LabRow(
+              label: 'HbA1c',
+              value: '${values.hba1cPct!.toStringAsFixed(1)} %',
+            ),
+          if (values.fastingGlucoseMgdl != null)
+            _LabRow(
+              label: l10n.fastingGlucose,
+              value: '${values.fastingGlucoseMgdl!.toStringAsFixed(0)} mg/dL',
+            ),
+          if (values.totalCholesterolMgdl != null)
+            _LabRow(
+              label: l10n.totalCholesterol,
+              value: '${values.totalCholesterolMgdl!.toStringAsFixed(0)} mg/dL',
+            ),
+          if (values.hdlMgdl != null)
+            _LabRow(
+              label: 'HDL',
+              value: '${values.hdlMgdl!.toStringAsFixed(0)} mg/dL',
+            ),
+          if (values.ldlMgdl != null)
+            _LabRow(
+              label: 'LDL',
+              value: '${values.ldlMgdl!.toStringAsFixed(0)} mg/dL',
+            ),
+          if (values.triglyceridesMgdl != null)
+            _LabRow(
+              label: l10n.triglycerides,
+              value: '${values.triglyceridesMgdl!.toStringAsFixed(0)} mg/dL',
+            ),
+          if (values.creatinineUmol != null)
+            _LabRow(
+              label: l10n.creatinine,
+              value: '${values.creatinineUmol!.toStringAsFixed(0)} µmol/L',
+            ),
+          if (values.reportDate != null)
+            _LabRow(label: l10n.reportDate, value: values.reportDate!),
+        ],
+      ),
+    );
+  }
 }
 
 class _LabRow extends StatelessWidget {
@@ -966,30 +956,33 @@ class _EmptyCard extends StatelessWidget {
   const _EmptyCard();
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      color: AminaTheme.cardBg,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: AminaTheme.divider(context)),
-    ),
-    child: Column(
-      children: [
-        Icon(
-          Icons.search_off,
-          size: 40,
-          color: AminaTheme.textSecondary(context),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'Aucune donnée médicale détectée dans ce document.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AminaTheme.textSecondary(context)),
-        ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AminaTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AminaTheme.divider(context)),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.search_off,
+            size: 40,
+            color: AminaTheme.textSecondary(context),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.noMedicalDataDetected,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AminaTheme.textSecondary(context)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Chip extends StatelessWidget {
@@ -1006,12 +999,12 @@ class _Chip extends StatelessWidget {
     ),
     child: Text(
       label,
-      style: TextStyle(
+      style: const TextStyle(
         fontSize: 11,
         color: AminaTheme.teal600,
         fontWeight: FontWeight.w600,
       ),
-    ), // ignore: prefer_const_constructors
+    ),
   );
 }
 
