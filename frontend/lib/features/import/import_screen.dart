@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:amina/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../core/localization/import_localized_copy.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../core/widgets/responsive_content_surface.dart';
@@ -22,11 +24,9 @@ class _ImportScreenState extends State<ImportScreen> {
   bool _seeding = false;
   bool _done = false;
 
-  // Last-import stats (populated from Drift on init)
   int? _totalLogs;
   DateTime? _lastLogAt;
 
-  // True when the most recent log is older than 3 days (demo data goes stale).
   bool get _isDataStale {
     if (_lastLogAt == null) return false;
     return DateTime.now().difference(_lastLogAt!).inDays >= 3;
@@ -41,7 +41,6 @@ class _ImportScreenState extends State<ImportScreen> {
   Future<void> _loadStats() async {
     final db = context.read<AppDatabase>();
     final count = await db.countLogs();
-    // Most recent log
     final rows =
         await (db.select(db.logEntries)
               ..orderBy([(t) => drift.OrderingTerm.desc(t.createdAt)])
@@ -69,12 +68,13 @@ class _ImportScreenState extends State<ImportScreen> {
         _seeding = false;
         _done = true;
       });
-      await _loadStats(); // refresh banner with new timestamps
+      await _loadStats();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AminaTheme.paper,
       body: Column(
@@ -88,7 +88,6 @@ class _ImportScreenState extends State<ImportScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Last import summary banner ──────────────────────────────
                     if (_totalLogs != null && _totalLogs! > 0) ...[
                       _LastImportBanner(
                         totalLogs: _totalLogs!,
@@ -97,7 +96,6 @@ class _ImportScreenState extends State<ImportScreen> {
                       ),
                       const SizedBox(height: 16),
                     ],
-                    // ── Document import ─────────────────────────────────────────
                     if (_totalLogs == 0)
                       AminaFirstUsePanel(
                         key: const ValueKey('import-first-use'),
@@ -120,7 +118,7 @@ class _ImportScreenState extends State<ImportScreen> {
                       padding: const EdgeInsets.only(bottom: 16),
                       child: Text(
                         AuditedPageCopy.of(context).directConnections,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: AminaTheme.ink900,
@@ -130,9 +128,8 @@ class _ImportScreenState extends State<ImportScreen> {
                     if (kDebugMode) ...[
                       _ImportOption(
                         icon: Icons.science_outlined,
-                        title: 'Données démo — 21 jours',
-                        subtitle:
-                            'Charger un jeu de données cliniques réalistes pour explorer toutes les fonctionnalités.',
+                        title: l10n.demoDataTitle,
+                        subtitle: l10n.demoDataSubtitle,
                         badge: 'DEV',
                         badgeBg: AminaTheme.ink100,
                         badgeFg: AminaTheme.ink500,
@@ -146,18 +143,18 @@ class _ImportScreenState extends State<ImportScreen> {
                                 ),
                               )
                             : _done
-                            ? const Row(
+                            ? Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.check,
                                     size: 16,
                                     color: AminaTheme.goodFg,
                                   ),
-                                  SizedBox(width: 4),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    'Chargé',
-                                    style: TextStyle(
+                                    l10n.loaded,
+                                    style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
                                       color: AminaTheme.goodFg,
@@ -175,9 +172,9 @@ class _ImportScreenState extends State<ImportScreen> {
                                   ),
                                   minimumSize: Size.zero,
                                 ),
-                                child: const Text(
-                                  'Charger',
-                                  style: TextStyle(
+                                child: Text(
+                                  l10n.load,
+                                  style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -272,7 +269,7 @@ class _TopBar extends StatelessWidget {
               children: [
                 Text(
                   copy.importTitle,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: AminaTheme.ink900,
@@ -280,7 +277,7 @@ class _TopBar extends StatelessWidget {
                 ),
                 Text(
                   copy.importSubtitle,
-                  style: TextStyle(fontSize: 12, color: AminaTheme.ink500),
+                  style: const TextStyle(fontSize: 12, color: AminaTheme.ink500),
                 ),
               ],
             ),
@@ -290,8 +287,6 @@ class _TopBar extends StatelessWidget {
     );
   }
 }
-
-// ── Last-import summary banner ────────────────────────────────────────────────
 
 class _LastImportBanner extends StatelessWidget {
   final int totalLogs;
@@ -303,22 +298,22 @@ class _LastImportBanner extends StatelessWidget {
     this.isStale = false,
   });
 
-  String _relativeTime(DateTime dt) {
+  String _relativeTime(DateTime dt, AppLocalizations l10n) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'à l\'instant';
-    if (diff.inMinutes < 60) return 'il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'il y a ${diff.inHours} h';
-    if (diff.inDays < 7) return 'il y a ${diff.inDays} j';
+    if (diff.inMinutes < 1) return l10n.justNowRelative;
+    if (diff.inMinutes < 60) return l10n.minutesAgoRelative(diff.inMinutes);
+    if (diff.inHours < 24) return l10n.hoursAgoRelative(diff.inHours);
+    if (diff.inDays < 7) return l10n.daysAgoRelative(diff.inDays);
     final weeks = (diff.inDays / 7).floor();
-    if (weeks < 5) return 'il y a $weeks sem.';
-    return 'il y a ${(diff.inDays / 30).floor()} mois';
+    if (weeks < 5) return l10n.weeksAgoRelative(weeks);
+    return l10n.monthsAgoRelative((diff.inDays / 30).floor());
   }
 
   @override
   Widget build(BuildContext context) {
-    final label = lastLogAt != null ? _relativeTime(lastLogAt!) : '—';
+    final l10n = AppLocalizations.of(context)!;
+    final label = lastLogAt != null ? _relativeTime(lastLogAt!, l10n) : '—';
 
-    // Stale state: amber palette + warning icon + "recharger" hint.
     if (isStale) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -343,9 +338,9 @@ class _LastImportBanner extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Données expirées',
-                    style: TextStyle(
+                  Text(
+                    l10n.staleDataTitle,
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF5D3A00),
@@ -353,7 +348,7 @@ class _LastImportBanner extends StatelessWidget {
                   ),
                   if (lastLogAt != null)
                     Text(
-                      'Dernière mesure $label · Rechargez la démo pour des analyses correctes.',
+                      l10n.staleDataBody(label),
                       style: const TextStyle(
                         fontSize: 11,
                         color: Color(0xFF795900),
@@ -373,7 +368,6 @@ class _LastImportBanner extends StatelessWidget {
       );
     }
 
-    // Normal state: teal palette.
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -402,7 +396,7 @@ class _LastImportBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$totalLogs mesure${totalLogs > 1 ? 's' : ''} enregistrée${totalLogs > 1 ? 's' : ''}',
+                  l10n.readingsRecorded(totalLogs),
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -411,7 +405,7 @@ class _LastImportBanner extends StatelessWidget {
                 ),
                 if (lastLogAt != null)
                   Text(
-                    'Dernière mesure $label · Stockage local',
+                    l10n.latestReadingStoredLocally(label),
                     style: const TextStyle(
                       fontSize: 11,
                       color: AminaTheme.teal600,
@@ -420,9 +414,9 @@ class _LastImportBanner extends StatelessWidget {
               ],
             ),
           ),
-          const Tooltip(
-            message: 'Données stockées sur cet appareil',
-            child: Icon(
+          Tooltip(
+            message: l10n.storedOnDevice,
+            child: const Icon(
               Icons.storage_outlined,
               size: 16,
               color: AminaTheme.teal500,
@@ -433,8 +427,6 @@ class _LastImportBanner extends StatelessWidget {
     );
   }
 }
-
-// ── Document import card ───────────────────────────────────────────────────────
 
 class _DocumentImportCard extends StatelessWidget {
   final VoidCallback onTap;
@@ -562,7 +554,7 @@ class _UnavailableAction extends StatelessWidget {
     ),
     child: Text(
       AuditedPageCopy.of(context).unavailable,
-      style: TextStyle(
+      style: const TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w600,
         color: AminaTheme.ink500,
