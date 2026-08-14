@@ -72,9 +72,15 @@ void main() {
 
   test('locally stored import data is never labelled as synchronized', () {
     final source = _read('lib/features/import/import_screen.dart');
+    final localizedCopy = _read(
+      'lib/core/localization/import_localized_copy.dart',
+    );
 
-    expect(source, contains('Stockage local'));
-    expect(source, contains('Données stockées sur cet appareil'));
+    expect(source, contains('l10n.latestReadingStoredLocally(label)'));
+    expect(source, contains('l10n.storedOnDevice'));
+    expect(localizedCopy, contains('Local storage'));
+    expect(localizedCopy, contains('Stockage local'));
+    expect(localizedCopy, contains('تخزين محلي'));
     expect(source, contains('Icons.storage_outlined'));
     expect(source, isNot(contains('Icons.sync_outlined')));
   });
