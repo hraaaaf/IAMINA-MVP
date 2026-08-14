@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/localization/locale_formatting.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 
@@ -98,7 +98,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
             title: Text(
               _rt(context, 'Date et heure', 'Date and time', 'التاريخ والوقت'),
             ),
-            subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(_dueAt)),
+            subtitle: Text(formatLocalizedDateTime(context, _dueAt)),
             onTap: () async {
               final date = await showDatePicker(
                 context: context,
@@ -169,7 +169,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                         ),
                         title: Text(item.title),
                         subtitle: Text(
-                          DateFormat('dd/MM/yyyy HH:mm').format(item.dueAt),
+                          formatLocalizedDateTime(context, item.dueAt),
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
