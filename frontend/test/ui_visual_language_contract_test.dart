@@ -40,6 +40,28 @@ void main() {
     }
   });
 
+  test('active premium patient surfaces use the certified brand asset', () {
+    const logo = "assets/images/logo_amina.png";
+    final dashboardEntry = _read(
+      'lib/features/dashboard/dashboard_companion_entry_screen.dart',
+    );
+    final dashboard = _read(
+      'lib/features/dashboard/dashboard_premium_screen.dart',
+    );
+    final companion = _read(
+      'lib/features/companion/companion_premium_screen.dart',
+    );
+    final header = _read('lib/core/widgets/mobile_page_header.dart');
+    final module = _read('lib/modules/diabetes_module.dart');
+
+    expect(dashboardEntry, contains('DashboardPremiumScreen'));
+    expect(dashboardEntry, isNot(contains('DashboardConvergentScreen')));
+    expect(dashboard, contains(logo));
+    expect(companion, contains(logo));
+    expect(header, contains(logo));
+    expect(module, contains('CompanionPremiumScreen'));
+  });
+
   test('visual certification stays native and isolated from production main', () {
     final main = _read('lib/main.dart');
     final golden = _read('test/ui_visual_screenshot_test.dart');
@@ -49,6 +71,7 @@ void main() {
     expect(golden, contains('NativeDatabase.memory()'));
     expect(golden, contains('await db.seedDemoData()'));
     expect(golden, contains("bool.fromEnvironment('IAMINA_VISUAL_AUDIT')"));
+    expect(golden, contains("AssetImage('assets/images/logo_amina.png')"));
     expect(golden, isNot(contains("package:firebase_core/firebase_core.dart")));
     expect(workflow, contains('--dart-define=IAMINA_VISUAL_AUDIT=true'));
     expect(workflow, contains('--update-goldens'));
