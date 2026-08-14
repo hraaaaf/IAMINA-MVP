@@ -206,14 +206,14 @@ class _LoginScreenState extends State<LoginScreen> {
           const _BottomWave(),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsetsDirectional.fromSTEB(24, 24, 24, 15),
+              padding: const EdgeInsetsDirectional.fromSTEB(26, 24, 26, 15),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 390),
                   child: Column(
                     children: [
                       const _Brand(),
-                      const SizedBox(height: 56),
+                      const SizedBox(height: 64),
                       _LoginCard(
                         emailCtrl: _emailCtrl,
                         passwordCtrl: _passwordCtrl,
@@ -272,10 +272,10 @@ class _BottomWave extends StatelessWidget {
         child: ClipPath(
           clipper: const _BottomWaveClipper(),
           child: Container(
-            height: 126,
+            height: 90,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFFD5F7F1), Color(0xFF93E5D8)],
+                colors: [Color(0xFFDDF8F3), Color(0xFFA8E9DE)],
                 begin: AlignmentDirectional.topStart,
                 end: AlignmentDirectional.bottomEnd,
               ),
@@ -320,36 +320,17 @@ class _LoginBackdropPainter extends CustomPainter {
         radius,
         Paint()
           ..shader = RadialGradient(
-            colors: [color, color.withValues(alpha: .20), Colors.transparent],
+            colors: [color, color.withValues(alpha: .16), Colors.transparent],
             stops: const [0, .48, 1],
           ).createShader(Rect.fromCircle(center: center, radius: radius)),
       );
     }
-    glow(Offset(-size.width * .10, size.height * .18), size.width * .46,
-        const Color(0x6628D8C2));
-    glow(Offset(size.width * 1.05, size.height * .20), size.width * .30,
-        const Color(0x5537E4D0));
-    glow(Offset(size.width * .98, size.height * .72), size.width * .32,
-        const Color(0x3328D8C2));
-
-    final wave = Path()
-      ..moveTo(0, size.height * .90)
-      ..cubicTo(size.width * .20, size.height * .92, size.width * .44,
-          size.height * .99, size.width * .66, size.height * .94)
-      ..cubicTo(size.width * .82, size.height * .91, size.width * .94,
-          size.height * .86, size.width, size.height * .84)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-    canvas.drawPath(
-      wave,
-      Paint()
-        ..shader = const LinearGradient(
-          colors: [Color(0xFFC9F4EC), Color(0xFF7FDDCF)],
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-        ).createShader(Rect.fromLTWH(0, size.height * .82, size.width, size.height * .18)),
-    );
+    glow(Offset(-size.width * .08, size.height * .18), size.width * .38,
+        const Color(0x4028D8C2));
+    glow(Offset(size.width * 1.04, size.height * .20), size.width * .24,
+        const Color(0x3837E4D0));
+    glow(Offset(size.width * 1.00, size.height * .72), size.width * .22,
+        const Color(0x2228D8C2));
   }
   @override
   bool shouldRepaint(covariant _LoginBackdropPainter oldDelegate) =>
@@ -438,20 +419,20 @@ class _LoginCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final dark = AminaTheme.isDark(context);
     return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(20, 20, 20, 20),
+      padding: const EdgeInsetsDirectional.fromSTEB(26, 20, 26, 20),
       decoration: BoxDecoration(
-        color: AminaTheme.surface(context).withValues(alpha: dark ? .98 : .965),
-        borderRadius: BorderRadius.circular(28),
+        color: AminaTheme.surface(context).withValues(alpha: dark ? .98 : .975),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: dark
               ? AminaTheme.divider(context).withValues(alpha: .58)
-              : Colors.white.withValues(alpha: .86),
+              : Colors.white.withValues(alpha: .90),
         ),
         boxShadow: dark ? AminaTheme.shadowDark : const [
-          BoxShadow(color: Color(0x1211423A), blurRadius: 36,
-              spreadRadius: -12, offset: Offset(0, 18)),
-          BoxShadow(color: Color(0x090D1A17), blurRadius: 12,
-              spreadRadius: -5, offset: Offset(0, 5)),
+          BoxShadow(color: Color(0x1B11423A), blurRadius: 32,
+              spreadRadius: -8, offset: Offset(0, 15)),
+          BoxShadow(color: Color(0x0D0D1A17), blurRadius: 12,
+              spreadRadius: -4, offset: Offset(0, 5)),
         ],
       ),
       child: Column(
@@ -478,7 +459,7 @@ class _LoginCard extends StatelessWidget {
             keyboardType: TextInputType.emailAddress,
             prefix: const Icon(Icons.mail_outline_rounded),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 15),
           _FieldLabel(l10n.passwordLabel),
           const SizedBox(height: 5),
           _Field(
@@ -490,7 +471,7 @@ class _LoginCard extends StatelessWidget {
               onPressed: onToggleObscure,
               icon: Icon(
                 obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                size: 20, color: AminaTheme.ink400,
+                size: 19, color: AminaTheme.ink400,
               ),
             ),
             onSubmit: (_) => onSubmit(),
@@ -527,15 +508,15 @@ class _LoginCard extends StatelessWidget {
               ]),
             ),
           ],
-          const SizedBox(height: 6),
+          const SizedBox(height: 13),
           _PrimaryLoginButton(
             isLoading: isLoading,
             label: l10n.signIn,
             onTap: () => onSubmit(),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           _DividerOr(label: l10n.or),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           _DemoButton(isLoading: isLoading, label: demoLabel, onTap: onDemo),
           const SizedBox(height: 8),
           _SignupRow(isLoading: isLoading, onTap: onSignup),
@@ -580,37 +561,39 @@ class _Field extends StatelessWidget {
     final dark = AminaTheme.isDark(context);
     final iconColor = dark ? AminaTheme.dark300 : const Color(0xFF0B735F);
     return SizedBox(
-      height: 46,
+      height: 36,
       child: TextField(
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
         onSubmitted: onSubmit,
         style: TextStyle(
-          fontSize: 14,
+          fontSize: 13.5,
           color: dark ? AminaTheme.dark100 : AminaTheme.ink900,
         ),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: AminaTheme.textSecondary(context), fontSize: 14),
+          hintStyle: TextStyle(color: AminaTheme.textSecondary(context), fontSize: 13.5),
           filled: true,
-          fillColor: dark ? AminaTheme.darkCard : Colors.white.withValues(alpha: .90),
-          contentPadding: const EdgeInsetsDirectional.fromSTEB(14, 11, 14, 11),
+          fillColor: dark ? AminaTheme.darkCard : Colors.white.withValues(alpha: .92),
+          contentPadding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 8),
           prefixIcon: prefix == null ? null : IconTheme(
-            data: IconThemeData(size: 20, color: iconColor),
+            data: IconThemeData(size: 18, color: iconColor),
             child: prefix!,
           ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 38, minHeight: 36),
           suffixIcon: suffix,
+          suffixIconConstraints: const BoxConstraints(minWidth: 38, minHeight: 36),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFC5CECC), width: 1.15),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFC5CECC), width: 1.1),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AminaTheme.teal500, width: 1.5),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AminaTheme.teal500, width: 1.4),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: AminaTheme.dangerFg, width: 1.2),
           ),
         ),
@@ -632,36 +615,37 @@ class _PrimaryLoginButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF075F4A), Color(0xFF027260)],
-          begin: AlignmentDirectional.centerStart,
-          end: AlignmentDirectional.centerEnd,
+        gradient: const RadialGradient(
+          center: Alignment(0, -0.65),
+          radius: 1.25,
+          colors: [Color(0xFF087159), Color(0xFF04503F), Color(0xFF023A2E)],
+          stops: [0, .62, 1],
         ),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: const [
-          BoxShadow(color: Color(0x2A075F4A), blurRadius: 18,
-              spreadRadius: -8, offset: Offset(0, 10)),
+          BoxShadow(color: Color(0x35034A39), blurRadius: 18,
+              spreadRadius: -6, offset: Offset(0, 9)),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
           onTap: isLoading ? null : onTap,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           child: SizedBox(
-            height: 48,
+            height: 42,
             child: Center(
               child: isLoading
                   ? const SizedBox(
-                      width: 19, height: 19,
+                      width: 18, height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
                   : Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.lock_outline_rounded, size: 18, color: Colors.white),
-                      const SizedBox(width: 10),
+                      const Icon(Icons.lock_outline_rounded, size: 17, color: Colors.white),
+                      const SizedBox(width: 9),
                       Text(label, style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white,
+                        fontSize: 14.5, fontWeight: FontWeight.w700, color: Colors.white,
                       )),
                     ]),
             ),
@@ -681,16 +665,16 @@ class _DividerOr extends StatelessWidget {
     return Row(children: [
       Expanded(child: Divider(color: divider, height: 1)),
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 9),
         child: Container(
-          width: 28, height: 28, alignment: Alignment.center,
+          width: 24, height: 24, alignment: Alignment.center,
           decoration: BoxDecoration(
             color: AminaTheme.surface(context),
             shape: BoxShape.circle,
             border: Border.all(color: divider),
           ),
           child: Text(label, style: TextStyle(
-            fontSize: 11.5, color: AminaTheme.textSecondary(context),
+            fontSize: 11, color: AminaTheme.textSecondary(context),
           )),
         ),
       ),
@@ -708,17 +692,17 @@ class _DemoButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 46,
+      height: 40,
       child: OutlinedButton.icon(
         onPressed: isLoading ? null : onTap,
-        icon: const Icon(Icons.eco_outlined, size: 18, color: Color(0xFF075F4A)),
+        icon: const Icon(Icons.eco_outlined, size: 17, color: Color(0xFF075F4A)),
         label: Text(label, style: const TextStyle(
-          color: Color(0xFF075F4A), fontWeight: FontWeight.w700, fontSize: 14,
+          color: Color(0xFF075F4A), fontWeight: FontWeight.w700, fontSize: 13.5,
         )),
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFF0B735F), width: 1.2),
-          backgroundColor: AminaTheme.surface(context).withValues(alpha: .84),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          side: const BorderSide(color: Color(0xFF0B735F), width: 1.15),
+          backgroundColor: AminaTheme.surface(context).withValues(alpha: .88),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
