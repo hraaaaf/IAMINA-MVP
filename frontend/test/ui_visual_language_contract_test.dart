@@ -40,23 +40,61 @@ void main() {
     }
   });
 
-  test('visual certification stays native and isolated from production main', () {
+  test('active premium patient surfaces use the certified brand asset', () {
+    const logo = "assets/images/logo_amina.png";
+    final dashboardEntry = _read(
+      'lib/features/dashboard/dashboard_companion_entry_screen.dart',
+    );
+    final dashboard = _read(
+      'lib/features/dashboard/dashboard_premium_screen.dart',
+    );
+    final companion = _read(
+      'lib/features/companion/companion_premium_screen.dart',
+    );
+    final header = _read('lib/core/widgets/mobile_page_header.dart');
+    final module = _read('lib/modules/diabetes_module.dart');
+
+    expect(dashboardEntry, contains('DashboardPremiumScreen'));
+    expect(dashboardEntry, contains("ValueKey('dashboard-companion-primary-entry')"));
+    expect(dashboardEntry, isNot(contains('DashboardConvergentScreen')));
+    expect(dashboard, contains(logo));
+    expect(companion, contains(logo));
+    expect(header, contains(logo));
+    expect(module, contains('CompanionPremiumScreen'));
+  });
+
+  test('visual certification harnesses stay isolated from production main', () {
     final main = _read('lib/main.dart');
     final golden = _read('test/ui_visual_screenshot_test.dart');
-    final workflow = _read('../.github/workflows/ui-screenshot-audit.yml');
+    final nativeWorkflow = _read('../.github/workflows/ui-screenshot-audit.yml');
+    final browserMain = _read('lib/ui_browser_audit_main.dart');
+    final browserWorkflow = _read(
+      '../.github/workflows/ui-browser-screenshot.yml',
+    );
 
     expect(main, isNot(contains('await db.seedDemoData()')));
+    expect(main, isNot(contains('ui_browser_audit_main.dart')));
+
     expect(golden, contains('NativeDatabase.memory()'));
     expect(golden, contains('await db.seedDemoData()'));
     expect(golden, contains("bool.fromEnvironment('IAMINA_VISUAL_AUDIT')"));
+    expect(golden, isNot(contains('precacheImage(')));
     expect(golden, isNot(contains("package:firebase_core/firebase_core.dart")));
-    expect(workflow, contains('--dart-define=IAMINA_VISUAL_AUDIT=true'));
-    expect(workflow, contains('--update-goldens'));
-    expect(workflow, contains('test/ui_visual_screenshot_test.dart'));
-    expect(workflow, contains('Capture \$NAME is suspiciously small'));
-    expect(
-      workflow,
-      contains('Visual audit produced too few distinct mobile renders'),
-    );
+    expect(nativeWorkflow, contains('--dart-define=IAMINA_VISUAL_AUDIT=true'));
+    expect(nativeWorkflow, contains('--update-goldens'));
+    expect(nativeWorkflow, contains('test/ui_visual_screenshot_test.dart'));
+
+    expect(browserMain, contains('runApp('));
+    expect(browserMain, contains('addPostFrameCallback'));
+    expect(browserMain, contains('await db.seedDemoData()'));
+    expect(browserMain, contains("queryParameters['surface']"));
+    expect(browserMain, isNot(contains("import 'main.dart'")));
+    expect(browserWorkflow, contains('lib/ui_browser_audit_main.dart'));
+    expect(browserWorkflow, contains('flutter build web --release'));
+    expect(browserWorkflow, contains('Page.captureScreenshot'));
+    expect(browserWorkflow, contains('Emulation.setDeviceMetricsOverride'));
+    expect(browserWorkflow, contains('suspiciously small'));
+    expect(browserWorkflow, contains('distinct renders'));
+    expect(browserWorkflow, contains('iamina-ui-browser-cert-390x844'));
   });
 }

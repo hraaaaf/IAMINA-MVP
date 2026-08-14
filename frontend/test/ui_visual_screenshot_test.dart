@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:amina/core/theme/amina_visual_language.dart';
 import 'package:amina/core/theme/app_theme.dart';
 import 'package:amina/data/drift/database.dart';
-import 'package:amina/features/companion/companion_screen.dart';
+import 'package:amina/features/companion/companion_premium_screen.dart';
 import 'package:amina/features/dashboard/dashboard_companion_entry_screen.dart';
 import 'package:amina/features/dashboard/dashboard_screen.dart';
 import 'package:amina/features/documents/document_import_screen.dart';
@@ -186,7 +186,7 @@ void main() {
       _CaptureSpec(
         'companion-390x844',
         mobile,
-        () => const CompanionScreen(),
+        () => const CompanionPremiumScreen(),
       ),
       _CaptureSpec('add-log-390x844', mobile, () => const AddLogScreen()),
       _CaptureSpec(

@@ -19,11 +19,15 @@ void main() {
     final wrapper = File(
       'lib/features/dashboard/dashboard_companion_entry_screen.dart',
     ).readAsStringSync();
+    final premium = File(
+      'lib/features/dashboard/dashboard_premium_screen.dart',
+    ).readAsStringSync();
     final module = File('lib/modules/diabetes_module.dart').readAsStringSync();
 
     expect(wrapper, contains("ValueKey('dashboard-companion-primary-entry')"));
-    expect(wrapper, contains("GoRouter.of(context).go('/companion')"));
-    expect(wrapper, contains("Text(\n                        'IAmina'"));
+    expect(wrapper, contains('DashboardPremiumScreen'));
+    expect(premium, contains("context.go('/companion')"));
+    expect(premium, contains("'Compagnon'"));
     expect(module, contains('const DashboardCompanionEntryScreen()'));
   });
 }

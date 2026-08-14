@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/mobile_page_header.dart';
 import '../../data/drift/database.dart';
 
 String _mt(BuildContext context, String fr, String en, String ar) {
@@ -62,163 +64,260 @@ class _MedicationScreenState extends State<MedicationScreen> {
   @override
   Widget build(BuildContext context) {
     final db = context.read<AppDatabase>();
+    final title = _mt(context, 'Médicaments', 'Medications', 'الأدوية');
     return Scaffold(
-      backgroundColor: AminaTheme.bg(context),
-      appBar: AppBar(
-        title: Text(_mt(context, 'Médicaments', 'Medications', 'الأدوية')),
-      ),
-      body: ListView(
-        padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 20, 40),
+      backgroundColor: AminaTheme.isDark(context)
+          ? AminaTheme.bg(context)
+          : const Color(0xFFF4FBF9),
+      body: Stack(
         children: [
-          Text(
-            _mt(
-              context,
-              'Enregistrez uniquement un traitement réellement pris. IAmina ne recommande ni médicament ni dose.',
-              'Record only treatment you actually took. IAmina does not recommend a medication or dose.',
-              'سجّل فقط علاجاً تناولته فعلاً. IAmina لا توصي بدواء أو جرعة.',
-            ),
-            style: TextStyle(
-              color: AminaTheme.textSecondary(context),
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 18),
-          TextField(
-            key: const Key('medication-name-input'),
-            controller: _name,
-            decoration: InputDecoration(
-              labelText: _mt(
-                context,
-                'Nom du traitement',
-                'Treatment name',
-                'اسم العلاج',
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _dose,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: _mt(
-                      context,
-                      'Dose (facultatif)',
-                      'Dose (optional)',
-                      'الجرعة (اختياري)',
-                    ),
-                  ),
+          if (!AminaTheme.isDark(context))
+            PositionedDirectional(
+              top: -120,
+              end: -100,
+              child: Container(
+                width: 280,
+                height: 280,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AminaVisualLanguage.mintWaveLight.withValues(alpha: .68),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _unit,
-                  decoration: InputDecoration(
-                    labelText: _mt(context, 'Unité', 'Unit', 'الوحدة'),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.schedule_rounded),
-            title: Text(
-              _mt(context, 'Heure de prise', 'Time taken', 'وقت التناول'),
             ),
-            subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(_takenAt)),
-            onTap: () async {
-              final date = await showDatePicker(
-                context: context,
-                initialDate: _takenAt,
-                firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                lastDate: DateTime.now(),
-              );
-              if (date == null || !context.mounted) return;
-              final time = await showTimePicker(
-                context: context,
-                initialTime: TimeOfDay.fromDateTime(_takenAt),
-              );
-              if (time == null || !context.mounted) return;
-              setState(() {
-                _takenAt = DateTime(
-                  date.year,
-                  date.month,
-                  date.day,
-                  time.hour,
-                  time.minute,
-                );
-              });
-            },
-          ),
-          const SizedBox(height: 8),
-          FilledButton.icon(
-            key: const Key('save-medication-event'),
-            onPressed: _saving ? null : _save,
-            icon: const Icon(Icons.check_rounded),
-            label: Text(
-              _mt(
-                context,
-                'Enregistrer la prise',
-                'Save intake',
-                'حفظ التناول',
-              ),
-            ),
-          ),
-          const SizedBox(height: 26),
-          Text(
-            _mt(
-              context,
-              'Prises récentes',
-              'Recent intakes',
-              'آخر مرات التناول',
-            ),
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 10),
-          StreamBuilder<List<MedicationEventData>>(
-            stream: db.watchMedicationEvents(),
-            builder: (context, snapshot) {
-              final items = snapshot.data ?? const <MedicationEventData>[];
-              if (items.isEmpty) {
-                return Text(
-                  _mt(
+          SafeArea(
+            top: false,
+            child: Column(
+              children: [
+                AminaMobilePageHeader(
+                  title: title,
+                  subtitle: _mt(
                     context,
-                    'Aucune prise enregistrée.',
-                    'No intake recorded.',
-                    'لا توجد جرعات مسجلة.',
+                    'Journalisez uniquement ce que vous avez réellement pris.',
+                    'Record only what you actually took.',
+                    'سجّل فقط ما تناولته فعلاً.',
                   ),
-                  style: TextStyle(color: AminaTheme.textSecondary(context)),
-                );
-              }
-              return Column(
-                children: items.map((item) {
-                  final dose = item.dose == null
-                      ? ''
-                      : ' · ${item.dose!.toStringAsFixed(item.dose! % 1 == 0 ? 0 : 1)} ${item.unit ?? ''}'
-                            .trimRight();
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.medication_outlined),
-                    title: Text('${item.label}$dose'),
-                    subtitle: Text(
-                      DateFormat('dd/MM/yyyy HH:mm').format(item.takenAt),
-                    ),
-                    trailing: IconButton(
-                      tooltip: _mt(context, 'Supprimer', 'Delete', 'حذف'),
-                      icon: const Icon(Icons.delete_outline_rounded),
-                      onPressed: () => db.deleteMedicationEvent(item.id),
-                    ),
-                  );
-                }).toList(),
-              );
-            },
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsetsDirectional.fromSTEB(20, 18, 20, 40),
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: AminaVisualLanguage.cardDecoration(context),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: AminaVisualLanguage.mintIconDecoration(context),
+                                  child: const Icon(
+                                    Icons.medication_outlined,
+                                    color: AminaVisualLanguage.actionGreen,
+                                    size: 21,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _mt(
+                                      context,
+                                      'Nouvelle prise',
+                                      'New intake',
+                                      'تناول جديد',
+                                    ),
+                                    style: TextStyle(
+                                      fontFamily: 'Georgia',
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                      color: AminaVisualLanguage.primaryText(context),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              _mt(
+                                context,
+                                'IAmina ne recommande ni médicament ni dose.',
+                                'IAmina does not recommend a medication or dose.',
+                                'IAmina لا توصي بدواء أو جرعة.',
+                              ),
+                              style: TextStyle(
+                                color: AminaVisualLanguage.secondary(context),
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            TextField(
+                              key: const Key('medication-name-input'),
+                              controller: _name,
+                              decoration: InputDecoration(
+                                labelText: _mt(
+                                  context,
+                                  'Nom du traitement',
+                                  'Treatment name',
+                                  'اسم العلاج',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _dose,
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    decoration: InputDecoration(
+                                      labelText: _mt(
+                                        context,
+                                        'Dose (facultatif)',
+                                        'Dose (optional)',
+                                        'الجرعة (اختياري)',
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _unit,
+                                    decoration: InputDecoration(
+                                      labelText: _mt(context, 'Unité', 'Unit', 'الوحدة'),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Container(
+                                width: 38,
+                                height: 38,
+                                decoration: AminaVisualLanguage.mintIconDecoration(context),
+                                child: const Icon(
+                                  Icons.schedule_rounded,
+                                  color: AminaVisualLanguage.actionGreen,
+                                  size: 19,
+                                ),
+                              ),
+                              title: Text(_mt(context, 'Heure de prise', 'Time taken', 'وقت التناول')),
+                              subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(_takenAt)),
+                              onTap: () async {
+                                final date = await showDatePicker(
+                                  context: context,
+                                  initialDate: _takenAt,
+                                  firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                                  lastDate: DateTime.now(),
+                                );
+                                if (date == null || !context.mounted) return;
+                                final time = await showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay.fromDateTime(_takenAt),
+                                );
+                                if (time == null || !context.mounted) return;
+                                setState(() {
+                                  _takenAt = DateTime(
+                                    date.year,
+                                    date.month,
+                                    date.day,
+                                    time.hour,
+                                    time.minute,
+                                  );
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 48,
+                              child: FilledButton.icon(
+                                key: const Key('save-medication-event'),
+                                onPressed: _saving ? null : _save,
+                                icon: const Icon(Icons.check_rounded),
+                                label: Text(
+                                  _mt(
+                                    context,
+                                    'Enregistrer la prise',
+                                    'Save intake',
+                                    'حفظ التناول',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Text(
+                        _mt(context, 'Prises récentes', 'Recent intakes', 'آخر مرات التناول'),
+                        style: TextStyle(
+                          fontFamily: 'Georgia',
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: AminaVisualLanguage.primaryText(context),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      StreamBuilder<List<MedicationEventData>>(
+                        stream: db.watchMedicationEvents(),
+                        builder: (context, snapshot) {
+                          final items = snapshot.data ?? const <MedicationEventData>[];
+                          if (items.isEmpty) {
+                            return Container(
+                              padding: const EdgeInsets.all(18),
+                              decoration: AminaVisualLanguage.cardDecoration(context),
+                              child: Text(
+                                _mt(
+                                  context,
+                                  'Aucune prise enregistrée.',
+                                  'No intake recorded.',
+                                  'لا توجد جرعات مسجلة.',
+                                ),
+                                style: TextStyle(color: AminaVisualLanguage.secondary(context)),
+                              ),
+                            );
+                          }
+                          return Column(
+                            children: items.map((item) {
+                              final dose = item.dose == null
+                                  ? ''
+                                  : ' · ${item.dose!.toStringAsFixed(item.dose! % 1 == 0 ? 0 : 1)} ${item.unit ?? ''}'.trimRight();
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                decoration: AminaVisualLanguage.cardDecoration(context),
+                                child: ListTile(
+                                  leading: Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: AminaVisualLanguage.mintIconDecoration(context),
+                                    child: const Icon(
+                                      Icons.medication_outlined,
+                                      color: AminaVisualLanguage.actionGreen,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  title: Text('${item.label}$dose'),
+                                  subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(item.takenAt)),
+                                  trailing: IconButton(
+                                    tooltip: _mt(context, 'Supprimer', 'Delete', 'حذف'),
+                                    icon: const Icon(Icons.delete_outline_rounded),
+                                    onPressed: () => db.deleteMedicationEvent(item.id),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

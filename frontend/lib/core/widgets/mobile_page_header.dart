@@ -32,28 +32,23 @@ class AminaMobilePageHeader extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AminaTheme.bg(context),
-        border: Border(
-          bottom: BorderSide(
-            color: AminaTheme.divider(context).withValues(alpha: .7),
-          ),
-        ),
         gradient: dark
             ? null
             : LinearGradient(
                 colors: [
-                  AminaVisualLanguage.mintSurface.withValues(alpha: .34),
+                  AminaVisualLanguage.mintWaveLight.withValues(alpha: .72),
                   AminaTheme.paper.withValues(alpha: .98),
                   AminaTheme.paper,
                 ],
-                stops: const [0, .42, 1],
+                stops: const [0, .50, 1],
                 begin: AlignmentDirectional.topStart,
                 end: AlignmentDirectional.bottomEnd,
               ),
       ),
       padding: EdgeInsetsDirectional.fromSTEB(
-        24,
-        top + 14,
-        24,
+        20,
+        top + 12,
+        20,
         bottom == null ? 16 : 13,
       ),
       child: Column(
@@ -61,21 +56,27 @@ class AminaMobilePageHeader extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
-            crossAxisAlignment: hasSubtitle
-                ? CrossAxisAlignment.start
-                : CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               ExcludeSemantics(
                 child: Container(
-                  width: 3,
-                  height: hasSubtitle ? 38 : 31,
+                  width: 48,
+                  height: 54,
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    gradient: AminaVisualLanguage.primaryGradient,
-                    borderRadius: BorderRadius.circular(99),
+                    color: Colors.white.withValues(alpha: .88),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withValues(alpha: .92)),
+                    boxShadow: AminaVisualLanguage.cardShadowLight,
+                  ),
+                  child: Image.asset(
+                    'assets/images/logo_amina.png',
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 13),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,16 +89,17 @@ class AminaMobilePageHeader extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
+                          fontFamily: 'Georgia',
                           color: AminaVisualLanguage.primaryText(context),
-                          fontSize: 21,
-                          height: 1.08,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -.45,
+                          fontSize: 23,
+                          height: 1.05,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -.55,
                         ),
                       ),
                     ),
                     if (hasSubtitle) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 5),
                       Text(
                         subtitle!,
                         maxLines: 2,
@@ -128,7 +130,7 @@ class AminaMobilePageHeader extends StatelessWidget {
               ],
             ],
           ),
-          if (bottom != null) ...[const SizedBox(height: 10), bottom!],
+          if (bottom != null) ...[const SizedBox(height: 12), bottom!],
         ],
       ),
     );
