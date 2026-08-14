@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'core/localization/global_localized_copy.dart';
 import 'core/theme/app_theme.dart';
 import 'data/drift/database.dart';
 import 'firebase_options.dart';
@@ -106,6 +107,7 @@ class _AminaAppState extends State<AminaApp> {
       locale: localePreference.locale,
       builder: (context, child) {
         ErrorWidget.builder = (FlutterErrorDetails details) {
+          final l10n = AppLocalizations.of(context)!;
           return Scaffold(
             body: Container(
               padding: const EdgeInsets.all(20),
@@ -123,7 +125,7 @@ class _AminaAppState extends State<AminaApp> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Une erreur de rendu est survenue',
+                      l10n.renderErrorTitle,
                       style: TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 18,
