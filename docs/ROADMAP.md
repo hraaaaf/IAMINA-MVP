@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-14 — P3-EVALS is certified, human-reviewed PASS ALL, merged and post-merge green. Companion intelligence is closed through P3-EVALS. UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-14 — P3-EVALS is certified, human-reviewed PASS ALL, merged and post-merge green. Companion intelligence is closed through P3-EVALS. The active critical path is now MENA pilot hardening. UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -85,7 +85,7 @@ Historical run IDs, viewport matrices, per-LOT visual scores and merge SHAs rema
 
 ---
 
-# Companion intelligence & proactive differentiation — ACTIVE
+# Companion intelligence & proactive differentiation — CLOSED THROUGH P3-EVALS
 
 ## Objective
 
