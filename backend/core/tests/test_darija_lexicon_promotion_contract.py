@@ -19,6 +19,7 @@ def _candidate(**overrides):
         "candidate_id": "test-darija-candidate-01",
         "locale": "ar-MA",
         "phrase": "synthetic reviewed phrase",
+        "channel": "text",
         "input_form": "latin_transliteration",
         "source_evidence_reference": "test/source/batch03",
         "safety_corpus_fingerprint": safety_corpus_fingerprint(),
@@ -94,6 +95,18 @@ def test_promotion_rejects_stale_safety_corpus_fingerprint():
 
     assert "safety_corpus:fingerprint_mismatch" in runtime_promotion_blockers(candidate)
     assert not runtime_promotion_ready(candidate)
+
+
+def test_channel_and_input_form_are_validated_independently():
+    bad_channel = _candidate(channel="latin_transliteration")
+    bad_input_form = _candidate(input_form="voice_transcript")
+
+    assert "channel:unsupported:latin_transliteration" in runtime_promotion_blockers(
+        bad_channel
+    )
+    assert "input_form:unsupported:voice_transcript" in runtime_promotion_blockers(
+        bad_input_form
+    )
 
 
 def test_contract_can_only_report_ready_when_every_gate_is_present():
