@@ -20,8 +20,6 @@ class DashboardPremiumScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final db = context.read<AppDatabase>();
-    final now = DateTime.now();
-    final start = now.subtract(const Duration(days: 21));
 
     return StreamBuilder<PatientProfileData?>(
       stream: db.watchProfile(),
@@ -32,7 +30,7 @@ class DashboardPremiumScreen extends StatelessWidget {
         final high = profile?.targetRangeHigh ?? 180.0;
 
         return StreamBuilder<List<LogEntryData>>(
-          stream: db.watchLogsInRange(start, now),
+          stream: db.watchRecentLogs(limit: 1),
           builder: (context, logsSnap) {
             if (profileSnap.hasError || logsSnap.hasError) {
               return _PremiumState(
