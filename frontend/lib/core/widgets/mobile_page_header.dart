@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import '../theme/amina_visual_language.dart';
 import '../theme/app_theme.dart';
 
-/// Canonical compact page chrome for patient-facing mobile surfaces.
+/// Canonical patient-facing mobile page chrome.
 ///
-/// The component owns safe-area spacing, visual hierarchy and directional
-/// padding so screens inherit the same calm premium language as LOGIN.
+/// Owns safe-area spacing, brand scale, title hierarchy and directional
+/// padding so every patient surface speaks the same LOGIN-derived language.
 class AminaMobilePageHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
+  final Widget? leading;
   final Widget? trailing;
   final Widget? bottom;
   final bool includeSafeArea;
@@ -18,6 +19,7 @@ class AminaMobilePageHeader extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.leading,
     this.trailing,
     this.bottom,
     this.includeSafeArea = true,
@@ -30,6 +32,7 @@ class AminaMobilePageHeader extends StatelessWidget {
     final dark = AminaTheme.isDark(context);
 
     return Container(
+      constraints: const BoxConstraints(minHeight: 96),
       decoration: BoxDecoration(
         color: AminaTheme.bg(context),
         gradient: dark
@@ -47,9 +50,9 @@ class AminaMobilePageHeader extends StatelessWidget {
       ),
       padding: EdgeInsetsDirectional.fromSTEB(
         20,
-        top + 12,
+        top + 14,
         20,
-        bottom == null ? 16 : 13,
+        bottom == null ? 18 : 14,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -58,15 +61,25 @@ class AminaMobilePageHeader extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              if (leading != null) ...[
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: leading!,
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
               ExcludeSemantics(
                 child: Container(
-                  width: 48,
-                  height: 54,
-                  padding: const EdgeInsets.all(4),
+                  width: 64,
+                  height: 64,
+                  padding: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .88),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withValues(alpha: .92)),
+                    color: Colors.white.withValues(alpha: .90),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withValues(alpha: .95)),
                     boxShadow: AminaVisualLanguage.cardShadowLight,
                   ),
                   child: Image.asset(
@@ -76,7 +89,7 @@ class AminaMobilePageHeader extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 13),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,24 +104,26 @@ class AminaMobilePageHeader extends StatelessWidget {
                         style: TextStyle(
                           fontFamily: 'Georgia',
                           color: AminaVisualLanguage.primaryText(context),
-                          fontSize: 23,
+                          fontSize: 24,
                           height: 1.05,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -.55,
+                          decoration: TextDecoration.none,
                         ),
                       ),
                     ),
                     if (hasSubtitle) ...[
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 6),
                       Text(
                         subtitle!,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: AminaVisualLanguage.secondary(context),
-                          fontSize: 12.5,
-                          height: 1.34,
+                          fontSize: 13.5,
+                          height: 1.36,
                           fontWeight: FontWeight.w500,
+                          decoration: TextDecoration.none,
                         ),
                       ),
                     ],
@@ -118,10 +133,7 @@ class AminaMobilePageHeader extends StatelessWidget {
               if (trailing != null) ...[
                 const SizedBox(width: 10),
                 ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    minWidth: 44,
-                    minHeight: 44,
-                  ),
+                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                   child: Align(
                     alignment: AlignmentDirectional.centerEnd,
                     child: trailing!,
@@ -130,7 +142,7 @@ class AminaMobilePageHeader extends StatelessWidget {
               ],
             ],
           ),
-          if (bottom != null) ...[const SizedBox(height: 12), bottom!],
+          if (bottom != null) ...[const SizedBox(height: 14), bottom!],
         ],
       ),
     );
