@@ -77,6 +77,8 @@ Le rendu mobile est fort : carte unique, champs essentiels, heure visible, CTA d
 
 Inspection manuelle Chrome #28, 390×844 : aucun overflow, aucune collision, CTA bien désactivé à vide, disclaimer visible, hiérarchie intacte.
 
+Inspection manuelle Chrome #29 post-merge, 390×844 : même hiérarchie attendue, CTA désactivé à vide, disclaimer visible, aucune collision ni overflow.
+
 ## Tests / certification
 
 Head certifié avant merge : `eec071e712c3f295378a849045ee264ea45c9249`
@@ -95,10 +97,10 @@ Post-merge `main` :
 - Django migration drift #2245 — run `31905948500` ✅
 - UI screenshot audit #70 ✅
 - UI browser screenshot certification #29 — run `31905948455` ✅
-- artefact Chrome #29 : `9252524652`
-- digest : `sha256:7458e44b7f85bcd68a0842b400ac99079c32273abf877145dfaef0ac6be4c7c8`
+- artefact Chrome #29 : `9252391915`
+- digest : `sha256:ecf547c3d8b1fd8ed3095ab837821292ba7f66db5b1a395e0a3bf3290a2fc1a9`
 
-Le digest Chrome identique avant/après merge confirme l’absence de dérive visuelle du runtime certifié.
+Les preuves visuelles avant et après merge ont été inspectées manuellement ; l’identité de digest n’est pas utilisée comme critère de certification.
 
 Le harness de test widget+Drift initial était instable ; après deux échecs similaires, il a été remplacé par des contrats ciblés sans stream vivant, tandis que Chrome réel couvre le rendu.
 
