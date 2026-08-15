@@ -13,15 +13,14 @@ import '../../../data/drift/database.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../journal/widgets/meal_capture_panel.dart';
 import '../../journal/widgets/nutrition_portion_editor.dart';
-import '../../journal/widgets/insulin_logging.dart';
 import '../../journal/widgets/post_save_receipt.dart';
 
 /// Deterministic entry-safety classification for a single normalized reading.
 ///
 /// Threshold source: American Diabetes Association, Standards of Care in
 /// Diabetes—2026, Section 6: level 1 hypoglycemia is <70 and >=54 mg/dL;
-/// level 2 hypoglycemia is <54 mg/dL. This function does not diagnose, prescribe,
-/// or calculate treatment.
+/// level 2 hypoglycemia is <54 mg/dL. This function does not diagnose,
+/// prescribe, or calculate treatment.
 enum GlucoseEntrySafety { level2Low, level1Low, nonLow }
 
 GlucoseEntrySafety classifyGlucoseEntrySafety(double mgdl) {
@@ -30,13 +29,12 @@ GlucoseEntrySafety classifyGlucoseEntrySafety(double mgdl) {
   return GlucoseEntrySafety.nonLow;
 }
 
-/// Express metabolic-event capture.
+/// Focuses the glucose-entry flow on an optional related context.
 ///
-/// The primary path records a glucose value, optional measurement context and
-/// optional meal. Treatment context and daily-state details remain secondary.
-/// Measurement context and meal category are persisted independently; neither
-/// is inferred when the patient does not select it.
-enum AddLogFocus { none, meal, activity, insulin }
+/// Medication intake, including insulin, is intentionally not represented here:
+/// Medications is the canonical intake journal. Add Log records a glucose
+/// reading and only contextual facts that belong to that reading.
+enum AddLogFocus { none, meal, activity }
 
 class AddLogSheet extends StatefulWidget {
   final bool isPage;
@@ -54,7 +52,6 @@ class AddLogSheet extends StatefulWidget {
 
 class _AddLogSheetState extends State<AddLogSheet> {
   final TextEditingController _glucoseController = TextEditingController();
-  final TextEditingController _insulinController = TextEditingController();
   final TextEditingController _mealNoteController = TextEditingController();
   final List<String> _selectedMealItemIds = <String>[];
   final Map<String, MealPortionSelection> _mealPortionSelections =
@@ -84,16 +81,13 @@ class _AddLogSheetState extends State<AddLogSheet> {
   void initState() {
     super.initState();
     _mealExpanded = widget.focus == AddLogFocus.meal;
-    _detailsExpanded =
-        widget.focus == AddLogFocus.activity ||
-        widget.focus == AddLogFocus.insulin;
+    _detailsExpanded = widget.focus == AddLogFocus.activity;
     _contextExpanded = widget.focus == AddLogFocus.activity;
   }
 
   @override
   void dispose() {
     _glucoseController.dispose();
-    _insulinController.dispose();
     _mealNoteController.dispose();
     super.dispose();
   }
@@ -107,9 +101,13 @@ class _AddLogSheetState extends State<AddLogSheet> {
     return unit == 'mmol/L' ? value * 18.0 : value;
   }
 
+  bool get _hasValidGlucose {
+    final value = _displayGlucose();
+    return value != null && value > 0;
+  }
+
   bool get _hasUnsavedData =>
       _glucoseController.text.trim().isNotEmpty ||
-      _insulinController.text.trim().isNotEmpty ||
       _glycemicContext != null ||
       _mealType != null ||
       _selectedMealItemIds.isNotEmpty ||
@@ -490,12 +488,19 @@ class _AddLogSheetState extends State<AddLogSheet> {
     key: const Key('journal-details-button'),
     onPressed: () => setState(() => _detailsExpanded = true),
     icon: const Icon(Icons.tune_rounded, size: 18),
-    label: Text(l10n.journalDetailsButton),
+    label: Text(_detailsLabel()),
     style: OutlinedButton.styleFrom(
       minimumSize: const Size.fromHeight(50),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
   );
+
+  String _detailsLabel() {
+    final code = Localizations.localeOf(context).languageCode;
+    if (code == 'ar') return 'تفاصيل: الوقت والسياق…';
+    if (code == 'en') return 'Details: time and context…';
+    return 'Détails : heure et contexte…';
+  }
 
   Widget _detailsCard(AppLocalizations l10n) => Container(
     key: const Key('journal-details-card'),
@@ -518,8 +523,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
         ),
         const SizedBox(height: 16),
         _timeRow(l10n),
-        const SizedBox(height: 20),
-        _insulinSection(l10n),
         const SizedBox(height: 20),
         _healthContext(l10n),
       ],
@@ -545,30 +548,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
         ],
       ),
     ),
-  );
-
-  Widget _insulinSection(AppLocalizations l10n) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: <Widget>[
-      _sectionLabel(l10n.journalInsulinTaken),
-      const SizedBox(height: 5),
-      Text(l10n.journalInsulinExplanation, style: _helperStyle()),
-      const SizedBox(height: 10),
-      TextField(
-        key: const Key('insulin-taken-input'),
-        controller: _insulinController,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: <TextInputFormatter>[
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
-        ],
-        decoration: InputDecoration(
-          labelText: l10n.journalDoseTaken,
-          suffixText: 'U',
-          hintText: l10n.journalOptional,
-          border: const OutlineInputBorder(),
-        ),
-      ),
-    ],
   );
 
   Widget _healthContext(AppLocalizations l10n) {
@@ -730,7 +709,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 1080),
             child: FilledButton.icon(
-              onPressed: _saving ? null : () => _saveLog(db, unit, l10n),
+              key: const Key('save-log-button'),
+              onPressed: _saving || !_hasValidGlucose
+                  ? null
+                  : () => _saveLog(db, unit, l10n),
               icon: _saving
                   ? const SizedBox(
                       width: 18,
@@ -795,13 +777,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
     if (!await _confirmLowGlucose(mgdl, l10n) || !mounted) return;
 
-    final insulinRaw = _insulinController.text;
-    if (!isValidTakenInsulinInput(insulinRaw)) {
-      _message(l10n.journalInvalidInsulin);
-      return;
-    }
-    final insulin = parseTakenInsulinUnits(insulinRaw);
-
     setState(() => _saving = true);
     try {
       final note = _mealNoteController.text.trim();
@@ -811,7 +786,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
             LogEntriesCompanion.insert(
               createdAt: DateTime.now(),
               bloodSugar: mgdl,
-              insulinUnits: drift.Value(insulin),
+              insulinUnits: const drift.Value(null),
               glycemicContext: drift.Value(_glycemicContext),
               mealType: drift.Value(_mealType),
               mealDescription: drift.Value(note.isEmpty ? null : note),
@@ -840,7 +815,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
             ? null
             : _contextLabel(l10n, _glycemicContext!),
         mealTypeLabel: _mealType == null ? null : _mealLabel(l10n, _mealType!),
-        insulinUnits: insulin,
         additionalContextLabels: <String>[
           if (_isSick) l10n.journalSick,
           if (_isStressed) l10n.journalUnusualStress,
@@ -860,7 +834,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
   void _clearDraftForNextEntry() {
     _glucoseController.clear();
-    _insulinController.clear();
     _mealNoteController.clear();
     _selectedMealItemIds.clear();
     _mealPortionSelections.clear();
