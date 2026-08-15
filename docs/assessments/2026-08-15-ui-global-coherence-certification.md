@@ -27,6 +27,13 @@ Merge commit: `8b8190250928ae8e4e42d214ffa9c595e4e0100a`.
 
 `docs/ROADMAP.md` was inspected during closeout. This maintenance/certification lot does not create, close, or reopen a numbered roadmap workstream and does not change the MENA critical-path numerator or denominator. The existing UX visual rebase remains closed; this document records the fresh evidence required for the subsequent coherence maintenance change.
 
-## Post-merge gate
+## Post-merge certification
 
-Post-merge CI/drift/UI workflow evidence must be attached to this closeout before it is considered fully certified. Until then, the runtime merge is complete but the documentation closeout remains pending post-merge recertification.
+Post-merge `main` at `8b8190250928ae8e4e42d214ffa9c595e4e0100a` was recertified:
+
+- CI #2382: PASS.
+- Django migration drift #2194: PASS.
+- Documentation closeout PR #237 exact head `fe6078e89d9b6934455da20b7bd78101ce103bba`: CI #2385 PASS and drift #2197 PASS.
+- PR #237 was squash-merged as `c120c0fa63b2a0b4e7f9bd54f4426782676c5d03`.
+
+The coherence maintenance lot and its documentation closeout are therefore closed. The MENA roadmap percentage remains unchanged because this lot did not alter any numbered MENA task.
