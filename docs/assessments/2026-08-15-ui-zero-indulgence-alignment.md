@@ -30,6 +30,15 @@ PR #240 was squash-merged with expected-head protection as `e317a448a1be40956793
 
 This presentation/certification lot does not create, close, or reopen a numbered MENA task. The MENA critical-path numerator and denominator remain unchanged. The existing UX visual-rebase lane remains closed.
 
-## Post-merge gate
+## Post-merge certification
 
-Post-merge `main` CI and Chrome recertification are pending at the time of this commit. This assessment is not final until those exact-main gates pass.
+Exact `main` runtime merge `e317a448a1be4095679314cffa88a3b08d0bcf76` was recertified after merge:
+
+- CI #2394: PASS.
+- Django migration drift #2206: PASS.
+- Native UI screenshot audit #61: PASS.
+- Real Chrome browser certification #20 at 390x844: PASS.
+
+Documentation closeout PR #241 exact head `2229bec67a5a073159e271857898370dca0aa46a` also passed CI #2397 and drift #2209 before merge, then was squash-merged as `47e4f242cf09d31eb39783883ae763b91e6a1451`.
+
+The zero-indulgence UI alignment lot is therefore fully closed with pre-merge visual evidence, exact-main post-merge recertification, and aligned canonical documentation.
