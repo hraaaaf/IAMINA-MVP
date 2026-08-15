@@ -183,11 +183,18 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(const Key('glucose-input')), '126');
+      await tester.pump();
       await tester.tap(find.byKey(const Key('journal-details-button')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('journal-context-button')));
+      final contextButton = find.byKey(const Key('journal-context-button'));
+      await tester.ensureVisible(contextButton);
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('context-stress')));
+      await tester.tap(contextButton);
+      await tester.pumpAndSettle();
+      final stressChip = find.byKey(const Key('context-stress'));
+      await tester.ensureVisible(stressChip);
+      await tester.pumpAndSettle();
+      await tester.tap(stressChip);
       await tester.tap(find.byKey(const Key('save-log-button')));
       await tester.pumpAndSettle();
 
@@ -278,6 +285,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(const Key('glucose-input')), '126');
+      await tester.pump();
       await tester.tap(find.byKey(const Key('save-log-button')));
       await tester.pumpAndSettle();
 
