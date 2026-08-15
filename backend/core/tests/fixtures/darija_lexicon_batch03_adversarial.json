@@ -1,0 +1,20 @@
+[
+  {"case_id":"b03-hyperbole-cold-01","text":"fia lmout dial lberd","category":"hyperbole","semantic_boundary":"lethal vocabulary may be figurative; token alone is not death or suicidality evidence","runtime_authorized":false},
+  {"case_id":"b03-hyperbole-laugh-01","text":"ghadi nmout b de7k","category":"hyperbole","semantic_boundary":"figurative laughter expression; no literal emergency inference from nmout alone","runtime_authorized":false},
+  {"case_id":"b03-hyperbole-laugh-02","text":"hadchi kay9tel bdda7k","category":"hyperbole","semantic_boundary":"figurative laughter expression; no literal killing inference from kay9tel alone","runtime_authorized":false},
+  {"case_id":"b03-hyperbole-hunger-01","text":"kay9telni jou3","category":"hyperbole","semantic_boundary":"figurative hunger expression; requires context before any safety escalation","runtime_authorized":false},
+  {"case_id":"b03-hyperbole-fatigue-01","text":"fya lmout dial l3ya","category":"hyperbole","semantic_boundary":"figurative fatigue expression; lethal token is insufficient on its own","runtime_authorized":false},
+  {"case_id":"b03-hyperbole-heat-01","text":"ghadi nmout b ssehd","category":"hyperbole","semantic_boundary":"ambient heat uses ssehd; do not collapse with fever skhana or infer literal death from nmout alone","runtime_authorized":false},
+  {"case_id":"b03-ambiguity-overwhelm-01","text":"ma b9itch 9ader","category":"ambiguity","semantic_boundary":"broad overwhelmed/unable expression; insufficient alone for a clinical or suicidality interpretation","runtime_authorized":false},
+  {"case_id":"b03-cgm-low-01","text":"capteur 3tani low","category":"device_reading","semantic_boundary":"CGM reading is instrumental evidence, not biologically confirmed glucose by itself","runtime_authorized":false},
+  {"case_id":"b03-cgm-high-01","text":"cgm 3tani high","category":"device_reading","semantic_boundary":"CGM reading is instrumental evidence, not biologically confirmed glucose by itself","runtime_authorized":false},
+  {"case_id":"b03-cgm-discordance-01","text":"capteur kaygol low walakin ana mzyan","category":"device_symptom_discordance","semantic_boundary":"preserve disagreement between sensor output and reported symptoms","runtime_authorized":false},
+  {"case_id":"b03-cgm-discordance-02","text":"sensor kaygol haja w ana 7ass b haja khra","category":"device_symptom_discordance","semantic_boundary":"preserve disagreement rather than choosing one source as confirmed truth","runtime_authorized":false},
+  {"case_id":"b03-cgm-failure-01","text":"capteur ma khdamch","category":"device_failure","semantic_boundary":"reported device failure does not establish a glucose state","runtime_authorized":false},
+  {"case_id":"b03-cgm-failure-02","text":"capteur kay3tini ar9am ghalta","category":"device_failure","semantic_boundary":"reported suspected bad readings are not proof of hardware failure or glucose state","runtime_authorized":false},
+  {"case_id":"b03-insulin-forgotten-01","text":"nsit l’insuline","category":"medication_event","semantic_boundary":"medication-event vocabulary only; no dose recommendation or treatment optimization","runtime_authorized":false},
+  {"case_id":"b03-insulin-double-01","text":"dert l’insuline juj mrat","category":"medication_event","semantic_boundary":"possible duplicate administration event; no dose advice encoded in this fixture","runtime_authorized":false},
+  {"case_id":"b03-insulin-double-02","text":"khdit l’insuline mratin b ghalat","category":"medication_event","semantic_boundary":"possible accidental duplicate administration; vocabulary evidence only","runtime_authorized":false},
+  {"case_id":"b03-insulin-uncertain-01","text":"ma 3reftch wach dert l’insuline","category":"medication_uncertainty","semantic_boundary":"uncertainty must not be converted into confirmed administration","runtime_authorized":false},
+  {"case_id":"b03-insulin-uncertain-02","text":"ma mt2akedch wach dert dose","category":"medication_uncertainty","semantic_boundary":"uncertainty must remain explicit; no inferred dose status","runtime_authorized":false}
+]
