@@ -1341,48 +1341,22 @@ class _ActionPlan extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final actionCards = cards
-        .where((c) => c.action.isNotEmpty)
+        .where((c) => c.action.trim().isNotEmpty)
         .take(7)
         .toList();
 
-    final List<_PlanItem> plans = actionCards.isEmpty
-        ? [
-            _PlanItem(
-              day: l10n.planDay(1),
-              title: l10n.documentCarbMeals,
-              sub: l10n.addMealContextTiming,
-              bg: AminaTheme.warnBg,
-              dot: const Color(0xFFF59E0B),
-            ),
-            _PlanItem(
-              day: l10n.planDay(3),
-              title: l10n.documentNightValues,
-              sub: l10n.noteActivitySleepSymptoms,
-              bg: AminaTheme.dangerBg,
-              dot: const Color(0xFFDC2626),
-            ),
-            _PlanItem(
-              day: l10n.planDay(7),
-              title: l10n.prepareTirReview,
-              sub: l10n.compareWithProfessional,
-              bg: AminaTheme.goodBg,
-              dot: AminaTheme.teal500,
-            ),
-          ]
-        : actionCards.asMap().entries.map((e) {
-            final i = e.key;
-            final card = e.value;
-            final dayOffset = [1, 2, 3, 5, 6, 7, 7][i.clamp(0, 6)];
-            return _PlanItem(
-              day: l10n.planDay(dayOffset),
-              title: card.action,
-              sub: card.body.length > 60
-                  ? '${card.body.substring(0, 60)}…'
-                  : card.body,
-              bg: _bgForSeverity(card.severity),
-              dot: _dotForSeverity(card.severity),
-            );
-          }).toList();
+    if (actionCards.isEmpty) return const SizedBox.shrink();
+
+    final plans = actionCards.map((card) {
+      return _PlanItem(
+        title: card.action,
+        sub: card.body.length > 60
+            ? '${card.body.substring(0, 60)}…'
+            : card.body,
+        bg: _bgForSeverity(card.severity),
+        dot: _dotForSeverity(card.severity),
+      );
+    }).toList();
 
     final count = plans.length;
     return ClinicalCard(
@@ -1451,25 +1425,15 @@ class _ActionPlan extends StatelessWidget {
                   border: Border.all(color: AminaTheme.divider(context)),
                 ),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      margin: const EdgeInsetsDirectional.only(end: 12),
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsetsDirectional.only(end: 12, top: 5),
                       decoration: BoxDecoration(
-                        color: p.dot.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        p.day,
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
-                          color: p.dot,
-                          letterSpacing: 0.06,
-                        ),
+                        color: p.dot,
+                        shape: BoxShape.circle,
                       ),
                     ),
                     Expanded(
@@ -1513,11 +1477,10 @@ class _ActionPlan extends StatelessWidget {
 }
 
 class _PlanItem {
-  final String day, title, sub;
+  final String title, sub;
   final Color bg;
   final Color dot;
   const _PlanItem({
-    required this.day,
     required this.title,
     required this.sub,
     required this.bg,
