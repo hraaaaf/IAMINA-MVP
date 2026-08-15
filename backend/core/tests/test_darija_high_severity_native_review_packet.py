@@ -1,10 +1,6 @@
 import json
 from pathlib import Path
 
-from core.triage_classification import (
-    glycemic_emergency_variant_inventory,
-)
-
 
 _PACKET = Path(__file__).parent / "fixtures" / "darija_high_severity_native_review_packet.json"
 _OUTCOMES = Path(__file__).parent / "fixtures" / "darija_high_severity_native_review_outcomes.json"
@@ -19,6 +15,8 @@ def _outcome_rows():
 
 
 def _runtime_inventory():
+    from core.triage_classification import glycemic_emergency_variant_inventory
+
     return {
         (variant.input_form, variant.text)
         for variant in glycemic_emergency_variant_inventory()
