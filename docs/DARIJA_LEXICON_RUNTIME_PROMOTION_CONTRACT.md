@@ -71,3 +71,19 @@ The synthetic ready-path test proves only that the deterministic gate can reach 
 - No phrase in the Batch 03 adversarial fixture is authorized for runtime by this lot.
 - Existing restricted human review gates remain open/fail-closed.
 - No MENA roadmap numerator change is claimed by this contract-only lot.
+
+## Technical closeout evidence — PR #244
+
+The contract-only implementation lot is technically closed with no runtime promotion:
+
+- PR: `#244` — `feat(safety): add fail-closed Darija lexicon promotion contract`
+- exact PR head: `73d415f8e6f3f6c83a7bbcab424782fa2585682f`
+- pre-merge CI: `#2404` — SUCCESS
+- pre-merge Django migration drift: `#2216` — SUCCESS
+- merge SHA: `9bda370c5d93e8b8ce620d5e6d967688327b146f`
+- post-merge CI: `#2405` — SUCCESS on the exact merge SHA
+- post-merge Django migration drift: `#2217` — SUCCESS on the exact merge SHA
+- implementation review passes recorded: MENA linguistic, Clinical Safety, Release Certifier
+- those technical/AI review passes are not substitutes for restricted native-human, clinical-human, or safety-owner approval evidence
+
+Roadmap impact: **none**. The MENA critical-path numerator remains unchanged because this lot creates a promotion gate and adversarial regression contract only; it does not authorize any Darija phrase for runtime use.
