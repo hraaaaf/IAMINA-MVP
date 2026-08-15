@@ -94,6 +94,25 @@ Notes:
 - `Ddokha` is native-language evidence only and is not normalized, case-folded, transliterated further or promoted in this review lot.
 - any future runtime promotion/remediation requires separate deterministic tests plus clinical and safety-owner/restricted review.
 
+## Gate 6/6 — Vision-loss variants
+
+User native-language decision: B C D E F G accepted; A rejected.
+
+Accepted exact variants:
+- ma kanchofch
+- ma kanchufch
+- ma kanchouf walou
+- ma kanchouf walo
+- ما كنشوفش
+- ما كنشوف والو
+
+Rejected exact variant:
+- ma kanchoufch
+
+## Native review completion state
+
+All six semantic review gates have an explicit native-language evidence outcome. This completes the interactive native review pass for the current packet, but does not authorize runtime changes or close the restricted clinical, safety-owner or parity gates.
+
 Governance boundary:
 - this receipt records native-language evidence only;
 - it does not provide clinical approval, safety-owner approval, parity approval or runtime authorization;
