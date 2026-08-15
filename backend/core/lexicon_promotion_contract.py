@@ -13,8 +13,9 @@ from core.safety_corpus_review import safety_corpus_fingerprint
 
 APPROVED_FOR_RUNTIME = "approved_for_runtime"
 REQUIRED_LOCALE = "ar-MA"
+ALLOWED_CHANNELS = frozenset({"text", "voice_transcript"})
 ALLOWED_INPUT_FORMS = frozenset(
-    {"arabic_script", "latin_transliteration", "mixed_language", "voice_transcript"}
+    {"arabic_script", "latin_transliteration", "mixed_language"}
 )
 REQUIRED_REGRESSION_KINDS = frozenset(
     {"positive", "negative", "contextual", "hyperbole", "ambiguity"}
@@ -27,6 +28,7 @@ class LexiconPromotionCandidate:
     candidate_id: str
     locale: str
     phrase: str
+    channel: str
     input_form: str
     source_evidence_reference: str
     safety_corpus_fingerprint: str
@@ -52,6 +54,8 @@ def runtime_promotion_blockers(candidate: LexiconPromotionCandidate) -> tuple[st
         blockers.append(f"locale:unsupported:{candidate.locale}")
     if not candidate.phrase.strip():
         blockers.append("phrase:missing")
+    if candidate.channel not in ALLOWED_CHANNELS:
+        blockers.append(f"channel:unsupported:{candidate.channel}")
     if candidate.input_form not in ALLOWED_INPUT_FORMS:
         blockers.append(f"input_form:unsupported:{candidate.input_form}")
 
