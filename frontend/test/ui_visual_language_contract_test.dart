@@ -68,6 +68,7 @@ void main() {
     expect(header, contains('width: 64'));
     expect(header, contains('height: 64'));
     expect(header, contains('minHeight: 96'));
+    expect(header, contains('decoration: TextDecoration.none'));
     expect(bridge, contains('AminaMobilePageHeader'));
     expect(addLog, contains('AminaLegacyPageHeaderBridge'));
     expect(documentImport, contains('AminaLegacyPageHeaderBridge'));
