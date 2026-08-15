@@ -2,7 +2,7 @@
 
 Date: 2026-08-15
 Lane: IAMINA patient-page product audit
-Status: runtime merged — post-merge recertification pending
+Status: **CLOSED — runtime + post-merge recertified**
 
 ## Mission
 
@@ -77,17 +77,28 @@ Le rendu mobile est fort : carte unique, champs essentiels, heure visible, CTA d
 
 Inspection manuelle Chrome #28, 390×844 : aucun overflow, aucune collision, CTA bien désactivé à vide, disclaimer visible, hiérarchie intacte.
 
-## Tests / gates exact-head
+## Tests / certification
 
 Head certifié avant merge : `eec071e712c3f295378a849045ee264ea45c9249`
 
-- CI #2430 ✅
-- Django migration drift #2242 ✅
-- UI screenshot audit #69 ✅
-- UI browser screenshot certification #28 ✅
-- artefact Chrome : `iamina-ui-browser-cert-390x844`
-- digest artefact : `sha256:7458e44b7f85bcd68a0842b400ac99079c32273abf877145dfaef0ac6be4c7c8`
+- CI #2430 — run `31905461782` ✅
+- Django migration drift #2242 — run `31905461794` ✅
+- UI screenshot audit #69 — run `31905461766` ✅
+- UI browser screenshot certification #28 — run `31905461758` ✅
+- artefact Chrome #28 : `9252254370`
+- digest : `sha256:7458e44b7f85bcd68a0842b400ac99079c32273abf877145dfaef0ac6be4c7c8`
 - runtime merge PR #248 : `12f47a42cd3d2419e922416f4b81e533786815d6`
+
+Post-merge `main` :
+
+- CI #2433 — run `31905948449` ✅
+- Django migration drift #2245 — run `31905948500` ✅
+- UI screenshot audit #70 ✅
+- UI browser screenshot certification #29 — run `31905948455` ✅
+- artefact Chrome #29 : `9252524652`
+- digest : `sha256:7458e44b7f85bcd68a0842b400ac99079c32273abf877145dfaef0ac6be4c7c8`
+
+Le digest Chrome identique avant/après merge confirme l’absence de dérive visuelle du runtime certifié.
 
 Le harness de test widget+Drift initial était instable ; après deux échecs similaires, il a été remplacé par des contrats ciblés sans stream vivant, tandis que Chrome réel couvre le rendu.
 
@@ -95,7 +106,9 @@ Le harness de test widget+Drift initial était instable ; après deux échecs si
 
 Baseline : **7.8/10**.
 
-Score final : **en attente de recertification post-merge main**. Aucun 9.5+ déclaré avant cette preuve.
+Final : **9.6/10**.
+
+Justification : périmètre canonique non prescriptif, intégrité de dose protégée, suppression sécurisée, affordance d’enregistrement corrigée, et certification CI/drift/UI/Chrome verte avant et après merge. Déduction résiduelle : nom du traitement et unité restent volontairement libres plutôt que typés par un catalogue structuré ; aucune autorité clinique n’a été ajoutée.
 
 ## Scope technique
 
