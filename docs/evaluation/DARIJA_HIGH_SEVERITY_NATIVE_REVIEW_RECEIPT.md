@@ -42,6 +42,31 @@ Notes:
 - `ghadi nti7` was already accepted in Gate 1 for fall/presyncope wording; it must not be silently reinterpreted as an exact synonym for loss of consciousness.
 - `ghadi nskhef` and `غادي نسخف` are new native candidates only. They are not runtime-authorized by this receipt and require a separate remediation/promotion lot with clinical and safety-owner review before any runtime change.
 
+## Gate 3/6 — Tremor / shivering variants
+
+User native-language decision: C D I J accepted. E and F rejected as written and corrected to a native replacement candidate.
+
+Accepted exact variants:
+- kanrjef
+- kanrjaf
+- كنترعد
+- كنرجف
+
+Rejected exact variants:
+- tahwid
+- kayrjraj
+- kanr3ed
+- kanr3ad
+- rj fou
+- rajef
+
+Native replacement candidate proposed by the user:
+- kantr33d
+
+Notes:
+- `kantr33d` is a new native candidate only; it is not silently substituted for `kanr3ed` / `kanr3ad` in this review lot.
+- any future runtime promotion/remediation must preserve the clinical/safety-owner/restricted review gates.
+
 Governance boundary:
 - this receipt records native-language evidence only;
 - it does not provide clinical approval, safety-owner approval, parity approval or runtime authorization;
