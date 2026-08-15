@@ -15,6 +15,7 @@ class AminaLegacyPageHeaderBridge extends StatelessWidget {
   final String? subtitle;
   final Widget child;
   final double legacyTopExtent;
+  final double contentTopInset;
 
   const AminaLegacyPageHeaderBridge({
     super.key,
@@ -22,6 +23,7 @@ class AminaLegacyPageHeaderBridge extends StatelessWidget {
     this.subtitle,
     required this.child,
     required this.legacyTopExtent,
+    this.contentTopInset = 0,
   });
 
   @override
@@ -32,25 +34,28 @@ class AminaLegacyPageHeaderBridge extends StatelessWidget {
         children: [
           AminaMobilePageHeader(title: title, subtitle: subtitle),
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final bridgedHeight = constraints.maxHeight + legacyTopExtent;
-                return ClipRect(
-                  child: OverflowBox(
-                    alignment: Alignment.topCenter,
-                    minHeight: bridgedHeight,
-                    maxHeight: bridgedHeight,
-                    child: Transform.translate(
-                      offset: Offset(0, -legacyTopExtent),
-                      child: SizedBox(
-                        height: bridgedHeight,
-                        width: constraints.maxWidth,
-                        child: child,
+            child: Padding(
+              padding: EdgeInsets.only(top: contentTopInset),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final bridgedHeight = constraints.maxHeight + legacyTopExtent;
+                  return ClipRect(
+                    child: OverflowBox(
+                      alignment: Alignment.topCenter,
+                      minHeight: bridgedHeight,
+                      maxHeight: bridgedHeight,
+                      child: Transform.translate(
+                        offset: Offset(0, -legacyTopExtent),
+                        child: SizedBox(
+                          height: bridgedHeight,
+                          width: constraints.maxWidth,
+                          child: child,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ],
