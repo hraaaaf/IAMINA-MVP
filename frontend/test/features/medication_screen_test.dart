@@ -23,6 +23,22 @@ void _narrow(WidgetTester tester) {
   addTearDown(tester.view.resetPhysicalSize);
 }
 
+Future<void> _disposeScreen(WidgetTester tester) async {
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump();
+}
+
+Future<List<MedicationEventData>> _items(AppDatabase db) {
+  return db.select(db.medicationEvents).get();
+}
+
+Future<void> _tapSave(WidgetTester tester) async {
+  final save = find.byKey(const Key('save-medication-event'));
+  await tester.ensureVisible(save);
+  await tester.tap(save);
+  await tester.pump();
+}
+
 void main() {
   late AppDatabase db;
 
@@ -55,6 +71,8 @@ void main() {
           .onPressed,
       isNotNull,
     );
+
+    await _disposeScreen(tester);
   });
 
   testWidgets('rejects an invalid or non-positive entered dose', (tester) async {
@@ -70,11 +88,12 @@ void main() {
       find.byKey(const Key('medication-dose-input')),
       '-2',
     );
-    await tester.tap(find.byKey(const Key('save-medication-event')));
-    await tester.pump();
+    await _tapSave(tester);
 
     expect(find.text('Saisissez une dose positive valide.'), findsOneWidget);
-    expect(await db.watchMedicationEvents().first, isEmpty);
+    expect(await _items(db), isEmpty);
+
+    await _disposeScreen(tester);
   });
 
   testWidgets('rejects an orphan unit when no dose was entered', (tester) async {
@@ -87,11 +106,12 @@ void main() {
       'Metformine',
     );
     await tester.enterText(find.byKey(const Key('medication-unit-input')), 'mg');
-    await tester.tap(find.byKey(const Key('save-medication-event')));
-    await tester.pump();
+    await _tapSave(tester);
 
     expect(find.text('Ajoutez la dose ou effacez l’unité.'), findsOneWidget);
-    expect(await db.watchMedicationEvents().first, isEmpty);
+    expect(await _items(db), isEmpty);
+
+    await _disposeScreen(tester);
   });
 
   testWidgets('persists a factual decimal dose without recommending one', (
@@ -107,15 +127,17 @@ void main() {
     );
     await tester.enterText(find.byKey(const Key('medication-dose-input')), '4,5');
     await tester.enterText(find.byKey(const Key('medication-unit-input')), 'U');
-    await tester.tap(find.byKey(const Key('save-medication-event')));
+    await _tapSave(tester);
     await tester.pumpAndSettle();
 
-    final items = await db.watchMedicationEvents().first;
+    final items = await _items(db);
     expect(items, hasLength(1));
     expect(items.single.label, 'Insuline rapide');
     expect(items.single.dose, 4.5);
     expect(items.single.unit, 'U');
     expect(find.text('IAmina ne recommande ni médicament ni dose.'), findsOneWidget);
+
+    await _disposeScreen(tester);
   });
 
   testWidgets('requires confirmation before deleting a recorded intake', (
@@ -132,21 +154,26 @@ void main() {
     await tester.pumpWidget(_screen(db));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(Key('delete-medication-event-$id')));
+    final delete = find.byKey(Key('delete-medication-event-$id'));
+    await tester.ensureVisible(delete);
+    await tester.tap(delete);
     await tester.pumpAndSettle();
 
     expect(find.text('Supprimer cette prise ?'), findsOneWidget);
-    expect(await db.watchMedicationEvents().first, hasLength(1));
+    expect(await _items(db), hasLength(1));
 
     await tester.tap(find.text('Annuler'));
     await tester.pumpAndSettle();
-    expect(await db.watchMedicationEvents().first, hasLength(1));
+    expect(await _items(db), hasLength(1));
 
-    await tester.tap(find.byKey(Key('delete-medication-event-$id')));
+    await tester.ensureVisible(delete);
+    await tester.tap(delete);
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Supprimer'));
     await tester.pumpAndSettle();
 
-    expect(await db.watchMedicationEvents().first, isEmpty);
+    expect(await _items(db), isEmpty);
+
+    await _disposeScreen(tester);
   });
 }
