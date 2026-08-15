@@ -27,6 +27,9 @@ class _MedicationScreenState extends State<MedicationScreen> {
   final _unit = TextEditingController();
   DateTime _takenAt = DateTime.now();
   bool _saving = false;
+  String? _nameError;
+  String? _doseError;
+  String? _unitError;
 
   @override
   void dispose() {
@@ -36,15 +39,63 @@ class _MedicationScreenState extends State<MedicationScreen> {
     super.dispose();
   }
 
-  Future<void> _save() async {
+  double? _parseDose(String raw) {
+    if (raw.isEmpty) return null;
+    final parsed = double.tryParse(raw.replaceAll(',', '.'));
+    if (parsed == null || !parsed.isFinite || parsed <= 0) return null;
+    return parsed;
+  }
+
+  bool _validate() {
     final label = _name.text.trim();
-    if (label.isEmpty || _saving) return;
+    final rawDose = _dose.text.trim();
+    final rawUnit = _unit.text.trim();
+    final parsedDose = _parseDose(rawDose);
+
+    final nameError = label.isEmpty
+        ? _mt(
+            context,
+            'Indiquez le traitement réellement pris.',
+            'Enter the treatment you actually took.',
+            'أدخل العلاج الذي تناولته فعلاً.',
+          )
+        : null;
+    final doseError = rawDose.isNotEmpty && parsedDose == null
+        ? _mt(
+            context,
+            'Saisissez une dose positive valide.',
+            'Enter a valid positive dose.',
+            'أدخل جرعة موجبة وصحيحة.',
+          )
+        : null;
+    final unitError = rawUnit.isNotEmpty && rawDose.isEmpty
+        ? _mt(
+            context,
+            'Ajoutez la dose ou effacez l’unité.',
+            'Add the dose or clear the unit.',
+            'أدخل الجرعة أو امسح الوحدة.',
+          )
+        : null;
+
+    setState(() {
+      _nameError = nameError;
+      _doseError = doseError;
+      _unitError = unitError;
+    });
+    return nameError == null && doseError == null && unitError == null;
+  }
+
+  Future<void> _save() async {
+    if (_saving || !_validate()) return;
+
+    final label = _name.text.trim();
+    final rawDose = _dose.text.trim();
     final db = context.read<AppDatabase>();
     setState(() => _saving = true);
     try {
       await db.addMedicationEvent(
         label: label,
-        dose: double.tryParse(_dose.text.trim().replaceAll(',', '.')),
+        dose: _parseDose(rawDose),
         unit: _unit.text,
         takenAt: _takenAt,
       );
@@ -55,10 +106,48 @@ class _MedicationScreenState extends State<MedicationScreen> {
       setState(() {
         _takenAt = DateTime.now();
         _saving = false;
+        _nameError = null;
+        _doseError = null;
+        _unitError = null;
       });
     } finally {
       if (mounted && _saving) setState(() => _saving = false);
     }
+  }
+
+  Future<void> _deleteMedicationEvent(AppDatabase db, int id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          _mt(
+            context,
+            'Supprimer cette prise ?',
+            'Delete this intake?',
+            'حذف هذه الجرعة المسجلة؟',
+          ),
+        ),
+        content: Text(
+          _mt(
+            context,
+            'Cette action retire uniquement cet enregistrement du journal.',
+            'This only removes this recorded intake from the journal.',
+            'سيؤدي هذا إلى حذف هذا التسجيل فقط من السجل.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(_mt(context, 'Annuler', 'Cancel', 'إلغاء')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(_mt(context, 'Supprimer', 'Delete', 'حذف')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await db.deleteMedicationEvent(id);
   }
 
   @override
@@ -155,6 +244,11 @@ class _MedicationScreenState extends State<MedicationScreen> {
                             TextField(
                               key: const Key('medication-name-input'),
                               controller: _name,
+                              onChanged: (_) {
+                                if (_nameError != null || mounted) {
+                                  setState(() => _nameError = null);
+                                }
+                              },
                               decoration: InputDecoration(
                                 labelText: _mt(
                                   context,
@@ -162,14 +256,25 @@ class _MedicationScreenState extends State<MedicationScreen> {
                                   'Treatment name',
                                   'اسم العلاج',
                                 ),
+                                errorText: _nameError,
                               ),
                             ),
                             const SizedBox(height: 12),
                             Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
                                   child: TextField(
+                                    key: const Key('medication-dose-input'),
                                     controller: _dose,
+                                    onChanged: (_) {
+                                      if (_doseError != null || _unitError != null) {
+                                        setState(() {
+                                          _doseError = null;
+                                          _unitError = null;
+                                        });
+                                      }
+                                    },
                                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                     decoration: InputDecoration(
                                       labelText: _mt(
@@ -178,15 +283,23 @@ class _MedicationScreenState extends State<MedicationScreen> {
                                         'Dose (optional)',
                                         'الجرعة (اختياري)',
                                       ),
+                                      errorText: _doseError,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: TextField(
+                                    key: const Key('medication-unit-input'),
                                     controller: _unit,
+                                    onChanged: (_) {
+                                      if (_unitError != null) {
+                                        setState(() => _unitError = null);
+                                      }
+                                    },
                                     decoration: InputDecoration(
                                       labelText: _mt(context, 'Unité', 'Unit', 'الوحدة'),
+                                      errorText: _unitError,
                                     ),
                                   ),
                                 ),
@@ -236,7 +349,9 @@ class _MedicationScreenState extends State<MedicationScreen> {
                               height: 48,
                               child: FilledButton.icon(
                                 key: const Key('save-medication-event'),
-                                onPressed: _saving ? null : _save,
+                                onPressed: _saving || _name.text.trim().isEmpty
+                                    ? null
+                                    : _save,
                                 icon: const Icon(Icons.check_rounded),
                                 label: Text(
                                   _mt(
@@ -303,9 +418,10 @@ class _MedicationScreenState extends State<MedicationScreen> {
                                   title: Text('${item.label}$dose'),
                                   subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(item.takenAt)),
                                   trailing: IconButton(
+                                    key: Key('delete-medication-event-${item.id}'),
                                     tooltip: _mt(context, 'Supprimer', 'Delete', 'حذف'),
                                     icon: const Icon(Icons.delete_outline_rounded),
-                                    onPressed: () => db.deleteMedicationEvent(item.id),
+                                    onPressed: () => _deleteMedicationEvent(db, item.id),
                                   ),
                                 ),
                               );
