@@ -20,8 +20,6 @@ class DashboardPremiumScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final db = context.read<AppDatabase>();
-    final now = DateTime.now();
-    final start = now.subtract(const Duration(days: 21));
 
     return StreamBuilder<PatientProfileData?>(
       stream: db.watchProfile(),
@@ -32,7 +30,7 @@ class DashboardPremiumScreen extends StatelessWidget {
         final high = profile?.targetRangeHigh ?? 180.0;
 
         return StreamBuilder<List<LogEntryData>>(
-          stream: db.watchLogsInRange(start, now),
+          stream: db.watchRecentLogs(limit: 1),
           builder: (context, logsSnap) {
             if (profileSnap.hasError || logsSnap.hasError) {
               return _PremiumState(
@@ -493,23 +491,87 @@ class _TrustCard extends StatelessWidget {
                   ? _t(
                       context,
                       'Vos données restent interprétées dans des limites cliniques gouvernées. IAmina n’invente pas ce qui manque.',
-                      'Your data stays within governed clinical boundaries. IAmina does not invent what is missing.',
-                      'تبقى بياناتك ضمن حدود سريرية محكومة. لا تخترع IAmina ما هو مفقود.',
+                      'Your data stays within governed clinical boundaries. IAmina does not invent missing information.',
+                      'تبقى بياناتك ضمن حدود سريرية محكومة. ولا يخترع IAmina معلومات غير موجودة.',
                     )
                   : _t(
                       context,
-                      'Ajoutez une première mesure pour commencer. IAmina n’affiche aucune valeur fictive.',
-                      'Add your first reading to begin. IAmina never displays fabricated values.',
-                      'أضف قياسك الأول للبدء. لا تعرض IAmina قيماً مختلقة.',
+                      'Commencez par une mesure réelle. IAmina affichera uniquement ce que vous avez enregistré.',
+                      'Start with a real reading. IAmina will display only what you record.',
+                      'ابدأ بقياس حقيقي. سيعرض IAmina فقط ما قمت بتسجيله.',
                     ),
               style: TextStyle(
                 fontSize: 12.5,
                 height: 1.45,
-                color: AminaVisualLanguage.secondary(context),
+                fontWeight: FontWeight.w600,
+                color: AminaVisualLanguage.primaryText(context),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PremiumState extends StatelessWidget {
+  final IconData? icon;
+  final bool loading;
+  final String title;
+  final String body;
+
+  const _PremiumState({
+    this.icon,
+    this.loading = false,
+    required this.title,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AminaTheme.isDark(context)
+          ? AminaTheme.bg(context)
+          : const Color(0xFFF4FBF9),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (loading)
+                  const SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(strokeWidth: 2.6),
+                  )
+                else
+                  Icon(icon ?? Icons.info_outline, size: 34, color: AminaVisualLanguage.actionGreen),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AminaVisualLanguage.primaryText(context),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  body,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: AminaVisualLanguage.secondary(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -521,115 +583,13 @@ class _AmbientBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (AminaTheme.isDark(context)) return const SizedBox.shrink();
-    return IgnorePointer(
-      child: Stack(
-        children: [
-          PositionedDirectional(
-            top: -120,
-            end: -90,
-            child: Container(
-              width: 280,
-              height: 280,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AminaVisualLanguage.mintWaveLight.withValues(alpha: .72),
-              ),
-            ),
-          ),
-          PositionedDirectional(
-            bottom: -150,
-            start: -80,
-            child: Container(
-              width: 330,
-              height: 250,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(180),
-                color: AminaVisualLanguage.mintWaveStrong.withValues(alpha: .45),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PremiumState extends StatelessWidget {
-  final bool loading;
-  final IconData? icon;
-  final String title;
-  final String body;
-
-  const _PremiumState({
-    this.loading = false,
-    this.icon,
-    required this.title,
-    required this.body,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AminaTheme.isDark(context)
-          ? AminaTheme.bg(context)
-          : const Color(0xFFF4FBF9),
-      body: Stack(
-        children: [
-          const Positioned.fill(child: _AmbientBackground()),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                children: [
-                  const _PremiumBrandHeader(),
-                  const Spacer(),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(26),
-                    decoration: AminaVisualLanguage.cardDecoration(context),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (loading)
-                          const CircularProgressIndicator()
-                        else
-                          Container(
-                            width: 52,
-                            height: 52,
-                            decoration: AminaVisualLanguage.mintIconDecoration(context),
-                            child: Icon(
-                              icon ?? Icons.info_outline_rounded,
-                              color: AminaVisualLanguage.actionGreen,
-                            ),
-                          ),
-                        const SizedBox(height: 18),
-                        Text(
-                          title,
-                          style: TextStyle(
-                            fontFamily: 'Georgia',
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: AminaVisualLanguage.primaryText(context),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          body,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            height: 1.45,
-                            color: AminaVisualLanguage.secondary(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(flex: 2),
-                ],
-              ),
-            ),
-          ),
-        ],
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFF8FCFB), Color(0xFFF1F8F6)],
+        ),
       ),
     );
   }
