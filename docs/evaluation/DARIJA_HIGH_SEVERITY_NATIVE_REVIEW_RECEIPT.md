@@ -77,6 +77,23 @@ Accepted exact variant:
 Rejected exact variant:
 - ma kan7ml
 
+## Gate 5/6 — Dizziness variants
+
+User native-language decision: all proposed runtime variants A-D rejected for the intended meaning.
+
+Rejected exact variants:
+- dwakht
+- dayakht
+- dwekh
+- dawkhani
+
+Native replacement candidate proposed by the user, preserved exactly as supplied:
+- Ddokha
+
+Notes:
+- `Ddokha` is native-language evidence only and is not normalized, case-folded, transliterated further or promoted in this review lot.
+- any future runtime promotion/remediation requires separate deterministic tests plus clinical and safety-owner/restricted review.
+
 Governance boundary:
 - this receipt records native-language evidence only;
 - it does not provide clinical approval, safety-owner approval, parity approval or runtime authorization;
