@@ -78,7 +78,10 @@ void main() {
         find.byKey(const Key('edit-insulin-taken-input')),
         '',
       );
-      await tester.tap(find.byKey(const Key('save-edit-log-button')));
+      final save = find.byKey(const Key('save-edit-log-button'));
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
       await tester.pumpAndSettle();
 
       final log = await db.getLogById(id);
@@ -112,7 +115,10 @@ void main() {
         find.byKey(const Key('edit-insulin-taken-input')),
         '4.75',
       );
-      await tester.tap(find.byKey(const Key('save-edit-log-button')));
+      final save = find.byKey(const Key('save-edit-log-button'));
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
       await tester.pumpAndSettle();
       expect((await db.getLogById(id))!.insulinUnits, 4.75);
     },
