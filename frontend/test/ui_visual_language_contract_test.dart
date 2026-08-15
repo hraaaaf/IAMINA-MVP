@@ -40,7 +40,7 @@ void main() {
     }
   });
 
-  test('active premium patient surfaces use the certified brand asset', () {
+  test('active premium patient surfaces use one canonical mobile chrome', () {
     const logo = "assets/images/logo_amina.png";
     final dashboardEntry = _read(
       'lib/features/dashboard/dashboard_companion_entry_screen.dart',
@@ -52,7 +52,7 @@ void main() {
       'lib/features/companion/companion_premium_screen.dart',
     );
     final header = _read('lib/core/widgets/mobile_page_header.dart');
-    final overlay = _read('lib/core/widgets/premium_task_brand_overlay.dart');
+    final bridge = _read('lib/core/widgets/legacy_page_header_bridge.dart');
     final addLog = _read('lib/features/journal/add_log_screen.dart');
     final documentImport = _read(
       'lib/features/documents/document_import_premium_screen.dart',
@@ -65,9 +65,14 @@ void main() {
     expect(dashboard, contains(logo));
     expect(companion, contains(logo));
     expect(header, contains(logo));
-    expect(overlay, contains(logo));
-    expect(addLog, contains('PremiumTaskBrandOverlay'));
-    expect(documentImport, contains('PremiumTaskBrandOverlay'));
+    expect(header, contains('width: 64'));
+    expect(header, contains('height: 64'));
+    expect(header, contains('minHeight: 96'));
+    expect(bridge, contains('AminaMobilePageHeader'));
+    expect(addLog, contains('AminaLegacyPageHeaderBridge'));
+    expect(documentImport, contains('AminaLegacyPageHeaderBridge'));
+    expect(addLog, isNot(contains('PremiumTaskBrandOverlay')));
+    expect(documentImport, isNot(contains('PremiumTaskBrandOverlay')));
     expect(module, contains('CompanionPremiumScreen'));
     expect(module, contains('DocumentImportPremiumScreen'));
   });
