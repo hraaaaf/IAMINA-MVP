@@ -1,7 +1,9 @@
-from pathlib import Path
 import json
+from pathlib import Path
 
-from core.triage_classification import glycemic_emergency_variant_inventory
+from core.triage_classification import (
+    glycemic_emergency_variant_inventory,
+)
 
 
 _PACKET = Path(__file__).parent / "fixtures" / "darija_high_severity_native_review_packet.json"
