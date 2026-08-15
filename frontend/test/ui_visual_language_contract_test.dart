@@ -69,8 +69,12 @@ void main() {
     expect(header, contains('height: 64'));
     expect(header, contains('minHeight: 96'));
     expect(header, contains('decoration: TextDecoration.none'));
+    expect(header, contains('if (bottom == null) return chrome'));
+    expect(header, contains('padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 14)'));
     expect(bridge, contains('AminaMobilePageHeader'));
+    expect(bridge, contains('contentTopInset'));
     expect(addLog, contains('AminaLegacyPageHeaderBridge'));
+    expect(addLog, contains('contentTopInset: 12'));
     expect(documentImport, contains('AminaLegacyPageHeaderBridge'));
     expect(addLog, isNot(contains('PremiumTaskBrandOverlay')));
     expect(documentImport, isNot(contains('PremiumTaskBrandOverlay')));

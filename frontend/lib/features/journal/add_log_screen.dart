@@ -32,6 +32,7 @@ class AddLogScreen extends StatelessWidget {
           'سجّل ببساطة ما حدث للتو.',
         ),
         legacyTopExtent: 82,
+        contentTopInset: 12,
         child: AddLogSheet(isPage: true, focus: focus),
       ),
     );
