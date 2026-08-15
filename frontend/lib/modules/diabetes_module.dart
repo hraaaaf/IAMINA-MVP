@@ -24,7 +24,6 @@ String _navText(AppLocalizations l, String fr, String en, String ar) {
 AddLogFocus _focusFromState(String? value) => switch (value) {
   'meal' => AddLogFocus.meal,
   'activity' => AddLogFocus.activity,
-  'insulin' => AddLogFocus.insulin,
   _ => AddLogFocus.none,
 };
 
@@ -79,8 +78,11 @@ final ModuleConfig diabetesModule = ModuleConfig(
     ),
     ModuleFullScreenRoute(
       path: '/ajouter',
-      builder: (s) =>
-          AddLogScreen(focus: _focusFromState(s.uri.queryParameters['focus'])),
+      builder: (s) => s.uri.queryParameters['focus'] == 'insulin'
+          ? const MedicationScreen()
+          : AddLogScreen(
+              focus: _focusFromState(s.uri.queryParameters['focus']),
+            ),
     ),
     ModuleFullScreenRoute(
       path: '/medications',
