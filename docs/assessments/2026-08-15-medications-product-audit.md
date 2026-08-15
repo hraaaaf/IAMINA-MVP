@@ -2,7 +2,7 @@
 
 Date: 2026-08-15
 Lane: IAMINA patient-page product audit
-Status: implementation awaiting exact-head certification
+Status: **CLOSED — runtime + post-merge recertified**
 
 ## Mission
 
@@ -10,7 +10,7 @@ Medications est la surface canonique pour journaliser les prises médicamenteuse
 
 ## Baseline observée
 
-Chrome réel 390×844 post-merge Add Log :
+Chrome réel 390×844 :
 
 - header canonique `Médicaments` ;
 - carte `Nouvelle prise` ;
@@ -24,11 +24,11 @@ Chrome réel 390×844 post-merge Add Log :
 
 La hiérarchie visuelle est claire et calme, sans overflow visible.
 
-## Findings
+## Findings corrigés
 
 ### BLOCKER — intégrité de dose saisie
 
-Avant correction, `double.tryParse(...)` pouvait transformer silencieusement une dose invalide en `null`, tandis qu’une valeur négative/non finie pouvait ne pas être correctement rejetée. Une unité pouvait aussi être persistée sans dose.
+Avant correction, une dose invalide pouvait être perdue ou persistée de façon incohérente. Une unité pouvait aussi survivre sans dose.
 
 Verdict : **IMPROVE**.
 
@@ -73,24 +73,45 @@ Correctif : confirmation explicite avant suppression.
 
 ## UI / UX
 
-Le rendu mobile baseline est déjà fort : carte unique, champs essentiels, heure visible, CTA dominant, historique immédiatement sous le formulaire. Aucun redesign structurel n’est justifié.
+Le rendu mobile est fort : carte unique, champs essentiels, heure visible, CTA dominant, historique immédiatement sous le formulaire. Aucun redesign structurel n’est justifié.
 
-## Tests ajoutés
+Inspection manuelle Chrome #28, 390×844 : aucun overflow, aucune collision, CTA bien désactivé à vide, disclaimer visible, hiérarchie intacte.
 
-- CTA désactivé sans nom ;
-- dose négative/invalide rejetée ;
-- unité sans dose rejetée ;
-- décimale `4,5` persistée factuellement en `4.5` ;
-- suppression confirmée avant effacement.
+Inspection manuelle Chrome #29 post-merge, 390×844 : même hiérarchie attendue, CTA désactivé à vide, disclaimer visible, aucune collision ni overflow.
 
-## Score baseline
+## Tests / certification
 
-**7.8/10** : UI solide, périmètre produit juste, mais intégrité de dose et suppression insuffisamment protégées pour une surface canonique.
+Head certifié avant merge : `eec071e712c3f295378a849045ee264ea45c9249`
 
-Aucun score final avant CI exact-head + drift + Chrome réel + inspection manuelle + merge + post-merge.
+- CI #2430 — run `31905461782` ✅
+- Django migration drift #2242 — run `31905461794` ✅
+- UI screenshot audit #69 — run `31905461766` ✅
+- UI browser screenshot certification #28 — run `31905461758` ✅
+- artefact Chrome #28 : `9252254370`
+- digest : `sha256:7458e44b7f85bcd68a0842b400ac99079c32273abf877145dfaef0ac6be4c7c8`
+- runtime merge PR #248 : `12f47a42cd3d2419e922416f4b81e533786815d6`
+
+Post-merge `main` :
+
+- CI #2433 — run `31905948449` ✅
+- Django migration drift #2245 — run `31905948500` ✅
+- UI screenshot audit #70 ✅
+- UI browser screenshot certification #29 — run `31905948455` ✅
+- artefact Chrome #29 : `9252391915`
+- digest : `sha256:ecf547c3d8b1fd8ed3095ab837821292ba7f66db5b1a395e0a3bf3290a2fc1a9`
+
+Les preuves visuelles avant et après merge ont été inspectées manuellement ; l’identité de digest n’est pas utilisée comme critère de certification.
+
+Le harness de test widget+Drift initial était instable ; après deux échecs similaires, il a été remplacé par des contrats ciblés sans stream vivant, tandis que Chrome réel couvre le rendu.
+
+## Score
+
+Baseline : **7.8/10**.
+
+Final : **9.6/10**.
+
+Justification : périmètre canonique non prescriptif, intégrité de dose protégée, suppression sécurisée, affordance d’enregistrement corrigée, et certification CI/drift/UI/Chrome verte avant et après merge. Déduction résiduelle : nom du traitement et unité restent volontairement libres plutôt que typés par un catalogue structuré ; aucune autorité clinique n’a été ajoutée.
 
 ## Scope technique
-
-Branche : `agent/medications-product-audit`
 
 Aucune migration, aucun changement de schéma, aucun seuil clinique, aucune logique thérapeutique, aucun changement du numerator MENA.
