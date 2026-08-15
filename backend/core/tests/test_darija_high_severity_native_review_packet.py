@@ -1,5 +1,5 @@
-import json
 from pathlib import Path
+import json
 
 from core.triage_classification import glycemic_emergency_variant_inventory
 
