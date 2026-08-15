@@ -67,6 +67,16 @@ Notes:
 - `kantr33d` is a new native candidate only; it is not silently substituted for `kanr3ed` / `kanr3ad` in this review lot.
 - any future runtime promotion/remediation must preserve the clinical/safety-owner/restricted review gates.
 
+## Gate 4/6 — Distress / intolerance wording
+
+User native-language decision: B accepted; A rejected.
+
+Accepted exact variant:
+- ma kan7mlch
+
+Rejected exact variant:
+- ma kan7ml
+
 Governance boundary:
 - this receipt records native-language evidence only;
 - it does not provide clinical approval, safety-owner approval, parity approval or runtime authorization;
