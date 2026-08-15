@@ -20,6 +20,28 @@ Rejected exact variants:
 - ghadi ntah
 - kantih
 
+## Gate 2/6 — Consciousness / cognition variants
+
+User native-language decision: all proposed runtime variants A-G rejected for this intended meaning.
+
+Rejected exact variants:
+- fqad l3ql
+- fqdt l3ql
+- fqedt l3a9l
+- f9edt l3a9l
+- f9dt l3ql
+- غادي نغمى عليا
+- غادي يغمى عليا
+
+Native replacement candidates proposed by the user:
+- ghadi nskhef
+- ghadi nti7
+- غادي نسخف
+
+Notes:
+- `ghadi nti7` was already accepted in Gate 1 for fall/presyncope wording; it must not be silently reinterpreted as an exact synonym for loss of consciousness.
+- `ghadi nskhef` and `غادي نسخف` are new native candidates only. They are not runtime-authorized by this receipt and require a separate remediation/promotion lot with clinical and safety-owner review before any runtime change.
+
 Governance boundary:
 - this receipt records native-language evidence only;
 - it does not provide clinical approval, safety-owner approval, parity approval or runtime authorization;
