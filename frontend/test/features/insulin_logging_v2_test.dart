@@ -1,5 +1,4 @@
 import 'package:amina/data/drift/database.dart';
-import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
 import 'package:amina/features/journal/edit_log_screen.dart';
 import 'package:amina/features/journal/widgets/insulin_logging.dart';
 import 'package:amina/l10n/app_localizations.dart';
@@ -44,56 +43,7 @@ void main() {
   });
 
   testWidgets(
-    'add log persists an actual decimal dose and never offers presets',
-    (tester) async {
-      final db = _db();
-      addTearDown(db.close);
-      tester.view.physicalSize = const Size(1440, 1000);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-
-      await tester.pumpWidget(_providers(db, const AddLogSheet()));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byKey(const Key('glucose-input')), '126');
-      await tester.enterText(
-        find.byKey(const Key('insulin-taken-input')),
-        '4,5',
-      );
-      expect(find.textContaining('Dose standard'), findsNothing);
-      expect(find.textContaining('Dose critique'), findsNothing);
-      await tester.tap(find.text('Enregistrer la mesure'));
-      await tester.pumpAndSettle();
-
-      final logs = await db.select(db.logEntries).get();
-      expect(logs, hasLength(1));
-      expect(logs.single.insulinUnits, 4.5);
-    },
-  );
-
-  testWidgets('zero is not persisted as an administered insulin dose', (
-    tester,
-  ) async {
-    final db = _db();
-    addTearDown(db.close);
-    tester.view.physicalSize = const Size(1440, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-
-    await tester.pumpWidget(_providers(db, const AddLogSheet()));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('glucose-input')), '126');
-    await tester.enterText(find.byKey(const Key('insulin-taken-input')), '0');
-    await tester.tap(find.text('Enregistrer la mesure'));
-    await tester.pumpAndSettle();
-    expect(await db.select(db.logEntries).get(), isEmpty);
-    expect(
-      find.text('La dose d’insuline saisie n’est pas valide.'),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets(
-    'edit clears insulin without rewriting meal context or Ramadan legacy state',
+    'edit clears historical insulin without rewriting meal context or Ramadan legacy state',
     (tester) async {
       final db = _db();
       addTearDown(db.close);
@@ -128,7 +78,10 @@ void main() {
         find.byKey(const Key('edit-insulin-taken-input')),
         '',
       );
-      await tester.tap(find.byKey(const Key('save-edit-log-button')));
+      final save = find.byKey(const Key('save-edit-log-button'));
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
       await tester.pumpAndSettle();
 
       final log = await db.getLogById(id);
@@ -162,7 +115,10 @@ void main() {
         find.byKey(const Key('edit-insulin-taken-input')),
         '4.75',
       );
-      await tester.tap(find.byKey(const Key('save-edit-log-button')));
+      final save = find.byKey(const Key('save-edit-log-button'));
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
       await tester.pumpAndSettle();
       expect((await db.getLogById(id))!.insulinUnits, 4.75);
     },

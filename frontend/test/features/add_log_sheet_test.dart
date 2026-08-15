@@ -43,7 +43,7 @@ void main() {
   setUp(() => db = _openDb());
   tearDown(() async => db.close());
 
-  group('P0-JOURNAL-2 express metabolic event', () {
+  group('Add Log focused glucose journal', () {
     test('keeps hypoglycemia safety boundaries deterministic', () {
       expect(classifyGlucoseEntrySafety(53), GlucoseEntrySafety.level2Low);
       expect(classifyGlucoseEntrySafety(54), GlucoseEntrySafety.level1Low);
@@ -51,7 +51,7 @@ void main() {
       expect(classifyGlucoseEntrySafety(70), GlucoseEntrySafety.nonLow);
     });
 
-    testWidgets('starts blank and does not assume a measurement context', (
+    testWidgets('starts blank with save disabled and no inferred context', (
       tester,
     ) async {
       _narrow(tester);
@@ -66,7 +66,6 @@ void main() {
         find.text('Aucune valeur n’est supposée avant ta saisie.'),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('glycemic-context-fasting')), findsOneWidget);
       expect(
         tester
             .widget<ChoiceChip>(
@@ -75,9 +74,27 @@ void main() {
             .selected,
         isFalse,
       );
+      expect(
+        tester.widget<FilledButton>(find.byKey(const Key('save-log-button'))).onPressed,
+        isNull,
+      );
     });
 
-    testWidgets('separates measurement context from optional meal taxonomy', (
+    testWidgets('enables save only after a valid glucose value', (tester) async {
+      _narrow(tester);
+      await tester.pumpWidget(_sheet(db));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('glucose-input')), '126');
+      await tester.pump();
+
+      expect(
+        tester.widget<FilledButton>(find.byKey(const Key('save-log-button'))).onPressed,
+        isNotNull,
+      );
+    });
+
+    testWidgets('keeps meal and measurement context separate and optional', (
       tester,
     ) async {
       _narrow(tester);
@@ -86,7 +103,6 @@ void main() {
 
       expect(find.text('CONTEXTE DE LA MESURE'), findsOneWidget);
       expect(find.byKey(const Key('add-meal-button')), findsOneWidget);
-      expect(find.text('Sport'), findsNothing);
       expect(find.byKey(const Key('meal-section')), findsNothing);
 
       await tester.tap(find.byKey(const Key('add-meal-button')));
@@ -97,10 +113,9 @@ void main() {
       expect(find.byKey(const Key('meal-type-lunch')), findsOneWidget);
       expect(find.byKey(const Key('meal-type-dinner')), findsOneWidget);
       expect(find.byKey(const Key('meal-type-snack')), findsOneWidget);
-      expect(find.text('Sport'), findsNothing);
     });
 
-    testWidgets('mobile keeps secondary details out of the primary path', (
+    testWidgets('mobile hides rare details and never exposes insulin intake', (
       tester,
     ) async {
       _narrow(tester);
@@ -110,60 +125,85 @@ void main() {
       expect(find.byKey(const Key('journal-details-button')), findsOneWidget);
       expect(find.byKey(const Key('journal-details-card')), findsNothing);
       expect(find.byKey(const Key('insulin-taken-input')), findsNothing);
+      expect(find.textContaining('insuline prise', findRichText: true), findsNothing);
 
       await tester.tap(find.byKey(const Key('journal-details-button')));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('journal-details-card')), findsOneWidget);
-      expect(find.byKey(const Key('insulin-taken-input')), findsOneWidget);
+      expect(find.byKey(const Key('insulin-taken-input')), findsNothing);
+      expect(find.byKey(const Key('journal-context-button')), findsOneWidget);
     });
 
-    testWidgets(
-      'desktop composes primary event and optional details side by side',
-      (tester) async {
-        _wide(tester);
-        await tester.pumpWidget(_sheet(db));
-        await tester.pumpAndSettle();
-
-        expect(find.byKey(const Key('journal-details-button')), findsNothing);
-        expect(find.byKey(const Key('journal-details-card')), findsOneWidget);
-        expect(find.byKey(const Key('glucose-input')), findsOneWidget);
-        expect(find.byKey(const Key('add-meal-button')), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'persists context and meal independently with no insulin default',
-      (tester) async {
-        _narrow(tester);
-        await tester.pumpWidget(_sheet(db));
-        await tester.pumpAndSettle();
-
-        await tester.enterText(find.byKey(const Key('glucose-input')), '126');
-        await tester.tap(find.byKey(const Key('glycemic-context-pre_meal')));
-        await tester.tap(find.byKey(const Key('add-meal-button')));
-        await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const Key('meal-type-lunch')));
-        await tester.enterText(
-          find.byKey(const Key('meal-note-input')),
-          'Salade et pain',
-        );
-        await tester.tap(find.text('Enregistrer la mesure'));
-        await tester.pumpAndSettle();
-
-        final logs = await db.select(db.logEntries).get();
-        expect(logs, hasLength(1));
-        expect(logs.single.bloodSugar, 126);
-        expect(logs.single.glycemicContext, 'pre_meal');
-        expect(logs.single.mealType, 'lunch');
-        expect(logs.single.mealDescription, 'Salade et pain');
-        expect(logs.single.insulinUnits, isNull);
-      },
-    );
-
-    testWidgets('Arabic is real localized RTL content, not mirrored French', (
+    testWidgets('desktop keeps primary event and optional context side by side', (
       tester,
     ) async {
+      _wide(tester);
+      await tester.pumpWidget(_sheet(db));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('journal-details-button')), findsNothing);
+      expect(find.byKey(const Key('journal-details-card')), findsOneWidget);
+      expect(find.byKey(const Key('glucose-input')), findsOneWidget);
+      expect(find.byKey(const Key('add-meal-button')), findsOneWidget);
+      expect(find.byKey(const Key('insulin-taken-input')), findsNothing);
+    });
+
+    testWidgets('persists glucose context and meal with insulin always null', (
+      tester,
+    ) async {
+      _narrow(tester);
+      await tester.pumpWidget(_sheet(db));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('glucose-input')), '126');
+      await tester.tap(find.byKey(const Key('glycemic-context-pre_meal')));
+      await tester.tap(find.byKey(const Key('add-meal-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('meal-type-lunch')));
+      await tester.enterText(
+        find.byKey(const Key('meal-note-input')),
+        'Salade et pain',
+      );
+      await tester.tap(find.byKey(const Key('save-log-button')));
+      await tester.pumpAndSettle();
+
+      final logs = await db.select(db.logEntries).get();
+      expect(logs, hasLength(1));
+      expect(logs.single.bloodSugar, 126);
+      expect(logs.single.glycemicContext, 'pre_meal');
+      expect(logs.single.mealType, 'lunch');
+      expect(logs.single.mealDescription, 'Salade et pain');
+      expect(logs.single.insulinUnits, isNull);
+    });
+
+    testWidgets('additional context remains factual and optional', (tester) async {
+      _narrow(tester);
+      await tester.pumpWidget(_sheet(db));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('glucose-input')), '126');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('journal-details-button')));
+      await tester.pumpAndSettle();
+      final contextButton = find.byKey(const Key('journal-context-button'));
+      await tester.ensureVisible(contextButton);
+      await tester.pumpAndSettle();
+      await tester.tap(contextButton);
+      await tester.pumpAndSettle();
+      final stressChip = find.byKey(const Key('context-stress'));
+      await tester.ensureVisible(stressChip);
+      await tester.pumpAndSettle();
+      await tester.tap(stressChip);
+      await tester.tap(find.byKey(const Key('save-log-button')));
+      await tester.pumpAndSettle();
+
+      final logs = await db.select(db.logEntries).get();
+      expect(logs.single.isStressed, isTrue);
+      expect(logs.single.insulinUnits, isNull);
+    });
+
+    testWidgets('Arabic remains real localized RTL content', (tester) async {
       _narrow(tester);
       await tester.pumpWidget(_sheet(db, locale: const Locale('ar')));
       await tester.pumpAndSettle();
@@ -178,7 +218,7 @@ void main() {
       );
     });
 
-    testWidgets('does not expose fabricated nutrition or dose judgement', (
+    testWidgets('does not expose fabricated nutrition or treatment judgement', (
       tester,
     ) async {
       _wide(tester);
@@ -186,108 +226,67 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('IG 35'), findsNothing);
-      expect(find.textContaining('g glucides'), findsNothing);
-      expect(find.textContaining('Impact'), findsNothing);
       expect(find.textContaining('Dose standard'), findsNothing);
       expect(find.textContaining('Dose critique'), findsNothing);
       expect(find.textContaining('Analyse IAmina'), findsNothing);
-      expect(find.textContaining('g glucides'), findsNothing);
+      expect(find.byKey(const Key('insulin-taken-input')), findsNothing);
     });
   });
 
-  group('P2-JOURNAL-9 post-save experience', () {
-    testWidgets(
-      'successful save shows a factual local receipt and resets the next draft',
-      (tester) async {
-        _narrow(tester);
-        await tester.pumpWidget(_sheet(db));
-        await tester.pumpAndSettle();
-
-        await tester.enterText(find.byKey(const Key('glucose-input')), '126');
-        await tester.tap(find.byKey(const Key('glycemic-context-post_meal')));
-        await tester.tap(find.byKey(const Key('add-meal-button')));
-        await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const Key('meal-type-lunch')));
-
-        final detailsButton = find.byKey(const Key('journal-details-button'));
-        await tester.ensureVisible(detailsButton);
-        await tester.pumpAndSettle();
-        await tester.tap(detailsButton);
-        await tester.pumpAndSettle();
-
-        final insulinInput = find.byKey(const Key('insulin-taken-input'));
-        await tester.ensureVisible(insulinInput);
-        await tester.pumpAndSettle();
-        await tester.enterText(insulinInput, '2.5');
-
-        final contextButton = find.byKey(const Key('journal-context-button'));
-        await tester.ensureVisible(contextButton);
-        await tester.pumpAndSettle();
-        await tester.tap(contextButton);
-        await tester.pumpAndSettle();
-        final stressChip = find.byKey(const Key('context-stress'));
-        await tester.ensureVisible(stressChip);
-        await tester.pumpAndSettle();
-        await tester.tap(stressChip);
-
-        await tester.tap(find.text('Enregistrer la mesure'));
-        await tester.pumpAndSettle();
-
-        final logs = await db.select(db.logEntries).get();
-        expect(logs, hasLength(1));
-        expect(logs.single.bloodSugar, 126);
-        expect(logs.single.glycemicContext, 'post_meal');
-        expect(logs.single.mealType, 'lunch');
-        expect(logs.single.insulinUnits, 2.5);
-        expect(logs.single.isStressed, isTrue);
-
-        expect(find.byKey(const Key('post-save-receipt')), findsOneWidget);
-        expect(find.text('Enregistrée sur cet appareil.'), findsOneWidget);
-        expect(find.textContaining('126 mg/dL'), findsOneWidget);
-        expect(find.textContaining('Après repas'), findsOneWidget);
-        expect(find.textContaining('Déjeuner'), findsOneWidget);
-        expect(find.textContaining('2.5 U'), findsOneWidget);
-        expect(find.text('Stress inhabituel'), findsOneWidget);
-        expect(
-          find.textContaining('n’interprète pas la mesure'),
-          findsOneWidget,
-        );
-        expect(find.textContaining('dose recommandée'), findsNothing);
-        expect(find.textContaining('cause'), findsNothing);
-
-        final addAnother = find.byKey(const Key('post-save-add-another'));
-        await tester.ensureVisible(addAnother);
-        await tester.pumpAndSettle();
-        await tester.tap(addAnother);
-        await tester.pumpAndSettle();
-
-        expect(find.byKey(const Key('post-save-receipt')), findsNothing);
-        final glucose = tester.widget<TextField>(
-          find.byKey(const Key('glucose-input')),
-        );
-        expect(glucose.controller?.text, isEmpty);
-        expect(
-          tester
-              .widget<ChoiceChip>(
-                find.byKey(const Key('glycemic-context-post_meal')),
-              )
-              .selected,
-          isFalse,
-        );
-        expect(find.byKey(const Key('meal-section')), findsNothing);
-        expect(find.byKey(const Key('journal-details-card')), findsNothing);
-      },
-    );
-
-    testWidgets('Arabic receipt is localized RTL and remains factual', (
+  group('Add Log post-save receipt', () {
+    testWidgets('successful save shows factual receipt and resets next draft', (
       tester,
     ) async {
+      _narrow(tester);
+      await tester.pumpWidget(_sheet(db));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('glucose-input')), '126');
+      await tester.tap(find.byKey(const Key('glycemic-context-post_meal')));
+      await tester.tap(find.byKey(const Key('add-meal-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('meal-type-lunch')));
+      await tester.tap(find.byKey(const Key('save-log-button')));
+      await tester.pumpAndSettle();
+
+      final logs = await db.select(db.logEntries).get();
+      expect(logs, hasLength(1));
+      expect(logs.single.insulinUnits, isNull);
+
+      expect(find.byKey(const Key('post-save-receipt')), findsOneWidget);
+      expect(find.text('Enregistrée sur cet appareil.'), findsOneWidget);
+      expect(find.textContaining('126 mg/dL'), findsOneWidget);
+      expect(find.textContaining('Après repas'), findsOneWidget);
+      expect(find.textContaining('Déjeuner'), findsOneWidget);
+      expect(find.textContaining(' U'), findsNothing);
+      expect(
+        find.textContaining('n’interprète pas la mesure'),
+        findsOneWidget,
+      );
+
+      final addAnother = find.byKey(const Key('post-save-add-another'));
+      await tester.ensureVisible(addAnother);
+      await tester.pumpAndSettle();
+      await tester.tap(addAnother);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('post-save-receipt')), findsNothing);
+      final glucose = tester.widget<TextField>(
+        find.byKey(const Key('glucose-input')),
+      );
+      expect(glucose.controller?.text, isEmpty);
+      expect(find.byKey(const Key('meal-section')), findsNothing);
+      expect(find.byKey(const Key('journal-details-card')), findsNothing);
+    });
+
+    testWidgets('Arabic receipt is localized RTL and factual', (tester) async {
       _narrow(tester);
       await tester.pumpWidget(_sheet(db, locale: const Locale('ar')));
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(const Key('glucose-input')), '126');
-      await tester.tap(find.text('حفظ القياس'));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('save-log-button')));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('post-save-receipt')), findsOneWidget);
