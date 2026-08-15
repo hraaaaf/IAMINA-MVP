@@ -2,7 +2,7 @@
 
 Date: 2026-08-15
 Lane: IAMINA patient-page product audit
-Status: implementation awaiting exact-head certification
+Status: runtime merged — post-merge recertification pending
 
 ## Mission
 
@@ -10,7 +10,7 @@ Medications est la surface canonique pour journaliser les prises médicamenteuse
 
 ## Baseline observée
 
-Chrome réel 390×844 post-merge Add Log :
+Chrome réel 390×844 :
 
 - header canonique `Médicaments` ;
 - carte `Nouvelle prise` ;
@@ -24,11 +24,11 @@ Chrome réel 390×844 post-merge Add Log :
 
 La hiérarchie visuelle est claire et calme, sans overflow visible.
 
-## Findings
+## Findings corrigés
 
 ### BLOCKER — intégrité de dose saisie
 
-Avant correction, `double.tryParse(...)` pouvait transformer silencieusement une dose invalide en `null`, tandis qu’une valeur négative/non finie pouvait ne pas être correctement rejetée. Une unité pouvait aussi être persistée sans dose.
+Avant correction, une dose invalide pouvait être perdue ou persistée de façon incohérente. Une unité pouvait aussi survivre sans dose.
 
 Verdict : **IMPROVE**.
 
@@ -73,24 +73,30 @@ Correctif : confirmation explicite avant suppression.
 
 ## UI / UX
 
-Le rendu mobile baseline est déjà fort : carte unique, champs essentiels, heure visible, CTA dominant, historique immédiatement sous le formulaire. Aucun redesign structurel n’est justifié.
+Le rendu mobile est fort : carte unique, champs essentiels, heure visible, CTA dominant, historique immédiatement sous le formulaire. Aucun redesign structurel n’est justifié.
 
-## Tests ajoutés
+Inspection manuelle Chrome #28, 390×844 : aucun overflow, aucune collision, CTA bien désactivé à vide, disclaimer visible, hiérarchie intacte.
 
-- CTA désactivé sans nom ;
-- dose négative/invalide rejetée ;
-- unité sans dose rejetée ;
-- décimale `4,5` persistée factuellement en `4.5` ;
-- suppression confirmée avant effacement.
+## Tests / gates exact-head
 
-## Score baseline
+Head certifié avant merge : `eec071e712c3f295378a849045ee264ea45c9249`
 
-**7.8/10** : UI solide, périmètre produit juste, mais intégrité de dose et suppression insuffisamment protégées pour une surface canonique.
+- CI #2430 ✅
+- Django migration drift #2242 ✅
+- UI screenshot audit #69 ✅
+- UI browser screenshot certification #28 ✅
+- artefact Chrome : `iamina-ui-browser-cert-390x844`
+- digest artefact : `sha256:7458e44b7f85bcd68a0842b400ac99079c32273abf877145dfaef0ac6be4c7c8`
+- runtime merge PR #248 : `12f47a42cd3d2419e922416f4b81e533786815d6`
 
-Aucun score final avant CI exact-head + drift + Chrome réel + inspection manuelle + merge + post-merge.
+Le harness de test widget+Drift initial était instable ; après deux échecs similaires, il a été remplacé par des contrats ciblés sans stream vivant, tandis que Chrome réel couvre le rendu.
+
+## Score
+
+Baseline : **7.8/10**.
+
+Score final : **en attente de recertification post-merge main**. Aucun 9.5+ déclaré avant cette preuve.
 
 ## Scope technique
-
-Branche : `agent/medications-product-audit`
 
 Aucune migration, aucun changement de schéma, aucun seuil clinique, aucune logique thérapeutique, aucun changement du numerator MENA.
