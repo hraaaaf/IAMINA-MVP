@@ -3,7 +3,7 @@
 Date: 2026-08-15
 Baseline main: `8a2d42e3dd6e3787fe3d411d3c204afeb1208cac`
 Lane: IAMINA patient-page product audit
-Status: implementation awaiting exact-head certification
+Status: runtime merged; post-merge main recertification pending
 
 ## A. Mission actuelle
 
@@ -74,11 +74,13 @@ Le CTA est maintenant inactif tant que la glycémie n’est pas une valeur posit
 
 Le shell/header global certifié n’est pas redessiné. La glycémie reste le contrôle dominant. Repas et détails restent secondaires et progressifs.
 
-Aucun nouveau design parallèle n’est justifié.
+Capture Chrome réelle exact-head `14d4e9102a054a8c6f3702585e6bd39af31caa57` certifiée via Chrome #24. Artefact `iamina-ui-browser-cert-390x844`, ID `9250581070`, digest `sha256:f6b059b90d3e4faf74a0dfd779ef0f1990e9c6c948d6db0c8d403c66f6f02067`.
+
+L’inspection manuelle 390×844 confirme : hiérarchie propre, glycémie dominante, CTA désactivé à vide, détail simplifié « Détails : heure et contexte… », absence d’input insuline, aucun overflow/collision visible.
 
 ## H. Accessibilité
 
-Forces existantes :
+Forces certifiées :
 
 - clavier numérique pour glycémie ;
 - unité visible ;
@@ -86,9 +88,8 @@ Forces existantes :
 - actions tactiles dimensionnées ;
 - alerte basse avec texte, pas uniquement couleur ;
 - contenu arabe RTL réel ;
-- baseline Chrome 390×844 réelle disponible avant ce lot.
-
-La recertification Chrome post-changement reste obligatoire avant PASS.
+- UI screenshot audit #65 SUCCESS ;
+- Chrome réel #24 SUCCESS.
 
 ## I. Safety / truthfulness / intégrité
 
@@ -145,30 +146,33 @@ Pas de dose médicamenteuse et pas de prétention de journal générique.
 
 ### BLOCKER
 
-Double source d’insuline Add Log / Medications. **Résolu dans l’implémentation après human gate A.**
+Double source d’insuline Add Log / Medications. **Résolu.**
 
 ### HIGH VALUE
 
-- Save conditionné à une valeur valide.
-- Legacy insulin focus déplacé vers Medications.
+- Save conditionné à une valeur valide. **Résolu.**
+- Legacy insulin focus déplacé vers Medications. **Résolu.**
 
 ### MEDIUM
 
-- Conserver le disclosure progressif.
+- Conserver le disclosure progressif. **Conservé.**
 
 ### POLISH
 
-Aucun polish supplémentaire justifié avant comparaison Chrome réelle.
+Aucun polish supplémentaire requis par l’inspection Chrome.
 
 ## Q. Score actuel
 
 Score baseline avant implémentation : **7.9/10**.
 
-Aucun nouveau score final n’est attribué avant tests + capture Chrome + inspection manuelle exact-head.
+Score final interdit tant que la recertification post-merge de `main` n’est pas terminée. L’exact-head candidat a satisfait tous les gates pré-merge requis.
 
-## R. Implémentation
+## R. Implémentation et preuve pré-merge
 
-Branche : `agent/add-log-product-audit`
+Branche runtime : `agent/add-log-product-audit`
+PR runtime : #243
+Head exact certifié : `14d4e9102a054a8c6f3702585e6bd39af31caa57`
+Merge runtime : `78f9a7d26640a4fa734317ba52501c9b18a69055`
 
 Implémenté :
 
@@ -180,22 +184,25 @@ Implémenté :
 - tests ciblés mis à jour ;
 - contrat de routage legacy ajouté.
 
+Gates exact-head pré-merge :
+
+- CI #2408 — SUCCESS ;
+- Django migration drift #2220 — SUCCESS ;
+- UI screenshot audit #65 — SUCCESS ;
+- UI browser screenshot certification Chrome #24 — SUCCESS.
+
 Aucune migration, aucun seuil clinique, aucune logique de dose et aucun numerator MENA modifiés.
 
 ## S-Y. Certification restante
 
-Avant fermeture réelle :
+Reste avant fermeture réelle :
 
-1. analyse/tests Flutter exact-head ;
-2. capture Chrome réelle 390×844 ;
-3. comparaison avant/après manuelle ;
-4. gates CI exact-head pertinents ;
-5. scoring final fondé sur preuve ;
-6. merge avec expected-head ;
-7. vérification du vrai `main` post-merge.
+1. CI / drift / UI / Chrome post-merge sur le vrai `main` `78f9a7d26640a4fa734317ba52501c9b18a69055` ;
+2. score final fondé sur preuve ;
+3. closeout documentaire mergé.
 
 ## Z. Closeout documentaire
 
-Après merge : inspecter obligatoirement `docs/ROADMAP.md` et `docs/TECHDEBT.md` et ne les modifier que si la vérité forward a réellement changé. README/ARCHITECTURE/SPECS/MEDICAL_DATA_PLAN uniquement si leur vérité est affectée.
+`docs/ROADMAP.md` et `docs/TECHDEBT.md` ont été inspectés pendant le lot. Aucun changement de vérité forward ne justifie de modifier leur contenu à ce stade : le numerator MENA reste 32/41 et les dettes frontend ouvertes ne sont pas entièrement closes par Add Log.
 
-Le numerator MENA reste 32/41 tant qu’aucune tâche MENA numérotée n’est close ou reopened.
+README/ARCHITECTURE/SPECS/MEDICAL_DATA_PLAN : aucune vérité affectée justifiant une modification.
