@@ -30,4 +30,20 @@ void main() {
     );
     expect(source, contains('dashboardLatestKnownReading'));
   });
+
+  test('Dashboard target status fails closed without a configured profile', () {
+    final source = File(
+      'lib/features/dashboard/dashboard_premium_screen.dart',
+    ).readAsStringSync();
+    final localizedCopy = File(
+      'lib/core/localization/dashboard_localized_copy.dart',
+    ).readAsStringSync();
+
+    expect(source, isNot(contains('targetRangeLow ?? 70.0')));
+    expect(source, isNot(contains('targetRangeHigh ?? 180.0')));
+    expect(source, contains('hasConfiguredTarget'));
+    expect(source, contains('dashboardTargetNotConfigured'));
+    expect(source, contains('targetConfigured: hasTarget'));
+    expect(localizedCopy, contains('dashboardTargetNotConfigured'));
+  });
 }
