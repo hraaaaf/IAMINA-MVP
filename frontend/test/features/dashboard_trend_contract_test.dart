@@ -87,11 +87,16 @@ void main() {
     final dashboard = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
     ).readAsStringSync();
+    final responsive = File(
+      'lib/features/dashboard/widgets/dashboard_responsive_sections.dart',
+    ).readAsStringSync();
 
     final todayIndex = dashboard.indexOf('DashboardTodaySection(');
-    final trendIndex = dashboard.indexOf('DashboardTrendSection(');
+    final responsiveIndex = dashboard.indexOf('DashboardResponsiveSections(');
+    final trendIndex = responsive.indexOf('DashboardTrendSection(');
     expect(todayIndex, greaterThanOrEqualTo(0));
-    expect(trendIndex, greaterThan(todayIndex));
+    expect(responsiveIndex, greaterThan(todayIndex));
+    expect(trendIndex, greaterThanOrEqualTo(0));
     expect(dashboard, contains('unit: unit'));
     expect(dashboard, contains('low: low'));
     expect(dashboard, contains('high: high'));
