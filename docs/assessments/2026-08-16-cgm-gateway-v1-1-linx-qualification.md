@@ -10,11 +10,14 @@ Extend the existing read-only CGM gateway with explicit LinX provenance without 
 
 Juggluco is kept fully outside IAMINA. Its repository explicitly lists LinX/AiDEX X sensor support, Nightscout upload capability, GPL-3.0 licensing, and active repository pushes in August 2026. IAMINA consumes only the already-governed Nightscout HTTP boundary.
 
-Evidence:
+Pinned qualification evidence:
 
-- https://github.com/j-kaltes/Juggluco
-- https://www.juggluco.nl/
-- https://www.microtechmd.com/support/download/664/666
+- Juggluco repository: https://github.com/j-kaltes/Juggluco
+- audited upstream head: `11d016eb3aeffe77e86d9522f5192e83790b5a21` (2026-08-13)
+- upstream repository license: GPL-3.0
+- upstream repository description/topics explicitly include LinX/AiDEX X
+- Juggluco documents Nightscout output capability
+- MicroTech LinX product/support page: https://www.microtechmd.com/support/download/664/666
 
 ## Runtime authority ceiling
 
@@ -38,6 +41,7 @@ Medtronic remains HOLD for this LOT. The Nightscout CareLink path is publicly do
 - [x] Allow LinX only through the existing Nightscout-compatible provider boundary.
 - [x] Add regression coverage proving LinX source is configured rather than inferred from bridge/device text.
 - [x] Keep unknown/unqualified providers fail-closed.
+- [x] Pin the upstream bridge qualification to an exact audited Juggluco commit.
 - [ ] Synchronize canonical roadmap with CGM-GW-V1.1.
 - [ ] Pass exact-head CI, security/privacy review, clinical-safety review and migration drift.
 - [ ] Merge with expected-head locking and verify post-merge CI/drift before closure.
