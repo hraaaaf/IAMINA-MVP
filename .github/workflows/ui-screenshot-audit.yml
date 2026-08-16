@@ -18,6 +18,7 @@ on:
       - 'frontend/lib/features/reminders/**'
       - 'frontend/test/ui_visual_screenshot_test.dart'
       - 'frontend/test/dashboard_next_action_visual_test.dart'
+      - 'frontend/test/dashboard_responsive_convergence_visual_test.dart'
       - '.github/workflows/ui-screenshot-audit.yml'
   push:
     branches: [main]
@@ -36,6 +37,7 @@ on:
       - 'frontend/lib/features/reminders/**'
       - 'frontend/test/ui_visual_screenshot_test.dart'
       - 'frontend/test/dashboard_next_action_visual_test.dart'
+      - 'frontend/test/dashboard_responsive_convergence_visual_test.dart'
       - '.github/workflows/ui-screenshot-audit.yml'
 
 permissions:
@@ -67,6 +69,7 @@ jobs:
         run: |
           flutter test --dart-define=IAMINA_VISUAL_AUDIT=true --update-goldens --reporter expanded test/ui_visual_screenshot_test.dart
           flutter test --dart-define=IAMINA_VISUAL_AUDIT=true --update-goldens --reporter expanded test/dashboard_next_action_visual_test.dart
+          flutter test --dart-define=IAMINA_VISUAL_AUDIT=true --update-goldens --reporter expanded test/dashboard_responsive_convergence_visual_test.dart
 
       - name: Validate screenshot artifact set
         run: |
@@ -84,6 +87,10 @@ jobs:
             dashboard-insight-ar-360x560.png
             dashboard-next-action-390x844.png
             dashboard-next-action-ar-360x560.png
+            dashboard-responsive-699x900.png
+            dashboard-responsive-701x900.png
+            dashboard-responsive-1440x1000.png
+            dashboard-responsive-ar-900x900.png
             journal-390x844.png
             summary-390x844.png
             profile-390x844.png
@@ -110,7 +117,7 @@ jobs:
           done
 
           COUNT="$(find "$DIR" -maxdepth 1 -name '*.png' -type f | wc -l)"
-          test "$COUNT" -eq 24
+          test "$COUNT" -eq 28
 
           MOBILE_UNIQUE="$(sha256sum "$DIR"/*-390x844.png | awk '{print $1}' | sort -u | wc -l)"
           if [ "$MOBILE_UNIQUE" -lt 12 ]; then
