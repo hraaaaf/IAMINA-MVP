@@ -127,7 +127,7 @@ class DashboardAdaptiveKpiSection extends StatelessWidget {
               const SizedBox(height: 14),
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final compact = constraints.maxWidth < 330;
+                  final compact = constraints.maxWidth < 310;
                   final cards = <Widget>[
                     _MetricTile(
                       icon: Icons.format_list_numbered_rounded,
