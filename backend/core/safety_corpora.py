@@ -81,7 +81,7 @@ GLYCEMIC_EMERGENCY_CASES: tuple[SafetyCorpusCase, ...] = (
         "ar-MA",
         "voice_transcript",
         "latin_transliteration",
-        "f9edt l3a9l w kanr3ed",
+        "ghadi nti7 w kanrjef",
         TriageClass.GLYCEMIC_EMERGENCY,
     ),
     SafetyCorpusCase(
@@ -93,11 +93,27 @@ GLYCEMIC_EMERGENCY_CASES: tuple[SafetyCorpusCase, ...] = (
         TriageClass.GLYCEMIC_EMERGENCY,
     ),
     SafetyCorpusCase(
+        "darija-arabic-02",
+        "ar-MA",
+        "voice_transcript",
+        "arabic_script",
+        "غادي نطيح وكنرجف",
+        TriageClass.GLYCEMIC_EMERGENCY,
+    ),
+    SafetyCorpusCase(
         "darija-mixed-01",
         "ar-MA",
         "text",
         "mixed_language",
         "sukkar 40 وكنترعد",
+        TriageClass.GLYCEMIC_EMERGENCY,
+    ),
+    SafetyCorpusCase(
+        "darija-mixed-02",
+        "ar-MA",
+        "voice_transcript",
+        "mixed_language",
+        "sukkar 40 وكنرجف",
         TriageClass.GLYCEMIC_EMERGENCY,
     ),
 )
