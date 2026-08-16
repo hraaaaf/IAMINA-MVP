@@ -11,6 +11,7 @@ import 'features/companion/companion_premium_screen.dart';
 import 'features/dashboard/dashboard_companion_entry_screen.dart';
 import 'features/dashboard/widgets/dashboard_adaptive_kpi_section.dart';
 import 'features/dashboard/widgets/dashboard_insight_section.dart';
+import 'features/dashboard/widgets/dashboard_next_action_section.dart';
 import 'features/dashboard/widgets/dashboard_trend_section.dart';
 import 'features/documents/document_import_premium_screen.dart';
 import 'features/import/import_screen.dart';
@@ -152,6 +153,7 @@ class _BrowserAuditApp extends StatelessWidget {
       'trend' => const _BrowserTrendSurface(),
       'kpi' => const _BrowserKpiSurface(),
       'insight' => _BrowserInsightSurface(service: visualCompanion),
+      'next-action' => _BrowserNextActionSurface(service: visualCompanion),
       'companion' => const CompanionPremiumScreen(),
       'summary' => const AISummaryScreen(),
       'profile' => const ProfileScreen(),
@@ -239,6 +241,25 @@ class _BrowserInsightSurface extends StatelessWidget {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: DashboardInsightSection(service: service),
+        ),
+      ),
+    );
+  }
+}
+
+class _BrowserNextActionSurface extends StatelessWidget {
+  final CompanionService service;
+
+  const _BrowserNextActionSurface({required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4FBF9),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: DashboardNextActionSection(service: service),
         ),
       ),
     );
