@@ -33,51 +33,13 @@ Journal is a factual history of recorded glucose measurements and their captured
 - Historical `insulinUnits` remains display-only compatibility data in Journal.
 - Previous row coloring made both `<70 mg/dL` and `>250 mg/dL` red. ADA Standards of Care 2026 explicitly treats `<70 mg/dL` as clinically important hypoglycemia, while `>250 mg/dL` is defined in CGM reporting as a time-above-range level-2 hyperglycemia metric. That does not by itself establish a universal red-alert rule for one isolated Journal row.
 
-## Product decision — Personal Response
+## Product decisions
 
-User arbitration: **B**.
-
-- KEEP Personal Response.
-- MOVE it after the chronological history.
-- SIMPLIFY its prominence by collapsing the whole section by default.
-- Load/render the full `PersonalResponseSection` only after explicit expansion.
-- Do not move its interpretation into the factual history rows.
-
-## Product decision — synchronization status
-
-User arbitration: **B**.
-
-- Hide routine `synced` state from Journal rows.
-- Keep `pending` visible because synchronization is not complete.
-- Keep `error` visible because user attention may be required.
-- Hide non-actionable fallback/unknown icon instead of presenting ambiguous cloud state.
-
-## Product decision — glucose color hierarchy
-
-User arbitration: **B**.
-
-- Red is reserved for glucose `<70 mg/dL`.
-- Values above the patient's configured target remain amber through the existing `val > high` branch.
-- The former hard-coded `>250 mg/dL` red rule is removed from Journal.
-- No treatment advice, dose logic, target value, schema, persisted data or historical value is changed.
-
-## Product decision — historical insulin badge
-
-User arbitration: **A**.
-
-- Keep the legacy insulin badge visible when historical `insulinUnits` exists.
-- Keep it strictly read-only in Journal.
-- Medication entry remains canonical in Medications; Journal does not become an insulin-entry surface.
-- No runtime change was required because the current implementation already satisfies this decision.
-
-## Product decision — temporal filter
-
-User arbitration: **B**.
-
-- Expose 7-day, 30-day and all-history choices directly below the page header.
-- Keep 30 days as the existing default.
-- Preserve the dynamic subtitle so the active scope is stated in text as well as selection state.
-- Remove the hidden popup-menu interaction for this primary control.
+- **Personal Response — B:** keep it, move it after history, collapse it by default and load its full section only after expansion.
+- **Synchronization status — B:** hide routine `synced` and ambiguous non-actionable states; keep `pending` and `error` visible.
+- **Glucose color hierarchy — B:** reserve red for `<70 mg/dL`; other out-of-target values use the existing patient-target amber branch.
+- **Historical insulin badge — A:** keep legacy insulin visible and strictly read-only; no runtime change was required because the implementation already satisfies this.
+- **Temporal filter — B:** expose 7-day, 30-day and all-history choices as visible ChoiceChips below the header; keep 30 days as default and preserve the dynamic subtitle.
 
 ## Runtime correction
 
