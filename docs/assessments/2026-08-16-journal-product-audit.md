@@ -64,6 +64,6 @@ Branch: `agent/journal-product-audit`
 
 ## Certification gate
 
-No final page score or CLOSED status before exact-head CI/relevant gates, real Chrome 390×844 inspection, post-merge recertification, canonical closeout, and resolution of the clinical-threshold HOLD.
+No final page score or CLOSED status before exact-head CI/relevant gates, real Chrome 390×844 inspection, post-merge recertification and canonical closeout. The hard-coded red threshold remains a separate clinical/product human gate and will not be changed without explicit A/B/C arbitration.
 
 MENA roadmap numerator remains unchanged by this page audit.
