@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -12,6 +12,7 @@ from integrations.cgm import CGMSource, NightscoutCGMProvider, NightscoutConfig
 from integrations.cgm.nightscout import CGMProviderError
 
 from .cgm_credentials import CGMCredentialError, decrypt_cgm_credential
+from .cgm_network import CGMNetworkPolicyError, validate_patient_cgm_base_url
 
 
 class CGMSyncError(RuntimeError):
@@ -22,7 +23,7 @@ class CGMSyncError(RuntimeError):
 class CGMSyncResult:
     received: int
     inserted: int
-    last_recorded_at: object | None
+    last_recorded_at: datetime | None
 
 
 def _source(value: str) -> CGMSource:
@@ -34,6 +35,11 @@ def _source(value: str) -> CGMSource:
 
 def _provider(connection: CGMConnection) -> NightscoutCGMProvider:
     credential = decrypt_cgm_credential(connection.encrypted_credential)
+    try:
+        public_base_url = validate_patient_cgm_base_url(connection.base_url)
+    except CGMNetworkPolicyError as exc:
+        raise CGMSyncError(str(exc)) from exc
+
     kwargs: dict[str, str] = {}
     if connection.auth_type == CGMConnection.AuthType.BEARER:
         kwargs["bearer_token"] = credential
@@ -44,7 +50,7 @@ def _provider(connection: CGMConnection) -> NightscoutCGMProvider:
 
     try:
         config = NightscoutConfig(
-            base_url=connection.base_url,
+            base_url=public_base_url,
             source=_source(connection.source),
             **kwargs,
         )
@@ -123,6 +129,9 @@ def sync_patient_cgm(*, patient_id: int) -> CGMSyncResult:
     except CGMCredentialError as exc:
         CGMConnection.objects.filter(patient_id=patient_id).update(last_error_code=str(exc))
         raise CGMSyncError(str(exc)) from exc
+    except CGMSyncError as exc:
+        CGMConnection.objects.filter(patient_id=patient_id).update(last_error_code=str(exc))
+        raise
     except CGMProviderError as exc:
         CGMConnection.objects.filter(patient_id=patient_id).update(last_error_code="provider_unavailable")
         raise CGMSyncError("provider_unavailable") from exc
