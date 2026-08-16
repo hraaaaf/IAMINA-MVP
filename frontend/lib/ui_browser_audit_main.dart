@@ -146,6 +146,12 @@ class _BrowserAuditApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surface = Uri.base.queryParameters['surface'] ?? 'dashboard';
+    final localeCode = Uri.base.queryParameters['locale'] ?? 'fr';
+    final locale = AppLocalizations.supportedLocales.any(
+      (supported) => supported.languageCode == localeCode,
+    )
+        ? Locale(localeCode)
+        : const Locale('fr');
     final child = switch (surface) {
       'dashboard' => DashboardCompanionEntryScreen(
         companionService: visualCompanion,
@@ -171,7 +177,7 @@ class _BrowserAuditApp extends StatelessWidget {
       theme: AminaVisualLanguage.harmonize(AminaTheme.light),
       darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
       themeMode: ThemeMode.light,
-      locale: const Locale('fr'),
+      locale: locale,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
