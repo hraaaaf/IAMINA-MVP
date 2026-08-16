@@ -95,8 +95,8 @@ void main() {
     expect(cgm, isNot(contains("rejoignez la liste d'attente")));
     expect(service, contains('class CgmService'));
     expect(service, contains('Future<CgmConnectionState> getConnection'));
-    expect(service, contains('Future<void> configure'));
-    expect(service, contains('Future<void> sync'));
+    expect(service, contains('Future<CgmConnectionState> configure'));
+    expect(service, contains('Future<CgmSyncResult> sync'));
   });
 
   test('summary contains no fallback dose or basal adjustment advice', () {
