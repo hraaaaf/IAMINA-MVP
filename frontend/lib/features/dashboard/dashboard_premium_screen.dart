@@ -61,8 +61,10 @@ class DashboardPremiumScreen extends StatelessWidget {
       builder: (context, profileSnap) {
         final profile = profileSnap.data;
         final unit = profile?.unitPreference ?? 'mg/dL';
-        final low = profile?.targetRangeLow ?? 70.0;
-        final high = profile?.targetRangeHigh ?? 180.0;
+        final hasConfiguredTarget =
+            profile != null && profile.targetRangeLow < profile.targetRangeHigh;
+        final low = hasConfiguredTarget ? profile.targetRangeLow : null;
+        final high = hasConfiguredTarget ? profile.targetRangeHigh : null;
 
         return StreamBuilder<List<LogEntryData>>(
           stream: db.watchRecentLogs(limit: 1),
@@ -127,8 +129,8 @@ class DashboardPremiumScreen extends StatelessWidget {
 class _DashboardBody extends StatelessWidget {
   final List<LogEntryData> logs;
   final String unit;
-  final double low;
-  final double high;
+  final double? low;
+  final double? high;
 
   const _DashboardBody({
     required this.logs,
@@ -145,11 +147,13 @@ class _DashboardBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final latest = logs.isEmpty ? null : logs.first;
     final latestAt = latest == null ? null : (latest.loggedAt ?? latest.createdAt);
+    final hasTarget = low != null && high != null && low! < high!;
     final inRange =
         latest != null &&
-        latest.bloodSugar >= low &&
-        latest.bloodSugar <= high;
-    final highValue = latest != null && latest.bloodSugar > high;
+        hasTarget &&
+        latest.bloodSugar >= low! &&
+        latest.bloodSugar <= high!;
+    final highValue = latest != null && hasTarget && latest.bloodSugar > high!;
     final locale = Localizations.localeOf(context).toLanguageTag();
 
     return Scaffold(
@@ -201,6 +205,10 @@ class _DashboardBody extends StatelessWidget {
                                 'No reading yet',
                                 'لا توجد قراءة بعد',
                               )
+                            : !hasTarget
+                            ? AppLocalizations.of(
+                                context,
+                              )!.dashboardTargetNotConfigured
                             : inRange
                             ? _t(
                                 context,
@@ -222,6 +230,7 @@ class _DashboardBody extends StatelessWidget {
                                 'تحت النطاق',
                               ),
                         inRange: inRange,
+                        targetConfigured: hasTarget,
                         locale: locale,
                       ),
                       const SizedBox(height: 16),
@@ -320,6 +329,7 @@ class _LatestReadingCard extends StatelessWidget {
   final String unit;
   final String status;
   final bool inRange;
+  final bool targetConfigured;
   final String locale;
 
   const _LatestReadingCard({
@@ -329,6 +339,7 @@ class _LatestReadingCard extends StatelessWidget {
     required this.unit,
     required this.status,
     required this.inRange,
+    required this.targetConfigured,
     required this.locale,
   });
 
@@ -347,7 +358,8 @@ class _LatestReadingCard extends StatelessWidget {
     final secondary = hasData
         ? Colors.white.withValues(alpha: .78)
         : AminaVisualLanguage.secondary(context);
-    final statusForeground = hasData && inRange
+    final neutralStatus = hasData && !targetConfigured;
+    final statusForeground = hasData && (inRange || neutralStatus)
         ? Colors.white
         : AminaVisualLanguage.primaryText(context);
 
@@ -392,12 +404,12 @@ class _LatestReadingCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: hasData
-                      ? inRange
+                      ? inRange || neutralStatus
                             ? Colors.white.withValues(alpha: .14)
                             : const Color(0xFFFFF1C7)
                       : const Color(0xFFF4F1E8),
                   borderRadius: BorderRadius.circular(999),
-                  border: hasData && inRange
+                  border: hasData && (inRange || neutralStatus)
                       ? Border.all(color: Colors.white.withValues(alpha: .16))
                       : null,
                 ),
