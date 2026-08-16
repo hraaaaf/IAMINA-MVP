@@ -81,9 +81,9 @@ extension DashboardLocalizedCopy on AppLocalizations {
       );
 
   String get dashboardGovernedTrustShort => _pick(
-        en: 'Governed observations only · missing data is never invented.',
-        fr: 'Observations gouvernées uniquement · les données manquantes ne sont jamais inventées.',
-        ar: 'ملاحظات موثوقة فقط · لا يتم اختراع البيانات المفقودة.',
+        en: 'This summary uses governed observations only · missing data is never invented.',
+        fr: 'Cette synthèse utilise uniquement des observations gouvernées · les données manquantes ne sont jamais inventées.',
+        ar: 'يستخدم هذا الملخص ملاحظات موثوقة فقط · لا يتم اختراع البيانات المفقودة.',
       );
 
   String get dashboardFreshNow => _pick(
