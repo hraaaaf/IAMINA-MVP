@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Callable
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode, urljoin
+from urllib.parse import urlencode, urljoin, urlparse
 from urllib.request import Request, urlopen
 
 from .contracts import CGMProvider, CGMReading, CGMSource, ProviderHealth
@@ -26,10 +26,19 @@ class NightscoutConfig:
     def __post_init__(self) -> None:
         if self.source not in {CGMSource.DEXCOM, CGMSource.LIBRE}:
             raise ValueError("CGM V1 supports only Dexcom or Libre source provenance")
-        if not self.base_url.startswith(("https://", "http://localhost", "http://127.0.0.1")):
+
+        parsed = urlparse(self.base_url)
+        is_loopback_http = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+        if parsed.scheme != "https" and not is_loopback_http:
             raise ValueError("Nightscout base_url must use HTTPS outside localhost")
+        if not parsed.hostname:
+            raise ValueError("Nightscout base_url must contain a hostname")
+        if parsed.username or parsed.password:
+            raise ValueError("Nightscout credentials must not be embedded in the URL")
         if self.bearer_token and self.api_secret_sha1:
             raise ValueError("Configure one Nightscout authentication method only")
+        if self.timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive")
 
 
 Transport = Callable[[str, dict[str, str], float], object]
