@@ -203,6 +203,8 @@ class _JournalScreenState extends State<JournalScreen> {
               body: l10n.journalEmptySubtitle,
               primaryActionLabel: l10n.addMeasurement,
               onPrimaryAction: () => context.go('/ajouter'),
+              secondaryActionLabel: l10n.navImport,
+              onSecondaryAction: () => context.go('/importer'),
             ),
           ),
         ),
@@ -380,6 +382,7 @@ class _JournalScreenState extends State<JournalScreen> {
     double low,
     double high,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final val = log.bloodSugar;
     final displayValue = unit == 'mmol/L'
         ? (val / 18.0).toStringAsFixed(1)
@@ -448,7 +451,6 @@ class _JournalScreenState extends State<JournalScreen> {
             false;
       },
       onDismissed: (_) async {
-        final l10n = AppLocalizations.of(context)!;
         final db = Provider.of<AppDatabase>(context, listen: false);
         final messenger = ScaffoldMessenger.of(
           context,
@@ -470,16 +472,31 @@ class _JournalScreenState extends State<JournalScreen> {
             child: Row(
               children: [
                 SizedBox(
-                  width: 52,
+                  width: 56,
                   child: Center(
-                    child: Text(
-                      displayValue,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: color,
-                        letterSpacing: -1.0,
-                      ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          displayValue,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: color,
+                            letterSpacing: -1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          unit,
+                          key: const Key('journal-glucose-unit'),
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            color: AminaTheme.textMuted.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -491,10 +508,7 @@ class _JournalScreenState extends State<JournalScreen> {
                       Row(
                         children: [
                           Text(
-                            _entryContextLabel(
-                              log,
-                              AppLocalizations.of(context)!,
-                            ),
+                            _entryContextLabel(log, l10n),
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -571,12 +585,19 @@ class _JournalScreenState extends State<JournalScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (log.isSick) const _LifeIcon(icon: '🤒'),
-                        if (log.isStressed) const _LifeIcon(icon: '⚡'),
-                        if (log.isTired) const _LifeIcon(icon: '🥱'),
-                        if (log.isActive) const _LifeIcon(icon: '🏃‍♂️'),
+                        if (log.isSick)
+                          _LifeIcon(icon: '🤒', label: l10n.sick),
+                        if (log.isStressed)
+                          _LifeIcon(icon: '⚡', label: l10n.stressed),
+                        if (log.isTired)
+                          _LifeIcon(icon: '🥱', label: l10n.fatigue),
+                        if (log.isActive)
+                          _LifeIcon(
+                            icon: '🏃‍♂️',
+                            label: l10n.journalPhysicalActivity,
+                          ),
                         if (log.sleepQuality == 'bad')
-                          const _LifeIcon(icon: '🌙'),
+                          _LifeIcon(icon: '🌙', label: l10n.journalPoorSleep),
                         const SizedBox(width: 6),
                         Icon(
                           Icons.chevron_right_rounded,
@@ -617,13 +638,19 @@ class _JournalScreenState extends State<JournalScreen> {
 
 class _LifeIcon extends StatelessWidget {
   final String icon;
-  const _LifeIcon({required this.icon});
+  final String label;
+  const _LifeIcon({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(start: 4),
-      child: Text(icon, style: const TextStyle(fontSize: 12)),
+    return Semantics(
+      label: label,
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(start: 4),
+          child: Text(icon, style: const TextStyle(fontSize: 12)),
+        ),
+      ),
     );
   }
 }
