@@ -23,7 +23,8 @@ void main() {
     ).readAsStringSync();
 
     expect(source, contains("overview.reviewStatus == 'ready'"));
-    expect(source, contains('overview.changesSinceReview.isNotEmpty'));
+    expect(source, contains("change.changeKind != 'unknown'"));
+    expect(source, contains('determinateChangeCount > 0'));
     expect(source, contains("overview.patternStatus == 'ready'"));
     expect(source, contains('overview.patterns.isNotEmpty'));
     expect(source, isNot(contains('sort(')));
