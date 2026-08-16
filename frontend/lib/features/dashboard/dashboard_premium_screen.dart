@@ -345,61 +345,76 @@ class _LatestReadingCard extends StatelessWidget {
         ? Colors.white
         : AminaVisualLanguage.primaryText(context);
     final secondary = hasData
-        ? Colors.white.withValues(alpha: .76)
+        ? Colors.white.withValues(alpha: .78)
         : AminaVisualLanguage.secondary(context);
+    final statusForeground = hasData && inRange
+        ? Colors.white
+        : AminaVisualLanguage.primaryText(context);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(20),
       decoration: hasData
           ? BoxDecoration(
               gradient: AminaVisualLanguage.primaryGradient,
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(26),
               border: Border.all(color: Colors.white.withValues(alpha: .18)),
               boxShadow: AminaVisualLanguage.cardShadow(context),
             )
-          : AminaVisualLanguage.cardDecoration(context, radius: 28),
+          : AminaVisualLanguage.cardDecoration(context, radius: 26),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: hasData
-                      ? Colors.white.withValues(alpha: .12)
-                      : AminaVisualLanguage.mintSurface,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: hasData
-                        ? Colors.white.withValues(alpha: .18)
-                        : AminaVisualLanguage.mintBorder,
-                  ),
-                ),
-                child: Icon(
-                  Icons.water_drop_outlined,
-                  color: hasData
-                      ? Colors.white
-                      : AminaVisualLanguage.actionGreen,
-                  size: 21,
-                ),
+              Icon(
+                Icons.water_drop_outlined,
+                color: hasData
+                    ? Colors.white.withValues(alpha: .9)
+                    : AminaVisualLanguage.actionGreen,
+                size: 18,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 7),
               Expanded(
                 child: Text(
                   AppLocalizations.of(context)!.dashboardLatestKnownReading,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                     color: secondary,
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: hasData
+                      ? inRange
+                            ? Colors.white.withValues(alpha: .14)
+                            : const Color(0xFFFFF1C7)
+                      : const Color(0xFFF4F1E8),
+                  borderRadius: BorderRadius.circular(999),
+                  border: hasData && inRange
+                      ? Border.all(color: Colors.white.withValues(alpha: .16))
+                      : null,
+                ),
+                child: Text(
+                  status,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: statusForeground,
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 17),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -437,57 +452,50 @@ class _LatestReadingCard extends StatelessWidget {
             ],
           ),
           if (timestamp != null && freshness != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 13),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              runSpacing: 4,
               children: [
-                _HeroMetaChip(
-                  key: const ValueKey('dashboard-latest-reading-timestamp'),
-                  icon: Icons.event_outlined,
-                  label: timestamp,
-                  inverted: hasData,
+                Icon(
+                  Icons.schedule_rounded,
+                  size: 14,
+                  color: secondary,
                 ),
-                _HeroMetaChip(
+                Text(
+                  timestamp,
+                  key: const ValueKey('dashboard-latest-reading-timestamp'),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: secondary,
+                  ),
+                ),
+                Text(
+                  '·',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    color: secondary,
+                  ),
+                ),
+                Text(
+                  freshness,
                   key: const ValueKey('dashboard-latest-reading-freshness'),
-                  icon: Icons.schedule_rounded,
-                  label: freshness,
-                  inverted: hasData,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: secondary,
+                  ),
                 ),
               ],
             ),
           ],
           const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: hasData
-                  ? inRange
-                        ? Colors.white.withValues(alpha: .15)
-                        : const Color(0xFFFFF1C7)
-                  : inRange
-                  ? AminaVisualLanguage.mintSurface
-                  : const Color(0xFFF4F1E8),
-              borderRadius: BorderRadius.circular(999),
-              border: hasData && inRange
-                  ? Border.all(color: Colors.white.withValues(alpha: .16))
-                  : null,
-            ),
-            child: Text(
-              status,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: hasData && inRange
-                    ? Colors.white
-                    : AminaVisualLanguage.primaryText(context),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
-            height: 50,
+            height: 48,
             child: FilledButton.icon(
               onPressed: () => context.go('/ajouter'),
               style: FilledButton.styleFrom(
@@ -514,55 +522,6 @@ class _LatestReadingCard extends StatelessWidget {
                 ),
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroMetaChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool inverted;
-
-  const _HeroMetaChip({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.inverted,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = inverted
-        ? Colors.white.withValues(alpha: .82)
-        : AminaVisualLanguage.secondary(context);
-    return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(10, 7, 11, 7),
-      decoration: BoxDecoration(
-        color: inverted
-            ? Colors.white.withValues(alpha: .09)
-            : AminaVisualLanguage.mintSurface.withValues(alpha: .7),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: inverted
-              ? Colors.white.withValues(alpha: .14)
-              : AminaVisualLanguage.mintBorder.withValues(alpha: .72),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: color,
             ),
           ),
         ],
