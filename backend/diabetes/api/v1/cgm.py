@@ -11,7 +11,7 @@ from ninja.errors import HttpError
 
 from diabetes.models.cgm import CGMConnection, CGMReadingRecord
 from diabetes.services.cgm_credentials import CGMCredentialError, encrypt_cgm_credential
-from diabetes.services.cgm_network import CGMNetworkPolicyError, validate_patient_cgm_base_url
+from diabetes.services.cgm_network import validate_patient_cgm_base_url
 from diabetes.services.cgm_sync import CGMSyncError, sync_patient_cgm
 from integrations.cgm import CGMSource, NightscoutConfig
 
@@ -85,10 +85,12 @@ def put_cgm_connection(request, payload: CGMConnectionInput):
             stored_credential = credential
             auth_kwargs = {"bearer_token": stored_credential}
         else:
-            # Nightscout v1 expects a SHA-1 API-secret header. Hash the raw
-            # patient-entered secret before encrypted persistence; IAMINA never
-            # needs to retain the reversible raw API secret for this mode.
-            stored_credential = hashlib.sha1(credential.encode("utf-8")).hexdigest()  # noqa: S324
+            # Nightscout v1 requires SHA-1 for this protocol field. This is not
+            # a security hash: the raw patient-entered secret is transformed
+            # before encrypted persistence and never needs to be recovered.
+            stored_credential = hashlib.sha1(
+                credential.encode("utf-8"), usedforsecurity=False
+            ).hexdigest()
             auth_kwargs = {"api_secret_sha1": stored_credential}
 
         NightscoutConfig(
@@ -97,7 +99,7 @@ def put_cgm_connection(request, payload: CGMConnectionInput):
             **auth_kwargs,
         )
         encrypted = encrypt_cgm_credential(stored_credential)
-    except (ValueError, CGMNetworkPolicyError, CGMCredentialError) as exc:
+    except (ValueError, CGMCredentialError) as exc:
         code = str(exc)
         status = 503 if code.startswith("cgm_credential_key_") else 422
         raise HttpError(status, code) from exc
