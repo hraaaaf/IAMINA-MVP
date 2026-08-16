@@ -73,15 +73,20 @@ void main() {
     expect(api, isNot(contains('@router.get("/companion/next-action/evaluate/"')));
   });
 
-  test('Dashboard composition places next action after governed insight', () {
+  test('Dashboard mobile composition places next action after governed insight', () {
     final dashboard = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
     ).readAsStringSync();
+    final responsive = File(
+      'lib/features/dashboard/widgets/dashboard_responsive_sections.dart',
+    ).readAsStringSync();
 
-    final insightIndex = dashboard.indexOf('DashboardInsightSection(');
-    final actionIndex = dashboard.indexOf('DashboardNextActionSection(');
+    final responsiveIndex = dashboard.indexOf('DashboardResponsiveSections(');
+    final insightIndex = responsive.indexOf('DashboardInsightSection(');
+    final actionIndex = responsive.indexOf('DashboardNextActionSection(');
+    expect(responsiveIndex, greaterThanOrEqualTo(0));
     expect(insightIndex, greaterThanOrEqualTo(0));
     expect(actionIndex, greaterThan(insightIndex));
-    expect(dashboard, contains("widgets/dashboard_next_action_section.dart"));
+    expect(responsive, contains("'dashboard_next_action_section.dart'"));
   });
 }
