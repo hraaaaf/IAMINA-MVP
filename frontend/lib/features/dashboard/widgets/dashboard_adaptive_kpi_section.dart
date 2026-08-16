@@ -157,6 +157,7 @@ class DashboardAdaptiveKpiSection extends StatelessWidget {
 
                   if (compact) {
                     return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         for (var i = 0; i < cards.length; i++) ...[
                           cards[i],
@@ -174,6 +175,7 @@ class DashboardAdaptiveKpiSection extends StatelessWidget {
                         .map(
                           (card) => SizedBox(
                             width: (constraints.maxWidth - 8) / 2,
+                            height: 122,
                             child: card,
                           ),
                         )
@@ -267,6 +269,7 @@ class _MetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
+      height: double.infinity,
       constraints: const BoxConstraints(minHeight: 106),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -294,6 +297,8 @@ class _MetricTile extends StatelessWidget {
           const SizedBox(height: 5),
           Text(
             label,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 10.8,
               height: 1.25,
