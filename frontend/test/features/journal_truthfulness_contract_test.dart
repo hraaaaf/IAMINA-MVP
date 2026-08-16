@@ -51,6 +51,16 @@ void main() {
     expect(source, isNot(contains('Wrap(\n                          spacing: 4')));
   });
 
+  test('Journal signals that tapping a row opens details', () {
+    final source = File(
+      'lib/features/journal/journal_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains("context.push('/journal/\${log.id}/edit')"));
+    expect(source, contains('Icons.chevron_right_rounded'));
+    expect(source, contains("Key('journal-entry-details-chevron')"));
+  });
+
   test('Personal Response is secondary, after history, and collapsed by default', () {
     final source = File(
       'lib/features/journal/journal_screen.dart',
