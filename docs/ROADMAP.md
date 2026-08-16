@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-14 — Gate A Secure Core is certified at 10.0/10 after issue #30 reachable Git-history remediation was completed and independently fresh-clone verified; the remaining real-patient pilot blockers are restricted linguistic/compliance/deployment approvals and live provider evidence. P3-EVALS is certified, human-reviewed PASS ALL, merged and post-merge green. Companion intelligence is closed through P3-EVALS. The P0-MENA-2 technical English baseline is certified complete across 16/16 active patient-facing surfaces; restricted human linguistic/parity gates remain open. The active critical path is MENA pilot hardening. UX visual rebase remains closed through UX-11 at 9.8/10.
+> **Last updated:** 2026-08-16 — Gate A Secure Core is certified at 10.0/10 after issue #30 reachable Git-history remediation was completed and independently fresh-clone verified; the remaining real-patient pilot blockers are restricted linguistic/compliance/deployment approvals and live provider evidence. P3-EVALS is certified, human-reviewed PASS ALL, merged and post-merge green. Companion intelligence is closed through P3-EVALS. The P0-MENA-2 technical English baseline is certified complete across 16/16 active patient-facing surfaces; restricted human linguistic/parity gates remain open. CGM-GW-V1 is now an explicitly governed parallel integration lane for read-only Dexcom/Libre ingestion through an external Nightscout-compatible bridge. The active pilot critical path remains MENA pilot hardening. UX visual rebase remains closed through UX-11 at 9.8/10.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -44,10 +44,11 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths |
 | Pilot safety/compliance gate | 77% | 🟡 Restricted approvals remain | 10/13 explicit gates complete; issue #30 reachable-history remediation is closed and fresh-clone verified |
 | Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + P2-COMPANION-0..8 + P3-HORIZON + P3-EVALS | ✅ Closed through P3-EVALS | P3-EVALS human PASS ALL; PR #204 merge `f508cccb…`; post-merge CI #2116 + drift #1928 green |
+| CGM-GW-V1 — Dexcom + Libre ingestion gateway | 0% credited | 🟡 In progress | Governed read-only integration LOT on `agent/cgm-gateway-v1`; credit remains 0 until reviewer/certifier/exact-head gates close |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
-Gate A is an engineering certification over already-counted foundations and therefore does **not** change the MENA critical-path numerator. The English technical baseline is a gate inside P0-MENA-2 rather than a new numbered MENA task, so its closure also does **not** change the 32/41 numerator. Clinical-intelligence, Journal and UX quality lanes are tracked separately and do not alter the MENA critical-path numerator unless a later pilot gate explicitly depends on them.
+Gate A is an engineering certification over already-counted foundations and therefore does **not** change the MENA critical-path numerator. The English technical baseline is a gate inside P0-MENA-2 rather than a new numbered MENA task, so its closure also does **not** change the 32/41 numerator. Clinical-intelligence, Journal, UX quality and the CGM gateway integration lane are tracked separately and do not alter the MENA critical-path numerator unless a later pilot gate explicitly depends on them.
 
 ---
 
@@ -415,14 +416,38 @@ Preparation/executable gates do not imply that external legal, processor, lingui
 
 ---
 
+# CGM-GW-V1 — Open-source Dexcom + Libre ingestion gateway — IN PROGRESS
+
+**Goal:** add one read-only, vendor-neutral CGM ingestion boundary without giving transport data any new clinical authority.
+
+**V1 architecture:** Dexcom Share or LibreLinkUp → external Nightscout/nightscout-connect bridge → Nightscout-compatible API → `backend/integrations/cgm/` → normalized `CGMReading`.
+
+Acceptance gates:
+
+- [x] Keep AGPL bridge code outside IAMINA and integrate only through the HTTP boundary.
+- [x] Define a common `CGMProvider` / `CGMReading` contract with explicit source provenance.
+- [x] Add a Nightscout-compatible read adapter for configured Dexcom or Libre provenance.
+- [x] Require HTTPS outside localhost, one authentication mechanism at a time, timezone-aware cursors and fail-closed malformed-payload handling.
+- [x] Add focused regression tests for normalization, source provenance, malformed data, auth configuration and provider-health failure behavior.
+- [ ] Pass exact-head backend/CI/security checks and architecture/import-linter gates.
+- [ ] Complete independent Security/Privacy review, Clinical Safety review and Release Certifier pass.
+- [ ] Merge with expected-head locking and verify post-merge CI + migration drift before crediting 100%.
+
+**Non-scope for V1:** direct BLE, persistence into patient clinical tables, patient-facing endpoints/UI, automated treatment interpretation, Medtronic CareLink, LinX/MicroTech, background sync scheduling and credential storage UX.
+
+Medtronic remains a later V1.1 candidate after its modern CareLink OAuth path is sufficiently stable. LinX remains a later provider adapter pending an official MicroTech API/SDK path.
+
+---
+
 # Current blockers and next sequence
 
 1. **Companion intelligence product lane:** P2-COMPANION-0..8, P3-HORIZON and P3-EVALS are closed; no further companion-intelligence LOT is currently queued in this roadmap.
-2. **Gate A Secure Core:** certified at 10.0/10 after issue #30 reachable-history remediation; no further Gate A engineering work is queued unless a regression appears.
-3. **P0-MENA-2 English baseline:** technical gate is closed at 16/16 active surfaces with selection/persistence and FR/EN/AR parity regression coverage; no further English-baseline work is queued unless a regression or new active surface appears. Restricted human-language approvals remain separate and open below.
-4. **Pilot security blocker:** issue #30 reachable-history remediation is closed and fresh-clone verified; continue with the remaining restricted pilot approvals below.
-5. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
-6. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
-7. Run deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
-8. UX visual rebase and Journal redesign remain closed. Reopen them only when fresh evidence or a new companion-intelligence requirement changes a certified surface.
-9. After pilot blockers are cleared, run the real-patient pilot go/no-go and cohort execution gates.
+2. **CGM-GW-V1:** complete exact-head checks, independent Security/Privacy + Clinical Safety review and Release Certifier pass; this parallel lane does not change the 32/41 MENA critical-path numerator.
+3. **Gate A Secure Core:** certified at 10.0/10 after issue #30 reachable-history remediation; no further Gate A engineering work is queued unless a regression appears.
+4. **P0-MENA-2 English baseline:** technical gate is closed at 16/16 active surfaces with selection/persistence and FR/EN/AR parity regression coverage; no further English-baseline work is queued unless a regression or new active surface appears. Restricted human-language approvals remain separate and open below.
+5. **Pilot security blocker:** issue #30 reachable-history remediation is closed and fresh-clone verified; continue with the remaining restricted pilot approvals below.
+6. Complete restricted CNDP, contract, processor, privacy, security and deployment-manifest approvals; then run PR #34/#35 `--require-approved` gates.
+7. Complete the restricted PR #37 native/clinical review manifest and run `audit_safety_corpus_review --require-approved`.
+8. Run deferred live text, STT and vision/OCR benchmarks when approved evidence, credentials, budget and human review are available.
+9. UX visual rebase and Journal redesign remain closed. Reopen them only when fresh evidence or a new companion-intelligence requirement changes a certified surface.
+10. After pilot blockers are cleared, run the real-patient pilot go/no-go and cohort execution gates.
