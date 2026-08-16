@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timedelta
 from typing import Literal
 
@@ -10,6 +11,7 @@ from ninja.errors import HttpError
 
 from diabetes.models.cgm import CGMConnection, CGMReadingRecord
 from diabetes.services.cgm_credentials import CGMCredentialError, encrypt_cgm_credential
+from diabetes.services.cgm_network import CGMNetworkPolicyError, validate_patient_cgm_base_url
 from diabetes.services.cgm_sync import CGMSyncError, sync_patient_cgm
 from integrations.cgm import CGMSource, NightscoutConfig
 
@@ -77,20 +79,25 @@ def put_cgm_connection(request, payload: CGMConnectionInput):
     if not credential or len(credential) > 4096:
         raise HttpError(422, "Invalid CGM credential")
 
-    # Validate URL, source and auth contract before persisting anything.
-    auth_kwargs = (
-        {"bearer_token": credential}
-        if payload.auth_type == CGMConnection.AuthType.BEARER
-        else {"api_secret_sha1": credential}
-    )
     try:
+        base_url = validate_patient_cgm_base_url(payload.base_url)
+        if payload.auth_type == CGMConnection.AuthType.BEARER:
+            stored_credential = credential
+            auth_kwargs = {"bearer_token": stored_credential}
+        else:
+            # Nightscout v1 expects a SHA-1 API-secret header. Hash the raw
+            # patient-entered secret before encrypted persistence; IAMINA never
+            # needs to retain the reversible raw API secret for this mode.
+            stored_credential = hashlib.sha1(credential.encode("utf-8")).hexdigest()  # noqa: S324
+            auth_kwargs = {"api_secret_sha1": stored_credential}
+
         NightscoutConfig(
-            base_url=payload.base_url,
+            base_url=base_url,
             source=CGMSource(payload.source),
             **auth_kwargs,
         )
-        encrypted = encrypt_cgm_credential(credential)
-    except (ValueError, CGMCredentialError) as exc:
+        encrypted = encrypt_cgm_credential(stored_credential)
+    except (ValueError, CGMNetworkPolicyError, CGMCredentialError) as exc:
         code = str(exc)
         status = 503 if code.startswith("cgm_credential_key_") else 422
         raise HttpError(status, code) from exc
@@ -100,7 +107,7 @@ def put_cgm_connection(request, payload: CGMConnectionInput):
             patient=request.user,
             defaults={
                 "source": payload.source,
-                "base_url": payload.base_url.rstrip("/"),
+                "base_url": base_url,
                 "auth_type": payload.auth_type,
                 "encrypted_credential": encrypted,
                 "enabled": True,
@@ -129,6 +136,7 @@ def sync_cgm(request):
             "cgm_credential_key_invalid",
             "cgm_credential_unreadable",
             "provider_unavailable",
+            "cgm_bridge_host_unresolvable",
         } else 409
         raise HttpError(status, code) from exc
     return {
