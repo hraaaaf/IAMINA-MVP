@@ -31,6 +31,24 @@ void main() {
     expect(source, contains('dashboardLatestKnownReading'));
   });
 
+  test('Dashboard fails closed when a reading timestamp is materially future-dated', () {
+    final source = File(
+      'lib/features/dashboard/dashboard_premium_screen.dart',
+    ).readAsStringSync();
+    final localizedCopy = File(
+      'lib/core/localization/dashboard_localized_copy.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('const _futureTimestampTolerance = Duration(minutes: 5)'));
+    expect(source, contains('_readingTimestampNeedsReview'));
+    expect(source, contains('DateTime.now().add(_futureTimestampTolerance)'));
+    expect(source, contains('dashboardTimestampNeedsReview'));
+    expect(source, contains('Icons.warning_amber_rounded'));
+    expect(localizedCopy, contains("en: 'timestamp to check'"));
+    expect(localizedCopy, contains("fr: 'horodatage à vérifier'"));
+    expect(localizedCopy, contains("ar: 'تحقق من وقت القياس'"));
+  });
+
   test('Dashboard target status fails closed without a configured profile', () {
     final source = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
