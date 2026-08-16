@@ -166,9 +166,15 @@ void main() {
       await deps.db.close();
     });
 
+    const compactMobile = Size(360, 560);
     const mobile = Size(390, 844);
     const desktop = Size(1440, 1000);
     final specs = <_CaptureSpec>[
+      _CaptureSpec(
+        'dashboard-360x560',
+        compactMobile,
+        () => const DashboardCompanionEntryScreen(),
+      ),
       _CaptureSpec(
         'dashboard-390x844',
         mobile,
