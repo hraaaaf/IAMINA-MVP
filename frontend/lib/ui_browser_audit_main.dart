@@ -8,6 +8,7 @@ import 'data/drift/database.dart';
 import 'data/models/companion_models.dart';
 import 'features/companion/companion_premium_screen.dart';
 import 'features/dashboard/dashboard_companion_entry_screen.dart';
+import 'features/dashboard/widgets/dashboard_trend_section.dart';
 import 'features/documents/document_import_premium_screen.dart';
 import 'features/import/import_screen.dart';
 import 'features/journal/add_log_screen.dart';
@@ -105,6 +106,7 @@ class _BrowserAuditApp extends StatelessWidget {
       'dashboard' => DashboardCompanionEntryScreen(
         companionService: visualCompanion,
       ),
+      'trend' => const _BrowserTrendSurface(),
       'companion' => const CompanionPremiumScreen(),
       'summary' => const AISummaryScreen(),
       'profile' => const ProfileScreen(),
@@ -131,6 +133,28 @@ class _BrowserAuditApp extends StatelessWidget {
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       home: child,
+    );
+  }
+}
+
+class _BrowserTrendSurface extends StatelessWidget {
+  const _BrowserTrendSurface();
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = context.watch<PatientProfileData?>();
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4FBF9),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: DashboardTrendSection(
+            unit: profile?.unitPreference ?? 'mg/dL',
+            low: profile?.targetRangeLow,
+            high: profile?.targetRangeHigh,
+          ),
+        ),
+      ),
     );
   }
 }
