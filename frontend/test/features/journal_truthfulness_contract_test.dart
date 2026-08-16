@@ -51,4 +51,14 @@ void main() {
     expect(source, isNot(contains('Icons.cloud_done_outlined')));
     expect(source, isNot(contains('Icons.cloud_off_outlined')));
   });
+
+  test('Journal reserves red for hypoglycemia and uses target range for highs', () {
+    final source = File(
+      'lib/features/journal/journal_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('if (val < 70)'));
+    expect(source, contains('else if (val < low || val > high)'));
+    expect(source, isNot(contains('val < 70 || val > 250')));
+  });
 }
