@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../data/models/companion_models.dart';
+import '../data/models/companion_next_action_models.dart';
 import '../data/models/proactive_preview_models.dart';
 import 'auth_service.dart';
 
@@ -56,6 +57,25 @@ class CompanionService {
       final decoded = jsonDecode(response.body);
       if (decoded is! Map) return null;
       return ProactivePreview.fromJson(Map<String, dynamic>.from(decoded));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<CompanionNextAction?> evaluateNextAction() async {
+    try {
+      final token = await _authService.getIdToken();
+      if (token == null || token.isEmpty) return null;
+      final response = await _http
+          .post(
+            Uri.parse('$baseUrl/api/v1/companion/next-action/evaluate/'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 30));
+      if (response.statusCode != 200) return null;
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) return null;
+      return CompanionNextAction.fromJson(Map<String, dynamic>.from(decoded));
     } catch (_) {
       return null;
     }
