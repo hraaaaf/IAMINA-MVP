@@ -40,6 +40,37 @@ class _RemindersScreenState extends State<RemindersScreen> {
     setState(() => _dueAt = DateTime.now().add(const Duration(hours: 1)));
   }
 
+  Future<void> _confirmDeleteReminder(AppDatabase db, ReminderData item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(_rt(context, 'Supprimer le rappel ?', 'Delete reminder?', 'حذف التذكير؟')),
+        content: Text(
+          _rt(
+            context,
+            'Ce rappel enregistré sera supprimé.',
+            'This saved reminder will be deleted.',
+            'سيتم حذف هذا التذكير المحفوظ.',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(_rt(context, 'Annuler', 'Cancel', 'إلغاء')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(
+              _rt(context, 'Supprimer', 'Delete', 'حذف'),
+              style: const TextStyle(color: AminaTheme.dangerFg),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await db.deleteReminder(item.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     final db = context.read<AppDatabase>();
@@ -258,10 +289,8 @@ class _RemindersScreenState extends State<RemindersScreen> {
                                         width: 40,
                                         height: 40,
                                         decoration: AminaVisualLanguage.mintIconDecoration(context),
-                                        child: Icon(
-                                          item.enabled
-                                              ? Icons.notifications_active_outlined
-                                              : Icons.notifications_off_outlined,
+                                        child: const Icon(
+                                          Icons.event_note_outlined,
                                           color: AminaVisualLanguage.actionGreen,
                                           size: 20,
                                         ),
@@ -270,19 +299,11 @@ class _RemindersScreenState extends State<RemindersScreen> {
                                       subtitle: Text(
                                         DateFormat('dd/MM/yyyy HH:mm').format(item.dueAt),
                                       ),
-                                      trailing: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Switch(
-                                            value: item.enabled,
-                                            onChanged: (value) => db.setReminderEnabled(item.id, value),
-                                          ),
-                                          IconButton(
-                                            tooltip: _rt(context, 'Supprimer', 'Delete', 'حذف'),
-                                            icon: const Icon(Icons.delete_outline_rounded),
-                                            onPressed: () => db.deleteReminder(item.id),
-                                          ),
-                                        ],
+                                      trailing: IconButton(
+                                        key: Key('delete-reminder-${item.id}'),
+                                        tooltip: _rt(context, 'Supprimer', 'Delete', 'حذف'),
+                                        icon: const Icon(Icons.delete_outline_rounded),
+                                        onPressed: () => _confirmDeleteReminder(db, item),
                                       ),
                                     ),
                                   ),
