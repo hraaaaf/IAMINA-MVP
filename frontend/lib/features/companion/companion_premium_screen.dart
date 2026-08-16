@@ -4,6 +4,7 @@ import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/companion_models.dart';
 import '../../services/companion_service.dart';
+import 'companion_uncertainty_copy.dart';
 
 String _t(BuildContext context, String fr, String en, String ar) {
   final code = Localizations.localeOf(context).languageCode;
@@ -377,6 +378,11 @@ class _PatternCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final limitationLabels = pattern.limitations
+        .map((code) => companionPatternLimitationLabel(context, code))
+        .whereType<String>()
+        .toList(growable: false);
+
     return _SurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,6 +425,10 @@ class _PatternCard extends StatelessWidget {
               color: AminaVisualLanguage.secondary(context),
             ),
           ),
+          if (limitationLabels.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            ...limitationLabels.map((label) => _UncertaintyNote(text: label)),
+          ],
         ],
       ),
     );
@@ -431,6 +441,11 @@ class _ChangeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final missingDataLabels = change.missingData
+        .map((code) => companionMissingDataLabel(context, code))
+        .whereType<String>()
+        .toList(growable: false);
+
     return _SurfaceCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -466,11 +481,48 @@ class _ChangeCard extends StatelessWidget {
                     color: AminaVisualLanguage.secondary(context),
                   ),
                 ),
+                if (missingDataLabels.isNotEmpty) ...[
+                  const SizedBox(height: 9),
+                  ...missingDataLabels.map((label) => _UncertaintyNote(text: label)),
+                ],
               ],
             ),
           ),
           const SizedBox(width: 8),
           _EvidencePill(value: change.evidenceStrength),
+        ],
+      ),
+    );
+  }
+}
+
+class _UncertaintyNote extends StatelessWidget {
+  final String text;
+  const _UncertaintyNote({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            size: 15,
+            color: AminaVisualLanguage.secondary(context),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.4,
+                color: AminaVisualLanguage.secondary(context),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -633,58 +685,39 @@ class _StateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
-      decoration: AminaVisualLanguage.cardDecoration(context),
+    return _SurfaceCard(
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (loading)
-            const CircularProgressIndicator()
-          else
-            Container(
-              width: 54,
-              height: 54,
-              decoration: AminaVisualLanguage.mintIconDecoration(context),
-              child: Icon(
-                icon ?? Icons.auto_awesome_rounded,
-                color: AminaVisualLanguage.actionGreen,
-                size: 25,
-              ),
-            ),
-          const SizedBox(height: 18),
+            const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2.2),
+            )
+          else if (icon != null)
+            Icon(icon, color: AminaVisualLanguage.actionGreen, size: 30),
+          const SizedBox(height: 14),
           Text(
             title,
-            textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'Georgia',
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
               color: AminaVisualLanguage.primaryText(context),
             ),
           ),
-          const SizedBox(height: 9),
+          const SizedBox(height: 7),
           Text(
             body,
-            textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
-              height: 1.5,
+              height: 1.45,
               color: AminaVisualLanguage.secondary(context),
             ),
           ),
           if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: FilledButton.icon(
-                onPressed: onAction,
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: Text(actionLabel!),
-              ),
-            ),
+            const SizedBox(height: 14),
+            FilledButton(onPressed: onAction, child: Text(actionLabel!)),
           ],
         ],
       ),
@@ -697,104 +730,52 @@ class _AmbientBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (AminaTheme.isDark(context)) return const SizedBox.shrink();
-    return IgnorePointer(
-      child: Stack(
-        children: [
-          PositionedDirectional(
-            top: -110,
-            end: -105,
-            child: Container(
-              width: 290,
-              height: 290,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AminaVisualLanguage.mintWaveLight.withValues(alpha: .70),
-              ),
-            ),
-          ),
-          PositionedDirectional(
-            bottom: -140,
-            start: -90,
-            child: Container(
-              width: 320,
-              height: 240,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(180),
-                color: AminaVisualLanguage.mintWaveStrong.withValues(alpha: .38),
-              ),
-            ),
-          ),
-        ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AminaTheme.isDark(context)
+              ? [AminaTheme.bg(context), AminaTheme.surface(context)]
+              : const [Color(0xFFF8FCFB), Color(0xFFEAF7F2)],
+        ),
       ),
     );
   }
 }
 
 String _friendlyKey(BuildContext context, String key) {
-  const values = <String, List<String>>{
-    'context:stress': ['Stress', 'Stress', 'التوتر'],
-    'context:activity': ['Activité', 'Activity', 'النشاط'],
-    'context:illness': ['Maladie déclarée', 'Recorded illness', 'مرض مسجل'],
-    'context:poor_sleep': ['Sommeil difficile', 'Poor sleep', 'نوم غير جيد'],
-    'context:fatigue': ['Fatigue', 'Fatigue', 'التعب'],
-    'meal:breakfast': ['Petit-déjeuner', 'Breakfast', 'الفطور'],
-    'meal:lunch': ['Déjeuner', 'Lunch', 'الغداء'],
-    'meal:dinner': ['Dîner', 'Dinner', 'العشاء'],
-    'meal:snack': ['Collation', 'Snack', 'وجبة خفيفة'],
-    'meal:suhoor': ['Suhoor', 'Suhoor', 'السحور'],
-    'meal:iftar': ['Iftar', 'Iftar', 'الإفطار'],
+  return switch (key) {
+    'overnight_glucose' => _t(context, 'Glycémie nocturne', 'Overnight glucose', 'سكر الدم الليلي'),
+    'post_meal_glucose' => _t(context, 'Après les repas', 'After meals', 'بعد الوجبات'),
+    'morning_glucose' => _t(context, 'Glycémie du matin', 'Morning glucose', 'سكر الصباح'),
+    _ => key.replaceAll('_', ' '),
   };
-  final value = values[key];
-  if (value == null) return key;
-  final code = Localizations.localeOf(context).languageCode;
-  return code == 'ar' ? value[2] : code == 'en' ? value[1] : value[0];
 }
 
-String _movement(BuildContext context, String value) => switch (value) {
-  'toward_personal_window_baseline' => _t(
-      context,
-      'Le signal descriptif s’est rapproché de votre référence personnelle sur la fenêtre observée.',
-      'The descriptive signal moved toward your personal window baseline.',
-      'اقتربت الإشارة الوصفية من مرجعك الشخصي خلال الفترة المرصودة.',
-    ),
-  'away_from_personal_window_baseline' => _t(
-      context,
-      'Le signal descriptif s’est éloigné de votre référence personnelle sur la fenêtre observée.',
-      'The descriptive signal moved away from your personal window baseline.',
-      'ابتعدت الإشارة الوصفية عن مرجعك الشخصي خلال الفترة المرصودة.',
-    ),
-  'stable_relative_to_personal_window_baseline' => _t(
-      context,
-      'Le signal descriptif est resté globalement stable par rapport à votre référence personnelle.',
-      'The descriptive signal stayed broadly stable relative to your personal baseline.',
-      'بقيت الإشارة الوصفية مستقرة عموماً مقارنة بمرجعك الشخصي.',
-    ),
-  _ => _t(
-      context,
-      'Première comparaison disponible ou historique encore insuffisant.',
-      'First available comparison or history is still insufficient.',
-      'هذه أول مقارنة متاحة أو أن السجل ما زال غير كافٍ.',
-    ),
-};
+String _movement(BuildContext context, String value) {
+  return switch (value) {
+    'improving' => _t(context, 'Évolution descriptive vers des valeurs plus proches de votre base récente.', 'Descriptive movement toward values closer to your recent baseline.', 'تغير وصفي نحو قيم أقرب إلى خطك الأساسي الحديث.'),
+    'worsening' => _t(context, 'Évolution descriptive vers des valeurs plus éloignées de votre base récente.', 'Descriptive movement toward values further from your recent baseline.', 'تغير وصفي نحو قيم أبعد عن خطك الأساسي الحديث.'),
+    'stable' => _t(context, 'Pas de mouvement descriptif notable par rapport à votre base récente.', 'No notable descriptive movement versus your recent baseline.', 'لا يوجد تغير وصفي ملحوظ مقارنة بخطك الأساسي الحديث.'),
+    _ => _t(context, 'Pas assez de recul pour décrire un mouvement.', 'Not enough history to describe movement.', 'لا توجد بيانات سابقة كافية لوصف التغير.'),
+  };
+}
 
-String _changeLabel(BuildContext context, String kind) => switch (kind) {
-  'new' => _t(context, 'Nouveau depuis votre dernière revue.', 'New since your last review.', 'جديد منذ آخر مراجعة.'),
-  'persisting' => _t(context, 'Toujours observé depuis votre dernière revue.', 'Still observed since your last review.', 'ما زال ملاحظاً منذ آخر مراجعة.'),
-  'improving' => _t(
-      context,
-      'Mouvement descriptif vers votre référence personnelle, sans conclure à un effet du traitement.',
-      'Descriptive movement toward your personal baseline, without inferring a treatment effect.',
-      'تحرك وصفي نحو مرجعك الشخصي دون استنتاج تأثير للعلاج.',
-    ),
-  'resolved' => _t(context, 'Non retrouvé dans les données gouvernées actuelles.', 'Not present in current governed data.', 'لم يعد موجوداً في البيانات الموثوقة الحالية.'),
-  _ => _t(context, 'Changement non déterminable avec les données disponibles.', 'Change cannot be determined from available data.', 'لا يمكن تحديد التغير من البيانات المتاحة.'),
-};
+String _changeLabel(BuildContext context, String value) {
+  return switch (value) {
+    'appeared' => _t(context, 'Apparu depuis la revue.', 'Appeared since the review.', 'ظهر منذ المراجعة.'),
+    'resolved' => _t(context, 'N’est plus actif dans les données admissibles.', 'No longer active in eligible data.', 'لم يعد نشطاً في البيانات المؤهلة.'),
+    'reactivated' => _t(context, 'Réapparu après la revue.', 'Reappeared after the review.', 'ظهر مجدداً بعد المراجعة.'),
+    _ => _t(context, 'Changement gouverné détecté.', 'Governed change detected.', 'تم رصد تغير موثوق.'),
+  };
+}
 
-IconData _changeIcon(String kind) => switch (kind) {
-  'new' => Icons.fiber_new_rounded,
-  'persisting' => Icons.repeat_rounded,
-  'improving' => Icons.trending_flat_rounded,
-  'resolved' => Icons.check_circle_outline_rounded,
-  _ => Icons.help_outline_rounded,
-};
+IconData _changeIcon(String value) {
+  return switch (value) {
+    'appeared' => Icons.add_circle_outline_rounded,
+    'resolved' => Icons.check_circle_outline_rounded,
+    'reactivated' => Icons.refresh_rounded,
+    _ => Icons.swap_horiz_rounded,
+  };
+}
