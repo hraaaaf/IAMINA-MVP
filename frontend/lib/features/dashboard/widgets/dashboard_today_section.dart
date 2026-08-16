@@ -94,14 +94,14 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
     }
 
     if (overview != null) {
-      if (overview.reviewStatus == 'ready' &&
-          overview.changesSinceReview.isNotEmpty) {
+      final determinateChangeCount = overview.changesSinceReview
+          .where((change) => change.changeKind != 'unknown')
+          .length;
+      if (overview.reviewStatus == 'ready' && determinateChangeCount > 0) {
         signals.add(
           _TodaySignal(
             icon: Icons.change_circle_outlined,
-            title: l10n.dashboardGovernedChanges(
-              overview.changesSinceReview.length,
-            ),
+            title: l10n.dashboardGovernedChanges(determinateChangeCount),
             actionLabel: l10n.dashboardOpenCompanion,
             onTap: () => context.go('/companion'),
           ),
