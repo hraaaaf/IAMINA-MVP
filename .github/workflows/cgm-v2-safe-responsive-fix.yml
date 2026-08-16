@@ -1,0 +1,52 @@
+name: CGM V2 safe responsive fix
+
+on:
+  push:
+    branches:
+      - agent/cgm-gateway-v2-product-wiring
+    paths:
+      - .github/workflows/cgm-v2-safe-responsive-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  restore-and-patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/cgm-gateway-v2-product-wiring
+          fetch-depth: 0
+      - name: Restore known-good component and patch timestamp flex
+        run: |
+          git show c1f7f3b94418d153ac390b942ba72c3a4ab20f5a:frontend/lib/features/import/cgm_connections_section.dart > frontend/lib/features/import/cgm_connections_section.dart
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/lib/features/import/cgm_connections_section.dart')
+          text = path.read_text()
+          old = '''                    const Spacer(),
+                    Text(
+                      _relative(latest.recordedAt, l10n),
+                      style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
+                    ),'''
+          new = '''                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        _relative(latest.recordedAt, l10n),
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
+                      ),
+                    ),'''
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one timestamp row anchor, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit repaired component
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/lib/features/import/cgm_connections_section.dart
+          git commit -m "fix(cgm): repair mobile latest-reading layout"
+          git push origin HEAD:agent/cgm-gateway-v2-product-wiring
