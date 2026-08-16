@@ -77,6 +77,12 @@ extension DashboardKpiLocalizedCopy on AppLocalizations {
         ar: 'النطاق الشخصي غير مضبوط',
       );
 
+  String get dashboardKpiLoading => _kpiPick(
+        en: 'Loading recorded indicators…',
+        fr: 'Chargement des indicateurs enregistrés…',
+        ar: 'جارٍ تحميل المؤشرات المسجلة…',
+      );
+
   String get dashboardKpiEmpty => _kpiPick(
         en: 'No recorded measurement in the last 7 days.',
         fr: 'Aucune mesure enregistrée sur les 7 derniers jours.',
