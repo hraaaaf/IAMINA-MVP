@@ -76,6 +76,7 @@ Branch: `agent/journal-product-audit`
 - Red is reserved for `<70 mg/dL`; other out-of-target readings use the patient's target-range amber branch.
 - Target ranges, treatment logic, schema and persisted history remain unchanged.
 - Anti-regression contracts: `frontend/test/features/journal_truthfulness_contract_test.dart` and the canonical mobile-header contract.
+- Full PR diff reviewed after the autonomous pass: changes remain scoped to Journal runtime/query/edit flow, contracts and this assessment.
 
 ## Certification gate
 
