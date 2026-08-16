@@ -17,7 +17,7 @@ Journal is a factual history of recorded glucose measurements and their captured
 | Glucose value capsule | Core factual content of Journal | 9.0/10 baseline | IMPROVE — display now respects mg/dL / mmol/L preference |
 | Meal / glycemic / Ramadan / life context | Explains recorded circumstances without manufacturing context | 9.0/10 | KEEP |
 | Historical insulin badge | Preserves backward-compatible factual history without turning Journal into medication entry | 8.5/10 | KEEP |
-| Synchronization status | Useful provenance/state signal but visually secondary | 7.0/10 | REVIEW — no change without a new A/B/C decision |
+| Synchronization status | Useful only when action or attention is required; routine success adds repeated visual noise | 7.0/10 baseline → 9.0/10 after B | **Decision B** — hide synced/non-actionable states; show pending/error only |
 | Tap → edit | Essential correction path for persisted factual data | 9.5/10 | KEEP |
 | Swipe → confirmed delete | Necessary destructive action with explicit confirmation | 9.0/10 | KEEP |
 | Hard-coded red threshold `>250 mg/dL` | Potentially useful alert hierarchy, but clinical authority/surface semantics must be governed | not scored | HOLD — no change without clinical decision |
@@ -27,6 +27,7 @@ Journal is a factual history of recorded glucose measurements and their captured
 - Default filter is 30 days while the header previously said `Historique complet`.
 - Stored glucose is mg/dL, but the row previously rendered `bloodSugar.toStringAsFixed(0)` regardless of `unitPreference`; mmol/L users therefore saw the wrong numerical display.
 - Personal Response previously appeared before the factual history and therefore competed with the Journal's primary purpose.
+- Synchronization previously rendered an icon even for routine `synced` state, repeating low-value status on every row.
 - Deletion already requires explicit confirmation.
 - Historical `insulinUnits` remains display-only compatibility data in Journal.
 - Row coloring currently uses `val < 70 || val > 250` for red, otherwise profile target-range comparison for amber. Repository search did not establish authority for the hard-coded `250 mg/dL` red threshold. This audit does not modify it.
@@ -41,13 +42,23 @@ User arbitration: **B**.
 - Load/render the full `PersonalResponseSection` only after explicit expansion.
 - Do not move its interpretation into the factual history rows.
 
+## Product decision — synchronization status
+
+User arbitration: **B**.
+
+- Hide routine `synced` state from Journal rows.
+- Keep `pending` visible because synchronization is not complete.
+- Keep `error` visible because user attention may be required.
+- Hide non-actionable fallback/unknown icon instead of presenting ambiguous cloud state.
+
 ## Runtime correction
 
 Branch: `agent/journal-product-audit`
 
 - Header subtitle follows the selected 7-day, 30-day or all-history filter.
 - mmol/L display converts stored mg/dL using `/ 18.0` and one decimal place.
-- Personal Response is now a post-history secondary disclosure, collapsed by default.
+- Personal Response is a post-history secondary disclosure, collapsed by default.
+- Journal row sync chrome is silent for `synced`/non-actionable states and visible only for `pending`/`error`.
 - Existing clinical coloring thresholds, target ranges, treatment logic, schema and history remain unchanged.
 - Anti-regression contracts: `frontend/test/features/journal_truthfulness_contract_test.dart` and the canonical mobile-header contract.
 
