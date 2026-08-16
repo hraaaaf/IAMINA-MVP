@@ -8,6 +8,8 @@ import '../../core/localization/dashboard_localized_copy.dart';
 import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
+import '../../services/companion_service.dart';
+import 'widgets/dashboard_today_section.dart';
 
 String _t(BuildContext context, String fr, String en, String ar) {
   final code = Localizations.localeOf(context).languageCode;
@@ -59,7 +61,9 @@ String _latestReadingTimestampLabel(
 }
 
 class DashboardPremiumScreen extends StatelessWidget {
-  const DashboardPremiumScreen({super.key});
+  final CompanionService? companionService;
+
+  const DashboardPremiumScreen({super.key, this.companionService});
 
   @override
   Widget build(BuildContext context) {
@@ -125,6 +129,7 @@ class DashboardPremiumScreen extends StatelessWidget {
               unit: unit,
               low: low,
               high: high,
+              companionService: companionService,
             );
           },
         );
@@ -138,12 +143,14 @@ class _DashboardBody extends StatelessWidget {
   final String unit;
   final double? low;
   final double? high;
+  final CompanionService? companionService;
 
   const _DashboardBody({
     required this.logs,
     required this.unit,
     required this.low,
     required this.high,
+    required this.companionService,
   });
 
   String _display(double mg) => unit == 'mmol/L'
@@ -240,10 +247,11 @@ class _DashboardBody extends StatelessWidget {
                         targetConfigured: hasTarget,
                         locale: locale,
                       ),
-                      const SizedBox(height: 16),
-                      const _QuickActions(),
-                      const SizedBox(height: 16),
-                      _TrustCard(hasData: logs.isNotEmpty),
+                      const SizedBox(height: 18),
+                      DashboardTodaySection(
+                        targetConfigured: hasTarget,
+                        service: companionService,
+                      ),
                     ]),
                   ),
                 ),
@@ -544,146 +552,6 @@ class _LatestReadingCard extends StatelessWidget {
                   'إضافة قياس',
                 ),
                 style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickActions extends StatelessWidget {
-  const _QuickActions();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _ActionCard(
-            icon: Icons.auto_awesome_rounded,
-            label: _t(context, 'Compagnon', 'Companion', 'الرفيق'),
-            onTap: () => context.go('/companion'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ActionCard(
-            icon: Icons.upload_file_outlined,
-            label: _t(context, 'Importer', 'Import', 'استيراد'),
-            onTap: () => context.go('/importer'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ActionCard(
-            icon: Icons.show_chart_rounded,
-            label: _t(context, 'Journal', 'Journal', 'السجل'),
-            onTap: () => context.go('/journal'),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ActionCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _ActionCard({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          height: 108,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
-          decoration: AminaVisualLanguage.cardDecoration(context, radius: 20),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: AminaVisualLanguage.mintIconDecoration(context),
-                child: Icon(
-                  icon,
-                  color: AminaVisualLanguage.actionGreen,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(height: 9),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w800,
-                  color: AminaVisualLanguage.primaryText(context),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TrustCard extends StatelessWidget {
-  final bool hasData;
-  const _TrustCard({required this.hasData});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: AminaVisualLanguage.cardDecoration(
-        context,
-        color: AminaVisualLanguage.mintSurface.withValues(alpha: .72),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.shield_outlined,
-            color: AminaVisualLanguage.actionGreen,
-            size: 21,
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Text(
-              hasData
-                  ? _t(
-                      context,
-                      'Vos données restent interprétées dans des limites cliniques gouvernées. IAmina n’invente pas ce qui manque.',
-                      'Your data stays within governed clinical boundaries. IAmina does not invent what is missing.',
-                      'تبقى بياناتك ضمن حدود سريرية محكومة. لا تخترع IAmina ما هو مفقود.',
-                    )
-                  : _t(
-                      context,
-                      'Ajoutez une première mesure pour commencer. IAmina n’affiche aucune valeur fictive.',
-                      'Add your first reading to begin. IAmina never displays fabricated values.',
-                      'أضف قياسك الأول للبدء. لا تعرض IAmina قيماً مختلقة.',
-                    ),
-              style: TextStyle(
-                fontSize: 12.5,
-                height: 1.45,
-                color: AminaVisualLanguage.secondary(context),
               ),
             ),
           ),
