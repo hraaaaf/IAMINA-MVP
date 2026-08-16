@@ -36,4 +36,16 @@ void main() {
     expect(source, contains('drift.Value(diabetesType)'));
     expect(source, contains('drift.Value(treatment)'));
   });
+
+  test('profile persists the active locale and keeps FR EN AR choice available', () {
+    final profile = _read('lib/features/profile/profile_screen.dart');
+    final onboarding = _read('lib/features/auth/onboarding_chat_screen.dart');
+
+    expect(profile, isNot(contains("preferredLanguage: const drift.Value('fr')")));
+    expect(profile, contains('Localizations.localeOf(context).languageCode'));
+    expect(profile, contains("context.push('/onboarding')"));
+    expect(onboarding, contains("_selectLanguage('fr')"));
+    expect(onboarding, contains("_selectLanguage('en')"));
+    expect(onboarding, contains("_selectLanguage('ar')"));
+  });
 }
