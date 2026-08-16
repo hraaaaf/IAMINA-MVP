@@ -384,6 +384,23 @@ class _JournalScreenState extends State<JournalScreen> {
     final displayValue = unit == 'mmol/L'
         ? (val / 18.0).toStringAsFixed(1)
         : val.toStringAsFixed(0);
+    final mealLabels = decodeMealItemIds(log.mealItemsJson)
+        .map(mealFoodById)
+        .whereType<MealFoodItem>()
+        .map((food) => food.labelFor(Localizations.localeOf(context)))
+        .toList();
+    final mealDescription = log.mealDescription?.trim() ?? '';
+    String? compactMealSummary;
+    if (mealLabels.isNotEmpty) {
+      final visibleLabels = mealLabels.take(2).join(' · ');
+      final remaining = mealLabels.length - 2;
+      compactMealSummary = remaining > 0
+          ? '$visibleLabels · +$remaining'
+          : visibleLabels;
+    } else if (mealDescription.isNotEmpty) {
+      compactMealSummary = mealDescription;
+    }
+
     Color color = AminaTheme.successEmerald;
     if (val < 70) {
       color = AminaTheme.dangerRed;
@@ -499,54 +516,12 @@ class _JournalScreenState extends State<JournalScreen> {
                           color: AminaTheme.textMuted.withValues(alpha: 0.7),
                         ),
                       ),
-                      if (decodeMealItemIds(log.mealItemsJson).isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: decodeMealItemIds(log.mealItemsJson)
-                              .map(mealFoodById)
-                              .whereType<MealFoodItem>()
-                              .map(
-                                (food) => Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AminaTheme.textMuted.withValues(
-                                      alpha: 0.05,
-                                    ),
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(
-                                      color: AminaTheme.textMuted.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    food.labelFor(
-                                      Localizations.localeOf(context),
-                                    ),
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: AminaTheme.textMuted.withValues(
-                                        alpha: 0.8,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ],
-                      if (log.mealDescription != null &&
-                          log.mealDescription!.trim().isNotEmpty) ...[
+                      if (compactMealSummary != null) ...[
                         const SizedBox(height: 5),
                         Text(
-                          log.mealDescription!.trim(),
-                          maxLines: 2,
+                          compactMealSummary,
+                          key: const Key('journal-meal-summary'),
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11,
