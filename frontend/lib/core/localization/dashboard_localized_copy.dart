@@ -26,6 +26,12 @@ extension DashboardLocalizedCopy on AppLocalizations {
         ar: 'آخر قياس معروف',
       );
 
+  String get dashboardTargetNotConfigured => _pick(
+        en: 'Target not configured',
+        fr: 'Cible non configurée',
+        ar: 'النطاق المستهدف غير مضبوط',
+      );
+
   String get dashboardFreshNow => _pick(
         en: 'just now',
         fr: 'à l’instant',
