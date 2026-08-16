@@ -373,7 +373,7 @@ class _JournalScreenState extends State<JournalScreen> {
         ? (val / 18.0).toStringAsFixed(1)
         : val.toStringAsFixed(0);
     Color color = AminaTheme.successEmerald;
-    if (val < 70 || val > 250) {
+    if (val < 70) {
       color = AminaTheme.dangerRed;
     } else if (val < low || val > high) {
       color = AminaTheme.accentAmber;
