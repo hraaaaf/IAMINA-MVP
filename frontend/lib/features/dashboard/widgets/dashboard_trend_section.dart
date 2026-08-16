@@ -69,8 +69,9 @@ class _DashboardTrendSectionState extends State<DashboardTrendSection> {
       stream: db.watchDashboardTrendLogs(start, now),
       builder: (context, logSnapshot) {
         final l10n = AppLocalizations.of(context)!;
-        final logs = [...?logSnapshot.data]
-          ..sort((a, b) => _loggedAt(a).compareTo(_loggedAt(b)));
+        final logs = List<LogEntryData>.from(
+          logSnapshot.data ?? const <LogEntryData>[],
+        )..sort((a, b) => _loggedAt(a).compareTo(_loggedAt(b)));
 
         return Container(
           width: double.infinity,
@@ -109,8 +110,10 @@ class _DashboardTrendSectionState extends State<DashboardTrendSection> {
                       ],
                     ),
                   ),
-                  if (logs.isNotEmpty)
+                  if (logs.isNotEmpty) ...[
+                    const SizedBox(width: 8),
                     _CountPill(text: l10n.dashboardTrendPointCount(logs.length)),
+                  ],
                 ],
               ),
               const SizedBox(height: 14),
@@ -143,9 +146,13 @@ class _DashboardTrendSectionState extends State<DashboardTrendSection> {
                   builder: (context, medicationSnapshot) {
                     final medications = medicationSnapshot.hasError
                         ? const <MedicationEventData>[]
-                        : [...?medicationSnapshot.data];
+                        : List<MedicationEventData>.from(
+                            medicationSnapshot.data ??
+                                const <MedicationEventData>[],
+                          );
                     final selected = _selectedLog(logs);
-                    final locale = Localizations.localeOf(context).toLanguageTag();
+                    final locale =
+                        Localizations.localeOf(context).toLanguageTag();
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,7 +169,8 @@ class _DashboardTrendSectionState extends State<DashboardTrendSection> {
                             selectedLogId: selected.id,
                             unit: widget.unit,
                             locale: locale,
-                            onSelect: (id) => setState(() => _selectedLogId = id),
+                            onSelect: (id) =>
+                                setState(() => _selectedLogId = id),
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -289,8 +297,6 @@ class _RangeSelector extends StatelessWidget {
 class _TrendPlot extends StatelessWidget {
   static const double _left = 42;
   static const double _right = 8;
-  static const double _top = 10;
-  static const double _bottom = 28;
 
   final List<LogEntryData> logs;
   final List<MedicationEventData> medications;
@@ -323,14 +329,19 @@ class _TrendPlot extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final plotWidth = math.max(1.0, width - _left - _right);
+        final plotWidth = math.max(1.0, width - _left - _right).toDouble();
         return Semantics(
-          label: AppLocalizations.of(context)!.dashboardTrendPointCount(logs.length),
+          label:
+              AppLocalizations.of(context)!.dashboardTrendPointCount(logs.length),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapDown: (details) {
-              final dx = details.localPosition.dx.clamp(_left, width - _right);
-              final fraction = ((dx - _left) / plotWidth).clamp(0.0, 1.0);
+              final dx = details.localPosition.dx
+                  .clamp(_left, width - _right)
+                  .toDouble();
+              final fraction = ((dx - _left) / plotWidth)
+                  .clamp(0.0, 1.0)
+                  .toDouble();
               final targetMs = start.millisecondsSinceEpoch +
                   ((end.millisecondsSinceEpoch - start.millisecondsSinceEpoch) *
                           fraction)
@@ -418,22 +429,24 @@ class _TrendPainter extends CustomPainter {
     var minY = values.reduce(math.min);
     var maxY = values.reduce(math.max);
     final rawSpan = maxY - minY;
-    final padding = math.max(15.0, rawSpan * .12);
-    minY = math.max(0.0, minY - padding);
+    final padding = math.max(15.0, rawSpan * .12).toDouble();
+    minY = math.max(0.0, minY - padding).toDouble();
     maxY += padding;
     if (maxY - minY < 20) {
       final center = (maxY + minY) / 2;
-      minY = math.max(0.0, center - 10);
+      minY = math.max(0.0, center - 10).toDouble();
       maxY = center + 10;
     }
 
     double yFor(double value) =>
         rect.bottom - ((value - minY) / (maxY - minY)) * rect.height;
+
     double xFor(DateTime time) {
       final total = end.millisecondsSinceEpoch - start.millisecondsSinceEpoch;
       if (total <= 0) return rect.left;
       final elapsed = time.millisecondsSinceEpoch - start.millisecondsSinceEpoch;
-      return rect.left + (elapsed / total).clamp(0.0, 1.0) * rect.width;
+      final fraction = (elapsed / total).clamp(0.0, 1.0).toDouble();
+      return rect.left + fraction * rect.width;
     }
 
     final gridPaint = Paint()
@@ -447,8 +460,8 @@ class _TrendPainter extends CustomPainter {
     );
 
     if (low != null && high != null && low! < high!) {
-      final targetTop = yFor(high!).clamp(rect.top, rect.bottom);
-      final targetBottom = yFor(low!).clamp(rect.top, rect.bottom);
+      final targetTop = yFor(high!).clamp(rect.top, rect.bottom).toDouble();
+      final targetBottom = yFor(low!).clamp(rect.top, rect.bottom).toDouble();
       canvas.drawRect(
         Rect.fromLTRB(rect.left, targetTop, rect.right, targetBottom),
         Paint()..color = AminaVisualLanguage.mintSurface.withValues(alpha: .72),
@@ -463,7 +476,10 @@ class _TrendPainter extends CustomPainter {
         text: TextSpan(text: _valueLabel(value), style: axisText),
         textDirection: TextDirection.ltr,
       )..layout(maxWidth: left - 6);
-      painter.paint(canvas, Offset(left - painter.width - 6, y - painter.height / 2));
+      painter.paint(
+        canvas,
+        Offset(left - painter.width - 6, y - painter.height / 2),
+      );
     }
 
     final range = end.difference(start);
@@ -490,13 +506,15 @@ class _TrendPainter extends CustomPainter {
       painter.paint(canvas, Offset(dx, rect.bottom + 7));
     }
 
-    final medicationPaint = Paint()..color = const Color(0xFFC9852B);
+    final medicationPaint = Paint()
+      ..color = const Color(0xFFC9852B)
+      ..strokeWidth = 1.5;
     for (final event in medications) {
       final x = xFor(event.takenAt);
       canvas.drawLine(
         Offset(x, rect.top),
         Offset(x, rect.top + 10),
-        medicationPaint..strokeWidth = 1.5,
+        medicationPaint,
       );
       canvas.drawCircle(Offset(x, rect.top + 2), 2.5, medicationPaint);
     }
@@ -513,7 +531,11 @@ class _TrendPainter extends CustomPainter {
           Paint()..color = AminaVisualLanguage.mintSurface,
         );
       }
-      canvas.drawCircle(point, selected ? 4.8 : 3.6, selected ? selectedPaint : pointPaint);
+      canvas.drawCircle(
+        point,
+        selected ? 4.8 : 3.6,
+        selected ? selectedPaint : pointPaint,
+      );
     }
   }
 
@@ -549,16 +571,20 @@ class _TrendSelectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final at = log.loggedAt ?? log.createdAt;
-    final tags = <String>[
-      if (log.glycemicContext != null)
-        ?l10n.dashboardTrendContextLabel(log.glycemicContext!),
-      if (log.mealType != null) ?l10n.dashboardTrendContextLabel(log.mealType!),
-      if (log.isStressed) ?l10n.dashboardTrendContextLabel('stress'),
-      if (log.isActive) ?l10n.dashboardTrendContextLabel('activity'),
-      if (log.isSick) ?l10n.dashboardTrendContextLabel('illness'),
-      if (log.isTired || (log.fatigueLevel ?? 0) > 0)
-        ?l10n.dashboardTrendContextLabel('fatigue'),
-    ].whereType<String>().toSet().toList(growable: false);
+    final tags = <String>{};
+
+    void addTag(String? key) {
+      if (key == null || key.trim().isEmpty) return;
+      final label = l10n.dashboardTrendContextLabel(key.trim());
+      if (label != null) tags.add(label);
+    }
+
+    addTag(log.glycemicContext);
+    addTag(log.mealType);
+    if (log.isStressed) addTag('stress');
+    if (log.isActive) addTag('activity');
+    if (log.isSick) addTag('illness');
+    if (log.isTired || (log.fatigueLevel ?? 0) > 0) addTag('fatigue');
 
     return Container(
       width: double.infinity,
@@ -623,7 +649,9 @@ class _TrendSelectionCard extends StatelessWidget {
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: tags.map((tag) => _ContextPill(label: tag)).toList(),
+              children: tags
+                  .map((tag) => _ContextPill(label: tag))
+                  .toList(growable: false),
             ),
         ],
       ),
@@ -768,7 +796,8 @@ class _LegendDot extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 5),
-        Flexible(
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 220),
           child: Text(
             label,
             style: TextStyle(
