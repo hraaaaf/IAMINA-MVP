@@ -16,14 +16,23 @@ String _t(BuildContext context, String fr, String en, String ar) {
   return fr;
 }
 
+const _futureTimestampTolerance = Duration(minutes: 5);
+
+bool _readingTimestampNeedsReview(DateTime latestAt) => latestAt.isAfter(
+      DateTime.now().add(_futureTimestampTolerance),
+    );
+
 Duration _safeReadingAge(DateTime latestAt) {
   final age = DateTime.now().difference(latestAt);
   return age.isNegative ? Duration.zero : age;
 }
 
 String _latestReadingFreshnessLabel(BuildContext context, DateTime latestAt) {
-  final age = _safeReadingAge(latestAt);
   final l10n = AppLocalizations.of(context)!;
+  if (_readingTimestampNeedsReview(latestAt)) {
+    return l10n.dashboardTimestampNeedsReview;
+  }
+  final age = _safeReadingAge(latestAt);
   if (age.inMinutes < 1) return l10n.dashboardFreshNow;
   if (age.inMinutes < 60) return l10n.dashboardFreshMinutes(age.inMinutes);
   if (age.inHours < 24) return l10n.dashboardFreshHours(age.inHours);
@@ -344,6 +353,8 @@ class _LatestReadingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasData = latest != null && latestAt != null;
+    final timestampNeedsReview =
+        latestAt != null && _readingTimestampNeedsReview(latestAt!);
     final freshness = latestAt == null
         ? null
         : _latestReadingFreshnessLabel(context, latestAt!);
@@ -469,7 +480,9 @@ class _LatestReadingCard extends StatelessWidget {
               runSpacing: 4,
               children: [
                 Icon(
-                  Icons.schedule_rounded,
+                  timestampNeedsReview
+                      ? Icons.warning_amber_rounded
+                      : Icons.schedule_rounded,
                   size: 14,
                   color: secondary,
                 ),
