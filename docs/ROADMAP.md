@@ -46,6 +46,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 | Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + P2-COMPANION-0..8 + P3-HORIZON + P3-EVALS | ✅ Closed through P3-EVALS | P3-EVALS human PASS ALL; PR #204 merge `f508cccb…`; post-merge CI #2116 + drift #1928 green |
 | CGM-GW-V1 — Dexcom + Libre ingestion gateway | 100% | ✅ Closed | Runtime PR #276 exact head `706225a4…`; exact-head CI #2568 + drift #2380 green; merge `f8a4ce7f…`; post-merge CI #2569 + drift #2381 green; closeout evidence `docs/assessments/2026-08-16-cgm-gateway-v1-closeout.md` |
 | CGM-GW-V1.1 — LinX provenance via external bridge | 100% | ✅ Closed | Runtime PR #281 exact head `da7b2079…`; exact-head CI #2589 + drift #2401 green; merge `8eaadc36…`; post-merge CI #2590 + drift #2402 green; qualification `docs/assessments/2026-08-16-cgm-gateway-v1-1-linx-qualification.md` |
+| CGM-GW-V2 — Product Wiring | 0% credited | 🟡 In progress | PR #285; authenticated connection/sync/readings persistence + Flutter wiring under exact-head certification; real-device proof remains a separate external gate |
 
 **MENA critical-path completion:** 32 of 41 explicit MENA tasks closed, approximately **78%**.
 
@@ -470,7 +471,7 @@ Acceptance gates:
 # Current blockers and next sequence
 
 1. **Companion intelligence product lane:** P2-COMPANION-0..8, P3-HORIZON and P3-EVALS are closed; no further companion-intelligence LOT is currently queued in this roadmap.
-2. **CGM gateway:** V1 Dexcom/Libre and V1.1 LinX are closed and technically certified. Medtronic remains HOLD until a modern CareLink path is sufficiently canonical; no further CGM runtime work is queued unless a regression appears or a separately governed provider expansion is approved.
+2. **CGM gateway:** V1 Dexcom/Libre and V1.1 LinX are closed. **CGM-GW-V2 Product Wiring is active in PR #285** to add authenticated patient configuration, encrypted credentials, explicit sync/persistence, bounded reading history and truthful Flutter controls; real-device/provider proof remains a separate external gate. Medtronic remains HOLD.
 3. **Gate A Secure Core:** certified at 10.0/10 after issue #30 reachable-history remediation; no further Gate A engineering work is queued unless a regression appears.
 4. **P0-MENA-2 English baseline:** technical gate is closed at 16/16 active surfaces with selection/persistence and FR/EN/AR parity regression coverage; no further English-baseline work is queued unless a regression or new active surface appears. Restricted human-language approvals remain separate and open below.
 5. **Pilot security blocker:** issue #30 reachable-history remediation is closed and fresh-clone verified; continue with the remaining restricted pilot approvals below.

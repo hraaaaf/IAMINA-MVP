@@ -11,6 +11,7 @@ import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
+import 'cgm_connections_section.dart';
 
 class ImportScreen extends StatefulWidget {
   const ImportScreen({super.key});
@@ -176,51 +177,7 @@ class _ImportScreenState extends State<ImportScreen> {
                       ),
                       const SizedBox(height: 12),
                     ],
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final cards = <Widget>[
-                          _ImportOption(
-                            icon: Icons.bluetooth,
-                            title: 'Dexcom G6/G7',
-                            subtitle: AuditedPageCopy.of(
-                              context,
-                            ).dexcomDescription,
-                            badge: AuditedPageCopy.of(context).soon,
-                            badgeBg: AminaTheme.ink50,
-                            badgeFg: AminaTheme.ink500,
-                            action: const _UnavailableAction(),
-                          ),
-                          _ImportOption(
-                            icon: Icons.sensors,
-                            title: 'Abbott LibreLink',
-                            subtitle: AuditedPageCopy.of(
-                              context,
-                            ).libreDescription,
-                            badge: AuditedPageCopy.of(context).soon,
-                            badgeBg: AminaTheme.ink50,
-                            badgeFg: AminaTheme.ink500,
-                            action: const _UnavailableAction(),
-                          ),
-                        ];
-                        if (constraints.maxWidth >= 900) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: cards[0]),
-                              const SizedBox(width: 16),
-                              Expanded(child: cards[1]),
-                            ],
-                          );
-                        }
-                        return Column(
-                          children: [
-                            cards[0],
-                            const SizedBox(height: 12),
-                            cards[1],
-                          ],
-                        );
-                      },
-                    ),
+                    const CgmConnectionsSection(),
                   ],
                 ),
               ),
@@ -473,28 +430,6 @@ class _DocumentFormatChip extends StatelessWidget {
         color: Colors.white,
         fontSize: 10,
         fontWeight: FontWeight.w600,
-      ),
-    ),
-  );
-}
-
-class _UnavailableAction extends StatelessWidget {
-  const _UnavailableAction();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(
-      color: AminaTheme.ink50,
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: AminaTheme.ink200),
-    ),
-    child: Text(
-      AuditedPageCopy.of(context).unavailable,
-      style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: AminaTheme.ink500,
       ),
     ),
   );
