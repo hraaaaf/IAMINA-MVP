@@ -53,8 +53,14 @@ def test_libre_source_is_explicit_not_inferred_from_device_text() -> None:
 
 
 def test_rejects_insecure_remote_url_and_ambiguous_auth() -> None:
-    with pytest.raises(ValueError):
-        NightscoutConfig(base_url="http://example.com", source=CGMSource.DEXCOM)
+    for unsafe_url in (
+        "http://example.com",
+        "http://localhost.evil.example",
+        "http://127.0.0.1.evil.example",
+        "https://user:password@example.com",
+    ):
+        with pytest.raises(ValueError):
+            NightscoutConfig(base_url=unsafe_url, source=CGMSource.DEXCOM)
 
     with pytest.raises(ValueError):
         NightscoutConfig(
@@ -63,6 +69,12 @@ def test_rejects_insecure_remote_url_and_ambiguous_auth() -> None:
             bearer_token="a",
             api_secret_sha1="b",
         )
+
+    with pytest.raises(ValueError):
+        NightscoutConfig(base_url="https://example.com", source=CGMSource.DEXCOM, timeout_seconds=0)
+
+    NightscoutConfig(base_url="http://localhost:1337", source=CGMSource.DEXCOM)
+    NightscoutConfig(base_url="http://127.0.0.1:1337", source=CGMSource.LIBRE)
 
 
 def test_rejects_naive_since_and_invalid_payload() -> None:
