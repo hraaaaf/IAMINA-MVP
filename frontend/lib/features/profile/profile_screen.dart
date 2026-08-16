@@ -1010,7 +1010,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .insertOnConflictUpdate(
           PatientProfilesCompanion.insert(
             userId: const drift.Value(1),
-            preferredLanguage: const drift.Value('fr'),
+            preferredLanguage: drift.Value(
+              Localizations.localeOf(context).languageCode,
+            ),
             updatedAt: DateTime.now(),
             diabetesType: drift.Value(diabetesType),
             treatment: drift.Value(treatment),
