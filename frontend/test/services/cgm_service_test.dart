@@ -118,8 +118,8 @@ void main() {
       baseUrl: 'https://iamina.test',
     );
 
-    expect(
-      service.sync,
+    await expectLater(
+      service.sync(),
       throwsA(
         isA<CgmServiceException>()
             .having((error) => error.code, 'code', 'provider_unavailable')
