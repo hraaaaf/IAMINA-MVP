@@ -9,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
+import 'journal_queries.dart';
 import 'widgets/insulin_logging.dart';
 import 'widgets/personal_response_section.dart';
 
@@ -49,9 +50,12 @@ class _JournalScreenState extends State<JournalScreen> {
         : 20.0;
 
     final now = DateTime.now();
-    final start = _selectedFilterDays == 0
-        ? DateTime(2000)
-        : now.subtract(Duration(days: _selectedFilterDays));
+    final logsStream = _selectedFilterDays == 0
+        ? db.watchAllJournalLogs()
+        : db.watchJournalLogsInRange(
+            now.subtract(Duration(days: _selectedFilterDays)),
+            now,
+          );
 
     return Scaffold(
       body: CustomScrollView(
@@ -59,7 +63,7 @@ class _JournalScreenState extends State<JournalScreen> {
           _buildSliverAppBar(context),
           _buildFilterChips(horizontalPadding),
           StreamBuilder<List<LogEntryData>>(
-            stream: db.watchLogsInRange(start, now),
+            stream: logsStream,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return SliverPadding(
