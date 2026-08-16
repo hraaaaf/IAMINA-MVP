@@ -328,102 +328,38 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
             if (latest != null)
               Semantics(
                 label: '${l10n.cgmLatestReading}: ${latest.glucoseMgDl} mg/dL ${latest.trend}',
-                child: Row(
-                  children: [
-                    Text(
-                      '${latest.glucoseMgDl}',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: AminaTheme.ink900,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    const Text('mg/dL', style: TextStyle(fontSize: 11, color: AminaTheme.ink500)),
-                    if (latest.trend.isNotEmpty) ...[
-                      const SizedBox(width: 10),
-                      Flexible(
-                        child: Text(
-                          latest.trend,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AminaTheme.teal700,
-                          ),
-                        ),
-                      ),
-                    ],
-                    const Spacer(),
-                    Text(
-                      _relative(latest.recordedAt, l10n),
-                      style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
-                    ),
-                  ],
-                ),
-              )
-            else
-              Text(l10n.cgmNoReading, style: const TextStyle(fontSize: 12, color: AminaTheme.ink500)),
-            const SizedBox(height: 8),
+                child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 6,
+        runSpacing: 4,
+        children: [
+          Text(
+            '${latest.glucoseMgDl}',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: AminaTheme.ink900,
+            ),
+          ),
+          const Text(
+            'mg/dL',
+            style: TextStyle(fontSize: 11, color: AminaTheme.ink500),
+          ),
+          if (latest.trend.isNotEmpty)
             Text(
-              '${l10n.cgmLastSync}: ${_connection.lastSuccessAt != null ? _relative(_connection.lastSuccessAt!, l10n) : l10n.cgmNeverSynced}',
-              style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
+              latest.trend,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AminaTheme.teal700,
+              ),
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton.icon(
-                  onPressed: _syncing ? null : _sync,
-                  icon: _syncing
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.sync, size: 16),
-                  label: Text(l10n.cgmSync),
-                ),
-                TextButton(onPressed: _disconnect, child: Text(l10n.cgmDisconnect)),
-              ],
-            ),
-          ] else ...[
-            Text(l10n.cgmNoConnection, style: const TextStyle(fontSize: 12, color: AminaTheme.ink500)),
-            const SizedBox(height: 10),
-            OutlinedButton(
-              onPressed: () => _configure(source),
-              child: Text(l10n.cgmConfigure),
-            ),
-          ],
+          Text(
+            _relative(latest.recordedAt, l10n),
+            style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
+          ),
         ],
-      ),
-    );
-  }
-}
-
-class _CgmBadge extends StatelessWidget {
-  final String label;
-  final bool connected;
-
-  const _CgmBadge({required this.label, required this.connected});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: connected ? AminaTheme.teal50 : AminaTheme.ink50,
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: connected ? AminaTheme.teal100 : AminaTheme.ink200),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w800,
-          color: connected ? AminaTheme.teal700 : AminaTheme.ink500,
-        ),
       ),
     );
   }
