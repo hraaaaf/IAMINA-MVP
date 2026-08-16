@@ -17,23 +17,15 @@ class CgmConnectionsSection extends StatefulWidget {
 
 class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
   late final CgmService _service = widget.service ?? CgmService();
-  CgmConnectionState? _connection;
+  CgmConnectionState _connection = const CgmConnectionState(connected: false);
   List<CgmReadingView> _readings = const [];
   bool _loading = true;
   bool _syncing = false;
   String? _error;
 
   static const _sources = <_CgmSourcePresentation>[
-    _CgmSourcePresentation(
-      id: 'dexcom',
-      title: 'Dexcom G6/G7',
-      icon: Icons.bluetooth,
-    ),
-    _CgmSourcePresentation(
-      id: 'libre',
-      title: 'FreeStyle Libre',
-      icon: Icons.sensors,
-    ),
+    _CgmSourcePresentation(id: 'dexcom', title: 'Dexcom G6/G7', icon: Icons.bluetooth),
+    _CgmSourcePresentation(id: 'libre', title: 'FreeStyle Libre', icon: Icons.sensors),
     _CgmSourcePresentation(
       id: 'linx',
       title: 'LinX / AiDEX X',
@@ -62,13 +54,20 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
     }
     try {
       final connection = await _service.getConnection();
-      final readings = connection.connected
-          ? await _service.getReadings(hours: 24)
-          : const <CgmReadingView>[];
+      List<CgmReadingView> readings = const [];
+      String? readError;
+      if (connection.connected) {
+        try {
+          readings = await _service.getReadings(hours: 24);
+        } catch (_) {
+          readError = AppLocalizations.of(context)!.cgmUnavailable;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _connection = connection;
         _readings = readings;
+        _error = readError;
         _loading = false;
       });
     } catch (_) {
@@ -88,14 +87,9 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
     });
     try {
       await _service.sync();
-      final connection = await _service.getConnection();
-      final readings = await _service.getReadings(hours: 24);
+      await _load();
       if (!mounted) return;
-      setState(() {
-        _connection = connection;
-        _readings = readings;
-        _syncing = false;
-      });
+      setState(() => _syncing = false);
       _showMessage(AppLocalizations.of(context)!.cgmSyncComplete);
     } catch (_) {
       if (!mounted) return;
@@ -126,6 +120,7 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
       ),
     );
     if (confirmed != true) return;
+
     try {
       await _service.disconnect();
       if (!mounted) return;
@@ -151,29 +146,38 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
       _loading = true;
       _error = null;
     });
+
+    CgmConnectionState saved;
     try {
-      await _service.configure(
+      saved = await _service.configure(
         source: source.id,
         nightscoutUrl: result.url,
         authType: result.authType,
         credential: result.credential,
       );
-      await _service.sync();
-      final connection = await _service.getConnection();
-      final readings = await _service.getReadings(hours: 24);
-      if (!mounted) return;
-      setState(() {
-        _connection = connection;
-        _readings = readings;
-        _loading = false;
-      });
-      _showMessage(AppLocalizations.of(context)!.cgmSaved);
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _loading = false;
         _error = AppLocalizations.of(context)!.cgmUnavailable;
       });
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _connection = saved;
+      _readings = const [];
+      _loading = false;
+    });
+    _showMessage(AppLocalizations.of(context)!.cgmSaved);
+
+    try {
+      await _service.sync();
+      await _load();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = AppLocalizations.of(context)!.cgmUnavailable);
     }
   }
 
@@ -217,11 +221,7 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
       children: [
         Text(
           l10n.cgmOneConnectionNote,
-          style: const TextStyle(
-            fontSize: 12,
-            height: 1.4,
-            color: AminaTheme.ink500,
-          ),
+          style: const TextStyle(fontSize: 12, height: 1.4, color: AminaTheme.ink500),
         ),
         if (_error != null) ...[
           const SizedBox(height: 10),
@@ -273,15 +273,10 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
     );
   }
 
-  Widget _buildSourceCard(
-    _CgmSourcePresentation source,
-    AppLocalizations l10n,
-  ) {
-    final connected = _connection?.connected == true && _connection?.source == source.id;
+  Widget _buildSourceCard(_CgmSourcePresentation source, AppLocalizations l10n) {
+    final connected = _connection.connected && _connection.source == source.id;
     final latest = connected && _readings.isNotEmpty ? _readings.last : null;
-    final subtitle = source.id == 'linx'
-        ? l10n.cgmLinxBridge
-        : l10n.cgmCompatibleBridge;
+    final subtitle = source.id == 'linx' ? l10n.cgmLinxBridge : l10n.cgmCompatibleBridge;
 
     return ClinicalCard(
       padding: const EdgeInsets.all(16),
@@ -316,11 +311,7 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
                     const SizedBox(height: 3),
                     Text(
                       subtitle,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        height: 1.35,
-                        color: AminaTheme.ink500,
-                      ),
+                      style: const TextStyle(fontSize: 11, height: 1.35, color: AminaTheme.ink500),
                     ),
                   ],
                 ),
@@ -336,8 +327,7 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
           if (connected) ...[
             if (latest != null)
               Semantics(
-                label:
-                    '${l10n.cgmLatestReading}: ${latest.glucoseMgDl} mg/dL ${latest.trend}',
+                label: '${l10n.cgmLatestReading}: ${latest.glucoseMgDl} mg/dL ${latest.trend}',
                 child: Row(
                   children: [
                     Text(
@@ -349,13 +339,7 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
                       ),
                     ),
                     const SizedBox(width: 5),
-                    const Padding(
-                      padding: EdgeInsets.only(top: 6),
-                      child: Text(
-                        'mg/dL',
-                        style: TextStyle(fontSize: 11, color: AminaTheme.ink500),
-                      ),
-                    ),
+                    const Text('mg/dL', style: TextStyle(fontSize: 11, color: AminaTheme.ink500)),
                     if (latest.trend.isNotEmpty) ...[
                       const SizedBox(width: 10),
                       Flexible(
@@ -379,13 +363,10 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
                 ),
               )
             else
-              Text(
-                l10n.cgmNoReading,
-                style: const TextStyle(fontSize: 12, color: AminaTheme.ink500),
-              ),
+              Text(l10n.cgmNoReading, style: const TextStyle(fontSize: 12, color: AminaTheme.ink500)),
             const SizedBox(height: 8),
             Text(
-              '${l10n.cgmLastSync}: ${_connection?.lastSuccessAt != null ? _relative(_connection!.lastSuccessAt!, l10n) : l10n.cgmNeverSynced}',
+              '${l10n.cgmLastSync}: ${_connection.lastSuccessAt != null ? _relative(_connection.lastSuccessAt!, l10n) : l10n.cgmNeverSynced}',
               style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
             ),
             const SizedBox(height: 12),
@@ -404,17 +385,11 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
                       : const Icon(Icons.sync, size: 16),
                   label: Text(l10n.cgmSync),
                 ),
-                TextButton(
-                  onPressed: _disconnect,
-                  child: Text(l10n.cgmDisconnect),
-                ),
+                TextButton(onPressed: _disconnect, child: Text(l10n.cgmDisconnect)),
               ],
             ),
           ] else ...[
-            Text(
-              l10n.cgmNoConnection,
-              style: const TextStyle(fontSize: 12, color: AminaTheme.ink500),
-            ),
+            Text(l10n.cgmNoConnection, style: const TextStyle(fontSize: 12, color: AminaTheme.ink500)),
             const SizedBox(height: 10),
             OutlinedButton(
               onPressed: () => _configure(source),
@@ -440,9 +415,7 @@ class _CgmBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: connected ? AminaTheme.teal50 : AminaTheme.ink50,
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(
-          color: connected ? AminaTheme.teal100 : AminaTheme.ink200,
-        ),
+        border: Border.all(color: connected ? AminaTheme.teal100 : AminaTheme.ink200),
       ),
       child: Text(
         label,
@@ -495,10 +468,7 @@ class _CgmConfigurationDialogState extends State<_CgmConfigurationDialog> {
                 controller: _url,
                 keyboardType: TextInputType.url,
                 autocorrect: false,
-                decoration: InputDecoration(
-                  labelText: l10n.cgmNightscoutUrl,
-                  hintText: 'https://…',
-                ),
+                decoration: InputDecoration(labelText: l10n.cgmNightscoutUrl, hintText: 'https://…'),
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 12),
@@ -506,14 +476,8 @@ class _CgmConfigurationDialogState extends State<_CgmConfigurationDialog> {
                 value: _authType,
                 decoration: InputDecoration(labelText: l10n.cgmAuthentication),
                 items: [
-                  DropdownMenuItem(
-                    value: 'bearer',
-                    child: Text(l10n.cgmBearerToken),
-                  ),
-                  DropdownMenuItem(
-                    value: 'api_secret',
-                    child: Text(l10n.cgmApiSecret),
-                  ),
+                  DropdownMenuItem(value: 'bearer', child: Text(l10n.cgmBearerToken)),
+                  DropdownMenuItem(value: 'api_secret', child: Text(l10n.cgmApiSecret)),
                 ],
                 onChanged: (value) {
                   if (value != null) setState(() => _authType = value);
@@ -528,7 +492,6 @@ class _CgmConfigurationDialogState extends State<_CgmConfigurationDialog> {
                 decoration: InputDecoration(
                   labelText: l10n.cgmSecret,
                   suffixIcon: IconButton(
-                    tooltip: _obscure ? 'Show' : 'Hide',
                     onPressed: () => setState(() => _obscure = !_obscure),
                     icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
                   ),
@@ -538,21 +501,14 @@ class _CgmConfigurationDialogState extends State<_CgmConfigurationDialog> {
               const SizedBox(height: 14),
               Text(
                 l10n.cgmBridgeDisclosure,
-                style: const TextStyle(
-                  fontSize: 12,
-                  height: 1.4,
-                  color: AminaTheme.ink500,
-                ),
+                style: const TextStyle(fontSize: 12, height: 1.4, color: AminaTheme.ink500),
               ),
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.cgmCancel),
-        ),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cgmCancel)),
         FilledButton(
           onPressed: canSave
               ? () => Navigator.pop(
@@ -576,11 +532,7 @@ class _CgmSourcePresentation {
   final String title;
   final IconData icon;
 
-  const _CgmSourcePresentation({
-    required this.id,
-    required this.title,
-    required this.icon,
-  });
+  const _CgmSourcePresentation({required this.id, required this.title, required this.icon});
 }
 
 class _CgmConfiguration {
