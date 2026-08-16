@@ -3,10 +3,9 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from http.client import HTTPConnection, HTTPException, HTTPSConnection
 from typing import Callable
-from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin, urlparse
-from urllib.request import Request, urlopen
 
 from .contracts import CGMProvider, CGMReading, CGMSource, ProviderHealth
 
@@ -45,11 +44,36 @@ Transport = Callable[[str, dict[str, str], float], object]
 
 
 def _stdlib_transport(url: str, headers: dict[str, str], timeout: float) -> object:
-    request = Request(url=url, headers=headers, method="GET")
+    """Issue one GET request using only HTTPS or exact loopback HTTP."""
+
     try:
-        with urlopen(request, timeout=timeout) as response:  # noqa: S310 - URL is validated by config
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if not hostname:
+            raise CGMProviderError("CGM provider request failed")
+
+        if parsed.scheme == "https":
+            connection: HTTPConnection = HTTPSConnection(hostname, parsed.port, timeout=timeout)
+        elif parsed.scheme == "http" and hostname in {"localhost", "127.0.0.1", "::1"}:
+            connection = HTTPConnection(hostname, parsed.port, timeout=timeout)
+        else:
+            raise CGMProviderError("CGM provider request failed")
+
+        target = parsed.path or "/"
+        if parsed.query:
+            target = f"{target}?{parsed.query}"
+
+        try:
+            connection.request("GET", target, headers=headers)
+            response = connection.getresponse()
+            if not 200 <= response.status < 300:
+                raise CGMProviderError("CGM provider request failed")
             return json.loads(response.read().decode("utf-8"))
-    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+        finally:
+            connection.close()
+    except CGMProviderError:
+        raise
+    except (HTTPException, OSError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
         raise CGMProviderError("CGM provider request failed") from exc
 
 
