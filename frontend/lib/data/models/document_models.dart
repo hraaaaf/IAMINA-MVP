@@ -111,10 +111,12 @@ class PulperPreview {
     required this.errors,
   });
 
+  /// Data the current confirm endpoint actually persists.
+  /// Medication extraction remains preview-only until a medication-store
+  /// contract is implemented; it must not enable a misleading confirmation.
   bool get hasUsefulData =>
       glucoseReadings.isNotEmpty ||
       !labValues.isEmpty ||
-      medications.isNotEmpty ||
       clinicalNotes.isNotEmpty;
 
   factory PulperPreview.fromJson(Map<String, dynamic> j) => PulperPreview(
