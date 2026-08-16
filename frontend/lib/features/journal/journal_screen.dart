@@ -21,6 +21,7 @@ class JournalScreen extends StatefulWidget {
 
 class _JournalScreenState extends State<JournalScreen> {
   int _selectedFilterDays = 30;
+  bool _showPersonalResponse = false;
 
   String _journalRangeLabel(AppLocalizations l10n) {
     switch (_selectedFilterDays) {
@@ -58,27 +59,6 @@ class _JournalScreenState extends State<JournalScreen> {
           _buildSliverAppBar(context),
           StreamBuilder<List<LogEntryData>>(
             stream: db.watchLogsInRange(start, now),
-            builder: (context, responseSnapshot) {
-              final hasLogs =
-                  (responseSnapshot.data ?? const <LogEntryData>[]).isNotEmpty;
-              if (!hasLogs) {
-                return const SliverToBoxAdapter(child: SizedBox.shrink());
-              }
-              return SliverPadding(
-                padding: EdgeInsetsDirectional.fromSTEB(
-                  horizontalPadding,
-                  20,
-                  horizontalPadding,
-                  0,
-                ),
-                sliver: SliverToBoxAdapter(
-                  child: PersonalResponseSection(unit: unit),
-                ),
-              );
-            },
-          ),
-          StreamBuilder<List<LogEntryData>>(
-            stream: db.watchLogsInRange(start, now),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return SliverPadding(
@@ -111,39 +91,89 @@ class _JournalScreenState extends State<JournalScreen> {
               final sortedDays = groupedLogs.keys.toList()
                 ..sort((a, b) => b.compareTo(a));
 
-              return SliverPadding(
-                padding: EdgeInsetsDirectional.fromSTEB(
-                  horizontalPadding,
-                  0,
-                  horizontalPadding,
-                  100,
-                ),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final dayKey = sortedDays[index];
-                    final dayLogs = groupedLogs[dayKey]!;
-                    final date = DateTime.parse(dayKey);
+              return SliverMainAxisGroup(
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsetsDirectional.fromSTEB(
+                      horizontalPadding,
+                      0,
+                      horizontalPadding,
+                      20,
+                    ),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final dayKey = sortedDays[index];
+                        final dayLogs = groupedLogs[dayKey]!;
+                        final date = DateTime.parse(dayKey);
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDayHeader(date),
-                        ...dayLogs.map(
-                          (log) => _buildEntryCapsule(
-                            log,
-                            unit,
-                            targetLow,
-                            targetHigh,
-                          ),
-                        ),
-                      ],
-                    );
-                  }, childCount: sortedDays.length),
-                ),
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDayHeader(date),
+                            ...dayLogs.map(
+                              (log) => _buildEntryCapsule(
+                                log,
+                                unit,
+                                targetLow,
+                                targetHigh,
+                              ),
+                            ),
+                          ],
+                        );
+                      }, childCount: sortedDays.length),
+                    ),
+                  ),
+                  _buildPersonalResponseSliver(unit, horizontalPadding),
+                ],
               );
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPersonalResponseSliver(
+    String unit,
+    double horizontalPadding,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    return SliverPadding(
+      padding: EdgeInsetsDirectional.fromSTEB(
+        horizontalPadding,
+        0,
+        horizontalPadding,
+        100,
+      ),
+      sliver: SliverToBoxAdapter(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                key: const Key('journal-personal-response-disclosure'),
+                onPressed: () => setState(
+                  () => _showPersonalResponse = !_showPersonalResponse,
+                ),
+                icon: Icon(
+                  _showPersonalResponse
+                      ? Icons.expand_less_rounded
+                      : Icons.insights_outlined,
+                ),
+                label: Text(
+                  _showPersonalResponse
+                      ? l10n.personalResponseShowLess
+                      : l10n.personalResponseTitle,
+                ),
+              ),
+            ),
+            if (_showPersonalResponse) ...[
+              const SizedBox(height: 8),
+              PersonalResponseSection(unit: unit),
+            ],
+          ],
+        ),
       ),
     );
   }
