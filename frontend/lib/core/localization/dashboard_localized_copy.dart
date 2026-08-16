@@ -32,6 +32,60 @@ extension DashboardLocalizedCopy on AppLocalizations {
         ar: 'النطاق المستهدف غير مضبوط',
       );
 
+  String get dashboardTodayHeading => _pick(
+        en: 'Today at a glance',
+        fr: 'À retenir aujourd’hui',
+        ar: 'ملخص اليوم',
+      );
+
+  String get dashboardConfigureTargetSignal => _pick(
+        en: 'Configure your personal target before IAmina labels a reading against it.',
+        fr: 'Configurez votre cible personnelle avant qu’IAmina ne qualifie une mesure par rapport à celle-ci.',
+        ar: 'اضبط نطاقك الشخصي قبل أن تصف IAmina أي قياس مقارنةً به.',
+      );
+
+  String get dashboardConfigureTargetAction => _pick(
+        en: 'Configure',
+        fr: 'Configurer',
+        ar: 'ضبط',
+      );
+
+  String dashboardGovernedChanges(int count) => _pick(
+        en: '$count governed change${count == 1 ? '' : 's'} available since your last review.',
+        fr: '$count changement${count == 1 ? '' : 's'} gouverné${count == 1 ? '' : 's'} disponible${count == 1 ? '' : 's'} depuis votre dernière revue.',
+        ar: 'يتوفر $count تغير موثوق منذ آخر مراجعة لك.',
+      );
+
+  String dashboardGovernedPatterns(int count) => _pick(
+        en: '$count governed personal pattern${count == 1 ? '' : 's'} available to review.',
+        fr: '$count schéma${count == 1 ? '' : 's'} personnel${count == 1 ? '' : 's'} gouverné${count == 1 ? '' : 's'} disponible${count == 1 ? '' : 's'} à consulter.',
+        ar: 'يتوفر $count نمط شخصي موثوق للمراجعة.',
+      );
+
+  String get dashboardNoGovernedHighlight => _pick(
+        en: 'No new governed summary to highlight from the available data.',
+        fr: 'Aucun nouveau résumé gouverné à mettre en avant avec les données disponibles.',
+        ar: 'لا يوجد ملخص موثوق جديد لإبرازه من البيانات المتاحة.',
+      );
+
+  String get dashboardOpenCompanion => _pick(
+        en: 'Companion',
+        fr: 'Compagnon',
+        ar: 'الرفيق',
+      );
+
+  String get dashboardImportData => _pick(
+        en: 'Import',
+        fr: 'Importer',
+        ar: 'استيراد',
+      );
+
+  String get dashboardGovernedTrustShort => _pick(
+        en: 'Governed observations only · missing data is never invented.',
+        fr: 'Observations gouvernées uniquement · les données manquantes ne sont jamais inventées.',
+        ar: 'ملاحظات موثوقة فقط · لا يتم اختراع البيانات المفقودة.',
+      );
+
   String get dashboardFreshNow => _pick(
         en: 'just now',
         fr: 'à l’instant',
@@ -74,5 +128,9 @@ extension DashboardLocalizedCopy on AppLocalizations {
         ar: 'وضع التطوير — لا توجد بيانات للمريض.',
       );
 
-  String get loadDemo => _pick(en: 'Load demo', fr: 'Charger démo', ar: 'تحميل البيانات التجريبية');
+  String get loadDemo => _pick(
+        en: 'Load demo',
+        fr: 'Charger démo',
+        ar: 'تحميل البيانات التجريبية',
+      );
 }
