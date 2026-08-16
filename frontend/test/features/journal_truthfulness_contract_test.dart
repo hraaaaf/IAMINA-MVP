@@ -39,6 +39,18 @@ void main() {
     expect(source, contains('displayValue'));
   });
 
+  test('Journal keeps meal context compact in history rows', () {
+    final source = File(
+      'lib/features/journal/journal_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('mealLabels.take(2)'));
+    expect(source, contains("Key('journal-meal-summary')"));
+    expect(source, contains('maxLines: 1'));
+    expect(source, contains('TextOverflow.ellipsis'));
+    expect(source, isNot(contains('Wrap(\n                          spacing: 4')));
+  });
+
   test('Personal Response is secondary, after history, and collapsed by default', () {
     final source = File(
       'lib/features/journal/journal_screen.dart',
