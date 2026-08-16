@@ -71,6 +71,21 @@ jobs:
           CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME"
 
+          cleanup_chrome() {
+            local chrome_pid="$1"
+            local profile_dir="$2"
+            kill "$chrome_pid" 2>/dev/null || true
+            for _ in $(seq 1 10); do
+              if ! kill -0 "$chrome_pid" 2>/dev/null; then
+                break
+              fi
+              sleep 0.2
+            done
+            kill -9 "$chrome_pid" 2>/dev/null || true
+            wait "$chrome_pid" 2>/dev/null || true
+            rm -rf "$profile_dir" 2>/dev/null || true
+          }
+
           cat > /tmp/capture_cdp.py <<'PY'
           import base64
           import json
@@ -117,18 +132,6 @@ jobs:
           ws.close()
           PY
 
-          cleanup_profile() {
-            local profile_dir="$1"
-            for _ in 1 2 3; do
-              if rm -rf "$profile_dir" 2>/dev/null; then
-                return 0
-              fi
-              sleep 1
-            done
-            echo "Warning: Chrome profile cleanup remained busy: $profile_dir" >&2
-            return 0
-          }
-
           surfaces=(dashboard companion summary profile journal importer document-import add-log medications reminders)
           for surface in "${surfaces[@]}"; do
             target="$GITHUB_WORKSPACE/ui-browser-cert/${surface}-390x844.png"
@@ -156,16 +159,12 @@ jobs:
             done
             if [ "$DEVTOOLS" != "1" ]; then
               cat "/tmp/iamina-chrome-${surface}.log" >&2 || true
-              kill "$CHROME_PID" 2>/dev/null || true
-              wait "$CHROME_PID" 2>/dev/null || true
-              cleanup_profile "$profile_dir"
+              cleanup_chrome "$CHROME_PID" "$profile_dir"
               exit 1
             fi
 
             python3 /tmp/capture_cdp.py "$target"
-            kill "$CHROME_PID" 2>/dev/null || true
-            wait "$CHROME_PID" 2>/dev/null || true
-            cleanup_profile "$profile_dir"
+            cleanup_chrome "$CHROME_PID" "$profile_dir"
 
             test -s "$target"
             bytes="$(stat -c%s "$target")"
