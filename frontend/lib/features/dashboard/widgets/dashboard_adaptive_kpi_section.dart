@@ -152,9 +152,6 @@ class DashboardAdaptiveKpiSection extends StatelessWidget {
                           ? l10n.dashboardKpiReadingsInTarget
                           : l10n.dashboardKpiTargetMissing,
                       value: targetConfigured ? '$readingsInTarget/$count' : '—',
-                      footnote: targetConfigured
-                          ? l10n.dashboardKpiNotTimeInRange
-                          : null,
                     ),
                   ];
 
@@ -184,6 +181,30 @@ class DashboardAdaptiveKpiSection extends StatelessWidget {
                   );
                 },
               ),
+              if (targetConfigured) ...[
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 14,
+                      color: AminaVisualLanguage.secondary(context),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        l10n.dashboardKpiNotTimeInRange,
+                        style: TextStyle(
+                          fontSize: 9.8,
+                          height: 1.3,
+                          color: AminaVisualLanguage.secondary(context),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 12),
               _AdvancedMetricsLock(
                 text: hasCgmLabelledRows
@@ -235,13 +256,11 @@ class _MetricTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  final String? footnote;
 
   const _MetricTile({
     required this.icon,
     required this.label,
     required this.value,
-    this.footnote,
   });
 
   @override
@@ -281,17 +300,6 @@ class _MetricTile extends StatelessWidget {
               color: AminaVisualLanguage.secondary(context),
             ),
           ),
-          if (footnote != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              footnote!,
-              style: TextStyle(
-                fontSize: 9.4,
-                height: 1.25,
-                color: AminaVisualLanguage.secondary(context),
-              ),
-            ),
-          ],
         ],
       ),
     );
