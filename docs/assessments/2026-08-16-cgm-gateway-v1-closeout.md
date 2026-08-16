@@ -37,4 +37,13 @@ PR #276 exact head before merge: `706225a49a7c8bfeb28ac0fd25f1fd7894878270`.
 - Post-merge CI #2569: SUCCESS, including backend tests, PostgreSQL source-of-truth suite, Bandit, OpenAPI, frontend analyze/tests and secret hygiene.
 - Post-merge migration drift #2381: SUCCESS.
 
-The runtime LOT is therefore technically certified on `main`. Canonical `docs/ROADMAP.md` and `docs/architecture/ARCHITECTURE.md` still require synchronization in closeout PR #279 before CGM-GW-V1 is declared fully closed.
+The runtime LOT is technically certified on `main`.
+
+## Canonical closeout state
+
+The remaining closeout edits are narrowly identified and evidence-backed:
+
+- `docs/ROADMAP.md`: replace the stale CGM-GW-V1 `0% credited / In progress` row with `100% / Closed`, citing PR #276, merge `f8a4ce7f…`, exact-head CI #2568 + drift #2380 and post-merge CI #2569 + drift #2381. The MENA numerator remains 32/41 because CGM-GW-V1 is a parallel integration lane.
+- `docs/architecture/ARCHITECTURE.md`: record the as-built `backend/integrations/cgm` read-only provider boundary, external Nightscout-compatible bridge, explicit Dexcom/Libre provenance, fail-closed transport normalization, and the absence of clinical/persistence/UI authority.
+
+These two canonical-file edits are still required before CGM-GW-V1 is declared fully closed. The connected GitHub contents API available in this session only supports complete-file replacement for existing files; both canonical files are large and cannot be safely patched line-wise through that interface without risking unrelated-content loss. No false closure is claimed.
