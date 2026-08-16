@@ -1,6 +1,6 @@
 # Profile product audit — 2026-08-16
 
-Status: SMART audit complete; persisted-medical-default HUMAN GATE identified; runtime correction pending.
+Status: SMART audit complete; persisted-medical-default HUMAN GATE A approved and implemented; certification pending.
 
 ## Product contract
 
@@ -12,12 +12,12 @@ Profile stores patient-entered preferences and medical context. No diabetes type
 |---|---|---:|---|
 | Canonical header | Clear identity and settings context | 9.5/10 | KEEP |
 | First-use completion panel | Correctly prompts completion without auto-saving | 9.5/10 | KEEP |
-| Medical section container | Appropriate grouping of medically relevant profile context | 9.0/10 | KEEP, but inputs need truthfulness correction |
-| Diabetes type choices | Useful patient context | 4.0/10 current | HUMAN GATE — UI starts on `type1` before a persisted profile exists |
-| Treatment choices | Useful descriptive context | 4.0/10 current | HUMAN GATE — UI starts on `insulin` before a persisted profile exists |
-| Glucose target fields | Important user/clinician-configured context used elsewhere | 3.5/10 current | HUMAN GATE — invalid/empty values silently fall back to 70/180 on save |
+| Medical section container | Appropriate grouping of medically relevant profile context | 9.0/10 | KEEP |
+| Diabetes type choices | Useful patient context | 9.5/10 provisional | Gate A implemented — no preselection for new profile |
+| Treatment choices | Useful descriptive context | 9.5/10 provisional | Gate A implemented — no preselection for new profile |
+| Glucose target fields | Important user/clinician-configured context used elsewhere | 9.3/10 provisional | Gate A implemented — blank/invalid/nonfinite/nonpositive/inverted values rejected; no silent 70/180 fallback |
 | Unit preference | Necessary display preference | 9.0/10 | KEEP; default mg/dL is a display preference, not medical diagnosis |
-| Save medical profile | Necessary explicit persistence action | 6.0/10 current | IMPROVE after gate — must reject incomplete/invalid medical fields rather than synthesize defaults |
+| Save medical profile | Necessary explicit persistence action | 9.4/10 provisional | Gate A implemented — explicit type + treatment + valid range required |
 | Ramadan period | Useful MENA-specific temporal context | 9.2/10 | KEEP — explicit dates, order validation and partial local/server save reporting are strong |
 | Ramadan clear | Necessary reversible configuration | 9.0/10 | KEEP |
 | IAmina setup | Optional onboarding/configuration entry | 8.5/10 | KEEP collapsed; does not belong above medical profile |
@@ -27,27 +27,40 @@ Profile stores patient-entered preferences and medical context. No diabetes type
 
 ## Verified findings
 
-- Before any persisted profile, state initializes `_diabetesType = 'type1'` and `_treatment = 'insulin'`; expanding the section therefore visually presents those choices as selected.
-- `_saveProfile()` parses target fields with `double.tryParse(...) ?? 70.0/180.0`; blank or invalid input is silently converted to medical target values and persisted.
-- The same save writes diabetes type, treatment, unit and target range together, so defaults become durable patient-profile data after one tap.
-- First-use itself does **not** auto-save; the risk occurs at the explicit Save action when untouched defaults are accepted as truth.
+- **Before Gate A correction:** new-profile state initialized `type1` and `insulin`, so untouched choices could become durable patient-profile data after Save.
+- **Before Gate A correction:** `_saveProfile()` used `double.tryParse(...) ?? 70.0/180.0`, silently converting blank or invalid target input into persisted medical targets.
+- **Gate A approved by the human owner on 2026-08-16.**
+- **Gate A runtime implementation:** `_diabetesType` and `_treatment` are nullable for a new profile; existing persisted values are loaded as stored without substituting Type 1 or insulin.
+- `_saveProfile()` now requires explicit diabetes type + treatment and finite positive low/high values with `low < high`; invalid or incomplete input is rejected before any database write.
+- No glycemic threshold value was changed by this gate and no new clinical target was introduced.
+- The same save still writes diabetes type, treatment, unit and target range together after validation.
+- First-use itself does not auto-save.
 - Ramadan period requires both dates, validates start <= end, writes locally and to server, and truthfully distinguishes full, local-only, server-only and failed save states.
 - Consent withdrawal is explicitly confirmed and updates server/local consent state.
 - Sign-out is explicitly confirmed.
-- `preferredLanguage` is hardcoded to `fr` in the local profile save; this is a separate i18n/data-consistency issue and should be aligned with the active locale without changing medical semantics.
+- `preferredLanguage` remains hardcoded to `fr` in the local profile save; this is a separate i18n/data-consistency issue and should be aligned with the active locale without changing medical semantics.
 
-## HUMAN GATE — recommended choice
+## HUMAN GATE — resolved
 
-Recommended product contract:
+Chosen contract: **A**.
 
-- **A (recommended):** no diabetes type or treatment pre-selected for a new profile; require explicit choice before medical-profile save. Require valid target low/high values and reject blank/invalid/inverted targets instead of substituting 70/180.
-- **B:** keep type/treatment defaults visible but require explicit acknowledgement before save; still reject invalid target fields.
-- **C:** keep current defaults and silent target fallback. Not recommended because it persists inferred medical context as patient truth.
+- no diabetes type or treatment pre-selected for a new profile;
+- explicit choice required before medical-profile save;
+- valid target low/high values required;
+- blank/invalid/inverted values rejected rather than substituted with 70/180;
+- existing persisted profile values remain untouched and load as stored.
 
-This gate changes persisted medical meaning and therefore must not be auto-executed.
+## Anti-regression
+
+`frontend/test/features/profile_truthfulness_contract_test.dart` locks:
+
+- no `type1` / `insulin` state defaults;
+- no load-time Type 1 / insulin fallback;
+- no `?? 70.0` / `?? 180.0` target fallback;
+- explicit medical selections and a valid range required before persistence.
 
 ## Certification gate
 
-No final page score or CLOSED status before the human gate, runtime correction, exact-head gates, real Chrome 390×844 inspection, merge/post-merge recertification and canonical closeout.
+No final page score or CLOSED status before exact-head gates, real Chrome 390×844 inspection, merge/post-merge recertification and canonical closeout.
 
 MENA roadmap numerator remains unchanged by this page audit.
