@@ -4,6 +4,7 @@ import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/companion_models.dart';
 import '../../services/companion_service.dart';
+import 'companion_uncertainty_copy.dart';
 
 String _t(BuildContext context, String fr, String en, String ar) {
   final code = Localizations.localeOf(context).languageCode;
@@ -377,6 +378,11 @@ class _PatternCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final limitationLabels = pattern.limitations
+        .map((code) => companionPatternLimitationLabel(context, code))
+        .whereType<String>()
+        .toList(growable: false);
+
     return _SurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,6 +425,10 @@ class _PatternCard extends StatelessWidget {
               color: AminaVisualLanguage.secondary(context),
             ),
           ),
+          if (limitationLabels.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            ...limitationLabels.map((label) => _UncertaintyNote(text: label)),
+          ],
         ],
       ),
     );
@@ -431,6 +441,11 @@ class _ChangeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final missingDataLabels = change.missingData
+        .map((code) => companionMissingDataLabel(context, code))
+        .whereType<String>()
+        .toList(growable: false);
+
     return _SurfaceCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -466,11 +481,48 @@ class _ChangeCard extends StatelessWidget {
                     color: AminaVisualLanguage.secondary(context),
                   ),
                 ),
+                if (missingDataLabels.isNotEmpty) ...[
+                  const SizedBox(height: 9),
+                  ...missingDataLabels.map((label) => _UncertaintyNote(text: label)),
+                ],
               ],
             ),
           ),
           const SizedBox(width: 8),
           _EvidencePill(value: change.evidenceStrength),
+        ],
+      ),
+    );
+  }
+}
+
+class _UncertaintyNote extends StatelessWidget {
+  final String text;
+  const _UncertaintyNote({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            size: 15,
+            color: AminaVisualLanguage.secondary(context),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.4,
+                color: AminaVisualLanguage.secondary(context),
+              ),
+            ),
+          ),
         ],
       ),
     );
