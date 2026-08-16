@@ -49,10 +49,6 @@ class _DashboardTrendSectionState extends State<DashboardTrendSection> {
 
   DateTime _recordedAt(LogEntryData log) => log.loggedAt ?? log.createdAt;
 
-  String _formatValue(double mgDl) => widget.unit == 'mmol/L'
-      ? (mgDl / 18.0).toStringAsFixed(1)
-      : mgDl.toStringAsFixed(0);
-
   @override
   Widget build(BuildContext context) {
     final db = context.read<AppDatabase>();
@@ -136,8 +132,6 @@ class _TrendContent extends StatelessWidget {
     required this.selectedLogId,
     required this.onSelect,
   });
-
-  DateTime _recordedAt(LogEntryData log) => log.loggedAt ?? log.createdAt;
 
   LogEntryData get _selected => selectedLogId == null
       ? logs.last
