@@ -395,7 +395,7 @@ class _KpiState extends StatelessWidget {
             ),
           if (loading || text.isNotEmpty) const SizedBox(height: 10),
           Text(
-            loading ? l10n.dashboardKpiPeriod7Days : text,
+            loading ? l10n.dashboardKpiLoading : text,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 11.5,
