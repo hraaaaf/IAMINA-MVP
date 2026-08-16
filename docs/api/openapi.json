@@ -1089,6 +1089,170 @@
         ]
       }
     },
+    "/api/v1/cgm/connection": {
+      "get": {
+        "operationId": "diabetes_api_v1_cgm_get_cgm_connection",
+        "summary": "Get Cgm Connection",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CGMConnectionResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "cgm"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "diabetes_api_v1_cgm_put_cgm_connection",
+        "summary": "Put Cgm Connection",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CGMConnectionResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "cgm"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CGMConnectionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "diabetes_api_v1_cgm_delete_cgm_connection",
+        "summary": "Delete Cgm Connection",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "cgm"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cgm/sync": {
+      "post": {
+        "operationId": "diabetes_api_v1_cgm_sync_cgm",
+        "summary": "Sync Cgm",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CGMSyncResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "cgm"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cgm/readings": {
+      "get": {
+        "operationId": "diabetes_api_v1_cgm_list_cgm_readings",
+        "summary": "List Cgm Readings",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "hours",
+            "schema": {
+              "default": 24,
+              "title": "Hours",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CGMReadingResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "cgm"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/account/consent": {
       "get": {
         "operationId": "core_api_v1_account_get_consent_status",
@@ -3841,6 +4005,192 @@
           "limitations"
         ],
         "title": "CompanionPatternOut",
+        "type": "object"
+      },
+      "CGMConnectionResponse": {
+        "properties": {
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "auth_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auth Type"
+          },
+          "credential_set": {
+            "default": false,
+            "title": "Credential Set",
+            "type": "boolean"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "last_sync_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Sync At"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "last_error_code": {
+            "default": "",
+            "title": "Last Error Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connected"
+        ],
+        "title": "CGMConnectionResponse",
+        "type": "object"
+      },
+      "CGMConnectionInput": {
+        "properties": {
+          "source": {
+            "enum": [
+              "dexcom",
+              "libre",
+              "linx"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "base_url": {
+            "title": "Base Url",
+            "type": "string"
+          },
+          "auth_type": {
+            "enum": [
+              "bearer",
+              "api_secret"
+            ],
+            "title": "Auth Type",
+            "type": "string"
+          },
+          "credential": {
+            "title": "Credential",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "base_url",
+          "auth_type",
+          "credential"
+        ],
+        "title": "CGMConnectionInput",
+        "type": "object"
+      },
+      "CGMSyncResponse": {
+        "properties": {
+          "received": {
+            "title": "Received",
+            "type": "integer"
+          },
+          "inserted": {
+            "title": "Inserted",
+            "type": "integer"
+          },
+          "last_recorded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Recorded At"
+          }
+        },
+        "required": [
+          "received",
+          "inserted"
+        ],
+        "title": "CGMSyncResponse",
+        "type": "object"
+      },
+      "CGMReadingResponse": {
+        "properties": {
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "glucose_mg_dl": {
+            "title": "Glucose Mg Dl",
+            "type": "integer"
+          },
+          "trend": {
+            "title": "Trend",
+            "type": "string"
+          },
+          "device": {
+            "title": "Device",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "recorded_at",
+          "glucose_mg_dl",
+          "trend",
+          "device",
+          "source"
+        ],
+        "title": "CGMReadingResponse",
         "type": "object"
       },
       "ConsentStatusSchema": {
