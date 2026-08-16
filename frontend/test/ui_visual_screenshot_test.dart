@@ -74,11 +74,13 @@ class _GoldenHarness extends StatelessWidget {
   final _Deps deps;
   final Widget child;
   final String captureKey;
+  final Locale locale;
 
   const _GoldenHarness({
     required this.deps,
     required this.child,
     required this.captureKey,
+    required this.locale,
   });
 
   @override
@@ -102,7 +104,7 @@ class _GoldenHarness extends StatelessWidget {
         theme: AminaVisualLanguage.harmonize(AminaTheme.light),
         darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
         themeMode: ThemeMode.light,
-        locale: const Locale('fr'),
+        locale: locale,
         localizationsDelegates: const [
           AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
@@ -123,8 +125,14 @@ class _CaptureSpec {
   final String name;
   final Size size;
   final Widget Function() builder;
+  final Locale locale;
 
-  const _CaptureSpec(this.name, this.size, this.builder);
+  const _CaptureSpec(
+    this.name,
+    this.size,
+    this.builder, {
+    this.locale = const Locale('fr'),
+  });
 }
 
 Future<void> _capture(
@@ -138,6 +146,7 @@ Future<void> _capture(
     _GoldenHarness(
       deps: deps,
       captureKey: spec.name,
+      locale: spec.locale,
       child: spec.builder(),
     ),
   );
@@ -166,9 +175,21 @@ void main() {
       await deps.db.close();
     });
 
+    const compactMobile = Size(360, 560);
     const mobile = Size(390, 844);
     const desktop = Size(1440, 1000);
     final specs = <_CaptureSpec>[
+      _CaptureSpec(
+        'dashboard-360x560',
+        compactMobile,
+        () => const DashboardCompanionEntryScreen(),
+      ),
+      _CaptureSpec(
+        'dashboard-ar-360x560',
+        compactMobile,
+        () => const DashboardCompanionEntryScreen(),
+        locale: const Locale('ar'),
+      ),
       _CaptureSpec(
         'dashboard-390x844',
         mobile,
