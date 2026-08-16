@@ -39,4 +39,9 @@ extension DocumentImportLocalizedCopy on AppLocalizations {
   String get creatinine => _pick(en: 'Creatinine', fr: 'Créatinine', ar: 'الكرياتينين');
   String get reportDate => _pick(en: 'Report date', fr: 'Date du bilan', ar: 'تاريخ التحليل');
   String get noMedicalDataDetected => _pick(en: 'No importable medical data was detected in this document.', fr: 'Aucune donnée médicale importable détectée dans ce document.', ar: 'لم يتم اكتشاف بيانات طبية قابلة للاستيراد في هذا المستند.');
+  String get privacyProcessingBody => _pick(
+    en: 'The file is processed locally first. Only pseudonymized text extracted from it may be sent to an authorized AI provider when AI consent is enabled.',
+    fr: 'Le fichier est d’abord traité localement. Seul le texte pseudonymisé qui en est extrait peut être envoyé à un fournisseur d’IA autorisé lorsque le consentement IA est activé.',
+    ar: 'تتم معالجة الملف محليًا أولًا. لا يجوز إرسال سوى النص المستعار الهوية المستخرج منه إلى مزود ذكاء اصطناعي معتمد عند تفعيل موافقة الذكاء الاصطناعي.',
+  );
 }
