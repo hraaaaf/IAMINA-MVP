@@ -67,9 +67,8 @@ jobs:
               raise SystemExit(f'responsive CGM structural anchor count={count}')
           path.write_text(updated)
           PY
-      - name: Format and commit fix
+      - name: Commit fix
         run: |
-          dart format frontend/lib/features/import/cgm_connections_section.dart
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add frontend/lib/features/import/cgm_connections_section.dart
