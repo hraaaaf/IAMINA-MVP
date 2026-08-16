@@ -603,28 +603,21 @@ class _JournalScreenState extends State<JournalScreen> {
   }
 
   Widget _buildSyncIcon(String status) {
-    IconData icon;
-    Color iconColor;
-
-    switch (status) {
-      case 'synced':
-        icon = Icons.cloud_done_outlined;
-        iconColor = AminaTheme.successEmerald;
-        break;
-      case 'pending':
-        icon = Icons.cloud_sync_outlined;
-        iconColor = AminaTheme.warningOrange;
-        break;
-      case 'error':
-        icon = Icons.error_outline;
-        iconColor = AminaTheme.dangerRed;
-        break;
-      default:
-        icon = Icons.cloud_off_outlined;
-        iconColor = AminaTheme.textLight;
+    if (status == 'pending') {
+      return Icon(
+        Icons.cloud_sync_outlined,
+        size: 16,
+        color: AminaTheme.warningOrange.withValues(alpha: 0.4),
+      );
     }
-
-    return Icon(icon, size: 16, color: iconColor.withValues(alpha: 0.4));
+    if (status == 'error') {
+      return Icon(
+        Icons.error_outline,
+        size: 16,
+        color: AminaTheme.dangerRed.withValues(alpha: 0.4),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
 
