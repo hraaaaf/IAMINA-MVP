@@ -1,0 +1,170 @@
+name: UI browser Arabic dashboard certification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'frontend/lib/**'
+      - 'frontend/assets/**'
+      - 'frontend/pubspec.yaml'
+      - '.github/workflows/ui-browser-ar-dashboard-cert.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/lib/**'
+      - 'frontend/assets/**'
+      - 'frontend/pubspec.yaml'
+      - '.github/workflows/ui-browser-ar-dashboard-cert.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  browser-ar-dashboard-cert:
+    name: Real Chrome Dashboard AR RTL 900x900
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze isolated browser audit entrypoint
+        run: flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart
+
+      - name: Build isolated browser audit
+        run: flutter build web --release -t lib/ui_browser_audit_main.dart
+
+      - name: Capture real Chrome Dashboard AR RTL
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/ui-browser-ar-cert"
+          python3 -m pip install --quiet websocket-client
+          python3 -m http.server 7358 --directory build/web >/tmp/iamina-ui-browser-ar-http.log 2>&1 &
+          SERVER_PID=$!
+          PROFILE_DIR="$(mktemp -d)"
+          CHROME_PID=""
+          cleanup() {
+            if [ -n "$CHROME_PID" ]; then
+              kill "$CHROME_PID" 2>/dev/null || true
+              sleep 1
+              kill -9 "$CHROME_PID" 2>/dev/null || true
+              wait "$CHROME_PID" 2>/dev/null || true
+            fi
+            kill "$SERVER_PID" 2>/dev/null || true
+            rm -rf "$PROFILE_DIR" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          READY=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7358 >/dev/null; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          test "$READY" = "1"
+
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --enable-unsafe-swiftshader \
+            --hide-scrollbars \
+            --remote-allow-origins='*' \
+            --remote-debugging-port=9222 \
+            --user-data-dir="$PROFILE_DIR" \
+            --window-size=900,900 \
+            "http://127.0.0.1:7358/?surface=dashboard&locale=ar" \
+            >/tmp/iamina-chrome-dashboard-ar.log 2>&1 &
+          CHROME_PID=$!
+
+          DEVTOOLS=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9222/json/list >/dev/null; then
+              DEVTOOLS=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$DEVTOOLS" != "1" ]; then
+            cat /tmp/iamina-chrome-dashboard-ar.log >&2 || true
+            exit 1
+          fi
+
+          cat > /tmp/capture_dashboard_ar.py <<'PY'
+          import base64
+          import json
+          import time
+          import urllib.request
+          from websocket import create_connection
+
+          endpoint = 'http://127.0.0.1:9222/json/list'
+          pages = json.load(urllib.request.urlopen(endpoint))
+          page = next(item for item in pages if item.get('type') == 'page')
+          ws = create_connection(page['webSocketDebuggerUrl'], timeout=20)
+          counter = 0
+
+          def call(method, params=None):
+              global counter
+              counter += 1
+              ws.send(json.dumps({'id': counter, 'method': method, 'params': params or {}}))
+              while True:
+                  response = json.loads(ws.recv())
+                  if response.get('id') == counter:
+                      return response
+
+          call('Page.enable')
+          call('Emulation.setDeviceMetricsOverride', {
+              'width': 900,
+              'height': 900,
+              'deviceScaleFactor': 1,
+              'mobile': False,
+          })
+          call('Page.reload', {'ignoreCache': True})
+          time.sleep(15)
+          shot = call('Page.captureScreenshot', {
+              'format': 'png',
+              'captureBeyondViewport': False,
+              'fromSurface': True,
+          })
+          data = shot.get('result', {}).get('data')
+          if not data:
+              raise RuntimeError(f'No screenshot payload: {shot}')
+          with open('/tmp/dashboard-responsive-ar-900x900.png', 'wb') as fh:
+              fh.write(base64.b64decode(data))
+          ws.close()
+          PY
+
+          python3 /tmp/capture_dashboard_ar.py
+          cp /tmp/dashboard-responsive-ar-900x900.png "$GITHUB_WORKSPACE/ui-browser-ar-cert/"
+          test -s "$GITHUB_WORKSPACE/ui-browser-ar-cert/dashboard-responsive-ar-900x900.png"
+          bytes="$(stat -c%s "$GITHUB_WORKSPACE/ui-browser-ar-cert/dashboard-responsive-ar-900x900.png")"
+          if [ "$bytes" -lt 10000 ]; then
+            echo "Arabic Dashboard capture is suspiciously small (${bytes} bytes)" >&2
+            exit 1
+          fi
+
+      - name: Upload Arabic Dashboard screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-dashboard-browser-ar-rtl-900x900
+          path: ui-browser-ar-cert/dashboard-responsive-ar-900x900.png
+          if-no-files-found: error
+          retention-days: 7
