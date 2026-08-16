@@ -132,7 +132,7 @@ jobs:
           ws.close()
           PY
 
-          surfaces=(dashboard trend kpi insight companion summary profile journal importer document-import add-log medications reminders)
+          surfaces=(dashboard trend kpi insight next-action companion summary profile journal importer document-import add-log medications reminders)
           for surface in "${surfaces[@]}"; do
             target="$GITHUB_WORKSPACE/ui-browser-cert/${surface}-390x844.png"
             profile_dir="$(mktemp -d)"
@@ -175,10 +175,10 @@ jobs:
           done
 
           count="$(find "$GITHUB_WORKSPACE/ui-browser-cert" -name '*-390x844.png' | wc -l)"
-          test "$count" -eq 13
+          test "$count" -eq 14
 
           unique="$(sha256sum "$GITHUB_WORKSPACE"/ui-browser-cert/*-390x844.png | awk '{print $1}' | sort -u | wc -l)"
-          if [ "$unique" -lt 11 ]; then
+          if [ "$unique" -lt 12 ]; then
             echo "Browser certification produced only ${unique} distinct renders" >&2
             exit 1
           fi
