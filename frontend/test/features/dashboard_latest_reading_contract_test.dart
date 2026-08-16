@@ -47,8 +47,25 @@ void main() {
       source,
       contains('final hasTarget = low != null && high != null'),
     );
+    expect(source, contains(': !hasTarget'));
     expect(source, contains('dashboardTargetNotConfigured'));
     expect(source, contains('targetConfigured: hasTarget'));
     expect(localizedCopy, contains('dashboardTargetNotConfigured'));
+    expect(localizedCopy, contains("en: 'Target not configured'"));
+    expect(localizedCopy, contains("fr: 'Cible non configurée'"));
+    expect(localizedCopy, contains("ar: 'النطاق المستهدف غير مضبوط'"));
+  });
+
+  test('Dashboard keeps configured target comparison deterministic', () {
+    final source = File(
+      'lib/features/dashboard/dashboard_premium_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('latest.bloodSugar >= low!'));
+    expect(source, contains('latest.bloodSugar <= high!'));
+    expect(source, contains('latest.bloodSugar > high!'));
+    expect(source, contains("'Dans votre cible'"));
+    expect(source, contains("'Au-dessus de la cible'"));
+    expect(source, contains("'Sous la cible'"));
   });
 }
