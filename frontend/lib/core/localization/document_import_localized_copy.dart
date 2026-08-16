@@ -18,7 +18,7 @@ extension DocumentImportLocalizedCopy on AppLocalizations {
   String get analyzedDocument => _pick(en: 'Analyzed document', fr: 'Document analysé', ar: 'المستند المحلل');
   String get glucoseReadings => _pick(en: 'Glucose readings', fr: 'Glycémies', ar: 'قراءات الغلوكوز');
   String get labResults => _pick(en: 'Lab results', fr: 'Bilan biologique', ar: 'نتائج التحاليل');
-  String get medicines => _pick(en: 'Medications', fr: 'Médicaments', ar: 'الأدوية');
+  String get medicines => _pick(en: 'Medications detected — not imported', fr: 'Médicaments détectés — non importés', ar: 'أدوية مكتشفة — لن يتم استيرادها');
   String get clinicalNotes => _pick(en: 'Clinical notes', fr: 'Observations cliniques', ar: 'ملاحظات سريرية');
   String get confirmImport => _pick(en: '✓ Confirm import', fr: '✓ Confirmer l’import', ar: '✓ تأكيد الاستيراد');
   String get cancelImport => _pick(en: 'Cancel', fr: 'Annuler', ar: 'إلغاء');
@@ -38,5 +38,5 @@ extension DocumentImportLocalizedCopy on AppLocalizations {
   String get triglycerides => _pick(en: 'Triglycerides', fr: 'Triglycérides', ar: 'الدهون الثلاثية');
   String get creatinine => _pick(en: 'Creatinine', fr: 'Créatinine', ar: 'الكرياتينين');
   String get reportDate => _pick(en: 'Report date', fr: 'Date du bilan', ar: 'تاريخ التحليل');
-  String get noMedicalDataDetected => _pick(en: 'No medical data was detected in this document.', fr: 'Aucune donnée médicale détectée dans ce document.', ar: 'لم يتم اكتشاف بيانات طبية في هذا المستند.');
+  String get noMedicalDataDetected => _pick(en: 'No importable medical data was detected in this document.', fr: 'Aucune donnée médicale importable détectée dans ce document.', ar: 'لم يتم اكتشاف بيانات طبية قابلة للاستيراد في هذا المستند.');
 }
