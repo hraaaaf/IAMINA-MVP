@@ -10,7 +10,7 @@ void main() {
     expect(module, contains('builder: () => const DashboardCompanionEntryScreen()'));
     expect(module, isNot(contains('DashboardScreen()')));
     expect(module, isNot(contains("dashboard_screen.dart")));
-    expect(module, isNot(contains('constraints.maxWidth < 700'));
+    expect(module, isNot(contains('constraints.maxWidth < 700')));
   });
 
   test('Responsive density changes layout, not semantic product authority', () {
