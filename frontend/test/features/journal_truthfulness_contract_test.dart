@@ -39,4 +39,16 @@ void main() {
     expect(historyIndex, greaterThanOrEqualTo(0));
     expect(disclosureIndex, greaterThan(historyIndex));
   });
+
+  test('Journal shows sync state only when user attention is needed', () {
+    final source = File(
+      'lib/features/journal/journal_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains("if (status == 'pending')"));
+    expect(source, contains("if (status == 'error')"));
+    expect(source, contains('return const SizedBox.shrink();'));
+    expect(source, isNot(contains('Icons.cloud_done_outlined')));
+    expect(source, isNot(contains('Icons.cloud_off_outlined')));
+  });
 }
