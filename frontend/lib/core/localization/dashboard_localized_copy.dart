@@ -38,6 +38,12 @@ extension DashboardLocalizedCopy on AppLocalizations {
         ar: 'الآن',
       );
 
+  String get dashboardTimestampNeedsReview => _pick(
+        en: 'timestamp to check',
+        fr: 'horodatage à vérifier',
+        ar: 'تحقق من وقت القياس',
+      );
+
   String dashboardFreshMinutes(int minutes) => _pick(
         en: '$minutes min ago',
         fr: 'il y a $minutes min',
