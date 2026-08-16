@@ -180,15 +180,21 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
                 ),
               ),
               SizedBox(height: compactHeight ? 20 : 32),
-              const Wrap(
+              Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 alignment: WrapAlignment.center,
                 children: [
-                  _FormatChip(icon: Icons.picture_as_pdf, label: 'PDF'),
-                  _FormatChip(icon: Icons.image, label: 'Photo'),
-                  _FormatChip(icon: Icons.table_chart, label: 'Excel / CSV'),
-                  _FormatChip(icon: Icons.description, label: 'Word'),
+                  const _FormatChip(icon: Icons.picture_as_pdf, label: 'PDF'),
+                  _FormatChip(
+                    icon: Icons.image,
+                    label: AuditedPageCopy.of(context).photo,
+                  ),
+                  const _FormatChip(
+                    icon: Icons.table_chart,
+                    label: 'Excel / CSV',
+                  ),
+                  const _FormatChip(icon: Icons.description, label: 'Word'),
                 ],
               ),
               SizedBox(height: compactHeight ? 12 : 20),
@@ -483,7 +489,7 @@ class _PrivacyGateNotice extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  l10n.documentPrivacyBody,
+                  l10n.privacyProcessingBody,
                   style: TextStyle(
                     fontSize: 12,
                     height: 1.45,
