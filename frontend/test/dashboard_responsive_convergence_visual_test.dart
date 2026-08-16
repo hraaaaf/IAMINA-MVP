@@ -91,73 +91,79 @@ Future<void> _capture(
   await db.seedDemoData();
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
-  try {
-    await tester.pumpWidget(
-      Provider<AppDatabase>.value(
-        value: db,
-        child: MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: AminaVisualLanguage.harmonize(AminaTheme.light),
-          locale: locale,
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: RepaintBoundary(
-            key: ValueKey<String>(name),
-            child: DashboardCompanionEntryScreen(companionService: service),
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 1800));
-    await expectLater(
-      find.byKey(ValueKey<String>(name)),
-      matchesGoldenFile('ui_audit_output/$name.png'),
-    );
-  } finally {
+  addTearDown(() async {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
     await db.close();
     service.dispose();
-    await tester.pump();
-  }
+  });
+
+  await tester.pumpWidget(
+    Provider<AppDatabase>.value(
+      value: db,
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AminaVisualLanguage.harmonize(AminaTheme.light),
+        locale: locale,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: RepaintBoundary(
+          key: ValueKey<String>(name),
+          child: DashboardCompanionEntryScreen(companionService: service),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 1800));
+  await expectLater(
+    find.byKey(ValueKey<String>(name)),
+    matchesGoldenFile('ui_audit_output/$name.png'),
+  );
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('Dashboard stays one product across former 700px fork and desktop', (
-    tester,
-  ) async {
+  testWidgets('Dashboard responsive 699px keeps the shared product', (tester) async {
     if (!_visualAuditEnabled) return;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
-
     await _capture(
       tester,
       size: const Size(699, 900),
       locale: const Locale('fr'),
       name: 'dashboard-responsive-699x900',
     );
+  });
+
+  testWidgets('Dashboard responsive 701px keeps the shared product', (tester) async {
+    if (!_visualAuditEnabled) return;
     await _capture(
       tester,
       size: const Size(701, 900),
       locale: const Locale('fr'),
       name: 'dashboard-responsive-701x900',
     );
+  });
+
+  testWidgets('Dashboard responsive desktop keeps the shared product', (tester) async {
+    if (!_visualAuditEnabled) return;
     await _capture(
       tester,
       size: const Size(1440, 1000),
       locale: const Locale('fr'),
       name: 'dashboard-responsive-1440x1000',
     );
+  });
+
+  testWidgets('Dashboard responsive AR RTL keeps the shared product', (tester) async {
+    if (!_visualAuditEnabled) return;
     await _capture(
       tester,
       size: const Size(900, 900),
