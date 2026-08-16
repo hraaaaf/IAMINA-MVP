@@ -33,11 +33,13 @@ def test_native_review_cannot_be_inferred_from_automated_tests():
 
 def test_darija_corpus_covers_text_voice_script_and_transliteration():
     darija_cases = [case for case in all_safety_corpus_cases() if case.locale == "ar-MA"]
-    assert {case.channel for case in darija_cases} == {"text", "voice_transcript"}
-    assert {case.input_form for case in darija_cases} == {
-        "arabic_script",
-        "latin_transliteration",
-        "mixed_language",
+    assert {(case.channel, case.input_form) for case in darija_cases} >= {
+        ("text", "arabic_script"),
+        ("text", "latin_transliteration"),
+        ("text", "mixed_language"),
+        ("voice_transcript", "arabic_script"),
+        ("voice_transcript", "latin_transliteration"),
+        ("voice_transcript", "mixed_language"),
     }
 
 
