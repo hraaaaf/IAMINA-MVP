@@ -82,43 +82,50 @@ class _ResponsiveCompanionService extends CompanionService {
 
 Future<void> _capture(
   WidgetTester tester, {
-  required AppDatabase db,
-  required CompanionService service,
   required Size size,
   required Locale locale,
   required String name,
 }) async {
+  final db = AppDatabase(NativeDatabase.memory());
+  final service = _ResponsiveCompanionService();
+  await db.seedDemoData();
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
-  await tester.pumpWidget(
-    Provider<AppDatabase>.value(
-      value: db,
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: AminaVisualLanguage.harmonize(AminaTheme.light),
-        locale: locale,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: RepaintBoundary(
-          key: ValueKey<String>(name),
-          child: DashboardCompanionEntryScreen(companionService: service),
+  try {
+    await tester.pumpWidget(
+      Provider<AppDatabase>.value(
+        value: db,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AminaVisualLanguage.harmonize(AminaTheme.light),
+          locale: locale,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RepaintBoundary(
+            key: ValueKey<String>(name),
+            child: DashboardCompanionEntryScreen(companionService: service),
+          ),
         ),
       ),
-    ),
-  );
-  await tester.pump();
-  await tester.pump(const Duration(milliseconds: 1800));
-  await expectLater(
-    find.byKey(ValueKey<String>(name)),
-    matchesGoldenFile('ui_audit_output/$name.png'),
-  );
-  await tester.pumpWidget(const SizedBox.shrink());
-  await tester.pump();
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1800));
+    await expectLater(
+      find.byKey(ValueKey<String>(name)),
+      matchesGoldenFile('ui_audit_output/$name.png'),
+    );
+  } finally {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await db.close();
+    service.dispose();
+    await tester.pump();
+  }
 }
 
 void main() {
@@ -128,44 +135,31 @@ void main() {
     tester,
   ) async {
     if (!_visualAuditEnabled) return;
-    final db = AppDatabase(NativeDatabase.memory());
-    final service = _ResponsiveCompanionService();
-    await db.seedDemoData();
-    addTearDown(() async {
+    addTearDown(() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
-      service.dispose();
-      await db.close();
     });
 
     await _capture(
       tester,
-      db: db,
-      service: service,
       size: const Size(699, 900),
       locale: const Locale('fr'),
       name: 'dashboard-responsive-699x900',
     );
     await _capture(
       tester,
-      db: db,
-      service: service,
       size: const Size(701, 900),
       locale: const Locale('fr'),
       name: 'dashboard-responsive-701x900',
     );
     await _capture(
       tester,
-      db: db,
-      service: service,
       size: const Size(1440, 1000),
       locale: const Locale('fr'),
       name: 'dashboard-responsive-1440x1000',
     );
     await _capture(
       tester,
-      db: db,
-      service: service,
       size: const Size(900, 900),
       locale: const Locale('ar'),
       name: 'dashboard-responsive-ar-900x900',
