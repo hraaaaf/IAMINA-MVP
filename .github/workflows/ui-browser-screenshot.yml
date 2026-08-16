@@ -21,9 +21,9 @@ permissions:
 
 jobs:
   browser-cert:
-    name: Real Chrome patient surfaces 390x844
+    name: Real Chrome patient surfaces
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     defaults:
       run:
@@ -95,6 +95,8 @@ jobs:
           from websocket import create_connection
 
           target = sys.argv[1]
+          width = int(sys.argv[2])
+          height = int(sys.argv[3])
           endpoint = 'http://127.0.0.1:9222/json/list'
           pages = json.load(urllib.request.urlopen(endpoint))
           page = next(item for item in pages if item.get('type') == 'page')
@@ -112,10 +114,10 @@ jobs:
 
           call('Page.enable')
           call('Emulation.setDeviceMetricsOverride', {
-              'width': 390,
-              'height': 844,
+              'width': width,
+              'height': height,
               'deviceScaleFactor': 1,
-              'mobile': True,
+              'mobile': width < 700,
           })
           call('Page.reload', {'ignoreCache': True})
           time.sleep(15)
@@ -132,9 +134,12 @@ jobs:
           ws.close()
           PY
 
-          surfaces=(dashboard trend kpi insight next-action companion summary profile journal importer document-import add-log medications reminders)
-          for surface in "${surfaces[@]}"; do
-            target="$GITHUB_WORKSPACE/ui-browser-cert/${surface}-390x844.png"
+          capture_surface() {
+            local surface="$1"
+            local width="$2"
+            local height="$3"
+            local target="$4"
+            local profile_dir
             profile_dir="$(mktemp -d)"
             "$CHROME" \
               --headless=new \
@@ -144,9 +149,9 @@ jobs:
               --remote-allow-origins='*' \
               --remote-debugging-port=9222 \
               --user-data-dir="$profile_dir" \
-              --window-size=390,844 \
+              --window-size=${width},${height} \
               "http://127.0.0.1:7358/?surface=${surface}" \
-              >/tmp/iamina-chrome-${surface}.log 2>&1 &
+              >/tmp/iamina-chrome-${surface}-${width}.log 2>&1 &
             CHROME_PID=$!
 
             DEVTOOLS=0
@@ -158,28 +163,34 @@ jobs:
               sleep 1
             done
             if [ "$DEVTOOLS" != "1" ]; then
-              cat "/tmp/iamina-chrome-${surface}.log" >&2 || true
+              cat "/tmp/iamina-chrome-${surface}-${width}.log" >&2 || true
               cleanup_chrome "$CHROME_PID" "$profile_dir"
               exit 1
             fi
 
-            python3 /tmp/capture_cdp.py "$target"
+            python3 /tmp/capture_cdp.py "$target" "$width" "$height"
             cleanup_chrome "$CHROME_PID" "$profile_dir"
-
             test -s "$target"
             bytes="$(stat -c%s "$target")"
             if [ "$bytes" -lt 10000 ]; then
-              echo "Capture ${surface} is suspiciously small (${bytes} bytes)" >&2
+              echo "Capture ${surface} ${width}x${height} is suspiciously small (${bytes} bytes)" >&2
               exit 1
             fi
+          }
+
+          surfaces=(dashboard trend kpi insight next-action companion summary profile journal importer document-import add-log medications reminders)
+          for surface in "${surfaces[@]}"; do
+            capture_surface "$surface" 390 844 "$GITHUB_WORKSPACE/ui-browser-cert/${surface}-390x844.png"
           done
+          capture_surface dashboard 1440 1000 "$GITHUB_WORKSPACE/ui-browser-cert/dashboard-responsive-1440x1000.png"
 
           count="$(find "$GITHUB_WORKSPACE/ui-browser-cert" -name '*-390x844.png' | wc -l)"
           test "$count" -eq 14
+          test -s "$GITHUB_WORKSPACE/ui-browser-cert/dashboard-responsive-1440x1000.png"
 
           unique="$(sha256sum "$GITHUB_WORKSPACE"/ui-browser-cert/*-390x844.png | awk '{print $1}' | sort -u | wc -l)"
           if [ "$unique" -lt 12 ]; then
-            echo "Browser certification produced only ${unique} distinct renders" >&2
+            echo "Browser certification produced only ${unique} distinct mobile renders" >&2
             exit 1
           fi
 
@@ -187,7 +198,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iamina-ui-browser-cert-390x844
+          name: iamina-ui-browser-cert-responsive
           path: ui-browser-cert/*.png
           if-no-files-found: warn
           retention-days: 7
