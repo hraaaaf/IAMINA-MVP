@@ -1,6 +1,6 @@
 # Dashboard product audit — 2026-08-16
 
-Status: runtime merged; post-merge main recertification pending.
+Status: CLOSED — 9.6/10 PASS.
 
 ## Product contract
 
@@ -19,7 +19,7 @@ The card labelled `Dernière mesure` previously consumed `watchLogsInRange(now -
 | Companion / Importer / Journal shortcuts | KEEP | useful primary navigation |
 | Reminder action | KEEP | direct navigation |
 | Target-range status | KEEP | existing profile-governed thresholds unchanged in this audit |
-| Trust card | KEEP / monitor | no runtime change in this lot |
+| Trust card | KEEP | factual provenance copy retained |
 
 ## Runtime correction
 
@@ -39,10 +39,20 @@ Exact-head certified SHA: `5f60f540df76df7f8b538753bf0255d569ee7800`
 - UI screenshot audit #74: PASS.
 - Chrome certification #33: PASS.
 - Chrome artifact: `9254612669`, digest `sha256:ccdaec4cb2f7c639ead2db3041f1164e5643ab38d8155aa2b235baf9d36b6496`.
-- Manual inspection of `dashboard-390x844.png`: clean layout, no collision/overflow, clear hierarchy and visible factual latest-reading surface.
+- Manual inspection of `dashboard-390x844.png`: clean layout, no collision/overflow, clear hierarchy and factual latest-reading surface.
 
-## Remaining closeout gate
+## Post-merge certification
 
-No final score or CLOSED status before post-merge `main` recertification is green and canonical consistency is confirmed.
+Main SHA: `955173a3b3858311cc8b298b3e39b1f8c3e12a23`
+
+- CI #2445: PASS.
+- Django migration drift #2257: PASS.
+- UI screenshot audit #75: PASS.
+- Chrome certification #34: PASS.
+- Post-merge Chrome artifact: `9254949309`, digest `sha256:d521b325085dfb9aa422d48f89aeddcb13af97395273266bbd35d3c0c435fd38`.
+
+## Final score
+
+**9.6/10 — PASS.** The identified truthfulness defect is fixed, the runtime diff is minimal, exact-head and post-merge gates are green, and the real 390×844 surface is clean. No clinical or persisted-data semantics changed.
 
 MENA roadmap numerator remains unchanged by this page audit.
