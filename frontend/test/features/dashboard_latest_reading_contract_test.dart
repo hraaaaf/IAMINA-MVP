@@ -41,7 +41,12 @@ void main() {
 
     expect(source, isNot(contains('targetRangeLow ?? 70.0')));
     expect(source, isNot(contains('targetRangeHigh ?? 180.0')));
-    expect(source, contains('hasConfiguredTarget'));
+    expect(source, contains('final low = profile?.targetRangeLow;'));
+    expect(source, contains('final high = profile?.targetRangeHigh;'));
+    expect(
+      source,
+      contains('final hasTarget = low != null && high != null'),
+    );
     expect(source, contains('dashboardTargetNotConfigured'));
     expect(source, contains('targetConfigured: hasTarget'));
     expect(localizedCopy, contains('dashboardTargetNotConfigured'));
