@@ -22,12 +22,16 @@ void main() {
     final premium = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
     ).readAsStringSync();
+    final today = File(
+      'lib/features/dashboard/widgets/dashboard_today_section.dart',
+    ).readAsStringSync();
     final module = File('lib/modules/diabetes_module.dart').readAsStringSync();
 
     expect(wrapper, contains("ValueKey('dashboard-companion-primary-entry')"));
     expect(wrapper, contains('DashboardPremiumScreen'));
-    expect(premium, contains("context.go('/companion')"));
-    expect(premium, contains("'Compagnon'"));
+    expect(premium, contains('DashboardTodaySection('));
+    expect(today, contains("context.go('/companion')"));
+    expect(today, contains("ValueKey('dashboard-secondary-companion')"));
     expect(module, contains('const DashboardCompanionEntryScreen()'));
   });
 }

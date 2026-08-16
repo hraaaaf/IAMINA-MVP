@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:amina/core/theme/amina_visual_language.dart';
 import 'package:amina/core/theme/app_theme.dart';
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/data/models/companion_models.dart';
 import 'package:amina/features/companion/companion_premium_screen.dart';
 import 'package:amina/features/dashboard/dashboard_companion_entry_screen.dart';
 import 'package:amina/features/dashboard/dashboard_screen.dart';
@@ -21,11 +22,40 @@ import 'package:amina/features/reminders/reminders_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/api_client.dart';
 import 'package:amina/services/auth_service.dart';
+import 'package:amina/services/companion_service.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:amina/services/modules_provider.dart';
 import 'package:amina/services/sync_service.dart';
 
 const _visualAuditEnabled = bool.fromEnvironment('IAMINA_VISUAL_AUDIT');
+
+class _VisualCompanionService extends CompanionService {
+  @override
+  Future<CompanionOverview?> fetchOverview() async => CompanionOverview(
+    patternStatus: 'ready',
+    reviewStatus: 'ready',
+    reviewAnchorCapturedAt: DateTime.utc(2026, 8, 15, 10),
+    patterns: const <CompanionPattern>[],
+    changesSinceReview: const <CompanionChange>[
+      CompanionChange(
+        observationKey: 'meal:lunch',
+        changeKind: 'persisting',
+        evidenceStrength: 'moderate',
+        missingData: <String>[],
+      ),
+    ],
+    afterVisit: const CompanionAfterVisit(
+      status: 'no_recorded_visit',
+      anchorId: null,
+      occurredAt: null,
+      source: null,
+      factCount: 0,
+      latestFactAt: null,
+    ),
+    safetyNotice: 'governed_visual_fixture',
+    sourceVersion: 'ui-visual-audit.v1',
+  );
+}
 
 class _Deps {
   final AppDatabase db;
@@ -35,6 +65,7 @@ class _Deps {
   final ConsentService consent;
   final ModulesProvider modules;
   final SyncService sync;
+  final _VisualCompanionService visualCompanion;
 
   const _Deps({
     required this.db,
@@ -44,6 +75,7 @@ class _Deps {
     required this.consent,
     required this.modules,
     required this.sync,
+    required this.visualCompanion,
   });
 }
 
@@ -59,6 +91,7 @@ Future<_Deps> _createDeps() async {
     ..attachStream(db.watchProfile());
   final modules = ModulesProvider(api);
   final sync = SyncService(db, api);
+  final visualCompanion = _VisualCompanionService();
   return _Deps(
     db: db,
     profile: profile,
@@ -67,6 +100,7 @@ Future<_Deps> _createDeps() async {
     consent: consent,
     modules: modules,
     sync: sync,
+    visualCompanion: visualCompanion,
   );
 }
 
@@ -172,6 +206,7 @@ void main() {
     addTearDown(() async {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
+      deps.visualCompanion.dispose();
       await deps.db.close();
     });
 
@@ -182,18 +217,24 @@ void main() {
       _CaptureSpec(
         'dashboard-360x560',
         compactMobile,
-        () => const DashboardCompanionEntryScreen(),
+        () => DashboardCompanionEntryScreen(
+          companionService: deps.visualCompanion,
+        ),
       ),
       _CaptureSpec(
         'dashboard-ar-360x560',
         compactMobile,
-        () => const DashboardCompanionEntryScreen(),
+        () => DashboardCompanionEntryScreen(
+          companionService: deps.visualCompanion,
+        ),
         locale: const Locale('ar'),
       ),
       _CaptureSpec(
         'dashboard-390x844',
         mobile,
-        () => const DashboardCompanionEntryScreen(),
+        () => DashboardCompanionEntryScreen(
+          companionService: deps.visualCompanion,
+        ),
       ),
       _CaptureSpec('journal-390x844', mobile, () => const JournalScreen()),
       _CaptureSpec('summary-390x844', mobile, () => const AISummaryScreen()),

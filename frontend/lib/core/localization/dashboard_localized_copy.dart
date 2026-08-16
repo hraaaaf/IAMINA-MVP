@@ -32,6 +32,78 @@ extension DashboardLocalizedCopy on AppLocalizations {
         ar: 'النطاق المستهدف غير مضبوط',
       );
 
+  String get dashboardTodayHeading => _pick(
+        en: 'Today at a glance',
+        fr: 'À retenir aujourd’hui',
+        ar: 'ملخص اليوم',
+      );
+
+  String get dashboardTodayLoading => _pick(
+        en: 'Updating your governed summary…',
+        fr: 'Mise à jour de votre synthèse gouvernée…',
+        ar: 'جارٍ تحديث ملخصك الموثوق…',
+      );
+
+  String get dashboardTodayUnavailable => _pick(
+        en: 'Governed summary is unavailable right now. Your local data remains available.',
+        fr: 'La synthèse gouvernée est indisponible pour le moment. Vos données locales restent disponibles.',
+        ar: 'الملخص الموثوق غير متاح حالياً. تبقى بياناتك المحلية متاحة.',
+      );
+
+  String get dashboardRetry => _pick(
+        en: 'Retry',
+        fr: 'Réessayer',
+        ar: 'إعادة المحاولة',
+      );
+
+  String get dashboardConfigureTargetSignal => _pick(
+        en: 'Configure your personal target before IAmina labels a reading against it.',
+        fr: 'Configurez votre cible personnelle avant qu’IAmina ne qualifie une mesure par rapport à celle-ci.',
+        ar: 'اضبط نطاقك الشخصي قبل أن تصف IAmina أي قياس مقارنةً به.',
+      );
+
+  String get dashboardConfigureTargetAction => _pick(
+        en: 'Configure',
+        fr: 'Configurer',
+        ar: 'ضبط',
+      );
+
+  String dashboardGovernedChanges(int count) => _pick(
+        en: '$count governed change${count == 1 ? '' : 's'} available since your last review.',
+        fr: '$count changement${count == 1 ? '' : 's'} gouverné${count == 1 ? '' : 's'} disponible${count == 1 ? '' : 's'} depuis votre dernière revue.',
+        ar: 'يتوفر $count تغير موثوق منذ آخر مراجعة لك.',
+      );
+
+  String dashboardGovernedPatterns(int count) => _pick(
+        en: '$count governed personal pattern${count == 1 ? '' : 's'} available to review.',
+        fr: '$count schéma${count == 1 ? '' : 's'} personnel${count == 1 ? '' : 's'} gouverné${count == 1 ? '' : 's'} disponible${count == 1 ? '' : 's'} à consulter.',
+        ar: 'يتوفر $count نمط شخصي موثوق للمراجعة.',
+      );
+
+  String get dashboardNoGovernedHighlight => _pick(
+        en: 'No new governed summary to highlight from the available data.',
+        fr: 'Aucun nouveau résumé gouverné à mettre en avant avec les données disponibles.',
+        ar: 'لا يوجد ملخص موثوق جديد لإبرازه من البيانات المتاحة.',
+      );
+
+  String get dashboardOpenCompanion => _pick(
+        en: 'Companion',
+        fr: 'Compagnon',
+        ar: 'الرفيق',
+      );
+
+  String get dashboardImportData => _pick(
+        en: 'Import',
+        fr: 'Importer',
+        ar: 'استيراد',
+      );
+
+  String get dashboardGovernedTrustShort => _pick(
+        en: 'This summary uses governed observations only · missing data is never invented.',
+        fr: 'Cette synthèse utilise uniquement des observations gouvernées · les données manquantes ne sont jamais inventées.',
+        ar: 'يستخدم هذا الملخص ملاحظات موثوقة فقط · لا يتم اختراع البيانات المفقودة.',
+      );
+
   String get dashboardFreshNow => _pick(
         en: 'just now',
         fr: 'à l’instant',
@@ -80,5 +152,9 @@ extension DashboardLocalizedCopy on AppLocalizations {
         ar: 'وضع التطوير — لا توجد بيانات للمريض.',
       );
 
-  String get loadDemo => _pick(en: 'Load demo', fr: 'Charger démo', ar: 'تحميل البيانات التجريبية');
+  String get loadDemo => _pick(
+        en: 'Load demo',
+        fr: 'Charger démo',
+        ar: 'تحميل البيانات التجريبية',
+      );
 }
