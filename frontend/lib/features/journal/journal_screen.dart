@@ -57,6 +57,7 @@ class _JournalScreenState extends State<JournalScreen> {
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
+          _buildFilterChips(horizontalPadding),
           StreamBuilder<List<LogEntryData>>(
             stream: db.watchLogsInRange(start, now),
             builder: (context, snapshot) {
@@ -218,9 +219,6 @@ class _JournalScreenState extends State<JournalScreen> {
         child: AminaMobilePageHeader(
           title: l10n.navJournal,
           subtitle: rangeLabel,
-          trailing: _buildFilterBadge(
-            iconColor: AminaTheme.textSecondary(context),
-          ),
         ),
       );
     }
@@ -240,32 +238,26 @@ class _JournalScreenState extends State<JournalScreen> {
             ),
           ),
           padding: EdgeInsetsDirectional.fromSTEB(24, topPad, 24, 0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.navJournal,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  Text(
-                    rangeLabel,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+              Text(
+                l10n.navJournal,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
               ),
-              _buildFilterBadge(),
+              Text(
+                rangeLabel,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),
@@ -273,20 +265,40 @@ class _JournalScreenState extends State<JournalScreen> {
     );
   }
 
-  Widget _buildFilterBadge({Color? iconColor}) {
-    return Builder(
-      builder: (context) {
-        final l10n = AppLocalizations.of(context)!;
-        return PopupMenuButton<int>(
-          icon: Icon(Icons.tune, color: iconColor ?? Colors.white),
-          onSelected: (days) => setState(() => _selectedFilterDays = days),
-          itemBuilder: (_) => [
-            PopupMenuItem(value: 7, child: Text(l10n.last7Days)),
-            PopupMenuItem(value: 30, child: Text(l10n.last30Days)),
-            PopupMenuItem(value: 0, child: Text(l10n.allHistory)),
-          ],
-        );
-      },
+  Widget _buildFilterChips(double horizontalPadding) {
+    final l10n = AppLocalizations.of(context)!;
+    final options = <(int, String)>[
+      (7, l10n.last7Days),
+      (30, l10n.last30Days),
+      (0, l10n.allHistory),
+    ];
+
+    return SliverPadding(
+      padding: EdgeInsetsDirectional.fromSTEB(
+        horizontalPadding,
+        12,
+        horizontalPadding,
+        0,
+      ),
+      sliver: SliverToBoxAdapter(
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options
+              .map(
+                (option) => ChoiceChip(
+                  key: Key('journal-range-${option.$1}'),
+                  label: Text(option.$2),
+                  selected: _selectedFilterDays == option.$1,
+                  showCheckmark: false,
+                  onSelected: (_) => setState(
+                    () => _selectedFilterDays = option.$1,
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ),
     );
   }
 
