@@ -23,8 +23,8 @@ class NightscoutConfig:
     timeout_seconds: float = 10.0
 
     def __post_init__(self) -> None:
-        if self.source not in {CGMSource.DEXCOM, CGMSource.LIBRE}:
-            raise ValueError("CGM V1 supports only Dexcom or Libre source provenance")
+        if self.source not in {CGMSource.DEXCOM, CGMSource.LIBRE, CGMSource.LINX}:
+            raise ValueError("CGM gateway supports only explicitly qualified source provenance")
 
         parsed = urlparse(self.base_url)
         is_loopback_http = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1", "::1"}
@@ -80,9 +80,10 @@ def _stdlib_transport(url: str, headers: dict[str, str], timeout: float) -> obje
 class NightscoutCGMProvider(CGMProvider):
     """Read normalized CGM entries from a Nightscout-compatible API.
 
-    Dexcom Share and LibreLinkUp credentials stay in the external bridge
-    (for example nightscout-connect/Nightscout). IAMINA receives only the
-    normalized glucose feed and configured source provenance.
+    Vendor/BLE credentials stay in an external bridge. IAMINA receives only
+    normalized glucose readings and explicit configured source provenance.
+    Qualified V1/V1.1 sources are Dexcom, Libre and LinX; LinX may be fed by
+    an external Juggluco-to-Nightscout bridge without embedding GPL code.
     """
 
     def __init__(self, config: NightscoutConfig, *, transport: Transport | None = None) -> None:

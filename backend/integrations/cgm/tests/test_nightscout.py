@@ -52,6 +52,25 @@ def test_libre_source_is_explicit_not_inferred_from_device_text() -> None:
     assert reading.source is CGMSource.LIBRE
 
 
+def test_linx_source_is_explicit_not_inferred_from_bridge_device_text() -> None:
+    def transport(url: str, headers: dict[str, str], timeout: float) -> object:
+        return [{"sgv": 112, "date": 1_768_176_120_000, "device": "juggluco-nightscout"}]
+
+    provider = NightscoutCGMProvider(
+        NightscoutConfig(base_url="https://example.invalid", source=CGMSource.LINX),
+        transport=transport,
+    )
+
+    [reading] = provider.readings(datetime(2026, 1, 11, 23, 59, tzinfo=UTC))
+    assert reading.source is CGMSource.LINX
+    assert reading.device == "juggluco-nightscout"
+
+
+def test_rejects_unqualified_source() -> None:
+    with pytest.raises(ValueError):
+        NightscoutConfig(base_url="https://example.com", source=CGMSource.UNKNOWN)
+
+
 def test_rejects_insecure_remote_url_and_ambiguous_auth() -> None:
     for unsafe_url in (
         "http://example.com",
@@ -75,6 +94,7 @@ def test_rejects_insecure_remote_url_and_ambiguous_auth() -> None:
 
     NightscoutConfig(base_url="http://localhost:1337", source=CGMSource.DEXCOM)
     NightscoutConfig(base_url="http://127.0.0.1:1337", source=CGMSource.LIBRE)
+    NightscoutConfig(base_url="http://[::1]:1337", source=CGMSource.LINX)
 
 
 def test_rejects_naive_since_and_invalid_payload() -> None:
