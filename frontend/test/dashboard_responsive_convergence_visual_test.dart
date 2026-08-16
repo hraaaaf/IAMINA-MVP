@@ -91,42 +91,44 @@ Future<void> _capture(
   await db.seedDemoData();
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
-  addTearDown(() async {
-    tester.view.resetPhysicalSize();
-    tester.view.resetDevicePixelRatio();
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump();
-    await db.close();
-    service.dispose();
-  });
 
-  await tester.pumpWidget(
-    Provider<AppDatabase>.value(
-      value: db,
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: AminaVisualLanguage.harmonize(AminaTheme.light),
-        locale: locale,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: RepaintBoundary(
-          key: ValueKey<String>(name),
-          child: DashboardCompanionEntryScreen(companionService: service),
+  try {
+    await tester.pumpWidget(
+      Provider<AppDatabase>.value(
+        value: db,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AminaVisualLanguage.harmonize(AminaTheme.light),
+          locale: locale,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RepaintBoundary(
+            key: ValueKey<String>(name),
+            child: DashboardCompanionEntryScreen(companionService: service),
+          ),
         ),
       ),
-    ),
-  );
-  await tester.pump();
-  await tester.pump(const Duration(milliseconds: 1800));
-  await expectLater(
-    find.byKey(ValueKey<String>(name)),
-    matchesGoldenFile('ui_audit_output/$name.png'),
-  );
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1800));
+    await expectLater(
+      find.byKey(ValueKey<String>(name)),
+      matchesGoldenFile('ui_audit_output/$name.png'),
+    );
+  } finally {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+    await db.close();
+    service.dispose();
+    await tester.pump(const Duration(milliseconds: 1));
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  }
 }
 
 void main() {
