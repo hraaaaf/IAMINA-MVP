@@ -49,6 +49,7 @@ class _DashboardNextActionSectionState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Container(
+      key: const ValueKey('dashboard-next-action-section'),
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -141,6 +142,7 @@ class _IdleBody extends StatelessWidget {
           width: double.infinity,
           height: 46,
           child: FilledButton.icon(
+            key: const ValueKey('dashboard-next-action-prepare'),
             onPressed: onPrepare,
             icon: const Icon(Icons.auto_awesome_rounded, size: 18),
             label: Text(l10n.dashboardNextActionPrepare),
@@ -219,6 +221,7 @@ class _ResultBody extends StatelessWidget {
       children: [
         Text(
           l10n.dashboardNextActionTitle(suggestion.suggestionClass),
+          key: const ValueKey('dashboard-next-action-result-title'),
           style: TextStyle(
             fontSize: 16,
             height: 1.2,
@@ -240,6 +243,7 @@ class _ResultBody extends StatelessWidget {
           width: double.infinity,
           height: 46,
           child: FilledButton.icon(
+            key: const ValueKey('dashboard-next-action-open'),
             onPressed: () => context.go(route),
             icon: Icon(
               suggestion.suggestionClass == 'MONITOR'
