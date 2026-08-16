@@ -15,6 +15,20 @@ void main() {
     expect(source, isNot(contains('subtitle: l10n.journalSubtitle')));
   });
 
+  test('Journal exposes all three range choices directly below the header', () {
+    final source = File(
+      'lib/features/journal/journal_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('_buildFilterChips(horizontalPadding)'));
+    expect(source, contains("Key('journal-range-\${option.\$1}')"));
+    expect(source, contains('(7, l10n.last7Days)'));
+    expect(source, contains('(30, l10n.last30Days)'));
+    expect(source, contains('(0, l10n.allHistory)'));
+    expect(source, contains('ChoiceChip('));
+    expect(source, isNot(contains('PopupMenuButton<int>')));
+  });
+
   test('Journal converts stored mg/dL values for mmol/L display', () {
     final source = File(
       'lib/features/journal/journal_screen.dart',
