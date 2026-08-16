@@ -21,42 +21,15 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
+
           path = Path('frontend/lib/features/import/cgm_connections_section.dart')
           text = path.read_text()
-          old = '''                child: Row(
-                  children: [
-                    Text(
-                      '${latest.glucoseMgDl}',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: AminaTheme.ink900,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    const Text('mg/dL', style: TextStyle(fontSize: 11, color: AminaTheme.ink500)),
-                    if (latest.trend.isNotEmpty) ...[
-                      const SizedBox(width: 10),
-                      Flexible(
-                        child: Text(
-                          latest.trend,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AminaTheme.teal700,
-                          ),
-                        ),
-                      ),
-                    ],
-                    const Spacer(),
-                    Text(
-                      _relative(latest.recordedAt, l10n),
-                      style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
-                    ),
-                  ],
-                ),'''
-          new = '''                child: Wrap(
+          pattern = re.compile(
+              r"(label: '\$\{l10n\.cgmLatestReading\}: \$\{latest\.glucoseMgDl\} mg/dL \$\{latest\.trend\}',\n\s+)(child: Row\(.*?_relative\(latest\.recordedAt, l10n\),.*?\n\s+\),\n\s+\),)",
+              re.DOTALL,
+          )
+          replacement = r"""\1child: Wrap(
                   crossAxisAlignment: WrapCrossAlignment.center,
                   spacing: 6,
                   runSpacing: 4,
@@ -69,7 +42,10 @@ jobs:
                         color: AminaTheme.ink900,
                       ),
                     ),
-                    const Text('mg/dL', style: TextStyle(fontSize: 11, color: AminaTheme.ink500)),
+                    const Text(
+                      'mg/dL',
+                      style: TextStyle(fontSize: 11, color: AminaTheme.ink500),
+                    ),
                     if (latest.trend.isNotEmpty)
                       Text(
                         latest.trend,
@@ -85,13 +61,15 @@ jobs:
                       style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
                     ),
                   ],
-                ),'''
-          if old not in text:
-              raise SystemExit('responsive CGM row anchor not found')
-          path.write_text(text.replace(old, new, 1))
+                ),"""
+          updated, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'responsive CGM structural anchor count={count}')
+          path.write_text(updated)
           PY
-      - name: Commit fix
+      - name: Format and commit fix
         run: |
+          dart format frontend/lib/features/import/cgm_connections_section.dart
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add frontend/lib/features/import/cgm_connections_section.dart
