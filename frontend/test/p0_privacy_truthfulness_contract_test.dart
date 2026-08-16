@@ -74,7 +74,7 @@ void main() {
       for (final required in <String>[
         'document-privacy-gate',
         'l10n.documentPrivacyTitle',
-        'l10n.documentPrivacyBody',
+        'l10n.privacyProcessingBody',
         'const _PrivacyGateNotice()',
         "key: const ValueKey('choose-document-button')",
       ]) {
