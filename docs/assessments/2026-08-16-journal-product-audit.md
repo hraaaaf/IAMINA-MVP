@@ -15,10 +15,10 @@ Journal is a factual history of recorded glucose measurements and their captured
 | Personal Response | Adds longitudinal interpretation, but competes with Summary if visually dominant | 6.5/10 baseline → 8.5/10 | **Decision B** — KEEP as secondary, collapsed by default, after history |
 | Grouping by day | Natural chronological scan of measurements | 9.5/10 | KEEP |
 | Glucose value capsule | Core factual content of Journal | 9.0/10 baseline → 9.5/10 | IMPROVE — display respects mg/dL / mmol/L preference |
-| Meal / glycemic / Ramadan / life context | Explains recorded circumstances without manufacturing context | 9.0/10 | KEEP |
+| Meal / glycemic / Ramadan / life context | Explains recorded circumstances but full chips + description made rows unnecessarily dense | 9.0/10 baseline → 9.5/10 | **Decision B** — keep primary context + compact one-line meal summary; full details on tap |
 | Historical insulin badge | Preserves backward-compatible factual history without turning Journal into medication entry | 8.5/10 | **Decision A** — KEEP visible and read-only on legacy rows |
 | Synchronization status | Useful only when action or attention is required; routine success adds repeated visual noise | 7.0/10 baseline → 9.0/10 | **Decision B** — hide synced/non-actionable states; show pending/error only |
-| Tap → edit | Essential correction path for persisted factual data | 9.5/10 | KEEP |
+| Tap → edit | Essential correction/detail path for persisted factual data | 9.5/10 | KEEP |
 | Swipe → confirmed delete | Necessary destructive action with explicit confirmation | 9.0/10 | KEEP |
 | Glucose color hierarchy | Distinguishes clinically important low glucose from ordinary out-of-target values without overclaiming urgency | 7.0/10 baseline → 9.0/10 | **Decision B** — red only below 70 mg/dL; out-of-target highs follow patient target range in amber |
 
@@ -29,6 +29,7 @@ Journal is a factual history of recorded glucose measurements and their captured
 - Personal Response previously appeared before the factual history and therefore competed with the Journal's primary purpose.
 - Synchronization previously rendered an icon even for routine `synced` state, repeating low-value status on every row.
 - The range selector was previously hidden behind a tune icon, adding avoidable interaction cost for a primary Journal control.
+- Meal rows could render every food chip plus a two-line free-text description in addition to the primary context, increasing scan density.
 - Deletion already requires explicit confirmation.
 - Historical `insulinUnits` remains display-only compatibility data in Journal.
 - Previous row coloring made both `<70 mg/dL` and `>250 mg/dL` red. ADA Standards of Care 2026 explicitly treats `<70 mg/dL` as clinically important hypoglycemia, while `>250 mg/dL` is defined in CGM reporting as a time-above-range level-2 hyperglycemia metric. That does not by itself establish a universal red-alert rule for one isolated Journal row.
@@ -40,6 +41,7 @@ Journal is a factual history of recorded glucose measurements and their captured
 - **Glucose color hierarchy — B:** reserve red for `<70 mg/dL`; other out-of-target values use the existing patient-target amber branch.
 - **Historical insulin badge — A:** keep legacy insulin visible and strictly read-only; no runtime change was required because the implementation already satisfies this.
 - **Temporal filter — B:** expose 7-day, 30-day and all-history choices as visible ChoiceChips below the header; keep 30 days as default and preserve the dynamic subtitle.
+- **Meal/context density — B:** keep the primary context, summarize at most two localized food labels plus `+N` on one line, fall back to one-line free text when no catalog foods exist, and leave complete detail accessible through row tap.
 
 ## Runtime correction
 
@@ -48,6 +50,7 @@ Branch: `agent/journal-product-audit`
 - Header subtitle follows the selected 7-day, 30-day or all-history filter.
 - 7 / 30 / all-history selection is exposed as visible ChoiceChips below the header.
 - mmol/L display converts stored mg/dL using `/ 18.0` and one decimal place.
+- Meal context is reduced to one compact summary line while preserving primary context and detail-on-tap.
 - Personal Response is a post-history secondary disclosure, collapsed by default.
 - Journal row sync chrome is silent for `synced`/non-actionable states and visible only for `pending`/`error`.
 - Red is reserved for `<70 mg/dL`; other out-of-target readings use the patient's target-range amber branch.
