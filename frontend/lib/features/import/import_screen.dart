@@ -11,7 +11,6 @@ import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
-import 'package:drift/drift.dart' as drift;
 
 class ImportScreen extends StatefulWidget {
   const ImportScreen({super.key});
@@ -27,11 +26,6 @@ class _ImportScreenState extends State<ImportScreen> {
   int? _totalLogs;
   DateTime? _lastLogAt;
 
-  bool get _isDataStale {
-    if (_lastLogAt == null) return false;
-    return DateTime.now().difference(_lastLogAt!).inDays >= 3;
-  }
-
   @override
   void initState() {
     super.initState();
@@ -40,18 +34,18 @@ class _ImportScreenState extends State<ImportScreen> {
 
   Future<void> _loadStats() async {
     final db = context.read<AppDatabase>();
-    final count = await db.countLogs();
-    final rows =
-        await (db.select(db.logEntries)
-              ..orderBy([(t) => drift.OrderingTerm.desc(t.createdAt)])
-              ..limit(1))
-            .get();
+    final rows = await db.select(db.logEntries).get();
+    DateTime? lastLogAt;
+    for (final row in rows) {
+      final occurredAt = row.loggedAt ?? row.createdAt;
+      if (lastLogAt == null || occurredAt.isAfter(lastLogAt)) {
+        lastLogAt = occurredAt;
+      }
+    }
     if (mounted) {
       setState(() {
-        _totalLogs = count;
-        _lastLogAt = rows.isNotEmpty
-            ? (rows.first.loggedAt ?? rows.first.createdAt)
-            : null;
+        _totalLogs = rows.length;
+        _lastLogAt = lastLogAt;
       });
     }
   }
@@ -92,7 +86,6 @@ class _ImportScreenState extends State<ImportScreen> {
                       _LastImportBanner(
                         totalLogs: _totalLogs!,
                         lastLogAt: _lastLogAt,
-                        isStale: _isDataStale,
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -291,11 +284,9 @@ class _TopBar extends StatelessWidget {
 class _LastImportBanner extends StatelessWidget {
   final int totalLogs;
   final DateTime? lastLogAt;
-  final bool isStale;
   const _LastImportBanner({
     required this.totalLogs,
     required this.lastLogAt,
-    this.isStale = false,
   });
 
   String _relativeTime(DateTime dt, AppLocalizations l10n) {
@@ -313,60 +304,6 @@ class _LastImportBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final label = lastLogAt != null ? _relativeTime(lastLogAt!, l10n) : '—';
-
-    if (isStale) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF8E1),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFFFE082)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9A825),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.update, size: 18, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.staleDataTitle,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF5D3A00),
-                    ),
-                  ),
-                  if (lastLogAt != null)
-                    Text(
-                      l10n.staleDataBody(label),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF795900),
-                        height: 1.4,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.warning_amber_rounded,
-              size: 16,
-              color: Color(0xFFF9A825),
-            ),
-          ],
-        ),
-      );
-    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
