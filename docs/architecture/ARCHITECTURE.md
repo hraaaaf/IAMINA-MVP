@@ -24,6 +24,7 @@ The existence of platform seams does **not** mean IAmina is currently a multi-co
 - Shared core contracts, safety registry/middleware, account/auth infrastructure, observability, and retention instrumentation.
 - Django-owned registration/login/logout, signed IAMINA bearer-token flows, revocation and password lifecycle; controlled Firebase migration/link/unlink compatibility remains until the zero-Firebase gate legitimately passes.
 - Provider-specific AI/STT/vision/document adapters still exist behind governed egress boundaries.
+- A governed read-only CGM integration boundary exists at `backend/integrations/cgm/`: Dexcom Share, LibreLinkUp, or LinX/AiDEX X may feed IAmina only through an external Nightscout-compatible bridge. LinX is qualified through an external Juggluco-to-Nightscout path; no Juggluco GPL code, BLE stack, or vendor credential is embedded in IAmina. The boundary exposes normalized timestamped glucose readings with explicit configured source provenance. Bridge/vendor credentials remain outside IAmina, HTTPS is required outside localhost, malformed transport data fails closed, unknown providers are rejected, and this boundary grants no new clinical authority or patient-facing behavior.
 - The completed `core.ai_egress` / P0-MENA-1 boundary governs live external model/media operations by authenticated patient, purpose, modality, consent, payload minimization/allowlisting and applicable provider/processor policy.
 - IAmina has an executable truth-provenance and capability/authority contract: generative models may narrate approved data but are not clinical decision authorities.
 - CI blocks new direct external AI callsites that omit the central authorization assertion.
@@ -114,10 +115,11 @@ Potential external categories:
 - text generation;
 - STT;
 - vision/OCR/document extraction;
+- read-only CGM transport bridges such as Nightscout/nightscout-connect and external Juggluco for LinX/AiDEX X, kept outside IAMINA and consumed only through the normalized HTTP integration boundary;
 - authentication legacy dependencies;
 - storage/hosting/observability processors.
 
-No external AI/media provider is trusted by default. Provider selection and payload eligibility are separate decisions.
+No external AI/media provider is trusted by default. Provider selection and payload eligibility are separate decisions. CGM transport bridges likewise do not become clinical authorities merely because they supply recorded device data.
 
 ## 4. Chassis/module seams — what ADR-0008 means today
 
@@ -338,6 +340,7 @@ A locale/dialect is disabled for patient pilot until it has:
 | Every live external model/media call requires sanctioned egress authorization | Privacy + sovereignty |
 | Missing scope/consent/purpose/modality authorization denies egress | Default-deny safety |
 | Purpose-specific minimization/allowlisting governs external payloads | Data minimization |
+| CGM transport source provenance is explicit and transport data alone grants no clinical authority | Clinical provenance / authority separation |
 | Clinical Twin derivation remains recomputable and source-erasure consistent | Data lifecycle / provenance integrity |
 | Proactive workflow state cannot widen Clinical Twin authority | Clinical safety |
 | SQL-first KPI authority where ADR-0007 applies | Single analytical source of truth |
