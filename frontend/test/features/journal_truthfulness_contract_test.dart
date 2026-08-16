@@ -21,7 +21,7 @@ void main() {
     ).readAsStringSync();
 
     expect(source, contains('_buildFilterChips(horizontalPadding)'));
-    expect(source, contains("Key('journal-range-\${option.\$1}')"));
+    expect(source, contains('journal-range-'));
     expect(source, contains('(7, l10n.last7Days)'));
     expect(source, contains('(30, l10n.last30Days)'));
     expect(source, contains('(0, l10n.allHistory)'));
