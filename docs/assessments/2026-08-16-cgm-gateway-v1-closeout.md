@@ -32,7 +32,7 @@ PR #276 exact head before merge: `706225a49a7c8bfeb28ac0fd25f1fd7894878270`.
 - PR #276 squash merge: `f8a4ce7f09147818c9ebc7da6a5cf8bed76d9fc6`.
 - `main` verified at the merge SHA.
 
-## Post-merge closure
+## Post-merge runtime closure
 
 - Post-merge CI #2569: SUCCESS, including backend tests, PostgreSQL source-of-truth suite, Bandit, OpenAPI, frontend analyze/tests and secret hygiene.
 - Post-merge migration drift #2381: SUCCESS.
@@ -41,9 +41,10 @@ The runtime LOT is technically certified on `main`.
 
 ## Canonical closeout state
 
-The remaining closeout edits are narrowly identified and evidence-backed:
+Closeout PR #279 synchronizes the canonical documentation to the verified runtime state:
 
-- `docs/ROADMAP.md`: replace the stale CGM-GW-V1 `0% credited / In progress` row with `100% / Closed`, citing PR #276, merge `f8a4ce7f…`, exact-head CI #2568 + drift #2380 and post-merge CI #2569 + drift #2381. The MENA numerator remains 32/41 because CGM-GW-V1 is a parallel integration lane.
-- `docs/architecture/ARCHITECTURE.md`: record the as-built `backend/integrations/cgm` read-only provider boundary, external Nightscout-compatible bridge, explicit Dexcom/Libre provenance, fail-closed transport normalization, and the absence of clinical/persistence/UI authority.
+- `docs/ROADMAP.md`: CGM-GW-V1 is recorded as `100% / Closed`, with PR #276, exact-head CI #2568 + drift #2380, merge `f8a4ce7f…`, and post-merge CI #2569 + drift #2381. The MENA numerator remains 32/41 because CGM-GW-V1 is a parallel integration lane.
+- `docs/architecture/ARCHITECTURE.md`: records the as-built `backend/integrations/cgm` read-only provider boundary, external Nightscout-compatible bridge, explicit Dexcom/Libre provenance, fail-closed transport normalization, and the absence of clinical/persistence/UI authority.
+- PR #279 contains documentation-only closeout changes; it does not modify runtime behavior.
 
-These two canonical-file edits are still required before CGM-GW-V1 is declared fully closed. The connected GitHub contents API available in this session only supports complete-file replacement for existing files; both canonical files are large and cannot be safely patched line-wise through that interface without risking unrelated-content loss. No false closure is claimed.
+CGM-GW-V1 may be declared fully closed after PR #279 itself passes its exact-head closeout checks, is merged with expected-head locking, and the resulting `main` state is verified. No self-referential documentation-only follow-up is required merely to record the merge of this closeout PR; GitHub merge/check evidence is the closure proof for #279.
