@@ -38,6 +38,24 @@ extension DashboardLocalizedCopy on AppLocalizations {
         ar: 'ملخص اليوم',
       );
 
+  String get dashboardTodayLoading => _pick(
+        en: 'Updating your governed summary…',
+        fr: 'Mise à jour de votre synthèse gouvernée…',
+        ar: 'جارٍ تحديث ملخصك الموثوق…',
+      );
+
+  String get dashboardTodayUnavailable => _pick(
+        en: 'Governed summary is unavailable right now. Your local data remains available.',
+        fr: 'La synthèse gouvernée est indisponible pour le moment. Vos données locales restent disponibles.',
+        ar: 'الملخص الموثوق غير متاح حالياً. تبقى بياناتك المحلية متاحة.',
+      );
+
+  String get dashboardRetry => _pick(
+        en: 'Retry',
+        fr: 'Réessayer',
+        ar: 'إعادة المحاولة',
+      );
+
   String get dashboardConfigureTargetSignal => _pick(
         en: 'Configure your personal target before IAmina labels a reading against it.',
         fr: 'Configurez votre cible personnelle avant qu’IAmina ne qualifie une mesure par rapport à celle-ci.',
