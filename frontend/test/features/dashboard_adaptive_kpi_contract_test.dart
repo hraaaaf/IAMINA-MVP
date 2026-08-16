@@ -58,7 +58,7 @@ void main() {
     expect(source, isNot(contains('activeCoverage')));
   });
 
-  test('Adaptive KPI density keeps 390px balanced and compact cards stretched', () {
+  test('Adaptive KPI density keeps 390px balanced and compact cards bounded', () {
     final source = File(
       'lib/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart',
     ).readAsStringSync();
@@ -68,7 +68,7 @@ void main() {
     expect(source, contains('crossAxisAlignment: CrossAxisAlignment.stretch'));
     expect(source, contains('width: (constraints.maxWidth - 8) / 2'));
     expect(source, contains('height: 122'));
-    expect(source, contains('height: double.infinity'));
+    expect(source, isNot(contains('height: double.infinity')));
   });
 
   test('Dashboard composition places adaptive KPIs after factual trend', () {
