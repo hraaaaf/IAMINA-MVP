@@ -29,6 +29,17 @@ void main() {
     expect(source, isNot(contains('PopupMenuButton<int>')));
   });
 
+  test('Journal empty state offers add and import paths', () {
+    final source = File(
+      'lib/features/journal/journal_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('primaryActionLabel: l10n.addMeasurement'));
+    expect(source, contains("onPrimaryAction: () => context.go('/ajouter')"));
+    expect(source, contains('secondaryActionLabel: l10n.navImport'));
+    expect(source, contains("onSecondaryAction: () => context.go('/importer')"));
+  });
+
   test('Journal converts stored mg/dL values for mmol/L display', () {
     final source = File(
       'lib/features/journal/journal_screen.dart',
@@ -37,6 +48,7 @@ void main() {
     expect(source, contains("unit == 'mmol/L'"));
     expect(source, contains('(val / 18.0).toStringAsFixed(1)'));
     expect(source, contains('displayValue'));
+    expect(source, contains("Key('journal-glucose-unit')"));
   });
 
   test('Journal keeps meal context compact in history rows', () {
@@ -49,6 +61,20 @@ void main() {
     expect(source, contains('maxLines: 1'));
     expect(source, contains('TextOverflow.ellipsis'));
     expect(source, isNot(contains('Wrap(\n                          spacing: 4')));
+  });
+
+  test('Journal life-context icons have readable semantics', () {
+    final source = File(
+      'lib/features/journal/journal_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('final String label'));
+    expect(source, contains('return Semantics('));
+    expect(source, contains('label: label'));
+    expect(source, contains('ExcludeSemantics('));
+    expect(source, contains("label: l10n.sick"));
+    expect(source, contains("label: l10n.stressed"));
+    expect(source, contains("label: l10n.fatigue"));
   });
 
   test('Journal signals that tapping a row opens details', () {
