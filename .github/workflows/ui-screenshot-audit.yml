@@ -77,7 +77,6 @@ jobs:
         run: |
           flutter test --dart-define=IAMINA_VISUAL_AUDIT=true --update-goldens --reporter expanded test/ui_visual_screenshot_test.dart
           flutter test --dart-define=IAMINA_VISUAL_AUDIT=true --update-goldens --reporter expanded test/dashboard_next_action_visual_test.dart
-          flutter test --dart-define=IAMINA_VISUAL_AUDIT=true --update-goldens --reporter expanded test/dashboard_responsive_convergence_visual_test.dart
 
       - name: Validate screenshot artifact set
         run: |
@@ -95,10 +94,6 @@ jobs:
             dashboard-insight-ar-360x560.png
             dashboard-next-action-390x844.png
             dashboard-next-action-ar-360x560.png
-            dashboard-responsive-699x900.png
-            dashboard-responsive-701x900.png
-            dashboard-responsive-1440x1000.png
-            dashboard-responsive-ar-900x900.png
             journal-390x844.png
             summary-390x844.png
             profile-390x844.png
@@ -125,7 +120,7 @@ jobs:
           done
 
           COUNT="$(find "$DIR" -maxdepth 1 -name '*.png' -type f | wc -l)"
-          test "$COUNT" -eq 28
+          test "$COUNT" -eq 24
 
           MOBILE_UNIQUE="$(sha256sum "$DIR"/*-390x844.png | awk '{print $1}' | sort -u | wc -l)"
           if [ "$MOBILE_UNIQUE" -lt 12 ]; then
@@ -139,6 +134,72 @@ jobs:
         with:
           name: iamina-ui-visual-audit
           path: frontend/test/ui_audit_output/*.png
+          if-no-files-found: warn
+          retention-days: 7
+
+  dashboard-responsive-visual:
+    name: Dashboard P7 native — ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: 699x900
+            test_name: Dashboard responsive 699px keeps the shared product
+            file_name: dashboard-responsive-699x900.png
+          - label: 701x900
+            test_name: Dashboard responsive 701px keeps the shared product
+            file_name: dashboard-responsive-701x900.png
+          - label: 1440x1000
+            test_name: Dashboard responsive desktop keeps the shared product
+            file_name: dashboard-responsive-1440x1000.png
+          - label: ar-900x900
+            test_name: Dashboard responsive AR RTL keeps the shared product
+            file_name: dashboard-responsive-ar-900x900.png
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Render isolated P7 native golden
+        run: >-
+          flutter test
+          --dart-define=IAMINA_VISUAL_AUDIT=true
+          --update-goldens
+          --reporter expanded
+          --plain-name "${{ matrix.test_name }}"
+          test/dashboard_responsive_convergence_visual_test.dart
+
+      - name: Validate P7 native capture
+        run: |
+          set -euo pipefail
+          FILE="test/ui_audit_output/${{ matrix.file_name }}"
+          test -s "$FILE"
+          BYTES="$(stat -c%s "$FILE")"
+          if [ "$BYTES" -lt 4000 ]; then
+            echo "Capture ${{ matrix.file_name }} is suspiciously small: $BYTES bytes" >&2
+            exit 1
+          fi
+
+      - name: Upload P7 native capture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-dashboard-p7-${{ matrix.label }}
+          path: frontend/test/ui_audit_output/${{ matrix.file_name }}
           if-no-files-found: warn
           retention-days: 7
 
