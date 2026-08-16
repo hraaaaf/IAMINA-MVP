@@ -23,7 +23,17 @@ class DashboardTodaySection extends StatefulWidget {
 
 class _DashboardTodaySectionState extends State<DashboardTodaySection> {
   late final CompanionService _service = widget.service ?? CompanionService();
-  late final Future<CompanionOverview?> _overviewFuture = _service.fetchOverview();
+  late Future<CompanionOverview?> _overviewFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _overviewFuture = _service.fetchOverview();
+  }
+
+  void _reload() {
+    setState(() => _overviewFuture = _service.fetchOverview());
+  }
 
   @override
   void dispose() {
@@ -38,7 +48,9 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
       future: _overviewFuture,
       builder: (context, snapshot) {
         final signals = _signals(l10n, snapshot.data);
+        final loading = snapshot.connectionState != ConnectionState.done;
         final overviewResolved = snapshot.connectionState == ConnectionState.done;
+        final unavailable = overviewResolved && snapshot.data == null;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,8 +68,20 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
             ),
             const SizedBox(height: 10),
             if (signals.isNotEmpty)
-              ...signals.map((signal) => _TodaySignalCard(signal: signal))
-            else if (overviewResolved && snapshot.data != null)
+              ...signals.map((signal) => _TodaySignalCard(signal: signal)),
+            if (loading)
+              _TodayStateStrip(
+                loading: true,
+                text: l10n.dashboardTodayLoading,
+              )
+            else if (unavailable)
+              _TodayStateStrip(
+                icon: Icons.cloud_off_outlined,
+                text: l10n.dashboardTodayUnavailable,
+                actionLabel: l10n.dashboardRetry,
+                onAction: _reload,
+              )
+            else if (signals.isEmpty && snapshot.data != null)
               _TodaySignalCard(
                 signal: _TodaySignal(
                   icon: Icons.check_circle_outline_rounded,
@@ -190,6 +214,72 @@ class _TodaySignalCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _TodayStateStrip extends StatelessWidget {
+  final bool loading;
+  final IconData? icon;
+  final String text;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const _TodayStateStrip({
+    this.loading = false,
+    this.icon,
+    required this.text,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: AminaVisualLanguage.controlSurface(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
+      ),
+      child: Row(
+        children: [
+          if (loading)
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Icon(
+              icon ?? Icons.info_outline_rounded,
+              size: 18,
+              color: AminaVisualLanguage.actionGreen,
+            ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+                color: AminaVisualLanguage.secondary(context),
+              ),
+            ),
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(width: 6),
+            TextButton(
+              key: const ValueKey('dashboard-today-retry'),
+              onPressed: onAction,
+              child: Text(actionLabel!),
+            ),
+          ],
+        ],
       ),
     );
   }
