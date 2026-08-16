@@ -174,7 +174,7 @@ class _InsightBody extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             height: 1.45,
-            fontWeight: FontWeight.w650,
+            fontWeight: FontWeight.w600,
             color: AminaVisualLanguage.primaryText(context),
           ),
         ),
