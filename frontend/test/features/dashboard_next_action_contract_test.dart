@@ -18,6 +18,7 @@ void main() {
     expect(widget, isNot(contains('late Future<CompanionNextAction')));
     expect(widget, contains('else if (_result == null)'));
     expect(widget, contains('_IdleBody(onPrepare: _evaluate)'));
+    expect(widget, contains("ValueKey('dashboard-next-action-prepare')"));
   });
 
   test('Next action fail-closes unknown suggestion classes and states', () {
@@ -49,6 +50,7 @@ void main() {
     expect(widget, isNot(contains("'/reminders'")));
     expect(widget, isNot(contains('notification')));
     expect(widget, isNot(contains('schedule')));
+    expect(widget, contains("ValueKey('dashboard-next-action-open')"));
   });
 
   test('Next action copy never presents diagnosis or treatment authority', () {
@@ -69,5 +71,17 @@ void main() {
     expect(api, contains('@router.post("/companion/next-action/evaluate/"'));
     expect(api, contains('evaluate_companion_smart_suggestion(patient_id=request.user.id)'));
     expect(api, isNot(contains('@router.get("/companion/next-action/evaluate/"')));
+  });
+
+  test('Dashboard composition places next action after governed insight', () {
+    final dashboard = File(
+      'lib/features/dashboard/dashboard_premium_screen.dart',
+    ).readAsStringSync();
+
+    final insightIndex = dashboard.indexOf('DashboardInsightSection(');
+    final actionIndex = dashboard.indexOf('DashboardNextActionSection(');
+    expect(insightIndex, greaterThanOrEqualTo(0));
+    expect(actionIndex, greaterThan(insightIndex));
+    expect(dashboard, contains("widgets/dashboard_next_action_section.dart"));
   });
 }
