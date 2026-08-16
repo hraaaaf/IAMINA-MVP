@@ -20,6 +20,48 @@ extension DashboardLocalizedCopy on AppLocalizations {
     );
   }
 
+  String get dashboardLatestKnownReading => _pick(
+        en: 'Latest known reading',
+        fr: 'Dernière mesure connue',
+        ar: 'آخر قياس معروف',
+      );
+
+  String get dashboardFreshNow => _pick(
+        en: 'just now',
+        fr: 'à l’instant',
+        ar: 'الآن',
+      );
+
+  String dashboardFreshMinutes(int minutes) => _pick(
+        en: '$minutes min ago',
+        fr: 'il y a $minutes min',
+        ar: 'منذ $minutes د',
+      );
+
+  String dashboardFreshHours(int hours) => _pick(
+        en: '$hours h ago',
+        fr: 'il y a $hours h',
+        ar: 'منذ $hours س',
+      );
+
+  String dashboardFreshDays(int days) => _pick(
+        en: '$days d ago',
+        fr: 'il y a $days j',
+        ar: 'منذ $days ي',
+      );
+
+  String dashboardTodayAt(String time) => _pick(
+        en: 'Today · $time',
+        fr: 'Aujourd’hui · $time',
+        ar: 'اليوم · $time',
+      );
+
+  String dashboardYesterdayAt(String time) => _pick(
+        en: 'Yesterday · $time',
+        fr: 'Hier · $time',
+        ar: 'أمس · $time',
+      );
+
   String get debugNoPatientData => _pick(
         en: 'Dev mode — no patient data.',
         fr: 'Mode dev — aucune donnée patient.',
