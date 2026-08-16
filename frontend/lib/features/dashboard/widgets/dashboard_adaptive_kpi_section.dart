@@ -266,6 +266,7 @@ class _MetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       constraints: const BoxConstraints(minHeight: 106),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
