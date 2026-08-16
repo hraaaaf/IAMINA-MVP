@@ -72,58 +72,74 @@ def _dedupe_key(*, source: str, recorded_at, glucose_mg_dl: int, trend: str, dev
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def _same_connection(before: CGMConnection, current: CGMConnection) -> bool:
+    return (
+        before.pk == current.pk
+        and before.source == current.source
+        and before.base_url == current.base_url
+        and before.auth_type == current.auth_type
+        and before.encrypted_credential == current.encrypted_credential
+        and current.enabled
+    )
+
+
 def sync_patient_cgm(*, patient_id: int) -> CGMSyncResult:
     now = timezone.now()
     try:
-        with transaction.atomic():
-            connection = (
-                CGMConnection.objects.select_for_update()
-                .select_related("patient")
-                .get(patient_id=patient_id, enabled=True)
-            )
+        # Never hold a database row lock over a remote provider call. Snapshot
+        # the connection, fetch upstream, then re-lock and verify the connection
+        # did not change before persisting any readings.
+        connection = CGMConnection.objects.get(patient_id=patient_id, enabled=True)
+        if connection.last_sync_at:
+            since = connection.last_sync_at - timedelta(minutes=10)
+        else:
+            since = now - timedelta(hours=24)
 
-            # Re-read a short overlap to make retries/idempotency robust while
-            # limiting initial import to a bounded 24-hour window.
-            if connection.last_sync_at:
-                since = connection.last_sync_at - timedelta(minutes=10)
-            else:
-                since = now - timedelta(hours=24)
-
-            readings = _provider(connection).readings(since)
-            records = [
-                CGMReadingRecord(
-                    patient_id=patient_id,
+        readings = _provider(connection).readings(since)
+        records = [
+            CGMReadingRecord(
+                patient_id=patient_id,
+                source=connection.source,
+                recorded_at=reading.timestamp,
+                glucose_mg_dl=reading.glucose_mg_dl,
+                trend=reading.trend or "",
+                device=reading.device or "",
+                dedupe_key=_dedupe_key(
                     source=connection.source,
                     recorded_at=reading.timestamp,
                     glucose_mg_dl=reading.glucose_mg_dl,
                     trend=reading.trend or "",
                     device=reading.device or "",
-                    dedupe_key=_dedupe_key(
-                        source=connection.source,
-                        recorded_at=reading.timestamp,
-                        glucose_mg_dl=reading.glucose_mg_dl,
-                        trend=reading.trend or "",
-                        device=reading.device or "",
-                    ),
-                )
-                for reading in readings
-            ]
+                ),
+            )
+            for reading in readings
+        ]
+
+        with transaction.atomic():
+            current = CGMConnection.objects.select_for_update().get(
+                patient_id=patient_id,
+                enabled=True,
+            )
+            if not _same_connection(connection, current):
+                raise CGMSyncError("cgm_connection_changed")
+
             before = CGMReadingRecord.objects.filter(patient_id=patient_id).count()
             if records:
                 CGMReadingRecord.objects.bulk_create(records, ignore_conflicts=True)
             after = CGMReadingRecord.objects.filter(patient_id=patient_id).count()
 
-            connection.last_sync_at = now
-            connection.last_success_at = now
-            connection.last_error_code = ""
-            connection.save(
+            current.last_sync_at = now
+            current.last_success_at = now
+            current.last_error_code = ""
+            current.save(
                 update_fields=["last_sync_at", "last_success_at", "last_error_code", "updated_at"]
             )
-            return CGMSyncResult(
-                received=len(readings),
-                inserted=max(0, after - before),
-                last_recorded_at=max((r.timestamp for r in readings), default=None),
-            )
+
+        return CGMSyncResult(
+            received=len(readings),
+            inserted=max(0, after - before),
+            last_recorded_at=max((r.timestamp for r in readings), default=None),
+        )
     except CGMConnection.DoesNotExist as exc:
         raise CGMSyncError("cgm_connection_unavailable") from exc
     except CGMCredentialError as exc:
