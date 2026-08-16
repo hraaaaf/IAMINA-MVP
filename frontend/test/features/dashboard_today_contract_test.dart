@@ -32,6 +32,26 @@ void main() {
     expect(source, isNot(contains('recurrenceCount')));
   });
 
+  test('Dashboard today summary exposes loading unavailable and retry states', () {
+    final source = File(
+      'lib/features/dashboard/widgets/dashboard_today_section.dart',
+    ).readAsStringSync();
+    final localizedCopy = File(
+      'lib/core/localization/dashboard_localized_copy.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('late Future<CompanionOverview?> _overviewFuture'));
+    expect(source, contains('void _reload()'));
+    expect(source, contains('final loading = snapshot.connectionState != ConnectionState.done'));
+    expect(source, contains('final unavailable = overviewResolved && snapshot.data == null'));
+    expect(source, contains('dashboardTodayLoading'));
+    expect(source, contains('dashboardTodayUnavailable'));
+    expect(source, contains("ValueKey('dashboard-today-retry')"));
+    expect(localizedCopy, contains('dashboardTodayLoading'));
+    expect(localizedCopy, contains('dashboardTodayUnavailable'));
+    expect(localizedCopy, contains('dashboardRetry'));
+  });
+
   test('Dashboard removes the previous three-card shortcut grid', () {
     final dashboard = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
