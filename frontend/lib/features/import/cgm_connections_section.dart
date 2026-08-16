@@ -209,7 +209,7 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
               const SizedBox(width: 10),
-              Text(l10n.cgmLoading),
+              Expanded(child: Text(l10n.cgmLoading)),
             ],
           ),
         ),
@@ -328,7 +328,10 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
             if (latest != null)
               Semantics(
                 label: '${l10n.cgmLatestReading}: ${latest.glucoseMgDl} mg/dL ${latest.trend}',
-                child: Row(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
                     Text(
                       '${latest.glucoseMgDl}',
@@ -338,30 +341,19 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
                         color: AminaTheme.ink900,
                       ),
                     ),
-                    const SizedBox(width: 5),
                     const Text('mg/dL', style: TextStyle(fontSize: 11, color: AminaTheme.ink500)),
-                    if (latest.trend.isNotEmpty) ...[
-                      const SizedBox(width: 10),
-                      Flexible(
-                        child: Text(
-                          latest.trend,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AminaTheme.teal700,
-                          ),
+                    if (latest.trend.isNotEmpty)
+                      Text(
+                        latest.trend,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AminaTheme.teal700,
                         ),
                       ),
-                    ],
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        _relative(latest.recordedAt, l10n),
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.end,
-                        style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
-                      ),
+                    Text(
+                      _relative(latest.recordedAt, l10n),
+                      style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
                     ),
                   ],
                 ),
