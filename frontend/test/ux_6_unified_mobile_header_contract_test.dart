@@ -37,8 +37,11 @@ void main() {
     expect(journal, contains('MediaQuery.sizeOf(context).width < 700'));
     expect(journal, contains('expandedHeight: 140'));
     expect(journal, contains('gradient: AminaTheme.heroGradient'));
-    expect(journal, contains('subtitle: l10n.journalSubtitle'));
-    expect(journal, contains('iconColor: AminaTheme.textSecondary(context)'));
+    expect(journal, contains('subtitle: rangeLabel'));
+    expect(journal, contains('_journalRangeLabel(l10n)'));
+    expect(journal, contains('_buildFilterChips(horizontalPadding)'));
+    expect(journal, contains('ChoiceChip('));
+    expect(journal, isNot(contains('PopupMenuButton<int>')));
   });
 
   test('dashboard keeps controls inside the canonical compact hierarchy', () {

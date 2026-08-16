@@ -9,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
+import 'journal_queries.dart';
 import 'widgets/insulin_logging.dart';
 import 'widgets/personal_response_section.dart';
 
@@ -21,6 +22,18 @@ class JournalScreen extends StatefulWidget {
 
 class _JournalScreenState extends State<JournalScreen> {
   int _selectedFilterDays = 30;
+  bool _showPersonalResponse = false;
+
+  String _journalRangeLabel(AppLocalizations l10n) {
+    switch (_selectedFilterDays) {
+      case 7:
+        return l10n.last7Days;
+      case 0:
+        return l10n.allHistory;
+      default:
+        return l10n.last30Days;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,37 +50,20 @@ class _JournalScreenState extends State<JournalScreen> {
         : 20.0;
 
     final now = DateTime.now();
-    final start = _selectedFilterDays == 0
-        ? DateTime(2000)
-        : now.subtract(Duration(days: _selectedFilterDays));
+    final logsStream = _selectedFilterDays == 0
+        ? db.watchAllJournalLogs()
+        : db.watchJournalLogsInRange(
+            now.subtract(Duration(days: _selectedFilterDays)),
+            now,
+          );
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
+          _buildFilterChips(horizontalPadding),
           StreamBuilder<List<LogEntryData>>(
-            stream: db.watchLogsInRange(start, now),
-            builder: (context, responseSnapshot) {
-              final hasLogs =
-                  (responseSnapshot.data ?? const <LogEntryData>[]).isNotEmpty;
-              if (!hasLogs) {
-                return const SliverToBoxAdapter(child: SizedBox.shrink());
-              }
-              return SliverPadding(
-                padding: EdgeInsetsDirectional.fromSTEB(
-                  horizontalPadding,
-                  20,
-                  horizontalPadding,
-                  0,
-                ),
-                sliver: SliverToBoxAdapter(
-                  child: PersonalResponseSection(unit: unit),
-                ),
-              );
-            },
-          ),
-          StreamBuilder<List<LogEntryData>>(
-            stream: db.watchLogsInRange(start, now),
+            stream: logsStream,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return SliverPadding(
@@ -100,39 +96,89 @@ class _JournalScreenState extends State<JournalScreen> {
               final sortedDays = groupedLogs.keys.toList()
                 ..sort((a, b) => b.compareTo(a));
 
-              return SliverPadding(
-                padding: EdgeInsetsDirectional.fromSTEB(
-                  horizontalPadding,
-                  0,
-                  horizontalPadding,
-                  100,
-                ),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final dayKey = sortedDays[index];
-                    final dayLogs = groupedLogs[dayKey]!;
-                    final date = DateTime.parse(dayKey);
+              return SliverMainAxisGroup(
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsetsDirectional.fromSTEB(
+                      horizontalPadding,
+                      0,
+                      horizontalPadding,
+                      20,
+                    ),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final dayKey = sortedDays[index];
+                        final dayLogs = groupedLogs[dayKey]!;
+                        final date = DateTime.parse(dayKey);
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildDayHeader(date),
-                        ...dayLogs.map(
-                          (log) => _buildEntryCapsule(
-                            log,
-                            unit,
-                            targetLow,
-                            targetHigh,
-                          ),
-                        ),
-                      ],
-                    );
-                  }, childCount: sortedDays.length),
-                ),
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDayHeader(date),
+                            ...dayLogs.map(
+                              (log) => _buildEntryCapsule(
+                                log,
+                                unit,
+                                targetLow,
+                                targetHigh,
+                              ),
+                            ),
+                          ],
+                        );
+                      }, childCount: sortedDays.length),
+                    ),
+                  ),
+                  _buildPersonalResponseSliver(unit, horizontalPadding),
+                ],
               );
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPersonalResponseSliver(
+    String unit,
+    double horizontalPadding,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    return SliverPadding(
+      padding: EdgeInsetsDirectional.fromSTEB(
+        horizontalPadding,
+        0,
+        horizontalPadding,
+        100,
+      ),
+      sliver: SliverToBoxAdapter(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                key: const Key('journal-personal-response-disclosure'),
+                onPressed: () => setState(
+                  () => _showPersonalResponse = !_showPersonalResponse,
+                ),
+                icon: Icon(
+                  _showPersonalResponse
+                      ? Icons.expand_less_rounded
+                      : Icons.insights_outlined,
+                ),
+                label: Text(
+                  _showPersonalResponse
+                      ? l10n.personalResponseShowLess
+                      : l10n.personalResponseTitle,
+                ),
+              ),
+            ),
+            if (_showPersonalResponse) ...[
+              const SizedBox(height: 8),
+              PersonalResponseSection(unit: unit),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -161,6 +207,8 @@ class _JournalScreenState extends State<JournalScreen> {
               body: l10n.journalEmptySubtitle,
               primaryActionLabel: l10n.addMeasurement,
               onPrimaryAction: () => context.go('/ajouter'),
+              secondaryActionLabel: l10n.navImport,
+              onSecondaryAction: () => context.go('/importer'),
             ),
           ),
         ),
@@ -171,14 +219,12 @@ class _JournalScreenState extends State<JournalScreen> {
   Widget _buildSliverAppBar(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isMobile = MediaQuery.sizeOf(context).width < 700;
+    final rangeLabel = _journalRangeLabel(l10n);
     if (isMobile) {
       return SliverToBoxAdapter(
         child: AminaMobilePageHeader(
           title: l10n.navJournal,
-          subtitle: l10n.journalSubtitle,
-          trailing: _buildFilterBadge(
-            iconColor: AminaTheme.textSecondary(context),
-          ),
+          subtitle: rangeLabel,
         ),
       );
     }
@@ -198,32 +244,26 @@ class _JournalScreenState extends State<JournalScreen> {
             ),
           ),
           padding: EdgeInsetsDirectional.fromSTEB(24, topPad, 24, 0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.navJournal,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  Text(
-                    l10n.journalSubtitle,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+              Text(
+                l10n.navJournal,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
               ),
-              _buildFilterBadge(),
+              Text(
+                rangeLabel,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),
@@ -231,20 +271,40 @@ class _JournalScreenState extends State<JournalScreen> {
     );
   }
 
-  Widget _buildFilterBadge({Color? iconColor}) {
-    return Builder(
-      builder: (context) {
-        final l10n = AppLocalizations.of(context)!;
-        return PopupMenuButton<int>(
-          icon: Icon(Icons.tune, color: iconColor ?? Colors.white),
-          onSelected: (days) => setState(() => _selectedFilterDays = days),
-          itemBuilder: (_) => [
-            PopupMenuItem(value: 7, child: Text(l10n.last7Days)),
-            PopupMenuItem(value: 30, child: Text(l10n.last30Days)),
-            PopupMenuItem(value: 0, child: Text(l10n.allHistory)),
-          ],
-        );
-      },
+  Widget _buildFilterChips(double horizontalPadding) {
+    final l10n = AppLocalizations.of(context)!;
+    final options = <(int, String)>[
+      (7, l10n.last7Days),
+      (30, l10n.last30Days),
+      (0, l10n.allHistory),
+    ];
+
+    return SliverPadding(
+      padding: EdgeInsetsDirectional.fromSTEB(
+        horizontalPadding,
+        12,
+        horizontalPadding,
+        0,
+      ),
+      sliver: SliverToBoxAdapter(
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options
+              .map(
+                (option) => ChoiceChip(
+                  key: Key('journal-range-${option.$1}'),
+                  label: Text(option.$2),
+                  selected: _selectedFilterDays == option.$1,
+                  showCheckmark: false,
+                  onSelected: (_) => setState(
+                    () => _selectedFilterDays = option.$1,
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ),
     );
   }
 
@@ -326,9 +386,30 @@ class _JournalScreenState extends State<JournalScreen> {
     double low,
     double high,
   ) {
+    final l10n = AppLocalizations.of(context)!;
     final val = log.bloodSugar;
+    final displayValue = unit == 'mmol/L'
+        ? (val / 18.0).toStringAsFixed(1)
+        : val.toStringAsFixed(0);
+    final mealLabels = decodeMealItemIds(log.mealItemsJson)
+        .map(mealFoodById)
+        .whereType<MealFoodItem>()
+        .map((food) => food.labelFor(Localizations.localeOf(context)))
+        .toList();
+    final mealDescription = log.mealDescription?.trim() ?? '';
+    String? compactMealSummary;
+    if (mealLabels.isNotEmpty) {
+      final visibleLabels = mealLabels.take(2).join(' · ');
+      final remaining = mealLabels.length - 2;
+      compactMealSummary = remaining > 0
+          ? '$visibleLabels · +$remaining'
+          : visibleLabels;
+    } else if (mealDescription.isNotEmpty) {
+      compactMealSummary = mealDescription;
+    }
+
     Color color = AminaTheme.successEmerald;
-    if (val < 70 || val > 250) {
+    if (val < 70) {
       color = AminaTheme.dangerRed;
     } else if (val < low || val > high) {
       color = AminaTheme.accentAmber;
@@ -374,7 +455,6 @@ class _JournalScreenState extends State<JournalScreen> {
             false;
       },
       onDismissed: (_) async {
-        final l10n = AppLocalizations.of(context)!;
         final db = Provider.of<AppDatabase>(context, listen: false);
         final messenger = ScaffoldMessenger.of(
           context,
@@ -396,16 +476,31 @@ class _JournalScreenState extends State<JournalScreen> {
             child: Row(
               children: [
                 SizedBox(
-                  width: 52,
+                  width: 56,
                   child: Center(
-                    child: Text(
-                      val.toStringAsFixed(0),
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: color,
-                        letterSpacing: -1.0,
-                      ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          displayValue,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: color,
+                            letterSpacing: -1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          unit,
+                          key: const Key('journal-glucose-unit'),
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            color: AminaTheme.textMuted.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -417,10 +512,7 @@ class _JournalScreenState extends State<JournalScreen> {
                       Row(
                         children: [
                           Text(
-                            _entryContextLabel(
-                              log,
-                              AppLocalizations.of(context)!,
-                            ),
+                            _entryContextLabel(log, l10n),
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -442,54 +534,12 @@ class _JournalScreenState extends State<JournalScreen> {
                           color: AminaTheme.textMuted.withValues(alpha: 0.7),
                         ),
                       ),
-                      if (decodeMealItemIds(log.mealItemsJson).isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
-                          children: decodeMealItemIds(log.mealItemsJson)
-                              .map(mealFoodById)
-                              .whereType<MealFoodItem>()
-                              .map(
-                                (food) => Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AminaTheme.textMuted.withValues(
-                                      alpha: 0.05,
-                                    ),
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(
-                                      color: AminaTheme.textMuted.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    food.labelFor(
-                                      Localizations.localeOf(context),
-                                    ),
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: AminaTheme.textMuted.withValues(
-                                        alpha: 0.8,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ],
-                      if (log.mealDescription != null &&
-                          log.mealDescription!.trim().isNotEmpty) ...[
+                      if (compactMealSummary != null) ...[
                         const SizedBox(height: 5),
                         Text(
-                          log.mealDescription!.trim(),
-                          maxLines: 2,
+                          compactMealSummary,
+                          key: const Key('journal-meal-summary'),
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11,
@@ -539,12 +589,26 @@ class _JournalScreenState extends State<JournalScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (log.isSick) const _LifeIcon(icon: '🤒'),
-                        if (log.isStressed) const _LifeIcon(icon: '⚡'),
-                        if (log.isTired) const _LifeIcon(icon: '🥱'),
-                        if (log.isActive) const _LifeIcon(icon: '🏃‍♂️'),
+                        if (log.isSick)
+                          _LifeIcon(icon: '🤒', label: l10n.sick),
+                        if (log.isStressed)
+                          _LifeIcon(icon: '⚡', label: l10n.stressed),
+                        if (log.isTired)
+                          _LifeIcon(icon: '🥱', label: l10n.fatigue),
+                        if (log.isActive)
+                          _LifeIcon(
+                            icon: '🏃‍♂️',
+                            label: l10n.journalPhysicalActivity,
+                          ),
                         if (log.sleepQuality == 'bad')
-                          const _LifeIcon(icon: '🌙'),
+                          _LifeIcon(icon: '🌙', label: l10n.journalPoorSleep),
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          key: const Key('journal-entry-details-chevron'),
+                          size: 18,
+                          color: AminaTheme.textMuted,
+                        ),
                       ],
                     ),
                   ],
@@ -558,40 +622,39 @@ class _JournalScreenState extends State<JournalScreen> {
   }
 
   Widget _buildSyncIcon(String status) {
-    IconData icon;
-    Color iconColor;
-
-    switch (status) {
-      case 'synced':
-        icon = Icons.cloud_done_outlined;
-        iconColor = AminaTheme.successEmerald;
-        break;
-      case 'pending':
-        icon = Icons.cloud_sync_outlined;
-        iconColor = AminaTheme.warningOrange;
-        break;
-      case 'error':
-        icon = Icons.error_outline;
-        iconColor = AminaTheme.dangerRed;
-        break;
-      default:
-        icon = Icons.cloud_off_outlined;
-        iconColor = AminaTheme.textLight;
+    if (status == 'pending') {
+      return Icon(
+        Icons.cloud_sync_outlined,
+        size: 16,
+        color: AminaTheme.warningOrange.withValues(alpha: 0.4),
+      );
     }
-
-    return Icon(icon, size: 16, color: iconColor.withValues(alpha: 0.4));
+    if (status == 'error') {
+      return Icon(
+        Icons.error_outline,
+        size: 16,
+        color: AminaTheme.dangerRed.withValues(alpha: 0.4),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
 
 class _LifeIcon extends StatelessWidget {
   final String icon;
-  const _LifeIcon({required this.icon});
+  final String label;
+  const _LifeIcon({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(start: 4),
-      child: Text(icon, style: const TextStyle(fontSize: 12)),
+    return Semantics(
+      label: label,
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(start: 4),
+          child: Text(icon, style: const TextStyle(fontSize: 12)),
+        ),
+      ),
     );
   }
 }

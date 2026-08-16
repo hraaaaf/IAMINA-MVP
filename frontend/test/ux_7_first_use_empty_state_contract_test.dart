@@ -34,12 +34,25 @@ void main() {
 
   test('journal hides longitudinal response before a first real log', () {
     final source = _read('lib/features/journal/journal_screen.dart');
-    expect(source, contains('final hasLogs ='));
-    expect(source, contains('if (!hasLogs)'));
+    expect(source, contains('final logs = snapshot.data ?? []'));
+    expect(source, contains('if (logs.isEmpty)'));
+    expect(source, contains('_buildEmptyJournalSliver('));
+    expect(source, contains('_buildPersonalResponseSliver(unit, horizontalPadding)'));
     expect(source, contains('PersonalResponseSection(unit: unit)'));
     expect(source, contains('AminaFirstUsePanel('));
     expect(source, contains('BoxConstraints(maxWidth: 720)'));
     expect(source, contains("context.go('/ajouter')"));
+    expect(source, contains("context.go('/importer')"));
+
+    final emptyGuard = source.indexOf('if (logs.isEmpty)');
+    final emptyReturn = source.indexOf('_buildEmptyJournalSliver(', emptyGuard);
+    final responsePlacement = source.indexOf(
+      '_buildPersonalResponseSliver(unit, horizontalPadding)',
+      emptyReturn,
+    );
+    expect(emptyGuard, greaterThanOrEqualTo(0));
+    expect(emptyReturn, greaterThan(emptyGuard));
+    expect(responsePlacement, greaterThan(emptyReturn));
   });
 
   test(

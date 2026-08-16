@@ -23,6 +23,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
   final TextEditingController _insulinController = TextEditingController();
   bool _loading = true;
   bool _saving = false;
+  bool _deleting = false;
   bool _isSick = false;
   bool _isStressed = false;
   bool _isActive = false;
@@ -114,7 +115,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
                         const SizedBox(height: 24),
                         FilledButton.icon(
                           key: const Key('save-edit-log-button'),
-                          onPressed: _saving
+                          onPressed: _saving || _deleting
                               ? null
                               : () => _saveChanges(unit, l10n),
                           icon: _saving
@@ -131,6 +132,33 @@ class _EditLogScreenState extends State<EditLogScreen> {
                             minimumSize: const Size.fromHeight(54),
                             backgroundColor: AminaTheme.teal600,
                             foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          key: const Key('delete-edit-log-button'),
+                          onPressed: _saving || _deleting
+                              ? null
+                              : () => _deleteLog(l10n),
+                          icon: _deleting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.delete_outline_rounded),
+                          label: Text(l10n.delete),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(50),
+                            foregroundColor: AminaTheme.dangerRed,
+                            side: BorderSide(
+                              color: AminaTheme.dangerRed.withValues(alpha: 0.35),
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
@@ -349,6 +377,40 @@ class _EditLogScreenState extends State<EditLogScreen> {
       await Navigator.of(context).maybePop();
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _deleteLog(AppLocalizations l10n) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.deleteEntryTitle),
+        content: Text(l10n.actionIrreversible),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(
+              l10n.delete,
+              style: const TextStyle(color: AminaTheme.dangerRed),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deleting = true);
+    try {
+      final db = context.read<AppDatabase>();
+      await db.deleteLog(widget.logId);
+      if (!mounted) return;
+      await Navigator.of(context).maybePop();
+    } finally {
+      if (mounted) setState(() => _deleting = false);
     }
   }
 
