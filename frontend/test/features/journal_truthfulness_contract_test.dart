@@ -61,6 +61,18 @@ void main() {
     expect(source, contains("Key('journal-entry-details-chevron')"));
   });
 
+  test('Journal detail exposes confirmed deletion as well as swipe delete', () {
+    final source = File(
+      'lib/features/journal/edit_log_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains("Key('delete-edit-log-button')"));
+    expect(source, contains('Future<void> _deleteLog'));
+    expect(source, contains('l10n.actionIrreversible'));
+    expect(source, contains('await db.deleteLog(widget.logId)'));
+    expect(source, contains('Navigator.of(context).maybePop()'));
+  });
+
   test('Personal Response is secondary, after history, and collapsed by default', () {
     final source = File(
       'lib/features/journal/journal_screen.dart',
