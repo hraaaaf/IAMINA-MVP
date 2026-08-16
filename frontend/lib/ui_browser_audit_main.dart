@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/amina_visual_language.dart';
 import 'core/theme/app_theme.dart';
 import 'data/drift/database.dart';
+import 'data/models/companion_models.dart';
 import 'features/companion/companion_premium_screen.dart';
 import 'features/dashboard/dashboard_companion_entry_screen.dart';
 import 'features/documents/document_import_premium_screen.dart';
@@ -18,9 +19,38 @@ import 'features/reminders/reminders_screen.dart';
 import 'l10n/app_localizations.dart';
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
+import 'services/companion_service.dart';
 import 'services/consent_service.dart';
 import 'services/modules_provider.dart';
 import 'services/sync_service.dart';
+
+class _BrowserAuditCompanionService extends CompanionService {
+  @override
+  Future<CompanionOverview?> fetchOverview() async => CompanionOverview(
+    patternStatus: 'ready',
+    reviewStatus: 'ready',
+    reviewAnchorCapturedAt: DateTime.utc(2026, 8, 15, 10),
+    patterns: const <CompanionPattern>[],
+    changesSinceReview: const <CompanionChange>[
+      CompanionChange(
+        observationKey: 'meal:lunch',
+        changeKind: 'persisting',
+        evidenceStrength: 'moderate',
+        missingData: <String>[],
+      ),
+    ],
+    afterVisit: const CompanionAfterVisit(
+      status: 'no_recorded_visit',
+      anchorId: null,
+      occurredAt: null,
+      source: null,
+      factCount: 0,
+      latestFactAt: null,
+    ),
+    safetyNotice: 'governed_browser_fixture',
+    sourceVersion: 'ui-browser-audit.v1',
+  );
+}
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +63,7 @@ void main() {
     ..attachStream(db.watchProfile());
   final modules = ModulesProvider(api);
   final sync = SyncService(db, api);
+  final visualCompanion = _BrowserAuditCompanionService();
 
   runApp(
     MultiProvider(
@@ -49,7 +80,7 @@ void main() {
           initialData: null,
         ),
       ],
-      child: const _BrowserAuditApp(),
+      child: _BrowserAuditApp(visualCompanion: visualCompanion),
     ),
   );
 
@@ -63,13 +94,17 @@ void main() {
 }
 
 class _BrowserAuditApp extends StatelessWidget {
-  const _BrowserAuditApp();
+  final CompanionService visualCompanion;
+
+  const _BrowserAuditApp({required this.visualCompanion});
 
   @override
   Widget build(BuildContext context) {
     final surface = Uri.base.queryParameters['surface'] ?? 'dashboard';
     final child = switch (surface) {
-      'dashboard' => const DashboardCompanionEntryScreen(),
+      'dashboard' => DashboardCompanionEntryScreen(
+        companionService: visualCompanion,
+      ),
       'companion' => const CompanionPremiumScreen(),
       'summary' => const AISummaryScreen(),
       'profile' => const ProfileScreen(),
@@ -79,7 +114,7 @@ class _BrowserAuditApp extends StatelessWidget {
       'add-log' => const AddLogScreen(),
       'medications' => const MedicationScreen(),
       'reminders' => const RemindersScreen(),
-      _ => const DashboardCompanionEntryScreen(),
+      _ => DashboardCompanionEntryScreen(companionService: visualCompanion),
     };
 
     return MaterialApp(
