@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "source_review_receipt": "docs/evaluation/DARIJA_HIGH_SEVERITY_NATIVE_REVIEW_RECEIPT.md",
+  "source_outcomes_fixture": "backend/core/tests/fixtures/darija_high_severity_native_review_outcomes.json",
+  "runtime_baseline_sha": "b8cf00076b1e84562a460b08221a5ceb3178dc81",
+  "cutover_policy": "atomic_after_restricted_promotion_gates",
+  "runtime_changed": false,
+  "rejected_runtime_variants": [
+    {"text": "ghadi ntah", "input_form": "latin_transliteration"},
+    {"text": "kantih", "input_form": "latin_transliteration"},
+    {"text": "fqad l3ql", "input_form": "latin_transliteration"},
+    {"text": "fqdt l3ql", "input_form": "latin_transliteration"},
+    {"text": "fqedt l3a9l", "input_form": "latin_transliteration"},
+    {"text": "f9edt l3a9l", "input_form": "latin_transliteration"},
+    {"text": "f9dt l3ql", "input_form": "latin_transliteration"},
+    {"text": "tahwid", "input_form": "latin_transliteration"},
+    {"text": "kayrjraj", "input_form": "latin_transliteration"},
+    {"text": "kanr3ed", "input_form": "latin_transliteration"},
+    {"text": "kanr3ad", "input_form": "latin_transliteration"},
+    {"text": "rj fou", "input_form": "latin_transliteration"},
+    {"text": "rajef", "input_form": "latin_transliteration"},
+    {"text": "ma kan7ml", "input_form": "latin_transliteration"},
+    {"text": "dwakht", "input_form": "latin_transliteration"},
+    {"text": "dayakht", "input_form": "latin_transliteration"},
+    {"text": "dwekh", "input_form": "latin_transliteration"},
+    {"text": "dawkhani", "input_form": "latin_transliteration"},
+    {"text": "ma kanchoufch", "input_form": "latin_transliteration"},
+    {"text": "غادي نغمى عليا", "input_form": "arabic_script"},
+    {"text": "غادي يغمى عليا", "input_form": "arabic_script"}
+  ],
+  "pending_replacements": [
+    {
+      "evidence_text": "ghadi nskhef",
+      "runtime_text": "ghadi nskhef",
+      "input_form": "latin_transliteration",
+      "semantic_group": "consciousness_fainting",
+      "native_review_reference": "docs/evaluation/DARIJA_HIGH_SEVERITY_NATIVE_REVIEW_RECEIPT.md:gate2",
+      "runtime_authorized": false,
+      "restricted_approval": false
+    },
+    {
+      "evidence_text": "غادي نسخف",
+      "runtime_text": "غادي نسخف",
+      "input_form": "arabic_script",
+      "semantic_group": "consciousness_fainting",
+      "native_review_reference": "docs/evaluation/DARIJA_HIGH_SEVERITY_NATIVE_REVIEW_RECEIPT.md:gate2",
+      "runtime_authorized": false,
+      "restricted_approval": false
+    },
+    {
+      "evidence_text": "kantr33d",
+      "runtime_text": "kantr33d",
+      "input_form": "latin_transliteration",
+      "semantic_group": "tremor_shivering",
+      "native_review_reference": "docs/evaluation/DARIJA_HIGH_SEVERITY_NATIVE_REVIEW_RECEIPT.md:gate3",
+      "runtime_authorized": false,
+      "restricted_approval": false
+    },
+    {
+      "evidence_text": "Ddokha",
+      "runtime_text": "ddokha",
+      "input_form": "latin_transliteration",
+      "semantic_group": "dizziness",
+      "native_review_reference": "docs/evaluation/DARIJA_HIGH_SEVERITY_NATIVE_REVIEW_RECEIPT.md:gate5",
+      "runtime_authorized": false,
+      "restricted_approval": false
+    }
+  ]
+}
