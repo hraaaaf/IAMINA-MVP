@@ -34,6 +34,7 @@ PR #276 exact head before merge: `706225a49a7c8bfeb28ac0fd25f1fd7894878270`.
 
 ## Post-merge closure
 
-Post-merge CI #2569 and migration drift #2381 are required before final closure. At creation of this evidence file, drift #2381 is green while CI #2569 is still running.
+- Post-merge CI #2569: SUCCESS, including backend tests, PostgreSQL source-of-truth suite, Bandit, OpenAPI, frontend analyze/tests and secret hygiene.
+- Post-merge migration drift #2381: SUCCESS.
 
-Canonical `docs/ROADMAP.md` and `docs/architecture/ARCHITECTURE.md` must be synchronized to the final post-merge truth before CGM-GW-V1 is declared 100% closed.
+The runtime LOT is therefore technically certified on `main`. Canonical `docs/ROADMAP.md` and `docs/architecture/ARCHITECTURE.md` still require synchronization in closeout PR #279 before CGM-GW-V1 is declared fully closed.
