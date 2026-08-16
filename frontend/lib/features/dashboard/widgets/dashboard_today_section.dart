@@ -43,27 +43,16 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.dashboardTodayHeading,
-                    style: TextStyle(
-                      fontFamily: 'Georgia',
-                      fontSize: 21,
-                      height: 1.05,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -.35,
-                      color: AminaVisualLanguage.primaryText(context),
-                    ),
-                  ),
-                ),
-                TextButton(
-                  key: const ValueKey('dashboard-today-companion-action'),
-                  onPressed: () => context.go('/companion'),
-                  child: Text(l10n.dashboardOpenCompanion),
-                ),
-              ],
+            Text(
+              l10n.dashboardTodayHeading,
+              style: TextStyle(
+                fontFamily: 'Georgia',
+                fontSize: 21,
+                height: 1.05,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -.35,
+                color: AminaVisualLanguage.primaryText(context),
+              ),
             ),
             const SizedBox(height: 10),
             if (signals.isNotEmpty)
@@ -78,9 +67,9 @@ class _DashboardTodaySectionState extends State<DashboardTodaySection> {
                 ),
               ),
             const SizedBox(height: 2),
-            _SecondaryActions(),
+            const _SecondaryActions(),
             const SizedBox(height: 10),
-            _TrustStrip(),
+            const _TrustStrip(),
           ],
         );
       },
@@ -207,6 +196,8 @@ class _TodaySignalCard extends StatelessWidget {
 }
 
 class _SecondaryActions extends StatelessWidget {
+  const _SecondaryActions();
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -235,6 +226,8 @@ class _SecondaryActions extends StatelessWidget {
 }
 
 class _TrustStrip extends StatelessWidget {
+  const _TrustStrip();
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
