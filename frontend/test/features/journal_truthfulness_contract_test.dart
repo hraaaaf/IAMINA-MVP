@@ -29,6 +29,21 @@ void main() {
     expect(source, isNot(contains('PopupMenuButton<int>')));
   });
 
+  test('Journal all-history includes legacy rows without loggedAt', () {
+    final screen = File(
+      'lib/features/journal/journal_screen.dart',
+    ).readAsStringSync();
+    final queries = File(
+      'lib/features/journal/journal_queries.dart',
+    ).readAsStringSync();
+
+    expect(screen, contains('db.watchAllJournalLogs()'));
+    expect(screen, contains('db.watchJournalLogsInRange('));
+    expect(screen, isNot(contains('DateTime(2000)')));
+    expect(queries, contains('t.loggedAt.isNull()'));
+    expect(queries, contains('t.createdAt.isBetweenValues(start, end)'));
+  });
+
   test('Journal empty state offers add and import paths', () {
     final source = File(
       'lib/features/journal/journal_screen.dart',
