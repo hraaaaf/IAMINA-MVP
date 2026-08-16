@@ -1,9 +1,9 @@
 import json
-from pathlib import Path
+import pathlib
 
 
-_PACKET = Path(__file__).parent / "fixtures" / "darija_high_severity_native_review_packet.json"
-_OUTCOMES = Path(__file__).parent / "fixtures" / "darija_high_severity_native_review_outcomes.json"
+_PACKET = pathlib.Path(__file__).parent / "fixtures" / "darija_high_severity_native_review_packet.json"
+_OUTCOMES = pathlib.Path(__file__).parent / "fixtures" / "darija_high_severity_native_review_outcomes.json"
 
 
 def _packet_rows():
