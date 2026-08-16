@@ -450,9 +450,7 @@ class _JournalScreenState extends State<JournalScreen> {
       onDismissed: (_) async {
         final l10n = AppLocalizations.of(context)!;
         final db = Provider.of<AppDatabase>(context, listen: false);
-        final messenger = ScaffoldMessenger.of(
-          context,
-        ); // capture before async gap
+        final messenger = ScaffoldMessenger.of(context);
         await db.deleteLog(log.id);
         messenger.showSnackBar(
           SnackBar(
@@ -538,21 +536,13 @@ class _JournalScreenState extends State<JournalScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (log.insulinUnits != null &&
-                            log.insulinUnits! > 0) ...[
+                        if (log.insulinUnits != null && log.insulinUnits! > 0) ...[
                           Container(
                             margin: const EdgeInsetsDirectional.only(end: 8),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AminaTheme.primaryTeal.withValues(
-                                alpha: 0.05,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AminaTheme.radiusXL,
-                              ),
+                              color: AminaTheme.primaryTeal.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
                             ),
                             child: Text(
                               '${formatTakenInsulinUnits(log.insulinUnits!)} U',
@@ -575,8 +565,14 @@ class _JournalScreenState extends State<JournalScreen> {
                         if (log.isStressed) const _LifeIcon(icon: '⚡'),
                         if (log.isTired) const _LifeIcon(icon: '🥱'),
                         if (log.isActive) const _LifeIcon(icon: '🏃‍♂️'),
-                        if (log.sleepQuality == 'bad')
-                          const _LifeIcon(icon: '🌙'),
+                        if (log.sleepQuality == 'bad') const _LifeIcon(icon: '🌙'),
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          key: const Key('journal-entry-details-chevron'),
+                          size: 18,
+                          color: AminaTheme.textMuted,
+                        ),
                       ],
                     ),
                   ],
@@ -696,31 +692,23 @@ class _SkeletonCapsule extends StatelessWidget {
 
 class _SkeletonBox extends StatefulWidget {
   final double width, height, radius;
-  const _SkeletonBox({
-    required this.width,
-    required this.height,
-    required this.radius,
-  });
+  const _SkeletonBox({required this.width, required this.height, required this.radius});
   @override
   State<_SkeletonBox> createState() => _SkeletonBoxState();
 }
 
-class _SkeletonBoxState extends State<_SkeletonBox>
-    with SingleTickerProviderStateMixin {
+class _SkeletonBoxState extends State<_SkeletonBox> with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _anim;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..repeat(reverse: true);
-    _anim = Tween<double>(
-      begin: 0.28,
-      end: 0.65,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))
+      ..repeat(reverse: true);
+    _anim = Tween<double>(begin: 0.28, end: 0.65).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
   }
 
   @override
