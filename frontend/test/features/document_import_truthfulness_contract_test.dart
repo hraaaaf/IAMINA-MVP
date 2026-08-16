@@ -31,6 +31,31 @@ void main() {
     expect(copy, contains('No importable medical data'));
   });
 
+  test('Privacy copy matches local extraction and pseudonymized text egress', () {
+    final screen = File(
+      'lib/features/documents/document_import_screen.dart',
+    ).readAsStringSync();
+    final copy = File(
+      'lib/core/localization/document_import_localized_copy.dart',
+    ).readAsStringSync();
+
+    expect(screen, contains('l10n.privacyProcessingBody'));
+    expect(screen, isNot(contains('l10n.documentPrivacyBody')));
+    expect(copy, contains('The file is processed locally first.'));
+    expect(copy, contains('Le fichier est d’abord traité localement.'));
+    expect(copy, contains('تتم معالجة الملف محليًا أولًا.'));
+    expect(copy, contains('pseudonymized text'));
+  });
+
+  test('Photo format chip uses localized copy', () {
+    final screen = File(
+      'lib/features/documents/document_import_screen.dart',
+    ).readAsStringSync();
+
+    expect(screen, contains('AuditedPageCopy.of(context).photo'));
+    expect(screen, isNot(contains("label: 'Photo'")));
+  });
+
   test('Document confirmation endpoint matches backend route', () {
     final client = File('lib/services/api_client.dart').readAsStringSync();
     expect(
