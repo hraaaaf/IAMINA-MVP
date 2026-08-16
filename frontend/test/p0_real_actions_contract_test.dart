@@ -79,32 +79,24 @@ void main() {
     },
   );
 
-  test('unavailable integrations cannot masquerade as active actions', () {
-    final import = _read('lib/features/import/import_screen.dart');
-    final frenchArb = _read('lib/l10n/app_fr.arb');
-    final adapter = _read('lib/l10n/audited_page_copy.dart');
+  test('CGM integrations expose real governed actions without fake availability', () {
+    final importer = _read('lib/features/import/import_screen.dart');
+    final cgm = _read('lib/features/import/cgm_connections_section.dart');
+    final service = _read('lib/services/cgm_service.dart');
 
-    expect(import, isNot(contains('Notifiez-moi')));
-    expect(import, isNot(contains("rejoignez la liste d'attente")));
-    expect(import, contains('AuditedPageCopy.of(context).unavailable'));
-    expect(
-      RegExp(
-        r'AuditedPageCopy\.of\(\s*context,?\s*\)\.dexcomDescription',
-      ).hasMatch(import),
-      isTrue,
-    );
-    expect(
-      RegExp(
-        r'AuditedPageCopy\.of\(\s*context,?\s*\)\.libreDescription',
-      ).hasMatch(import),
-      isTrue,
-    );
-    expect(import, contains('action: const _UnavailableAction()'));
-    expect(frenchArb, contains('Non disponible'));
-    expect(frenchArb, contains('à confirmer avant activation'));
-    expect(adapter, contains('l10n.unavailable'));
-    expect(adapter, contains('l10n.dexcomDescription'));
-    expect(adapter, contains('l10n.libreDescription'));
+    expect(importer, contains('const CgmConnectionsSection()'));
+    expect(cgm, contains("id: 'dexcom'"));
+    expect(cgm, contains("id: 'libre'"));
+    expect(cgm, contains("id: 'linx'"));
+    expect(cgm, contains('OutlinedButton('));
+    expect(cgm, contains('FilledButton.icon('));
+    expect(cgm, contains('TextButton(onPressed: _disconnect'));
+    expect(cgm, isNot(contains('Notifiez-moi')));
+    expect(cgm, isNot(contains("rejoignez la liste d'attente")));
+    expect(service, contains('class CgmService'));
+    expect(service, contains('Future<CgmConnectionState> getConnection'));
+    expect(service, contains('Future<void> configure'));
+    expect(service, contains('Future<void> sync'));
   });
 
   test('summary contains no fallback dose or basal adjustment advice', () {
