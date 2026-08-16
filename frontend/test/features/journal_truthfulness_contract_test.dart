@@ -24,4 +24,19 @@ void main() {
     expect(source, contains('(val / 18.0).toStringAsFixed(1)'));
     expect(source, contains('displayValue'));
   });
+
+  test('Personal Response is secondary, after history, and collapsed by default', () {
+    final source = File(
+      'lib/features/journal/journal_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('bool _showPersonalResponse = false'));
+    expect(source, contains("Key('journal-personal-response-disclosure')"));
+    expect(source, contains('if (_showPersonalResponse)'));
+
+    final historyIndex = source.indexOf('final groupedLogs');
+    final disclosureIndex = source.indexOf('journal-personal-response-disclosure');
+    expect(historyIndex, greaterThanOrEqualTo(0));
+    expect(disclosureIndex, greaterThan(historyIndex));
+  });
 }
