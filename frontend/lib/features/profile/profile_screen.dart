@@ -14,6 +14,17 @@ import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
 
+String _profileValidationMessage(BuildContext context) {
+  final code = Localizations.localeOf(context).languageCode;
+  if (code == 'ar') {
+    return 'اختر نوع السكري والعلاج وأدخل نطاق غلوكوز صالحًا قبل الحفظ.';
+  }
+  if (code == 'en') {
+    return 'Select diabetes type and treatment, and enter a valid glucose range before saving.';
+  }
+  return 'Sélectionnez le type de diabète et le traitement, puis saisissez une plage glycémique valide avant d’enregistrer.';
+}
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -24,8 +35,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _targetLowController = TextEditingController();
   final _targetHighController = TextEditingController();
-  String _diabetesType = 'type1';
-  String _treatment = 'insulin';
+  String? _diabetesType;
+  String? _treatment;
   String _unit = 'mg/dL';
   bool _hasPersistedProfile = false;
   DateTime? _ramadanStartDate;
@@ -44,8 +55,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (profile != null) {
       setState(() {
         _hasPersistedProfile = true;
-        _diabetesType = profile.diabetesType ?? 'type1';
-        _treatment = profile.treatment ?? 'insulin';
+        _diabetesType = profile.diabetesType;
+        _treatment = profile.treatment;
         _unit = profile.unitPreference;
         _targetLowController.text = profile.targetRangeLow.toStringAsFixed(0);
         _targetHighController.text = profile.targetRangeHigh.toStringAsFixed(0);
@@ -597,17 +608,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!_hasPersistedProfile) return l10n.profileMedicalSectionHint;
 
     final diabetes = switch (_diabetesType) {
+      'type1' => l10n.diabetesType1,
       'type2' => l10n.diabetesType2,
       'gestational' => l10n.diabetesGestational,
       'pre' => l10n.diabetesPreDiabetes,
-      _ => l10n.diabetesType1,
+      _ => null,
     };
     final treatment = switch (_treatment) {
+      'insulin' => l10n.treatmentInsulin,
       'tablets' => l10n.treatmentTablets,
       'lifestyle' => l10n.treatmentLifestyle,
-      _ => l10n.treatmentInsulin,
+      _ => null,
     };
-    return '$diabetes · $treatment · $_unit';
+    final parts = <String>[
+      if (diabetes != null) diabetes,
+      if (treatment != null) treatment,
+      _unit,
+    ];
+    return parts.join(' · ');
   }
 
   Widget _buildIASetupCard(AppLocalizations l10n) {
@@ -684,7 +702,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildChoiceGrid(
     List<String> labels,
     List<String> values,
-    String current,
+    String? current,
     Function(String) onSelect,
   ) {
     return Wrap(
@@ -966,10 +984,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _saveProfile() async {
-    final db = context.read<AppDatabase>();
-    final low = double.tryParse(_targetLowController.text) ?? 70.0;
-    final high = double.tryParse(_targetHighController.text) ?? 180.0;
+    final diabetesType = _diabetesType;
+    final treatment = _treatment;
+    final low = double.tryParse(_targetLowController.text.trim());
+    final high = double.tryParse(_targetHighController.text.trim());
+    final validRange =
+        low != null &&
+        high != null &&
+        low.isFinite &&
+        high.isFinite &&
+        low > 0 &&
+        high > 0 &&
+        low < high;
 
+    if (diabetesType == null || treatment == null || !validRange) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_profileValidationMessage(context))),
+      );
+      return;
+    }
+
+    final db = context.read<AppDatabase>();
     await db
         .into(db.patientProfiles)
         .insertOnConflictUpdate(
@@ -977,8 +1012,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             userId: const drift.Value(1),
             preferredLanguage: const drift.Value('fr'),
             updatedAt: DateTime.now(),
-            diabetesType: drift.Value(_diabetesType),
-            treatment: drift.Value(_treatment),
+            diabetesType: drift.Value(diabetesType),
+            treatment: drift.Value(treatment),
             unitPreference: drift.Value(_unit),
             targetRangeLow: drift.Value(low),
             targetRangeHigh: drift.Value(high),
