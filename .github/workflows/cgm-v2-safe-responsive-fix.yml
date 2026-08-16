@@ -23,25 +23,41 @@ jobs:
           git show c1f7f3b94418d153ac390b942ba72c3a4ab20f5a:frontend/lib/features/import/cgm_connections_section.dart > frontend/lib/features/import/cgm_connections_section.dart
           python - <<'PY'
           from pathlib import Path
+
           path = Path('frontend/lib/features/import/cgm_connections_section.dart')
-          text = path.read_text()
-          old = '''                    const Spacer(),
-                    Text(
-                      _relative(latest.recordedAt, l10n),
-                      style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
-                    ),'''
-          new = '''                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        _relative(latest.recordedAt, l10n),
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.end,
-                        style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
-                      ),
-                    ),'''
-          if text.count(old) != 1:
-              raise SystemExit(f'expected one timestamp row anchor, found {text.count(old)}')
-          path.write_text(text.replace(old, new, 1))
+          lines = path.read_text().splitlines()
+          target = None
+          for i, line in enumerate(lines):
+              if 'const Spacer(),' in line:
+                  window = '\n'.join(lines[i:i+8])
+                  if '_relative(latest.recordedAt, l10n)' in window:
+                      target = i
+                      break
+          if target is None:
+              raise SystemExit('latest-reading spacer anchor not found')
+
+          indent = lines[target].split('const Spacer()')[0]
+          replacement = [
+              f'{indent}const SizedBox(width: 8),',
+              f'{indent}Flexible(',
+              f'{indent}  child: Text(',
+              f'{indent}    _relative(latest.recordedAt, l10n),',
+              f'{indent}    overflow: TextOverflow.ellipsis,',
+              f'{indent}    textAlign: TextAlign.end,',
+              f'{indent}    style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),',
+              f'{indent}  ),',
+              f'{indent}),',
+          ]
+          end = target + 1
+          while end < len(lines):
+              if lines[end].strip() == '),' and '_relative(latest.recordedAt, l10n)' in '\n'.join(lines[target:end+1]):
+                  end += 1
+                  break
+              end += 1
+          if end >= len(lines):
+              raise SystemExit('latest-reading timestamp block end not found')
+          lines[target:end] = replacement
+          path.write_text('\n'.join(lines) + '\n')
           PY
       - name: Commit repaired component
         run: |
