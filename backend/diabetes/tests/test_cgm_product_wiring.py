@@ -40,6 +40,28 @@ class CGMNetworkPolicyTests(TestCase):
         with self.assertRaisesRegex(CGMNetworkPolicyError, "cgm_bridge_host_not_public"):
             validate_patient_cgm_base_url("https://127.0.0.1")
 
+    @patch.dict("os.environ", {}, clear=True)
+    def test_missing_allowlist_fails_closed(self):
+        with self.assertRaisesRegex(
+            CGMNetworkPolicyError,
+            "cgm_bridge_allowlist_unconfigured",
+        ):
+            validate_patient_cgm_base_url("https://nightscout.example.com")
+
+    @patch.dict(
+        "os.environ",
+        {"CGM_ALLOWED_BRIDGE_HOSTS": "approved.example.com"},
+        clear=True,
+    )
+    def test_unapproved_host_fails_closed(self):
+        with self.assertRaisesRegex(CGMNetworkPolicyError, "cgm_bridge_host_not_allowed"):
+            validate_patient_cgm_base_url("https://nightscout.example.com")
+
+    @patch.dict(
+        "os.environ",
+        {"CGM_ALLOWED_BRIDGE_HOSTS": "nightscout.example.com"},
+        clear=True,
+    )
     @patch("diabetes.services.cgm_network.socket.getaddrinfo")
     def test_private_dns_resolution_is_rejected(self, getaddrinfo):
         getaddrinfo.return_value = [
@@ -48,6 +70,11 @@ class CGMNetworkPolicyTests(TestCase):
         with self.assertRaisesRegex(CGMNetworkPolicyError, "cgm_bridge_host_not_public"):
             validate_patient_cgm_base_url("https://nightscout.example.com")
 
+    @patch.dict(
+        "os.environ",
+        {"CGM_ALLOWED_BRIDGE_HOSTS": "nightscout.example.com"},
+        clear=True,
+    )
     @patch("diabetes.services.cgm_network.socket.getaddrinfo")
     def test_public_https_target_is_accepted(self, getaddrinfo):
         getaddrinfo.return_value = [
