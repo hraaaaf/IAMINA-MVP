@@ -22,6 +22,17 @@ class JournalScreen extends StatefulWidget {
 class _JournalScreenState extends State<JournalScreen> {
   int _selectedFilterDays = 30;
 
+  String _journalRangeLabel(AppLocalizations l10n) {
+    switch (_selectedFilterDays) {
+      case 7:
+        return l10n.last7Days;
+      case 0:
+        return l10n.allHistory;
+      default:
+        return l10n.last30Days;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final db = Provider.of<AppDatabase>(context, listen: false);
@@ -171,11 +182,12 @@ class _JournalScreenState extends State<JournalScreen> {
   Widget _buildSliverAppBar(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isMobile = MediaQuery.sizeOf(context).width < 700;
+    final rangeLabel = _journalRangeLabel(l10n);
     if (isMobile) {
       return SliverToBoxAdapter(
         child: AminaMobilePageHeader(
           title: l10n.navJournal,
-          subtitle: l10n.journalSubtitle,
+          subtitle: rangeLabel,
           trailing: _buildFilterBadge(
             iconColor: AminaTheme.textSecondary(context),
           ),
@@ -214,7 +226,7 @@ class _JournalScreenState extends State<JournalScreen> {
                     ),
                   ),
                   Text(
-                    l10n.journalSubtitle,
+                    rangeLabel,
                     style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 14,
@@ -327,6 +339,9 @@ class _JournalScreenState extends State<JournalScreen> {
     double high,
   ) {
     final val = log.bloodSugar;
+    final displayValue = unit == 'mmol/L'
+        ? (val / 18.0).toStringAsFixed(1)
+        : val.toStringAsFixed(0);
     Color color = AminaTheme.successEmerald;
     if (val < 70 || val > 250) {
       color = AminaTheme.dangerRed;
@@ -399,7 +414,7 @@ class _JournalScreenState extends State<JournalScreen> {
                   width: 52,
                   child: Center(
                     child: Text(
-                      val.toStringAsFixed(0),
+                      displayValue,
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
