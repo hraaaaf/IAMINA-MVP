@@ -9,6 +9,7 @@ from typing import Protocol
 class CGMSource(StrEnum):
     DEXCOM = "dexcom"
     LIBRE = "libre"
+    LINX = "linx"
     UNKNOWN = "unknown"
 
 
