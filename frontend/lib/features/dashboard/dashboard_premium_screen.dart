@@ -61,10 +61,8 @@ class DashboardPremiumScreen extends StatelessWidget {
       builder: (context, profileSnap) {
         final profile = profileSnap.data;
         final unit = profile?.unitPreference ?? 'mg/dL';
-        final hasConfiguredTarget =
-            profile != null && profile.targetRangeLow < profile.targetRangeHigh;
-        final low = hasConfiguredTarget ? profile.targetRangeLow : null;
-        final high = hasConfiguredTarget ? profile.targetRangeHigh : null;
+        final low = profile?.targetRangeLow;
+        final high = profile?.targetRangeHigh;
 
         return StreamBuilder<List<LogEntryData>>(
           stream: db.watchRecentLogs(limit: 1),
