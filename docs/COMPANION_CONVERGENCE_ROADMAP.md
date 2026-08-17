@@ -55,16 +55,23 @@ Goal: eliminate parallel conversational proactivity and route check-ins through 
 
 Success:
 - no independent `_inject_proactive_followup` authority;
-- emotional follow-up, if retained, is represented as a governed non-clinical Companion suggestion class/state;
-- one anti-repeat/cooldown authority;
+- deterministic emotional memory remains available for reactive tone/context only and cannot emit an unsolicited assistant turn;
+- `/proactive-insights/evaluate/` remains the single governed proactive delivery-budget authority;
+- one non-urgent item per 24h attention budget remains authoritative;
 - no duplicate patient-facing proactive message can bypass the governed attention lifecycle.
 
-Current direction:
-- preserve emotional memory for reactive tone/relationship adaptation;
-- remove independent automatic emotional check-in emission unless a governed proactive contract explicitly authorizes it;
-- keep `/proactive-insights/preview/` read-only and `/proactive-insights/evaluate/` as the single delivery-budget authority.
+Verified proof:
+- PR #308 exact head `3814fd3d213aeaa001bb665b889751da20c3c219`;
+- runtime diff limited to `backend/companion/conversation.py` plus the dedicated P1 regression test;
+- exact-head CI #2752 SUCCESS: Ruff, import-linter, LLM gateway anti-bypass, AI egress anti-bypass, Bandit, OpenAPI, backend pytest, PostgreSQL full suite, Flutter analyze/tests and secret hygiene;
+- exact-head Django migration drift #2564 SUCCESS;
+- 0 unresolved review threads and branch 0 behind `main` before merge;
+- expected-head merge `b015b7aa6d18cf4ad4f6bf28a10d6b039b03dd60`;
+- post-merge Django migration drift #2565 SUCCESS;
+- post-merge CI #2753 was concurrency-cancelled after backend and Flutter had already passed; the only interrupted critical job was PostgreSQL full suite;
+- the cancelled PostgreSQL job was re-run on the exact merge commit and completed SUCCESS, including migration validation and full PostgreSQL suite.
 
-Status: NEXT
+Status: CLOSED
 
 ## P2 — Governed Companion Context
 
@@ -73,9 +80,17 @@ Goal: expose one read-only, module-neutral Companion Context contract for both U
 Success:
 - conversational runtime consumes governed pattern/change/evidence/suggestion context rather than reconstructing parallel clinical meaning from raw diabetes services;
 - source provenance, uncertainty and limitations survive into narration input;
-- chassis does not depend directly on diabetes models/services for clinical semantics.
+- chassis does not depend directly on diabetes models/services for clinical semantics;
+- `BaseEngine` remains the single module→chassis clinical contract; no second registry or parallel clinical port is introduced.
 
-Status: NOT STARTED
+Current direction:
+- keep `DomainContext` as the session/instant clinical output contract;
+- add a distinct read-only `CompanionContext` for longitudinal governed state;
+- resolve it through the active module engine selected by `ModuleRegistry`;
+- adapt diabetes `CompanionOverview` inside `EvidenceGuardedDiabetesEngine` rather than importing diabetes services into the chassis;
+- proactive delivery remains a separate explicit command that consumes the attention budget.
+
+Status: NEXT
 
 ## P3 — Narrator-Only Conversation Runtime
 
