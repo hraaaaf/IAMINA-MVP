@@ -1,4 +1,4 @@
-"""Patient-scoped deterministic proactive insight command surface."""
+"""Patient-scoped deterministic proactive insight surfaces."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from diabetes.services.clinical.proactive_intelligence import evaluate_proactive_insights
+from diabetes.services.clinical.proactive_preview import preview_proactive_insights
 
 router = Router(tags=["proactive-insights"])
 
@@ -52,6 +53,33 @@ class ProactiveFeedOut(BaseModel):
     pending_count: int
     safety_notice: str
     item: ProactiveInsightOut | None
+
+
+class ProactivePreviewOut(BaseModel):
+    status: Literal["available", "cooldown", "no_change", "insufficient_data"]
+    attention_budget: Literal["one_non_urgent_item_per_24h"]
+    cooldown_until: datetime | None
+    pending_count: int
+    safety_notice: str
+    item: ProactiveInsightOut | None
+
+
+@router.get("/proactive-insights/preview/", response=ProactivePreviewOut)
+def preview_proactive_insight(request):
+    """Read the top governed candidate without mutating clinical or delivery state."""
+
+    result = preview_proactive_insights(patient_id=request.user.id)
+    return {
+        "status": result.status,
+        "attention_budget": result.attention_budget,
+        "cooldown_until": result.cooldown_until,
+        "pending_count": result.pending_count,
+        "safety_notice": (
+            "Read-only observational preview. It does not consume the attention budget, "
+            "diagnose, prescribe, change treatment, or replace deterministic emergency routing."
+        ),
+        "item": asdict(result.item) if result.item is not None else None,
+    }
 
 
 @router.post("/proactive-insights/evaluate/", response=ProactiveFeedOut)

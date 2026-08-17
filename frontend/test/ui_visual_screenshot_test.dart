@@ -8,10 +8,12 @@ import 'package:amina/core/theme/amina_visual_language.dart';
 import 'package:amina/core/theme/app_theme.dart';
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/models/companion_models.dart';
+import 'package:amina/data/models/proactive_preview_models.dart';
 import 'package:amina/features/companion/companion_premium_screen.dart';
 import 'package:amina/features/dashboard/dashboard_companion_entry_screen.dart';
 import 'package:amina/features/dashboard/dashboard_screen.dart';
 import 'package:amina/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart';
+import 'package:amina/features/dashboard/widgets/dashboard_insight_section.dart';
 import 'package:amina/features/dashboard/widgets/dashboard_trend_section.dart';
 import 'package:amina/features/documents/document_import_screen.dart';
 import 'package:amina/features/import/import_screen.dart';
@@ -56,6 +58,46 @@ class _VisualCompanionService extends CompanionService {
     ),
     safetyNotice: 'governed_visual_fixture',
     sourceVersion: 'ui-visual-audit.v1',
+  );
+
+  @override
+  Future<ProactivePreview?> fetchProactivePreview() async => const ProactivePreview(
+    status: 'available',
+    attentionBudget: 'one_non_urgent_item_per_24h',
+    cooldownUntil: null,
+    pendingCount: 1,
+    safetyNotice: 'governed_visual_preview_fixture',
+    item: ProactivePreviewItem(
+      observationKey: 'context:stress',
+      kind: 'context',
+      state: 'persisting',
+      surfaceNow: false,
+      whatChanged: 'repeated_eligible_evidence',
+      whyItIsSurfacingNow: 'persistence_or_evidence_density_changed',
+      evidenceWindowDays: 90,
+      personalBaselineComparisonMgDl: 24,
+      observations: 6,
+      distinctDays: 4,
+      evidenceDensity: 'moderate',
+      limitationsOrMissingData: <String>[
+        'observational_association_only',
+        'no_causality_diagnosis_or_treatment_inference',
+      ],
+      allowedNextStep: 'PREPARE_CLINICIAN_DISCUSSION',
+      escalationClass: 'none',
+      evidenceId: 'rule.personal-response.repetition.v1',
+      sourceVersion: 'proactive.personal-response.lifecycle.v1',
+      priority: ProactivePreviewPriority(
+        safetyTimeSensitivity: 'non_urgent_observation',
+        clinicalRelevance: 'review_worthy',
+        persistence: 'recurrent_episode',
+        changeFromPersonalBaselineMgDl: 24,
+        evidenceDensity: 'moderate',
+        actionability: 'PREPARE_CLINICIAN_DISCUSSION',
+        evidenceMaturity: 'internal_governed_rule',
+        interruptionCost: 'eligible',
+      ),
+    ),
   );
 }
 
@@ -203,6 +245,25 @@ class _KpiAuditSurface extends StatelessWidget {
   }
 }
 
+class _InsightAuditSurface extends StatelessWidget {
+  final CompanionService service;
+
+  const _InsightAuditSurface({required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4FBF9),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: DashboardInsightSection(service: service),
+        ),
+      ),
+    );
+  }
+}
+
 class _CaptureSpec {
   final String name;
   final Size size;
@@ -304,6 +365,17 @@ void main() {
         'dashboard-kpi-ar-360x560',
         compactMobile,
         () => _KpiAuditSurface(profile: deps.profile),
+        locale: const Locale('ar'),
+      ),
+      _CaptureSpec(
+        'dashboard-insight-390x844',
+        mobile,
+        () => _InsightAuditSurface(service: deps.visualCompanion),
+      ),
+      _CaptureSpec(
+        'dashboard-insight-ar-360x560',
+        compactMobile,
+        () => _InsightAuditSurface(service: deps.visualCompanion),
         locale: const Locale('ar'),
       ),
       _CaptureSpec('journal-390x844', mobile, () => const JournalScreen()),

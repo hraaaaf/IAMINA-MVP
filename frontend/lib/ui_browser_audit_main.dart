@@ -6,9 +6,11 @@ import 'core/theme/amina_visual_language.dart';
 import 'core/theme/app_theme.dart';
 import 'data/drift/database.dart';
 import 'data/models/companion_models.dart';
+import 'data/models/proactive_preview_models.dart';
 import 'features/companion/companion_premium_screen.dart';
 import 'features/dashboard/dashboard_companion_entry_screen.dart';
 import 'features/dashboard/widgets/dashboard_adaptive_kpi_section.dart';
+import 'features/dashboard/widgets/dashboard_insight_section.dart';
 import 'features/dashboard/widgets/dashboard_trend_section.dart';
 import 'features/documents/document_import_premium_screen.dart';
 import 'features/import/import_screen.dart';
@@ -51,6 +53,46 @@ class _BrowserAuditCompanionService extends CompanionService {
     ),
     safetyNotice: 'governed_browser_fixture',
     sourceVersion: 'ui-browser-audit.v1',
+  );
+
+  @override
+  Future<ProactivePreview?> fetchProactivePreview() async => const ProactivePreview(
+    status: 'available',
+    attentionBudget: 'one_non_urgent_item_per_24h',
+    cooldownUntil: null,
+    pendingCount: 1,
+    safetyNotice: 'governed_browser_preview_fixture',
+    item: ProactivePreviewItem(
+      observationKey: 'context:stress',
+      kind: 'context',
+      state: 'persisting',
+      surfaceNow: false,
+      whatChanged: 'repeated_eligible_evidence',
+      whyItIsSurfacingNow: 'persistence_or_evidence_density_changed',
+      evidenceWindowDays: 90,
+      personalBaselineComparisonMgDl: 24,
+      observations: 6,
+      distinctDays: 4,
+      evidenceDensity: 'moderate',
+      limitationsOrMissingData: <String>[
+        'observational_association_only',
+        'no_causality_diagnosis_or_treatment_inference',
+      ],
+      allowedNextStep: 'PREPARE_CLINICIAN_DISCUSSION',
+      escalationClass: 'none',
+      evidenceId: 'rule.personal-response.repetition.v1',
+      sourceVersion: 'proactive.personal-response.lifecycle.v1',
+      priority: ProactivePreviewPriority(
+        safetyTimeSensitivity: 'non_urgent_observation',
+        clinicalRelevance: 'review_worthy',
+        persistence: 'recurrent_episode',
+        changeFromPersonalBaselineMgDl: 24,
+        evidenceDensity: 'moderate',
+        actionability: 'PREPARE_CLINICIAN_DISCUSSION',
+        evidenceMaturity: 'internal_governed_rule',
+        interruptionCost: 'eligible',
+      ),
+    ),
   );
 }
 
@@ -109,6 +151,7 @@ class _BrowserAuditApp extends StatelessWidget {
       ),
       'trend' => const _BrowserTrendSurface(),
       'kpi' => const _BrowserKpiSurface(),
+      'insight' => _BrowserInsightSurface(service: visualCompanion),
       'companion' => const CompanionPremiumScreen(),
       'summary' => const AISummaryScreen(),
       'profile' => const ProfileScreen(),
@@ -177,6 +220,25 @@ class _BrowserKpiSurface extends StatelessWidget {
             low: profile?.targetRangeLow,
             high: profile?.targetRangeHigh,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BrowserInsightSurface extends StatelessWidget {
+  final CompanionService service;
+
+  const _BrowserInsightSurface({required this.service});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4FBF9),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: DashboardInsightSection(service: service),
         ),
       ),
     );
