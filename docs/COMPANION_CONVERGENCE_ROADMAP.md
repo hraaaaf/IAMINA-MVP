@@ -1,7 +1,7 @@
 # IAMINA — Companion Convergence Roadmap
 
 Status: ACTIVE
-Baseline: `main@ac95b8ed772bea50660f285cfdba5490b3bb5a39`
+Baseline: `main@6e2a22699dc6ae643a8186c055c37e8875b586ef`
 
 ## Goal
 
