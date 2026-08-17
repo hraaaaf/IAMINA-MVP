@@ -2,10 +2,10 @@ import logging
 import re
 
 from companion.advice_filter import apply_advice_throttle
+from companion.memory import _detect_emotional_signals
+from companion.narrator_prompts import CHAT_USER, SYSTEM_WITH_STATE, get_language_label
 from companion.parser import parse_llm_json
-from companion.prompts import CHAT_USER, SYSTEM_WITH_STATE, get_language_label
 from companion.state import compute_state, state_to_prompt
-from companion.thinker import think_before_reply
 from companion.tone import get_tone_instruction, select_relationship_tone
 from core.companion.clinical import (
     get_companion_context,
@@ -133,7 +133,7 @@ def _trim_history(history_turns, char_budget: int, patient=None) -> str:
 
 
 def _companion_context_block(context: CompanionContext) -> str:
-    """Serialize only approved longitudinal state, with provenance and limits."""
+    """Serialize approved longitudinal state without inventing interpretation."""
     lines = [
         "[GOVERNED_COMPANION_CONTEXT]",
         f"pattern_status={context.pattern_status}",
@@ -194,7 +194,6 @@ def _build_runtime_prompt(
     message: str,
     memory,
     deep,
-    llm,
     language: str,
     patient,
     context_days: int,
@@ -202,7 +201,7 @@ def _build_runtime_prompt(
 ):
     language = detect_language(message, language)
     pseudonymizer = PHIPseudonymizer()
-    first_name = patient.first_name or "" if patient is not None else ""
+    first_name = (patient.first_name or "") if patient is not None else ""
     safe_message = _safe_text(pseudonymizer, first_name, message)
 
     history = _trim_history(
@@ -219,8 +218,6 @@ def _build_runtime_prompt(
         streak_days=deep.consecutive_log_days,
     )
     state = compute_state(memory, deep, ctx)
-    if emotional or state.concern_level > 0.4:
-        think_before_reply(safe_message, memory, deep, state, ctx, llm, language)
 
     system = SYSTEM_WITH_STATE.format(
         language=get_language_label(language),
@@ -298,6 +295,11 @@ def _finalize_reply(reply: str, deep, language: str) -> str:
     return reply
 
 
+def _update_relationship_memory(message: str, memory) -> None:
+    _detect_emotional_signals(message, memory)
+    memory.save()
+
+
 def chat(
     message: str,
     memory,
@@ -312,6 +314,7 @@ def chat(
     if safety_reply is not None:
         _append_turn(patient, "user", message)
         _append_turn(patient, "assistant", safety_reply)
+        _update_relationship_memory(message, memory)
         return safety_reply
 
     if llm is None:
@@ -321,7 +324,6 @@ def chat(
         message=message,
         memory=memory,
         deep=deep,
-        llm=llm,
         language=language,
         patient=patient,
         context_days=context_days,
@@ -329,12 +331,10 @@ def chat(
     )
     _append_turn(patient, "user", message)
 
-    concern = ""
     try:
         result = llm.complete(system, user_prompt)
-        parsed = parse_llm_json(result.content, ["reply", "concern_detected"])
+        parsed = parse_llm_json(result.content, ["reply"])
         reply = parsed["reply"]
-        concern = parsed.get("concern_detected", "")
     except Exception:
         logger.exception(
             "IAmina conversation.chat failed for patient=%s",
@@ -348,12 +348,7 @@ def chat(
 
     reply = _finalize_reply(reply, deep, language)
     _append_turn(patient, "assistant", reply)
-
-    if concern:
-        memory.last_concern = concern
-        if concern not in memory.emotional_signals:
-            memory.emotional_signals.append(concern)
-        memory.save()
+    _update_relationship_memory(message, memory)
     return reply
 
 
@@ -371,6 +366,7 @@ def stream_chat(
     if safety_reply is not None:
         _append_turn(patient, "user", message)
         _append_turn(patient, "assistant", safety_reply)
+        _update_relationship_memory(message, memory)
         yield safety_reply
         return
 
@@ -381,7 +377,6 @@ def stream_chat(
         message=message,
         memory=memory,
         deep=deep,
-        llm=llm,
         language=language,
         patient=patient,
         context_days=context_days,
@@ -405,30 +400,28 @@ def stream_chat(
             )
         full_reply = _finalize_reply(full_reply, deep, language)
         _append_turn(patient, "assistant", full_reply)
+        _update_relationship_memory(message, memory)
         yield full_reply
-    else:
-        assembled: list[str] = []
-        try:
-            for chunk in llm.stream(system, user_prompt):
-                assembled.append(chunk)
-                yield chunk
-        except Exception:
-            logger.exception(
-                "IAmina stream_chat failed for patient=%s",
-                patient.id if patient else None,
-            )
-            fallback = get_offline_fallback(
-                patient.id if patient else None,
-                ctx,
-                language,
-            )
-            yield fallback
-            assembled = [fallback]
+        return
 
-        full_reply = _finalize_reply("".join(assembled), deep, language)
-        _append_turn(patient, "assistant", full_reply)
+    assembled: list[str] = []
+    try:
+        for chunk in llm.stream(system, user_prompt):
+            assembled.append(chunk)
+            yield chunk
+    except Exception:
+        logger.exception(
+            "IAmina stream_chat failed for patient=%s",
+            patient.id if patient else None,
+        )
+        fallback = get_offline_fallback(
+            patient.id if patient else None,
+            ctx,
+            language,
+        )
+        yield fallback
+        assembled = [fallback]
 
-    from companion.memory import _detect_emotional_signals
-
-    _detect_emotional_signals(message, memory)
-    memory.save()
+    full_reply = _finalize_reply("".join(assembled), deep, language)
+    _append_turn(patient, "assistant", full_reply)
+    _update_relationship_memory(message, memory)
