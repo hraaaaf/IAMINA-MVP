@@ -1,9 +1,15 @@
+import json
 from pathlib import Path
+
+from django.http import StreamingHttpResponse
+from django.test import RequestFactory
+
+from core.medical_safety import no_prescription_message
+from core.middleware.emergency_operating_mode import EmergencyOperatingModeMiddleware
 
 
 ROOT = Path(__file__).resolve().parents[2]
 CONVERSATION = ROOT / "companion" / "conversation.py"
-AI_API = ROOT / "ai" / "api" / "v1" / "ai.py"
 
 
 def test_conversation_has_no_local_emergency_copy_or_keyword_authority():
@@ -16,27 +22,55 @@ def test_conversation_has_no_local_emergency_copy_or_keyword_authority():
     assert "compose_emergency_for_patient" in source
 
 
-def test_stream_router_uses_canonical_emergency_composer():
-    source = AI_API.read_text(encoding="utf-8")
+def test_nonurgent_sse_prescription_text_is_filtered_before_patient_emission():
+    request = RequestFactory().get(
+        "/api/v1/ai/chat/stream",
+        {"message": "bonjour"},
+    )
 
-    assert "compose_emergency_for_patient" in source
-    assert "emergency_msg = (" not in source
-    assert ".as_stream_event()" in source
+    unsafe = "Prends 5 unités d'insuline rapide maintenant."
+
+    def get_response(req):
+        return StreamingHttpResponse(
+            iter(
+                (
+                    f"data: {json.dumps({'token': unsafe})}\n\n",
+                    "data: [DONE]\n\n",
+                )
+            ),
+            content_type="text/event-stream",
+        )
+
+    response = EmergencyOperatingModeMiddleware(get_response)(request)
+    body = b"".join(response.streaming_content).decode()
+    first = next(line for line in body.splitlines() if line.startswith("data: {"))
+    event = json.loads(first.removeprefix("data: "))
+
+    assert event["token"] == no_prescription_message("fr")
+    assert unsafe not in body
 
 
-def test_stream_router_filters_generated_sentence_before_patient_emission():
-    source = AI_API.read_text(encoding="utf-8")
+def test_safe_nonurgent_sse_token_passes_through_unchanged():
+    request = RequestFactory().get(
+        "/api/v1/ai/chat/stream",
+        {"message": "bonjour"},
+    )
+    safe = "Je peux t'aider à organiser tes observations."
 
-    helper_start = source.index("def _safe_patient_sentence")
-    helper_end = source.index("\n\n", helper_start)
-    helper = source[helper_start:helper_end]
+    def get_response(req):
+        return StreamingHttpResponse(
+            iter(
+                (
+                    f"data: {json.dumps({'token': safe})}\n\n",
+                    "data: [DONE]\n\n",
+                )
+            ),
+            content_type="text/event-stream",
+        )
 
-    assert "apply_no_prescription_policy" in helper
+    response = EmergencyOperatingModeMiddleware(get_response)(request)
+    body = b"".join(response.streaming_content).decode()
+    first = next(line for line in body.splitlines() if line.startswith("data: {"))
+    event = json.loads(first.removeprefix("data: "))
 
-    stream_start = source.index("def _event_generator")
-    stream = source[stream_start:]
-    assert "_safe_patient_sentence" in stream
-
-    first_safe_call = stream.index("_safe_patient_sentence")
-    first_token_yield = stream.index("yield f\"data: {json.dumps({'token':")
-    assert first_safe_call < first_token_yield
+    assert event["token"] == safe
