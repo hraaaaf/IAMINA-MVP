@@ -83,7 +83,7 @@ void main() {
     expect(section + painter, isNot(contains('causal')));
   });
 
-  test('Dashboard mobile composition includes factual trend after today summary', () {
+  test('Dashboard responsive composition includes factual trend after today summary', () {
     final dashboard = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
     ).readAsStringSync();
