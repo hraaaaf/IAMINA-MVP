@@ -199,3 +199,117 @@ def test_direct_companion_stream_uses_canonical_authority_before_legacy_stream()
         chunks = list(instance.stream_chat(message))
 
     assert chunks == [expected]
+
+
+def test_conversation_has_no_local_emergency_copy_or_keyword_authority():
+    from pathlib import Path
+
+    conversation = Path(__file__).resolve().parents[2] / "companion" / "conversation.py"
+    source = conversation.read_text(encoding="utf-8")
+
+    assert "_CHAT_EMERGENCY_FR" not in source
+    assert "_CHAT_EMERGENCY_AR" not in source
+    assert "def _is_chat_emergency" not in source
+    assert "_EMERGENCY_KEYWORDS" not in source
+    assert "compose_emergency_for_patient" in source
+
+
+def test_direct_conversation_chat_uses_canonical_emergency_composer():
+    from companion.conversation import chat as conversation_chat
+
+    message = "glycémie 35"
+    decision = evaluate_input_safety(message)
+    expected = compose_emergency_for_patient(
+        decision,
+        language="fr",
+        message=message,
+    ).reply
+
+    reply = conversation_chat(
+        message,
+        memory=None,
+        deep=None,
+        language="fr",
+        patient=None,
+    )
+
+    assert reply == expected
+
+
+def test_direct_conversation_stream_uses_canonical_emergency_composer():
+    from companion.conversation import stream_chat as conversation_stream_chat
+
+    message = "glycémie 35"
+    decision = evaluate_input_safety(message)
+    expected = compose_emergency_for_patient(
+        decision,
+        language="fr",
+        message=message,
+    ).reply
+
+    chunks = list(
+        conversation_stream_chat(
+            message,
+            memory=None,
+            deep=None,
+            language="fr",
+            patient=None,
+        )
+    )
+
+    assert chunks == [expected]
+
+
+def test_nonurgent_sse_forbidden_text_is_filtered_before_patient_emission():
+    from core.medical_safety import no_prescription_message
+
+    request = RequestFactory().get(
+        "/api/v1/ai/chat/stream",
+        {"message": "bonjour"},
+    )
+    unsafe = "Tu as sûrement quelque chose."
+
+    def get_response(req):
+        return StreamingHttpResponse(
+            iter(
+                (
+                    f"data: {json.dumps({'token': unsafe})}\n\n",
+                    "data: [DONE]\n\n",
+                )
+            ),
+            content_type="text/event-stream",
+        )
+
+    response = EmergencyOperatingModeMiddleware(get_response)(request)
+    body = b"".join(response.streaming_content).decode()
+    first = next(line for line in body.splitlines() if line.startswith("data: {"))
+    event = json.loads(first.removeprefix("data: "))
+
+    assert event["token"] == no_prescription_message("fr")
+    assert unsafe not in body
+
+
+def test_safe_nonurgent_sse_token_passes_through_unchanged():
+    request = RequestFactory().get(
+        "/api/v1/ai/chat/stream",
+        {"message": "bonjour"},
+    )
+    safe = "Je peux t'aider à organiser tes observations."
+
+    def get_response(req):
+        return StreamingHttpResponse(
+            iter(
+                (
+                    f"data: {json.dumps({'token': safe})}\n\n",
+                    "data: [DONE]\n\n",
+                )
+            ),
+            content_type="text/event-stream",
+        )
+
+    response = EmergencyOperatingModeMiddleware(get_response)(request)
+    body = b"".join(response.streaming_content).decode()
+    first = next(line for line in body.splitlines() if line.startswith("data: {"))
+    event = json.loads(first.removeprefix("data: "))
+
+    assert event["token"] == safe

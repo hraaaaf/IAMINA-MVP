@@ -1,7 +1,11 @@
-"""Response-boundary enforcement of the pilot emergency operating mode.
+"""Response-boundary enforcement of patient-visible emergency and AI safety.
 
 P0.6 makes this middleware a compatibility boundary, not a second wording owner:
 any urgent JSON or SSE response is re-composed by ``core.emergency_response``.
+
+Companion Convergence P0 also treats this boundary as the final pre-emission
+safety gate for SSE tokens. Generated medical text is therefore sanitized before
+it is yielded to the patient, regardless of the upstream streaming implementation.
 """
 
 from __future__ import annotations
@@ -14,10 +18,11 @@ from django.http import HttpResponse, StreamingHttpResponse
 from core.emergency_operating_mode import decorate_emergency_payload
 from core.emergency_response import compose_emergency_for_patient
 from core.input_safety import URGENT, evaluate_input_safety
+from core.medical_safety import apply_no_prescription_policy
 
 
 class EmergencyOperatingModeMiddleware:
-    """Guarantee canonical emergency output at the final HTTP response boundary."""
+    """Guarantee canonical emergency output and safe SSE at the final HTTP boundary."""
 
     def __init__(self, get_response) -> None:
         self.get_response = get_response
@@ -26,12 +31,17 @@ class EmergencyOperatingModeMiddleware:
         response = self.get_response(request)
         if isinstance(response, StreamingHttpResponse):
             message = request.GET.get("message", "")
+            language = self._language_for_message(message)
+            chunks: Iterable[bytes | str] = response.streaming_content
             if self._is_urgent_stream(response, message):
-                response.streaming_content = self._decorate_stream(
-                    response.streaming_content,
+                chunks = self._decorate_stream(
+                    chunks,
                     request=request,
                     message=message,
                 )
+            if self._is_sse(response):
+                chunks = self._sanitize_stream(chunks, language=language)
+            response.streaming_content = chunks
             return response
 
         if self._is_json(response):
@@ -43,9 +53,12 @@ class EmergencyOperatingModeMiddleware:
         return response.get("Content-Type", "").split(";", 1)[0] == "application/json"
 
     @staticmethod
-    def _is_urgent_stream(response: StreamingHttpResponse, message: str) -> bool:
-        content_type = response.get("Content-Type", "").split(";", 1)[0]
-        return content_type == "text/event-stream" and evaluate_input_safety(message).action == URGENT
+    def _is_sse(response: StreamingHttpResponse) -> bool:
+        return response.get("Content-Type", "").split(";", 1)[0] == "text/event-stream"
+
+    @classmethod
+    def _is_urgent_stream(cls, response: StreamingHttpResponse, message: str) -> bool:
+        return cls._is_sse(response) and evaluate_input_safety(message).action == URGENT
 
     def _decorate_json_response(self, response: HttpResponse, request) -> None:
         try:
@@ -103,6 +116,30 @@ class EmergencyOperatingModeMiddleware:
         if isinstance(chunk, bytes):
             return chunk.decode("utf-8"), True
         return str(chunk), False
+
+    def _sanitize_stream(
+        self,
+        chunks: Iterable[bytes | str],
+        *,
+        language: str,
+    ) -> Iterator[bytes | str]:
+        """Sanitize each patient-visible SSE token before it leaves Django."""
+        for chunk in chunks:
+            text, is_bytes = self._decode_chunk(chunk)
+            if text.startswith("data: {"):
+                raw = text[len("data: ") :].strip()
+                try:
+                    event = json.loads(raw)
+                except json.JSONDecodeError:
+                    pass
+                else:
+                    if isinstance(event, dict) and isinstance(event.get("token"), str):
+                        safe_token = apply_no_prescription_policy(event["token"], language)
+                        if safe_token != event["token"]:
+                            event = dict(event)
+                            event["token"] = safe_token
+                            text = f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            yield text.encode("utf-8") if is_bytes else text
 
     def _decorate_stream(
         self,
