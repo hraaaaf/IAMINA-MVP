@@ -51,3 +51,14 @@ This feature explains the already-certified CGM bridge setup. It does not prove 
 
 ## Certification trigger
 A direct repository commit is intentionally used after the self-cleaning helper commit so GitHub Actions can materialize fresh exact-head jobs; this does not change runtime or visual behavior.
+
+## Final certification / closeout
+- Runtime PR: #294, squash merge `d6318790be505b80e21e1c7810c56d373ae64a49`.
+- Exact-head gates: CI #2684 SUCCESS; migration drift #2496 SUCCESS; UI screenshot audit #289 SUCCESS; Chrome browser certification #254 SUCCESS.
+- Post-merge evidence: CI #2685 SUCCESS; Chrome browser certification #255 SUCCESS.
+- Final 390×844 dialog visual score: **9.6/10**. Three steps, safety disclosure and Configure CTA are fully visible without initial scrolling or overflow.
+- Clinical authority: unchanged. No diagnosis, urgency, prediction, dose, prescription or treatment-change behavior was added.
+- Security/privacy: unchanged. No backend, persistence, credential-storage or authentication boundary changed.
+- Product truth: Dexcom/Libre do not claim direct manufacturer login; LinX retains Juggluco → Nightscout provenance.
+- Live physical-sensor/provider proof remains a separate external gate and is not claimed by this closeout.
+- Status: **CGM-GW-V2.1 CLOSED** after runtime merge and post-merge certification.
