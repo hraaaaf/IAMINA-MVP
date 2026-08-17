@@ -26,14 +26,15 @@ void main() {
       final module = File(
         'lib/modules/diabetes_module.dart',
       ).readAsStringSync();
+      final navBlock = module.split('shellRoutes:').first;
       expect(module, contains("'Mesures'"));
       expect(module, contains("'Rapports'"));
-      expect(module, contains("route: '/importer'"));
+      expect(navBlock, isNot(contains("route: '/importer'")));
+      expect(module, contains("path: '/importer'"));
 
       final shell = File(
         'lib/features/navigation/main_shell.dart',
       ).readAsStringSync();
-      expect(shell, contains("entry.route != '/importer'"));
       expect(shell, contains("label: (l10n) => l10n.profile"));
       expect(shell, contains('mobile-nav-add'));
     },

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme/amina_visual_language.dart';
@@ -18,6 +19,7 @@ import 'features/journal/add_log_screen.dart';
 import 'features/journal/ai_summary_screen.dart';
 import 'features/journal/journal_screen.dart';
 import 'features/medications/medication_screen.dart';
+import 'features/navigation/main_shell.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/reminders/reminders_screen.dart';
 import 'l10n/app_localizations.dart';
@@ -145,26 +147,74 @@ class _BrowserAuditApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surface = Uri.base.queryParameters['surface'] ?? 'dashboard';
-    final child = switch (surface) {
-      'dashboard' => DashboardCompanionEntryScreen(
-        companionService: visualCompanion,
-      ),
-      'trend' => const _BrowserTrendSurface(),
-      'kpi' => const _BrowserKpiSurface(),
-      'insight' => _BrowserInsightSurface(service: visualCompanion),
-      'companion' => const CompanionPremiumScreen(),
-      'summary' => const AISummaryScreen(),
-      'profile' => const ProfileScreen(),
-      'journal' => const JournalScreen(),
-      'importer' => const ImportScreen(),
-      'document-import' => const DocumentImportPremiumScreen(),
-      'add-log' => const AddLogScreen(),
-      'medications' => const MedicationScreen(),
-      'reminders' => const RemindersScreen(),
-      _ => DashboardCompanionEntryScreen(companionService: visualCompanion),
-    };
+    final router = GoRouter(
+      initialLocation: _pathForSurface(surface),
+      routes: [
+        ShellRoute(
+          builder: (context, state, child) => MainShell(child: child),
+          routes: [
+            GoRoute(
+              path: '/dashboard',
+              builder: (context, state) => DashboardCompanionEntryScreen(
+                companionService: visualCompanion,
+              ),
+            ),
+            GoRoute(
+              path: '/journal',
+              builder: (context, state) => const JournalScreen(),
+            ),
+            GoRoute(
+              path: '/summary',
+              builder: (context, state) => const AISummaryScreen(),
+            ),
+            GoRoute(
+              path: '/profile',
+              builder: (context, state) => const ProfileScreen(),
+            ),
+          ],
+        ),
+        GoRoute(
+          path: '/importer',
+          builder: (context, state) => const ImportScreen(),
+        ),
+        GoRoute(
+          path: '/document-import',
+          builder: (context, state) => const DocumentImportPremiumScreen(),
+        ),
+        GoRoute(
+          path: '/add-log',
+          builder: (context, state) => const AddLogScreen(),
+        ),
+        GoRoute(
+          path: '/medications',
+          builder: (context, state) => const MedicationScreen(),
+        ),
+        GoRoute(
+          path: '/reminders',
+          builder: (context, state) => const RemindersScreen(),
+        ),
+        GoRoute(
+          path: '/companion',
+          builder: (context, state) => const CompanionPremiumScreen(),
+        ),
+        GoRoute(
+          path: '/trend',
+          builder: (context, state) => const _BrowserTrendSurface(),
+        ),
+        GoRoute(
+          path: '/kpi',
+          builder: (context, state) => const _BrowserKpiSurface(),
+        ),
+        GoRoute(
+          path: '/insight',
+          builder: (context, state) => _BrowserInsightSurface(
+            service: visualCompanion,
+          ),
+        ),
+      ],
+    );
 
-    return MaterialApp(
+    return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       theme: AminaVisualLanguage.harmonize(AminaTheme.light),
       darkTheme: AminaVisualLanguage.harmonize(AminaTheme.dark),
@@ -177,10 +227,27 @@ class _BrowserAuditApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: child,
+      routerConfig: router,
     );
   }
 }
+
+String _pathForSurface(String surface) => switch (surface) {
+  'dashboard' => '/dashboard',
+  'journal' => '/journal',
+  'summary' => '/summary',
+  'profile' => '/profile',
+  'importer' => '/importer',
+  'document-import' => '/document-import',
+  'add-log' => '/add-log',
+  'medications' => '/medications',
+  'reminders' => '/reminders',
+  'companion' => '/companion',
+  'trend' => '/trend',
+  'kpi' => '/kpi',
+  'insight' => '/insight',
+  _ => '/dashboard',
+};
 
 class _BrowserTrendSurface extends StatelessWidget {
   const _BrowserTrendSurface();
