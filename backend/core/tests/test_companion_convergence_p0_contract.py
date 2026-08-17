@@ -1,11 +1,10 @@
 import json
 from pathlib import Path
 
-from django.http import StreamingHttpResponse
-from django.test import RequestFactory
-
 from core import medical_safety
 from core.middleware import emergency_operating_mode
+from django.http import StreamingHttpResponse
+from django.test import RequestFactory
 
 
 ROOT = Path(__file__).resolve().parents[2]
