@@ -201,39 +201,6 @@ def _fallback_reply(ctx: DomainContext, language: str) -> str:
     )
 
 
-_PROACTIVE_TEMPLATES = {
-    "discouragement": {
-        "ar-MA": "سلام! المرة اللي فاتت بدوت شوية متعب/ة — واش مزيان دابا؟",
-        "ar": "مرحباً! في المرة الأخيرة بدوت محبطاً قليلاً — كيف حالك اليوم؟",
-        "fr": "Bonjour ! La dernière fois tu semblais un peu découragé·e — comment tu vas aujourd'hui ?",
-    },
-    "fatigue": {
-        "ar-MA": "سلام! كنتي عيّان/ة المرة اللي فاتت — واش ارتحتي شوية؟",
-        "ar": "مرحباً! بدوت متعباً في المرة الأخيرة — أتمنى أنك أخذت قسطاً من الراحة.",
-        "fr": "Bonjour ! La dernière fois tu étais fatigué·e — j'espère que tu as pu te reposer.",
-    },
-    "fear": {
-        "ar-MA": "سلام! كنتي خايف/ة شوية المرة اللي فاتت — واش كلشي مزيان دابا؟",
-        "ar": "مرحباً! يبدو أنك كنت قلقاً في المرة الأخيرة — هل أنت بخير اليوم؟",
-        "fr": "Bonjour ! Tu avais l'air inquiet·e la dernière fois — est-ce que tout va bien ?",
-    },
-}
-_PROACTIVE_DEFAULT = {
-    "ar-MA": "سلام! واش مزيان اليوم؟",
-    "ar": "مرحباً! كيف حالك اليوم؟",
-    "fr": "Bonjour ! Comment tu vas aujourd'hui ?",
-}
-
-
-def _inject_proactive_followup(memory, language: str, patient, signal: str) -> None:
-    """Persist an IAmina-initiated check-in message before the patient's first message."""
-    lang = language if language in ("ar-MA", "ar") else "fr"
-    templates = _PROACTIVE_TEMPLATES.get(signal, _PROACTIVE_DEFAULT)
-    text = templates.get(lang, templates.get("fr", ""))
-    if text:
-        _append_turn(patient, "assistant", text)
-
-
 def chat(
     message: str, memory, deep, llm=None, language: str = "fr", patient=None, context_days: int = 14
 ) -> str:
@@ -275,12 +242,9 @@ def chat(
     history_turns = _recent_turns(patient, 10)
     history_text = _trim_history(history_turns, _HISTORY_CHAR_BUDGET, patient=patient)
 
-    # 2b. Proactive follow-up: if this is the first user message of a new session
-    #     and the patient had a concern in the last session, prepend a warm check-in.
-    is_first_message = _turn_count(patient) == 0
-    if is_first_message and memory.last_concern and memory.emotional_signals:
-        recent_signal = memory.emotional_signals[-1] if memory.emotional_signals else ""
-        _inject_proactive_followup(memory, language, patient, recent_signal)
+    # Emotional memory remains available below for reactive tone and prompt context.
+    # It does not emit an assistant turn on its own; proactive delivery is owned by
+    # the governed proactive insight lifecycle and attention budget.
 
     # 3. Session context — cached 30min, one SQL run per session not per message
     ctx = _get_context(patient, context_days, language)
