@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -22,6 +23,7 @@ import 'features/medications/medication_screen.dart';
 import 'features/navigation/main_shell.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/reminders/reminders_screen.dart';
+import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
@@ -98,8 +100,16 @@ class _BrowserAuditCompanionService extends CompanionService {
   );
 }
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (error) {
+    debugPrint('Browser audit Firebase init unavailable: $error');
+  }
 
   final db = AppDatabase.defaults();
   final auth = AuthService();
