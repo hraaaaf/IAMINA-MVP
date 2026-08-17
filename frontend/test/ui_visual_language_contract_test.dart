@@ -108,6 +108,8 @@ void main() {
     expect(browserMain, contains('await db.seedDemoData()'));
     expect(browserMain, contains("queryParameters['surface']"));
     expect(browserMain, contains('DocumentImportPremiumScreen'));
+    expect(browserMain, contains('Firebase.initializeApp'));
+    expect(browserMain, contains('DefaultFirebaseOptions.currentPlatform'));
     expect(browserMain, isNot(contains("import 'main.dart'")));
     expect(browserWorkflow, contains('lib/ui_browser_audit_main.dart'));
     expect(browserWorkflow, contains('flutter build web --release'));
@@ -115,6 +117,10 @@ void main() {
     expect(browserWorkflow, contains('Emulation.setDeviceMetricsOverride'));
     expect(browserWorkflow, contains('suspiciously small'));
     expect(browserWorkflow, contains('distinct renders'));
-    expect(browserWorkflow, contains('iamina-ui-browser-cert-390x844'));
+    expect(browserWorkflow, contains('iamina-ui-browser-cert-multi-viewport'));
+    expect(browserWorkflow, contains('"390 844 true"'));
+    expect(browserWorkflow, contains('"768 1024 false"'));
+    expect(browserWorkflow, contains('"1280 900 false"'));
+    expect(browserWorkflow, contains('test "$total" -eq 39'));
   });
 }
