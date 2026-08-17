@@ -5,19 +5,18 @@ import 'package:flutter_test/flutter_test.dart';
 String _read(String path) => File(path).readAsStringSync();
 
 void main() {
-  test('wide shell uses the canonical IAmina identity', () {
+  test('wide shell does not duplicate the dashboard brand', () {
     final source = _read('lib/features/navigation/main_shell.dart');
 
-    expect(source, contains('AppLocalizations.of(context)!.appTitle'));
-    expect(source, contains('AppLocalizations.of(context)!.appSubtitle'));
-    expect(source, isNot(contains('AppLocalizations.of(context)!.brandName')));
-    expect(
-      source,
-      isNot(contains('AppLocalizations.of(context)!.brandTagShort')),
-    );
+    expect(source, isNot(contains('class _BrandHeader')));
+    expect(source, isNot(contains('class _EcgMarkPainter')));
+    expect(source, isNot(contains('AppLocalizations.of(context)!.appTitle')));
+    expect(source, isNot(contains('AppLocalizations.of(context)!.appSubtitle')));
+    expect(source, contains('const SizedBox(height: 16)'));
+    expect(source, contains('_AddButton(isWide: isWide)'));
   });
 
-  test('canonical shell identity already exists in FR EN AR catalogs', () {
+  test('canonical IAmina identity remains available in FR EN AR catalogs', () {
     final fr = _read('lib/l10n/app_fr.arb');
     final en = _read('lib/l10n/app_en.arb');
     final ar = _read('lib/l10n/app_ar.arb');
