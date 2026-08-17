@@ -5,16 +5,18 @@ import 'package:flutter_test/flutter_test.dart';
 String _read(String path) => File(path).readAsStringSync();
 
 void main() {
-  test('Importer is the only primary navigation entry for acquisition', () {
+  test('Importer remains the acquisition entry without becoming a persistent root', () {
     final module = _read('lib/modules/diabetes_module.dart');
     final premium = _read(
       'lib/features/documents/document_import_premium_screen.dart',
     );
     final navBlock = module.split('shellRoutes:').first;
 
-    expect(navBlock, contains("route: '/importer'"));
+    expect(navBlock, isNot(contains("route: '/importer'")));
     expect(navBlock, isNot(contains("route: '/pulper'")));
+    expect(module, contains("path: '/importer'"));
     expect(module, contains("path: '/pulper'"));
+    expect(module, contains('ImportScreen'));
     expect(module, contains('DocumentImportPremiumScreen'));
     expect(premium, contains('DocumentImportScreen'));
   });
