@@ -1,7 +1,7 @@
 # IAMINA — Companion Convergence Roadmap
 
 Status: ACTIVE
-Baseline: `main@4d5c32eeaddfa4745495d71acad32db6659a7f93`
+Baseline: `main@f6ba1e3758043be211a4e403f8e603080588cc72`
 
 ## Goal
 
@@ -78,31 +78,47 @@ Status: CLOSED
 Goal: expose one read-only, module-neutral Companion Context contract for both UX and chat narration.
 
 Success:
-- conversational runtime consumes governed pattern/change/evidence/suggestion context rather than reconstructing parallel clinical meaning from raw diabetes services;
-- source provenance, uncertainty and limitations survive into narration input;
-- chassis does not depend directly on diabetes models/services for clinical semantics;
-- `BaseEngine` remains the single module→chassis clinical contract; no second registry or parallel clinical port is introduced.
+- `DomainContext` remains the instant/session analytical contract;
+- a distinct read-only `CompanionContext` carries governed longitudinal pattern/change/evidence/limitations/after-visit state;
+- `BaseEngine` remains the single module→chassis clinical contract and exposes the backward-compatible read-only `companion_context()` hook;
+- `core.companion.clinical` resolves longitudinal context only through the active engine selected by `ModuleRegistry`;
+- diabetes adapts its certified `CompanionOverview` inside `EvidenceGuardedDiabetesEngine` rather than leaking diabetes services into the chassis;
+- source provenance, uncertainty/limitations and longitudinal semantics survive module→chassis conversion;
+- proactive delivery remains a separate command and this read-only path consumes no attention budget;
+- no diagnosis, prescription, dose, treatment or new autonomous medical authority is added.
 
-Current direction:
-- keep `DomainContext` as the session/instant clinical output contract;
-- add a distinct read-only `CompanionContext` for longitudinal governed state;
-- resolve it through the active module engine selected by `ModuleRegistry`;
-- adapt diabetes `CompanionOverview` inside `EvidenceGuardedDiabetesEngine` rather than importing diabetes services into the chassis;
-- proactive delivery remains a separate explicit command that consumes the attention budget.
+Verified proof:
+- PR #313 exact head `ea35dc29d4df406859f46c35f01a5f56719cb3a1`;
+- runtime diff limited to 5 files: shared CompanionContext contract, BaseEngine hook, chassis resolver, diabetes adapter and dedicated P2 regression tests;
+- exact-head CI #2771 SUCCESS: Ruff, import-linter, LLM gateway anti-bypass, AI egress anti-bypass, Bandit, OpenAPI, backend pytest, PostgreSQL full suite, Flutter analyze/tests, secret hygiene and PR-size advisory;
+- exact-head Django migration drift #2583 SUCCESS;
+- 0 unresolved review threads and branch 0 behind `main` before merge;
+- expected-head merge `f6ba1e3758043be211a4e403f8e603080588cc72`;
+- post-merge Django migration drift #2584 SUCCESS;
+- post-merge CI #2772 SUCCESS: backend pytest, PostgreSQL full suite, Flutter analyze/tests, architecture/security gates and secret hygiene all passed.
 
-Status: NEXT
+Status: CLOSED
 
 ## P3 — Narrator-Only Conversation Runtime
 
 Goal: make the conversational bot a narrator/interface over approved Companion Context.
 
 Success:
+- conversational runtime consumes governed `CompanionContext` rather than reconstructing longitudinal meaning itself;
 - LLM cannot add diagnosis, clinical priority, causality, prescription, dose or treatment action;
 - module-neutral conversation orchestration;
 - memory is clearly separated into conversational relationship memory vs clinical truth;
-- degraded/offline fallbacks come from module contracts rather than diabetes-specific chassis copy.
+- degraded/offline fallbacks come from module contracts rather than diabetes-specific chassis copy;
+- diabetes/TIR-specific fallback wording is removed from the chassis conversation layer.
 
-Status: NOT STARTED
+Current direction:
+- retain deterministic safety classification and canonical emergency composition ahead of any generative call;
+- inject approved `CompanionContext` as bounded narration input with provenance/limitations preserved;
+- keep `DomainContext` for instant session state where still needed, without allowing it to become a second longitudinal authority;
+- remove diabetes-specific `_fallback_reply()` semantics from `companion/conversation.py` by routing fallback content through the active module contract;
+- retain relationship/emotional memory only for reactive tone/history, never clinical truth or proactive eligibility.
+
+Status: NEXT
 
 ## P4 — Conversation + Proactivity Evals
 
