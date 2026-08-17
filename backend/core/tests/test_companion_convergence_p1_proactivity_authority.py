@@ -1,9 +1,4 @@
-from pathlib import Path
-from types import SimpleNamespace
-from unittest.mock import patch
-
-
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = __import__("pathlib").Path(__file__).resolve().parents[2]
 CONVERSATION = ROOT / "companion" / "conversation.py"
 PROACTIVE_API = ROOT / "diabetes" / "api" / "v1" / "proactive.py"
 
@@ -50,33 +45,42 @@ class _Deep:
 
 class _LLM:
     def complete(self, system, user_prompt):
-        return SimpleNamespace(content='{"reply":"Je suis là.","concern_detected":""}')
+        simple_namespace = __import__("types").SimpleNamespace
+        return simple_namespace(content='{"reply":"Je suis là.","concern_detected":""}')
 
 
 def test_prior_emotional_memory_cannot_emit_an_assistant_turn_before_user_message():
-    from companion import conversation
-    from core.contracts.domain_context import DomainContext
+    conversation = __import__("companion.conversation", fromlist=["conversation"])
+    domain_context_module = __import__(
+        "core.contracts.domain_context",
+        fromlist=["DomainContext"],
+    )
+    mock_module = __import__("unittest.mock", fromlist=["patch"])
+    simple_namespace = __import__("types").SimpleNamespace
 
-    patient = SimpleNamespace(id=991, first_name="")
+    patient = simple_namespace(id=991, first_name="")
     memory = _Memory()
     deep = _Deep()
-    tone = SimpleNamespace(mode=SimpleNamespace(value="gentle"))
+    tone = simple_namespace(mode=simple_namespace(value="gentle"))
 
     with (
-        patch("companion.conversation._recent_turns", return_value=[]),
-        patch(
+        mock_module.patch("companion.conversation._recent_turns", return_value=[]),
+        mock_module.patch(
             "companion.conversation._get_context",
-            return_value=DomainContext.empty(language="fr"),
+            return_value=domain_context_module.DomainContext.empty(language="fr"),
         ),
-        patch("companion.conversation.select_tone", return_value=tone),
-        patch("companion.conversation.get_tone_instruction", return_value=""),
-        patch(
+        mock_module.patch("companion.conversation.select_tone", return_value=tone),
+        mock_module.patch("companion.conversation.get_tone_instruction", return_value=""),
+        mock_module.patch(
             "companion.conversation.compute_state",
-            return_value=SimpleNamespace(concern_level=0.0),
+            return_value=simple_namespace(concern_level=0.0),
         ),
-        patch("companion.conversation.state_to_prompt", return_value=""),
-        patch("companion.conversation.apply_advice_throttle", side_effect=lambda reply, _: reply),
-        patch("companion.conversation._append_turn") as append_turn,
+        mock_module.patch("companion.conversation.state_to_prompt", return_value=""),
+        mock_module.patch(
+            "companion.conversation.apply_advice_throttle",
+            side_effect=lambda reply, _: reply,
+        ),
+        mock_module.patch("companion.conversation._append_turn") as append_turn,
     ):
         reply = conversation.chat(
             "Bonjour",
