@@ -4,8 +4,8 @@ from pathlib import Path
 from django.http import StreamingHttpResponse
 from django.test import RequestFactory
 
-from core.medical_safety import no_prescription_message
-from core.middleware.emergency_operating_mode import EmergencyOperatingModeMiddleware
+from core import medical_safety
+from core.middleware import emergency_operating_mode
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -22,13 +22,13 @@ def test_conversation_has_no_local_emergency_copy_or_keyword_authority():
     assert "compose_emergency_for_patient" in source
 
 
-def test_nonurgent_sse_prescription_text_is_filtered_before_patient_emission():
+def test_nonurgent_sse_forbidden_text_is_filtered_before_patient_emission():
     request = RequestFactory().get(
         "/api/v1/ai/chat/stream",
         {"message": "bonjour"},
     )
 
-    unsafe = "Prends 5 unités d'insuline rapide maintenant."
+    unsafe = "Tu as sûrement quelque chose."
 
     def get_response(req):
         return StreamingHttpResponse(
@@ -41,12 +41,13 @@ def test_nonurgent_sse_prescription_text_is_filtered_before_patient_emission():
             content_type="text/event-stream",
         )
 
-    response = EmergencyOperatingModeMiddleware(get_response)(request)
+    middleware = emergency_operating_mode.EmergencyOperatingModeMiddleware(get_response)
+    response = middleware(request)
     body = b"".join(response.streaming_content).decode()
     first = next(line for line in body.splitlines() if line.startswith("data: {"))
     event = json.loads(first.removeprefix("data: "))
 
-    assert event["token"] == no_prescription_message("fr")
+    assert event["token"] == medical_safety.no_prescription_message("fr")
     assert unsafe not in body
 
 
@@ -68,7 +69,8 @@ def test_safe_nonurgent_sse_token_passes_through_unchanged():
             content_type="text/event-stream",
         )
 
-    response = EmergencyOperatingModeMiddleware(get_response)(request)
+    middleware = emergency_operating_mode.EmergencyOperatingModeMiddleware(get_response)
+    response = middleware(request)
     body = b"".join(response.streaming_content).decode()
     first = next(line for line in body.splitlines() if line.startswith("data: {"))
     event = json.loads(first.removeprefix("data: "))
