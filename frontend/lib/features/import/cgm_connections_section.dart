@@ -181,6 +181,16 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
     }
   }
 
+  Future<void> _showHowTo(_CgmSourcePresentation source) async {
+    final configure = await showDialog<bool>(
+      context: context,
+      builder: (context) => _CgmHowToDialog(source: source),
+    );
+    if (configure == true && mounted) {
+      await _configure(source);
+    }
+  }
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
@@ -317,9 +327,26 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
                 ),
               ),
               const SizedBox(width: 8),
-              _CgmBadge(
-                label: connected ? l10n.cgmConnected : l10n.cgmViaNightscout,
-                connected: connected,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _CgmBadge(
+                    label: connected ? l10n.cgmConnected : l10n.cgmViaNightscout,
+                    connected: connected,
+                  ),
+                  const SizedBox(height: 2),
+                  TextButton.icon(
+                    onPressed: () => _showHowTo(source),
+                    icon: const Icon(Icons.help_outline_rounded, size: 14),
+                    label: Text(l10n.cgmHowToUse),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      visualDensity: VisualDensity.compact,
+                      textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -394,6 +421,165 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _CgmHowToDialog extends StatelessWidget {
+  final _CgmSourcePresentation source;
+
+  const _CgmHowToDialog({required this.source});
+
+  String _bridgeBody(AppLocalizations l10n) {
+    return switch (source.id) {
+      'dexcom' => l10n.cgmHowToDexcomBridge,
+      'libre' => l10n.cgmHowToLibreBridge,
+      'linx' => l10n.cgmHowToLinxBridge,
+      _ => l10n.cgmCompatibleBridge,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final steps = [
+      (l10n.cgmHowToBridgeTitle, _bridgeBody(l10n)),
+      (l10n.cgmHowToAccessTitle, l10n.cgmHowToAccessBody),
+      (l10n.cgmHowToConnectTitle, l10n.cgmHowToConnectBody),
+    ];
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AminaTheme.teal50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(source.icon, size: 20, color: AminaTheme.teal700),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.cgmHowToTitle(source.title),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AminaTheme.ink900,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          source.id == 'linx' ? l10n.cgmLinxBridge : l10n.cgmCompatibleBridge,
+                          style: const TextStyle(fontSize: 12, height: 1.4, color: AminaTheme.ink500),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                    onPressed: () => Navigator.pop(context, false),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 22),
+              for (var i = 0; i < steps.length; i++) ...[
+                _CgmHowToStep(number: i + 1, title: steps[i].$1, body: steps[i].$2),
+                if (i < steps.length - 1) const SizedBox(height: 18),
+              ],
+              const SizedBox(height: 22),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AminaTheme.ink50,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AminaTheme.ink200),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.shield_outlined, size: 18, color: AminaTheme.ink500),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        l10n.cgmHowToSafety,
+                        style: const TextStyle(fontSize: 11, height: 1.45, color: AminaTheme.ink700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.pop(context, true),
+                  icon: const Icon(Icons.settings_outlined, size: 17),
+                  label: Text(l10n.cgmConfigure),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CgmHowToStep extends StatelessWidget {
+  final int number;
+  final String title;
+  final String body;
+
+  const _CgmHowToStep({required this.number, required this.title, required this.body});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          alignment: Alignment.center,
+          decoration: const BoxDecoration(color: AminaTheme.teal600, shape: BoxShape.circle),
+          child: Text(
+            '$number',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AminaTheme.ink900),
+              ),
+              const SizedBox(height: 4),
+              Text(body, style: const TextStyle(fontSize: 12, height: 1.45, color: AminaTheme.ink600)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
