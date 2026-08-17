@@ -54,16 +54,17 @@ void main() {
   });
 
   test(
-    'mobile navigation exposes approved destinations while Import stays reachable',
+    'mobile navigation exposes roots while Import stays reachable as a deep flow',
     () {
       final module = _read('lib/modules/diabetes_module.dart');
       final shell = _read('lib/features/navigation/main_shell.dart');
       final dashboard = _read(
         'lib/features/dashboard/dashboard_convergent_screen.dart',
       );
+      final navBlock = module.split('shellRoutes:').first;
 
-      expect(module, contains("route: '/importer'"));
-      expect(shell, contains("entry.route != '/importer'"));
+      expect(navBlock, isNot(contains("route: '/importer'")));
+      expect(module, contains("path: '/importer'"));
       expect(shell, contains('_GlassNavDestination('));
       expect(shell, contains('entry: mobileEntries[index]'));
       expect(shell, contains("ValueKey('mobile-nav-\${entry.route}')"));
@@ -74,6 +75,7 @@ void main() {
         isTrue,
       );
       expect(shell, contains("GoRouter.of(context).go('/ajouter')"));
+      expect(dashboard, contains("go('/importer')"));
       expect(dashboard, contains("ValueKey('dashboard-reminders-action')"));
       expect(dashboard, contains("GoRouter.of(context).go('/reminders')"));
     },
