@@ -9,6 +9,7 @@ import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../services/companion_service.dart';
+import 'widgets/dashboard_adaptive_kpi_section.dart';
 import 'widgets/dashboard_today_section.dart';
 import 'widgets/dashboard_trend_section.dart';
 
@@ -255,6 +256,12 @@ class _DashboardBody extends StatelessWidget {
                       ),
                       const SizedBox(height: 18),
                       DashboardTrendSection(
+                        unit: unit,
+                        low: low,
+                        high: high,
+                      ),
+                      const SizedBox(height: 18),
+                      DashboardAdaptiveKpiSection(
                         unit: unit,
                         low: low,
                         high: high,

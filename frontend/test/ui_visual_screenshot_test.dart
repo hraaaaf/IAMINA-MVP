@@ -11,6 +11,7 @@ import 'package:amina/data/models/companion_models.dart';
 import 'package:amina/features/companion/companion_premium_screen.dart';
 import 'package:amina/features/dashboard/dashboard_companion_entry_screen.dart';
 import 'package:amina/features/dashboard/dashboard_screen.dart';
+import 'package:amina/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart';
 import 'package:amina/features/dashboard/widgets/dashboard_trend_section.dart';
 import 'package:amina/features/documents/document_import_screen.dart';
 import 'package:amina/features/import/import_screen.dart';
@@ -179,6 +180,29 @@ class _TrendAuditSurface extends StatelessWidget {
   }
 }
 
+class _KpiAuditSurface extends StatelessWidget {
+  final PatientProfileData? profile;
+
+  const _KpiAuditSurface({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4FBF9),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: DashboardAdaptiveKpiSection(
+            unit: profile?.unitPreference ?? 'mg/dL',
+            low: profile?.targetRangeLow,
+            high: profile?.targetRangeHigh,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CaptureSpec {
   final String name;
   final Size size;
@@ -269,6 +293,17 @@ void main() {
         'dashboard-trend-ar-360x560',
         compactMobile,
         () => _TrendAuditSurface(profile: deps.profile),
+        locale: const Locale('ar'),
+      ),
+      _CaptureSpec(
+        'dashboard-kpi-390x844',
+        mobile,
+        () => _KpiAuditSurface(profile: deps.profile),
+      ),
+      _CaptureSpec(
+        'dashboard-kpi-ar-360x560',
+        compactMobile,
+        () => _KpiAuditSurface(profile: deps.profile),
         locale: const Locale('ar'),
       ),
       _CaptureSpec('journal-390x844', mobile, () => const JournalScreen()),
