@@ -21,9 +21,9 @@ permissions:
 
 jobs:
   browser-cert:
-    name: Real Chrome patient surfaces 390x844
+    name: Real Chrome patient surfaces mobile + desktop
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     defaults:
       run:
@@ -95,6 +95,9 @@ jobs:
           from websocket import create_connection
 
           target = sys.argv[1]
+          width = int(sys.argv[2])
+          height = int(sys.argv[3])
+          mobile = sys.argv[4].lower() == 'true'
           endpoint = 'http://127.0.0.1:9222/json/list'
           pages = json.load(urllib.request.urlopen(endpoint))
           page = next(item for item in pages if item.get('type') == 'page')
@@ -112,13 +115,13 @@ jobs:
 
           call('Page.enable')
           call('Emulation.setDeviceMetricsOverride', {
-              'width': 390,
-              'height': 844,
+              'width': width,
+              'height': height,
               'deviceScaleFactor': 1,
-              'mobile': True,
+              'mobile': mobile,
           })
           call('Page.reload', {'ignoreCache': True})
-          time.sleep(15)
+          time.sleep(12)
           shot = call('Page.captureScreenshot', {
               'format': 'png',
               'captureBeyondViewport': False,
@@ -133,61 +136,68 @@ jobs:
           PY
 
           surfaces=(dashboard trend kpi insight companion summary profile journal importer document-import add-log medications reminders)
-          for surface in "${surfaces[@]}"; do
-            target="$GITHUB_WORKSPACE/ui-browser-cert/${surface}-390x844.png"
-            profile_dir="$(mktemp -d)"
-            "$CHROME" \
-              --headless=new \
-              --no-sandbox \
-              --enable-unsafe-swiftshader \
-              --hide-scrollbars \
-              --remote-allow-origins='*' \
-              --remote-debugging-port=9222 \
-              --user-data-dir="$profile_dir" \
-              --window-size=390,844 \
-              "http://127.0.0.1:7358/?surface=${surface}" \
-              >/tmp/iamina-chrome-${surface}.log 2>&1 &
-            CHROME_PID=$!
+          viewports=("390 844 true" "768 1024 false" "1280 900 false")
 
-            DEVTOOLS=0
-            for _ in $(seq 1 30); do
-              if curl -fsS http://127.0.0.1:9222/json/list >/dev/null; then
-                DEVTOOLS=1
-                break
+          for viewport in "${viewports[@]}"; do
+            read -r width height mobile <<< "$viewport"
+            for surface in "${surfaces[@]}"; do
+              target="$GITHUB_WORKSPACE/ui-browser-cert/${surface}-${width}x${height}.png"
+              profile_dir="$(mktemp -d)"
+              "$CHROME" \
+                --headless=new \
+                --no-sandbox \
+                --enable-unsafe-swiftshader \
+                --hide-scrollbars \
+                --remote-allow-origins='*' \
+                --remote-debugging-port=9222 \
+                --user-data-dir="$profile_dir" \
+                --window-size=${width},${height} \
+                "http://127.0.0.1:7358/?surface=${surface}" \
+                >/tmp/iamina-chrome-${surface}-${width}x${height}.log 2>&1 &
+              CHROME_PID=$!
+
+              DEVTOOLS=0
+              for _ in $(seq 1 30); do
+                if curl -fsS http://127.0.0.1:9222/json/list >/dev/null; then
+                  DEVTOOLS=1
+                  break
+                fi
+                sleep 1
+              done
+              if [ "$DEVTOOLS" != "1" ]; then
+                cat "/tmp/iamina-chrome-${surface}-${width}x${height}.log" >&2 || true
+                cleanup_chrome "$CHROME_PID" "$profile_dir"
+                exit 1
               fi
-              sleep 1
-            done
-            if [ "$DEVTOOLS" != "1" ]; then
-              cat "/tmp/iamina-chrome-${surface}.log" >&2 || true
+
+              python3 /tmp/capture_cdp.py "$target" "$width" "$height" "$mobile"
               cleanup_chrome "$CHROME_PID" "$profile_dir"
-              exit 1
-            fi
 
-            python3 /tmp/capture_cdp.py "$target"
-            cleanup_chrome "$CHROME_PID" "$profile_dir"
+              test -s "$target"
+              bytes="$(stat -c%s "$target")"
+              if [ "$bytes" -lt 10000 ]; then
+                echo "Capture ${surface}-${width}x${height} is suspiciously small (${bytes} bytes)" >&2
+                exit 1
+              fi
+            done
 
-            test -s "$target"
-            bytes="$(stat -c%s "$target")"
-            if [ "$bytes" -lt 10000 ]; then
-              echo "Capture ${surface} is suspiciously small (${bytes} bytes)" >&2
+            count="$(find "$GITHUB_WORKSPACE/ui-browser-cert" -name "*-${width}x${height}.png" | wc -l)"
+            test "$count" -eq 13
+            unique="$(sha256sum "$GITHUB_WORKSPACE"/ui-browser-cert/*-${width}x${height}.png | awk '{print $1}' | sort -u | wc -l)"
+            if [ "$unique" -lt 11 ]; then
+              echo "Browser certification at ${width}x${height} produced only ${unique} distinct renders" >&2
               exit 1
             fi
           done
 
-          count="$(find "$GITHUB_WORKSPACE/ui-browser-cert" -name '*-390x844.png' | wc -l)"
-          test "$count" -eq 13
-
-          unique="$(sha256sum "$GITHUB_WORKSPACE"/ui-browser-cert/*-390x844.png | awk '{print $1}' | sort -u | wc -l)"
-          if [ "$unique" -lt 11 ]; then
-            echo "Browser certification produced only ${unique} distinct renders" >&2
-            exit 1
-          fi
+          total="$(find "$GITHUB_WORKSPACE/ui-browser-cert" -name '*.png' | wc -l)"
+          test "$total" -eq 39
 
       - name: Upload real browser screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iamina-ui-browser-cert-390x844
+          name: iamina-ui-browser-cert-multi-viewport
           path: ui-browser-cert/*.png
           if-no-files-found: warn
           retention-days: 7
