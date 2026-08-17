@@ -10,6 +10,7 @@ from companion.tone import ToneContext, ToneMode, get_tone_instruction, select_t
 from core.companion.clinical import get_domain_context
 from core.companion.ports import get_conversation_store
 from core.contracts.domain_context import DomainContext
+from core.emergency_response import compose_emergency_for_patient
 from core.input_safety import (
     INSULIN_BLOCK,
     PRESCRIPTION_BLOCK,
@@ -74,26 +75,6 @@ _DARIJA_LATIN_RE = re.compile(
 )
 _HISTORY_CHAR_BUDGET = 3000  # ~750 tokens — hard cap regardless of message count
 
-_CHAT_EMERGENCY_FR = (
-    "⚠️ Si tu te sens mal, mange du sucre maintenant et contacte ton médecin ou le 15. "
-    "Ce n'est pas le moment de chatter — prends soin de toi d'abord."
-)
-_CHAT_EMERGENCY_AR = (
-    "⚠️ إلا كانعندك شي مشكل دابا، كول شي حلو وتسنّت للطبيب. ماتاخدش وقتك هنا — سيراك أولى."
-)
-_EMERGENCY_KEYWORDS = (
-    "je me sens mal",
-    "je fais une hypo",
-    "j'ai le vertige",
-    "je tremble",
-    "je vais m'évanouir",
-    "j'ai perdu connaissance",
-    "je suis très mal",
-    "sokkar hbt",
-    "dawar",
-    "machi mzyan",
-)
-
 # Emotional frustration / fatigue signals — bypasses clinical context injection
 _EMOTIONAL_RE = re.compile(
     r"\b("
@@ -108,11 +89,6 @@ _EMOTIONAL_RE = re.compile(
     r")\b",
     re.IGNORECASE,
 )
-
-
-def _is_chat_emergency(message: str) -> bool:
-    msg = message.lower()
-    return any(kw in msg for kw in _EMERGENCY_KEYWORDS)
 
 
 def _is_emotional(message: str) -> bool:
@@ -266,7 +242,12 @@ def chat(
     decision = evaluate_input_safety(message)
     if decision.action == URGENT:
         _append_turn(patient, "user", message)
-        reply = _CHAT_EMERGENCY_AR if language == "ar-MA" else _CHAT_EMERGENCY_FR
+        reply = compose_emergency_for_patient(
+            decision,
+            patient=patient,
+            language=language,
+            message=message,
+        ).reply
         _append_turn(patient, "assistant", reply)
         return reply
 
@@ -446,7 +427,12 @@ def stream_chat(
     decision = evaluate_input_safety(message)
     if decision.action == URGENT:
         _append_turn(patient, "user", message)
-        reply = _CHAT_EMERGENCY_AR if language == "ar-MA" else _CHAT_EMERGENCY_FR
+        reply = compose_emergency_for_patient(
+            decision,
+            patient=patient,
+            language=language,
+            message=message,
+        ).reply
         _append_turn(patient, "assistant", reply)
         yield reply
         return
@@ -568,7 +554,8 @@ def stream_chat(
         memory.save()
         return
 
-    # Stream tokens directly from LLM
+    # Stream tokens directly from LLM to the route-level sentence hold. The final
+    # HTTP response boundary sanitizes every SSE token before patient emission.
     assembled = []
     try:
         for chunk in llm.stream(system, user_prompt):
@@ -582,8 +569,7 @@ def stream_chat(
 
     full_reply = "".join(assembled)
     # Advice throttle on assembled reply — applied before DB persist.
-    # Note: tokens already streamed to client are unchanged (SSE constraint).
-    # The guarantee (no repeat within 24h) is on what is recorded and stamped.
+    # Patient-visible SSE is independently sanitized at the final HTTP boundary.
     full_reply = apply_advice_throttle(full_reply, deep)
     full_reply = apply_no_prescription_policy(full_reply, language)
     deep.save()
