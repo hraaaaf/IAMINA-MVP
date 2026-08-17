@@ -1,7 +1,7 @@
 # IAMINA — Companion Convergence Roadmap
 
 Status: ACTIVE
-Baseline: `main@6e2a22699dc6ae643a8186c055c37e8875b586ef`
+Baseline: `main@4d5c32eeaddfa4745495d71acad32db6659a7f93`
 
 ## Goal
 
@@ -38,18 +38,16 @@ Success:
 - route-local compatibility text, if still present internally, cannot become patient-visible authority;
 - regression tests prove canonical emergency parity and pre-emission filtering.
 
-Proof:
-- focused backend tests;
-- full backend CI + PostgreSQL + migration drift;
-- exact-head review/certification before merge.
+Verified proof:
+- PR #305 exact head `34ecd576c1a02ea40caac76c509dc613a04aa9ed`;
+- exact-head CI #2738 SUCCESS: Ruff, import-linter, LLM gateway anti-bypass, AI egress anti-bypass, Bandit, OpenAPI, backend pytest, PostgreSQL full suite, Flutter analyze/tests, secret hygiene;
+- exact-head Django migration drift #2550 SUCCESS;
+- exact-diff safety review PASS with 0 unresolved review threads;
+- expected-head merge `4d5c32eeaddfa4745495d71acad32db6659a7f93`;
+- post-merge CI #2739 SUCCESS, including backend pytest, PostgreSQL full suite and Flutter analyze/tests;
+- post-merge Django migration drift #2551 SUCCESS.
 
-Current candidate evidence:
-- `companion/conversation.py` no longer owns local emergency copy/keyword rules and calls `compose_emergency_for_patient` for direct chat/stream urgency;
-- `EmergencyOperatingModeMiddleware` now sanitizes SSE token events before yielding them;
-- focused P0 regression tests cover local-authority removal plus unsafe/safe SSE token behavior;
-- certification gates are not yet complete.
-
-Status: IN PROGRESS
+Status: CLOSED
 
 ## P1 — Proactivity Convergence
 
@@ -61,7 +59,12 @@ Success:
 - one anti-repeat/cooldown authority;
 - no duplicate patient-facing proactive message can bypass the governed attention lifecycle.
 
-Status: NOT STARTED
+Current direction:
+- preserve emotional memory for reactive tone/relationship adaptation;
+- remove independent automatic emotional check-in emission unless a governed proactive contract explicitly authorizes it;
+- keep `/proactive-insights/preview/` read-only and `/proactive-insights/evaluate/` as the single delivery-budget authority.
+
+Status: NEXT
 
 ## P2 — Governed Companion Context
 
