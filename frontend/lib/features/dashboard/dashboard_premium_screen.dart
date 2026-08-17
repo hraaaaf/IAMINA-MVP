@@ -10,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../services/companion_service.dart';
 import 'widgets/dashboard_today_section.dart';
+import 'widgets/dashboard_trend_section.dart';
 
 String _t(BuildContext context, String fr, String en, String ar) {
   final code = Localizations.localeOf(context).languageCode;
@@ -251,6 +252,12 @@ class _DashboardBody extends StatelessWidget {
                       DashboardTodaySection(
                         targetConfigured: hasTarget,
                         service: companionService,
+                      ),
+                      const SizedBox(height: 18),
+                      DashboardTrendSection(
+                        unit: unit,
+                        low: low,
+                        high: high,
                       ),
                     ]),
                   ),
