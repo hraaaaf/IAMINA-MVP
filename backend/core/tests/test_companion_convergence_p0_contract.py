@@ -5,7 +5,9 @@ from django.http import StreamingHttpResponse
 from django.test import RequestFactory
 
 from core.medical_safety import no_prescription_message
-from core.middleware.emergency_operating_mode import EmergencyOperatingModeMiddleware
+from core.middleware.emergency_operating_mode import (
+    EmergencyOperatingModeMiddleware,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
