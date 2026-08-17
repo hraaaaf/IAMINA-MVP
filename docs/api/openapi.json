@@ -1120,6 +1120,37 @@
         ]
       }
     },
+    "/api/v1/companion/next-action/evaluate/": {
+      "post": {
+        "operationId": "diabetes_api_v1_companion_companion_next_action",
+        "summary": "Companion Next Action",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanionNextActionOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Consume at most one bounded non-urgent suggestion after explicit user action.",
+        "tags": [
+          "companion"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/cgm/connection": {
       "get": {
         "operationId": "diabetes_api_v1_cgm_get_cgm_connection",
@@ -4095,6 +4126,128 @@
           "limitations"
         ],
         "title": "CompanionPatternOut",
+        "type": "object"
+      },
+      "CompanionNextActionOut": {
+        "properties": {
+          "status": {
+            "enum": [
+              "suggested",
+              "cooldown",
+              "no_change",
+              "insufficient_data"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "attention_budget": {
+            "const": "one_non_urgent_item_per_24h",
+            "title": "Attention Budget",
+            "type": "string"
+          },
+          "pending_count": {
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "safety_notice": {
+            "title": "Safety Notice",
+            "type": "string"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompanionNextActionSuggestionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "attention_budget",
+          "pending_count",
+          "safety_notice",
+          "suggestion"
+        ],
+        "title": "CompanionNextActionOut",
+        "type": "object"
+      },
+      "CompanionNextActionSuggestionOut": {
+        "properties": {
+          "suggestion_class": {
+            "enum": [
+              "UNDERSTAND_DATA",
+              "MONITOR",
+              "PREPARE_CLINICIAN_DISCUSSION"
+            ],
+            "title": "Suggestion Class",
+            "type": "string"
+          },
+          "observation_key": {
+            "title": "Observation Key",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "proactive_state": {
+            "title": "Proactive State",
+            "type": "string"
+          },
+          "change_since_review": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Since Review"
+          },
+          "missing_data": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Data",
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "proactive_source_version": {
+            "title": "Proactive Source Version",
+            "type": "string"
+          },
+          "pattern_source_version": {
+            "title": "Pattern Source Version",
+            "type": "string"
+          },
+          "source_version": {
+            "title": "Source Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "suggestion_class",
+          "observation_key",
+          "reason",
+          "proactive_state",
+          "change_since_review",
+          "missing_data",
+          "limitations",
+          "proactive_source_version",
+          "pattern_source_version",
+          "source_version"
+        ],
+        "title": "CompanionNextActionSuggestionOut",
         "type": "object"
       },
       "CGMConnectionResponse": {

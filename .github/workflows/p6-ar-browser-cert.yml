@@ -1,0 +1,162 @@
+name: P6 Arabic Chrome certification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'frontend/lib/ui_browser_next_action_ar_main.dart'
+      - 'frontend/lib/features/dashboard/widgets/dashboard_next_action_section.dart'
+      - 'frontend/lib/core/localization/dashboard_next_action_localized_copy.dart'
+      - '.github/workflows/p6-ar-browser-cert.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ar-browser-cert:
+    name: Real Chrome Arabic next action 390x844
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze Arabic browser audit entrypoint
+        run: flutter analyze --no-fatal-infos lib/ui_browser_next_action_ar_main.dart
+
+      - name: Build Arabic browser audit
+        run: flutter build web --release -t lib/ui_browser_next_action_ar_main.dart
+
+      - name: Capture Arabic next-action in real Chrome
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/p6-ar-browser-cert"
+          python3 -m pip install --quiet websocket-client
+          python3 -m http.server 7359 --directory build/web >/tmp/iamina-p6-ar-http.log 2>&1 &
+          SERVER_PID=$!
+          CHROME_PID=""
+          PROFILE=""
+
+          cleanup() {
+            set +e
+            if [ -n "$CHROME_PID" ]; then
+              kill "$CHROME_PID" 2>/dev/null || true
+              for _ in $(seq 1 20); do
+                kill -0 "$CHROME_PID" 2>/dev/null || break
+                sleep 0.2
+              done
+              kill -9 "$CHROME_PID" 2>/dev/null || true
+              wait "$CHROME_PID" 2>/dev/null || true
+            fi
+            kill "$SERVER_PID" 2>/dev/null || true
+            wait "$SERVER_PID" 2>/dev/null || true
+            if [ -n "$PROFILE" ]; then
+              rm -rf "$PROFILE" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+
+          READY=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7359 >/dev/null; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          test "$READY" = "1"
+
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          PROFILE="$(mktemp -d)"
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --enable-unsafe-swiftshader \
+            --hide-scrollbars \
+            --remote-allow-origins='*' \
+            --remote-debugging-port=9223 \
+            --user-data-dir="$PROFILE" \
+            --window-size=390,844 \
+            http://127.0.0.1:7359/ >/tmp/iamina-p6-ar-chrome.log 2>&1 &
+          CHROME_PID=$!
+
+          DEVTOOLS=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9223/json/list >/dev/null; then
+              DEVTOOLS=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$DEVTOOLS" != "1" ]; then
+            cat /tmp/iamina-p6-ar-chrome.log >&2 || true
+            exit 1
+          fi
+
+          cat > /tmp/capture_p6_ar.py <<'PY'
+          import base64, json, time, urllib.request
+          from websocket import create_connection
+
+          pages = json.load(urllib.request.urlopen('http://127.0.0.1:9223/json/list'))
+          page = next(item for item in pages if item.get('type') == 'page')
+          ws = create_connection(page['webSocketDebuggerUrl'], timeout=20)
+          counter = 0
+
+          def call(method, params=None):
+              global counter
+              counter += 1
+              ws.send(json.dumps({'id': counter, 'method': method, 'params': params or {}}))
+              while True:
+                  response = json.loads(ws.recv())
+                  if response.get('id') == counter:
+                      return response
+
+          call('Page.enable')
+          call('Emulation.setDeviceMetricsOverride', {
+              'width': 390,
+              'height': 844,
+              'deviceScaleFactor': 1,
+              'mobile': True,
+          })
+          call('Page.reload', {'ignoreCache': True})
+          time.sleep(15)
+          shot = call('Page.captureScreenshot', {
+              'format': 'png',
+              'captureBeyondViewport': False,
+              'fromSurface': True,
+          })
+          data = shot.get('result', {}).get('data')
+          if not data:
+              raise RuntimeError('No screenshot payload')
+          with open('/home/runner/work/IAMINA-MVP/IAMINA-MVP/p6-ar-browser-cert/next-action-ar-390x844.png', 'wb') as fh:
+              fh.write(base64.b64decode(data))
+          ws.close()
+          PY
+
+          python3 /tmp/capture_p6_ar.py
+          FILE="$GITHUB_WORKSPACE/p6-ar-browser-cert/next-action-ar-390x844.png"
+          test -s "$FILE"
+          BYTES="$(stat -c%s "$FILE")"
+          test "$BYTES" -ge 10000
+
+      - name: Upload Arabic Chrome proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p6-next-action-ar-chrome
+          path: p6-ar-browser-cert/next-action-ar-390x844.png
+          if-no-files-found: warn
+          retention-days: 7
