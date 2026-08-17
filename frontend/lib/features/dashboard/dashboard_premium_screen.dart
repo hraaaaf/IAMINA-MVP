@@ -11,6 +11,7 @@ import '../../data/drift/database.dart';
 import '../../services/companion_service.dart';
 import 'widgets/dashboard_adaptive_kpi_section.dart';
 import 'widgets/dashboard_insight_section.dart';
+import 'widgets/dashboard_next_action_section.dart';
 import 'widgets/dashboard_today_section.dart';
 import 'widgets/dashboard_trend_section.dart';
 
@@ -269,6 +270,8 @@ class _DashboardBody extends StatelessWidget {
                       ),
                       const SizedBox(height: 18),
                       DashboardInsightSection(service: companionService),
+                      const SizedBox(height: 18),
+                      DashboardNextActionSection(service: companionService),
                     ]),
                   ),
                 ),
