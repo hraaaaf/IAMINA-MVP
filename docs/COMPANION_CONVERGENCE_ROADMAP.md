@@ -1,7 +1,7 @@
 # IAMINA — Companion Convergence Roadmap
 
 Status: ACTIVE
-Baseline: `main@6e2a22699dc6ae643a8186c055c37e8875b586ef`
+Baseline: `main@4d5c32eeaddfa4745495d71acad32db6659a7f93`
 
 ## Goal
 
@@ -38,18 +38,18 @@ Success:
 - route-local compatibility text, if still present internally, cannot become patient-visible authority;
 - regression tests prove canonical emergency parity and pre-emission filtering.
 
-Proof:
-- focused backend tests;
-- full backend CI + PostgreSQL + migration drift;
-- exact-head review/certification before merge.
+Verified pre-merge proof:
+- PR #305 exact head `34ecd576c1a02ea40caac76c509dc613a04aa9ed`;
+- CI #2738 SUCCESS: Ruff, import-linter, LLM gateway anti-bypass, AI egress anti-bypass, Bandit, OpenAPI, backend pytest, PostgreSQL full suite, Flutter analyze/tests, secret hygiene;
+- Django migration drift #2550 SUCCESS;
+- exact-diff safety review PASS with 0 unresolved review threads;
+- expected-head merge succeeded as `4d5c32eeaddfa4745495d71acad32db6659a7f93`.
 
-Current candidate evidence:
-- `companion/conversation.py` no longer owns local emergency copy/keyword rules and calls `compose_emergency_for_patient` for direct chat/stream urgency;
-- `EmergencyOperatingModeMiddleware` now sanitizes SSE token events before yielding them;
-- focused P0 regression tests cover local-authority removal plus unsafe/safe SSE token behavior;
-- certification gates are not yet complete.
+Post-merge proof:
+- CI #2739: IN PROGRESS;
+- Django migration drift #2551: IN PROGRESS.
 
-Status: IN PROGRESS
+Status: MERGED — POST-MERGE VALIDATION IN PROGRESS
 
 ## P1 — Proactivity Convergence
 
