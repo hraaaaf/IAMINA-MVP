@@ -56,17 +56,23 @@ void main() {
     expect(widget, isNot(contains('personalBaselineComparisonMgDl')));
   });
 
-  test('Dashboard composition places governed insight after adaptive KPIs', () {
+  test('Dashboard mobile composition keeps governed insight after adaptive KPIs', () {
     final dashboard = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
     ).readAsStringSync();
+    final responsive = File(
+      'lib/features/dashboard/widgets/dashboard_responsive_sections.dart',
+    ).readAsStringSync();
 
     final today = dashboard.indexOf('DashboardTodaySection(');
-    final trend = dashboard.indexOf('DashboardTrendSection(');
-    final kpi = dashboard.indexOf('DashboardAdaptiveKpiSection(');
-    final insight = dashboard.indexOf('DashboardInsightSection(');
+    final responsiveMount = dashboard.indexOf('DashboardResponsiveSections(');
+    final trend = responsive.indexOf('DashboardTrendSection(');
+    final kpi = responsive.indexOf('DashboardAdaptiveKpiSection(');
+    final insight = responsive.indexOf('DashboardInsightSection(');
+
     expect(today, greaterThanOrEqualTo(0));
-    expect(trend, greaterThan(today));
+    expect(responsiveMount, greaterThan(today));
+    expect(trend, greaterThanOrEqualTo(0));
     expect(kpi, greaterThan(trend));
     expect(insight, greaterThan(kpi));
   });

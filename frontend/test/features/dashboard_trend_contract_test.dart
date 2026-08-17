@@ -31,6 +31,33 @@ void main() {
     expect(section + painter, isNot(contains('AGP')));
   });
 
+  test('Dashboard trend trajectory connects only nearby recorded measurements', () {
+    final painter = File(
+      'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
+    ).readAsStringSync();
+
+    expect(painter, contains('_paintRecordedTrajectory'));
+    expect(painter, contains('maxConnectedGapMs = windowMs ~/ 6'));
+    expect(painter, contains('gapMs > maxConnectedGapMs'));
+    expect(painter, contains('canvas.drawLine('));
+    expect(painter, contains('visual only'));
+    expect(painter, contains('never a clinical inference or glucose rule'));
+    expect(painter, isNot(contains('spline')));
+    expect(painter, isNot(contains('curveTo')));
+  });
+
+  test('Dashboard trend emphasizes latest factual reading without prediction', () {
+    final painter = File(
+      'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
+    ).readAsStringSync();
+
+    expect(painter, contains('final latestId = logs.reduce'));
+    expect(painter, contains('final latest = log.id == latestId'));
+    expect(painter, contains('selected || latest'));
+    expect(painter, isNot(contains('forecast')));
+    expect(painter, isNot(contains('prediction')));
+  });
+
   test('Dashboard trend never introduces local glucose thresholds', () {
     final section = File(
       'lib/features/dashboard/widgets/dashboard_trend_section.dart',
@@ -83,17 +110,23 @@ void main() {
     expect(section + painter, isNot(contains('causal')));
   });
 
-  test('Dashboard mobile composition includes the factual trend after today summary', () {
+  test('Dashboard responsive composition includes factual trend after today summary', () {
     final dashboard = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
     ).readAsStringSync();
+    final responsive = File(
+      'lib/features/dashboard/widgets/dashboard_responsive_sections.dart',
+    ).readAsStringSync();
 
     final todayIndex = dashboard.indexOf('DashboardTodaySection(');
-    final trendIndex = dashboard.indexOf('DashboardTrendSection(');
+    final responsiveIndex = dashboard.indexOf('DashboardResponsiveSections(');
+    final trendIndex = responsive.indexOf('DashboardTrendSection(');
+
     expect(todayIndex, greaterThanOrEqualTo(0));
-    expect(trendIndex, greaterThan(todayIndex));
-    expect(dashboard, contains('unit: unit'));
-    expect(dashboard, contains('low: low'));
-    expect(dashboard, contains('high: high'));
+    expect(responsiveIndex, greaterThan(todayIndex));
+    expect(trendIndex, greaterThanOrEqualTo(0));
+    expect(responsive, contains('unit: unit'));
+    expect(responsive, contains('low: low'));
+    expect(responsive, contains('high: high'));
   });
 }

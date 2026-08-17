@@ -9,11 +9,8 @@ import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../services/companion_service.dart';
-import 'widgets/dashboard_adaptive_kpi_section.dart';
-import 'widgets/dashboard_insight_section.dart';
-import 'widgets/dashboard_next_action_section.dart';
+import 'widgets/dashboard_responsive_sections.dart';
 import 'widgets/dashboard_today_section.dart';
-import 'widgets/dashboard_trend_section.dart';
 
 String _t(BuildContext context, String fr, String en, String ar) {
   final code = Localizations.localeOf(context).languageCode;
@@ -183,99 +180,100 @@ class _DashboardBody extends StatelessWidget {
           const Positioned.fill(child: _AmbientBackground()),
           SafeArea(
             bottom: false,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(
-                    20,
-                    16,
-                    20,
-                    128,
-                  ),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      const _PremiumBrandHeader(),
-                      const SizedBox(height: 22),
-                      Text(
-                        _t(context, 'Bonjour', 'Welcome back', 'مرحباً'),
-                        style: TextStyle(
-                          fontFamily: 'Georgia',
-                          fontSize: 31,
-                          height: 1.02,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -.8,
-                          color: AminaVisualLanguage.primaryText(context),
-                        ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                final horizontalPadding = width >= 1200
+                    ? (width - 1120) / 2
+                    : width >= 700
+                    ? 32.0
+                    : 20.0;
+                return CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverPadding(
+                      padding: EdgeInsetsDirectional.fromSTEB(
+                        horizontalPadding,
+                        16,
+                        horizontalPadding,
+                        128,
                       ),
-                      const SizedBox(height: 18),
-                      _LatestReadingCard(
-                        latest: latest,
-                        latestAt: latestAt,
-                        display: latest == null
-                            ? '—'
-                            : _display(latest.bloodSugar),
-                        unit: unit,
-                        status: latest == null
-                            ? _t(
-                                context,
-                                'Aucune mesure',
-                                'No reading yet',
-                                'لا توجد قراءة بعد',
-                              )
-                            : !hasTarget
-                            ? AppLocalizations.of(
-                                context,
-                              )!.dashboardTargetNotConfigured
-                            : inRange
-                            ? _t(
-                                context,
-                                'Dans votre cible',
-                                'In your range',
-                                'ضمن نطاقك',
-                              )
-                            : highValue
-                            ? _t(
-                                context,
-                                'Au-dessus de la cible',
-                                'Above range',
-                                'فوق النطاق',
-                              )
-                            : _t(
-                                context,
-                                'Sous la cible',
-                                'Below range',
-                                'تحت النطاق',
-                              ),
-                        inRange: inRange,
-                        targetConfigured: hasTarget,
-                        locale: locale,
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          const _PremiumBrandHeader(),
+                          const SizedBox(height: 22),
+                          Text(
+                            _t(context, 'Bonjour', 'Welcome back', 'مرحباً'),
+                            style: TextStyle(
+                              fontFamily: 'Georgia',
+                              fontSize: 31,
+                              height: 1.02,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -.8,
+                              color: AminaVisualLanguage.primaryText(context),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          _LatestReadingCard(
+                            latest: latest,
+                            latestAt: latestAt,
+                            display: latest == null
+                                ? '—'
+                                : _display(latest.bloodSugar),
+                            unit: unit,
+                            status: latest == null
+                                ? _t(
+                                    context,
+                                    'Aucune mesure',
+                                    'No reading yet',
+                                    'لا توجد قراءة بعد',
+                                  )
+                                : !hasTarget
+                                ? AppLocalizations.of(
+                                    context,
+                                  )!.dashboardTargetNotConfigured
+                                : inRange
+                                ? _t(
+                                    context,
+                                    'Dans votre cible',
+                                    'In your range',
+                                    'ضمن نطاقك',
+                                  )
+                                : highValue
+                                ? _t(
+                                    context,
+                                    'Au-dessus de la cible',
+                                    'Above range',
+                                    'فوق النطاق',
+                                  )
+                                : _t(
+                                    context,
+                                    'Sous la cible',
+                                    'Below range',
+                                    'تحت النطاق',
+                                  ),
+                            inRange: inRange,
+                            targetConfigured: hasTarget,
+                            locale: locale,
+                          ),
+                          const SizedBox(height: 18),
+                          DashboardTodaySection(
+                            targetConfigured: hasTarget,
+                            service: companionService,
+                          ),
+                          const SizedBox(height: 18),
+                          DashboardResponsiveSections(
+                            unit: unit,
+                            low: low,
+                            high: high,
+                            companionService: companionService,
+                          ),
+                        ]),
                       ),
-                      const SizedBox(height: 18),
-                      DashboardTodaySection(
-                        targetConfigured: hasTarget,
-                        service: companionService,
-                      ),
-                      const SizedBox(height: 18),
-                      DashboardTrendSection(
-                        unit: unit,
-                        low: low,
-                        high: high,
-                      ),
-                      const SizedBox(height: 18),
-                      DashboardAdaptiveKpiSection(
-                        unit: unit,
-                        low: low,
-                        high: high,
-                      ),
-                      const SizedBox(height: 18),
-                      DashboardInsightSection(service: companionService),
-                      const SizedBox(height: 18),
-                      DashboardNextActionSection(service: companionService),
-                    ]),
-                  ),
-                ),
-              ],
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],

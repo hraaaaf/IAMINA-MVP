@@ -1,0 +1,177 @@
+name: P7 responsive Dashboard certification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/dashboard/**'
+      - 'frontend/lib/modules/diabetes_module.dart'
+      - 'frontend/lib/ui_browser_audit_main.dart'
+      - 'frontend/test/dashboard_responsive_convergence_visual_test.dart'
+      - 'frontend/test/features/dashboard_responsive_convergence_contract_test.dart'
+      - '.github/workflows/p7-responsive-cert.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  responsive-cert:
+    name: Native responsive + real Chrome 1440
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Responsive semantic contract
+        run: flutter test --reporter expanded test/features/dashboard_responsive_convergence_contract_test.dart
+
+      - name: Native responsive visual evidence
+        run: flutter test --dart-define=IAMINA_VISUAL_AUDIT=true --update-goldens --reporter expanded test/dashboard_responsive_convergence_visual_test.dart
+
+      - name: Validate native evidence
+        run: |
+          set -euo pipefail
+          DIR="test/ui_audit_output"
+          required=(
+            dashboard-responsive-699x900.png
+            dashboard-responsive-701x900.png
+            dashboard-responsive-1440x1000.png
+            dashboard-responsive-ar-900x900.png
+          )
+          for file in "${required[@]}"; do
+            test -s "$DIR/$file"
+            bytes="$(stat -c%s "$DIR/$file")"
+            test "$bytes" -ge 10000
+          done
+
+      - name: Build browser audit
+        run: |
+          flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart
+          flutter build web --release -t lib/ui_browser_audit_main.dart
+
+      - name: Capture real Chrome Dashboard 1440x1000
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/p7-responsive-cert"
+          python3 -m pip install --quiet websocket-client
+          python3 -m http.server 7361 --directory build/web >/tmp/iamina-p7-http.log 2>&1 &
+          SERVER_PID=$!
+          CHROME_PID=""
+          PROFILE=""
+
+          cleanup() {
+            set +e
+            if [ -n "$CHROME_PID" ]; then
+              kill "$CHROME_PID" 2>/dev/null || true
+              wait "$CHROME_PID" 2>/dev/null || true
+            fi
+            kill "$SERVER_PID" 2>/dev/null || true
+            wait "$SERVER_PID" 2>/dev/null || true
+            if [ -n "$PROFILE" ]; then rm -rf "$PROFILE" 2>/dev/null || true; fi
+          }
+          trap cleanup EXIT
+
+          READY=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7361 >/dev/null; then READY=1; break; fi
+            sleep 1
+          done
+          test "$READY" = "1"
+
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          PROFILE="$(mktemp -d)"
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --enable-unsafe-swiftshader \
+            --hide-scrollbars \
+            --remote-allow-origins='*' \
+            --remote-debugging-port=9225 \
+            --user-data-dir="$PROFILE" \
+            --window-size=1440,1000 \
+            'http://127.0.0.1:7361/?surface=dashboard' >/tmp/iamina-p7-chrome.log 2>&1 &
+          CHROME_PID=$!
+
+          DEVTOOLS=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9225/json/list >/dev/null; then DEVTOOLS=1; break; fi
+            sleep 1
+          done
+          if [ "$DEVTOOLS" != "1" ]; then
+            cat /tmp/iamina-p7-chrome.log >&2 || true
+            exit 1
+          fi
+
+          cat > /tmp/capture_p7.py <<'PY'
+          import base64, json, time, urllib.request
+          from websocket import create_connection
+
+          pages = json.load(urllib.request.urlopen('http://127.0.0.1:9225/json/list'))
+          page = next(item for item in pages if item.get('type') == 'page')
+          ws = create_connection(page['webSocketDebuggerUrl'], timeout=20)
+          counter = 0
+
+          def call(method, params=None):
+              global counter
+              counter += 1
+              ws.send(json.dumps({'id': counter, 'method': method, 'params': params or {}}))
+              while True:
+                  response = json.loads(ws.recv())
+                  if response.get('id') == counter:
+                      return response
+
+          call('Page.enable')
+          call('Emulation.setDeviceMetricsOverride', {
+              'width': 1440,
+              'height': 1000,
+              'deviceScaleFactor': 1,
+              'mobile': False,
+          })
+          call('Page.reload', {'ignoreCache': True})
+          time.sleep(15)
+          shot = call('Page.captureScreenshot', {
+              'format': 'png',
+              'captureBeyondViewport': False,
+              'fromSurface': True,
+          })
+          data = shot.get('result', {}).get('data')
+          if not data:
+              raise RuntimeError('No screenshot payload')
+          with open('/home/runner/work/IAMINA-MVP/IAMINA-MVP/p7-responsive-cert/dashboard-1440x1000.png', 'wb') as fh:
+              fh.write(base64.b64decode(data))
+          ws.close()
+          PY
+
+          python3 /tmp/capture_p7.py
+          FILE="$GITHUB_WORKSPACE/p7-responsive-cert/dashboard-1440x1000.png"
+          test -s "$FILE"
+          BYTES="$(stat -c%s "$FILE")"
+          test "$BYTES" -ge 10000
+
+      - name: Upload P7 responsive proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p7-responsive-dashboard-proof
+          path: |
+            frontend/test/ui_audit_output/dashboard-responsive-699x900.png
+            frontend/test/ui_audit_output/dashboard-responsive-701x900.png
+            frontend/test/ui_audit_output/dashboard-responsive-1440x1000.png
+            frontend/test/ui_audit_output/dashboard-responsive-ar-900x900.png
+            p7-responsive-cert/dashboard-1440x1000.png
+          if-no-files-found: warn
+          retention-days: 7
