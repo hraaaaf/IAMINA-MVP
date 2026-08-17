@@ -27,9 +27,11 @@ AddLogFocus _focusFromState(String? value) => switch (value) {
   _ => AddLogFocus.none,
 };
 
-/// Diabetes condition module. Mobile navigation is filtered by MainShell
-/// to preserve the approved four-destination + central-add composition;
-/// Import remains available in desktop navigation and by direct route.
+/// Diabetes condition module.
+///
+/// Persistent navigation is deliberately limited to the three condition roots;
+/// the chassis adds Profile as the fourth root. Import and data-entry flows are
+/// full-screen actions so the bottom navigation never appears inside a deep flow.
 final ModuleConfig diabetesModule = ModuleConfig(
   id: 'diabetes',
   navDestinations: [
@@ -51,12 +53,6 @@ final ModuleConfig diabetesModule = ModuleConfig(
       selectedIcon: Icons.description_rounded,
       label: (l) => _navText(l, 'Rapports', 'Reports', 'التقارير'),
     ),
-    ModuleNavDestination(
-      route: '/importer',
-      icon: Icons.upload_file_outlined,
-      selectedIcon: Icons.upload_file,
-      label: (l) => l.navImport,
-    ),
   ],
   shellRoutes: [
     ModuleShellRoute(
@@ -69,7 +65,6 @@ final ModuleConfig diabetesModule = ModuleConfig(
     ),
     ModuleShellRoute(path: '/journal', builder: () => const JournalScreen()),
     ModuleShellRoute(path: '/summary', builder: () => const AISummaryScreen()),
-    ModuleShellRoute(path: '/importer', builder: () => const ImportScreen()),
   ],
   fullScreenRoutes: [
     ModuleFullScreenRoute(
@@ -83,6 +78,10 @@ final ModuleConfig diabetesModule = ModuleConfig(
           : AddLogScreen(
               focus: _focusFromState(s.uri.queryParameters['focus']),
             ),
+    ),
+    ModuleFullScreenRoute(
+      path: '/importer',
+      builder: (s) => const ImportScreen(),
     ),
     ModuleFullScreenRoute(
       path: '/medications',
