@@ -39,13 +39,14 @@ void main() {
     expect(journal, contains('viewportWidth >= 700'));
   });
 
-  test('importer uses a desktop two-column connection layout', () {
-    final source = _read('lib/features/import/import_screen.dart');
-    expect(source, contains('ResponsiveContentSurface('));
-    expect(source, contains('maxWidth: 1160'));
-    expect(source, contains('constraints.maxWidth >= 900'));
-    expect(source, contains('Expanded(child: cards[0])'));
-    expect(source, contains('Expanded(child: cards[1])'));
+  test('importer uses a desktop two-column CGM connection layout', () {
+    final importer = _read('lib/features/import/import_screen.dart');
+    final cgm = _read('lib/features/import/cgm_connections_section.dart');
+    expect(importer, contains('ResponsiveContentSurface('));
+    expect(importer, contains('maxWidth: 1160'));
+    expect(importer, contains('const CgmConnectionsSection()'));
+    expect(cgm, contains('constraints.maxWidth >= 900'));
+    expect(cgm, contains('Expanded(child: cards[i])'));
   });
 
   test(
