@@ -1,12 +1,10 @@
 """
 core/companion/clinical.py — chassis clinical-context resolver (P4.5).
 
-The single entry point the companion runtime uses to obtain a module's
-DomainContext and offline alerts. Resolves the active module's engine via
-ModuleRegistry and caches analyze() output (30-min TTL) — the chassis,
-condition-agnostic equivalent of the old diabetes session_cache.
-
-One contract: module → BaseEngine.analyze() → DomainContext → companion + narrate().
+The single entry point the companion runtime uses to obtain a module's instant
+DomainContext, governed longitudinal CompanionContext and offline alerts.
+Resolution always goes through the active module's BaseEngine contract, keeping
+the chassis condition-agnostic.
 """
 import json
 import logging
@@ -14,6 +12,7 @@ from dataclasses import asdict
 
 from django.core.cache import cache
 
+from core.contracts.companion_context import CompanionContext
 from core.contracts.domain_context import DomainContext
 
 logger = logging.getLogger(__name__)
@@ -72,6 +71,17 @@ def get_domain_context(patient_id: int, language: str = "fr", days: int = 14) ->
     except Exception:
         logger.exception("DomainContext cache set failed for patient=%s", patient_id)
     return ctx
+
+
+def get_companion_context(
+    patient_id: int,
+    language: str = "fr",
+) -> CompanionContext:
+    """Read governed longitudinal state through the active module contract."""
+    engine = _resolve_engine(patient_id)
+    if engine is None:
+        return CompanionContext.empty(language=language)
+    return engine.companion_context(patient_id, language=language)
 
 
 def invalidate(patient_id: int) -> None:
