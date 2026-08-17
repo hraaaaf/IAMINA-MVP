@@ -24,6 +24,7 @@ void main() {
   ) async {
     if (!_visualAuditEnabled) return;
 
+    // This golden is the release gate for first-view mobile CTA visibility.
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(() {
