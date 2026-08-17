@@ -4,7 +4,8 @@ BaseEngine ABC — the single module→chassis clinical contract (P4.5).
 A module's engine owns its own data access. Given a patient_id and a window, it
 returns a DomainContext (the universal clinical output struct) that drives both
 the LLM gateway (narrate()) and the companion runtime (chat, tone, narration).
-It also exposes an offline per-entry safety gate via evaluate_alert().
+It may also expose a governed read-only CompanionContext for longitudinal
+companion state, plus an offline per-entry safety gate via evaluate_alert().
 
 Usage:
     from core.engine import BaseEngine
@@ -23,6 +24,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from core.contracts.alert import DomainAlert
+    from core.contracts.companion_context import CompanionContext
     from core.contracts.domain_context import DomainContext
 
 
@@ -56,6 +58,21 @@ class BaseEngine(abc.ABC):
         Returns:
             A populated (or empty) :class:`DomainContext`.
         """
+
+    def companion_context(
+        self,
+        patient_id: int,
+        language: str = "fr",
+    ) -> "CompanionContext":
+        """Return governed longitudinal state without consuming delivery budget.
+
+        Modules with certified longitudinal companion projections override this
+        method. The default is a neutral empty context, preserving compatibility
+        for modules that only implement the instant ``DomainContext`` contract.
+        """
+        from core.contracts.companion_context import CompanionContext
+
+        return CompanionContext.empty(language=language)
 
     def evaluate_alert(
         self,
