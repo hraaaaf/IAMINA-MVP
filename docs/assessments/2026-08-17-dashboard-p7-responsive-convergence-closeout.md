@@ -38,8 +38,27 @@ PR #306 merged to `main` as `446c27636853265d9b37186df16dda9feae1243e`.
 
 Historical stacked P7 PR #284 was closed without merge and superseded by the clean reconstruction from certified P6.
 
+## Post-closeout visual coherence correction
+
+A subsequent real Chrome review exposed a duplicate desktop identity in the left navigation rail: a fictive ECG mark plus a duplicate `IAmina / Compagnon Diabète` block coexisted with the canonical Dashboard identity.
+
+Correction PR #310 removed `_EcgMarkPainter` and `_BrandHeader` from the desktop shell and updated the anti-regression contract so the navigation shell must not render a second brand identity. Navigation, routing, clinical semantics and responsive authority were unchanged.
+
+Certified correction head: `87a8a02ecf83ff358984c71cd4982bbcbdda47bd`.
+
+Exact-head correction gates:
+
+- CI #2763 — success
+- Django migration drift #2575 — success
+- UI screenshot audit #314 — success
+- UI browser screenshot certification #291 — success
+
+Real Chrome 1280×900 evidence confirms that the left rail now begins with the Add Entry CTA and only the canonical IAMINA identity remains visible on the Dashboard.
+
+PR #310 merged to `main` as `78622f869e19e24f12675ff7ecd8793616ac252b`.
+
 ## Result
 
-P7 responsive convergence is closed at the engineering/UI certification level. This workstream is separate from the 32/41 MENA critical-path numerator and does not change that numerator.
+P7 responsive convergence, including the post-closeout single-brand correction, is closed at the engineering/UI certification level. This workstream is separate from the 32/41 MENA critical-path numerator and does not change that numerator.
 
 No Vercel deployment was performed.
