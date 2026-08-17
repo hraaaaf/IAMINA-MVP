@@ -46,12 +46,37 @@ jobs:
           python3 -m pip install --quiet websocket-client
           python3 -m http.server 7359 --directory build/web >/tmp/iamina-p6-ar-http.log 2>&1 &
           SERVER_PID=$!
-          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          CHROME_PID=""
+          PROFILE=""
 
+          cleanup() {
+            set +e
+            if [ -n "$CHROME_PID" ]; then
+              kill "$CHROME_PID" 2>/dev/null || true
+              for _ in $(seq 1 20); do
+                kill -0 "$CHROME_PID" 2>/dev/null || break
+                sleep 0.2
+              done
+              kill -9 "$CHROME_PID" 2>/dev/null || true
+              wait "$CHROME_PID" 2>/dev/null || true
+            fi
+            kill "$SERVER_PID" 2>/dev/null || true
+            wait "$SERVER_PID" 2>/dev/null || true
+            if [ -n "$PROFILE" ]; then
+              rm -rf "$PROFILE" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+
+          READY=0
           for _ in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:7359 >/dev/null && break
+            if curl -fsS http://127.0.0.1:7359 >/dev/null; then
+              READY=1
+              break
+            fi
             sleep 1
           done
+          test "$READY" = "1"
 
           CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME"
@@ -67,12 +92,19 @@ jobs:
             --window-size=390,844 \
             http://127.0.0.1:7359/ >/tmp/iamina-p6-ar-chrome.log 2>&1 &
           CHROME_PID=$!
-          trap 'kill "$CHROME_PID" 2>/dev/null || true; kill "$SERVER_PID" 2>/dev/null || true; rm -rf "$PROFILE"' EXIT
 
+          DEVTOOLS=0
           for _ in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:9223/json/list >/dev/null && break
+            if curl -fsS http://127.0.0.1:9223/json/list >/dev/null; then
+              DEVTOOLS=1
+              break
+            fi
             sleep 1
           done
+          if [ "$DEVTOOLS" != "1" ]; then
+            cat /tmp/iamina-p6-ar-chrome.log >&2 || true
+            exit 1
+          fi
 
           cat > /tmp/capture_p6_ar.py <<'PY'
           import base64, json, time, urllib.request
