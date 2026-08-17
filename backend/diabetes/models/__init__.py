@@ -1,5 +1,6 @@
 from .after_visit import AfterVisitAnchor, AfterVisitFactRecord
 from .audit import AuditLog
+from .cgm import CGMConnection, CGMReadingRecord
 from .chat import AIChatMessage
 from .clinical_observation import ClinicalObservationState
 from .companion_review import CompanionReviewAnchor, CompanionReviewObservationSnapshot
@@ -28,4 +29,6 @@ __all__ = [
     'AfterVisitFactRecord',
     'AuditLog',
     'LabReport',
+    'CGMConnection',
+    'CGMReadingRecord',
 ]

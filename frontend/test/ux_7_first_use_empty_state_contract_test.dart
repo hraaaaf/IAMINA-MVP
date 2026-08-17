@@ -56,17 +56,21 @@ void main() {
   });
 
   test(
-    'importer first-use leads to document review without fake connectors',
+    'importer first-use leads to document review and exposes real CGM connectors',
     () {
-      final source = _read('lib/features/import/import_screen.dart');
-      expect(source, contains('if (_totalLogs == 0)'));
-      expect(source, contains("ValueKey('import-first-use')"));
-      expect(source, contains('.documentIntro'));
-      expect(source, contains('.chooseDocument'));
-      expect(source, contains("context.push('/pulper')"));
-      expect(source, contains('Dexcom G6/G7'));
-      expect(source, contains('Abbott LibreLink'));
-      expect(source, contains('const _UnavailableAction()'));
+      final importer = _read('lib/features/import/import_screen.dart');
+      final cgm = _read('lib/features/import/cgm_connections_section.dart');
+      expect(importer, contains('if (_totalLogs == 0)'));
+      expect(importer, contains("ValueKey('import-first-use')"));
+      expect(importer, contains('.documentIntro'));
+      expect(importer, contains('.chooseDocument'));
+      expect(importer, contains("context.push('/pulper')"));
+      expect(importer, contains('const CgmConnectionsSection()'));
+      expect(cgm, contains('Dexcom G6/G7'));
+      expect(cgm, contains('FreeStyle Libre'));
+      expect(cgm, contains('LinX / AiDEX X'));
+      expect(cgm, contains('OutlinedButton('));
+      expect(cgm, isNot(contains('const _UnavailableAction()')));
     },
   );
 
