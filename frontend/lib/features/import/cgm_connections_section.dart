@@ -231,7 +231,7 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
       children: [
         Text(
           l10n.cgmOneConnectionNote,
-          style: const TextStyle(fontSize: 12, height: 1.4, color: AminaTheme.ink500),
+          style: const TextStyle(fontSize: 11.5, height: 1.3, color: AminaTheme.ink500),
         ),
         if (_error != null) ...[
           const SizedBox(height: 10),
@@ -242,7 +242,7 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AminaTheme.ink50,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(11),
                 border: Border.all(color: AminaTheme.ink200),
               ),
               child: Text(
@@ -449,11 +449,11 @@ class _CgmHowToDialog extends StatelessWidget {
     ];
 
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,13 +462,13 @@ class _CgmHowToDialog extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 42,
-                    height: 42,
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
                       color: AminaTheme.teal50,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(source.icon, size: 20, color: AminaTheme.teal700),
+                    child: Icon(source.icon, size: 18, color: AminaTheme.teal700),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -478,7 +478,7 @@ class _CgmHowToDialog extends StatelessWidget {
                         Text(
                           l10n.cgmHowToTitle(source.title),
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 17,
                             fontWeight: FontWeight.w800,
                             color: AminaTheme.ink900,
                           ),
@@ -498,35 +498,35 @@ class _CgmHowToDialog extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 14),
               for (var i = 0; i < steps.length; i++) ...[
                 _CgmHowToStep(number: i + 1, title: steps[i].$1, body: steps[i].$2),
-                if (i < steps.length - 1) const SizedBox(height: 18),
+                if (i < steps.length - 1) const SizedBox(height: 12),
               ],
               const SizedBox(height: 22),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(11),
                 decoration: BoxDecoration(
                   color: AminaTheme.ink50,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AminaTheme.ink200),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.shield_outlined, size: 18, color: AminaTheme.ink500),
+                    const Icon(Icons.shield_outlined, size: 16, color: AminaTheme.ink500),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         l10n.cgmHowToSafety,
-                        style: const TextStyle(fontSize: 11, height: 1.45, color: AminaTheme.ink700),
+                        style: const TextStyle(fontSize: 10.5, height: 1.3, color: AminaTheme.ink700),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -556,13 +556,13 @@ class _CgmHowToStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 28,
-          height: 28,
+          width: 24,
+          height: 24,
           alignment: Alignment.center,
           decoration: const BoxDecoration(color: AminaTheme.teal600, shape: BoxShape.circle),
           child: Text(
             '$number',
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
           ),
         ),
         const SizedBox(width: 12),
@@ -572,10 +572,10 @@ class _CgmHowToStep extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AminaTheme.ink900),
+                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: AminaTheme.ink900),
               ),
-              const SizedBox(height: 4),
-              Text(body, style: const TextStyle(fontSize: 12, height: 1.45, color: AminaTheme.ink600)),
+              const SizedBox(height: 2),
+              Text(body, style: const TextStyle(fontSize: 11.5, height: 1.32, color: AminaTheme.ink600)),
             ],
           ),
         ),
