@@ -78,6 +78,8 @@ jobs:
             dashboard-trend-ar-360x560.png
             dashboard-kpi-390x844.png
             dashboard-kpi-ar-360x560.png
+            dashboard-insight-390x844.png
+            dashboard-insight-ar-360x560.png
             journal-390x844.png
             summary-390x844.png
             profile-390x844.png
@@ -105,7 +107,7 @@ jobs:
           done
 
           COUNT="$(find "$DIR" -maxdepth 1 -name '*.png' -type f | wc -l)"
-          test "$COUNT" -eq 21
+          test "$COUNT" -eq 23
 
           MOBILE_UNIQUE="$(sha256sum "$DIR"/*-390x844.png | awk '{print $1}' | sort -u | wc -l)"
           if [ "$MOBILE_UNIQUE" -lt 11 ]; then
