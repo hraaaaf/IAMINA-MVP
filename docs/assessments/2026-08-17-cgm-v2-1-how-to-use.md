@@ -48,3 +48,6 @@ Same component and visual hierarchy for Libre and LinX; only source-specific ste
 
 ## Evidence ceiling
 This feature explains the already-certified CGM bridge setup. It does not prove a live physical sensor path and must not imply that a vendor account or sensor has been tested.
+
+## Certification trigger
+A direct repository commit is intentionally used after the self-cleaning helper commit so GitHub Actions can materialize fresh exact-head jobs; this does not change runtime or visual behavior.
