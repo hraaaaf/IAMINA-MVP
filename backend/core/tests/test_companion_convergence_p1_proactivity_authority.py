@@ -2,9 +2,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from companion import conversation
-from core.contracts.domain_context import DomainContext
-
 
 ROOT = Path(__file__).resolve().parents[2]
 CONVERSATION = ROOT / "companion" / "conversation.py"
@@ -57,6 +54,9 @@ class _LLM:
 
 
 def test_prior_emotional_memory_cannot_emit_an_assistant_turn_before_user_message():
+    from companion import conversation
+    from core.contracts.domain_context import DomainContext
+
     patient = SimpleNamespace(id=991, first_name="")
     memory = _Memory()
     deep = _Deep()
