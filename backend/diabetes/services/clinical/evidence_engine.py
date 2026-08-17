@@ -7,13 +7,20 @@ context merely because many stored rows have ``source='cgm'``.
 """
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.db.models import Q
 from django.utils import timezone
 
+from core.contracts.companion_context import (
+    CompanionAfterVisit,
+    CompanionChange,
+    CompanionContext,
+    CompanionPattern,
+)
 from core.contracts.domain_context import DomainContext
 from diabetes.models import LogEntry
+from diabetes.services.clinical.companion_overview import build_companion_overview
 from diabetes.services.clinical.engine import DiabetesEngine, run_clinical_analysis
 from diabetes.services.clinical.evidence_projection import (
     guard_normative_kpis,
@@ -22,6 +29,10 @@ from diabetes.services.clinical.evidence_projection import (
 from diabetes.services.clinical.evidence_registry import evidence_for_pattern
 from diabetes.services.clinical.semantic_compressor import build_chat_context
 from diabetes.services.clinical.sql_analytics import compute_kpis, compute_trend
+
+
+def _iso(value: datetime | None) -> str | None:
+    return value.isoformat() if value is not None else None
 
 
 class EvidenceGuardedDiabetesEngine(DiabetesEngine):
@@ -97,4 +108,55 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
             trend=trend,
             primary_label="TIR" if cgm_verified else "Recorded glucose",
             patterns_detail=pattern_details,
+        )
+
+    def companion_context(
+        self,
+        patient_id: int,
+        language: str = "fr",
+    ) -> CompanionContext:
+        """Adapt the certified diabetes overview to the chassis contract."""
+        overview = build_companion_overview(patient_id=patient_id)
+        return CompanionContext(
+            pattern_status=overview.pattern_status,
+            review_status=overview.review_status,
+            review_anchor_captured_at=_iso(overview.review_anchor_captured_at),
+            patterns=tuple(
+                CompanionPattern(
+                    observation_key=item.observation_key,
+                    current_state=item.current_state,
+                    markers=tuple(item.markers),
+                    evidence_density=item.evidence_density,
+                    recurrence_count=item.recurrence_count,
+                    baseline_direction=item.baseline_direction,
+                    baseline_movement=item.baseline_movement,
+                    first_observed_at=_iso(item.first_observed_at),
+                    last_observed_at=_iso(item.last_observed_at),
+                    evidence_id=item.evidence_id,
+                    source_version=item.source_version,
+                    limitations=tuple(item.limitations),
+                )
+                for item in overview.patterns
+            ),
+            changes_since_review=tuple(
+                CompanionChange(
+                    observation_key=item.observation_key,
+                    change_kind=item.change_kind,
+                    evidence_strength=item.evidence_strength,
+                    missing_data=tuple(item.missing_data),
+                    source_version=item.source_version,
+                )
+                for item in overview.changes_since_review
+            ),
+            after_visit=CompanionAfterVisit(
+                status=overview.after_visit.status,
+                anchor_id=overview.after_visit.anchor_id,
+                occurred_at=_iso(overview.after_visit.occurred_at),
+                source=overview.after_visit.source,
+                fact_count=overview.after_visit.fact_count,
+                latest_fact_at=_iso(overview.after_visit.latest_fact_at),
+            ),
+            safety_notice=overview.safety_notice,
+            source_version=overview.source_version,
+            language=language,
         )
