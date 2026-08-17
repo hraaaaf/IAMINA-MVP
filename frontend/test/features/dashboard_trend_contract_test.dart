@@ -31,6 +31,33 @@ void main() {
     expect(section + painter, isNot(contains('AGP')));
   });
 
+  test('Dashboard trend trajectory connects only nearby recorded measurements', () {
+    final painter = File(
+      'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
+    ).readAsStringSync();
+
+    expect(painter, contains('_paintRecordedTrajectory'));
+    expect(painter, contains('maxConnectedGapMs = windowMs ~/ 6'));
+    expect(painter, contains('gapMs > maxConnectedGapMs'));
+    expect(painter, contains('canvas.drawLine('));
+    expect(painter, contains('visual only'));
+    expect(painter, contains('never a clinical inference or glucose rule'));
+    expect(painter, isNot(contains('spline')));
+    expect(painter, isNot(contains('curveTo')));
+  });
+
+  test('Dashboard trend emphasizes latest factual reading without prediction', () {
+    final painter = File(
+      'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
+    ).readAsStringSync();
+
+    expect(painter, contains('final latestId = logs.reduce'));
+    expect(painter, contains('final latest = log.id == latestId'));
+    expect(painter, contains('selected || latest'));
+    expect(painter, isNot(contains('forecast')));
+    expect(painter, isNot(contains('prediction')));
+  });
+
   test('Dashboard trend never introduces local glucose thresholds', () {
     final section = File(
       'lib/features/dashboard/widgets/dashboard_trend_section.dart',
