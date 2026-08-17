@@ -135,7 +135,7 @@ jobs:
           ws.close()
           PY
 
-          surfaces=(dashboard trend kpi insight companion summary profile journal importer document-import add-log medications reminders)
+          surfaces=(dashboard trend kpi insight next-action companion summary profile journal importer document-import add-log medications reminders)
           viewports=("390 844 true" "768 1024 false" "1280 900 false")
 
           for viewport in "${viewports[@]}"; do
@@ -182,16 +182,16 @@ jobs:
             done
 
             count="$(find "$GITHUB_WORKSPACE/ui-browser-cert" -name "*-${width}x${height}.png" | wc -l)"
-            test "$count" -eq 13
+            test "$count" -eq 14
             unique="$(sha256sum "$GITHUB_WORKSPACE"/ui-browser-cert/*-${width}x${height}.png | awk '{print $1}' | sort -u | wc -l)"
-            if [ "$unique" -lt 11 ]; then
+            if [ "$unique" -lt 12 ]; then
               echo "Browser certification at ${width}x${height} produced only ${unique} distinct renders" >&2
               exit 1
             fi
           done
 
           total="$(find "$GITHUB_WORKSPACE/ui-browser-cert" -name '*.png' | wc -l)"
-          test "$total" -eq 39
+          test "$total" -eq 42
 
       - name: Upload real browser screenshots
         if: always()
