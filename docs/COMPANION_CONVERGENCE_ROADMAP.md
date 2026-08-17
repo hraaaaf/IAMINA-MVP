@@ -28,19 +28,26 @@ Converge IAMINA's proactive intelligence and conversational bot onto one governe
 
 ## P0 — Safety Authority Convergence
 
-Goal: remove duplicate emergency-response composition and make medical streaming safe before emission.
+Goal: converge patient-facing emergency authority and make medical streaming safe before emission.
 
 Success:
 - direct `companion.conversation.chat` and `stream_chat` delegate URGENT composition to `core.emergency_response`;
-- `/api/v1/ai/chat/stream` delegates URGENT composition to the same authority;
 - local emergency copy/keyword authority in `companion/conversation.py` is removed;
-- SSE sentence emission applies no-prescription filtering before yielding patient-visible tokens;
+- the final HTTP/SSE boundary replaces any compatibility-era urgent payload with `core.emergency_response` output before patient emission;
+- the final HTTP/SSE boundary applies no-prescription filtering before yielding patient-visible generated tokens;
+- route-local compatibility text, if still present internally, cannot become patient-visible authority;
 - regression tests prove canonical emergency parity and pre-emission filtering.
 
 Proof:
 - focused backend tests;
 - full backend CI + PostgreSQL + migration drift;
 - exact-head review/certification before merge.
+
+Current candidate evidence:
+- `companion/conversation.py` no longer owns local emergency copy/keyword rules and calls `compose_emergency_for_patient` for direct chat/stream urgency;
+- `EmergencyOperatingModeMiddleware` now sanitizes SSE token events before yielding them;
+- focused P0 regression tests cover local-authority removal plus unsafe/safe SSE token behavior;
+- certification gates are not yet complete.
 
 Status: IN PROGRESS
 
