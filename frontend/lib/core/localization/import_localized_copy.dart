@@ -127,6 +127,61 @@ extension ImportLocalizedCopy on AppLocalizations {
       );
   String get cgmSaved => _pick(en: 'Connection saved.', fr: 'Connexion enregistrée.', ar: 'تم حفظ الاتصال.');
   String get cgmSyncComplete => _pick(en: 'Sync complete.', fr: 'Synchronisation terminée.', ar: 'اكتملت المزامنة.');
+  String get cgmHowToUse => _pick(
+        en: 'How to use',
+        fr: 'Mode d’emploi',
+        ar: 'طريقة الاستخدام',
+      );
+  String cgmHowToTitle(String source) => _pick(
+        en: 'Connect $source',
+        fr: 'Connecter $source',
+        ar: 'ربط $source',
+      );
+  String get cgmHowToBridgeTitle => _pick(
+        en: 'Prepare your bridge',
+        fr: 'Préparer votre bridge',
+        ar: 'جهّز الجسر',
+      );
+  String get cgmHowToAccessTitle => _pick(
+        en: 'Get secure access',
+        fr: 'Récupérer l’accès sécurisé',
+        ar: 'احصل على وصول آمن',
+      );
+  String get cgmHowToConnectTitle => _pick(
+        en: 'Connect IAMINA',
+        fr: 'Connecter IAMINA',
+        ar: 'اربط IAMINA',
+      );
+  String get cgmHowToDexcomBridge => _pick(
+        en: 'Send your Dexcom readings to a Nightscout-compatible bridge that you control.',
+        fr: 'Envoyez les mesures Dexcom vers un bridge compatible Nightscout que vous contrôlez.',
+        ar: 'أرسل قراءات Dexcom إلى جسر متوافق مع Nightscout وتتحكم فيه.',
+      );
+  String get cgmHowToLibreBridge => _pick(
+        en: 'Send your FreeStyle Libre readings to a Nightscout-compatible bridge that you control.',
+        fr: 'Envoyez les mesures FreeStyle Libre vers un bridge compatible Nightscout que vous contrôlez.',
+        ar: 'أرسل قراءات FreeStyle Libre إلى جسر متوافق مع Nightscout وتتحكم فيه.',
+      );
+  String get cgmHowToLinxBridge => _pick(
+        en: 'In Juggluco, enable Nightscout upload for your LinX / AiDEX X readings.',
+        fr: 'Dans Juggluco, activez l’envoi Nightscout des mesures LinX / AiDEX X.',
+        ar: 'في Juggluco، فعّل إرسال قراءات LinX / AiDEX X إلى Nightscout.',
+      );
+  String get cgmHowToAccessBody => _pick(
+        en: 'Copy the HTTPS Nightscout URL and the bearer token or API secret created for this bridge.',
+        fr: 'Copiez l’URL HTTPS Nightscout et le token Bearer ou secret API créé pour ce bridge.',
+        ar: 'انسخ رابط Nightscout الآمن HTTPS ورمز Bearer أو سر API المخصص لهذا الجسر.',
+      );
+  String get cgmHowToConnectBody => _pick(
+        en: 'Tap Configure, save the bridge, then run Sync. IAMINA will store factual CGM readings for your account.',
+        fr: 'Touchez Configurer, enregistrez le bridge puis lancez Synchroniser. IAMINA enregistrera les mesures CGM factuelles de votre compte.',
+        ar: 'اضغط على إعداد، احفظ الجسر ثم شغّل المزامنة. ستخزن IAMINA قراءات CGM الفعلية لحسابك.',
+      );
+  String get cgmHowToSafety => _pick(
+        en: 'IAMINA reads the Nightscout-compatible bridge. It does not sign in directly to the sensor manufacturer and this setup does not change treatment.',
+        fr: 'IAMINA lit le bridge compatible Nightscout. Elle ne se connecte pas directement au fabricant du capteur et cette configuration ne modifie aucun traitement.',
+        ar: 'تقرأ IAMINA الجسر المتوافق مع Nightscout ولا تسجل الدخول مباشرة لدى الشركة المصنعة للمستشعر، ولا يغيّر هذا الإعداد أي علاج.',
+      );
   String get cgmDisconnectConfirm => _pick(
         en: 'Disconnect this CGM bridge? Stored readings remain in IAMINA.',
         fr: 'Déconnecter ce bridge CGM ? Les mesures déjà enregistrées restent dans IAMINA.',
