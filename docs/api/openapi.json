@@ -1027,6 +1027,37 @@
         ]
       }
     },
+    "/api/v1/proactive-insights/preview/": {
+      "get": {
+        "operationId": "diabetes_api_v1_proactive_preview_proactive_insight",
+        "summary": "Preview Proactive Insight",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProactivePreviewOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Read the top governed candidate without mutating clinical or delivery state.",
+        "tags": [
+          "proactive-insights"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/proactive-insights/evaluate/": {
       "post": {
         "operationId": "diabetes_api_v1_proactive_evaluate_proactive_insight",
@@ -3586,65 +3617,6 @@
         "title": "PriorityVectorOut",
         "type": "object"
       },
-      "ProactiveFeedOut": {
-        "properties": {
-          "status": {
-            "enum": [
-              "surfaced",
-              "cooldown",
-              "no_change",
-              "insufficient_data"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "attention_budget": {
-            "const": "one_non_urgent_item_per_24h",
-            "title": "Attention Budget",
-            "type": "string"
-          },
-          "cooldown_until": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cooldown Until"
-          },
-          "pending_count": {
-            "title": "Pending Count",
-            "type": "integer"
-          },
-          "safety_notice": {
-            "title": "Safety Notice",
-            "type": "string"
-          },
-          "item": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ProactiveInsightOut"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "status",
-          "attention_budget",
-          "cooldown_until",
-          "pending_count",
-          "safety_notice",
-          "item"
-        ],
-        "title": "ProactiveFeedOut",
-        "type": "object"
-      },
       "ProactiveInsightOut": {
         "properties": {
           "observation_key": {
@@ -3759,6 +3731,124 @@
           "priority"
         ],
         "title": "ProactiveInsightOut",
+        "type": "object"
+      },
+      "ProactivePreviewOut": {
+        "properties": {
+          "status": {
+            "enum": [
+              "available",
+              "cooldown",
+              "no_change",
+              "insufficient_data"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "attention_budget": {
+            "const": "one_non_urgent_item_per_24h",
+            "title": "Attention Budget",
+            "type": "string"
+          },
+          "cooldown_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cooldown Until"
+          },
+          "pending_count": {
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "safety_notice": {
+            "title": "Safety Notice",
+            "type": "string"
+          },
+          "item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProactiveInsightOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "attention_budget",
+          "cooldown_until",
+          "pending_count",
+          "safety_notice",
+          "item"
+        ],
+        "title": "ProactivePreviewOut",
+        "type": "object"
+      },
+      "ProactiveFeedOut": {
+        "properties": {
+          "status": {
+            "enum": [
+              "surfaced",
+              "cooldown",
+              "no_change",
+              "insufficient_data"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "attention_budget": {
+            "const": "one_non_urgent_item_per_24h",
+            "title": "Attention Budget",
+            "type": "string"
+          },
+          "cooldown_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cooldown Until"
+          },
+          "pending_count": {
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "safety_notice": {
+            "title": "Safety Notice",
+            "type": "string"
+          },
+          "item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProactiveInsightOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "status",
+          "attention_budget",
+          "cooldown_until",
+          "pending_count",
+          "safety_notice",
+          "item"
+        ],
+        "title": "ProactiveFeedOut",
         "type": "object"
       },
       "CompanionAfterVisitOut": {
