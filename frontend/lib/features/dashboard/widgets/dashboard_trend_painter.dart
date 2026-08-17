@@ -71,6 +71,7 @@ class DashboardTrendPainter extends CustomPainter {
     _paintTargetBand(canvas, rect, yFor);
     _paintGridAndAxes(canvas, rect, minY, maxY);
     _paintMedicationEvents(canvas, rect, xFor);
+    _paintRecordedTrajectory(canvas, xFor, yFor);
     _paintRecordedPoints(canvas, xFor, yFor);
   }
 
@@ -104,7 +105,7 @@ class DashboardTrendPainter extends CustomPainter {
     final bottom = yFor(low!).clamp(rect.top, rect.bottom).toDouble();
     canvas.drawRect(
       Rect.fromLTRB(rect.left, top, rect.right, bottom),
-      Paint()..color = AminaVisualLanguage.mintSurface.withValues(alpha: .72),
+      Paint()..color = AminaVisualLanguage.mintSurface.withValues(alpha: .48),
     );
   }
 
@@ -177,27 +178,71 @@ class DashboardTrendPainter extends CustomPainter {
     }
   }
 
+  void _paintRecordedTrajectory(
+    Canvas canvas,
+    double Function(DateTime) xFor,
+    double Function(double) yFor,
+  ) {
+    if (logs.length < 2) return;
+
+    final ordered = List<LogEntryData>.from(logs)
+      ..sort((a, b) => _recordedAt(a).compareTo(_recordedAt(b)));
+    final windowMs = end.millisecondsSinceEpoch - start.millisecondsSinceEpoch;
+    if (windowMs <= 0) return;
+
+    // A large temporal hole is shown as a break rather than as invented
+    // continuity. This threshold is visual only: one sixth of the selected
+    // window, never a clinical inference or glucose rule.
+    final maxConnectedGapMs = windowMs ~/ 6;
+    final linePaint = Paint()
+      ..color = AminaVisualLanguage.actionGreen.withValues(alpha: .72)
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    for (var i = 1; i < ordered.length; i++) {
+      final previous = ordered[i - 1];
+      final current = ordered[i];
+      final previousAt = _recordedAt(previous);
+      final currentAt = _recordedAt(current);
+      final gapMs = currentAt.millisecondsSinceEpoch - previousAt.millisecondsSinceEpoch;
+      if (gapMs <= 0 || gapMs > maxConnectedGapMs) continue;
+
+      canvas.drawLine(
+        Offset(xFor(previousAt), yFor(previous.bloodSugar)),
+        Offset(xFor(currentAt), yFor(current.bloodSugar)),
+        linePaint,
+      );
+    }
+  }
+
   void _paintRecordedPoints(
     Canvas canvas,
     double Function(DateTime) xFor,
     double Function(double) yFor,
   ) {
-    final pointPaint = Paint()..color = AminaVisualLanguage.forestDeep;
+    final pointPaint = Paint()
+      ..color = AminaVisualLanguage.forestDeep.withValues(alpha: .82);
     final selectedPaint = Paint()..color = AminaVisualLanguage.actionGreen;
+    final latestId = logs.reduce((a, b) =>
+            _recordedAt(a).isAfter(_recordedAt(b)) ? a : b)
+        .id;
+
     for (final log in logs) {
       final point = Offset(xFor(_recordedAt(log)), yFor(log.bloodSugar));
       final selected = log.id == selectedLogId;
-      if (selected) {
+      final latest = log.id == latestId;
+      if (selected || latest) {
         canvas.drawCircle(
           point,
-          7,
+          selected ? 7 : 6.2,
           Paint()..color = AminaVisualLanguage.mintSurface,
         );
       }
       canvas.drawCircle(
         point,
-        selected ? 4.8 : 3.6,
-        selected ? selectedPaint : pointPaint,
+        selected ? 4.8 : latest ? 4.4 : 3.2,
+        selected || latest ? selectedPaint : pointPaint,
       );
     }
   }
