@@ -71,17 +71,25 @@ void main() {
     expect(source, isNot(contains('height: double.infinity')));
   });
 
-  test('Dashboard composition places adaptive KPIs after factual trend', () {
+  test('Dashboard responsive composition keeps adaptive KPIs after factual trend on mobile', () {
     final dashboard = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
     ).readAsStringSync();
+    final responsive = File(
+      'lib/features/dashboard/widgets/dashboard_responsive_sections.dart',
+    ).readAsStringSync();
 
-    final trendIndex = dashboard.indexOf('DashboardTrendSection(');
-    final kpiIndex = dashboard.indexOf('DashboardAdaptiveKpiSection(');
+    final todayIndex = dashboard.indexOf('DashboardTodaySection(');
+    final responsiveIndex = dashboard.indexOf('DashboardResponsiveSections(');
+    final trendIndex = responsive.indexOf('DashboardTrendSection(');
+    final kpiIndex = responsive.indexOf('DashboardAdaptiveKpiSection(');
+
+    expect(todayIndex, greaterThanOrEqualTo(0));
+    expect(responsiveIndex, greaterThan(todayIndex));
     expect(trendIndex, greaterThanOrEqualTo(0));
     expect(kpiIndex, greaterThan(trendIndex));
-    expect(dashboard, contains('unit: unit'));
-    expect(dashboard, contains('low: low'));
-    expect(dashboard, contains('high: high'));
+    expect(responsive, contains('unit: unit'));
+    expect(responsive, contains('low: low'));
+    expect(responsive, contains('high: high'));
   });
 }
