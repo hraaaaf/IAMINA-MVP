@@ -117,46 +117,6 @@ class MainShell extends StatelessWidget {
   }
 }
 
-class _EcgMarkPainter extends CustomPainter {
-  final Color color;
-
-  _EcgMarkPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.8
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke;
-    final path = Path();
-    final width = size.width;
-    final halfHeight = size.height / 2;
-
-    path.moveTo(width * 0.5, 0);
-    path.lineTo(width * 0.5, halfHeight * 0.55);
-    path.lineTo(width * 0.35, halfHeight * 0.55);
-    path.lineTo(width * 0.42, halfHeight * 0.15);
-    path.lineTo(width * 0.55, halfHeight * 1.85);
-    path.lineTo(width * 0.65, halfHeight * 0.55);
-    path.lineTo(width * 0.65, halfHeight);
-    path.moveTo(width * 0.5, halfHeight);
-    path.lineTo(width * 0.5, size.height);
-    canvas.drawPath(path, paint);
-    canvas.drawCircle(
-      Offset(width * 0.5, 0),
-      1.4,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.fill,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_EcgMarkPainter oldDelegate) => oldDelegate.color != color;
-}
-
 class _Sidebar extends StatelessWidget {
   final List<_NavEntry> entries;
   final int selectedIndex;
@@ -182,8 +142,7 @@ class _Sidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _BrandHeader(isWide: isWide),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           _AddButton(isWide: isWide),
           const SizedBox(height: 8),
           if (isWide)
@@ -297,85 +256,6 @@ class _AddButton extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _BrandHeader extends StatelessWidget {
-  final bool isWide;
-
-  const _BrandHeader({required this.isWide});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 24, 16, 8),
-      child: Row(
-        children: [
-          ExcludeSemantics(
-            child: Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AminaTheme.teal500, AminaTheme.teal800],
-                  begin: AlignmentDirectional.topStart,
-                  end: AlignmentDirectional.bottomEnd,
-                ),
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: AminaTheme.teal700.withValues(alpha: 0.45),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: SizedBox(
-                  width: 18,
-                  height: 22,
-                  child: CustomPaint(
-                    painter: _EcgMarkPainter(
-                      color: Colors.white.withValues(alpha: 0.92),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (isWide) ...[
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    AppLocalizations.of(context)!.appTitle,
-                    maxLines: 2,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: AminaTheme.textPrimary(context),
-                    ),
-                  ),
-                  Text(
-                    AppLocalizations.of(context)!.appSubtitle,
-                    maxLines: 2,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 10,
-                      color: AminaTheme.textSecondary(context),
-                      letterSpacing: 0.18,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }
