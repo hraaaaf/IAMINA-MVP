@@ -5,7 +5,8 @@ A module's engine owns its own data access. Given a patient_id and a window, it
 returns a DomainContext (the universal clinical output struct) that drives both
 the LLM gateway (narrate()) and the companion runtime (chat, tone, narration).
 It may also expose a governed read-only CompanionContext for longitudinal
-companion state, plus an offline per-entry safety gate via evaluate_alert().
+companion state, a module-owned offline fallback, plus an offline per-entry
+safety gate via evaluate_alert().
 
 Usage:
     from core.engine import BaseEngine
@@ -73,6 +74,25 @@ class BaseEngine(abc.ABC):
         from core.contracts.companion_context import CompanionContext
 
         return CompanionContext.empty(language=language)
+
+    def offline_fallback(
+        self,
+        context: "DomainContext",
+        language: str = "fr",
+    ) -> str:
+        """Return a module-owned degraded reply without creating clinical meaning.
+
+        The chassis fallback is deliberately generic. Condition-specific wording,
+        metrics and thresholds belong to the active module override.
+        """
+        del context
+        if language == "ar-MA":
+            return "كاين مشكل تقني مؤقت. عاود جرّب من بعد شوية."
+        if language == "ar":
+            return "هناك خلل تقني مؤقت. حاول مجدداً بعد لحظة."
+        if language == "en":
+            return "Temporary technical issue. Please try again shortly."
+        return "Difficulté technique momentanée. Réessaie dans un instant."
 
     def evaluate_alert(
         self,

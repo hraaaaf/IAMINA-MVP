@@ -33,12 +33,19 @@ class _Memory:
     patterns: list[str] = []
     emotional_signals = ["fatigue"]
     last_concern = "fatigue récente"
+    milestones_celebrated: list[str] = []
 
     def save(self):
         return None
 
 
 class _Deep:
+    consecutive_log_days = 0
+    total_interactions = 0
+    relationship_stage = "new"
+    communication_style = "unknown"
+    last_log_date = None
+
     def save(self):
         return None
 
@@ -55,6 +62,10 @@ def test_prior_emotional_memory_cannot_emit_an_assistant_turn_before_user_messag
         "core.contracts.domain_context",
         fromlist=["DomainContext"],
     )
+    companion_context_module = __import__(
+        "core.contracts.companion_context",
+        fromlist=["CompanionContext"],
+    )
     mock_module = __import__("unittest.mock", fromlist=["patch"])
     simple_namespace = __import__("types").SimpleNamespace
 
@@ -69,7 +80,14 @@ def test_prior_emotional_memory_cannot_emit_an_assistant_turn_before_user_messag
             "companion.conversation._get_context",
             return_value=domain_context_module.DomainContext.empty(language="fr"),
         ),
-        mock_module.patch("companion.conversation.select_tone", return_value=tone),
+        mock_module.patch(
+            "companion.conversation._get_companion_context",
+            return_value=companion_context_module.CompanionContext.empty(language="fr"),
+        ),
+        mock_module.patch(
+            "companion.conversation.select_relationship_tone",
+            return_value=tone,
+        ),
         mock_module.patch("companion.conversation.get_tone_instruction", return_value=""),
         mock_module.patch(
             "companion.conversation.compute_state",

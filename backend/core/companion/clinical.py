@@ -2,9 +2,9 @@
 core/companion/clinical.py — chassis clinical-context resolver (P4.5).
 
 The single entry point the companion runtime uses to obtain a module's instant
-DomainContext, governed longitudinal CompanionContext and offline alerts.
-Resolution always goes through the active module's BaseEngine contract, keeping
-the chassis condition-agnostic.
+DomainContext, governed longitudinal CompanionContext, degraded fallback and
+offline alerts. Resolution always goes through the active module's BaseEngine
+contract, keeping the chassis condition-agnostic.
 """
 import json
 import logging
@@ -82,6 +82,33 @@ def get_companion_context(
     if engine is None:
         return CompanionContext.empty(language=language)
     return engine.companion_context(patient_id, language=language)
+
+
+def get_offline_fallback(
+    patient_id: int | None,
+    context: DomainContext,
+    language: str = "fr",
+) -> str:
+    """Resolve degraded copy through the module contract, never chassis semantics."""
+    if patient_id is None:
+        if language == "ar-MA":
+            return "كاين مشكل تقني مؤقت. عاود جرّب من بعد شوية."
+        if language == "ar":
+            return "هناك خلل تقني مؤقت. حاول مجدداً بعد لحظة."
+        if language == "en":
+            return "Temporary technical issue. Please try again shortly."
+        return "Difficulté technique momentanée. Réessaie dans un instant."
+
+    engine = _resolve_engine(patient_id)
+    if engine is None:
+        if language == "ar-MA":
+            return "كاين مشكل تقني مؤقت. عاود جرّب من بعد شوية."
+        if language == "ar":
+            return "هناك خلل تقني مؤقت. حاول مجدداً بعد لحظة."
+        if language == "en":
+            return "Temporary technical issue. Please try again shortly."
+        return "Difficulté technique momentanée. Réessaie dans un instant."
+    return engine.offline_fallback(context, language=language)
 
 
 def invalidate(patient_id: int) -> None:

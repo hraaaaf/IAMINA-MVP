@@ -160,3 +160,49 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
             source_version=overview.source_version,
             language=language,
         )
+
+    def offline_fallback(
+        self,
+        context: DomainContext,
+        language: str = "fr",
+    ) -> str:
+        """Keep diabetes/TIR degraded wording inside the diabetes capsule."""
+        is_ar = language in ("ar", "ar-MA")
+        is_darija = language == "ar-MA"
+
+        if not context.has_sufficient_data:
+            if is_darija:
+                return "ما عنديش داتا كافية دابا. كمّل تسجّل المقياسات ديالك !"
+            if is_ar:
+                return "لا تتوفر لديّ بيانات كافية حتى الآن. واصل تسجيل قياساتك !"
+            if language == "en":
+                return "Not enough data yet. Keep recording your measurements."
+            return "Pas encore assez de données. Continue à enregistrer tes mesures !"
+
+        tir = context.tone_signals.get("primary")
+        if tir is None:
+            return super().offline_fallback(context, language=language)
+
+        if tir >= 70:
+            if is_darija:
+                return f"السكّر ديالك في الميزان — {tir:.0f}%! زوينة بزاف، كمّل هكاك."
+            if is_ar:
+                return f"نسبة وقتك في النطاق المستهدف {tir:.0f}% — ممتاز ! واصل هكذا."
+            if language == "en":
+                return f"Your TIR is {tir:.0f}% — within target. Keep it up."
+            return f"Ton TIR est à {tir:.0f} % — tu es dans la cible ! Continue comme ça."
+        if tir < 40:
+            if is_darija:
+                return f"TIR ديالك {tir:.0f}% دابا — هضر مع طبيبك باش تراجع الوضع."
+            if is_ar:
+                return f"نسبتك في النطاق المستهدف {tir:.0f}% — تحدث مع طبيبك لمراجعة الوضع."
+            if language == "en":
+                return f"Your TIR is {tir:.0f}% — discuss the situation with your clinician."
+            return f"Ton TIR est à {tir:.0f} % — parle de la situation avec ton médecin."
+        if is_darija:
+            return f"TIR ديالك {tir:.0f}% — عاود جرّب من بعد شوية."
+        if is_ar:
+            return f"نسبتك في النطاق المستهدف {tir:.0f}% — حاول مجدداً بعد قليل."
+        if language == "en":
+            return f"Your TIR is {tir:.0f}% — please try again shortly."
+        return f"Ton TIR est à {tir:.0f} % — réessaie dans un instant."

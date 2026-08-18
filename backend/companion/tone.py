@@ -1,12 +1,9 @@
 """
 IAmina Tone Adapter
 ===================
-Adapts the final response tone based on patient context and clinical state.
-
-Three modes (from Bilan Stratégique Mai 2026):
-  - ENCOURAGEANT: Patient is progressing well → celebrate, reinforce.
-  - DOUX: Patient is struggling or emotional → soften, empathize.
-  - CHALLENGE: Patient is stable but could do better → gently push.
+P3 separates relationship tone from clinical truth. Conversation uses the
+relationship-only selector below; modules remain responsible for clinical
+semantics and thresholds.
 """
 
 import logging
@@ -29,10 +26,17 @@ class ToneContext:
     reason: str
 
 
-# ── Tone selection thresholds ──
-TIR_GOOD_THRESHOLD = 70.0      # % Time In Range → encouraging
-TIR_STRUGGLE_THRESHOLD = 40.0  # % Time In Range → soft/gentle
-CV_STABLE_THRESHOLD = 36.0     # % CV → stable variability
+def select_relationship_tone(
+    *,
+    emotional: bool = False,
+    streak_days: int = 0,
+) -> ToneContext:
+    """Select tone from relationship signals only, never clinical thresholds."""
+    if emotional:
+        return ToneContext(mode=ToneMode.DOUX, reason="emotional_signal")
+    if streak_days >= 7:
+        return ToneContext(mode=ToneMode.ENCOURAGEANT, reason=f"streak_{streak_days}")
+    return ToneContext(mode=ToneMode.ENCOURAGEANT, reason="relationship_default")
 
 
 def select_tone(
@@ -41,70 +45,28 @@ def select_tone(
     recent_hypos: int = 0,
     streak_days: int = 0,
 ) -> ToneContext:
+    """Compatibility wrapper retained for callers outside P3 conversation runtime.
+
+    Clinical arguments are intentionally ignored here. The chassis no longer
+    interprets diabetes thresholds to choose conversational tone.
     """
-    Selects the appropriate tone for IAmina's response.
-    Pure Python, < 1ms execution.
-    """
-    # Emotional safety first: recent hypos → always gentle
-    if recent_hypos >= 2:
-        return ToneContext(
-            mode=ToneMode.DOUX,
-            reason=f"recent_hypos_{recent_hypos}",
-        )
-
-    # Good TIR + logging streak → celebrate
-    if tir_pct is not None and tir_pct >= TIR_GOOD_THRESHOLD:
-        if streak_days >= 3:
-            return ToneContext(
-                mode=ToneMode.ENCOURAGEANT,
-                reason=f"good_tir_{tir_pct:.0f}_streak_{streak_days}",
-            )
-        return ToneContext(
-            mode=ToneMode.ENCOURAGEANT,
-            reason=f"good_tir_{tir_pct:.0f}",
-        )
-
-    # Struggling TIR → soften
-    if tir_pct is not None and tir_pct < TIR_STRUGGLE_THRESHOLD:
-        return ToneContext(
-            mode=ToneMode.DOUX,
-            reason=f"low_tir_{tir_pct:.0f}",
-        )
-
-    # Stable but room for improvement → challenge
-    if cv_pct is not None and cv_pct <= CV_STABLE_THRESHOLD:
-        return ToneContext(
-            mode=ToneMode.CHALLENGE,
-            reason=f"stable_cv_{cv_pct:.0f}_room_to_grow",
-        )
-
-    # Default: encouraging
-    return ToneContext(
-        mode=ToneMode.ENCOURAGEANT,
-        reason="default_encouraging",
-    )
+    del tir_pct, cv_pct, recent_hypos
+    return select_relationship_tone(streak_days=streak_days)
 
 
 def get_tone_instruction(tone: ToneContext) -> str:
-    """
-    Returns the system prompt modifier for the selected tone.
-    Appended to the LLM system instruction.
-    """
+    """Return the prompt modifier for the selected relationship tone."""
     instructions = {
         ToneMode.ENCOURAGEANT: (
-            "TONE: Be warm and encouraging. Celebrate progress, no matter how small. "
-            "Use positive reinforcement. Highlight what the patient is doing well. "
-            "Example: 'Bravo pour ta régularité cette semaine !'"
+            "TONE: Be warm and encouraging. Acknowledge effort and continuity. "
+            "Do not infer clinical progress from tone alone."
         ),
         ToneMode.DOUX: (
-            "TONE: Be gentle and empathetic. The patient may be struggling or frustrated. "
-            "Acknowledge difficulty without judgment. Never blame. Focus on small, achievable steps. "
-            "Example: 'Ce n'est pas toujours facile, et c'est normal.'"
+            "TONE: Be gentle and empathetic. Acknowledge difficulty without judgment. "
+            "Do not introduce clinical conclusions or treatment advice."
         ),
         ToneMode.CHALLENGE: (
-            "TONE: Be gently challenging. The patient is stable but could push a bit further. "
-            "Propose a small, specific experiment (not a lecture). Frame it as curiosity, not criticism. "
-            "Example: 'Et si on essayait quelque chose cette semaine ?'"
+            "TONE: Be calmly motivating without creating medical goals or treatment actions."
         ),
     }
     return instructions.get(tone.mode, instructions[ToneMode.ENCOURAGEANT])
