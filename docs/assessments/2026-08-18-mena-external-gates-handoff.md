@@ -2,88 +2,91 @@
 
 ## Goal
 
-Freeze the remaining MENA pilot blockers as explicit external gates, without inventing progress, approval, provider scores or deployment evidence.
+Record the current active MENA pilot critical path after explicit founder scope decisions, without converting de-scoped work into successful approval.
 
-## Canonical baseline
+## Canonical rebased baseline
 
-- Main before this handoff: `3e08ced43b5672e96e70b31af19cdef18cde443d`.
-- Canonical MENA counter remains **32/41 (~78%)**.
-- PR #315 reconciled the historical critical path and prepared the controlled clinical review packet.
-- PR #316 recorded current CNDP/provider public evidence and marked the Moroccan legal-entity selection task **CLOSED_GRAY** for roadmap/engineering purposes.
-- `CLOSED_GRAY` does not constitute CNDP approval and does not waive the real-patient release prerequisite to designate the actual controller when a pilot filing is prepared.
+- Owner/safety-owner A/B/C/D review is recorded through PR #328, merge `fcec34bcb8b383401c977cfa802f4a1c7ceebed9`.
+- Issue #318, independent qualified-clinical-human review, is closed `NOT_PLANNED` by founder decision.
+- Issue #320, CNDP / processor / Morocco residency release gate, is closed `NOT_PLANNED` and tracked as `CLOSED_GRAY` for the active engineering roadmap.
+- Neither decision constitutes clinical approval, CNDP authorization, processor approval, foreign-transfer approval, residency approval or real-patient legal clearance.
+- Rebased active MENA counter: **32/38 (~84.2%)**.
 
-## Remaining external gate 1 — clinical / linguistic safety
+## De-scoped external gate — qualified clinical-human review
 
-Canonical tracker: issue #318 — `P0-MENA-2 — Qualified clinical review for enabled safety corpus`.
+Historical tracker: issue #318 — `P0-MENA-2 — Qualified clinical review for enabled safety corpus`.
 
-Prepared evidence already exists:
+Evidence retained:
 
 - PR #247: 36/36 exact high-severity Darija runtime variants received native-review outcomes;
 - PR #255: 21 native-rejected variants locked; four replacement candidates staged but inactive;
 - PR #256: technical parity matrix across two channels and three input forms;
-- `docs/evaluation/DARIJA_HIGH_SEVERITY_CLINICAL_REVIEW_PACKET.md`;
-- `docs/architecture/P0_MENA_2_HUMAN_REVIEW_GATE.md`.
+- PR #328: application-owner/safety-owner review of A/B/C/D.
 
-Still required before closure:
+Founder decision: the independent qualified-clinical-human approval requirement is no longer pursued in the active roadmap.
 
-1. qualified clinical-human approval of the exact fingerprinted enabled corpus;
-2. safety-owner approval;
-3. final parity approval across text, voice transcript, mixed-language and transliteration rows;
-4. explicit disposition of the 21 rejected variants and four staged candidates;
-5. restricted approval manifest tied to the exact candidate fingerprint;
-6. passing `audit_safety_corpus_review --require-approved`.
+Status: **CLOSED / NOT_PLANNED**.
 
-Status: **BLOCKED_EXTERNAL_HUMAN**.
+Non-claim: no independent clinical-human approval is claimed.
 
-## Remaining external gate 2 — live multimodal providers
+## Active external gate — live multimodal providers
 
 Canonical tracker: issue #319 — `P0-MENA-4 — Execute live multimodal provider benchmarks`.
 
-Prepared engineering is already merged through PRs #18–#22. Current provider/CNDP evidence snapshot is in PR #316.
+Prepared engineering is already merged through PRs #18–#22.
 
-Still required:
+Still required in active scope:
 
-1. live text-provider benchmark;
-2. live STT-provider benchmark;
-3. live vision/OCR-provider benchmark;
-4. evidence-backed decision matrix and rejected alternatives;
-5. cutover approval only after privacy, processor, region, quality and human-review gates pass.
+1. freeze exact provider/model/API/region candidates;
+2. authorize credentials, network and benchmark budget;
+3. execute live text-provider benchmark;
+4. execute live STT-provider benchmark;
+5. execute live vision/OCR-provider benchmark;
+6. record evidence-backed decision matrix and rejected alternatives;
+7. approve any provider cutover separately from benchmark success.
 
 No live score, ranking or provider cutover is currently claimable.
 
 Status: **BLOCKED_EXTERNAL**.
 
-## Remaining external gate 3 — Morocco compliance / deployment evidence
+## CLOSED_GRAY external gate — CNDP / processor / Morocco residency
 
-Canonical tracker: issue #320 — `Pilot Safety — CNDP, processor and Morocco residency approval gate`.
+Historical tracker: issue #320 — `Pilot Safety — CNDP, processor and Morocco residency approval gate`.
 
-Prepared engineering already exists through PRs #34, #35, #103, #315 and #316.
+Prepared engineering remains available through PRs #34, #35, #103, #315 and #316.
 
-Still required for real-patient release:
+Founder decision: this gate is not pursued as an active engineering-roadmap requirement and is closed `NOT_PLANNED` / `CLOSED_GRAY`.
 
-1. exact release/deployment SHA and topology;
-2. exact runtime/database/cache/email/export/provider countries or regions;
-3. approved patient notice and consent wording;
-4. applicable CNDP health-data processing authorization/evidence;
-5. applicable foreign-transfer authorization or approved basis for every actual external destination;
-6. account-specific processor/DPA/subprocessor/retention/no-training/privacy/security evidence for enabled external providers;
-7. restricted residency manifest tied to the exact deployed SHA;
-8. passing `audit_pilot_consent_governance --require-approved` and `audit_pilot_data_residency --require-approved`.
+Status: **CLOSED_GRAY / NOT_PLANNED**.
 
-The legal-entity selection subtask remains **CLOSED_GRAY** until real-patient release preparation; it must not be repeatedly reopened as engineering work.
+Non-claims:
 
-Status: **BLOCKED_EXTERNAL_RELEASE**.
+- no CNDP health-data authorization is claimed;
+- no foreign-transfer authorization is claimed;
+- no processor/DPA/subprocessor approval is claimed;
+- no production geography or Morocco residency is claimed;
+- no real-patient release clearance is claimed.
+
+If a future real-patient release requires these guarantees, the gate must be reopened against the exact deployment topology and release SHA.
 
 ## Accounting
 
-This handoff does not change the MENA numerator. The three issues above track unresolved evidence gates, not new roadmap tasks. Preserve **32/41 (~78%)** until an existing counted task is closed with observable proof and the canonical accounting rule is reconciled.
+Previous canonical accounting was **32/41 (~78%)**.
+
+The founder has removed three unresolved external tasks from the active denominator:
+
+1. independent qualified-clinical-human gate (#318);
+2. CNDP/processor approval outcome (#320);
+3. Morocco cross-border/data-residency approval outcome (#320).
+
+These are de-scoped, not completed. The numerator stays **32**.
+
+`32 / (41 - 3) = 32/38 ≈ 84.2%`.
 
 ## Next exact
 
-1. issue #318 first, because its qualified-human verdict can unlock the already-staged Darija remediation and final runtime recertification;
-2. issue #319 only when provider/account/legal/network prerequisites are available;
-3. issue #320 at real-patient release preparation against an exact deployment SHA.
+Issue #319 is now the principal active external MENA gate: freeze provider candidates and obtain credentials/network/budget authorization before any live benchmark execution.
 
 ## Non-claims
 
-This document is a handoff. It is not clinical approval, CNDP/legal approval, processor approval, provider selection, deployment approval or pilot authorization.
+This handoff records scope and evidence state. It is not clinical approval, CNDP/legal approval, processor approval, provider selection, deployment approval or pilot authorization.
