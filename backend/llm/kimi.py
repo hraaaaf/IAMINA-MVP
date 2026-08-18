@@ -20,7 +20,11 @@ def _usage_from_response(response) -> LLMUsage | None:
     if usage is None:
         return None
     details = getattr(usage, "prompt_tokens_details", None)
-    cached = getattr(details, "cached_tokens", None) if details is not None else None
+    cached = (
+        getattr(details, "cached_tokens", None)
+        if details is not None
+        else None
+    )
     return LLMUsage(
         input_tokens=getattr(usage, "prompt_tokens", None),
         output_tokens=getattr(usage, "completion_tokens", None),
