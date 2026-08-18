@@ -1,7 +1,6 @@
 """Fail-closed manifest for zero-egress local OCR benchmark execution."""
 
 import dataclasses
-import datetime
 
 
 _LOCAL_OCR_MODALITIES = {"document_ocr", "glucometer_ocr"}
@@ -13,12 +12,12 @@ class LocalOCRManifest:
     model: str
     implementation_version: str
     evidence_source: str
-    verified_on: datetime.date
-    review_due_on: datetime.date
+    verified_on: object
+    review_due_on: object
     approved_modalities: tuple[str, ...]
     approved_for_synthetic_benchmark: bool
 
-    def validate(self, *, today: datetime.date) -> None:
+    def validate(self, *, today: object) -> None:
         required = {
             "engine": self.engine,
             "model": self.model,
