@@ -1,9 +1,7 @@
 """Fail-closed manifest for zero-egress local OCR benchmark execution."""
 
-from __future__ import annotations
-
-from datetime import date
 from dataclasses import dataclass
+from datetime import date
 
 
 _LOCAL_OCR_MODALITIES = {"document_ocr", "glucometer_ocr"}
