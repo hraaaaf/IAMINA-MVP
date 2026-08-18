@@ -47,5 +47,5 @@ La mémoire relationnelle sert au ton et à la continuité, jamais comme vérit�
 Si le message est émotionnel, réponds avec empathie sans introduire de données cliniques.
 
 Réponds UNIQUEMENT en JSON:
-{{"reply": "...", "concern_detected": ""}}
+{{"reply": "..."}}
 """
