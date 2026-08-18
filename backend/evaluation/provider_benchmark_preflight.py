@@ -8,7 +8,10 @@ network benchmark may be attempted elsewhere.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+
+ENV_REFERENCE_RE = re.compile(r"^env:[A-Z][A-Z0-9_]*$")
 
 
 class ProviderBenchmarkBlocked(RuntimeError):
@@ -47,7 +50,7 @@ class ProviderBenchmarkPreflight:
             raise ProviderBenchmarkBlocked("explicit network/API authorization is required")
         if self.spend_ceiling_microusd <= 0:
             raise ProviderBenchmarkBlocked("positive explicit spend ceiling is required")
-        if not self.credential_reference.startswith("env:"):
+        if not ENV_REFERENCE_RE.fullmatch(self.credential_reference):
             raise ProviderBenchmarkBlocked(
-                "credential_reference must name an out-of-source-control env secret"
+                "credential_reference must be an env:VARIABLE name, never a secret value"
             )
