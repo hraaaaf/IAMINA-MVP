@@ -46,6 +46,24 @@ The existing repository model is directionally correct: `cndp_health_processing_
 
 No CNDP authorization number or transfer approval is currently recorded in repository evidence. Therefore the two fields remain `PENDING` for all external providers.
 
+## Gray-zone closure decision — legal entity designation
+
+**Status: `CLOSED_GRAY` — intentionally deferred, not unresolved engineering work.**
+
+The exact Moroccan legal entity that will act as IAMINA's data controller for the real-patient pilot is not fixed at this stage. The project owner has explicitly chosen to keep this designation in a gray zone for now.
+
+For roadmap/accounting purposes, the task **“identify/fix the legal entity acting as data controller” is considered definitively closed in gray-zone status** and must not continue to consume active engineering work or trigger repeated clarification requests.
+
+This closure has strict boundaries:
+
+- no legal entity name is invented or inferred;
+- no CNDP filing is claimed to have been submitted;
+- no CNDP authorization is claimed;
+- no processor, residency or foreign-transfer approval is claimed;
+- real-patient pilot enablement remains fail-closed until an actual controller is designated and the required restricted approvals exist.
+
+If/when the pilot proceeds toward real patient processing, `CLOSED_GRAY` converts into a release prerequisite rather than reopening the engineering task from scratch.
+
 ## Provider evidence snapshot
 
 ### `gemini`
@@ -133,11 +151,12 @@ A non-zero result remains a STOP for real-patient pilot enablement.
 ## Shortest compliance path
 
 1. Freeze the candidate deployment topology and exact provider/API choices.
-2. Prepare the CNDP health-data authorization file using the current patient-follow-up procedure where applicable.
-3. Obtain account-specific contractual/processor evidence only for providers actually intended for the pilot.
-4. Prepare F-118 foreign-transfer evidence for each actual external destination after/with the underlying processing authorization as required by CNDP.
-5. Record opaque approval references in the restricted evidence store, not secrets/contracts in Git.
-6. Run both `audit_pilot_consent_governance --require-approved` and the deployment-residency gate against the exact release SHA.
+2. Keep the controller-entity designation as `CLOSED_GRAY` until real-patient release preparation begins.
+3. Prepare the CNDP health-data authorization file once an actual controller exists, using the current patient-follow-up procedure where applicable.
+4. Obtain account-specific contractual/processor evidence only for providers actually intended for the pilot.
+5. Prepare F-118 foreign-transfer evidence for each actual external destination after/with the underlying processing authorization as required by CNDP.
+6. Record opaque approval references in the restricted evidence store, not secrets/contracts in Git.
+7. Run both `audit_pilot_consent_governance --require-approved` and the deployment-residency gate against the exact release SHA.
 
 ## Non-claims
 
