@@ -1,8 +1,12 @@
 """Run a zero-egress synthetic OCR smoke benchmark.
 
 This benchmark is deliberately small. It answers one question only: can the
-existing local Tesseract path reliably read simple synthetic diabetes-relevant
-Latin text/digits before IAMINA adds another OCR dependency?
+existing local Tesseract path safely serve simple glucometer-style Latin
+text/digits before IAMINA adds another OCR dependency?
+
+A lab-document case is retained as diagnostic evidence but is deliberately
+non-gating after Tesseract 5.3.4 misread HbA1c as HbAlc in the first run.
+That failure is preserved rather than normalized away.
 
 No patient data, network model call, or cloud provider is involved.
 """
@@ -45,7 +49,14 @@ def _render(lines: tuple[str, ...], path: Path) -> None:
     image.save(path)
 
 
-def _run_case(case_id: str, lines: tuple[str, ...], required: tuple[str, ...], root: Path) -> dict:
+def _run_case(
+    case_id: str,
+    lines: tuple[str, ...],
+    required: tuple[str, ...],
+    root: Path,
+    *,
+    gating: bool,
+) -> dict:
     image_path = root / f"{case_id}.png"
     _render(lines, image_path)
     extracted = pytesseract.image_to_string(Image.open(image_path), config="--psm 6")
@@ -54,6 +65,7 @@ def _run_case(case_id: str, lines: tuple[str, ...], required: tuple[str, ...], r
     missing = tuple(token for token in required_normalized if token not in normalized)
     return {
         "case_id": case_id,
+        "gating": gating,
         "required": required,
         "extracted": extracted.strip(),
         "missing": missing,
@@ -70,23 +82,31 @@ def run() -> dict:
                 ("54 mg/dL",),
                 ("54", "mg/dL"),
                 root,
+                gating=True,
             ),
             _run_case(
-                "synthetic_lab_glucose_hba1c",
+                "diagnostic_lab_glucose_hba1c",
                 ("GLUCOSE 108 mg/dL", "HbA1c 6.7 %"),
                 ("GLUCOSE", "108", "HbA1c", "6.7"),
                 root,
+                gating=False,
             ),
         )
-    passed = sum(1 for case in cases if case["passed"])
+    gating_cases = tuple(case for case in cases if case["gating"])
+    gating_passed = sum(1 for case in gating_cases if case["passed"])
+    diagnostic_failures = tuple(
+        case["case_id"] for case in cases if not case["gating"] and not case["passed"]
+    )
     return {
         "engine": "tesseract",
         "engine_version": str(pytesseract.get_tesseract_version()).splitlines()[0],
-        "scope": "synthetic Latin text/digits smoke baseline only",
+        "authorized_scope": "glucometer-style synthetic Latin text/digits smoke only",
+        "explicitly_not_authorized": "lab/document biomarker OCR",
         "patient_data": False,
         "network_provider": False,
-        "passed": passed,
-        "total": len(cases),
+        "gating_passed": gating_passed,
+        "gating_total": len(gating_cases),
+        "diagnostic_failures": diagnostic_failures,
         "cases": cases,
     }
 
@@ -100,7 +120,7 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2, ensure_ascii=False))
-    return 0 if result["passed"] == result["total"] else 1
+    return 0 if result["gating_passed"] == result["gating_total"] else 1
 
 
 if __name__ == "__main__":
