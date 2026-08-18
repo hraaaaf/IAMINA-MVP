@@ -14,7 +14,9 @@ from llm.middleware.base import BaseLLMMiddleware
 logger = logging.getLogger(__name__)
 
 
-def _token_fields(response: LLMResponse) -> tuple[int | None, int | None, int | None, int | None]:
+def _token_fields(
+    response: LLMResponse,
+) -> tuple[int | None, int | None, int | None, int | None]:
     usage = response.usage
     if usage is None:
         return None, None, None, None
@@ -42,7 +44,8 @@ class LoggingMiddleware(BaseLLMMiddleware):
         t0 = time.monotonic()
         response = next_fn(system, user)
         latency_ms = (time.monotonic() - t0) * 1000
-        input_tokens, output_tokens, cached_input_tokens, total_tokens = _token_fields(response)
+        token_fields = _token_fields(response)
+        input_tokens, output_tokens, cached_input_tokens, total_tokens = token_fields
         logger.debug(
             "llm.pipeline: provider=%s prompt_len=%d latency_ms=%.1f "
             "input_tokens=%s output_tokens=%s cached_input_tokens=%s total_tokens=%s",
