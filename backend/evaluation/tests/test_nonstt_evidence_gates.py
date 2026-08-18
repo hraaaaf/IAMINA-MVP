@@ -1,5 +1,6 @@
 import hashlib
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -74,9 +75,7 @@ def test_tts_device_evidence_requires_human_check_and_reports_failure_without_hi
 
     with pytest.raises(TTSDeviceEvidenceError, match="human_checked"):
         summarize_device_tts_evidence(
-            (_tts("fr-FR"), _tts("ar-MA").__class__(
-                **{**_tts("ar-MA").__dict__, "human_checked": False}
-            )),
+            (_tts("fr-FR"), replace(_tts("ar-MA"), human_checked=False)),
             required_locales=("fr-FR", "ar-MA"),
         )
 
