@@ -30,6 +30,8 @@ def test_exact_non_clinical_turns_are_eligible(message, language):
         "شكرا السكر 40",
         "hello I took insulin",
         "merci mais je vais tomber",
+        "bonjour merci",
+        "salam chokran",
         "",
     ],
 )
