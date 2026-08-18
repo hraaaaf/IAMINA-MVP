@@ -1,8 +1,9 @@
 # P0-MENA-4 / #319 — Benchmark candidate freeze — 2026-08-18
 
-Status: **COST-FIRST PRE-RUN FREEZE / NO PAID OR NETWORK BENCHMARK EXECUTED**
+Status: **COST-FIRST PRE-RUN FREEZE / LOCAL EVIDENCE ACTIVE / NO PAID OR NETWORK PROVIDER BENCHMARK EXECUTED**
 
-Base SHA: `55cc5957c109f98cb217a942619087d8833a2745`
+Initial freeze base SHA: `55cc5957c109f98cb217a942619087d8833a2745`
+Evidence sync verified through main: `dd3481fea54585da221cbf2a9cfe05ed8711a857`
 
 Canonical optimization plan: `docs/architecture/IAMINA_AI_COST_OPTIMIZATION_PLAN.md`
 
@@ -50,28 +51,61 @@ No frontier model is a routine candidate.
 
 Higher-cost STT only if all cheaper candidates fail the quality floor.
 
+The runtime STT path is now provider-neutral behind an injectable boundary; Gemini remains the current default until benchmark evidence authorizes a later cutover.
+
 ### OCR / vision
 
-1. local PaddleOCR PP-OCRv6 tiny/small
-2. local medium model only if tiny/small fail
-3. dedicated Mistral OCR 4 cloud fallback
-4. Qwen small VLM / Gemini Flash-Lite only for tasks dedicated OCR cannot solve
-5. general-purpose frontier VLM excluded unless all cheaper paths fail
+1. mobile glucometer OCR: existing on-device ML Kit path remains primary;
+2. local PaddleOCR PP-OCRv6 small: measured synthetic candidate, 2/2 prior exact-head cases passed;
+3. Tesseract: retained only as a narrow digit/glucometer baseline, not lab-document OCR authority;
+4. expand local camera/display/document fixtures before cloud fallback;
+5. dedicated Mistral OCR 4 / Qwen small VLM / Gemini Flash-Lite only where local evidence is insufficient;
+6. general-purpose frontier VLM excluded unless cheaper paths fail.
+
+Cloud meal/glucometer vision is now provider-neutral behind an injectable boundary; Gemini remains the current default. Existing deterministic media validation is enforced before provider invocation.
 
 ### TTS
 
-1. native iOS/Android TTS
-2. cloud TTS only if native FR/AR/Darija intelligibility fails the UX floor
+1. native iOS/Android `flutter_tts` path already exists and remains the default;
+2. cloud TTS only if measured FR/AR/Darija intelligibility fails the UX floor.
 
 Fixed/help/safety phrases should be locally reusable rather than regenerated.
+
+## Verified local OCR evidence
+
+### C10 Tesseract
+
+- synthetic glucometer `54 mg/dL`: PASS;
+- synthetic lab case: `HbA1c` was misread as `HbAlc`;
+- conclusion: Tesseract is not promoted to lab-document OCR authority.
+
+### C12 PaddleOCR PP-OCRv6 small
+
+Prior exact-head evidence on `5a36b281437e84d5726c040eea831a8b12522e5c`:
+
+- PaddleOCR `3.7.0`;
+- PaddlePaddle `3.2.2`;
+- `PP-OCRv6_small_det` + `PP-OCRv6_small_rec`;
+- CPU local inference;
+- patient data: false;
+- provider API: false;
+- paid inference: false;
+- setup latency: `57282.16 ms`;
+- 2/2 gating cases PASS;
+- `54 mg/dL`: `582.93 ms`, mean recognition confidence `0.99978`;
+- `HbA1c 7.4 % / Glycemie a jeun 1.32 g/L`: `509.38 ms`, mean recognition confidence `0.998261`.
+
+Artifact digest: `sha256:9f789af8683932140780a9e9428b6fbddc0c67859422ad882933c7afd3b8eaf1`.
+
+This is synthetic-fixture evidence only. Real camera conditions, Arabic OCR and production suitability remain unproven.
 
 ## Cost-reduction work to benchmark
 
 - deterministic zero-model routing before any LLM;
 - reduce raw history payload to compact governed state + last 1-2 turns;
 - stable cacheable system prefix;
-- remove unused structured-output fields;
-- hard API output-token ceiling;
+- remove unused structured-output fields where safe;
+- keep provider API output ceilings enforced and evaluate narrower task-specific ceilings rather than assuming one global limit;
 - prohibit routine reasoning/`think()`;
 - at most one paid quality escalation per turn;
 - STT silence trimming / compact encoding / duplicate-audio reuse;
@@ -80,25 +114,19 @@ Fixed/help/safety phrases should be locally reusable rather than regenerated.
 - native TTS by default;
 - per-patient cost ledger and circuit breakers.
 
-## Execution constraints
-
-- Synthetic/minimized repository fixtures only.
-- No patient data.
-- No credential committed to Git.
-- Exact provider/model/API identity must be captured in each run record.
-- Missing credential, model identity, budget authorization or execution authorization is STOP.
-- Benchmark success does not authorize production or real-patient cutover.
-
 ## Verified code observations motivating the plan
 
-- `companion.conversation` evaluates urgent/insulin/prescription safety before the LLM path.
-- `core.llm_gateway` constrains generation to approved capabilities and applies PHI/egress controls.
-- current text routing is provider/quota based (`Gemini -> Kimi -> fallback`), not task-cost based.
-- the conversation path can resend ~3000 characters of recent history on every generative turn.
-- the narrator asks for an extra `concern_detected` JSON field although the runtime only consumes `reply`.
-- Gemini currently defaults to `gemini-2.5-flash`, while its implementation notes Flash-Lite has weaker JSON-schema reliability; reducing unnecessary JSON dependence may therefore enable cheaper narration.
-- normal answers are prompt-limited to two sentences / 40 words, but provider API output is not yet hard-capped.
-- Gemini `think()` exposes a 2048-token thinking budget and is unnecessary for routine bounded narration.
+- urgent/insulin/prescription safety is evaluated before the conversational LLM path;
+- `core.llm_gateway` constrains generation to approved capabilities and applies PHI/egress controls;
+- the conversational text path is still provider/quota-oriented rather than fully task/cost-routed;
+- DeepSeek and Qwen have governed OpenAI-compatible adapters;
+- STT and cloud vision now expose provider-neutral injectable boundaries while defaults remain unchanged;
+- current Gemini, Kimi and governed OpenAI-compatible low-cost adapters enforce a `160` output-token ceiling at the provider API layer;
+- the prompt-level two-sentence / 40-word target remains stricter than that global ceiling, but lowering the provider ceiling globally could truncate structured summary use cases and therefore needs task-specific evidence;
+- Gemini `think()` exposes a 2048-token thinking budget and is unnecessary for routine bounded narration;
+- native `flutter_tts` already exists client-side;
+- meal-photo capture already resizes to max width 1600 and image quality 85 before upload;
+- C13 extends the controlled pricing/budget contract beyond text tokens to metered units such as STT seconds, OCR pages, images and TTS characters, without embedding provider prices.
 
 ## Economic target
 
@@ -112,16 +140,26 @@ Benchmark target, not a production claim:
 
 Hosting, database, notifications and support are outside this AI-variable target.
 
-## Pre-run gate
+## Execution constraints
 
-Required before the first paid/network call:
+- Synthetic/minimized repository fixtures only.
+- No patient data.
+- No credential committed to Git.
+- Exact provider/model/API identity must be captured in each run record.
+- Missing credential, model identity, budget authorization or execution authorization is STOP.
+- Benchmark success does not authorize production or real-patient cutover.
+
+## Pre-run gate for paid/network providers
+
+Required before the first paid/network provider call:
 
 1. credentials available out of source control;
 2. explicit network/API authorization;
 3. explicit total spend ceiling;
 4. exact current account-visible model/API identity confirmed for each candidate;
-5. dry-run manifest validation passes without invoking providers.
+5. current controlled pricing record for the charged modality;
+6. dry-run manifest validation passes without invoking providers.
 
 ## Accounting
 
-This freeze does not close any #319 live benchmark outcome and does not change the MENA numerator.
+Local/synthetic measurements such as C10/C12 are evidence, but they do not by themselves close the remaining external/live provider outcomes in #319 and do not change the MENA numerator. Benchmark success does not imply provider cutover, patient-data release, clinical approval or CNDP/legal authorization.
