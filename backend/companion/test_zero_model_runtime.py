@@ -10,7 +10,7 @@ class ExplodingLLM:
 
 
 def test_exact_greeting_bypasses_llm_in_chat():
-    reply = chat("Bonjour", memory=None, deep=object(), llm=ExplodingLLM())
+    reply = chat("Salut", memory=None, deep=object(), llm=ExplodingLLM())
     assert "Bonjour" in reply
 
 
