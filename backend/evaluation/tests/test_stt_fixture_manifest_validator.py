@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.validate_stt_fixture_manifest import FixtureManifestError, validate_manifest
+from evaluation.stt_fixture_manifest import FixtureManifestError, validate_manifest
 
 
 def _entry(path: str, digest: str, **overrides):
