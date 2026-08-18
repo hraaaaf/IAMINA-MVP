@@ -7,6 +7,7 @@ from companion.narrator_prompts import CHAT_USER, SYSTEM_WITH_STATE, get_languag
 from companion.parser import parse_llm_json
 from companion.state import compute_state, state_to_prompt
 from companion.tone import get_tone_instruction, select_relationship_tone
+from companion.zero_model_router import exact_chitchat_reply
 from core.companion.clinical import (
     get_companion_context,
     get_domain_context,
@@ -321,6 +322,13 @@ def chat(
         _update_relationship_memory(message, memory)
         return safety_reply
 
+    zero_model_reply = exact_chitchat_reply(message, detect_language(message, language))
+    if zero_model_reply is not None:
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", zero_model_reply)
+        _update_relationship_memory(message, memory)
+        return zero_model_reply
+
     if llm is None:
         llm = get_gateway_llm()
 
@@ -372,6 +380,14 @@ def stream_chat(
         _append_turn(patient, "assistant", safety_reply)
         _update_relationship_memory(message, memory)
         yield safety_reply
+        return
+
+    zero_model_reply = exact_chitchat_reply(message, detect_language(message, language))
+    if zero_model_reply is not None:
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", zero_model_reply)
+        _update_relationship_memory(message, memory)
+        yield zero_model_reply
         return
 
     if llm is None:
