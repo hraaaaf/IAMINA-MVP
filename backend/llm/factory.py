@@ -6,9 +6,9 @@ Priority order (when LLM_PROVIDER = "gemini"):
   2. Kimi   (if KIMI_API_KEY is set)
   3. FallbackProvider (static templates, always available)
 
-Explicit overrides (LLM_PROVIDER = "kimi" | "claude") bypass the chain.
-Every network-capable provider returned by this module is decorated with the
-central text payload contract and processor policy before it can perform egress.
+Explicit overrides may select kimi, claude, deepseek or qwen. Every
+network-capable provider returned by this module is decorated with the central
+text payload contract and processor policy before it can perform egress.
 """
 import logging
 from collections.abc import Callable, Iterator
@@ -39,7 +39,6 @@ def _get_quota_exhausted() -> BaseLLMProvider:
 
 
 def _get_kimi() -> BaseLLMProvider | None:
-    """Returns KimiProvider if KIMI_API_KEY is configured, else None."""
     kimi_key = getattr(settings, "KIMI_API_KEY", "") or ""
     if not kimi_key:
         return None
@@ -59,6 +58,8 @@ def _provider_policy_name(provider: BaseLLMProvider) -> str:
         "GuardedGeminiProvider": "gemini",
         "KimiProvider": "kimi",
         "ClaudeProvider": "claude",
+        "DeepSeekProvider": "deepseek",
+        "QwenProvider": "qwen",
         "QuotaExhaustedProvider": "quota-exhausted",
         "FallbackProvider": "fallback",
     }
@@ -70,7 +71,6 @@ def _execute_provider_call(
     operation: str,
     call: Callable[[], _T],
 ) -> _T:
-    """Execute one authorized provider call and expose only typed safe errors."""
     try:
         return call()
     except LLMProviderError:
@@ -88,15 +88,6 @@ def _execute_provider_call(
 
 
 def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
-    """Decorate one provider instance without changing its concrete type.
-
-    Authorization happens before the original complete/stream/think method can
-    touch the network. The processor policy is evaluated against the exact
-    patient purpose held by the central egress context. Once authorized, vendor
-    exceptions are normalized into a stable non-sensitive failure taxonomy.
-    Stream iterators are always closed when the consumer cancels or when a
-    partial stream fails, so provider resources cannot remain live after exit.
-    """
     if getattr(provider, "_iamina_text_payload_policy", False) is True:
         return provider
 
@@ -159,7 +150,6 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
 
 
 def _build_gemini_with_failover() -> BaseLLMProvider:
-    """Guarded Gemini → Kimi → FallbackProvider chain."""
     from .gemini import GeminiProvider
     from .rate_guard import GuardedGeminiProvider, should_use_gemini
 
@@ -177,12 +167,10 @@ def _build_gemini_with_failover() -> BaseLLMProvider:
 
 
 def get_ai_provider_name() -> str:
-    """Return the policy identifier for the currently resolved provider."""
     return _provider_policy_name(get_llm())
 
 
 def get_llm() -> BaseLLMProvider:
-    """Resolve the active LLM provider."""
     provider = getattr(settings, "LLM_PROVIDER", "gemini")
     model = getattr(settings, "LLM_MODEL", None)
 
@@ -193,6 +181,18 @@ def get_llm() -> BaseLLMProvider:
         from .kimi import KimiProvider
 
         resolved = KimiProvider(model=model) if model else KimiProvider()
+        return _enforce_text_payload_policy(resolved)
+
+    if provider == "deepseek":
+        from .lowcost_openai_compatible import DeepSeekProvider
+
+        resolved = DeepSeekProvider(model=model) if model else DeepSeekProvider()
+        return _enforce_text_payload_policy(resolved)
+
+    if provider == "qwen":
+        from .lowcost_openai_compatible import QwenProvider
+
+        resolved = QwenProvider(model=model) if model else QwenProvider()
         return _enforce_text_payload_policy(resolved)
 
     if provider == "claude":
