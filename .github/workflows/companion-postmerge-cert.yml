@@ -1,1 +1,175 @@
-x
+name: Companion post-merge exact-SHA certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Exact commit SHA to certify
+        required: true
+        type: string
+      label:
+        description: Human-readable certification label (for example P3 or P4)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: companion-postmerge-cert-${{ inputs.target_sha }}
+  cancel-in-progress: false
+
+jobs:
+  certify:
+    name: Certify ${{ inputs.label }} @ ${{ inputs.target_sha }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iamina_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: ci-secret-key-not-for-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+
+    steps:
+      - name: Validate requested SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "${{ inputs.target_sha }}" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "::error::target_sha must be a full 40-character commit SHA"
+            exit 1
+          fi
+
+      - name: Checkout exact target SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_sha }}
+          fetch-depth: 1
+
+      - name: Prove exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          echo "Requested SHA: ${{ inputs.target_sha }}"
+          echo "Checked out SHA: ${ACTUAL_SHA}"
+          test "${ACTUAL_SHA}" = "${{ inputs.target_sha }}"
+          {
+            echo "## Companion exact-SHA certification"
+            echo "- Label: ${{ inputs.label }}"
+            echo "- Requested SHA: ${{ inputs.target_sha }}"
+            echo "- Checked out SHA: ${ACTUAL_SHA}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Secret hygiene — tracked files
+        run: python scripts/check_secrets.py
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend certification dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt ruff==0.15.17 bandit[toml] import-linter
+
+      - name: Backend — ruff
+        working-directory: backend
+        run: ruff check .
+
+      - name: Architecture boundaries
+        working-directory: backend
+        run: lint-imports
+
+      - name: LLM gateway anti-bypass
+        working-directory: backend
+        run: python ../scripts/check_ai_egress_boundaries.py --check gateway
+
+      - name: AI egress authorization anti-bypass
+        working-directory: backend
+        run: python ../scripts/check_ai_egress_boundaries.py --check egress
+
+      - name: SAST — bandit
+        working-directory: backend
+        run: bandit -r . -ll -ii --skip B101,B311 -x ./tracking/tests,./amina/tests
+
+      - name: OpenAPI schema is current
+        working-directory: backend
+        run: |
+          python manage.py export_openapi > /tmp/openapi.json
+          if ! diff -q /tmp/openapi.json ../docs/api/openapi.json > /dev/null; then
+            echo "::error::docs/api/openapi.json is stale"
+            diff ../docs/api/openapi.json /tmp/openapi.json | head -40 || true
+            exit 1
+          fi
+
+      - name: Django model/migration drift
+        working-directory: backend
+        env:
+          DATABASE_URL: sqlite:///ci-test.db
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Backend — SQLite pytest
+        working-directory: backend
+        env:
+          DATABASE_URL: sqlite:///ci-test.db
+        run: pytest --tb=short -q
+
+      - name: PostgreSQL — migrate
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_ci
+        run: python manage.py migrate --noinput
+
+      - name: PostgreSQL — full pytest
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_ci
+        run: pytest --tb=short -q
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+
+      - name: Frontend — dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Frontend — analyze
+        working-directory: frontend
+        run: flutter analyze --no-fatal-infos
+
+      - name: Frontend — tests
+        working-directory: frontend
+        run: flutter test --no-pub
+
+      - name: Certification summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "- Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- Result: ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"
