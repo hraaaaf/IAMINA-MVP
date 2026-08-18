@@ -2,7 +2,7 @@ name: Django migration drift
 
 on:
   push:
-    branches: [main, dev, feat/**, fix/**, chore/**, docs/**]
+    branches: [main, dev]
   pull_request:
     branches: [main, dev]
 
