@@ -1,7 +1,7 @@
 # IAMINA — Companion Convergence Roadmap
 
-Status: ACTIVE
-Baseline: `main@a9c54858781e901389bbb476c647e523b92fc907`
+Status: CLOSED
+Baseline: `main@687c5405adb4eab97024ad95e0e8217f25d9d084`
 
 ## Goal
 
@@ -81,19 +81,17 @@ Implemented:
 - narrator prompts are module-neutral and prohibit diagnosis, causality, clinical priority, prescription, dose, treatment action and proactive-eligibility authority;
 - deterministic emergency and prescription-sensitive input guards remain ahead of generative execution.
 
-Verified proof before merge:
+Verified proof:
 - PR #317 exact head `5e6c1944d972e9a035ea11bf1985de69a29378a7`;
 - exact-head CI #2798 SUCCESS;
 - exact-head Django migration drift #2610 SUCCESS;
 - 0 unresolved review threads and branch 0 behind `main` before merge;
 - expected-head merge `852d66bc51d42749cefb3381b07f18a18ae2ff28`;
-- `main` was verified to point exactly at that merge after merge.
+- original post-merge Django migration drift #2612 SUCCESS on `main`;
+- reproducible exact-SHA recertification run `32137927130` checked out and asserted `852d66bc51d42749cefb3381b07f18a18ae2ff28`, then passed secret hygiene, backend lint/architecture/AI-egress/SAST/OpenAPI, Django migration drift, SQLite pytest, PostgreSQL migrate + full pytest, Flutter analyze and Flutter tests;
+- durable certification evidence: issue #334 `[Companion cert] P3 SUCCESS 852d66bc51d4`.
 
-Open proof:
-- post-merge GitHub Actions push-run evidence for `852d66bc51d42749cefb3381b07f18a18ae2ff28` is not retrievable through the available connector;
-- the prior draft closeout PR #322 was exact-head CI/drift green but was closed unmerged as superseded by this consolidated closeout.
-
-Status: MERGED — POST-MERGE CI/DRIFT PROOF PENDING
+Status: CLOSED
 
 ## P4 — Conversation + Proactivity Evals
 
@@ -113,18 +111,21 @@ New P4 runtime coverage:
 - narrator governance parity for FR / EN / AR / ar-MA;
 - multi-turn correction/recovery prompt certification.
 
-Verified proof before merge:
+Verified proof:
 - PR #325 exact head `da04aaa7f89b515b1529d41c3c74014213b73cd1`;
 - exact-head CI #2825 SUCCESS;
 - exact-head Django migration drift #2637 SUCCESS;
 - PR mergeable, 0 unresolved review threads and branch 0 behind `main` before merge;
-- expected-head merge `a9c54858781e901389bbb476c647e523b92fc907`.
+- expected-head merge `a9c54858781e901389bbb476c647e523b92fc907`;
+- reproducible exact-SHA recertification run `32137927130` checked out and asserted `a9c54858781e901389bbb476c647e523b92fc907`, then passed secret hygiene, backend lint/architecture/AI-egress/SAST/OpenAPI, Django migration drift, SQLite pytest, PostgreSQL migrate + full pytest, Flutter analyze and Flutter tests;
+- durable certification evidence: issue #333 `[Companion cert] P4 SUCCESS a9c54858781e`.
 
-Open proof:
-- post-merge GitHub Actions push-run evidence for `a9c54858781e901389bbb476c647e523b92fc907` is not retrievable through the available connector.
+Status: CLOSED
 
-Status: MERGED — POST-MERGE CI/DRIFT PROOF PENDING
+## Certification infrastructure
+
+To make historical post-merge certification auditable and reproducible, `.github/workflows/companion-postmerge-cert.yml` was installed on `main`. It checks out an explicit target SHA and asserts it before executing the governed certification suite. The first canonical P3/P4 run was `32137927130` and published issues #333 and #334 as durable evidence.
 
 ## Completion rule
 
-A phase is CLOSED only after its runtime/tests are exact-head certified, merged with expected-head protection, post-merge CI/drift are green, and this roadmap is synchronized to verified evidence.
+A phase is CLOSED only after its runtime/tests are exact-head certified, merged with expected-head protection, post-merge CI/drift are green or an equivalent later exact-SHA recertification has passed the same governed controls, and this roadmap is synchronized to verified evidence.
