@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import date
+from dataclasses import dataclass
 
 
 _LOCAL_OCR_MODALITIES = {"document_ocr", "glucometer_ocr"}
