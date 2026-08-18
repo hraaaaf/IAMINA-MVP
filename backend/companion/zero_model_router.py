@@ -10,7 +10,6 @@ _TRAILING_PUNCTUATION = re.compile(r"[\s.!?…،؛:]+$")
 _INTERNAL_SPACE = re.compile(r"\s+")
 
 _GREETING = {
-    "bonjour",
     "salut",
     "hello",
     "hi",
