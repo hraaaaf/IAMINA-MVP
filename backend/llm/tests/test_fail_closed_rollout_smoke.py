@@ -23,7 +23,7 @@ class CountingProvider(BaseLLMProvider):
 
     def complete(self, system: str, user: str) -> LLMResponse:
         self.complete_calls += 1
-        return LLMResponse(text="ok", model=self.model_name)
+        return LLMResponse(content="ok", provider=self.model_name)
 
     def stream(self, system: str, user: str):
         self.stream_calls += 1
