@@ -11,6 +11,7 @@ from .base import BaseLLMProvider, LLMResponse, LLMUsage
 logger = logging.getLogger(__name__)
 
 _LLM_TIMEOUT = 15  # seconds
+_MAX_OUTPUT_TOKENS = 160
 
 
 def _usage_from_response(response) -> LLMUsage | None:
@@ -75,6 +76,7 @@ class GeminiProvider(BaseLLMProvider):
                 config={
                     "system_instruction": system,
                     "temperature": 0.1,
+                    "max_output_tokens": _MAX_OUTPUT_TOKENS,
                 },
             )
 
@@ -98,6 +100,7 @@ class GeminiProvider(BaseLLMProvider):
                     config={
                         "system_instruction": system,
                         "temperature": 0.1,
+                        "max_output_tokens": _MAX_OUTPUT_TOKENS,
                     },
                 )
             )

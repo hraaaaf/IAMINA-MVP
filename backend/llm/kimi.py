@@ -8,6 +8,7 @@ from .base import BaseLLMProvider, LLMResponse, LLMUsage
 logger = logging.getLogger(__name__)
 
 _KIMI_TIMEOUT_SECONDS = 15.0
+_MAX_OUTPUT_TOKENS = 160
 
 try:
     from openai import OpenAI
@@ -69,6 +70,7 @@ class KimiProvider(BaseLLMProvider):
         response = self.client.chat.completions.create(
             model=self.model,
             messages=self._messages(system, user),
+            max_tokens=_MAX_OUTPUT_TOKENS,
             timeout=_KIMI_TIMEOUT_SECONDS,
         )
         return LLMResponse(
@@ -84,6 +86,7 @@ class KimiProvider(BaseLLMProvider):
         with self.client.chat.completions.stream(
             model=self.model,
             messages=self._messages(system, user),
+            max_tokens=_MAX_OUTPUT_TOKENS,
             timeout=_KIMI_TIMEOUT_SECONDS,
         ) as stream:
             for text in stream.text_stream:
