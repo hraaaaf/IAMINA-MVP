@@ -11,6 +11,7 @@ from typing import Any
 class Modality(StrEnum):
     TEXT = "text"
     STT = "stt"
+    TTS = "tts"
     DOCUMENT_OCR = "document_ocr"
     GLUCOMETER_OCR = "glucometer_ocr"
     MEAL_VISION = "meal_vision"
