@@ -6,7 +6,7 @@ from companion.zero_model_router import exact_chitchat_reply
 @pytest.mark.parametrize(
     ("message", "language"),
     [
-        ("Bonjour", "fr"),
+        ("Salut", "fr"),
         ("merci beaucoup!", "fr"),
         ("Hello", "en"),
         ("thank you", "en"),
@@ -23,6 +23,7 @@ def test_exact_non_clinical_turns_are_eligible(message, language):
 @pytest.mark.parametrize(
     "message",
     [
+        "Bonjour",
         "merci glycémie 40",
         "bonjour je tremble",
         "salam 42",
@@ -35,5 +36,5 @@ def test_exact_non_clinical_turns_are_eligible(message, language):
         "",
     ],
 )
-def test_any_extra_or_clinical_content_fails_closed(message):
+def test_any_extra_or_reserved_content_fails_closed(message):
     assert exact_chitchat_reply(message, "fr") is None
