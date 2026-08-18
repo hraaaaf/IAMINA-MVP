@@ -1,316 +1,266 @@
 # IAMINA AI Cost Optimization Plan
 
-Status: **ARCHITECTURE PLAN / NO RUNTIME CHANGE**
+Status: **ARCHITECTURE + VERIFIED IMPLEMENTATION EVIDENCE / NO PROVIDER CUTOVER**
 
 ## Goal
 
 Preserve IAMINA's deterministic clinical intelligence and safety while minimizing variable AI cost per active patient.
 
-## Verified current architecture
+## Success criteria
 
-IAMINA already separates clinical authority from generation:
+A cost optimization is accepted only when evidence shows that it preserves the governed safety/quality floor and lowers or bounds variable cost. Primary KPI: **cost per accepted safe answer**, not raw API-call price.
 
-- high-risk safety / prescription / insulin boundaries are evaluated before the conversational LLM path;
-- approved clinical/domain context is computed outside the model;
-- the model is a narrator over governed context, not the source of diagnosis, treatment, dose or clinical priority;
-- PHI minimization/pseudonymization and processor policy sit before provider egress;
-- the current LLM factory is provider-level routing, primarily Gemini -> Kimi -> static fallback;
-- the conversational prompt caps normal answers at 2 sentences / 40 words but currently resends repeated instructions and up to ~3000 characters of conversation history on each turn.
+## Verified architecture
 
-This separation allows aggressive model-cost optimization without moving clinical authority into a cheaper model.
+IAMINA separates clinical authority from generation:
 
-## Main cost leaks to remove
+- urgent / insulin / prescription boundaries are evaluated before conversational generation;
+- governed clinical/domain context is computed outside the model;
+- the model narrates approved context rather than deciding diagnosis, treatment, dose or clinical priority;
+- PHI/egress and processor policy remain upstream of external-provider invocation;
+- zero-model routing exists for bounded deterministic conversation cases;
+- DeepSeek and Qwen have governed low-cost OpenAI-compatible adapters;
+- STT is isolated behind a provider-neutral injectable boundary; Gemini remains the current default;
+- cloud meal/glucometer vision is isolated behind a provider-neutral injectable boundary; Gemini remains the current default;
+- native client-side `flutter_tts` exists and remains the preferred TTS path;
+- mobile glucometer OCR remains local-first with on-device ML Kit; web/cloud is fallback;
+- current Gemini, Kimi and governed OpenAI-compatible low-cost text adapters enforce a `160` output-token ceiling at the provider API layer;
+- controlled expiring pricing and budget authorization exist for text and now for generic metered modalities such as STT seconds, OCR pages, images and TTS characters.
 
-1. **Model used too often**: routine deterministic replies can bypass generation entirely.
-2. **Static prompt resent every turn**: the system safety/narrator contract is highly repetitive and should be cache-friendly.
-3. **History resent as raw text**: the conversation path can include up to ~3000 characters plus older snippets on every model call.
-4. **Unnecessary structured output**: the runtime requests `reply` plus `concern_detected`, while the caller only requires `reply`; JSON reliability also forces a stronger model than plain bounded narration may require.
-5. **No hard provider output-token cap**: 40-word behavior is prompt-enforced rather than API-enforced.
-6. **Routing is quota-first rather than task/cost-first**: current Gemini -> Kimi fallback does not select the cheapest adequate model by task.
-7. **Reasoning path exists**: `think()` exposes a 2048-token thinking budget in the Gemini provider and must never become the routine patient-chat path.
-8. **Cloud media can become the dominant bill** if TTS/OCR/STT are invoked indiscriminately.
+These facts allow aggressive cost optimization without moving clinical authority into a cheaper model.
+
+## Verified local OCR evidence
+
+### Tesseract C10
+
+Synthetic zero-egress baseline:
+
+- `54 mg/dL`: PASS;
+- lab diagnostic case: `HbA1c` misread as `HbAlc`;
+- decision: retain only as a narrow digit/glucometer baseline, not lab-document OCR authority.
+
+### PaddleOCR C12
+
+Prior exact-head measurement on `5a36b281437e84d5726c040eea831a8b12522e5c`:
+
+- PaddleOCR `3.7.0`, PaddlePaddle `3.2.2`;
+- `PP-OCRv6_small_det` + `PP-OCRv6_small_rec`;
+- CPU local inference;
+- 2/2 synthetic gating cases PASS;
+- setup: `57282.16 ms`;
+- `54 mg/dL`: `582.93 ms`, mean recognition confidence `0.99978`;
+- `HbA1c 7.4 % / Glycemie a jeun 1.32 g/L`: `509.38 ms`, mean recognition confidence `0.998261`;
+- patient data: false; provider API: false; paid inference: false.
+
+This proves only the synthetic fixtures. Real camera conditions, Arabic OCR and production suitability remain unproven.
 
 ## Target architecture: deterministic brain, cheap language layer
 
-### Tier 0 — zero-model path
+### Tier 0 — zero-model
 
-Use deterministic code/templates when the response can be safely produced from known state:
+Use deterministic code/templates when the response can be safely produced from known governed state:
 
 - emergency / insulin / prescription boundaries;
 - fixed safety notices;
-- exact CGM/device states and source provenance;
-- confirmations, acknowledgements, simple navigation/help;
-- repeated FAQ whose answer is already governed and locale-approved;
-- identical/recent duplicate user requests when the underlying governed state has not changed.
+- exact device/status/provenance responses;
+- bounded acknowledgements/help/navigation;
+- repeated state-stable requests where deterministic reuse is safe.
 
-Target: **30-50% of conversational turns should require no generative call** after instrumentation proves equivalence.
+The model-call avoidance rate must be measured; no target percentage is declared achieved without telemetry.
 
 ### Tier 1 — cheap narrator
 
-For normal companion conversation over approved context:
+For normal companion narration over approved context:
 
-- short prompt;
-- no chain-of-thought/reasoning mode;
-- response API capped to a small output budget;
-- cheap model only;
-- candidate benchmark: DeepSeek V4 Flash, Gemini 2.5 Flash-Lite, Qwen low-cost API candidate, Kimi low-cost candidate;
-- GPT-5 nano may be tested as a control for simple narration/classification.
+- short governed prompt;
+- no reasoning/chain-of-thought mode;
+- task-specific output ceiling;
+- cheapest adequate model only.
 
-The cheapest model passing the safety/language/quality floor wins.
+Candidate benchmark:
+
+- DeepSeek V4 Flash;
+- Gemini 2.5 Flash-Lite;
+- Qwen low-cost candidate;
+- Kimi low-cost candidate;
+- GPT-5 nano as an ultra-cheap control.
+
+The cheapest candidate passing the safety/language/quality floor wins.
 
 ### Tier 2 — quality fallback
 
-Escalate only when Tier 1 fails a deterministic acceptance test:
+Escalate at most once when Tier 1 fails a deterministic acceptance condition such as invalid output contract, unsupported language quality or material narration ambiguity.
 
-- invalid output contract;
-- unsupported language/mixed Darija confidence;
-- material ambiguity in narration;
-- repeated provider failure;
-- complex longitudinal explanation whose governed context is valid but Tier 1 quality is below threshold.
-
-Candidate: GPT-5 mini or the best cost/quality winner from Qwen/Kimi/Gemini-class models.
-
-Target: **<10% of generative turns**.
+Candidate: GPT-5 mini or the best evidence-backed stronger Tier-1 family variant.
 
 ### Tier 3 — frontier exception
 
-No frontier model in routine patient runtime.
+No frontier model in routine patient runtime. Any future use requires an explicitly benchmarked task for which cheaper candidates fail a demonstrated requirement.
 
-Allowed only for an explicitly benchmarked future task with a demonstrated quality requirement that Tier 1/2 cannot meet. Never silently escalate based on provider marketing or model availability.
+## Text optimization
 
-## Prompt optimization
+### Prompt diet
 
-### P1 — remove redundant payload
+Continue to minimize repeated payload while preserving governed context:
 
-- Replace raw 3000-character rolling history with:
-  - last 1-2 user/assistant turns;
-  - deterministic compact relationship-state summary;
-  - governed clinical context already produced by CompanionContext/DomainContext.
-- Keep all clinical facts out of free-text memory unless already approved by the governed context contract.
-- Remove unused `concern_detected` output if no caller consumes it.
-- Prefer bounded plain-text narration where safe; keep JSON only where machine parsing is truly required.
+- compact recent conversational state instead of unnecessary raw history;
+- stable byte-identical prefix where provider caching can exploit it;
+- remove unused structured-output fields where callers do not consume them;
+- prefer bounded plain text where machine parsing is unnecessary.
 
-### P2 — stable prefix and caching
+### Output ceilings
 
-Keep the immutable narrator/safety contract at the beginning of the request and stable byte-for-byte across turns so provider prefix caching can work.
+The old plan item “add a hard provider output cap” is already partially delivered: current Gemini/Kimi/governed low-cost compatible adapters use a `160` token provider-side ceiling.
 
-Track per call:
+Remaining optimization is **task-specific ceilings**, not a blind global reduction. Routine narration may justify a lower ceiling, while structured summaries can require more. Evidence must prevent truncation regressions.
 
-- uncached input tokens;
-- cached input tokens;
-- output tokens;
-- cache-hit ratio;
-- total provider cost.
+### Reasoning
 
-DeepSeek supports automatic prefix caching. Gemini and OpenAI offer discounted cached input/context mechanisms; implementation remains provider-specific and must be benchmarked rather than assumed.
-
-### P3 — hard token ceilings
-
-For routine patient narration:
-
-- output target: <= 60 tokens unless a safety response is deterministic and bypasses the model;
-- API `max_output_tokens` / equivalent must enforce the ceiling;
-- no thinking/reasoning budget by default;
-- reject or truncate oversized generative context before egress.
+Gemini `think()` exposes a 2048-token thinking budget. It must not become the routine patient-chat path without a separately justified task.
 
 ## STT optimization
 
-Pipeline:
+Provider selection is now decoupled from the clinical pipeline. Remaining benchmark pipeline:
 
-1. device-side voice activity detection;
-2. trim silence before upload;
-3. mono 16 kHz or provider-recommended compact encoding;
-4. reject accidental long recordings before network invocation;
-5. hash audio and reuse an existing transcript for exact duplicate uploads;
-6. specialized low-cost STT only;
-7. higher-cost STT only when confidence/quality gate fails.
+1. trim avoidable silence / accidental long recordings where feasible;
+2. compact provider-supported encoding;
+3. specialized low-cost STT first;
+4. one higher-quality fallback only after measured failure;
+5. deterministic triage remains after transcription and outside provider authority.
 
-Benchmark candidates:
+Candidates:
 
 - Voxtral Mini Transcribe 2;
 - GPT-4o-mini-transcribe;
-- xAI/Grok STT if current official pricing/quality makes it competitive;
-- on-device transcription as a zero-cloud challenger where FR/AR/Darija quality is adequate.
-
-Never send an audio stream continuously merely because the microphone UI is open.
+- xAI/Grok STT if current controlled price/API availability remains competitive;
+- on-device transcription challenger where FR/AR/Darija quality is adequate.
 
 ## TTS optimization
 
-Default: **native iOS/Android TTS**.
+Default remains **native iOS/Android TTS through `flutter_tts`**.
 
-Cloud TTS is an exception, not the normal path:
+Cloud TTS is an exception only if measured device intelligibility fails the UX floor. Fixed approved help/safety phrases should be reusable locally rather than regenerated.
 
-- only if native FR/AR/Darija intelligibility fails the UX floor;
-- user-triggered playback rather than automatic playback;
-- cache generated speech by `(normalized_text, locale, voice, version)` hash;
-- never regenerate identical fixed safety/help phrases;
-- prebundle approved fixed emergency/help audio locally if needed.
+Target variable TTS API cost remains approximately zero for the median patient, but this is not yet a measured production result.
 
-Target variable TTS API cost: approximately zero for the median patient.
+## OCR / vision optimization
 
-## OCR / image optimization
+### Glucometer
 
-### Documents and glucometers
+- mobile: on-device ML Kit remains primary;
+- Tesseract: narrow digit baseline only;
+- PP-OCRv6 small: promising measured local candidate on synthetic fixtures;
+- cloud: explicit fallback after local uncertainty/failure, not routine first choice.
 
-1. local crop / perspective correction / contrast normalization;
-2. local PaddleOCR PP-OCRv6 first;
-3. deterministic validation of extracted units, ranges and expected field formats;
-4. accept locally only above a measured confidence threshold;
-5. send **only the uncertain crop/page**, not the complete original media, to a dedicated cheap cloud OCR fallback;
-6. general-purpose VLM only after local + dedicated OCR failure.
+### Documents
 
-For numeric glucometer displays, benchmark a digit/display-specific local path against general OCR; a specialized local recognizer may be both cheaper and safer than a VLM.
+PP-OCRv6 small earned a local synthetic candidate position after C12 2/2, but harder camera/document fixtures and multilingual requirements must be measured before production use. Arabic support/quality must not be inferred from Latin-script synthetic evidence.
 
 ### Meal photos
 
-Do not invoke vision automatically for every image.
+- explicit user intent only;
+- capture already reduces image payload (`maxWidth: 1600`, image quality `85`);
+- bounded food identification only;
+- no exact carbohydrate claim unless a separate governed estimator establishes it;
+- provider-neutral cloud vision boundary enables later cost/quality comparison without changing clinical authority.
 
-- local resize/compression first;
-- small multimodal model only on explicit meal-analysis intent;
-- force qualitative/bounded uncertainty output;
-- no exact carbohydrate claim unless a separate governed estimator provides it.
+## Pricing and budget control
+
+### Delivered contracts
+
+- controlled expiring text-token pricing registry;
+- fail-closed text spend authorization before paid invocation;
+- generic exact-rational `MeteredPrice` for non-text units;
+- fail-closed metered spend authorization under existing per-subject/month and single-call caps.
+
+No real provider price is hard-coded in these contracts. Current provider/model/modality pricing must be loaded from controlled, current evidence and rejected when missing, ambiguous or stale.
+
+### Remaining runtime guardrails
+
+Before production provider cutover, prove:
+
+- per-patient/day/month usage accounting;
+- modality/tier call counts;
+- tokens/seconds/pages/images/characters as applicable;
+- cache-hit and fallback rates;
+- single-call and monthly budget enforcement under synthetic load;
+- provider circuit breaker / abuse limits;
+- deterministic approved fallback when monetary limits are hit.
+
+Safety must never degrade because a budget is exhausted.
 
 ## Provider abstraction
 
-Current provider-specific classes should evolve toward a **capability + cost router** while preserving the central LLM gateway and egress policy.
+Text, STT and cloud vision now have important abstraction boundaries, but the final capability + cost router remains an evidence-driven target.
 
-Recommended provider metadata:
+Provider metadata should include:
 
 - provider/model/version;
-- capabilities: text, structured output, vision, STT, TTS, OCR;
+- modality/capability;
 - locale quality status;
-- current input/cached-input/output/audio/page pricing;
-- max output cap support;
-- cache support;
+- current controlled price evidence + review date;
+- output/caching support;
 - account/region eligibility;
-- observed benchmark quality;
-- observed P50/P95 latency;
+- observed quality and latency;
 - hard-floor status.
 
-DeepSeek, Kimi and several Qwen endpoints are OpenAI-compatible. Prefer one governed OpenAI-compatible adapter with provider configuration rather than duplicating nearly identical HTTP/client implementations, while retaining provider-specific policy metadata.
-
-## Runtime router decision
-
-Pseudo-policy:
+## Runtime routing target
 
 ```text
 input
  -> deterministic safety gate
  -> deterministic zero-model resolver
  -> modality router
- -> cheapest eligible Tier-1 candidate
+ -> cheapest eligible candidate
  -> deterministic output validator
       PASS -> answer
-      FAIL -> one Tier-2 retry
+      FAIL -> at most one evidence-approved fallback
       FAIL -> governed offline/static fallback
 ```
 
-Maximum one paid escalation per user turn. No cascading 3-5-model retry chain.
-
-## Cost guardrails
-
-Introduce first-class usage accounting independent of provider billing:
-
-- cost per patient/day/month;
-- calls by modality and route tier;
-- tokens/minutes/pages/images;
-- cache hit ratio;
-- Tier-2 escalation rate;
-- offline fallback rate;
-- accepted-answer cost;
-- provider error rate.
-
-Recommended product guards to benchmark before production:
-
-- soft per-patient monthly AI budget warning;
-- hard abuse/rate limits;
-- no model call for duplicate requests with unchanged governed state;
-- global provider circuit breaker;
-- no paid background generation when deterministic/batch computation can produce the same result.
-
-Do not degrade safety when a monetary cap is hit: fall back to deterministic approved responses, never to an ungoverned cheaper model.
-
-## Background work
-
-Move non-interactive tasks to cheaper asynchronous execution where latency is irrelevant:
-
-- aggregate analytics;
-- non-patient-facing summaries;
-- offline evaluation;
-- optional memory compaction if deterministic compaction is insufficient.
-
-Use batch pricing only when the task is non-interactive and contains approved minimized data.
-
-## Quality-preservation gates
-
-A cost optimization may ship only if it preserves:
-
-1. deterministic safety interception;
-2. no-prescription/no-dose behavior;
-3. approved-context-only narration;
-4. FR/AR/Darija/mixed-language minimum quality;
-5. output factuality against the supplied governed state;
-6. fallback behavior under quota/network failure.
-
-Primary KPI is **cost per accepted safe answer**, not raw cost per API call.
-
-## Implementation roadmap
-
-### C0 — instrumentation baseline
-
-Measure current real/synthetic prompt bytes, tokens, model route, output size and estimated cost. No behavior change.
-
-Success: reproducible cost trace per synthetic benchmark case.
-
-### C1 — prompt diet
-
-- compact conversation history;
-- remove unused output fields;
-- API output-token ceiling;
-- prohibit routine `think()`;
-- stable cacheable system prefix.
-
-Success: >= 40% reduction in uncached text input tokens on the canonical conversation benchmark with no quality-floor regression.
-
-### C2 — zero-model router
-
-Add deterministic intent classes and duplicate/state-stable reply reuse.
-
-Success: measured model-call avoidance with exact regression coverage; no safety path routed to generation.
-
-### C3 — cost-first text router
-
-Benchmark cheap Tier-1 candidates, then one quality fallback.
-
-Success: cheapest candidate passes all hard floors; Tier-2 escalation threshold fixed from evidence.
-
-### C4 — local-first media
-
-- native TTS;
-- local OCR preprocessing/PaddleOCR;
-- STT compression/silence trimming;
-- cloud fallback only on measured failure.
-
-Success: median TTS API cost ~0 and OCR cloud invocation rate minimized without accuracy regression.
-
-### C5 — budget controller
-
-Per-patient/month usage ledger, circuit breakers and operational dashboard metrics.
-
-Success: synthetic load test cannot exceed configured cost budget silently.
+No cascading 3-5-provider retry chain.
 
 ## Economic target
 
-Initial engineering target, to be validated by benchmark rather than declared as achieved:
+Engineering targets to validate, not production claims:
 
 - median active patient AI-variable cost: **<= $0.15/month**;
 - normal active patient: **<= $0.25/month**;
-- heavy but legitimate patient: **<= $0.50/month**;
+- heavy legitimate patient: **<= $0.50/month**;
 - no routine cloud TTS;
-- no frontier-model dependency.
+- no routine frontier-model dependency.
 
-These targets exclude hosting/database/SMS/support and are not current measured production costs.
+These targets exclude hosting, database, notifications/SMS and support.
+
+## Execution roadmap
+
+### Delivered / evidence-backed foundation
+
+- usage instrumentation foundation;
+- prompt/output diet foundation;
+- bounded zero-model conversation routing;
+- governed DeepSeek/Qwen adapters;
+- local STT benchmark lane;
+- native TTS benchmark lane;
+- controlled expiring pricing registry;
+- local OCR execution boundary;
+- pricing -> budget authorization bridge;
+- C10 Tesseract measured baseline;
+- provider-neutral STT boundary;
+- provider-neutral cloud vision boundary;
+- C13 metered-media pricing/budget contract;
+- C12 PaddleOCR prior 2/2 synthetic measurement, with exact-head recertification tracked in #319.
+
+### Remaining critical path
+
+1. exact-head C12 recertification and merge;
+2. broaden local OCR real-world/synthetic-hardening fixtures;
+3. measured STT comparison on FR/AR/Darija/mixed audio;
+4. native TTS real-device intelligibility gate;
+5. paid/network text-provider benchmark only after explicit network/credential authorization and spend ceiling;
+6. final evidence-backed capability + cost routing/cutover decision;
+7. production budget/usage certification before any patient-data release.
 
 ## Non-claims
 
-This document is an optimization architecture plan. It does not claim benchmark success, provider selection, production cost, clinical approval or production readiness.
+This plan does not claim production provider selection, production cost, real-world OCR accuracy, clinical approval, CNDP/legal/data-residency authorization, patient-data release or production readiness. Local benchmark success is evidence for one bounded task, not permission for provider or patient cutover.
