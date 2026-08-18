@@ -93,6 +93,24 @@ For each candidate, reviewer must record one of:
 
 This is not the final `approved_for_runtime` decision. Safety-owner and restricted parity gates remain separate.
 
+## Evidence-based clinical pre-review
+
+This section is **AI-assisted preparation only**, not the required qualified-human verdict.
+
+Current ADA Standards of Care in Diabetes—2026 define level 3 hypoglycemia as an event with altered mental and/or physical functioning requiring assistance from another person, irrespective of glucose level. The same standards list shakiness and confusion among possible hypoglycemia symptoms and note that severe hypoglycemia can progress to loss of consciousness, seizure, coma, or death. CDC patient guidance likewise lists shaking, dizziness, confusion, difficulty seeing and fainting among possible manifestations of worsening low blood glucose.
+
+Clinical consequence for this packet:
+
+- symptom vocabulary such as tremor, dizziness or vision difficulty is clinically relevant for safety detection, but **must not by itself establish hypoglycemia**;
+- fainting/presyncope language warrants conservative safety handling but must not be converted into a confirmed loss-of-consciousness diagnosis;
+- removal of native-rejected spellings is acceptable only if the remaining accepted forms and/or separately approved replacements preserve adequate high-severity coverage;
+- all four replacement candidates remain suitable only for safety-review continuation, not automatic runtime authorization, until a qualified reviewer confirms meaning and the safety/parity gates pass.
+
+Primary clinical references checked 2026-08-18:
+
+- American Diabetes Association Professional Practice Committee for Diabetes. *6. Glycemic Goals, Hypoglycemia, and Hyperglycemic Crises: Standards of Care in Diabetes—2026*. Diabetes Care 2026;49(Suppl. 1):S132–S149. DOI: 10.2337/dc26-S006.
+- U.S. Centers for Disease Control and Prevention. *Low Blood Sugar (Hypoglycemia)*, current public guidance accessed 2026-08-18.
+
 ## Mandatory semantic checks
 
 Reviewer must explicitly verify:
@@ -134,4 +152,4 @@ A clinical PASS alone does not authorize runtime promotion. Remaining requiremen
 
 ## Current state
 
-No clinical-human approval is recorded by this document. Runtime remains unchanged and fail-closed.
+The packet now matches the native-review outcome fixture for the accepted/rejected token split, including `ma kanchoufch` as **rejected**. No clinical-human approval is recorded by this document. Runtime remains unchanged and fail-closed.
