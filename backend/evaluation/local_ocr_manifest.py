@@ -1,21 +1,40 @@
 """Fail-closed manifest for zero-egress local OCR benchmark execution."""
 
-import dataclasses
-
-
 _LOCAL_OCR_MODALITIES = {"document_ocr", "glucometer_ocr"}
 
 
-@dataclasses.dataclass(frozen=True, slots=True)
 class LocalOCRManifest:
-    engine: str
-    model: str
-    implementation_version: str
-    evidence_source: str
-    verified_on: object
-    review_due_on: object
-    approved_modalities: tuple[str, ...]
-    approved_for_synthetic_benchmark: bool
+    __slots__ = (
+        "engine",
+        "model",
+        "implementation_version",
+        "evidence_source",
+        "verified_on",
+        "review_due_on",
+        "approved_modalities",
+        "approved_for_synthetic_benchmark",
+    )
+
+    def __init__(
+        self,
+        *,
+        engine: str,
+        model: str,
+        implementation_version: str,
+        evidence_source: str,
+        verified_on: object,
+        review_due_on: object,
+        approved_modalities: tuple[str, ...],
+        approved_for_synthetic_benchmark: bool,
+    ) -> None:
+        self.engine = engine
+        self.model = model
+        self.implementation_version = implementation_version
+        self.evidence_source = evidence_source
+        self.verified_on = verified_on
+        self.review_due_on = review_due_on
+        self.approved_modalities = approved_modalities
+        self.approved_for_synthetic_benchmark = approved_for_synthetic_benchmark
 
     def validate(self, *, today: object) -> None:
         required = {
