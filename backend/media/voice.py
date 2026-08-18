@@ -1,25 +1,20 @@
-"""
-Speech-to-Text via Gemini Audio API.
-=====================================
-Gemini 2.5 Flash handles audio inline (base64, ≤ 20 MB).
-Pricing: 25 tokens/sec at $0.075/1M ≈ $0.000032 per 10-sec clip.
+"""Provider-neutral speech-to-text boundary for IAMINA voice input.
 
-Language support:
-  fr    → French
-  ar-MA → Moroccan Darija (dialect + French code-switching)
-  ar    → Modern Standard Arabic (Fusha)
+The governed public function remains ``transcribe(...)``. Gemini is still the
+runtime default, so this refactor does not switch provider or change clinical
+behaviour. The provider-specific network call is isolated behind ``STTBackend``
+so low-cost candidates can be benchmarked and swapped without touching triage or
+conversation logic.
 
-D2 extension: accepts language_hints: dict | None = None.
-  - When provided, language_hints overrides the built-in hint lookup.
-  - The ar-MA vocabulary dict has been extracted to
-    diabetes.config.stt_vocabulary.AR_MA_STT_HINTS so that diabetes-domain
-    callers can inject it explicitly without coupling to this module.
+No static price is embedded here. Pricing is versioned separately because model
+prices and identifiers are operational data, not durable source-code facts.
 """
 from __future__ import annotations
 
 import base64
 import logging
 import os
+from typing import Protocol
 
 from core.ai_egress import AUDIO, AIEgressDenied
 from core.ai_processor_policy import AIProcessorPolicyDenied
@@ -27,8 +22,6 @@ from llm.errors import LLMProviderError
 from llm.runtime import execute_external_provider_call
 
 logger = logging.getLogger(__name__)
-
-# ── Constants ─────────────────────────────────────────────────────────────────
 
 SUPPORTED_MIME_TYPES: frozenset[str] = frozenset([
     "audio/mp4",
@@ -41,9 +34,8 @@ SUPPORTED_MIME_TYPES: frozenset[str] = frozenset([
     "audio/flac",
 ])
 
-MAX_AUDIO_BYTES: int = 10 * 1024 * 1024  # 10 MB — conservative (Gemini limit is 20 MB)
+MAX_AUDIO_BYTES: int = 10 * 1024 * 1024
 
-# Built-in language hints for fr and ar (ar-MA removed — lives in stt_vocabulary.py)
 _LANGUAGE_HINTS: dict[str, str] = {
     "fr": "French",
     "ar": "Modern Standard Arabic (Fusha / MSA)",
@@ -64,41 +56,104 @@ _STT_USER_TEMPLATE = (
 )
 
 
-# ── Exceptions ────────────────────────────────────────────────────────────────
-
 class TranscriptionError(Exception):
-    """Raised when the Gemini Audio API call fails."""
+    """Raised when the selected STT backend cannot complete safely."""
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+class STTBackend(Protocol):
+    """Minimal interchangeable boundary for speech transcription providers."""
+
+    name: str
+
+    def transcribe(
+        self,
+        audio_bytes: bytes,
+        mime_type: str,
+        *,
+        language: str,
+        language_hint: str,
+    ) -> str: ...
+
+
+class GeminiSTTBackend:
+    """Current production-compatible STT backend. Behaviour matches the old path."""
+
+    name = "gemini"
+    model = "gemini-2.5-flash"
+
+    def transcribe(
+        self,
+        audio_bytes: bytes,
+        mime_type: str,
+        *,
+        language: str,
+        language_hint: str,
+    ) -> str:
+        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            raise TranscriptionError("GEMINI_API_KEY not set — STT unavailable.")
+
+        user_prompt = _STT_USER_TEMPLATE.format(language_hint=language_hint)
+        audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+
+        try:
+            from google import genai
+
+            client = genai.Client(
+                api_key=api_key,
+                http_options={"api_version": "v1alpha"},
+            )
+            response = execute_external_provider_call(
+                "gemini",
+                AUDIO,
+                "transcribe",
+                lambda: client.models.generate_content(
+                    model=self.model,
+                    contents=[
+                        {
+                            "parts": [
+                                {
+                                    "inline_data": {
+                                        "mime_type": mime_type,
+                                        "data": audio_b64,
+                                    }
+                                },
+                                {"text": user_prompt},
+                            ]
+                        }
+                    ],
+                    config={
+                        "system_instruction": _STT_SYSTEM,
+                        "temperature": 0.0,
+                    },
+                ),
+            )
+            return (response.text or "").strip()
+        except (AIEgressDenied, AIProcessorPolicyDenied, LLMProviderError):
+            raise
+        except Exception:
+            logger.exception("STT: Gemini transcription failed (lang=%s)", language)
+            raise TranscriptionError(
+                "STT request could not be completed safely."
+            ) from None
+
+
+_DEFAULT_BACKEND: STTBackend = GeminiSTTBackend()
+
 
 def transcribe(
     audio_bytes: bytes,
     mime_type: str,
     language: str = "fr",
     language_hints: dict | None = None,
+    *,
+    backend: STTBackend | None = None,
 ) -> str:
-    """
-    Transcribe audio_bytes via Gemini Audio (inline base64).
+    """Transcribe validated audio through an interchangeable STT backend.
 
-    Args:
-        audio_bytes:    Raw audio content (mp4 / webm / wav / ogg / m4a / flac).
-        mime_type:      MIME type of the audio (e.g. "audio/mp4").
-        language:       Patient preferred_language code — drives the language hint
-                        injected into the STT prompt for better Darija accuracy.
-        language_hints: Optional override dict {lang_code: hint_str}.
-                        When provided, this dict is used instead of the built-in
-                        _LANGUAGE_HINTS table for the hint lookup.
-                        Callers such as diabetes.api.v1.voice pass
-                        AR_MA_STT_HINTS from diabetes.config.stt_vocabulary so
-                        the full Darija medical vocabulary is applied.
-
-    Returns:
-        Transcription string. May be empty if audio is silent / inaudible.
-
-    Raises:
-        ValueError:          Unsupported MIME type or file exceeds MAX_AUDIO_BYTES.
-        TranscriptionError:  Gemini API call failed.
+    ``backend`` is injectable for benchmark/testing lanes. Runtime callers omit it
+    and therefore preserve the existing Gemini behaviour until a separately
+    benchmarked and authorized provider cutover occurs.
     """
     if len(audio_bytes) > MAX_AUDIO_BYTES:
         raise ValueError(
@@ -107,58 +162,22 @@ def transcribe(
     if mime_type not in SUPPORTED_MIME_TYPES:
         raise ValueError(f"Unsupported audio format: {mime_type!r}")
 
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if not api_key:
-        raise TranscriptionError("GEMINI_API_KEY not set — STT unavailable.")
-
-    # Resolve language hint — caller-supplied dict takes precedence
     hints_table = language_hints if language_hints is not None else _LANGUAGE_HINTS
     language_hint = hints_table.get(language, "French or Arabic")
-    user_prompt   = _STT_USER_TEMPLATE.format(language_hint=language_hint)
-    audio_b64     = base64.b64encode(audio_bytes).decode("utf-8")
+    selected = backend or _DEFAULT_BACKEND
+    transcript = selected.transcribe(
+        audio_bytes,
+        mime_type,
+        language=language,
+        language_hint=language_hint,
+    ).strip()
 
-    try:
-        from google import genai
-
-        client = genai.Client(
-            api_key=api_key,
-            http_options={"api_version": "v1alpha"},
-        )
-        response = execute_external_provider_call(
-            "gemini",
-            AUDIO,
-            "transcribe",
-            lambda: client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=[
-                    {
-                        "parts": [
-                            {
-                                "inline_data": {
-                                    "mime_type": mime_type,
-                                    "data": audio_b64,
-                                }
-                            },
-                            {"text": user_prompt},
-                        ]
-                    }
-                ],
-                config={
-                    "system_instruction": _STT_SYSTEM,
-                    "temperature": 0.0,
-                },
-            ),
-        )
-
-        transcript = (response.text or "").strip()
-        logger.info(
-            "STT: %d bytes (%s, lang=%s) → %d chars transcript",
-            len(audio_bytes), mime_type, language, len(transcript),
-        )
-        return transcript
-
-    except (AIEgressDenied, AIProcessorPolicyDenied, LLMProviderError):
-        raise
-    except Exception:
-        logger.exception("STT: transcription failed (lang=%s)", language)
-        raise TranscriptionError("STT request could not be completed safely.") from None
+    logger.info(
+        "STT: backend=%s bytes=%d mime=%s lang=%s transcript_chars=%d",
+        selected.name,
+        len(audio_bytes),
+        mime_type,
+        language,
+        len(transcript),
+    )
+    return transcript
