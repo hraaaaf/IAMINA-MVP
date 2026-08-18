@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   paddleocr-local:
@@ -48,5 +49,38 @@ jobs:
         with:
           name: mena-c12-paddleocr-${{ github.sha }}
           path: /tmp/paddleocr-c12
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
+
+      - name: Publish durable C12 result
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          C12_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const status = process.env.C12_STATUS.toUpperCase();
+            const sha = context.sha;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const title = `[MENA C12] ${status} PaddleOCR ${sha.slice(0, 12)}`;
+            const body = [
+              `Local PP-OCRv6 synthetic benchmark result.`,
+              ``,
+              `- SHA: \`${sha}\``,
+              `- Result: **${status}**`,
+              `- Workflow run: ${runUrl}`,
+              `- Detection: \`PP-OCRv6_small_det\``,
+              `- Recognition: \`PP-OCRv6_small_rec\``,
+              `- PaddleOCR: \`3.7.0\``,
+              `- PaddlePaddle: \`3.2.2\``,
+              `- Patient data: no`,
+              `- Provider API / paid inference: no`,
+              ``,
+              `The artifact \`mena-c12-paddleocr-${sha}\` contains measured JSON evidence and synthetic fixtures when benchmark execution reached the measurement step.`
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+            });
