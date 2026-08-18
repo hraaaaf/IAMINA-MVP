@@ -6,7 +6,12 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = REPO_ROOT / "backend" / "core" / "tests" / "fixtures"
-PACKET = REPO_ROOT / "docs" / "evaluation" / "DARIJA_HIGH_SEVERITY_CLINICAL_REVIEW_PACKET.md"
+PACKET = (
+    REPO_ROOT
+    / "docs"
+    / "evaluation"
+    / "DARIJA_HIGH_SEVERITY_CLINICAL_REVIEW_PACKET.md"
+)
 
 
 def _load_json(path: Path):
