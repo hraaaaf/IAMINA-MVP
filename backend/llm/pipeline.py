@@ -2,7 +2,8 @@
 LLMPipeline — Decorator wrapper around BaseLLMProvider.
 
 Composes a list of BaseLLMMiddleware instances into a call chain.
-stream() and think() delegate directly to the inner provider (no middleware in v1).
+Only complete() is authorized in the governed pipeline today. stream() and
+think() fail closed until they share the same egress authorization boundary.
 
 Usage:
     pipeline = LLMPipeline(get_llm(), [LoggingMiddleware()])
@@ -17,12 +18,16 @@ from llm.base import BaseLLMProvider, LLMResponse
 from llm.middleware.base import BaseLLMMiddleware
 
 
+class LLMPipelineModeBlocked(RuntimeError):
+    """Raised when an invocation mode would bypass governed egress controls."""
+
+
 class LLMPipeline(BaseLLMProvider):
     """
     Pipeline decorator over a BaseLLMProvider.
 
-    Wraps complete() with an ordered chain of middlewares.
-    stream() and think() bypass middlewares and delegate directly to inner.
+    Wraps complete() with an ordered chain of middlewares. stream() and think()
+    are deliberately disabled until their egress path has equivalent guards.
     """
 
     def __init__(
@@ -55,9 +60,13 @@ class LLMPipeline(BaseLLMProvider):
         return chain(system, user)
 
     def stream(self, system: str, user: str) -> Iterator[str]:
-        """Delegates directly to inner provider — no middleware in pipeline v1."""
-        return self._inner.stream(system, user)
+        """Fail closed: streaming currently bypasses pipeline egress guards."""
+        raise LLMPipelineModeBlocked(
+            "stream() is disabled until it shares governed egress authorization"
+        )
 
     def think(self, system: str, user: str) -> tuple[str, str]:
-        """Delegates directly to inner provider — no middleware in pipeline v1."""
-        return self._inner.think(system, user)
+        """Fail closed: think currently bypasses pipeline egress guards."""
+        raise LLMPipelineModeBlocked(
+            "think() is disabled until it shares governed egress authorization"
+        )
