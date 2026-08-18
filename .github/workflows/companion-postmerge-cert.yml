@@ -29,6 +29,8 @@ jobs:
             target_sha: 852d66bc51d42749cefb3381b07f18a18ae2ff28
           - label: P4
             target_sha: a9c54858781e901389bbb476c647e523b92fc907
+          - label: FINAL-CLOSEOUT
+            target_sha: 668b294f203c01dfce255c0b841f66261084e45c
 
     services:
       postgres:
