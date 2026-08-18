@@ -1,0 +1,127 @@
+name: macOS developer portability
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - chore/mac-developer-portability-cert
+    paths:
+      - .github/workflows/macos-developer-portability.yml
+      - docker-compose.yml
+      - dev.sh
+      - .gitattributes
+      - .tool-versions
+      - backend/**
+      - frontend/**
+      - docs/DEVELOPER_MACOS.md
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/macos-developer-portability.yml
+      - docker-compose.yml
+      - dev.sh
+      - .gitattributes
+      - .tool-versions
+      - backend/**
+      - frontend/**
+      - docs/DEVELOPER_MACOS.md
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-portability-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos-portability:
+    name: macOS clone + host checks
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: macos-ci-secret-not-for-production
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      DATABASE_URL: sqlite:///macos-ci-test.db
+      FIREBASE_CREDENTIALS_PATH: ""
+      GEMINI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record runner architecture
+        run: |
+          sw_vers
+          uname -a
+          uname -m | tee /tmp/iamina-macos-arch.txt
+
+      - name: Reject case-insensitive tracked-path collisions
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          from collections import defaultdict
+
+          paths = subprocess.check_output(["git", "ls-files", "-z"]).decode().split("\0")
+          groups = defaultdict(list)
+          for path in filter(None, paths):
+              groups[path.casefold()].append(path)
+          collisions = [items for items in groups.values() if len(items) > 1]
+          if collisions:
+              for items in collisions:
+                  print("case-insensitive collision:", " | ".join(items))
+              raise SystemExit(1)
+          print(f"OK: {len(paths) - 1} tracked paths have no case-insensitive collisions")
+          PY
+
+      - name: Validate Bash helper syntax
+        run: bash -n dev.sh
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies on macOS host
+        run: python -m pip install --upgrade pip && python -m pip install -r backend/requirements.txt
+
+      - name: Django host smoke
+        run: python backend/manage.py check
+
+      - name: Backend tests on macOS host
+        run: python -m pytest backend --tb=short -q
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.7"
+          channel: stable
+          cache: true
+
+      - name: Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Flutter analyze on macOS
+        working-directory: frontend
+        run: flutter analyze --no-fatal-infos
+
+      - name: Flutter tests on macOS
+        working-directory: frontend
+        run: flutter test --no-pub
+
+      - name: Publish architecture boundary
+        if: always()
+        run: |
+          ARCH=$(cat /tmp/iamina-macos-arch.txt 2>/dev/null || uname -m)
+          {
+            echo "### macOS portability runner"
+            echo "- architecture: \`$ARCH\`"
+            echo "- Python target: \`3.12\`"
+            echo "- Flutter target: \`3.41.7\`"
+            if [ "$ARCH" = "arm64" ]; then
+              echo "- Apple Silicon host semantics: observed on GitHub runner"
+            else
+              echo "- Apple Silicon Docker Desktop semantics: NOT proven by this runner"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
