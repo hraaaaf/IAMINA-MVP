@@ -3,11 +3,27 @@ from dataclasses import dataclass
 from typing import Iterator
 
 
+@dataclass(frozen=True)
+class LLMUsage:
+    """Provider-reported token usage only.
+
+    Values remain ``None`` when the provider/API does not expose them. We do not
+    estimate tokens here because cost instrumentation must not manufacture
+    precision from character counts.
+    """
+
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    cached_input_tokens: int | None = None
+    total_tokens: int | None = None
+
+
 @dataclass
 class LLMResponse:
     content: str
     provider: str
     from_cache: bool = False
+    usage: LLMUsage | None = None
 
 
 class BaseLLMProvider(ABC):
