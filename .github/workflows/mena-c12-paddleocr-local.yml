@@ -1,0 +1,52 @@
+name: MENA C12 PaddleOCR local measurement
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/mena-319-c12-paddleocr-local-measurement
+    paths:
+      - scripts/run_paddleocr_local_benchmark.py
+      - .github/workflows/mena-c12-paddleocr-local.yml
+
+permissions:
+  contents: read
+
+jobs:
+  paddleocr-local:
+    name: PP-OCRv6 small synthetic CPU benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PADDLE_PDX_MODEL_SOURCE: BOS
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install local OCR runtime
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install paddlepaddle==3.2.2 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+          python -m pip install paddleocr==3.7.0 Pillow>=10.0
+          python - <<'PY'
+          import paddle
+          import paddleocr
+          print("paddle", paddle.__version__)
+          print("paddleocr", getattr(paddleocr, "__version__", "unknown"))
+          paddle.utils.run_check()
+          PY
+
+      - name: Run PP-OCRv6 synthetic benchmark
+        run: python scripts/run_paddleocr_local_benchmark.py --output-dir /tmp/paddleocr-c12
+
+      - name: Upload measured evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mena-c12-paddleocr-${{ github.sha }}
+          path: /tmp/paddleocr-c12
+          if-no-files-found: error
+          retention-days: 14
