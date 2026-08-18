@@ -6,11 +6,28 @@ from typing import Iterator
 
 from google import genai
 
-from .base import BaseLLMProvider, LLMResponse
+from .base import BaseLLMProvider, LLMResponse, LLMUsage
 
 logger = logging.getLogger(__name__)
 
 _LLM_TIMEOUT = 15  # seconds
+
+
+def _usage_from_response(response) -> LLMUsage | None:
+    metadata = getattr(response, "usage_metadata", None)
+    if metadata is None:
+        return None
+
+    def _value(name: str) -> int | None:
+        raw = getattr(metadata, name, None)
+        return int(raw) if raw is not None else None
+
+    return LLMUsage(
+        input_tokens=_value("prompt_token_count"),
+        output_tokens=_value("candidates_token_count"),
+        cached_input_tokens=_value("cached_content_token_count"),
+        total_tokens=_value("total_token_count"),
+    )
 
 
 class GeminiProvider(BaseLLMProvider):
@@ -65,6 +82,7 @@ class GeminiProvider(BaseLLMProvider):
         return LLMResponse(
             content=response.text.strip() if response.text else "",
             provider=self.model,
+            usage=_usage_from_response(response),
         )
 
     def stream(self, system: str, user: str) -> Iterator[str]:

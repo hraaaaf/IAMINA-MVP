@@ -3,7 +3,7 @@ from typing import Iterator
 
 from django.conf import settings
 
-from .base import BaseLLMProvider, LLMResponse
+from .base import BaseLLMProvider, LLMResponse, LLMUsage
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +13,24 @@ try:
     from openai import OpenAI
 except ImportError:
     OpenAI = None  # type: ignore[assignment,misc]
+
+
+def _usage_from_response(response) -> LLMUsage | None:
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return None
+    details = getattr(usage, "prompt_tokens_details", None)
+    cached = (
+        getattr(details, "cached_tokens", None)
+        if details is not None
+        else None
+    )
+    return LLMUsage(
+        input_tokens=getattr(usage, "prompt_tokens", None),
+        output_tokens=getattr(usage, "completion_tokens", None),
+        cached_input_tokens=cached,
+        total_tokens=getattr(usage, "total_tokens", None),
+    )
 
 
 class KimiProvider(BaseLLMProvider):
@@ -56,6 +74,7 @@ class KimiProvider(BaseLLMProvider):
         return LLMResponse(
             content=response.choices[0].message.content or "",
             provider=self.model,
+            usage=_usage_from_response(response),
         )
 
     def stream(self, system: str, user: str) -> Iterator[str]:
