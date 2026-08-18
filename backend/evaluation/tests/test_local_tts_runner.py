@@ -2,19 +2,17 @@ from datetime import date, timedelta
 
 import pytest
 
-from evaluation.contracts import EvaluationCase, Locale, Modality, Severity
 from evaluation.local_tts_manifest import LocalTTSManifest
 from evaluation.local_tts_runner import (
     LocalTTSBenchmarkBlocked,
+    LocalTTSCase,
     execute_local_tts_benchmark,
 )
 
 
 class DummyTTSAdapter:
-    name = "local-tts-test"
-
     def invoke(self, case):
-        return {"rendered": case.expected.get("rendered", True)}
+        return {"rendered": bool(case.text)}
 
 
 def _manifest() -> LocalTTSManifest:
@@ -31,19 +29,7 @@ def _manifest() -> LocalTTSManifest:
     )
 
 
-def _case(case_id: str, modality: Modality, locale: Locale) -> EvaluationCase:
-    return EvaluationCase(
-        case_id=case_id,
-        modality=modality,
-        locale=locale,
-        severity=Severity.ROUTINE,
-        input_payload={"text": "bonjour"},
-        expected={"rendered": True},
-        tags=("synthetic",),
-    )
-
-
-def test_local_tts_runner_filters_modality_and_locale():
+def test_local_tts_runner_filters_locale_without_touching_canonical_modalities():
     created = []
 
     def factory(engine, voice, version):
@@ -53,9 +39,8 @@ def test_local_tts_runner_filters_modality_and_locale():
     runs = execute_local_tts_benchmark(
         _manifest(),
         (
-            _case("eval_tts_fr", Modality.TTS, Locale.FR),
-            _case("eval_tts_en", Modality.TTS, Locale.EN),
-            _case("eval_text", Modality.TEXT, Locale.FR),
+            LocalTTSCase("eval_tts_fr", "fr", "bonjour"),
+            LocalTTSCase("eval_tts_en", "en", "hello"),
         ),
         adapter_factory=factory,
         today=date(2026, 8, 18),
@@ -69,7 +54,12 @@ def test_local_tts_runner_fails_without_eligible_cases():
     with pytest.raises(LocalTTSBenchmarkBlocked):
         execute_local_tts_benchmark(
             _manifest(),
-            (_case("eval_tts_en", Modality.TTS, Locale.EN),),
+            (LocalTTSCase("eval_tts_en", "en", "hello"),),
             adapter_factory=lambda *_args: DummyTTSAdapter(),
             today=date(2026, 8, 18),
         )
+
+
+def test_local_tts_case_fails_closed_on_invalid_fixture():
+    with pytest.raises(ValueError):
+        LocalTTSCase("bad", "fr", "bonjour").validate()
