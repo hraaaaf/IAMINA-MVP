@@ -1,5 +1,5 @@
-from datetime import date, timedelta
 import hashlib
+from datetime import date, timedelta
 
 import pytest
 
@@ -31,7 +31,13 @@ def _manifest() -> LocalSTTManifest:
     )
 
 
-def _case(case_id: str, modality: Modality, *, fixture: str, digest: str) -> EvaluationCase:
+def _case(
+    case_id: str,
+    modality: Modality,
+    *,
+    fixture: str,
+    digest: str,
+) -> EvaluationCase:
     return EvaluationCase(
         case_id=case_id,
         modality=modality,
@@ -58,8 +64,18 @@ def test_local_stt_runner_executes_only_integrity_pinned_stt(tmp_path, monkeypat
     runs = execute_local_stt_benchmark(
         _manifest(),
         (
-            _case("eval_voice", Modality.STT, fixture="fixtures/synthetic.wav", digest=digest),
-            _case("eval_text", Modality.TEXT, fixture="fixtures/synthetic.wav", digest=digest),
+            _case(
+                "eval_voice",
+                Modality.STT,
+                fixture="fixtures/synthetic.wav",
+                digest=digest,
+            ),
+            _case(
+                "eval_text",
+                Modality.TEXT,
+                fixture="fixtures/synthetic.wav",
+                digest=digest,
+            ),
         ),
         adapter_factory=factory,
         today=date(2026, 8, 18),
@@ -74,7 +90,14 @@ def test_local_stt_runner_fails_without_stt_cases(tmp_path, monkeypatch):
     with pytest.raises(LocalSTTBenchmarkBlocked):
         execute_local_stt_benchmark(
             _manifest(),
-            (_case("eval_text", Modality.TEXT, fixture="fixtures/missing.wav", digest="0" * 64),),
+            (
+                _case(
+                    "eval_text",
+                    Modality.TEXT,
+                    fixture="fixtures/missing.wav",
+                    digest="0" * 64,
+                ),
+            ),
             adapter_factory=lambda *_args: DummySTTAdapter(),
             today=date(2026, 8, 18),
         )
@@ -103,7 +126,7 @@ def test_local_stt_runner_rejects_transcript_only_case_before_adapter_creation()
     assert created == []
 
 
-def test_local_stt_runner_rejects_missing_or_tampered_fixture(tmp_path, monkeypatch):
+def test_local_stt_runner_rejects_tampered_fixture(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     audio = tmp_path / "fixtures" / "synthetic.wav"
     audio.parent.mkdir()
@@ -114,7 +137,31 @@ def test_local_stt_runner_rejects_missing_or_tampered_fixture(tmp_path, monkeypa
     with pytest.raises(LocalSTTBenchmarkBlocked, match="SHA-256 mismatch"):
         execute_local_stt_benchmark(
             _manifest(),
-            (_case("eval_voice", Modality.STT, fixture="fixtures/synthetic.wav", digest=original_digest),),
+            (
+                _case(
+                    "eval_voice",
+                    Modality.STT,
+                    fixture="fixtures/synthetic.wav",
+                    digest=original_digest,
+                ),
+            ),
+            adapter_factory=lambda *_args: DummySTTAdapter(),
+            today=date(2026, 8, 18),
+        )
+
+
+def test_local_stt_runner_rejects_path_traversal_before_file_access():
+    with pytest.raises(LocalSTTBenchmarkBlocked, match="repository-relative"):
+        execute_local_stt_benchmark(
+            _manifest(),
+            (
+                _case(
+                    "eval_voice",
+                    Modality.STT,
+                    fixture="../outside.wav",
+                    digest="0" * 64,
+                ),
+            ),
             adapter_factory=lambda *_args: DummySTTAdapter(),
             today=date(2026, 8, 18),
         )
