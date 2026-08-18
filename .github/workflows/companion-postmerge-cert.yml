@@ -2,28 +2,33 @@ name: Companion post-merge exact-SHA certification
 
 on:
   workflow_dispatch:
-    inputs:
-      target_sha:
-        description: Exact commit SHA to certify
-        required: true
-        type: string
-      label:
-        description: Human-readable certification label (for example P3 or P4)
-        required: true
-        type: string
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/companion-postmerge-cert.yml
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
-  group: companion-postmerge-cert-${{ inputs.target_sha }}
+  group: companion-postmerge-cert-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   certify:
-    name: Certify ${{ inputs.label }} @ ${{ inputs.target_sha }}
+    name: Certify ${{ matrix.label }} @ ${{ matrix.target_sha }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: P3
+            target_sha: 852d66bc51d42749cefb3381b07f18a18ae2ff28
+          - label: P4
+            target_sha: a9c54858781e901389bbb476c647e523b92fc907
 
     services:
       postgres:
@@ -50,19 +55,10 @@ jobs:
       GEMINI_API_KEY: ""
 
     steps:
-      - name: Validate requested SHA
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ ! "${{ inputs.target_sha }}" =~ ^[0-9a-fA-F]{40}$ ]]; then
-            echo "::error::target_sha must be a full 40-character commit SHA"
-            exit 1
-          fi
-
       - name: Checkout exact target SHA
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.target_sha }}
+          ref: ${{ matrix.target_sha }}
           fetch-depth: 1
 
       - name: Prove exact checkout
@@ -70,13 +66,13 @@ jobs:
         run: |
           set -euo pipefail
           ACTUAL_SHA="$(git rev-parse HEAD)"
-          echo "Requested SHA: ${{ inputs.target_sha }}"
+          echo "Requested SHA: ${{ matrix.target_sha }}"
           echo "Checked out SHA: ${ACTUAL_SHA}"
-          test "${ACTUAL_SHA}" = "${{ inputs.target_sha }}"
+          test "${ACTUAL_SHA}" = "${{ matrix.target_sha }}"
           {
             echo "## Companion exact-SHA certification"
-            echo "- Label: ${{ inputs.label }}"
-            echo "- Requested SHA: ${{ inputs.target_sha }}"
+            echo "- Label: ${{ matrix.label }}"
+            echo "- Requested SHA: ${{ matrix.target_sha }}"
             echo "- Checked out SHA: ${ACTUAL_SHA}"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -165,11 +161,35 @@ jobs:
         working-directory: frontend
         run: flutter test --no-pub
 
-      - name: Certification summary
+      - name: Publish durable certification evidence
         if: always()
-        shell: bash
-        run: |
-          {
-            echo "- Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            echo "- Result: ${{ job.status }}"
-          } >> "$GITHUB_STEP_SUMMARY"
+        uses: actions/github-script@v7
+        env:
+          CERT_LABEL: ${{ matrix.label }}
+          TARGET_SHA: ${{ matrix.target_sha }}
+          CERT_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const status = process.env.CERT_STATUS.toUpperCase();
+            const label = process.env.CERT_LABEL;
+            const sha = process.env.TARGET_SHA;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const title = `[Companion cert] ${label} ${status} ${sha.slice(0, 12)}`;
+            const body = [
+              `Exact-SHA Companion certification result.`,
+              ``,
+              `- Phase: ${label}`,
+              `- SHA: \`${sha}\``,
+              `- Result: **${status}**`,
+              `- Workflow run: ${runUrl}`,
+              `- Event: \`${context.eventName}\``,
+              `- Workflow source ref: \`${context.ref}\``,
+              ``,
+              `The workflow checked out and asserted the exact target SHA before running secret hygiene, backend lint/architecture/AI-egress/SAST/OpenAPI checks, Django migration drift, SQLite pytest, PostgreSQL migrate + full pytest, Flutter analyze and Flutter tests.`
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+            });
