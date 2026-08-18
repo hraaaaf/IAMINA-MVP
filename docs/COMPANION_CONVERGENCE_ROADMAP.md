@@ -1,7 +1,7 @@
 # IAMINA — Companion Convergence Roadmap
 
 Status: ACTIVE
-Baseline: `main@f6ba1e3758043be211a4e403f8e603080588cc72`
+Baseline: `main@852d66bc51d42749cefb3381b07f18a18ae2ff28`
 
 ## Goal
 
@@ -111,14 +111,25 @@ Success:
 - degraded/offline fallbacks come from module contracts rather than diabetes-specific chassis copy;
 - diabetes/TIR-specific fallback wording is removed from the chassis conversation layer.
 
-Current direction:
-- retain deterministic safety classification and canonical emergency composition ahead of any generative call;
-- inject approved `CompanionContext` as bounded narration input with provenance/limitations preserved;
-- keep `DomainContext` for instant session state where still needed, without allowing it to become a second longitudinal authority;
-- remove diabetes-specific `_fallback_reply()` semantics from `companion/conversation.py` by routing fallback content through the active module contract;
-- retain relationship/emotional memory only for reactive tone/history, never clinical truth or proactive eligibility.
+Implemented and verified before merge:
+- conversation consumes both `DomainContext` for bounded instant/session context and fresh governed `CompanionContext` for longitudinal narration;
+- `CompanionContext` provenance and limitations are serialized into the narrator input;
+- chassis `conversation.py`, `state.py` and `tone.py` no longer own TIR/CV threshold semantics;
+- relationship/emotional memory remains reactive tone/history only and generated output cannot write clinical/concern truth back into durable relationship memory;
+- degraded fallback is routed through `BaseEngine.offline_fallback()`, with diabetes-specific TIR wording owned by `EvidenceGuardedDiabetesEngine`;
+- narrator prompts are module-neutral and prohibit diagnosis, causality, clinical priority, prescription, dose, treatment action and proactive-eligibility authority;
+- deterministic emergency and prescription-sensitive input guards remain ahead of generative execution.
 
-Status: NEXT
+Verified proof:
+- PR #317 exact head `5e6c1944d972e9a035ea11bf1985de69a29378a7`;
+- exact-head CI #2798 SUCCESS: backend Ruff/pytest, import-linter, LLM gateway anti-bypass, AI egress anti-bypass, Bandit, OpenAPI, PostgreSQL full suite, Flutter analyze/tests, secret hygiene and PR-size advisory;
+- exact-head Django migration drift #2610 SUCCESS;
+- 0 unresolved review threads and branch 0 behind `main` before merge;
+- expected-head merge `852d66bc51d42749cefb3381b07f18a18ae2ff28`;
+- `main` was verified to point exactly at merge `852d66bc51d42749cefb3381b07f18a18ae2ff28` after merge;
+- post-merge GitHub Actions push-run proof is not currently retrievable through the available connector, so the completion rule is not yet satisfied.
+
+Status: MERGED — POST-MERGE CI/DRIFT PROOF PENDING
 
 ## P4 — Conversation + Proactivity Evals
 
@@ -136,7 +147,16 @@ Hard scenarios:
 - provider failure/fallback;
 - module isolation and no cross-patient leakage.
 
-Status: NOT STARTED
+Existing reusable certification surfaces already identified:
+- `test_p0_6_single_emergency_authority.py` and emergency operating-mode tests for emergency/streaming authority;
+- `test_medical_safety.py` and input-safety tests for prescription/no-prescription boundaries;
+- `test_ai_provider_failures.py` and provider inventory tests for degraded-provider behavior;
+- Darija/Arabic high-severity and locale tests for multilingual parity;
+- `test_p0_7_generative_context_evidence_ceiling.py` for evidence-ceiling/fail-closed generative context;
+- `test_p2_patient_split.py` and module-registry tests for patient/module isolation;
+- P1/P2/P3 convergence regression tests for authority separation and narrator-only invariants.
+
+Status: PREPARED — IMPLEMENTATION NOT STARTED
 
 ## Completion rule
 
