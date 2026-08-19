@@ -27,6 +27,7 @@ def run_benchmark(sources_path: Path) -> dict[str, object]:
         raise ValueError("C24-W sources must be a non-empty JSON list")
 
     cases: list[dict[str, object]] = []
+    engine_versions: set[str] = set()
     with tempfile.TemporaryDirectory(prefix="iamina-c24w-") as tmp:
         temp_root = Path(tmp)
         for index, spec in enumerate(specs):
@@ -40,6 +41,7 @@ def run_benchmark(sources_path: Path) -> dict[str, object]:
                 manifest_path,
                 workspace,
             )
+            engine_versions.add(str(result["engine_version"]))
             case = dict(result["cases"][0])
             case["provenance"] = provenance
             cases.append(case)
@@ -48,6 +50,7 @@ def run_benchmark(sources_path: Path) -> dict[str, object]:
     return {
         "benchmark": "c24w-wikimedia-real-camera-arabic-numeric-safety",
         "engine": "tesseract",
+        "engine_versions": sorted(engine_versions),
         "language": "ara",
         "patient_data": False,
         "provider_api": False,
