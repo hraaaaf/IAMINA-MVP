@@ -1,7 +1,7 @@
 """Exact numeric-safety benchmark for a pinned Misraj-DocOCR viewer slice.
 
-The benchmark deliberately emits no raw ground-truth or OCR text. The source
-slice must already be fingerprint-pinned by C26 before any image is evaluated.
+The benchmark deliberately emits no raw ground-truth or OCR text. Both the
+source ground truth and every sampled image must be hash-pinned before OCR.
 """
 
 from __future__ import annotations
@@ -88,11 +88,10 @@ def load_viewer_image_bytes(
 
 def tesseract_ocr_image_bytes(image_bytes: bytes, *, tesseract_bin: str = "tesseract") -> str:
     import subprocess
+    from io import BytesIO
 
     with TemporaryDirectory(prefix="iamina-c27-") as tmp:
         normalized_path = Path(tmp) / "normalized.png"
-        from io import BytesIO
-
         with Image.open(BytesIO(image_bytes)) as image:
             normalized = ImageOps.exif_transpose(image).convert("RGB")
             normalized.save(normalized_path, format="PNG")
@@ -114,10 +113,13 @@ def run_misraj_numeric_benchmark(
 ) -> dict[str, object]:
     expected_fingerprint = source.get("expected_sample_fingerprint_sha256")
     allowed_hosts_value = source.get("allowed_image_src_hosts")
+    expected_image_hashes = source.get("expected_image_sha256_by_uuid")
     if not isinstance(expected_fingerprint, str) or len(expected_fingerprint) != 64:
         raise MisrajNumericBenchmarkError("C27 requires a pinned C26 sample fingerprint")
     if not isinstance(allowed_hosts_value, list):
         raise MisrajNumericBenchmarkError("C27 requires pinned image source hosts")
+    if not isinstance(expected_image_hashes, dict) or not expected_image_hashes:
+        raise MisrajNumericBenchmarkError("C27 requires pinned image SHA-256 values")
     allowed_hosts = {str(host) for host in allowed_hosts_value if str(host)}
 
     preflight = summarize_misraj_viewer(
@@ -130,6 +132,8 @@ def run_misraj_numeric_benchmark(
     rows = payload.get("rows")
     if not isinstance(rows, list) or len(rows) != preflight["sampled_rows"]:
         raise MisrajNumericBenchmarkError("viewer rows are missing")
+    if len(expected_image_hashes) != len(rows):
+        raise MisrajNumericBenchmarkError("pinned image hash count does not match sample")
 
     cases: list[dict[str, object]] = []
     for item in rows:
@@ -144,17 +148,24 @@ def run_misraj_numeric_benchmark(
         if not expected_numbers:
             raise MisrajNumericBenchmarkError(f"fixture {uuid} has no numeric safety token")
 
+        expected_image_hash = expected_image_hashes.get(uuid)
+        if not isinstance(expected_image_hash, str) or len(expected_image_hash) != 64:
+            raise MisrajNumericBenchmarkError(f"fixture {uuid} has no pinned image SHA-256")
         image_bytes = load_viewer_image_bytes(
             row.get("image"),
             allowed_hosts=allowed_hosts,
             image_fetcher=image_fetcher,
         )
+        image_sha256 = hashlib.sha256(image_bytes).hexdigest()
+        if image_sha256 != expected_image_hash:
+            raise MisrajNumericBenchmarkError(f"fixture {uuid} image SHA-256 drifted")
+
         extracted = ocr_callable(image_bytes)
         extracted_numbers = extract_numeric_tokens(extracted)
         cases.append(
             {
                 "uuid": uuid,
-                "image_sha256": hashlib.sha256(image_bytes).hexdigest(),
+                "image_sha256": image_sha256,
                 "expected_numeric_tokens": expected_numbers,
                 "extracted_numeric_tokens": extracted_numbers,
                 "numeric_ok": extracted_numbers == expected_numbers,
@@ -167,6 +178,7 @@ def run_misraj_numeric_benchmark(
         "engine": "tesseract",
         "language": "ara",
         "sample_fingerprint_sha256": expected_fingerprint,
+        "source_images_pinned": True,
         "sampled_rows": len(cases),
         "numeric_safe_cases": safe_cases,
         "numeric_total": len(cases),
