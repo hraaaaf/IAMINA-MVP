@@ -17,6 +17,9 @@ permissions:
 env:
   C31_HF_REVISION: c5630abae1d940eafe0697512a0325494b02ab42
   C31_MODEL_SHA256: 85a479d506a11e724e7285d395c551be69f41dbc16b6342d3cacfb189aed71db
+  C31_TORCH_VERSION: "2.8.0"
+  C31_TORCHVISION_VERSION: "0.23.0"
+  C31_TRANSFORMERS_VERSION: "5.8.0"
 
 jobs:
   paddleocr-vl16-evidence:
@@ -30,17 +33,37 @@ jobs:
 
       - name: Install pinned CPU PaddleOCR-VL stack
         run: |
-          python -m pip install --disable-pip-version-check paddlepaddle==3.2.1
-          python -m pip install --disable-pip-version-check "paddleocr[doc-parser]==3.7.0" "huggingface-hub==0.34.4"
+          python -m pip install --disable-pip-version-check \
+            --index-url https://download.pytorch.org/whl/cpu \
+            "torch==${C31_TORCH_VERSION}" "torchvision==${C31_TORCHVISION_VERSION}"
+          python -m pip install --disable-pip-version-check \
+            "transformers==${C31_TRANSFORMERS_VERSION}" \
+            paddlepaddle==3.2.1 \
+            "paddleocr[doc-parser]==3.7.0" \
+            "huggingface-hub==0.34.4"
           python - <<'PY'
           import importlib.metadata
           import paddle
+          import torch
+          import transformers
 
-          assert importlib.metadata.version("paddleocr") == "3.7.0"
-          assert importlib.metadata.version("paddlepaddle") == "3.2.1"
+          expected = {
+              "paddleocr": "3.7.0",
+              "paddlepaddle": "3.2.1",
+              "torch": "2.8.0+cpu",
+              "torchvision": "0.23.0+cpu",
+              "transformers": "5.8.0",
+          }
+          for package, version in expected.items():
+              actual = importlib.metadata.version(package)
+              assert actual == version, (package, actual, version)
           assert paddle.device.is_compiled_with_cuda() is False
-          print("paddleocr", importlib.metadata.version("paddleocr"))
-          print("paddlepaddle", importlib.metadata.version("paddlepaddle"))
+          assert torch.cuda.is_available() is False
+          print("paddleocr", expected["paddleocr"])
+          print("paddlepaddle", expected["paddlepaddle"])
+          print("torch", torch.__version__)
+          print("torchvision", expected["torchvision"])
+          print("transformers", transformers.__version__)
           PY
 
       - name: Download and verify pinned PaddleOCR-VL 1.6 model
@@ -70,6 +93,26 @@ jobs:
           print("model_sha256", digest)
           PY
           echo 'C31_PADDLEOCR_VL_MODEL_DIR=/tmp/paddleocr-vl16' >> "$GITHUB_ENV"
+
+      - name: Smoke pinned Transformers model initialization
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          from paddleocr import PaddleOCRVL
+
+          model_dir = Path(os.environ["C31_PADDLEOCR_VL_MODEL_DIR"])
+          pipeline = PaddleOCRVL(
+              pipeline_version="v1.6",
+              vl_rec_model_dir=str(model_dir),
+              use_layout_detection=False,
+              device="cpu",
+              engine="transformers",
+          )
+          assert pipeline is not None
+          print("PaddleOCR-VL 1.6 transformers CPU initialization OK")
+          PY
 
       - name: Fetch pinned 10-row Misraj viewer slice
         run: |
