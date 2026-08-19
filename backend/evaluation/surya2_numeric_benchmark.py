@@ -16,6 +16,11 @@ from PIL import Image, ImageOps
 from evaluation.misraj_numeric_benchmark import run_misraj_numeric_benchmark
 
 
+SURYA_PACKAGE_VERSION = "0.22.1"
+SURYA_MODEL_REPO = "datalab-to/surya-ocr-2-gguf"
+SURYA_MODEL_SHA256 = "1f18abe17b1ed8b4e47ee9b1ad0e274c93daf5efbb6b29a04ff1712e37051e05"
+SURYA_MMPROJ_SHA256 = "98c0563673b1657ff6d021d1e5f04af06cbf61bb40c63ac613e8bb71b42fb2c0"
+
 PredictorFactory = Callable[[], Any]
 OCRCallable = Callable[[bytes], str]
 
@@ -86,8 +91,10 @@ def run_surya2_numeric_benchmark(
     result["engine"] = "surya2"
     result["engine_config"] = {
         "package": "surya-ocr",
-        "package_version": "0.22.1",
-        "model": "datalab-to/surya-ocr-2",
+        "package_version": SURYA_PACKAGE_VERSION,
+        "model_repo": SURYA_MODEL_REPO,
+        "model_sha256": SURYA_MODEL_SHA256,
+        "mmproj_sha256": SURYA_MMPROJ_SHA256,
         "backend": "llamacpp",
         "llama_cpp_release": os.getenv("C30_LLAMA_CPP_RELEASE", "unrecorded"),
         "full_page": True,
