@@ -16,7 +16,9 @@ def _spec(image_bytes: bytes) -> dict[str, str]:
     return {
         "fixture_id": "camera_01",
         "commons_file": "File:Fixture.jpg",
-        "expected_commons_sha1": hashlib.sha1(image_bytes).hexdigest(),
+        "expected_commons_sha1": hashlib.sha1(
+            image_bytes, usedforsecurity=False
+        ).hexdigest(),
         "expected_license": "CC BY-SA 3.0",
         "expected_camera_model": "DMC-FT3",
         "locale": "ar-EG",
@@ -43,9 +45,7 @@ def _payload(
                         {
                             "sha1": spec["expected_commons_sha1"],
                             "url": "https://upload.wikimedia.org/wikipedia/commons/a/a0/fixture.jpg",
-                            "metadata": [
-                                {"name": "Model", "value": camera_model},
-                            ],
+                            "metadata": [{"name": "Model", "value": camera_model}],
                             "extmetadata": {
                                 "LicenseShortName": {"value": license_name},
                             },
