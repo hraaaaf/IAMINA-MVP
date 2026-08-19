@@ -1,4 +1,4 @@
-name: MENA C24-W Tesseract web camera
+name: MENA C24-W Tesseract web camera rejection
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 jobs:
-  c24w-real-camera-arabic:
+  c24w-real-camera-arabic-rejection:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -29,14 +29,34 @@ jobs:
           python -m pip install Pillow==11.3.0
           tesseract --version | head -1
           tesseract --list-langs | grep -Fx ara
-      - name: Run provenance-gated real-camera benchmark
+      - name: Reproduce strict real-camera rejection
         run: |
+          set +e
           python scripts/run_tesseract_arabic_wikimedia_camera_benchmark.py \
             --output c24w-result.json
-      - name: Upload exact evidence
+          benchmark_status=$?
+          set -e
+          test "$benchmark_status" -eq 1
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path("c24w-result.json").read_text(encoding="utf-8"))
+          assert result["benchmark"] == "c24w-wikimedia-real-camera-arabic-numeric-safety"
+          assert result["provenance_checked"] is True
+          assert result["real_camera_only"] is True
+          assert result["numeric_total"] == 1
+          assert result["numeric_safe_cases"] == 0
+          assert result["numeric_safety_floor_passed"] is False
+          case = result["cases"][0]
+          assert case["expected_numeric_tokens"] == ["90", "80", "70", "60"]
+          assert case["numeric_ok"] is False
+          PY
+      - name: Upload negative evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mena-c24w-tesseract-web-camera
+          name: mena-c24w-tesseract-web-camera-rejection
           path: c24w-result.json
           if-no-files-found: error
+          retention-days: 14
