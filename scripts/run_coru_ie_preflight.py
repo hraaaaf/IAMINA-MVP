@@ -12,17 +12,23 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from evaluation.coru_csv_preflight import summarize_coru_csv
 
+DEFAULT_SOURCE = REPO_ROOT / "backend/evaluation/fixtures/c25_coru_source.json"
+
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("csv_path", type=Path)
+    parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
+    source = json.loads(args.source.read_text(encoding="utf-8"))
     result = summarize_coru_csv(args.csv_path)
-    result["dataset"] = "abdoelsayed/CORU"
-    result["component"] = "IE/test.csv"
-    result["source_revision"] = "6508f6f"
+    if result["sha256"] != source["ie_expected_sha256"]:
+        raise ValueError("CORU IE SHA-256 does not match pinned source")
+    result["dataset"] = source["dataset"]
+    result["component"] = source["ie_component"]
+    result["source_revision"] = source["ie_source_revision"]
     rendered = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
