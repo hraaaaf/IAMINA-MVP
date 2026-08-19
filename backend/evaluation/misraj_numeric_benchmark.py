@@ -86,17 +86,32 @@ def load_viewer_image_bytes(
     return fetcher(src)
 
 
-def tesseract_ocr_image_bytes(image_bytes: bytes, *, tesseract_bin: str = "tesseract") -> str:
+def tesseract_ocr_image_bytes(
+    image_bytes: bytes,
+    *,
+    tesseract_bin: str = "tesseract",
+    psm: int = 6,
+) -> str:
     import subprocess
     from io import BytesIO
 
+    if psm < 0 or psm > 13:
+        raise MisrajNumericBenchmarkError("Tesseract psm must be between 0 and 13")
     with TemporaryDirectory(prefix="iamina-c27-") as tmp:
         normalized_path = Path(tmp) / "normalized.png"
         with Image.open(BytesIO(image_bytes)) as image:
             normalized = ImageOps.exif_transpose(image).convert("RGB")
             normalized.save(normalized_path, format="PNG")
         result = subprocess.run(
-            [tesseract_bin, str(normalized_path), "stdout", "-l", "ara", "--psm", "6"],
+            [
+                tesseract_bin,
+                str(normalized_path),
+                "stdout",
+                "-l",
+                "ara",
+                "--psm",
+                str(psm),
+            ],
             check=True,
             capture_output=True,
             text=True,
