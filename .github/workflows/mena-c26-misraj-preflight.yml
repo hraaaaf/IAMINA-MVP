@@ -1,0 +1,39 @@
+name: MENA C26 Misraj preflight
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mena-c26-misraj-preflight.yml"
+      - "backend/evaluation/misraj_dataset_preflight.py"
+      - "backend/evaluation/fixtures/c26_misraj_source.json"
+      - "scripts/run_misraj_dococr_preflight.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  misraj-preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download small public viewer slice only
+        run: |
+          timeout 60s curl --fail --location --proto '=https' --tlsv1.2 \
+            --output /tmp/misraj-viewer.json \
+            'https://datasets-server.huggingface.co/rows?dataset=Misraj%2FMisraj-DocOCR&config=default&split=train&offset=0&length=10'
+      - name: Run privacy-safe pinned-source preflight
+        run: |
+          python scripts/run_misraj_dococr_preflight.py /tmp/misraj-viewer.json \
+            --output c26-misraj-preflight.json
+      - name: Upload structural evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mena-c26-misraj-preflight
+          path: c26-misraj-preflight.json
+          if-no-files-found: error
