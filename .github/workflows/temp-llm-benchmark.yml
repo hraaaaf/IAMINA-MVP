@@ -18,45 +18,48 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Call IAMINA Vercel preview benchmark endpoint
-        id: call
+      - name: Benchmark anonymous OVH models
         shell: bash
         run: |
-          set +e
-          URL='https://iamina-review-git-bench-llm-8bc4b6-achraf-benmoussa-s-projects.vercel.app/api/llm-benchmark'
-          echo "Calling $URL"
-          HTTP_CODE=$(curl --silent --show-error \
-            --connect-timeout 20 --max-time 180 \
-            -H 'content-type: application/json' \
-            -X POST \
-            --data '{"models":["gpt-oss-120b","mistral@latest?context_size>100000","llama@biggest?input_cost<0.5","code_chat@latest"]}' \
-            -o benchmark-result.json -w '%{http_code}' "$URL")
-          CURL_EXIT=$?
-          echo "http_code=$HTTP_CODE" >> "$GITHUB_OUTPUT"
-          echo "curl_exit=$CURL_EXIT" >> "$GITHUB_OUTPUT"
-          if [ ! -s benchmark-result.json ]; then
-            printf '{"transport_error":"no response body","http_code":"%s","curl_exit":%s}\n' "$HTTP_CODE" "$CURL_EXIT" > benchmark-result.json
-          fi
-          cat benchmark-result.json
-          exit 0
+          python - <<'PY'
+          import json, time, urllib.request, urllib.error
+          endpoint='https://oai.endpoints.kepler.ai.cloud.ovh.net/v1/chat/completions'
+          models=['gpt-oss-120b','mistral@latest?context_size>100000','llama@biggest?input_cost<0.5','code_chat@latest']
+          messages=[
+            {'role':'system','content':'Tu es un assistant conversationnel de santé non diagnostique. Réponds avec naturel, concision, empathie sobre, sans inventer et dans la langue du dernier message. Données entièrement synthétiques.'},
+            {'role':'user','content':'Je m’appelle Samir, j’ai 42 ans. Je veux surtout comprendre mes habitudes et poser des questions simples, pas recevoir un diagnostic.'},
+            {'role':'assistant','content':'Compris. Je peux t’aider à clarifier tes habitudes et tes questions, sans poser de diagnostic.'},
+            {'role':'user','content':'دابا إلى نسيت شنو قلت ليك قبل شوية، واش تقدر تذكرني بالعمر ديالي وباش بغيت نستعمل هاد الشات؟ جاوبني بالدارجة المغربية وبشكل طبيعي.'}
+          ]
+          out={'synthetic_only': True, 'provider':'OVHcloud AI Endpoints anonymous', 'results':[]}
+          for model in models:
+            payload=json.dumps({'model':model,'messages':messages,'temperature':0.4,'max_tokens':220}).encode()
+            req=urllib.request.Request(endpoint,data=payload,headers={'content-type':'application/json','accept':'application/json'},method='POST')
+            t=time.time()
+            try:
+              with urllib.request.urlopen(req,timeout=90) as r:
+                raw=r.read().decode('utf-8','replace'); status=r.status
+              data=json.loads(raw)
+              out['results'].append({'model_requested':model,'status':status,'ok':200<=status<300,'elapsed_ms':round((time.time()-t)*1000),'model_resolved':data.get('model'),'text':(((data.get('choices') or [{}])[0].get('message') or {}).get('content')),'usage':data.get('usage')})
+            except urllib.error.HTTPError as e:
+              raw=e.read().decode('utf-8','replace')
+              try: err=json.loads(raw)
+              except: err={'raw':raw}
+              out['results'].append({'model_requested':model,'status':e.code,'ok':False,'elapsed_ms':round((time.time()-t)*1000),'error':err})
+            except Exception as e:
+              out['results'].append({'model_requested':model,'ok':False,'elapsed_ms':round((time.time()-t)*1000),'error':str(e)})
+          open('benchmark-result.json','w',encoding='utf-8').write(json.dumps(out,ensure_ascii=False))
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
 
       - name: Publish benchmark evidence on PR 417
         env:
           GH_TOKEN: ${{ github.token }}
-          HTTP_CODE: ${{ steps.call.outputs.http_code }}
-          CURL_EXIT: ${{ steps.call.outputs.curl_exit }}
         shell: bash
         run: |
           python - <<'PY'
-          import os
           from pathlib import Path
-          raw = Path('benchmark-result.json').read_text(encoding='utf-8', errors='replace')
-          body = (
-              '### TEMP_LLM_BENCHMARK_RESULT\n\n'
-              f'HTTP: `{os.environ.get("HTTP_CODE")}` · curl: `{os.environ.get("CURL_EXIT")}`\n\n'
-              '```json\n' + raw[:60000] + '\n```\n\n'
-              'Synthetic benchmark only. Temporary branch; do not merge.'
-          )
-          Path('benchmark-comment.md').write_text(body, encoding='utf-8')
+          raw=Path('benchmark-result.json').read_text(encoding='utf-8',errors='replace')
+          Path('benchmark-comment.md').write_text('### TEMP_LLM_DIRECT_RESULT\n\n```json\n'+raw[:60000]+'\n```\n\nSynthetic benchmark only. Temporary branch; do not merge.',encoding='utf-8')
           PY
           gh pr comment 417 --repo "$GITHUB_REPOSITORY" --body-file benchmark-comment.md
