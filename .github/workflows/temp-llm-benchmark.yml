@@ -8,33 +8,55 @@ on:
       - '.github/workflows/temp-llm-benchmark.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   benchmark:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Call IAMINA Vercel preview benchmark endpoint
+        id: call
         shell: bash
         run: |
-          set -euo pipefail
+          set +e
           URL='https://iamina-review-git-bench-llm-8bc4b6-achraf-benmoussa-s-projects.vercel.app/api/llm-benchmark'
           echo "Calling $URL"
-          curl --fail-with-body --silent --show-error \
+          HTTP_CODE=$(curl --silent --show-error \
             --connect-timeout 20 --max-time 180 \
             -H 'content-type: application/json' \
             -X POST \
             --data '{"models":["gpt-oss-120b","mistral@latest?context_size>100000","llama@biggest?input_cost<0.5","code_chat@latest"]}' \
-            "$URL" | tee benchmark-result.json
-          echo
+            -o benchmark-result.json -w '%{http_code}' "$URL")
+          CURL_EXIT=$?
+          echo "http_code=$HTTP_CODE" >> "$GITHUB_OUTPUT"
+          echo "curl_exit=$CURL_EXIT" >> "$GITHUB_OUTPUT"
+          if [ ! -s benchmark-result.json ]; then
+            printf '{"transport_error":"no response body","http_code":"%s","curl_exit":%s}\n' "$HTTP_CODE" "$CURL_EXIT" > benchmark-result.json
+          fi
+          cat benchmark-result.json
+          exit 0
+
+      - name: Publish benchmark evidence on PR 417
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HTTP_CODE: ${{ steps.call.outputs.http_code }}
+          CURL_EXIT: ${{ steps.call.outputs.curl_exit }}
+        shell: bash
+        run: |
           python - <<'PY'
-          import json
-          p='benchmark-result.json'
-          d=json.load(open(p, encoding='utf-8'))
-          print('synthetic_only=', d.get('synthetic_only'))
-          for r in d.get('results', []):
-              print('\nMODEL', r.get('model_requested'))
-              print('status=', r.get('status'), 'ok=', r.get('ok'), 'elapsed_ms=', r.get('elapsed_ms'))
-              print('resolved=', r.get('model_resolved'))
-              print('text=', r.get('text'))
-              if r.get('error'): print('error=', r.get('error'))
+          import os
+          from pathlib import Path
+          raw = Path('benchmark-result.json').read_text(encoding='utf-8', errors='replace')
+          body = (
+              '### TEMP_LLM_BENCHMARK_RESULT\n\n'
+              f'HTTP: `{os.environ.get("HTTP_CODE")}` · curl: `{os.environ.get("CURL_EXIT")}`\n\n'
+              '```json\n' + raw[:60000] + '\n```\n\n'
+              'Synthetic benchmark only. Temporary branch; do not merge.'
+          )
+          Path('benchmark-comment.md').write_text(body, encoding='utf-8')
           PY
+          gh pr comment 417 --repo "$GITHUB_REPOSITORY" --body-file benchmark-comment.md
