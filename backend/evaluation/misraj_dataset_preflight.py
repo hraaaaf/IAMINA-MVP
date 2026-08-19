@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from typing import Any
 
@@ -19,6 +21,7 @@ def summarize_misraj_viewer(
     expected_total_rows: int,
     expected_features: list[str],
     expected_first_uuid: str,
+    expected_sample_fingerprint: str | None = None,
 ) -> dict[str, object]:
     features = payload.get("features")
     rows = payload.get("rows")
@@ -45,13 +48,18 @@ def summarize_misraj_viewer(
     arabic_rows = 0
     numeric_rows = 0
     image_rows = 0
+    fingerprint_rows: list[dict[str, str]] = []
     for item in rows:
         row = item.get("row") if isinstance(item, dict) else None
         if not isinstance(row, dict):
             raise MisrajPreflightError("Misraj viewer row is malformed")
+        uuid = row.get("uuid")
         markdown = row.get("markdown")
+        if not isinstance(uuid, str) or not uuid:
+            raise MisrajPreflightError("Misraj row UUID is missing")
         if not isinstance(markdown, str):
             raise MisrajPreflightError("Misraj markdown ground truth is missing")
+        fingerprint_rows.append({"uuid": uuid, "markdown": markdown})
         if _ARABIC_RE.search(markdown):
             arabic_rows += 1
         if _NUMBER_RE.search(markdown):
@@ -59,11 +67,23 @@ def summarize_misraj_viewer(
         if row.get("image") is not None:
             image_rows += 1
 
+    canonical = json.dumps(
+        fingerprint_rows,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    sample_fingerprint = hashlib.sha256(canonical).hexdigest()
+    if expected_sample_fingerprint and sample_fingerprint != expected_sample_fingerprint:
+        raise MisrajPreflightError("Misraj sample fingerprint drifted from pinned contract")
+
     return {
         "total_rows": total,
         "sampled_rows": len(rows),
         "features": feature_names,
         "first_uuid_matches": True,
+        "sample_fingerprint_sha256": sample_fingerprint,
+        "sample_fingerprint_basis": "ordered uuid + markdown only",
         "arabic_ground_truth_rows": arabic_rows,
         "numeric_ground_truth_rows": numeric_rows,
         "image_rows": image_rows,
