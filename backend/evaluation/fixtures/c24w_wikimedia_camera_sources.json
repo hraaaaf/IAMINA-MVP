@@ -1,0 +1,14 @@
+[
+  {
+    "fixture_id": "c24w_egypt_max_speed",
+    "commons_file": "File:Max Speed Sign in Egypt.JPG",
+    "expected_commons_sha1": "9c30b4804ada1978019a839f8abdc3adea291ade",
+    "expected_license": "CC BY-SA 3.0",
+    "expected_camera_model": "DMC-FT3",
+    "locale": "ar-EG",
+    "reference_text": "أقصى سرعة كم/س 90 80 70 60",
+    "capture_profile": "outdoor_road_sign_daylight",
+    "source_page": "https://commons.wikimedia.org/wiki/File:Max_Speed_Sign_in_Egypt.JPG",
+    "ground_truth_basis": "Wikimedia file page identifies a directly photographed bilingual Arabic-English speed sign and categories for 90, 80, 70 and 60 km/h; visible image inspection confirms the Arabic header and those four numeric rows."
+  }
+]
