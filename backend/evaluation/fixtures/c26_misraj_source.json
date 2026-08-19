@@ -1,0 +1,14 @@
+{
+  "dataset": "Misraj/Misraj-DocOCR",
+  "source_revision": "7177bf70f77ce259890d6af0bef53f18faf26ec9",
+  "license": "Apache-2.0",
+  "config": "default",
+  "split": "train",
+  "expected_total_rows": 400,
+  "expected_features": ["uuid", "markdown", "image"],
+  "expected_first_uuid": "d37bed59-12d3-4e23-ab98-42108acf5ed5",
+  "source_kind": "expert_verified_arabic_document_ocr_benchmark",
+  "real_camera_claim": false,
+  "iamina_patient_data": false,
+  "ground_truth": "expert-verified markdown/text structure"
+}
