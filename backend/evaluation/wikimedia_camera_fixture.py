@@ -1,20 +1,19 @@
 """Materialize provenance-checked Wikimedia camera fixtures for C24.
 
-This module is intentionally strict. It accepts only a pinned Commons file with
-an expected SHA-1, acceptable open license and expected camera model, downloads
-that exact original, verifies the bytes, and emits a local C19-compatible media
-manifest. Network access is injected so unit tests remain offline.
+The source is pinned by Commons SHA-1, license and camera model. Downloaded bytes
+are verified before a local C19-compatible real-camera manifest is emitted.
+Network fetchers are injectable so normal tests remain fully offline.
 """
 
 from __future__ import annotations
 
 import hashlib
+import http.client
 import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlencode
-from urllib.request import urlopen
+from urllib.parse import urlencode, urlsplit
 
 
 class WikimediaCameraFixtureError(ValueError):
@@ -25,14 +24,42 @@ JsonFetcher = Callable[[str], dict[str, Any]]
 BytesFetcher = Callable[[str], bytes]
 
 
+def _https_get(url: str, *, expected_host: str, timeout: int) -> bytes:
+    parsed = urlsplit(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != expected_host
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port is not None
+    ):
+        raise WikimediaCameraFixtureError("unexpected HTTPS source")
+    target = parsed.path or "/"
+    if parsed.query:
+        target = f"{target}?{parsed.query}"
+    connection = http.client.HTTPSConnection(expected_host, timeout=timeout)
+    try:
+        connection.request("GET", target, headers={"User-Agent": "IAMINA-C24W/1.0"})
+        response = connection.getresponse()
+        if response.status != 200:
+            raise WikimediaCameraFixtureError(
+                f"Wikimedia returned HTTP {response.status}"
+            )
+        return response.read()
+    finally:
+        connection.close()
+
+
 def _default_json_fetcher(url: str) -> dict[str, Any]:
-    with urlopen(url, timeout=30) as response:  # noqa: S310 - pinned public Wikimedia API
-        return json.loads(response.read().decode("utf-8"))
+    return json.loads(
+        _https_get(url, expected_host="commons.wikimedia.org", timeout=30).decode(
+            "utf-8"
+        )
+    )
 
 
 def _default_bytes_fetcher(url: str) -> bytes:
-    with urlopen(url, timeout=60) as response:  # noqa: S310 - URL is returned by Wikimedia API
-        return response.read()
+    return _https_get(url, expected_host="upload.wikimedia.org", timeout=60)
 
 
 def _metadata_map(imageinfo: dict[str, Any]) -> dict[str, str]:
@@ -110,16 +137,18 @@ def materialize_wikimedia_camera_fixture(
         raise WikimediaCameraFixtureError("camera model provenance is missing or changed")
 
     original_url = imageinfo.get("url")
-    if not isinstance(original_url, str) or not original_url.startswith(
-        "https://upload.wikimedia.org/"
-    ):
-        raise WikimediaCameraFixtureError("Commons original URL is missing or unexpected")
+    if not isinstance(original_url, str):
+        raise WikimediaCameraFixtureError("Commons original URL is missing")
+    parsed_original = urlsplit(original_url)
+    if parsed_original.scheme != "https" or parsed_original.hostname != "upload.wikimedia.org":
+        raise WikimediaCameraFixtureError("Commons original URL is unexpected")
 
     image_bytes = bytes_fetcher(original_url)
-    if hashlib.sha1(image_bytes).hexdigest() != expected_sha1:  # noqa: S324 - provenance checksum
+    downloaded_sha1 = hashlib.sha1(image_bytes, usedforsecurity=False).hexdigest()
+    if downloaded_sha1 != expected_sha1:
         raise WikimediaCameraFixtureError("downloaded bytes do not match Commons SHA-1")
 
-    suffix = Path(original_url).suffix.lower()
+    suffix = Path(parsed_original.path).suffix.lower()
     if suffix not in {".jpg", ".jpeg", ".png", ".webp"}:
         raise WikimediaCameraFixtureError("unsupported Commons image extension")
 
