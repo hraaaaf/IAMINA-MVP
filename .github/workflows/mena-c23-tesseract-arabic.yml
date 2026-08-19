@@ -1,0 +1,68 @@
+name: MENA C23 Tesseract Arabic robustness
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - test/mena-319-c23-tesseract-arabic*
+    paths:
+      - scripts/run_tesseract_arabic_robustness.py
+      - .github/workflows/mena-c23-tesseract-arabic.yml
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  tesseract-arabic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Arabic OCR runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-ara fonts-noto-core
+          python -m pip install Pillow>=10.0
+      - name: Run C23 benchmark
+        run: python scripts/run_tesseract_arabic_robustness.py --output-dir /tmp/c23
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mena-c23-tesseract-${{ github.sha }}
+          path: /tmp/c23
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Publish durable result
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          C23_STATUS: ${{ job.status }}
+        with:
+          script: |
+            const status = process.env.C23_STATUS.toUpperCase();
+            const sha = context.sha;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[MENA C23] ${status} Tesseract Arabic ${sha.slice(0, 12)}`,
+              body: [
+                `Alternative local Arabic OCR robustness evidence.`,
+                ``,
+                `- SHA: \`${sha}\``,
+                `- Result: **${status}**`,
+                `- Workflow run: ${runUrl}`,
+                `- Matrix: same 6 C22 synthetic cases`,
+                `- Safety criterion: exact critical numeric preservation`,
+                `- Patient data: no`,
+                `- Provider API / paid inference: no`,
+                `- Real-camera evidence: no`,
+                ``,
+                `Artifact \`mena-c23-tesseract-${sha}\` contains JSON evidence and fixtures.`
+              ].join('\n'),
+            });
