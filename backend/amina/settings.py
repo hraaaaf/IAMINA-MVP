@@ -176,15 +176,18 @@ KIMI_API_KEY = os.environ.get('KIMI_API_KEY', '')
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
 # ── Django Cache (django-redis, graceful fallback when Redis is down) ─────────
-# IGNORE_EXCEPTIONS=True → every cache.get() returns None if Redis is unreachable,
-# and cache.set() silently no-ops.  This ensures the app works in dev without Redis.
+# IGNORE_EXCEPTIONS=True keeps Redis optional in local/dev flows. Network waits
+# are deliberately bounded so an unavailable Redis cannot stall requests or
+# launcher health probes, especially on Windows hosts.
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": REDIS_URL,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "IGNORE_EXCEPTIONS": True,   # graceful degradation — computes fresh on miss
+            "IGNORE_EXCEPTIONS": True,
+            "SOCKET_CONNECT_TIMEOUT": 1,
+            "SOCKET_TIMEOUT": 1,
         },
         "KEY_PREFIX": "amina",
         "TIMEOUT": 300,  # 5 min default TTL

@@ -60,6 +60,7 @@ See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the live backlog and gates and [`do
 ```bash
 git clone <repo>
 cd IAMINA-MVP
+cp .env.example .env
 docker compose up --build
 
 docker compose run --rm backend python manage.py setup_demo
@@ -75,7 +76,21 @@ flutter pub get
 flutter run -d chrome
 ```
 
-Legacy `dev.sh` / `dev.ps1` launchers remain during migration but are **not the canonical development path**.
+### Single cross-platform host launcher
+
+Windows and macOS use the same launcher source:
+
+```bash
+# Windows
+python IAMINA.py
+
+# macOS
+python3 IAMINA.py
+```
+
+The launcher starts the backend on `http://127.0.0.1:8008` and the Flutter web frontend on `http://localhost:8009`, validates the pinned Flutter version, waits for both services to respond, then opens the browser. Local readiness probes bypass ambient proxy settings and child process trees are cleaned up on exit. Docker remains the canonical backend integration path before merge.
+
+A single file type cannot guarantee native double-click execution on both operating systems. `IAMINA.py` is the only canonical host launcher; native packaged shortcuts may be generated later from this source if guaranteed desktop double-click becomes a release requirement.
 
 ## Repository map
 
@@ -97,6 +112,7 @@ docs/                  Product, architecture, safety, roadmap, ADRs, technical d
 | [`docs/SPECS.md`](docs/SPECS.md) | Current product/API capability contract |
 | [`docs/MEDICAL_DATA_PLAN.md`](docs/MEDICAL_DATA_PLAN.md) | Clinical-data and safety boundaries |
 | [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) | Engineering workflow, guardrails, mandatory docs closeout |
+| [`docs/DEPENDENCIES.md`](docs/DEPENDENCIES.md) | Canonical developer prerequisites, toolchain sources of truth, and launcher requirements |
 | [`docs/TECHDEBT.md`](docs/TECHDEBT.md) | Only unresolved technical debt |
 | [`docs/MISTAKES.md`](docs/MISTAKES.md) | Reusable engineering lessons; not a status tracker |
 | [`docs/adr/`](docs/adr/) | Immutable architecture decisions/history |
@@ -118,6 +134,13 @@ Dated assessments and deleted legacy plans remain available through git history 
 
 ## Development workflow
 
-`main` is the repository's canonical branch. Work on a short-lived feature/fix/docs branch and open a focused PR back to `main`. The live work unit must come from `docs/ROADMAP.md`.
+`main` is canonical. Use a short-lived branch and focused PR to `main`. Each live work unit is tracked from `docs/ROADMAP.md`; do not execute historical deleted roadmaps from memory.
 
-**Every merged phase/task ends with a documentation closeout before the next roadmap unit starts.** At minimum inspect/update the roadmap, then architecture/specs/domain contracts/technical debt only where the merged truth changed.
+Before merge:
+
+```bash
+cd backend && ruff check . && pytest --tb=short -q
+cd ../frontend && flutter analyze --no-fatal-infos && flutter test --no-pub
+```
+
+Architecture/safety-sensitive PRs must also run their repository-specific contract tests. GitHub CI is the final merge authority.

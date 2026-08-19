@@ -1,20 +1,26 @@
 # IAMINA — macOS developer bootstrap
 
-Status: **SUPPORTED PATH / CI CERTIFICATION REQUIRED**
+Status: **SUPPORTED / HOST ARM64 CI CERTIFIED**
 
 ## Goal
 
 A collaborator on macOS can clone IAMINA, bootstrap the canonical backend/frontend development environment, run the required local checks, and open a focused PR without relying on Windows-only tooling.
 
+## Verified certification
+
+The macOS portability workflow has passed on a GitHub-hosted Apple Silicon runner reporting `macos-26-arm64` / `uname -m = arm64`, including backend tests, Flutter analyze/tests and case-collision checks.
+
+This certifies the host macOS development path. It does not by itself certify Docker Desktop running locally on Apple Silicon hardware.
+
 ## Prerequisites
 
 - Git
-- Docker Desktop
+- Docker Desktop for the canonical containerized backend path
 - Python 3.12
 - Flutter 3.41.7
 - Xcode only when iOS build/simulator work is required
 
-The repository pins Python and Flutter in `.tool-versions`.
+The repository pins Python and Flutter in `.tool-versions`. See `docs/DEPENDENCIES.md` for the canonical developer dependency reference.
 
 ## Fresh clone
 
@@ -25,6 +31,23 @@ cp .env.example .env
 ```
 
 The `.env` copy is required because `docker-compose.yml` declares it through `env_file`. Development defaults may be used without provider credentials; never commit local secrets.
+
+## Cross-platform host launch
+
+The repository has one host launcher shared with Windows:
+
+```bash
+python3 IAMINA.py
+```
+
+It starts:
+
+- backend: `http://127.0.0.1:8008`
+- frontend: `http://localhost:8009`
+
+It validates the pinned Flutter version, waits for both services to respond before opening the browser and cleans up child process trees when stopped.
+
+A single file type cannot guarantee native Finder double-click execution on both macOS and Windows. `IAMINA.py` is therefore the single portable source of truth; terminal execution is the guaranteed cross-platform path.
 
 ## Canonical backend path
 
@@ -62,15 +85,17 @@ python backend/manage.py check
 python -m pytest backend --tb=short -q
 ```
 
-## Shell portability
+## Launcher portability
 
-`dev.sh` is a legacy helper, not the canonical startup path. It must nevertheless remain valid Bash syntax:
+The same `IAMINA.py` file is certified through the real bootstrap path on macOS and Windows. Its CI contract is:
 
 ```bash
-bash -n dev.sh
+python IAMINA.py --check
+python IAMINA.py --smoke --no-browser --no-redis
+python IAMINA.py --check
 ```
 
-`.gitattributes` keeps shell, Python and YAML files on LF line endings.
+The smoke must prove both port `8008` backend health and frontend readiness on `8009`, followed by cleanup that releases both ports.
 
 ## Git workflow
 
@@ -86,10 +111,10 @@ Open a focused PR to `main`. GitHub CI remains the merge authority even when loc
 
 ## Apple Silicon boundary
 
-GitHub-hosted macOS runners certify only the architecture reported by the runner itself. The workflow records `uname -m` as evidence. If the runner is not Apple Silicon, Docker Desktop arm64 compatibility remains a separate manual proof gate and must not be inferred from an Intel runner.
+The host ARM64 path is certified by the native macOS workflow. Docker Desktop arm64 compatibility remains a separate manual proof gate until Docker itself is executed and observed on an Apple Silicon developer machine.
 
-The canonical container images are official multi-platform candidates (`python:3.12-slim`, `postgres:16-alpine`, `redis:7-alpine`), but IAMINA does not claim Apple Silicon Docker certification until an arm64 Docker execution is observed.
+The canonical container images are official multi-platform candidates (`python:3.12-slim`, `postgres:16-alpine`, `redis:7-alpine`), but IAMINA does not claim Apple Silicon Docker certification without that execution proof.
 
 ## iOS boundary
 
-The repository contains the Flutter iOS project. This macOS portability lot certifies collaborator development for backend + Flutter analysis/tests/web execution. It does **not** claim signing, simulator/device, CocoaPods, App Store, or production iOS release certification unless those checks are added and pass separately.
+The repository contains the Flutter iOS project. The macOS portability certification covers collaborator development for backend + Flutter analysis/tests/web execution. It does **not** claim signing, simulator/device, CocoaPods, App Store, or production iOS release certification unless those checks are added and pass separately.
