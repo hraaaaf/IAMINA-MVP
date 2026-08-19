@@ -34,6 +34,7 @@ from llm.middleware.logging import LoggingMiddleware
 from llm.middleware.phi_stripping import PHIStrippingMiddleware
 from llm.pipeline import LLMPipeline
 from llm.pseudonymizer import PHIPseudonymizer
+from llm.usage_telemetry import usage_workload_scope
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,15 @@ def _assert_generative_capability(capability: Capability) -> None:
     """Fail closed if a caller asks the LLM gateway to perform a forbidden action."""
 
     assert_capability_allowed(capability, Authority.GENERATIVE_MODEL)
+
+
+def _workload_for_capability(capability: Capability) -> str:
+    """Map governed generative capability to one non-sensitive FinOps workload."""
+    if capability == Capability.SUMMARIZE_APPROVED_DATA:
+        return "summary"
+    if capability == Capability.PREPARE_CLINICIAN_QUESTIONS:
+        return "writing"
+    return "conversation"
 
 
 def _prepare_unstructured_prompt(text: str, pseudonymizer: PHIPseudonymizer) -> str:
@@ -75,7 +85,8 @@ class GatewayLLM:
         assert_ai_egress_allowed(TEXT)
         safe_system = _prepare_unstructured_prompt(system, self._pseudonymizer)
         safe_user = _prepare_unstructured_prompt(user, self._pseudonymizer)
-        response = self._pipeline.complete(safe_system, safe_user)
+        with usage_workload_scope(_workload_for_capability(capability)):
+            response = self._pipeline.complete(safe_system, safe_user)
         response.content = self._pseudonymizer.unmask_medical_report(response.content)
         return response
 
@@ -151,14 +162,12 @@ def narrate(
     system = _build_system_prompt(companion_identity, language)
     user = _build_user_prompt(domain_context, patient_context)
 
-    # P0.7 evidence ceiling runs before the existing PHI boundary so legacy
-    # cached prompt shapes cannot expose internal detector identifiers.
     system = _prepare_unstructured_prompt(system, pseudonymizer)
     user = _prepare_unstructured_prompt(user, pseudonymizer)
 
-    response = llm.complete(system, user)
+    with usage_workload_scope("summary"):
+        response = llm.complete(system, user)
 
-    # Restore any session tokens introduced by pseudonymizer (safe no-op if none were added)
     return pseudonymizer.unmask_medical_report(response.content)
 
 
