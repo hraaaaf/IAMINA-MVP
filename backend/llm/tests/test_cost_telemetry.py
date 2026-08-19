@@ -5,14 +5,20 @@ import pytest
 
 from llm.base import LLMResponse, LLMUsage
 from llm.middleware.logging import LoggingMiddleware
-from llm.usage_telemetry import usage_workload_scope
+from llm.usage_telemetry import (
+    record_media_bytes,
+    record_metered_usage,
+    usage_workload_scope,
+)
 
 
-def _event_from_caplog(caplog):
-    record = next(record for record in caplog.records if record.name == "iamina.cost")
+def _events_from_caplog(caplog):
     prefix = "cost_telemetry "
-    assert record.message.startswith(prefix)
-    return json.loads(record.message[len(prefix) :])
+    return [
+        json.loads(record.message[len(prefix) :])
+        for record in caplog.records
+        if record.name == "iamina.cost" and record.message.startswith(prefix)
+    ]
 
 
 def test_cost_telemetry_records_scoped_usage_without_content(caplog):
@@ -37,7 +43,7 @@ def test_cost_telemetry_records_scoped_usage_without_content(caplog):
             )
 
     assert result is response
-    event = _event_from_caplog(caplog)
+    event = _events_from_caplog(caplog)[0]
     assert event == {
         "cached_input_tokens": 80,
         "event": "llm_usage",
@@ -69,14 +75,52 @@ def test_cost_telemetry_records_error_type_not_exception_message(caplog):
             with pytest.raises(RuntimeError, match="SECRET_PROVIDER_ERROR_BODY"):
                 middleware.process("safe", "input", fail)
 
-    event = _event_from_caplog(caplog)
+    event = _events_from_caplog(caplog)[0]
     assert event["status"] == "error"
     assert event["workload"] == "summary"
     assert event["error_type"] == "RuntimeError"
     assert "SECRET_PROVIDER_ERROR_BODY" not in caplog.text
 
 
-def test_workload_scope_rejects_unknown_or_unclassified_values():
+def test_metered_and_media_events_are_content_free(caplog):
+    with caplog.at_level(logging.INFO, logger="iamina.cost"):
+        with usage_workload_scope("ocr"):
+            record_metered_usage(
+                modality="ocr",
+                unit="page",
+                quantity=3,
+                provider_route="mistral-ocr",
+                latency_ms=420.25,
+            )
+            record_media_bytes(
+                action="uploaded",
+                byte_count=700_000,
+                retention_class="TRANSIENT_EXTRACTION",
+            )
+            record_media_bytes(
+                action="deleted",
+                byte_count=700_000,
+                retention_class="TRANSIENT_EXTRACTION",
+            )
+
+    events = _events_from_caplog(caplog)
+    assert events[0] == {
+        "event": "metered_usage",
+        "latency_ms": 420.2,
+        "modality": "ocr",
+        "provider_route": "mistral-ocr",
+        "quantity": 3,
+        "status": "success",
+        "unit": "page",
+        "workload": "ocr",
+    }
+    assert events[1]["event"] == "media_bytes"
+    assert events[1]["action"] == "uploaded"
+    assert events[2]["action"] == "deleted"
+    assert all(event.get("bytes") in (None, 700_000) for event in events)
+
+
+def test_workload_and_metered_contracts_fail_closed():
     with pytest.raises(ValueError, match="unsupported cost workload"):
         with usage_workload_scope("patient-42"):
             pass
@@ -84,3 +128,18 @@ def test_workload_scope_rejects_unknown_or_unclassified_values():
     with pytest.raises(ValueError, match="unsupported cost workload"):
         with usage_workload_scope("unclassified"):
             pass
+
+    with pytest.raises(ValueError, match="unsupported metered modality"):
+        record_metered_usage(
+            modality="database",
+            unit="query",
+            quantity=1,
+            provider_route="db",
+        )
+
+    with pytest.raises(ValueError, match="byte_count cannot be negative"):
+        record_media_bytes(
+            action="retained",
+            byte_count=-1,
+            retention_class="TRANSIENT_EXTRACTION",
+        )

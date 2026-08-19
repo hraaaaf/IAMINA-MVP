@@ -30,6 +30,7 @@ _ALLOWED_WORKLOADS = frozenset(
         "unclassified",
     }
 )
+_ALLOWED_MEDIA_ACTIONS = frozenset({"uploaded", "retained", "deleted", "downloaded"})
 _CURRENT_WORKLOAD: ContextVar[str] = ContextVar(
     "iamina_cost_workload",
     default="unclassified",
@@ -100,5 +101,57 @@ def record_llm_failure(
             "prompt_chars": max(prompt_chars, 0),
             "latency_ms": round(max(latency_ms, 0.0), 1),
             "error_type": error_type,
+        }
+    )
+
+
+def record_metered_usage(
+    *,
+    modality: str,
+    unit: str,
+    quantity: int,
+    provider_route: str,
+    latency_ms: float | None = None,
+    status: str = "success",
+    error_type: str | None = None,
+) -> None:
+    """Record OCR/audio/image metering without media content or patient identity."""
+    if modality not in {"ocr", "vision", "stt", "tts"}:
+        raise ValueError(f"unsupported metered modality: {modality}")
+    if not unit.strip() or quantity < 0 or not provider_route.strip():
+        raise ValueError("unit/provider_route are required and quantity cannot be negative")
+    if status not in {"success", "error"}:
+        raise ValueError("status must be success or error")
+    event: dict[str, object] = {
+        "event": "metered_usage",
+        "status": status,
+        "workload": current_usage_workload(),
+        "modality": modality,
+        "unit": unit,
+        "quantity": quantity,
+        "provider_route": provider_route,
+    }
+    if latency_ms is not None:
+        event["latency_ms"] = round(max(latency_ms, 0.0), 1)
+    if error_type is not None:
+        event["error_type"] = error_type
+    _emit(event)
+
+
+def record_media_bytes(*, action: str, byte_count: int, retention_class: str) -> None:
+    """Record raw-media byte lifecycle without object keys, names or hashes."""
+    if action not in _ALLOWED_MEDIA_ACTIONS:
+        raise ValueError(f"unsupported media action: {action}")
+    if byte_count < 0:
+        raise ValueError("byte_count cannot be negative")
+    if not retention_class.strip():
+        raise ValueError("retention_class is required")
+    _emit(
+        {
+            "event": "media_bytes",
+            "action": action,
+            "workload": current_usage_workload(),
+            "bytes": byte_count,
+            "retention_class": retention_class,
         }
     )
