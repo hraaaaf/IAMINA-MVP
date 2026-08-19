@@ -3,6 +3,7 @@ import logging
 from companion.parser import parse_llm_json
 from companion.prompts import SUMMARY_USER, SYSTEM_BASE, get_language_label
 from core.companion.clinical import get_domain_context
+from core.contracts.capabilities import Capability
 from core.llm_gateway import get_gateway_llm
 from core.medical_safety import apply_no_prescription_policy
 
@@ -31,7 +32,6 @@ def summarize(patient, memory, llm=None, language: str = "fr", days: int = 7) ->
             "pour faire un résumé fiable. Continue à enregistrer tes mesures !"
         )
 
-    # Module-formatted patterns block (with evidence) from DomainContext.
     patterns_text = (
         "\n".join(
             f"- [{p.get('priority')}] {p.get('code')}: {p.get('evidence')}"
@@ -48,10 +48,13 @@ def summarize(patient, memory, llm=None, language: str = "fr", days: int = 7) ->
     )
 
     try:
-        result = llm.complete(system, user_prompt)
+        result = llm.complete(
+            system,
+            user_prompt,
+            capability=Capability.SUMMARIZE_APPROVED_DATA,
+        )
         parsed = parse_llm_json(result.content, ["narrative", "key_insight", "doctor_brief"])
 
-        # Log doctor_brief for future medical export feature
         if parsed.get("doctor_brief"):
             logger.info(
                 "IAmina doctor_brief for patient=%s: %s",
