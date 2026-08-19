@@ -6,7 +6,6 @@ from collections.abc import Callable
 from io import BytesIO
 from typing import Any
 
-import numpy as np
 from PIL import Image, ImageOps
 
 from evaluation.misraj_numeric_benchmark import run_misraj_numeric_benchmark
@@ -28,6 +27,8 @@ def make_easyocr_callable(
     reader = reader_factory()
 
     def ocr(image_bytes: bytes) -> str:
+        import numpy as np
+
         with Image.open(BytesIO(image_bytes)) as image:
             normalized = ImageOps.exif_transpose(image).convert("RGB")
             pixels = np.asarray(normalized)
