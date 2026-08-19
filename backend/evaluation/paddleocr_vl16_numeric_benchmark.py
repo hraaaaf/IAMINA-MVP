@@ -46,19 +46,35 @@ def _default_pipeline_factory() -> Any:
     )
 
 
-def _markdown_text(result: object) -> str:
-    markdown = result.get("markdown") if isinstance(result, dict) else getattr(result, "markdown", None)
-    if not isinstance(markdown, dict):
-        raise ValueError("PaddleOCR-VL result must expose markdown data")
+def _result_text(result: object) -> str:
+    """Extract text from PaddleOCR-VL's canonical parsing_res_list contract."""
+    parsing_res_list = None
+    if isinstance(result, dict):
+        parsing_res_list = result.get("parsing_res_list")
+    else:
+        getter = getattr(result, "get", None)
+        if callable(getter):
+            parsing_res_list = getter("parsing_res_list")
+        if parsing_res_list is None:
+            parsing_res_list = getattr(result, "parsing_res_list", None)
 
-    value = markdown.get("markdown_texts")
-    if value is None:
-        value = markdown.get("text")
-    if isinstance(value, str):
-        return value
-    if isinstance(value, list) and all(isinstance(item, str) for item in value):
-        return "\n".join(value)
-    raise ValueError("PaddleOCR-VL markdown text is missing")
+    if not isinstance(parsing_res_list, list):
+        raise ValueError("PaddleOCR-VL result must expose parsing_res_list")
+
+    chunks: list[str] = []
+    for block in parsing_res_list:
+        if isinstance(block, dict):
+            value = block.get("block_content")
+            if value is None:
+                value = block.get("content")
+        else:
+            value = getattr(block, "content", None)
+        if isinstance(value, str) and value.strip():
+            chunks.append(value.strip())
+
+    if not chunks:
+        raise ValueError("PaddleOCR-VL parsing_res_list contains no text")
+    return "\n".join(chunks)
 
 
 def make_paddleocr_vl16_callable(
@@ -76,7 +92,7 @@ def make_paddleocr_vl16_callable(
             results = list(pipeline.predict(str(image_path)))
         if len(results) != 1:
             raise ValueError("PaddleOCR-VL must return exactly one page result")
-        return _markdown_text(results[0]).strip()
+        return _result_text(results[0]).strip()
 
     return ocr
 

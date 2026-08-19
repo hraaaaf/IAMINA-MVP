@@ -56,12 +56,17 @@ def _source(payload: dict[str, object]) -> dict[str, object]:
     }
 
 
-def test_paddleocr_vl16_adapter_extracts_markdown_text():
+def test_paddleocr_vl16_adapter_extracts_canonical_object_blocks():
     buffer = BytesIO()
     Image.new("RGB", (4, 4), "white").save(buffer, format="PNG")
 
-    class Result:
-        markdown = {"markdown_texts": "سكر ٥٤\n68"}
+    class Block:
+        def __init__(self, content: str):
+            self.content = content
+
+    class Result(dict):
+        def __init__(self):
+            super().__init__(parsing_res_list=[Block("سكر ٥٤"), Block("68")])
 
     class Pipeline:
         def predict(self, image_path: str):
@@ -73,16 +78,20 @@ def test_paddleocr_vl16_adapter_extracts_markdown_text():
     assert ocr(buffer.getvalue()) == "سكر ٥٤\n68"
 
 
-def test_paddleocr_vl16_adapter_accepts_markdown_text_list():
+def test_paddleocr_vl16_adapter_accepts_json_style_blocks():
     buffer = BytesIO()
     Image.new("RGB", (4, 4), "white").save(buffer, format="PNG")
 
-    class Result:
-        markdown = {"markdown_texts": ["سكر ٥٤", "68"]}
-
     class Pipeline:
         def predict(self, image_path: str):
-            return [Result()]
+            return [
+                {
+                    "parsing_res_list": [
+                        {"block_label": "text", "block_content": "سكر ٥٤"},
+                        {"block_label": "text", "block_content": "68"},
+                    ]
+                }
+            ]
 
     ocr = make_paddleocr_vl16_callable(pipeline_factory=Pipeline)
     assert ocr(buffer.getvalue()) == "سكر ٥٤\n68"
