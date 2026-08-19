@@ -7,6 +7,7 @@ requirements and intentionally emits no raw ground-truth or OCR text.
 from __future__ import annotations
 
 from collections.abc import Callable
+from html.parser import HTMLParser
 from io import BytesIO
 import os
 from typing import Any
@@ -23,6 +24,24 @@ SURYA_MMPROJ_SHA256 = "98c0563673b1657ff6d021d1e5f04af06cbf61bb40c63ac613e8bb71b
 
 PredictorFactory = Callable[[], Any]
 OCRCallable = Callable[[bytes], str]
+
+
+class _HTMLTextExtractor(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        value = data.strip()
+        if value:
+            self.parts.append(value)
+
+
+def _html_to_text(value: str) -> str:
+    parser = _HTMLTextExtractor()
+    parser.feed(value)
+    parser.close()
+    return " ".join(parser.parts)
 
 
 def _default_predictor_factory() -> Any:
@@ -50,8 +69,6 @@ def make_surya2_callable(
     predictor = predictor_factory()
 
     def ocr(image_bytes: bytes) -> str:
-        from bs4 import BeautifulSoup
-
         with Image.open(BytesIO(image_bytes)) as image:
             normalized = ImageOps.exif_transpose(image).convert("RGB")
             predictions = predictor([normalized])
@@ -68,7 +85,7 @@ def make_surya2_callable(
             html = _block_html(block)
             if not html:
                 continue
-            text = BeautifulSoup(html, "html.parser").get_text(" ", strip=True)
+            text = _html_to_text(html)
             if text:
                 text_blocks.append(text)
         return "\n".join(text_blocks)
@@ -97,6 +114,7 @@ def run_surya2_numeric_benchmark(
         "mmproj_sha256": SURYA_MMPROJ_SHA256,
         "backend": "llamacpp",
         "llama_cpp_release": os.getenv("C30_LLAMA_CPP_RELEASE", "unrecorded"),
+        "llama_cpp_sha256": os.getenv("C30_LLAMA_CPP_SHA256", "unrecorded"),
         "full_page": True,
     }
     return result
