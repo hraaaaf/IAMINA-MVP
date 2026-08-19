@@ -6,6 +6,7 @@
   "ie_component": "IE/test.csv",
   "ie_source_revision": "6508f6f",
   "ie_source_url": "https://huggingface.co/datasets/abdoelsayed/CORU/resolve/6508f6f/IE/test.csv",
+  "ie_expected_sha256": "792513e8d20a00cb4b89c56550ff1cdae5ac1596200f4567f87d82f5b31a81b8",
   "license": "MIT",
   "languages": ["Arabic", "English"],
   "source_kind": "real_world_receipt_dataset",
