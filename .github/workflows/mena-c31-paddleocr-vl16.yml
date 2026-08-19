@@ -1,0 +1,124 @@
+name: MENA C31 PaddleOCR-VL 1.6 Arabic document evidence
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mena-c31-paddleocr-vl16.yml"
+      - "backend/evaluation/paddleocr_vl16_numeric_benchmark.py"
+      - "backend/evaluation/tests/test_paddleocr_vl16_numeric_benchmark.py"
+      - "backend/evaluation/misraj_numeric_benchmark.py"
+      - "backend/evaluation/fixtures/c26_misraj_source.json"
+      - "scripts/run_misraj_paddleocr_vl16_numeric_benchmark.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  C31_HF_REVISION: c5630abae1d940eafe0697512a0325494b02ab42
+  C31_MODEL_SHA256: 85a479d506a11e724e7285d395c551be69f41dbc16b6342d3cacfb189aed71db
+
+jobs:
+  paddleocr-vl16-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pinned CPU PaddleOCR-VL stack
+        run: |
+          python -m pip install --disable-pip-version-check paddlepaddle==3.2.1
+          python -m pip install --disable-pip-version-check "paddleocr[doc-parser]==3.7.0" "huggingface-hub==0.34.4"
+          python - <<'PY'
+          import importlib.metadata
+          import paddle
+
+          assert importlib.metadata.version("paddleocr") == "3.7.0"
+          assert importlib.metadata.version("paddlepaddle") == "3.2.1"
+          assert paddle.device.is_compiled_with_cuda() is False
+          print("paddleocr", importlib.metadata.version("paddleocr"))
+          print("paddlepaddle", importlib.metadata.version("paddlepaddle"))
+          PY
+
+      - name: Download and verify pinned PaddleOCR-VL 1.6 model
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+
+          from huggingface_hub import snapshot_download
+
+          revision = os.environ["C31_HF_REVISION"]
+          expected = os.environ["C31_MODEL_SHA256"]
+          model_dir = Path("/tmp/paddleocr-vl16")
+          snapshot_download(
+              repo_id="PaddlePaddle/PaddleOCR-VL-1.6",
+              revision=revision,
+              local_dir=model_dir,
+          )
+          model_file = model_dir / "model.safetensors"
+          digest = hashlib.sha256(model_file.read_bytes()).hexdigest()
+          if digest != expected:
+              raise SystemExit(f"model SHA256 mismatch: {digest}")
+          print("revision", revision)
+          print("model_sha256", digest)
+          PY
+          echo 'C31_PADDLEOCR_VL_MODEL_DIR=/tmp/paddleocr-vl16' >> "$GITHUB_ENV"
+
+      - name: Fetch pinned 10-row Misraj viewer slice
+        run: |
+          curl --fail --location --proto '=https' --tlsv1.2 --retry 3 \
+            --connect-timeout 30 --max-time 180 \
+            --output /tmp/misraj-viewer.json \
+            'https://datasets-server.huggingface.co/rows?dataset=Misraj%2FMisraj-DocOCR&config=default&split=train&offset=0&length=10'
+
+      - name: Run and validate PaddleOCR-VL 1.6 evidence
+        run: |
+          set +e
+          python scripts/run_misraj_paddleocr_vl16_numeric_benchmark.py /tmp/misraj-viewer.json \
+            --output c31-paddleocr-vl16.json
+          benchmark_status=$?
+          set -e
+          test "$benchmark_status" -eq 0 -o "$benchmark_status" -eq 1
+          BENCHMARK_STATUS="$benchmark_status" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          result = json.loads(Path("c31-paddleocr-vl16.json").read_text(encoding="utf-8"))
+          status = int(os.environ["BENCHMARK_STATUS"])
+          assert result["benchmark"] == "c31-misraj-paddleocr-vl16-exact-numeric-safety"
+          assert result["engine"] == "paddleocr-vl-1.6"
+          assert result["source_images_pinned"] is True
+          assert result["sampled_rows"] == 10
+          assert result["numeric_total"] == 10
+          assert 0 <= result["numeric_safe_cases"] <= 10
+          assert (status == 0) == result["numeric_safety_floor_passed"]
+          assert result["raw_ground_truth_emitted"] is False
+          assert result["raw_ocr_text_emitted"] is False
+          assert result["provider_api"] is False
+          assert result["paid_inference"] is False
+          config = result["engine_config"]
+          assert config["package_version"] == "3.7.0"
+          assert config["pipeline_version"] == "v1.6"
+          assert config["model_revision"] == os.environ["C31_HF_REVISION"]
+          assert config["model_sha256"] == os.environ["C31_MODEL_SHA256"]
+          assert config["engine"] == "transformers"
+          assert config["device"] == "cpu"
+          assert config["layout_detection"] is False
+          PY
+
+      - name: Upload exact evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mena-c31-paddleocr-vl16
+          path: c31-paddleocr-vl16.json
+          if-no-files-found: warn
+          retention-days: 14
