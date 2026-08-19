@@ -1,0 +1,68 @@
+name: MENA C28 Tesseract document-mode evidence
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mena-c28-tesseract-docmode.yml"
+      - "backend/evaluation/misraj_numeric_benchmark.py"
+      - "backend/evaluation/fixtures/c26_misraj_source.json"
+      - "scripts/run_misraj_dococr_numeric_benchmark_psm3.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  misraj-psm3-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Arabic OCR runtime using proven C23 setup
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-ara
+          python -m pip install Pillow==11.3.0
+          tesseract --version | head -1
+          tesseract --list-langs | grep -Fx ara
+      - name: Fetch pinned 10-row viewer slice
+        run: |
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output /tmp/misraj-viewer.json \
+            'https://datasets-server.huggingface.co/rows?dataset=Misraj%2FMisraj-DocOCR&config=default&split=train&offset=0&length=10'
+      - name: Run and validate PSM 3 evidence
+        run: |
+          set +e
+          python scripts/run_misraj_dococr_numeric_benchmark_psm3.py /tmp/misraj-viewer.json \
+            --output c28-misraj-psm3.json
+          benchmark_status=$?
+          set -e
+          test "$benchmark_status" -eq 0 -o "$benchmark_status" -eq 1
+          BENCHMARK_STATUS="$benchmark_status" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          result = json.loads(Path("c28-misraj-psm3.json").read_text(encoding="utf-8"))
+          status = int(os.environ["BENCHMARK_STATUS"])
+          assert result["benchmark"] == "c28-misraj-arabic-document-psm3-exact-numeric-safety"
+          assert result["tesseract_psm"] == 3
+          assert result["source_images_pinned"] is True
+          assert result["sampled_rows"] == 10
+          assert result["numeric_total"] == 10
+          assert 0 <= result["numeric_safe_cases"] <= 10
+          assert (status == 0) == result["numeric_safety_floor_passed"]
+          assert result["raw_ground_truth_emitted"] is False
+          assert result["raw_ocr_text_emitted"] is False
+          PY
+      - name: Upload exact evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mena-c28-tesseract-docmode
+          path: c28-misraj-psm3.json
+          if-no-files-found: error
+          retention-days: 14
