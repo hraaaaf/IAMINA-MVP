@@ -34,7 +34,7 @@ from llm.middleware.logging import LoggingMiddleware
 from llm.middleware.phi_stripping import PHIStrippingMiddleware
 from llm.pipeline import LLMPipeline
 from llm.pseudonymizer import PHIPseudonymizer
-from llm.usage_telemetry import usage_workload_scope
+from llm.usage_telemetry import current_usage_workload, usage_workload_scope
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,12 @@ def _workload_for_capability(capability: Capability) -> str:
     if capability == Capability.PREPARE_CLINICIAN_QUESTIONS:
         return "writing"
     return "conversation"
+
+
+def _resolved_cost_workload(capability: Capability) -> str:
+    """Honor a caller's explicit workload scope; otherwise derive from capability."""
+    scoped = current_usage_workload()
+    return scoped if scoped != "unclassified" else _workload_for_capability(capability)
 
 
 def _prepare_unstructured_prompt(text: str, pseudonymizer: PHIPseudonymizer) -> str:
@@ -85,7 +91,7 @@ class GatewayLLM:
         assert_ai_egress_allowed(TEXT)
         safe_system = _prepare_unstructured_prompt(system, self._pseudonymizer)
         safe_user = _prepare_unstructured_prompt(user, self._pseudonymizer)
-        with usage_workload_scope(_workload_for_capability(capability)):
+        with usage_workload_scope(_resolved_cost_workload(capability)):
             response = self._pipeline.complete(safe_system, safe_user)
         response.content = self._pseudonymizer.unmask_medical_report(response.content)
         return response
