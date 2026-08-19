@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
-from io import BytesIO
+import io
 
 from PIL import Image
 
@@ -57,7 +57,7 @@ def _source(payload: dict[str, object]) -> dict[str, object]:
 
 
 def test_surya2_adapter_extracts_ordered_html_text():
-    buffer = BytesIO()
+    buffer = io.BytesIO()
     Image.new("RGB", (4, 4), "white").save(buffer, format="PNG")
 
     class Page:
