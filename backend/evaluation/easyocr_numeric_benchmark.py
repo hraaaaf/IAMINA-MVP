@@ -12,6 +12,7 @@ from evaluation.misraj_numeric_benchmark import run_misraj_numeric_benchmark
 
 
 ReaderFactory = Callable[[], Any]
+OCRCallable = Callable[[bytes], str]
 
 
 def _default_reader_factory() -> Any:
@@ -23,7 +24,7 @@ def _default_reader_factory() -> Any:
 def make_easyocr_callable(
     *,
     reader_factory: ReaderFactory = _default_reader_factory,
-) -> Callable[[bytes], str]:
+) -> OCRCallable:
     reader = reader_factory()
 
     def ocr(image_bytes: bytes) -> str:
@@ -44,12 +45,12 @@ def run_easyocr_numeric_benchmark(
     payload: dict[str, Any],
     source: dict[str, Any],
     *,
-    reader_factory: ReaderFactory = _default_reader_factory,
+    ocr_callable: OCRCallable | None = None,
 ) -> dict[str, object]:
     result = run_misraj_numeric_benchmark(
         payload,
         source,
-        ocr_callable=make_easyocr_callable(reader_factory=reader_factory),
+        ocr_callable=ocr_callable or make_easyocr_callable(),
     )
     result["benchmark"] = "c29-misraj-easyocr-exact-numeric-safety"
     result["engine"] = "easyocr"
