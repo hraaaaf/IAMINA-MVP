@@ -9,6 +9,18 @@
   "expected_first_uuid": "d37bed59-12d3-4e23-ab98-42108acf5ed5",
   "expected_sample_fingerprint_sha256": "9889032afb9f80c4acf4b8a1ab82b5953d5c7188725daf901cc40e2d13db220f",
   "allowed_image_src_hosts": ["datasets-server.huggingface.co"],
+  "expected_image_sha256_by_uuid": {
+    "d37bed59-12d3-4e23-ab98-42108acf5ed5": "097f13510b220f822a060a10373037dd7424eeec8e5078f04a59bd8683183f15",
+    "7815ffd0-2b57-46e5-9a71-228de6ec3308": "3121433be6d0d27272ebb88845f85bbf0e6698143798bbf084b0f351c8783490",
+    "6a8fd9f4-203d-4515-aa65-93d656336ab6": "44cd38fe52600ce7d0d95a188224c9961f07c28ff53c00bb17f8b7680ed21b9f",
+    "09e6b5cd-e80f-4076-9076-d9c97506d327": "cebd0548eb40a564880d550d70ae3a5acfb41508dcd524b6b7298ce9479be76b",
+    "856b3bde-6659-431f-920c-74e40b947d60": "1cb3782d996266db7affcba823c3f645ad76659eea6bb7dae2c8596fa255d18e",
+    "785604d9-6e4f-4acf-95b6-5ac2c86fa4d1": "b14d94943118f54dd3be5d09c46e58399944ddbe84df95d7b0b60839603722e6",
+    "6b4134b9-01ea-4df1-9d6b-10e287dbdc47": "4c6f6d3029184ddb5c0186f4173dfb8e69100f2cc7efb0536496ed0fcfcddb2e",
+    "6789c428-5cc6-403f-ac36-3832345a3d04": "382c443a5a8b84f90bf62566aa8dadc4ecb525415588f0eb1f665694b2e4703a",
+    "ac3e3af6-6d90-4970-97a7-0c4fdd429004": "7edca85258e69bcbeb4031c4ce4a672774420586abc0babfef99a00e9c61c73c",
+    "b8d0a8e8-5986-429a-bfe6-fec6aa402a3c": "e5edb5d3c21f2483a9bee97de11661edf00bb19caa6d7d8b88ba21be1d89033e"
+  },
   "source_kind": "expert_verified_arabic_document_ocr_benchmark",
   "real_camera_claim": false,
   "iamina_patient_data": false,
