@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/mena-c30-surya2.yml"
       - "backend/evaluation/surya2_numeric_benchmark.py"
+      - "backend/evaluation/tests/test_surya2_numeric_benchmark.py"
       - "backend/evaluation/misraj_numeric_benchmark.py"
       - "backend/evaluation/fixtures/c26_misraj_source.json"
       - "scripts/run_misraj_surya2_numeric_benchmark.py"
@@ -126,6 +127,8 @@ jobs:
           assert result["engine_config"]["model_sha256"] == "1f18abe17b1ed8b4e47ee9b1ad0e274c93daf5efbb6b29a04ff1712e37051e05"
           assert result["engine_config"]["mmproj_sha256"] == "98c0563673b1657ff6d021d1e5f04af06cbf61bb40c63ac613e8bb71b42fb2c0"
           assert result["engine_config"]["llama_cpp_release"] == "b10488"
+          assert result["engine_config"]["llama_cpp_sha256"] == os.environ["C30_LLAMA_CPP_SHA256"]
+          assert len(result["engine_config"]["llama_cpp_sha256"]) == 64
           PY
 
       - name: Upload exact evidence
