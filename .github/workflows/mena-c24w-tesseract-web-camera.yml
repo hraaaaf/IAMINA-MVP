@@ -1,0 +1,41 @@
+name: MENA C24-W Tesseract web camera
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mena-c24w-tesseract-web-camera.yml"
+      - "backend/evaluation/fixtures/c24w_wikimedia_camera_sources.json"
+      - "backend/evaluation/tesseract_arabic_camera_benchmark.py"
+      - "backend/evaluation/wikimedia_camera_fixture.py"
+      - "scripts/run_tesseract_arabic_wikimedia_camera_benchmark.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  c24w-real-camera-arabic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Tesseract Arabic
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-ara
+          tesseract --version | head -1
+          tesseract --list-langs | grep -Fx ara
+      - name: Run provenance-gated real-camera benchmark
+        run: |
+          python scripts/run_tesseract_arabic_wikimedia_camera_benchmark.py \
+            --output c24w-result.json
+      - name: Upload exact evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mena-c24w-tesseract-web-camera
+          path: c24w-result.json
+          if-no-files-found: error
