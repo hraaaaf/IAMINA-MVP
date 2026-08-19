@@ -6,12 +6,15 @@ on:
     branches: [main]
     paths:
       - IAMINA.py
+      - IAMINA.bat
+      - IAMINA.command
       - .github/workflows/developer-portability.yml
       - .tool-versions
       - backend/**
       - frontend/**
       - docs/DEPENDENCIES.md
       - docs/DEVELOPER_MACOS.md
+      - docs/LAUNCHER.md
 
 permissions:
   contents: read
@@ -22,7 +25,7 @@ concurrency:
 
 jobs:
   launcher-smoke:
-    name: ${{ matrix.os }} — IAMINA.py full smoke
+    name: ${{ matrix.os }} — native launcher full smoke
     strategy:
       fail-fast: false
       matrix:
@@ -54,14 +57,24 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Compile launcher
+      - name: Compile canonical launcher
         run: python -m py_compile IAMINA.py
+
+      - name: Validate native wrappers stay thin
+        run: >-
+          python -c "from pathlib import Path; files=[Path('IAMINA.bat'),Path('IAMINA.command')]; forbidden=('8008','8009','flutter','manage.py','venv'); texts=[p.read_text(encoding='utf-8') for p in files]; assert all(p.exists() for p in files); assert all('IAMINA.py' in t for t in texts); assert all(len(t.encode()) < 1024 for t in texts); assert all(token not in t.lower() for t in texts for token in forbidden); print('OK: native wrappers delegate only to IAMINA.py')"
 
       - name: Launcher preflight
         run: python IAMINA.py --check
 
-      - name: Full launcher smoke on 8008/8009
-        run: python IAMINA.py --smoke --no-browser --no-redis
+      - name: Windows native-wrapper smoke on 8008/8009
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: IAMINA.bat --smoke --no-browser --no-redis
+
+      - name: macOS native-wrapper smoke on 8008/8009
+        if: runner.os == 'macOS'
+        run: ./IAMINA.command --smoke --no-browser --no-redis
 
       - name: Windows backend startup diagnostics
         if: failure() && runner.os == 'Windows'
