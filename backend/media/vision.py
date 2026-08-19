@@ -11,11 +11,13 @@ import base64
 import json
 import logging
 import os
+import time
 from typing import Optional, Protocol
 
 from core.ai_egress import IMAGE, AIEgressDenied
 from core.ai_processor_policy import AIProcessorPolicyDenied
 from llm.runtime import execute_external_provider_call
+from llm.usage_telemetry import record_media_bytes, record_metered_usage, usage_workload_scope
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +48,6 @@ _GLUCO_SYSTEM = (
     "from glucometer display photos."
 )
 
-# Safety-sensitive unit semantics are intentionally preserved unchanged in this
-# provider-portability refactor. Any future fail-closed unit-policy change must be
-# reviewed separately from cost/provider work.
 _GLUCO_USER = (
     "Read the blood glucose value from this glucometer photo.\n"
     "Return ONLY valid JSON:\n"
@@ -165,6 +164,61 @@ def _strip_fences(raw: str) -> str:
     ).strip()
 
 
+def _decoded_size(image_b64: str) -> int:
+    return len(base64.b64decode(image_b64, validate=True))
+
+
+def _metered_generate(
+    selected: VisionBackend,
+    image_b64: str,
+    mime_type: str,
+    *,
+    workload: str,
+    modality: str,
+    unit: str,
+    system_prompt: str,
+    user_prompt: str,
+    purpose: str,
+    temperature: float,
+) -> str:
+    byte_count = _decoded_size(image_b64)
+    with usage_workload_scope(workload):
+        record_media_bytes(
+            action="uploaded",
+            byte_count=byte_count,
+            retention_class="TRANSIENT_EXTRACTION",
+        )
+        started = time.monotonic()
+        try:
+            result = selected.generate(
+                image_b64,
+                mime_type,
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                purpose=purpose,
+                temperature=temperature,
+            )
+        except Exception as exc:
+            record_metered_usage(
+                modality=modality,
+                unit=unit,
+                quantity=1,
+                provider_route=selected.name,
+                latency_ms=(time.monotonic() - started) * 1000,
+                status="error",
+                error_type=type(exc).__name__,
+            )
+            raise
+        record_metered_usage(
+            modality=modality,
+            unit=unit,
+            quantity=1,
+            provider_route=selected.name,
+            latency_ms=(time.monotonic() - started) * 1000,
+        )
+        return result
+
+
 def analyze_meal_image(
     image_b64: str,
     mime_type: str,
@@ -180,9 +234,13 @@ def analyze_meal_image(
     selected = backend or _DEFAULT_BACKEND
     raw_text = ""
     try:
-        raw_text = selected.generate(
+        raw_text = _metered_generate(
+            selected,
             image_b64,
             mime_type,
+            workload="vision",
+            modality="vision",
+            unit="image",
             system_prompt=_MEAL_SYSTEM,
             user_prompt=_MEAL_USER,
             purpose="meal_vision",
@@ -226,9 +284,13 @@ def analyze_glucometer_image(
 
     selected = backend or _DEFAULT_BACKEND
     try:
-        raw = selected.generate(
+        raw = _metered_generate(
+            selected,
             image_b64,
             mime_type,
+            workload="ocr",
+            modality="ocr",
+            unit="image",
             system_prompt=_GLUCO_SYSTEM,
             user_prompt=_GLUCO_USER,
             purpose="glucometer_ocr",
