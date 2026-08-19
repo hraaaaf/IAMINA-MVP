@@ -57,6 +57,8 @@ jobs:
           assert (status == 0) == result["numeric_safety_floor_passed"]
           assert result["raw_ground_truth_emitted"] is False
           assert result["raw_ocr_text_emitted"] is False
+          assert result["provider_api"] is False
+          assert result["paid_inference"] is False
           PY
       - name: Upload exact evidence
         if: always()
