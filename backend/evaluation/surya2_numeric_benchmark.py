@@ -6,10 +6,10 @@ requirements and intentionally emits no raw ground-truth or OCR text.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from html.parser import HTMLParser
 from io import BytesIO
-import os
 from typing import Any
 
 from PIL import Image, ImageOps
