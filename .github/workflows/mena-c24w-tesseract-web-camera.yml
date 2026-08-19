@@ -22,10 +22,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install Tesseract Arabic
+      - name: Install deterministic camera OCR dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr tesseract-ocr-ara
+          python -m pip install Pillow==11.3.0
           tesseract --version | head -1
           tesseract --list-langs | grep -Fx ara
       - name: Run provenance-gated real-camera benchmark
