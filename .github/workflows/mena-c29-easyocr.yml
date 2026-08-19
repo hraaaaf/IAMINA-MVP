@@ -1,0 +1,71 @@
+name: MENA C29 EasyOCR Arabic document evidence
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mena-c29-easyocr.yml"
+      - "backend/evaluation/easyocr_numeric_benchmark.py"
+      - "backend/evaluation/misraj_numeric_benchmark.py"
+      - "backend/evaluation/fixtures/c26_misraj_source.json"
+      - "scripts/run_misraj_easyocr_numeric_benchmark.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  easyocr-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned EasyOCR package
+        run: |
+          python -m pip install --disable-pip-version-check easyocr==1.7.2
+          python - <<'PY'
+          import importlib.metadata
+          assert importlib.metadata.version("easyocr") == "1.7.2"
+          PY
+      - name: Fetch pinned 10-row viewer slice
+        run: |
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output /tmp/misraj-viewer.json \
+            'https://datasets-server.huggingface.co/rows?dataset=Misraj%2FMisraj-DocOCR&config=default&split=train&offset=0&length=10'
+      - name: Run and validate EasyOCR evidence
+        run: |
+          set +e
+          python scripts/run_misraj_easyocr_numeric_benchmark.py /tmp/misraj-viewer.json \
+            --output c29-easyocr.json
+          benchmark_status=$?
+          set -e
+          test "$benchmark_status" -eq 0 -o "$benchmark_status" -eq 1
+          BENCHMARK_STATUS="$benchmark_status" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          result = json.loads(Path("c29-easyocr.json").read_text(encoding="utf-8"))
+          status = int(os.environ["BENCHMARK_STATUS"])
+          assert result["benchmark"] == "c29-misraj-easyocr-exact-numeric-safety"
+          assert result["engine"] == "easyocr"
+          assert result["source_images_pinned"] is True
+          assert result["sampled_rows"] == 10
+          assert result["numeric_total"] == 10
+          assert 0 <= result["numeric_safe_cases"] <= 10
+          assert (status == 0) == result["numeric_safety_floor_passed"]
+          assert result["raw_ground_truth_emitted"] is False
+          assert result["raw_ocr_text_emitted"] is False
+          assert result["provider_api"] is False
+          assert result["paid_inference"] is False
+          PY
+      - name: Upload exact evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mena-c29-easyocr
+          path: c29-easyocr.json
+          if-no-files-found: warn
+          retention-days: 14
