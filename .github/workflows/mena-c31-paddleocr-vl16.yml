@@ -20,6 +20,7 @@ env:
   C31_TORCH_VERSION: "2.8.0"
   C31_TORCHVISION_VERSION: "0.23.0"
   C31_TRANSFORMERS_VERSION: "5.8.0"
+  C31_HF_HUB_VERSION: "1.5.0"
 
 jobs:
   paddleocr-vl16-evidence:
@@ -40,7 +41,7 @@ jobs:
             "transformers==${C31_TRANSFORMERS_VERSION}" \
             paddlepaddle==3.2.1 \
             "paddleocr[doc-parser]==3.7.0" \
-            "huggingface-hub==0.34.4"
+            "huggingface-hub==${C31_HF_HUB_VERSION}"
           python - <<'PY'
           import importlib.metadata
           import paddle
@@ -53,6 +54,7 @@ jobs:
               "torch": "2.8.0+cpu",
               "torchvision": "0.23.0+cpu",
               "transformers": "5.8.0",
+              "huggingface-hub": "1.5.0",
           }
           for package, version in expected.items():
               actual = importlib.metadata.version(package)
@@ -64,6 +66,7 @@ jobs:
           print("torch", torch.__version__)
           print("torchvision", expected["torchvision"])
           print("transformers", transformers.__version__)
+          print("huggingface-hub", expected["huggingface-hub"])
           PY
 
       - name: Download and verify pinned PaddleOCR-VL 1.6 model
