@@ -1,0 +1,40 @@
+name: Temporary LLM benchmark
+
+on:
+  push:
+    branches:
+      - bench/llm-free-temp-20260819
+    paths:
+      - '.github/workflows/temp-llm-benchmark.yml'
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call IAMINA Vercel preview benchmark endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://iamina-review-git-bench-llm-8bc4b6-achraf-benmoussa-s-projects.vercel.app/api/llm-benchmark'
+          echo "Calling $URL"
+          curl --fail-with-body --silent --show-error \
+            --connect-timeout 20 --max-time 180 \
+            -H 'content-type: application/json' \
+            -X POST \
+            --data '{"models":["gpt-oss-120b","mistral@latest?context_size>100000","llama@biggest?input_cost<0.5","code_chat@latest"]}' \
+            "$URL" | tee benchmark-result.json
+          echo
+          python - <<'PY'
+          import json
+          p='benchmark-result.json'
+          d=json.load(open(p, encoding='utf-8'))
+          print('synthetic_only=', d.get('synthetic_only'))
+          for r in d.get('results', []):
+              print('\nMODEL', r.get('model_requested'))
+              print('status=', r.get('status'), 'ok=', r.get('ok'), 'elapsed_ms=', r.get('elapsed_ms'))
+              print('resolved=', r.get('model_resolved'))
+              print('text=', r.get('text'))
+              if r.get('error'): print('error=', r.get('error'))
+          PY
