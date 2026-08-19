@@ -3,9 +3,9 @@ import logging
 from companion.parser import parse_llm_json
 from companion.prompts import SUMMARY_USER, SYSTEM_BASE, get_language_label
 from core.companion.clinical import get_domain_context
-from core.contracts.capabilities import Capability
 from core.llm_gateway import get_gateway_llm
 from core.medical_safety import apply_no_prescription_policy
+from llm.usage_telemetry import usage_workload_scope
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +48,8 @@ def summarize(patient, memory, llm=None, language: str = "fr", days: int = 7) ->
     )
 
     try:
-        result = llm.complete(
-            system,
-            user_prompt,
-            capability=Capability.SUMMARIZE_APPROVED_DATA,
-        )
+        with usage_workload_scope("summary"):
+            result = llm.complete(system, user_prompt)
         parsed = parse_llm_json(result.content, ["narrative", "key_insight", "doctor_brief"])
 
         if parsed.get("doctor_brief"):
