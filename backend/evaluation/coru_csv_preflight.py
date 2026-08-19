@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
 import re
 from pathlib import Path
 
@@ -15,7 +16,7 @@ def summarize_coru_csv(path: Path) -> dict[str, object]:
     raw = path.read_bytes()
     sha256 = hashlib.sha256(raw).hexdigest()
     text = raw.decode("utf-8-sig")
-    reader = csv.DictReader(text.splitlines())
+    reader = csv.DictReader(io.StringIO(text, newline=""))
     if not reader.fieldnames:
         raise ValueError("CORU CSV must have a header")
 
