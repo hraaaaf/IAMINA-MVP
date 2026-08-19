@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 from typing import Any
+from urllib.parse import urlsplit
 
 _ARABIC_RE = re.compile(r"[\u0600-\u06ff]")
 _NUMBER_RE = re.compile(r"[0-9٠-٩۰-۹]")
@@ -48,6 +49,9 @@ def summarize_misraj_viewer(
     arabic_rows = 0
     numeric_rows = 0
     image_rows = 0
+    image_types: set[str] = set()
+    image_keys: set[str] = set()
+    image_src_hosts: set[str] = set()
     fingerprint_rows: list[dict[str, str]] = []
     for item in rows:
         row = item.get("row") if isinstance(item, dict) else None
@@ -64,8 +68,20 @@ def summarize_misraj_viewer(
             arabic_rows += 1
         if _NUMBER_RE.search(markdown):
             numeric_rows += 1
-        if row.get("image") is not None:
+
+        image = row.get("image")
+        if image is not None:
             image_rows += 1
+            image_types.add(type(image).__name__)
+            if isinstance(image, dict):
+                image_keys.update(str(key) for key in image)
+                src = image.get("src")
+                if isinstance(src, str):
+                    parsed = urlsplit(src)
+                    if parsed.hostname:
+                        image_src_hosts.add(parsed.hostname)
+                    elif src.startswith("data:"):
+                        image_src_hosts.add("data-uri")
 
     canonical = json.dumps(
         fingerprint_rows,
@@ -87,6 +103,9 @@ def summarize_misraj_viewer(
         "arabic_ground_truth_rows": arabic_rows,
         "numeric_ground_truth_rows": numeric_rows,
         "image_rows": image_rows,
+        "image_field_types": sorted(image_types),
+        "image_field_keys": sorted(image_keys),
+        "image_src_hosts": sorted(image_src_hosts),
         "raw_ground_truth_emitted": False,
         "real_camera_claim": False,
         "iamina_patient_data": False,
