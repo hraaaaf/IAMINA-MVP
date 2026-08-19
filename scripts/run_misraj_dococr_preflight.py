@@ -29,6 +29,7 @@ def main() -> int:
         expected_total_rows=int(source["expected_total_rows"]),
         expected_features=list(source["expected_features"]),
         expected_first_uuid=str(source["expected_first_uuid"]),
+        expected_sample_fingerprint=source.get("expected_sample_fingerprint_sha256"),
     )
     result["source_contract"] = {
         "dataset": source["dataset"],
