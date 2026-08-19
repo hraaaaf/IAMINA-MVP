@@ -7,6 +7,8 @@
   "expected_total_rows": 400,
   "expected_features": ["uuid", "markdown", "image"],
   "expected_first_uuid": "d37bed59-12d3-4e23-ab98-42108acf5ed5",
+  "expected_sample_fingerprint_sha256": "9889032afb9f80c4acf4b8a1ab82b5953d5c7188725daf901cc40e2d13db220f",
+  "allowed_image_src_hosts": ["datasets-server.huggingface.co"],
   "source_kind": "expert_verified_arabic_document_ocr_benchmark",
   "real_camera_claim": false,
   "iamina_patient_data": false,
