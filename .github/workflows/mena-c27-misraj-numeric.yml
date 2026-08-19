@@ -1,4 +1,4 @@
-name: MENA C27 Misraj numeric OCR
+name: MENA C27 Misraj numeric OCR evidence
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 jobs:
-  misraj-numeric-ocr:
+  misraj-numeric-ocr-evidence:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -34,15 +34,36 @@ jobs:
           curl --fail --location --proto '=https' --tlsv1.2 \
             --output /tmp/misraj-viewer.json \
             'https://datasets-server.huggingface.co/rows?dataset=Misraj%2FMisraj-DocOCR&config=default&split=train&offset=0&length=10'
-      - name: Run exact numeric-safety benchmark
+      - name: Run and validate exact numeric-safety evidence
         run: |
+          set +e
           python scripts/run_misraj_dococr_numeric_benchmark.py /tmp/misraj-viewer.json \
             --output c27-misraj-numeric.json
+          benchmark_status=$?
+          set -e
+          test "$benchmark_status" -eq 0 -o "$benchmark_status" -eq 1
+          BENCHMARK_STATUS="$benchmark_status" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          result = json.loads(Path("c27-misraj-numeric.json").read_text(encoding="utf-8"))
+          status = int(os.environ["BENCHMARK_STATUS"])
+          assert result["benchmark"] == "c27-misraj-arabic-document-exact-numeric-safety"
+          assert result["source_images_pinned"] is True
+          assert result["sampled_rows"] == 10
+          assert result["numeric_total"] == 10
+          assert 0 <= result["numeric_safe_cases"] <= 10
+          assert isinstance(result["numeric_safety_floor_passed"], bool)
+          assert (status == 0) == result["numeric_safety_floor_passed"]
+          assert result["raw_ground_truth_emitted"] is False
+          assert result["raw_ocr_text_emitted"] is False
+          PY
       - name: Upload exact evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mena-c27-misraj-numeric
           path: c27-misraj-numeric.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 14
