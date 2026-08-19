@@ -5,8 +5,10 @@ on:
     paths:
       - ".github/workflows/mena-c25-coru-preflight.yml"
       - "backend/evaluation/coru_dataset_preflight.py"
+      - "backend/evaluation/coru_csv_preflight.py"
       - "backend/evaluation/fixtures/c25_coru_source.json"
       - "scripts/run_coru_receipt_preflight.py"
+      - "scripts/run_coru_ie_preflight.py"
   workflow_dispatch:
 
 permissions:
@@ -21,28 +23,36 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Resolve pinned public metadata source
+      - name: Resolve pinned public metadata sources
         id: source
         run: |
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           from pathlib import Path
           source = json.loads(Path("backend/evaluation/fixtures/c25_coru_source.json").read_text())
-          print(f"url={source['source_url']}")
+          print(f"receipt_url={source['source_url']}")
+          print(f"ie_url={source['ie_source_url']}")
           PY
-      - name: Download CORU receipt metadata only
+      - name: Download only small CORU metadata files
         run: |
           curl --fail --location --proto '=https' --tlsv1.2 \
             --output /tmp/coru-test.json \
-            "${{ steps.source.outputs.url }}"
-      - name: Run privacy-safe schema preflight
+            "${{ steps.source.outputs.receipt_url }}"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output /tmp/coru-ie-test.csv \
+            "${{ steps.source.outputs.ie_url }}"
+      - name: Run privacy-safe structural preflights
         run: |
           python scripts/run_coru_receipt_preflight.py /tmp/coru-test.json \
-            --output c25-coru-preflight.json
+            --output c25-coru-receipt-preflight.json
+          python scripts/run_coru_ie_preflight.py /tmp/coru-ie-test.csv \
+            --output c25-coru-ie-preflight.json
       - name: Upload structural evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mena-c25-coru-preflight
-          path: c25-coru-preflight.json
+          path: |
+            c25-coru-receipt-preflight.json
+            c25-coru-ie-preflight.json
           if-no-files-found: error
