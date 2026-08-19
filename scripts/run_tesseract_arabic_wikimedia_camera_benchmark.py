@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+from PIL import Image, ImageOps
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BACKEND_ROOT = REPO_ROOT / "backend"
@@ -19,6 +22,20 @@ from evaluation.wikimedia_camera_fixture import materialize_wikimedia_camera_fix
 DEFAULT_SOURCES = (
     REPO_ROOT / "backend/evaluation/fixtures/c24w_wikimedia_camera_sources.json"
 )
+
+
+def _tesseract_exif_normalized(path: Path) -> str:
+    normalized_path = path.with_name(f"{path.stem}-exif-normalized.png")
+    with Image.open(path) as image:
+        normalized = ImageOps.exif_transpose(image).convert("RGB")
+        normalized.save(normalized_path, format="PNG")
+    result = subprocess.run(
+        ["tesseract", str(normalized_path), "stdout", "-l", "ara", "--psm", "6"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
 
 
 def run_benchmark(sources_path: Path) -> dict[str, object]:
@@ -40,9 +57,11 @@ def run_benchmark(sources_path: Path) -> dict[str, object]:
             result = run_tesseract_arabic_camera_benchmark(
                 manifest_path,
                 workspace,
+                ocr_callable=_tesseract_exif_normalized,
             )
             engine_versions.add(str(result["engine_version"]))
             case = dict(result["cases"][0])
+            case["preprocessing"] = ["Pillow ImageOps.exif_transpose", "RGB PNG"]
             case["provenance"] = provenance
             cases.append(case)
 
@@ -52,6 +71,7 @@ def run_benchmark(sources_path: Path) -> dict[str, object]:
         "engine": "tesseract",
         "engine_versions": sorted(engine_versions),
         "language": "ara",
+        "preprocessing": "EXIF orientation normalization only; no crop or ground-truth-tuned transform",
         "patient_data": False,
         "provider_api": False,
         "paid_inference": False,
