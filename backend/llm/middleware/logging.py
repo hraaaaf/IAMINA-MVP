@@ -2,7 +2,7 @@
 LoggingMiddleware — logs LLM call metadata at DEBUG level only.
 
 # NEVER log system/user/response.content — prompt lengths and provider-reported
-# token counts only.
+# token counts only. A separate privacy-safe cost event is emitted at INFO.
 """
 import logging
 import time
@@ -10,6 +10,7 @@ from typing import Callable
 
 from llm.base import LLMResponse
 from llm.middleware.base import BaseLLMMiddleware
+from llm.usage_telemetry import record_llm_failure, record_llm_success
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ def _token_fields(
 
 
 class LoggingMiddleware(BaseLLMMiddleware):
-    """Log non-sensitive LLM call metadata at DEBUG level.
+    """Log non-sensitive LLM call metadata and cost telemetry.
 
     No prompt content, response content, patient identifier or guessed token
     count is logged. Token values are emitted only when reported by the provider.
@@ -41,8 +42,19 @@ class LoggingMiddleware(BaseLLMMiddleware):
         user: str,
         next_fn: Callable[[str, str], LLMResponse],
     ) -> LLMResponse:
+        prompt_chars = len(system) + len(user)
         t0 = time.monotonic()
-        response = next_fn(system, user)
+        try:
+            response = next_fn(system, user)
+        except Exception as exc:
+            latency_ms = (time.monotonic() - t0) * 1000
+            record_llm_failure(
+                prompt_chars=prompt_chars,
+                latency_ms=latency_ms,
+                error_type=type(exc).__name__,
+            )
+            raise
+
         latency_ms = (time.monotonic() - t0) * 1000
         token_fields = _token_fields(response)
         input_tokens, output_tokens, cached_input_tokens, total_tokens = token_fields
@@ -50,11 +62,16 @@ class LoggingMiddleware(BaseLLMMiddleware):
             "llm.pipeline: provider=%s prompt_len=%d latency_ms=%.1f "
             "input_tokens=%s output_tokens=%s cached_input_tokens=%s total_tokens=%s",
             response.provider,
-            len(system) + len(user),
+            prompt_chars,
             latency_ms,
             input_tokens,
             output_tokens,
             cached_input_tokens,
             total_tokens,
+        )
+        record_llm_success(
+            response,
+            prompt_chars=prompt_chars,
+            latency_ms=latency_ms,
         )
         return response
