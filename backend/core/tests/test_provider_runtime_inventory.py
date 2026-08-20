@@ -11,7 +11,7 @@ _BACKEND = Path(__file__).resolve().parents[2]
 _MULTIMODAL_CALLSITES = (
     _BACKEND / "media" / "voice.py",
     _BACKEND / "media" / "vision.py",
-    _BACKEND / "diabetes" / "services" / "documents" / "extractors" / "image.py",
+    _BACKEND / "media" / "documents" / "extractors" / "image.py",
 )
 
 
