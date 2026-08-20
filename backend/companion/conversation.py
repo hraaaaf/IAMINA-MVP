@@ -33,7 +33,7 @@ from llm.pseudonymizer import PHIPseudonymizer
 
 logger = logging.getLogger(__name__)
 
-_HISTORY_CHAR_BUDGET = 3000
+_HISTORY_CHAR_BUDGET = 1800
 _STREAM_SUFFIX = (
     "\nRéponds en texte SIMPLE et direct — PAS de JSON, PAS de guillemets autour "
     "de la réponse, PAS de clés comme 'reply'. Juste la réponse naturelle."
