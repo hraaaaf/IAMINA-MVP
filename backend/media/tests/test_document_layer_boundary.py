@@ -8,7 +8,7 @@ class DocumentLayerBoundaryTest(TestCase):
         documents_dir = Path(__file__).resolve().parents[1] / "documents"
         violations: list[str] = []
 
-        for path in sorted(documents_dir.glob("*.py")):
+        for path in sorted(documents_dir.rglob("*.py")):
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
@@ -20,6 +20,7 @@ class DocumentLayerBoundaryTest(TestCase):
 
                 for module in modules:
                     if module == "diabetes" or module.startswith("diabetes."):
-                        violations.append(f"{path.name}: {module}")
+                        relative = path.relative_to(documents_dir)
+                        violations.append(f"{relative}: {module}")
 
         self.assertEqual(violations, [])
