@@ -193,3 +193,23 @@ CACHES = {
         "TIMEOUT": 300,  # 5 min default TTL
     }
 }
+
+# Dedicated privacy-safe cost/usage logger. Keep it isolated so enabling
+# FinOps telemetry never raises verbosity for patient-facing/application logs.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "iamina_cost_console": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+        },
+    },
+    "loggers": {
+        "iamina.cost": {
+            "handlers": ["iamina_cost_console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

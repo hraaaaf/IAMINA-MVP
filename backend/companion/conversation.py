@@ -5,6 +5,7 @@ from companion.advice_filter import apply_advice_throttle
 from companion.memory import _detect_emotional_signals
 from companion.narrator_prompts import CHAT_USER, SYSTEM_WITH_STATE, get_language_label
 from companion.parser import parse_llm_json
+from companion.route_telemetry import record_companion_route
 from companion.state import compute_state, state_to_prompt
 from companion.tone import get_tone_instruction, select_relationship_tone
 from companion.zero_model_router import exact_chitchat_reply
@@ -317,6 +318,7 @@ def chat(
     """Narrator-only conversational path over deterministic governed context."""
     safety_reply = _safety_reply(message, patient, language)
     if safety_reply is not None:
+        record_companion_route("safety")
         _append_turn(patient, "user", message)
         _append_turn(patient, "assistant", safety_reply)
         _update_relationship_memory(message, memory)
@@ -324,11 +326,13 @@ def chat(
 
     zero_model_reply = exact_chitchat_reply(message, detect_language(message, language))
     if zero_model_reply is not None:
+        record_companion_route("zero_model")
         _append_turn(patient, "user", message)
         _append_turn(patient, "assistant", zero_model_reply)
         _update_relationship_memory(message, memory)
         return zero_model_reply
 
+    record_companion_route("llm")
     if llm is None:
         llm = get_gateway_llm()
 
@@ -376,6 +380,7 @@ def stream_chat(
     """Narrator-only SSE path with the same deterministic authority boundaries."""
     safety_reply = _safety_reply(message, patient, language)
     if safety_reply is not None:
+        record_companion_route("safety")
         _append_turn(patient, "user", message)
         _append_turn(patient, "assistant", safety_reply)
         _update_relationship_memory(message, memory)
@@ -384,12 +389,14 @@ def stream_chat(
 
     zero_model_reply = exact_chitchat_reply(message, detect_language(message, language))
     if zero_model_reply is not None:
+        record_companion_route("zero_model")
         _append_turn(patient, "user", message)
         _append_turn(patient, "assistant", zero_model_reply)
         _update_relationship_memory(message, memory)
         yield zero_model_reply
         return
 
+    record_companion_route("llm")
     if llm is None:
         llm = get_gateway_llm()
 
