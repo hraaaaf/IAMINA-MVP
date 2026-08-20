@@ -16,6 +16,7 @@ Data flow:
 See docs/architecture/module-contract-spec.md section 4 (narrate() contract).
 """
 import logging
+import time
 from collections.abc import Iterator
 
 from core.ai_egress import TEXT, assert_ai_egress_allowed
@@ -29,12 +30,18 @@ from core.contracts.domain_context import DomainContext
 from core.contracts.patient_context import ModulePatientContext
 from core.generative_context_safety import sanitize_unstructured_generative_context
 from core.medical_safety import medical_streaming_enabled
+from llm.base import LLMResponse
 from llm.factory import get_llm
 from llm.middleware.logging import LoggingMiddleware
 from llm.middleware.phi_stripping import PHIStrippingMiddleware
 from llm.pipeline import LLMPipeline
 from llm.pseudonymizer import PHIPseudonymizer
-from llm.usage_telemetry import current_usage_workload, usage_workload_scope
+from llm.usage_telemetry import (
+    current_usage_workload,
+    record_llm_failure,
+    record_llm_success,
+    usage_workload_scope,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +71,14 @@ def _prepare_unstructured_prompt(text: str, pseudonymizer: PHIPseudonymizer) -> 
     """Apply P0.7 evidence minimization before the existing PHI boundary."""
 
     return pseudonymizer.mask(sanitize_unstructured_generative_context(text))
+
+
+def _provider_route(provider) -> str:
+    """Return a non-sensitive provider/model route label for stream telemetry."""
+    model_name = getattr(provider, "model_name", None)
+    if isinstance(model_name, str) and model_name:
+        return model_name
+    return type(provider).__name__
 
 
 class GatewayLLM:
@@ -110,8 +125,31 @@ class GatewayLLM:
         assert_ai_egress_allowed(TEXT)
         safe_system = _prepare_unstructured_prompt(system, self._pseudonymizer)
         safe_user = _prepare_unstructured_prompt(user, self._pseudonymizer)
-        chunks = list(self._provider.stream(safe_system, safe_user))
-        restored = self._pseudonymizer.unmask_medical_report("".join(chunks))
+        prompt_chars = len(safe_system) + len(safe_user)
+        workload = _resolved_cost_workload(capability)
+        started_at = time.monotonic()
+        with usage_workload_scope(workload):
+            try:
+                chunks = list(self._provider.stream(safe_system, safe_user))
+            except Exception as exc:
+                record_llm_failure(
+                    prompt_chars=prompt_chars,
+                    latency_ms=(time.monotonic() - started_at) * 1000,
+                    error_type=type(exc).__name__,
+                )
+                raise
+
+            raw_response = "".join(chunks)
+            record_llm_success(
+                LLMResponse(
+                    content=raw_response,
+                    provider=_provider_route(self._provider),
+                ),
+                prompt_chars=prompt_chars,
+                latency_ms=(time.monotonic() - started_at) * 1000,
+            )
+
+        restored = self._pseudonymizer.unmask_medical_report(raw_response)
         yield restored
 
     def think(
