@@ -1,6 +1,12 @@
 from django.apps import AppConfig
 
 
+def _purge_pending_documents(patient_id: int, _firebase_uid: str) -> None:
+    from media.documents.pending_cache import purge_patient_pending_extractions
+
+    purge_patient_pending_extractions(patient_id)
+
+
 class DiabetesConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "diabetes"
@@ -13,10 +19,11 @@ class DiabetesConfig(AppConfig):
         TRIAGE_REGISTRY.register_path("/api/v1/ai/chat")
         TRIAGE_REGISTRY.register_path("/api/v1/diabetes/ai/chat")  # P3: new namespaced path
 
-        # RGPD Art. 17: invalidate patient session cache on account deletion.
+        # RGPD Art. 17: invalidate patient ephemeral caches before account deletion.
         from core.account_hooks import register_account_delete_hook
         from diabetes.services.session_cache import invalidate as _invalidate_session
         register_account_delete_hook(lambda pid, uid: _invalidate_session(pid))
+        register_account_delete_hook(_purge_pending_documents)
 
         # RGPD audit sink — lets core/account record audit events without
         # importing diabetes.models.AuditLog (import-linter boundary).

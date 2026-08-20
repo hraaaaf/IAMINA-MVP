@@ -8,6 +8,7 @@ Endpoints under test:
   DELETE /api/v1/account
 """
 from datetime import date
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -156,6 +157,12 @@ class DeleteAccountTest(TestCase):
     def setUp(self):
         self.user = _make_user("erasure_user")
         self.client.force_login(self.user)
+        self.pending_purge_patcher = patch(
+            "media.documents.pending_cache.purge_patient_pending_extractions",
+            return_value=0,
+        )
+        self.pending_purge = self.pending_purge_patcher.start()
+        self.addCleanup(self.pending_purge_patcher.stop)
 
     def test_wrong_confirm_returns_400(self):
         resp = self.client.delete(
@@ -188,6 +195,53 @@ class DeleteAccountTest(TestCase):
         )
         # CASCADE must have removed the log entry
         self.assertEqual(LogEntry.objects.filter(patient_id=self.user.id).count(), 0)
+
+    def test_correct_confirm_cascades_retained_lab_report_raw_text(self):
+        from diabetes.models import LabReport
+
+        patient_id = self.user.id
+        LabReport.objects.create(
+            patient=self.user,
+            document_type="lab_report",
+            source_format="pdf",
+            raw_text="SYNTHETIC_RETAINED_RAW_TEXT",
+        )
+
+        resp = self.client.delete(
+            "/api/v1/account",
+            data='{"confirm": "DELETE MY ACCOUNT"}',
+            content_type="application/json",
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(LabReport.objects.filter(patient_id=patient_id).exists())
+
+    def test_pending_cache_failure_blocks_erasure_and_preserves_raw_text(self):
+        from diabetes.models import LabReport
+
+        patient_id = self.user.id
+        LabReport.objects.create(
+            patient=self.user,
+            document_type="lab_report",
+            source_format="pdf",
+            raw_text="SYNTHETIC_RETAINED_RAW_TEXT",
+        )
+        self.pending_purge.side_effect = RuntimeError("redis unavailable")
+
+        resp = self.client.delete(
+            "/api/v1/account",
+            data='{"confirm": "DELETE MY ACCOUNT"}',
+            content_type="application/json",
+        )
+
+        self.assertEqual(resp.status_code, 500)
+        self.assertTrue(User.objects.filter(id=patient_id).exists())
+        self.assertTrue(
+            LabReport.objects.filter(
+                patient_id=patient_id,
+                raw_text="SYNTHETIC_RETAINED_RAW_TEXT",
+            ).exists()
+        )
 
     def test_audit_log_preserved_after_erasure(self):
         """AuditLog uses SET_NULL — rows must survive user deletion."""
