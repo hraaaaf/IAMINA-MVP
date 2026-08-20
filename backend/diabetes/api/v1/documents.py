@@ -37,6 +37,8 @@ from media.documents.pulper import ingest
 logger = logging.getLogger(__name__)
 router = Router(tags=["documents"])
 
+_MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+
 
 # ── Response schemas ──────────────────────────────────────────────────────────
 
@@ -120,6 +122,20 @@ def _pending_key(batch_id: str) -> str:
     return f"pulper:pending:{batch_id}"
 
 
+def _read_upload_with_limit(file: UploadedFile) -> tuple[bytes | None, str | None]:
+    """Reject oversize uploads before a full read, with a bounded-read fallback."""
+    declared_size = getattr(file, "size", None)
+    if isinstance(declared_size, int) and declared_size > _MAX_UPLOAD_BYTES:
+        return None, "too_large"
+
+    file_bytes = file.read(_MAX_UPLOAD_BYTES + 1)
+    if len(file_bytes) == 0:
+        return None, "empty"
+    if len(file_bytes) > _MAX_UPLOAD_BYTES:
+        return None, "too_large"
+    return file_bytes, None
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/documents/ingest", response={200: PulperPreviewResponse, 422: dict})
@@ -138,11 +154,12 @@ def ingest_document(
     mime_type = file.content_type or ''
     filename  = file.name or 'upload'
 
-    file_bytes = file.read()
-    if len(file_bytes) == 0:
+    file_bytes, upload_error = _read_upload_with_limit(file)
+    if upload_error == "empty":
         return 422, {"detail": "Fichier vide."}
-    if len(file_bytes) > 15 * 1024 * 1024:   # 15 MB hard limit (security hardening)
+    if upload_error == "too_large":
         return 422, {"detail": "Fichier trop volumineux (max 15 MB)."}
+    assert file_bytes is not None
 
     # ── Extract ────────────────────────────────────────────────────────────────
     output    = ingest(file_bytes, filename, mime_type)
