@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -49,7 +48,8 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
           'docx',
           'doc',
         ],
-        withData: true,
+        withData: false,
+        withReadStream: true,
       );
 
       if (picked == null || picked.files.isEmpty) {
@@ -58,8 +58,8 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
       }
 
       final pf = picked.files.first;
-      final bytes = pf.bytes;
-      if (bytes == null) {
+      final stream = pf.readStream;
+      if (stream == null) {
         setState(() {
           _loading = false;
           _error = AppLocalizations.of(context)!.fileReadFailed;
@@ -68,7 +68,12 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
       }
 
       _fileName = pf.name;
-      await _ingest(bytes, pf.name, _mimeFromExt(pf.extension ?? ''));
+      await _ingest(
+        stream,
+        pf.size,
+        pf.name,
+        _mimeFromExt(pf.extension ?? ''),
+      );
     } catch (e) {
       setState(() {
         _loading = false;
@@ -77,9 +82,19 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
     }
   }
 
-  Future<void> _ingest(Uint8List bytes, String name, String mime) async {
+  Future<void> _ingest(
+    Stream<List<int>> stream,
+    int byteLength,
+    String name,
+    String mime,
+  ) async {
     final api = context.read<ApiClient>();
-    final preview = await api.ingestDocument(bytes, name, mime);
+    final preview = await api.ingestDocumentStream(
+      stream,
+      byteLength,
+      name,
+      mime,
+    );
 
     setState(() {
       _loading = false;

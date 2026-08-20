@@ -587,14 +587,28 @@ class ApiClient {
 
   // ── Phase 12: Document Pulper ─────────────────────────────────────────────
 
-  /// Stage 1: upload file, get extraction preview (nothing persisted yet).
-  /// [mimeType] e.g. "application/pdf", "image/jpeg", "text/csv"
+  /// Stage 1 compatibility wrapper for callers that already own bytes.
   Future<PulperPreview?> ingestDocument(
     Uint8List fileBytes,
     String filename,
     String mimeType,
+  ) => ingestDocumentStream(
+    Stream<List<int>>.value(fileBytes),
+    fileBytes.lengthInBytes,
+    filename,
+    mimeType,
+  );
+
+  /// Stage 1: stream file bytes into multipart without materializing the full
+  /// selected document in Flutter memory. [byteLength] comes from the picker and
+  /// is validated before opening the HTTP request.
+  Future<PulperPreview?> ingestDocumentStream(
+    Stream<List<int>> fileStream,
+    int byteLength,
+    String filename,
+    String mimeType,
   ) async {
-    if (!isDocumentUploadSizeAllowed(fileBytes.lengthInBytes)) {
+    if (!isDocumentUploadSizeAllowed(byteLength)) {
       return null;
     }
 
@@ -607,9 +621,10 @@ class ApiClient {
         request.headers['Authorization'] = 'Bearer $token';
       }
       request.files.add(
-        http.MultipartFile.fromBytes(
+        http.MultipartFile(
           'file',
-          fileBytes,
+          fileStream,
+          byteLength,
           filename: filename,
           contentType: MediaType.parse(mimeType),
         ),
