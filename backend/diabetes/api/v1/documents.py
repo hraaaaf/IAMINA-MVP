@@ -31,8 +31,8 @@ from ninja import File, Router, Schema, UploadedFile
 
 from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
 from diabetes.models import LabReport
+from diabetes.services.documents.pulper import ingest
 from diabetes.services.documents.store import persist
-from media.documents.pulper import ingest
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["documents"])

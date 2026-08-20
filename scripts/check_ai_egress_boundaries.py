@@ -25,7 +25,7 @@ LLM_GATEWAY_ALLOWED_EXACT = frozenset(
         "ai/api/v1/ai.py",
         "diabetes/services/summary.py",
         "diabetes/services/clinical/engine.py",
-        "media/documents/pulper.py",
+        "diabetes/services/documents/pulper.py",
     }
 )
 LLM_GATEWAY_ALLOWED_PREFIXES = ("llm/tests/", "core/tests/")
@@ -189,8 +189,6 @@ class _LexicalEgressVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:  # noqa: N802
-        # Decorators/defaults execute in the enclosing scope; the function body is a
-        # separate lexical scope.
         for decorator in node.decorator_list:
             self.visit(decorator)
         for default in (*node.args.defaults, *node.args.kw_defaults):
@@ -208,8 +206,6 @@ class _LexicalEgressVisitor(ast.NodeVisitor):
         self._enter_scope(node.body, "<lambda>")
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:  # noqa: N802
-        # Bases, keywords and decorators execute in the enclosing scope. The class
-        # body gets its own scope; methods create nested scopes from there.
         for decorator in node.decorator_list:
             self.visit(decorator)
         for base in node.bases:
@@ -259,7 +255,6 @@ def _calls_in_expression(expression: ast.expr) -> list[ast.Call]:
             self.generic_visit(node)
 
         def visit_Lambda(self, node: ast.Lambda) -> None:  # noqa: N802
-            # A deferred lambda body is not executed before provider submission.
             return
 
     ExpressionVisitor().visit(expression)
@@ -293,8 +288,6 @@ def _central_runtime_wrapper_valid(path: Path, text: str) -> bool:
         if expression is None:
             continue
 
-        # Required controls must be unconditional top-level call statements or
-        # assignments, not calls hidden in a branch/try/nested function.
         if isinstance(expression, ast.Call):
             direct_symbol = _dotted_name(expression.func)
             if direct_symbol in CENTRAL_RUNTIME_REQUIRED_CONTROLS:
