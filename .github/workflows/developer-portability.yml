@@ -10,8 +10,10 @@ on:
       - IAMINA.command
       - .github/workflows/developer-portability.yml
       - .tool-versions
-      - backend/**
-      - frontend/**
+      - backend/requirements.txt
+      - frontend/pubspec.yaml
+      - frontend/pubspec.lock
+      - frontend/vercel_build.sh
       - docs/DEPENDENCIES.md
       - docs/DEVELOPER_MACOS.md
       - docs/LAUNCHER.md
