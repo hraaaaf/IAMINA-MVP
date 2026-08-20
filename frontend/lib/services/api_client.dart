@@ -152,6 +152,11 @@ const String kBaseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:8000',
 );
 
+const int kMaxDocumentUploadBytes = 15 * 1024 * 1024;
+
+bool isDocumentUploadSizeAllowed(int byteLength) =>
+    byteLength > 0 && byteLength <= kMaxDocumentUploadBytes;
+
 class ApiClient {
   final String baseUrl;
   final AuthService _authService;
@@ -589,6 +594,10 @@ class ApiClient {
     String filename,
     String mimeType,
   ) async {
+    if (!isDocumentUploadSizeAllowed(fileBytes.lengthInBytes)) {
+      return null;
+    }
+
     try {
       final token = await _authService.getIdToken();
       final uri = Uri.parse('$baseUrl/api/v1/documents/ingest?confirm=false');
