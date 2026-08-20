@@ -22,9 +22,6 @@ import re
 from datetime import datetime
 
 from core.ai_egress import TEXT, assert_ai_egress_allowed
-from diabetes.services.documents.extractors.docx import extract_docx
-from diabetes.services.documents.extractors.image import extract_image
-from diabetes.services.documents.extractors.pdf import extract_pdf
 from diabetes.services.documents.extractors.spreadsheet import extract_spreadsheet
 from diabetes.services.documents.schema import (
     GlucoseReading,
@@ -33,6 +30,9 @@ from diabetes.services.documents.schema import (
     PulperOutput,
 )
 from diabetes.services.documents.shield import PulperShield
+from media.documents.extractors.docx import extract_docx
+from media.documents.extractors.image import extract_image
+from media.documents.extractors.pdf import extract_pdf
 
 logger = logging.getLogger(__name__)
 

@@ -1,27 +1,26 @@
 from pathlib import Path
 from unittest import TestCase
 
+import diabetes.services.documents.pulper as pulper
 
-class SharedDocumentExtractorCompatibilityTest(TestCase):
-    def test_docx_legacy_import_reexports_shared_function(self):
-        from diabetes.services.documents.extractors.docx import extract_docx as legacy
-        from media.documents.extractors.docx import extract_docx as shared
 
-        self.assertIs(legacy, shared)
+class SharedDocumentExtractorCloseoutTest(TestCase):
+    def test_pulper_imports_generic_extractors_from_shared_media(self):
+        source = Path(pulper.__file__).read_text(encoding="utf-8")
+        self.assertIn("from media.documents.extractors.docx import extract_docx", source)
+        self.assertIn("from media.documents.extractors.pdf import extract_pdf", source)
+        self.assertIn("from media.documents.extractors.image import extract_image", source)
+        self.assertNotIn("diabetes.services.documents.extractors.docx", source)
+        self.assertNotIn("diabetes.services.documents.extractors.pdf", source)
+        self.assertNotIn("diabetes.services.documents.extractors.image", source)
 
-    def test_pdf_legacy_import_reexports_shared_function(self):
-        from diabetes.services.documents.extractors.pdf import extract_pdf as legacy
-        from media.documents.extractors.pdf import extract_pdf as shared
+    def test_legacy_generic_extractor_shims_are_removed(self):
+        legacy_dir = Path(__file__).resolve().parents[1] / "services" / "documents" / "extractors"
+        self.assertFalse((legacy_dir / "docx.py").exists())
+        self.assertFalse((legacy_dir / "pdf.py").exists())
+        self.assertFalse((legacy_dir / "image.py").exists())
 
-        self.assertIs(legacy, shared)
-
-    def test_image_legacy_import_reexports_shared_function(self):
-        from diabetes.services.documents.extractors.image import extract_image as legacy
-        from media.documents.extractors.image import extract_image as shared
-
-        self.assertIs(legacy, shared)
-
-    def test_diabetes_spreadsheet_extractor_does_not_move_to_shared_layer(self):
+    def test_diabetes_spreadsheet_extractor_remains_condition_owned(self):
         shared_extractors = (
             Path(__file__).resolve().parents[2] / "media" / "documents" / "extractors"
         )

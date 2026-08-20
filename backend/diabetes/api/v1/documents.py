@@ -118,8 +118,8 @@ class LabReportOut(Schema):
 _PENDING_TTL = 3600  # 1 hour — plenty for human review + confirmation
 
 
-def _pending_key(batch_id: str) -> str:
-    return f"pulper:pending:{batch_id}"
+def _pending_key(patient_id: int, batch_id: str) -> str:
+    return f"pulper:pending:{patient_id}:{batch_id}"
 
 
 def _read_upload_with_limit(file: UploadedFile) -> tuple[bytes | None, str | None]:
@@ -164,7 +164,7 @@ def ingest_document(
     # ── Extract ────────────────────────────────────────────────────────────────
     output    = ingest(file_bytes, filename, mime_type)
     batch_id  = str(uuid.uuid4())
-    cache.set(_pending_key(batch_id), output, timeout=_PENDING_TTL)
+    cache.set(_pending_key(patient.id, batch_id), output, timeout=_PENDING_TTL)
 
     preview = PulperPreviewResponse(
         batch_id=batch_id,
@@ -210,6 +210,7 @@ def ingest_document(
         return 200, preview
 
     # ── Confirm & persist ──────────────────────────────────────────────────────
+    cache.delete(_pending_key(patient.id, batch_id))
     return _do_persist(output, patient, batch_id)
 
 
@@ -219,9 +220,10 @@ def confirm_import(request: HttpRequest, batch_id: str):
     Persist a previously staged extraction (batch_id from /ingest response).
     Called when the user taps "Confirmer" in the Flutter UI.
     """
-    output = cache.get(_pending_key(batch_id))
+    patient = request.auth
+    output = cache.get(_pending_key(patient.id, batch_id))
     if output is not None:
-        cache.delete(_pending_key(batch_id))   # consume once — no replay attacks
+        cache.delete(_pending_key(patient.id, batch_id))   # consume once — no replay attacks
     if output is None:
         return PulperConfirmResponse(
             ok=False,
@@ -231,7 +233,6 @@ def confirm_import(request: HttpRequest, batch_id: str):
             errors=["Session expirée — veuillez réimporter le document."],
         )
 
-    patient = request.auth
     return _do_persist(output, patient, batch_id)
 
 
