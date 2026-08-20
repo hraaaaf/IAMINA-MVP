@@ -4,14 +4,34 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'frontend/lib/**'
+      - 'frontend/lib/features/**'
+      - 'frontend/lib/modules/**'
+      - 'frontend/lib/routes/**'
+      - 'frontend/lib/core/widgets/**'
+      - 'frontend/lib/core/theme/**'
+      - 'frontend/lib/core/motion/**'
+      - 'frontend/lib/core/localization/**'
+      - 'frontend/lib/l10n/**'
+      - 'frontend/lib/main.dart'
+      - 'frontend/lib/ui_browser_audit_main.dart'
+      - 'frontend/lib/ui_browser_next_action_ar_main.dart'
       - 'frontend/assets/**'
       - 'frontend/pubspec.yaml'
       - '.github/workflows/ui-browser-screenshot.yml'
   push:
     branches: [main]
     paths:
-      - 'frontend/lib/**'
+      - 'frontend/lib/features/**'
+      - 'frontend/lib/modules/**'
+      - 'frontend/lib/routes/**'
+      - 'frontend/lib/core/widgets/**'
+      - 'frontend/lib/core/theme/**'
+      - 'frontend/lib/core/motion/**'
+      - 'frontend/lib/core/localization/**'
+      - 'frontend/lib/l10n/**'
+      - 'frontend/lib/main.dart'
+      - 'frontend/lib/ui_browser_audit_main.dart'
+      - 'frontend/lib/ui_browser_next_action_ar_main.dart'
       - 'frontend/assets/**'
       - 'frontend/pubspec.yaml'
       - '.github/workflows/ui-browser-screenshot.yml'
