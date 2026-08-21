@@ -1,9 +1,16 @@
-"""Narrow CSRF exemptions for API requests that cannot rely on cookie auth.
+"""Narrow CSRF exemptions and request-scoped AI operation identity.
 
 Cookie/session-authenticated API requests must remain protected by Django's
 CsrfViewMiddleware. Only bearer-token requests and the Firebase token bootstrap
 endpoint are exempted here.
 """
+
+from django.http import JsonResponse
+
+from core.ai_operation_identity import (
+    InvalidIdempotencyKey,
+    ai_operation_request_scope,
+)
 
 
 class CsrfExemptApiMiddleware:
@@ -21,4 +28,18 @@ class CsrfExemptApiMiddleware:
         if uses_bearer_auth or request.path in self._EXEMPT_PATHS:
             setattr(request, "_dont_enforce_csrf_checks", True)
 
-        return self.get_response(request)
+        try:
+            with ai_operation_request_scope(
+                request.META.get("HTTP_IDEMPOTENCY_KEY")
+            ):
+                return self.get_response(request)
+        except InvalidIdempotencyKey:
+            return JsonResponse(
+                {
+                    "error": {
+                        "code": "invalid_idempotency_key",
+                        "message": "Invalid Idempotency-Key header.",
+                    }
+                },
+                status=400,
+            )
