@@ -33,6 +33,8 @@ from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
 from diabetes.models import LabReport
 from diabetes.services.documents.pulper import ingest
 from diabetes.services.documents.store import persist
+from llm.usage_telemetry import record_media_bytes
+from media.documents.retention import PENDING_EXTRACTION_POLICY
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["documents"])
@@ -133,6 +135,11 @@ def _read_upload_with_limit(file: UploadedFile) -> tuple[bytes | None, str | Non
         return None, "empty"
     if len(file_bytes) > _MAX_UPLOAD_BYTES:
         return None, "too_large"
+    record_media_bytes(
+        action="uploaded",
+        byte_count=len(file_bytes),
+        retention_class=PENDING_EXTRACTION_POLICY.retention_class.value,
+    )
     return file_bytes, None
 
 
