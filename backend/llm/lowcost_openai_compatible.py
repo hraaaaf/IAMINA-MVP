@@ -4,6 +4,7 @@ from typing import Iterator
 from django.conf import settings
 
 from .base import BaseLLMProvider, LLMResponse, LLMUsage
+from .errors import normalize_provider_exception
 
 logger = logging.getLogger(__name__)
 
@@ -96,12 +97,15 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
         ]
 
     def complete(self, system: str, user: str) -> LLMResponse:
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=self._messages(system, user),
-            max_tokens=_MAX_OUTPUT_TOKENS,
-            timeout=self.timeout_seconds,
-        )
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=self._messages(system, user),
+                max_tokens=_MAX_OUTPUT_TOKENS,
+                timeout=self.timeout_seconds,
+            )
+        except Exception as exc:
+            raise normalize_provider_exception(exc, self.provider_id) from exc
         return LLMResponse(
             content=response.choices[0].message.content or "",
             provider=self.model,
@@ -109,15 +113,18 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
         )
 
     def stream(self, system: str, user: str) -> Iterator[str]:
-        with self.client.chat.completions.stream(
-            model=self.model,
-            messages=self._messages(system, user),
-            max_tokens=_MAX_OUTPUT_TOKENS,
-            timeout=self.timeout_seconds,
-        ) as stream:
-            for text in stream.text_stream:
-                if text:
-                    yield text
+        try:
+            with self.client.chat.completions.stream(
+                model=self.model,
+                messages=self._messages(system, user),
+                max_tokens=_MAX_OUTPUT_TOKENS,
+                timeout=self.timeout_seconds,
+            ) as stream:
+                for text in stream.text_stream:
+                    if text:
+                        yield text
+        except Exception as exc:
+            raise normalize_provider_exception(exc, self.provider_id) from exc
 
 
 class DeepSeekProvider(OpenAICompatibleLowCostProvider):
