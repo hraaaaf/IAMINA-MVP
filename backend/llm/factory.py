@@ -149,6 +149,7 @@ def _execute_external_complete(
         )
 
     now = timezone.now()
+    binding.user_throttle.authorize(patient_id=context.patient_id, now=now)
     try:
         response = binding.enforcer.execute_complete(
             provider=provider_name,

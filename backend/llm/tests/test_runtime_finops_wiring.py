@@ -13,6 +13,7 @@ from core.models import (
     AIBudgetAccount,
     AIBudgetReservationRecord,
     AIProviderOperationAttempt,
+    AIUserThrottleWindow,
     BasePatientProfile,
 )
 from llm.base import BaseLLMProvider, LLMResponse, LLMUsage
@@ -21,6 +22,7 @@ from llm.factory import _enforce_text_payload_policy
 from llm.provider_guard import ProviderCircuitOpen
 from llm.runtime_finops import RuntimeFinOpsConfigurationError
 from llm.usage_telemetry import usage_workload_scope
+from llm.user_abuse_throttle import UserAbuseThrottleExceeded
 
 
 class SyntheticProvider(BaseLLMProvider):
@@ -91,6 +93,8 @@ def _runtime_config(
     workload_soft: int = 800,
     failure_threshold: int = 2,
     review_due_on: date | None = None,
+    user_max_requests: int = 100,
+    user_window_seconds: int = 60,
 ) -> str:
     today = date.today()
     due = review_due_on or (today + timedelta(days=30))
@@ -149,6 +153,10 @@ def _runtime_config(
                     "in_flight_lease_seconds": 30,
                 }
             ],
+            "user_throttle": {
+                "window_seconds": user_window_seconds,
+                "max_requests": user_max_requests,
+            },
             "max_single_reservation_microusd": 2_000,
         }
     )
@@ -270,6 +278,28 @@ def test_controlled_external_complete_settles_persistent_hierarchy(
         subject_key="finops:workload:synthetic:conversation",
         month_key=month,
     ).committed_microusd == 8
+
+
+@pytest.mark.django_db(transaction=True)
+def test_user_throttle_blocks_paid_external_calls_and_persists_only_hmac(
+    consenting_patient,
+    monkeypatch,
+):
+    _configure(monkeypatch, user_max_requests=2, user_window_seconds=3600)
+    provider = SyntheticProvider()
+    guarded = _external_guard(provider, monkeypatch)
+
+    _complete(guarded, consenting_patient, idempotency_key="throttle-1")
+    _complete(guarded, consenting_patient, idempotency_key="throttle-2")
+    with pytest.raises(UserAbuseThrottleExceeded):
+        _complete(guarded, consenting_patient, idempotency_key="throttle-3")
+
+    assert provider.calls == 2
+    row = AIUserThrottleWindow.objects.get()
+    assert row.request_count == 2
+    assert row.subject_key.startswith("hmac256:")
+    assert len(row.subject_key) == 72
+    assert "patient" not in row.subject_key
 
 
 @pytest.mark.django_db(transaction=True)
@@ -399,6 +429,7 @@ def test_local_fallback_remains_available_without_finops_config(
         response = guarded.complete("system", "bonjour")
 
     assert response.provider == "fallback-v1"
+    assert not AIUserThrottleWindow.objects.exists()
 
 
 @pytest.mark.django_db(transaction=True)
@@ -450,6 +481,7 @@ def test_persisted_keys_never_contain_raw_client_or_patient_identity(
             flat=True,
         )
     )
+    persisted += list(AIUserThrottleWindow.objects.values_list("subject_key", flat=True))
     assert persisted
     assert all(value.startswith("hmac256:") for value in persisted)
     assert all(raw_key not in value for value in persisted)
