@@ -40,24 +40,48 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
     provider_id = "openai-compatible"
     settings_prefix = ""
 
-    def __init__(self, model: str | None = None):
-        prefix = self.settings_prefix
+    def __init__(
+        self,
+        model: str | None = None,
+        *,
+        provider_id: str | None = None,
+        settings_prefix: str | None = None,
+        default_base_url: str = "",
+        default_model: str = "",
+        timeout_seconds: float = _TIMEOUT_SECONDS,
+        processor_policy_key: str | None = None,
+    ):
+        resolved_provider_id = provider_id or self.provider_id
+        prefix = settings_prefix or self.settings_prefix
         api_key = getattr(settings, f"{prefix}_API_KEY", "") or ""
-        base_url = getattr(settings, f"{prefix}_BASE_URL", "") or ""
-        resolved_model = model or getattr(settings, f"{prefix}_MODEL", "") or ""
+        base_url = (
+            getattr(settings, f"{prefix}_BASE_URL", "") or default_base_url or ""
+        )
+        resolved_model = (
+            model
+            or getattr(settings, f"{prefix}_MODEL", "")
+            or default_model
+            or ""
+        )
 
         if not api_key or not base_url or not resolved_model:
             raise RuntimeError(
-                f"{self.provider_id}: explicit API key, base URL and model are required"
+                f"{resolved_provider_id}: explicit API key, base URL and model are required"
             )
         if OpenAI is None:
             raise RuntimeError("openai package is required for compatible providers")
+        if timeout_seconds <= 0:
+            raise RuntimeError("OpenAI-compatible provider timeout must be positive")
 
+        self.provider_id = resolved_provider_id
+        self.provider_policy_key = processor_policy_key or resolved_provider_id
+        self.settings_prefix = prefix
         self.model = resolved_model
+        self.timeout_seconds = timeout_seconds
         self.client = OpenAI(
             base_url=base_url,
             api_key=api_key,
-            timeout=_TIMEOUT_SECONDS,
+            timeout=self.timeout_seconds,
             max_retries=0,
         )
 
@@ -76,7 +100,7 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
             model=self.model,
             messages=self._messages(system, user),
             max_tokens=_MAX_OUTPUT_TOKENS,
-            timeout=_TIMEOUT_SECONDS,
+            timeout=self.timeout_seconds,
         )
         return LLMResponse(
             content=response.choices[0].message.content or "",
@@ -89,7 +113,7 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
             model=self.model,
             messages=self._messages(system, user),
             max_tokens=_MAX_OUTPUT_TOKENS,
-            timeout=_TIMEOUT_SECONDS,
+            timeout=self.timeout_seconds,
         ) as stream:
             for text in stream.text_stream:
                 if text:
@@ -97,10 +121,14 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
 
 
 class DeepSeekProvider(OpenAICompatibleLowCostProvider):
+    """Compatibility wrapper; runtime routing is registry-driven."""
+
     provider_id = "deepseek"
     settings_prefix = "DEEPSEEK"
 
 
 class QwenProvider(OpenAICompatibleLowCostProvider):
+    """Compatibility wrapper; runtime routing is registry-driven."""
+
     provider_id = "qwen"
     settings_prefix = "QWEN"

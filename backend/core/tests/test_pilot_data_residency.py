@@ -102,6 +102,9 @@ def _manifest():
         "ai_provider:gemini": _flow("ai_provider:gemini", enabled=False),
         "ai_provider:kimi": _flow("ai_provider:kimi", enabled=False),
         "ai_provider:claude": _flow("ai_provider:claude", enabled=False),
+        "ai_provider:deepseek": _flow("ai_provider:deepseek", enabled=False),
+        "ai_provider:qwen": _flow("ai_provider:qwen", enabled=False),
+        "ai_provider:groq": _flow("ai_provider:groq", enabled=False),
     }
     assert set(flows) == required_flow_ids()
     return {
