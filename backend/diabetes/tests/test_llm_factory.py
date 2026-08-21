@@ -27,13 +27,18 @@ class LlmFactoryProviderResolutionTest(SimpleTestCase):
         self.assertIsInstance(provider, FallbackProvider)
 
     @override_settings(LLM_PROVIDER="gemini")
-    def test_gemini_provider_wraps_in_guarded_provider(self):
-        """With real Gemini config, factory returns a GuardedGeminiProvider."""
+    def test_gemini_provider_uses_central_runtime_guard(self):
+        """Gemini stays directly visible so persistent FinOps can observe 429s."""
         from llm.factory import get_llm
+        from llm.gemini import GeminiProvider
         from llm.rate_guard import GuardedGeminiProvider
+
         with patch("llm.rate_guard.should_use_gemini", return_value=True):
             provider = get_llm()
-        self.assertIsInstance(provider, GuardedGeminiProvider)
+
+        self.assertIsInstance(provider, GeminiProvider)
+        self.assertNotIsInstance(provider, GuardedGeminiProvider)
+        self.assertTrue(getattr(provider, "_iamina_text_payload_policy", False))
 
     @override_settings(LLM_PROVIDER="gemini")
     def test_gemini_cap_hit_returns_local_quota_exhausted(self):
