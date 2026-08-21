@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Iterator
 
 from django.conf import settings
@@ -35,6 +36,12 @@ def _usage_from_response(response) -> LLMUsage | None:
     )
 
 
+def _configured_value(prefix: str, suffix: str) -> str:
+    setting_name = f"{prefix}_{suffix}"
+    configured = getattr(settings, setting_name, "") or ""
+    return configured or os.environ.get(setting_name, "") or ""
+
+
 class OpenAICompatibleLowCostProvider(BaseLLMProvider):
     """Bounded adapter for explicitly configured OpenAI-compatible endpoints."""
 
@@ -54,13 +61,11 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
     ):
         resolved_provider_id = provider_id or self.provider_id
         prefix = settings_prefix or self.settings_prefix
-        api_key = getattr(settings, f"{prefix}_API_KEY", "") or ""
-        base_url = (
-            getattr(settings, f"{prefix}_BASE_URL", "") or default_base_url or ""
-        )
+        api_key = _configured_value(prefix, "API_KEY")
+        base_url = _configured_value(prefix, "BASE_URL") or default_base_url or ""
         resolved_model = (
             model
-            or getattr(settings, f"{prefix}_MODEL", "")
+            or _configured_value(prefix, "MODEL")
             or default_model
             or ""
         )

@@ -1,0 +1,11 @@
+{
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "currency": "USD",
+  "input_microusd_per_million": 150000,
+  "cached_input_microusd_per_million": 75000,
+  "output_microusd_per_million": 600000,
+  "evidence_reference": "issue-430-comment-5358477221",
+  "verified_on": "2026-08-20",
+  "review_due_on": "2026-09-19"
+}

@@ -37,6 +37,23 @@ def test_processor_policy_names_are_explicit():
     assert _provider_policy_name(qwen) == "qwen"
 
 
+def test_compatible_provider_reads_environment_when_django_setting_is_blank(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "synthetic-env-key")
+    monkeypatch.setenv("GROQ_BASE_URL", "https://example.invalid/openai/v1")
+    monkeypatch.setenv("GROQ_MODEL", "synthetic-model")
+
+    with override_settings(GROQ_API_KEY="", GROQ_BASE_URL="", GROQ_MODEL=""):
+        provider = OpenAICompatibleLowCostProvider(
+            provider_id="groq",
+            settings_prefix="GROQ",
+        )
+    try:
+        assert provider.model_name == "synthetic-model"
+        assert str(provider.client.base_url) == "https://example.invalid/openai/v1/"
+    finally:
+        provider.client.close()
+
+
 class SyntheticHTTPError(Exception):
     def __init__(self, status_code: int):
         super().__init__(f"synthetic HTTP {status_code}")
