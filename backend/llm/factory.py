@@ -1,14 +1,14 @@
 """
-LLM Factory — provider resolution with Gemini rate-guard and failover chain.
+LLM Factory — provider resolution with Gemini rate-guard and fail-closed fallback.
 
 Priority order (when LLM_PROVIDER = "gemini"):
-  1. Gemini (guarded — cap at 18/day)
-  2. Kimi   (if KIMI_API_KEY is set)
-  3. FallbackProvider (static templates, always available)
+  1. Gemini (guarded — warning at 18/day, hard cap at 20/day)
+  2. QuotaExhaustedProvider (local, deterministic, no network egress)
 
-Explicit overrides may select Kimi, Claude or a registered OpenAI-compatible
-candidate. Every network-capable provider returned by this module is decorated
-with the central text payload contract and processor policy before egress.
+Network providers are never selected implicitly from API-key presence. Explicit
+overrides may select Kimi, Claude or a registered OpenAI-compatible candidate.
+Every network-capable provider returned by this module is decorated with the
+central text payload contract and processor policy before egress.
 """
 import logging
 from collections.abc import Callable, Iterator
@@ -36,19 +36,6 @@ def _get_quota_exhausted() -> BaseLLMProvider:
     from .fallback import QuotaExhaustedProvider
 
     return QuotaExhaustedProvider()
-
-
-def _get_kimi() -> BaseLLMProvider | None:
-    kimi_key = getattr(settings, "KIMI_API_KEY", "") or ""
-    if not kimi_key:
-        return None
-    try:
-        from .kimi import KimiProvider
-
-        return KimiProvider()
-    except Exception:
-        logger.warning("KimiProvider init failed — skipping.")
-        return None
 
 
 def _provider_policy_name(provider: BaseLLMProvider) -> str:
@@ -158,12 +145,9 @@ def _build_gemini_with_failover() -> BaseLLMProvider:
     from .rate_guard import GuardedGeminiProvider, should_use_gemini
 
     if not should_use_gemini():
-        kimi = _get_kimi()
-        if kimi:
-            logger.info("LLM factory: Gemini cap hit — using Kimi.")
-            return _enforce_text_payload_policy(kimi)
         logger.warning(
-            "LLM factory: Gemini daily cap hit, no paid fallback — surfacing quota message."
+            "LLM factory: Gemini daily cap hit — using local quota response; "
+            "implicit network failover is disabled."
         )
         return _enforce_text_payload_policy(_get_quota_exhausted())
 

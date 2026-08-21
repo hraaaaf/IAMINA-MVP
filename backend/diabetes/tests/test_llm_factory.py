@@ -36,11 +36,10 @@ class LlmFactoryProviderResolutionTest(SimpleTestCase):
         self.assertIsInstance(provider, GuardedGeminiProvider)
 
     @override_settings(LLM_PROVIDER="gemini")
-    def test_gemini_cap_hit_no_kimi_returns_quota_exhausted(self):
-        """When Gemini daily cap is hit and Kimi unavailable → QuotaExhaustedProvider."""
+    def test_gemini_cap_hit_returns_local_quota_exhausted(self):
+        """When Gemini daily cap is hit, the factory stays local and deterministic."""
         from llm.factory import get_llm
-        with patch("llm.rate_guard.should_use_gemini", return_value=False), \
-             patch("llm.factory._get_kimi", return_value=None):
+        with patch("llm.rate_guard.should_use_gemini", return_value=False):
             provider = get_llm()
         self.assertIsInstance(provider, QuotaExhaustedProvider)
 

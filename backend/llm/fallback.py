@@ -28,9 +28,10 @@ class FallbackProvider(BaseLLMProvider):
 
 class QuotaExhaustedProvider(BaseLLMProvider):
     """
-    Returned by the factory when the Gemini free-tier daily quota is hit
-    and no paid fallback (Kimi) is configured.
-    Surfaces the quota limit to the user instead of silently degrading.
+    Local deterministic provider returned when the Gemini free-tier daily quota
+    is exhausted. The factory intentionally avoids implicit network fallback;
+    another network provider must be selected explicitly and remains governed
+    by the central processor policy before any egress.
     """
 
     _CHAT_MSG = (
@@ -46,7 +47,7 @@ class QuotaExhaustedProvider(BaseLLMProvider):
     )
 
     def complete(self, system: str, user: str) -> LLMResponse:
-        logger.warning("QuotaExhaustedProvider: daily Gemini cap hit, no paid fallback.")
+        logger.warning("QuotaExhaustedProvider: daily Gemini cap hit; serving local response.")
         is_summary = "summary" in system.lower() or "insight" in system.lower()
         return LLMResponse(
             content=self._SUMMARY_MSG if is_summary else self._CHAT_MSG,

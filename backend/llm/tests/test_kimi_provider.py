@@ -6,9 +6,9 @@ T2: stream() yields text chunks from the OpenAI stream.
 T3: missing openai package logs an error and sets client=None.
 T4: complete() raises RuntimeError when client is None.
 T5: factory resolves KimiProvider when LLM_PROVIDER=kimi.
-T6: factory Gemini failover picks Kimi when KIMI_API_KEY is set.
+T6: Gemini quota exhaustion stays local even when KIMI_API_KEY is set.
 """
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -134,16 +134,17 @@ def test_factory_resolves_kimi_provider():
         assert isinstance(provider, KimiProvider)
 
 
-# ── T6: Gemini failover picks Kimi when KIMI_API_KEY is set ──────────────────
+# ── T6: Gemini quota exhaustion never selects Kimi implicitly ────────────────
 
-def test_factory_gemini_failover_uses_kimi():
+def test_factory_gemini_quota_exhaustion_stays_local():
     with patch("llm.factory.settings") as mock_settings, \
          patch("llm.rate_guard.should_use_gemini", return_value=False), \
-         patch("llm.factory._get_kimi") as mock_get_kimi:
+         patch("llm.kimi.KimiProvider") as mock_kimi:
         mock_settings.LLM_PROVIDER = "gemini"
         mock_settings.LLM_MODEL = None
-        mock_kimi = MagicMock()
-        mock_get_kimi.return_value = mock_kimi
+        mock_settings.KIMI_API_KEY = "test-key"
         from llm.factory import get_llm
+        from llm.fallback import QuotaExhaustedProvider
         result = get_llm()
-        assert result is mock_kimi
+        assert isinstance(result, QuotaExhaustedProvider)
+        mock_kimi.assert_not_called()

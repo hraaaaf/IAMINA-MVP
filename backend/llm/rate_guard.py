@@ -3,11 +3,11 @@ LLM Rate Guard — Gemini free-tier daily cap enforcement.
 
 Gemini free tier: 20 req/day (Flash-Lite).
 Counter key: iamina:gemini:calls:{YYYY-MM-DD}  (Django cache, TTL = 25h)
-Threshold: 18 calls → failover to Kimi or FallbackProvider.
+Warning threshold: 18 calls; hard cap: 20 calls → local QuotaExhaustedProvider.
 
 Failure modes handled:
-  - Counter reaches threshold → WARNING + next factory call will failover.
-  - Counter reaches cap → failover (no more Gemini calls today).
+  - Counter reaches warning threshold → WARNING; Gemini remains available.
+  - Counter reaches hard cap → local quota response (no network failover).
   - Gemini returns a real 429 (API quota hit before local counter) →
     counter is fast-forwarded to _DAILY_LIMIT so all subsequent calls
     skip Gemini immediately; QuotaExhaustedProvider response is returned
@@ -106,7 +106,7 @@ def should_use_gemini() -> bool:
         return False
     if count >= _WARN_THRESHOLD:
         logger.warning(
-            "Gemini approaching daily cap (%d/%d). Failover will trigger at %d.",
+            "Gemini approaching daily cap (%d/%d). Local quota response will trigger at %d.",
             count, _DAILY_LIMIT, _DAILY_LIMIT,
         )
     return True
