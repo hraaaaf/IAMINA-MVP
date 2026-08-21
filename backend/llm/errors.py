@@ -81,6 +81,12 @@ def normalize_provider_exception(exc: Exception, provider: str) -> LLMProviderEr
     if isinstance(exc, ConnectionError):
         return LLMProviderUnavailable(provider)
 
+    status_code = getattr(exc, "status_code", None)
+    if status_code == 429:
+        return LLMProviderQuotaExceeded(provider)
+    if isinstance(status_code, int) and 500 <= status_code <= 599:
+        return LLMProviderUnavailable(provider)
+
     class_name = type(exc).__name__.lower()
     if "timeout" in class_name:
         return LLMProviderTimeout(provider)
