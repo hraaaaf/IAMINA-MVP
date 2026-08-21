@@ -6,9 +6,9 @@ Priority order (when LLM_PROVIDER = "gemini"):
   2. Kimi   (if KIMI_API_KEY is set)
   3. FallbackProvider (static templates, always available)
 
-Explicit overrides may select kimi, claude, deepseek or qwen. Every
-network-capable provider returned by this module is decorated with the central
-text payload contract and processor policy before it can perform egress.
+Explicit overrides may select Kimi, Claude or a registered OpenAI-compatible
+candidate. Every network-capable provider returned by this module is decorated
+with the central text payload contract and processor policy before egress.
 """
 import logging
 from collections.abc import Callable, Iterator
@@ -52,6 +52,10 @@ def _get_kimi() -> BaseLLMProvider | None:
 
 
 def _provider_policy_name(provider: BaseLLMProvider) -> str:
+    explicit = getattr(provider, "provider_policy_key", None)
+    if isinstance(explicit, str) and explicit.strip():
+        return explicit
+
     cls = type(provider).__name__
     mapping = {
         "GeminiProvider": "gemini",
@@ -183,16 +187,10 @@ def get_llm() -> BaseLLMProvider:
         resolved = KimiProvider(model=model) if model else KimiProvider()
         return _enforce_text_payload_policy(resolved)
 
-    if provider == "deepseek":
-        from .lowcost_openai_compatible import DeepSeekProvider
+    if provider in {"deepseek", "qwen", "groq"}:
+        from .provider_registry import build_openai_compatible_provider
 
-        resolved = DeepSeekProvider(model=model) if model else DeepSeekProvider()
-        return _enforce_text_payload_policy(resolved)
-
-    if provider == "qwen":
-        from .lowcost_openai_compatible import QwenProvider
-
-        resolved = QwenProvider(model=model) if model else QwenProvider()
+        resolved = build_openai_compatible_provider(provider, model=model)
         return _enforce_text_payload_policy(resolved)
 
     if provider == "claude":

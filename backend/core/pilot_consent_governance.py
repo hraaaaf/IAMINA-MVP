@@ -282,6 +282,24 @@ PROCESSOR_EVIDENCE = MappingProxyType(
             subprocessor_reference="Current official Anthropic subprocessor evidence required",
             residency_reference="Account/model-specific processing-region evidence required",
         ),
+        "deepseek": _network_record(
+            "deepseek",
+            processor_reference="DeepSeek endpoint operator and contracting entity not approved",
+            subprocessor_reference="No approved official DeepSeek subprocessor evidence on file",
+            residency_reference="No approved DeepSeek processing-region evidence on file",
+        ),
+        "qwen": _network_record(
+            "qwen",
+            processor_reference="Qwen endpoint operator and contracting entity not approved",
+            subprocessor_reference="No approved official Qwen subprocessor evidence on file",
+            residency_reference="No approved Qwen processing-region evidence on file",
+        ),
+        "groq": _network_record(
+            "groq",
+            processor_reference="Groq, Inc. processor identity requires deployment/account confirmation",
+            subprocessor_reference="Current official Groq subprocessor evidence required",
+            residency_reference="Groq deployment-specific processing-region evidence requires approval",
+        ),
         "fallback": _local_record("fallback"),
         "quota-exhausted": _local_record("quota-exhausted"),
     }
