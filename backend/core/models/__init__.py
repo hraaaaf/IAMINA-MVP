@@ -17,6 +17,7 @@ from core.models.finops_provider_guard import (  # noqa: F401
     AIProviderCircuitState,
     AIProviderOperationAttempt,
 )
+from core.models.finops_user_throttle import AIUserThrottleWindow  # noqa: F401
 from core.models.locale import PatientLocalePreference  # noqa: F401
 from core.models.patient import BasePatientProfile  # noqa: F401
 from core.models.patient_module import PatientModule  # noqa: F401

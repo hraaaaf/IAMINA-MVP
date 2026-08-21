@@ -1,7 +1,8 @@
 """Strict external configuration loader for paid text runtime FinOps.
 
-No provider prices, budget amounts or retry values are defined here. Any approved
-external provider must have a complete runtime configuration before network egress.
+No provider prices, budget amounts, throttle ceilings or retry values are defined
+here. Any approved external provider must have complete runtime configuration
+before network egress.
 """
 
 from __future__ import annotations
@@ -22,6 +23,10 @@ from .persistent_budget import PersistentBudgetLedger
 from .pricing import PricingRegistry, TextTokenPrice
 from .provider_guard import PersistentProviderFailureGuard, ProviderFailurePolicy
 from .runtime_finops import PaidTextRuntimeEnforcer, RuntimeFinOpsConfigurationError
+from .user_abuse_throttle import (
+    PersistentUserAbuseThrottle,
+    UserAbuseThrottlePolicy,
+)
 
 _CONFIG_ENV = "AI_FINOPS_RUNTIME_CONFIG_JSON"
 _HMAC_ENV = "AI_FINOPS_HMAC_KEY"
@@ -33,6 +38,7 @@ _ALLOWED_TOP_LEVEL = frozenset(
         "prices",
         "call_limits",
         "provider_failure_policies",
+        "user_throttle",
         "max_single_reservation_microusd",
     }
 )
@@ -41,6 +47,7 @@ _ALLOWED_TOP_LEVEL = frozenset(
 @dataclass(frozen=True, slots=True)
 class RuntimeTextBinding:
     enforcer: PaidTextRuntimeEnforcer
+    user_throttle: PersistentUserAbuseThrottle
     max_input_tokens: int
     max_output_tokens: int
 
@@ -229,6 +236,12 @@ def load_runtime_text_binding(
         in_flight_lease_seconds=_int(failure, "in_flight_lease_seconds"),
     )
 
+    throttle = _mapping(config["user_throttle"], "user_throttle")
+    throttle_policy = UserAbuseThrottlePolicy(
+        window_seconds=_int(throttle, "window_seconds"),
+        max_requests=_int(throttle, "max_requests"),
+    )
+
     prices: list[TextTokenPrice] = []
     for raw_item in _list(config["prices"], "prices"):
         item = _mapping(raw_item, "price")
@@ -272,6 +285,10 @@ def load_runtime_text_binding(
             pricing=pricing,
             provider_guard=PersistentProviderFailureGuard(failure_policy),
             operation_key_material=key_material,
+        ),
+        user_throttle=PersistentUserAbuseThrottle(
+            policy=throttle_policy,
+            key_material=key_material,
         ),
         max_input_tokens=max_input_tokens,
         max_output_tokens=max_output_tokens,
