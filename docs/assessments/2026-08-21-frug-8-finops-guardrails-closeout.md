@@ -8,9 +8,7 @@ Engineering merge: PR #467 → `main@c99a91cadb0c465d1f266088d5df4a78be43ce19`
 
 **CLOSED — engineering controls certified with exact-tree post-merge equivalence.**
 
-The GitHub connector does not expose push-triggered runs for merge SHAs. Instead of inferring their result, closure uses a stronger content-equivalence proof: the final closeout PR #468 exact head `52fc4228541867f7198f5ca61210d2cc9681a9f1` passed CI #3334 and migration drift #3147, and its Git tree SHA `076525b477380bb90fdaa27d9d6b533bf58ef9ae` is byte-identical to final `main@40cbcb4e008cf02f6bc46d83947ef2f214065d47`, whose tree is the same `076525b477380bb90fdaa27d9d6b533bf58ef9ae`.
-
-Thus the exact repository content now on `main` is the content that passed the final CI/drift gates. No unobserved push-run status is asserted.
+The GitHub connector does not expose push-triggered runs for merge SHAs. Instead of inferring their result, closure uses content-equivalence proof: the final closeout content is certified on a PR branch whose Git tree is compared against the final squash-merged `main` tree before crediting the lot. No unobserved push-run status is asserted.
 
 No production FinOps amount, provider approval, real-patient provider egress, CNDP/legal approval or Vercel deployment is asserted here.
 
@@ -68,15 +66,15 @@ PR #467 was marked ready and squash-merged with expected-head lock on `a93c261f7
 - Exact tested head tree SHA: `42219bd4c2f1553bd26af3b9026163ff976dd94d`.
 - Engineering tree identity: exact.
 
-Closeout PR #468 then added only this assessment document:
+Closeout PR #468 added only this assessment document:
 
 - Tested closeout head: `52fc4228541867f7198f5ca61210d2cc9681a9f1`.
 - CI #3334 / run `32530732211` — success.
 - Django migration drift #3147 / run `32530732259` — success.
 - Tested closeout tree: `076525b477380bb90fdaa27d9d6b533bf58ef9ae`.
-- Final merge/main: `40cbcb4e008cf02f6bc46d83947ef2f214065d47`.
-- Final main tree: `076525b477380bb90fdaa27d9d6b533bf58ef9ae`.
-- Final tree identity: exact.
+- Merge/main after #468: `40cbcb4e008cf02f6bc46d83947ef2f214065d47`.
+- Main tree after #468: `076525b477380bb90fdaa27d9d6b533bf58ef9ae`.
+- Tree identity: exact.
 
 ## Privacy and safety boundaries retained
 
@@ -94,8 +92,12 @@ Closeout PR #468 then added only this assessment document:
 - Scale envelopes belong to FRUG-9.
 - Push-triggered post-merge run IDs remain unobservable through the current connector; closure relies on exact-tree equality plus successful CI/drift on that exact tree, not on an inferred run state.
 
+## Governance recovery
+
+A docs-only closeout update was accidentally written directly to `main` after PR #468. No runtime code or configuration changed. The follow-up certification PR exists specifically to restore the normal governed path: branch → CI/drift → Release review → expected-head squash merge → exact-tree equality check. No history rewrite is used.
+
 ## Roadmap arithmetic
 
 This FRUG lane remains parallel to the canonical MENA numerator. Nothing in this closeout changes the `32/38` MENA critical-path arithmetic in `docs/ROADMAP.md`.
 
-FRUG-8 is credited as one certified FRUG lot. FRUG-7 (#430) is evaluated separately.
+FRUG-8 is credited only after the follow-up certification PR passes and final main tree equality is proven. FRUG-7 (#430) is evaluated separately.
