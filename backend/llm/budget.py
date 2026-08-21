@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from threading import Lock
+from typing import Protocol
 from uuid import uuid4
 
 
@@ -40,6 +41,27 @@ class BudgetReservation:
     subject_key: str
     month_key: str
     reserved_microusd: int
+    idempotency_key: str | None = None
+
+
+class BudgetLedger(Protocol):
+    """Storage contract for atomic budget reservation and reconciliation."""
+
+    def committed_microusd(self, subject_key: str, month_key: str) -> int: ...
+
+    def reserve_if_within(
+        self,
+        *,
+        subject_key: str,
+        month_key: str,
+        amount_microusd: int,
+        monthly_limit_microusd: int,
+        idempotency_key: str | None = None,
+    ) -> BudgetReservation: ...
+
+    def settle(self, reservation_id: str, actual_microusd: int) -> None: ...
+
+    def cancel(self, reservation_id: str) -> None: ...
 
 
 @dataclass(slots=True)
@@ -75,6 +97,32 @@ class InMemoryBudgetLedger:
             )
         return total
 
+    def _idempotent_reservation(
+        self,
+        *,
+        subject_key: str,
+        month_key: str,
+        amount_microusd: int,
+        idempotency_key: str,
+    ) -> BudgetReservation | None:
+        for state in self._states.values():
+            reservation = state.reservation
+            if (
+                reservation.subject_key == subject_key
+                and reservation.month_key == month_key
+                and reservation.idempotency_key == idempotency_key
+            ):
+                if state.cancelled:
+                    raise BudgetAccountingError(
+                        "idempotency key belongs to a cancelled reservation"
+                    )
+                if reservation.reserved_microusd != amount_microusd:
+                    raise BudgetAccountingError(
+                        "idempotency key cannot authorize a different amount"
+                    )
+                return reservation
+        return None
+
     def committed_microusd(self, subject_key: str, month_key: str) -> int:
         with self._lock:
             return self._committed_microusd(subject_key, month_key)
@@ -86,8 +134,19 @@ class InMemoryBudgetLedger:
         month_key: str,
         amount_microusd: int,
         monthly_limit_microusd: int,
+        idempotency_key: str | None = None,
     ) -> BudgetReservation:
         with self._lock:
+            if idempotency_key is not None:
+                existing = self._idempotent_reservation(
+                    subject_key=subject_key,
+                    month_key=month_key,
+                    amount_microusd=amount_microusd,
+                    idempotency_key=idempotency_key,
+                )
+                if existing is not None:
+                    return existing
+
             committed = self._committed_microusd(subject_key, month_key)
             if committed + amount_microusd > monthly_limit_microusd:
                 raise BudgetExceeded("AI monthly budget would be exceeded")
@@ -96,6 +155,7 @@ class InMemoryBudgetLedger:
                 subject_key=subject_key,
                 month_key=month_key,
                 reserved_microusd=amount_microusd,
+                idempotency_key=idempotency_key,
             )
             self._states[reservation.reservation_id] = _ReservationState(reservation)
             return reservation
@@ -126,7 +186,7 @@ class InMemoryBudgetLedger:
 class BudgetController:
     """Reserve before paid work; settle only against explicit actual cost."""
 
-    def __init__(self, policy: BudgetPolicy, ledger: InMemoryBudgetLedger) -> None:
+    def __init__(self, policy: BudgetPolicy, ledger: BudgetLedger) -> None:
         policy.validate()
         self.policy = policy
         self.ledger = ledger
@@ -137,11 +197,14 @@ class BudgetController:
         subject_key: str,
         month_key: str,
         reserved_microusd: int,
+        idempotency_key: str | None = None,
     ) -> BudgetReservation:
         if not subject_key.strip() or not month_key.strip():
             raise ValueError("subject_key and month_key are required")
         if reserved_microusd <= 0:
             raise ValueError("reserved_microusd must be positive")
+        if idempotency_key is not None and not idempotency_key.strip():
+            raise ValueError("idempotency_key must be non-empty when provided")
         if reserved_microusd > self.policy.max_single_reservation_microusd:
             raise BudgetExceeded("AI call reservation exceeds the single-call ceiling")
         return self.ledger.reserve_if_within(
@@ -149,6 +212,7 @@ class BudgetController:
             month_key=month_key,
             amount_microusd=reserved_microusd,
             monthly_limit_microusd=self.policy.monthly_limit_microusd,
+            idempotency_key=idempotency_key,
         )
 
     def settle(self, reservation: BudgetReservation, actual_microusd: int) -> None:
