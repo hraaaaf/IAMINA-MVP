@@ -26,6 +26,7 @@ CANDIDATES: tuple[Candidate, ...] = (
     Candidate("kimi", (Modality.TEXT,)),
     Candidate("mistral", (Modality.TEXT, Modality.DOCUMENT_OCR)),
     Candidate("qwen", _ALL_MODALITIES),
+    Candidate("groq", (Modality.TEXT,)),
     Candidate("local", _ALL_MODALITIES),
 )
 

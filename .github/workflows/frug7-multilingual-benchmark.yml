@@ -1,0 +1,64 @@
+name: FRUG-7 multilingual benchmark
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/evaluation/frug7_multilingual_benchmark.py"
+      - "backend/evaluation/fixtures/frug7_groq_text_price.json"
+      - "backend/evaluation/candidates.py"
+      - "backend/evaluation/tests/test_frug7_multilingual_benchmark.py"
+      - "backend/llm/lowcost_openai_compatible.py"
+      - ".github/workflows/frug7-multilingual-benchmark.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frug7-multilingual-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Groq GPT-OSS synthetic FR/AR/Darija
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: frug7-benchmark-nonproduction
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: sqlite:///frug7-benchmark.db
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      FRUG7_NETWORK_AUTHORIZED: "true"
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt
+      - name: Validate benchmark contracts before network
+        run: >-
+          pytest -q
+          evaluation/tests/test_frug7_multilingual_benchmark.py
+          evaluation/tests/test_text_live_runner.py
+          evaluation/tests/test_nonstt_evidence_gates.py
+          llm/tests/test_provider_registry.py
+          llm/tests/test_lowcost_provider_adapters.py
+      - name: Run one bounded synthetic multilingual benchmark
+        run: python -m evaluation.frug7_multilingual_benchmark --output ../artifacts/frug7-groq-multilingual.json
+      - name: Upload benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frug7-groq-multilingual
+          path: artifacts/frug7-groq-multilingual.json
+          if-no-files-found: warn
+          retention-days: 14
