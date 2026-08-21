@@ -23,6 +23,7 @@ def authorize_text_call(
     max_input_tokens: int,
     max_output_tokens: int,
     today: date,
+    idempotency_key: str | None = None,
 ) -> BudgetReservation:
     """Reserve worst-case uncached text spend before any paid provider call."""
     price = pricing.resolve_text(provider=provider, model=model, today=today)
@@ -36,6 +37,7 @@ def authorize_text_call(
         subject_key=subject_key,
         month_key=month_key,
         reserved_microusd=reserved_microusd,
+        idempotency_key=idempotency_key,
     )
 
 
@@ -51,6 +53,7 @@ def authorize_metered_call(
     subject_key: str,
     month_key: str,
     today: date,
+    idempotency_key: str | None = None,
 ) -> BudgetReservation:
     """Reserve worst-case media/metered spend before any paid provider call."""
     price = pricing.resolve_metered(
@@ -67,4 +70,5 @@ def authorize_metered_call(
         subject_key=subject_key,
         month_key=month_key,
         reserved_microusd=reserved_microusd,
+        idempotency_key=idempotency_key,
     )
