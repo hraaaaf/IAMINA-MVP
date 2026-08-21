@@ -12,6 +12,7 @@ import logging
 from collections.abc import Callable, Iterator
 from typing import TypeVar
 
+from django.conf import settings
 from django.utils import timezone
 
 from core.ai_egress import TEXT, assert_ai_egress_allowed, authorize_text_payload
@@ -285,8 +286,6 @@ def get_ai_provider_name() -> str:
 
 
 def get_llm() -> BaseLLMProvider:
-    from django.conf import settings
-
     provider = getattr(settings, "LLM_PROVIDER", "gemini")
     model = getattr(settings, "LLM_MODEL", None)
 

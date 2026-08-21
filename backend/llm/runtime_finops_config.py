@@ -169,11 +169,8 @@ def _unique_match(
     label: str,
     predicate,
 ) -> dict[str, Any]:
-    matches = [
-        _mapping(value, label)
-        for value in values
-        if isinstance(value, dict) and predicate(value)
-    ]
+    items = [_mapping(value, label) for value in values]
+    matches = [item for item in items if predicate(item)]
     if len(matches) != 1:
         raise RuntimeFinOpsConfigurationError(
             f"exactly one {label} entry is required"

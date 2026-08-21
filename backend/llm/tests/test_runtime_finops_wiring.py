@@ -224,6 +224,27 @@ def test_stale_price_blocks_before_external_provider_call(
 
 
 @pytest.mark.django_db(transaction=True)
+def test_non_object_call_limit_config_fails_closed_before_provider(
+    consenting_patient,
+    monkeypatch,
+):
+    config = json.loads(_runtime_config())
+    config["call_limits"].append("malformed-entry")
+    monkeypatch.setenv("AI_FINOPS_RUNTIME_CONFIG_JSON", json.dumps(config))
+    monkeypatch.setenv(
+        "AI_FINOPS_HMAC_KEY",
+        "synthetic-runtime-hmac-key-material-32-bytes-plus",
+    )
+    provider = SyntheticProvider()
+    guarded = _external_guard(provider, monkeypatch)
+
+    with pytest.raises(RuntimeFinOpsConfigurationError, match="call_limit must be an object"):
+        _complete(guarded, consenting_patient)
+
+    assert provider.calls == 0
+
+
+@pytest.mark.django_db(transaction=True)
 def test_controlled_external_complete_settles_persistent_hierarchy(
     consenting_patient,
     monkeypatch,
