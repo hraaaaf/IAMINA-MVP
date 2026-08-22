@@ -86,10 +86,13 @@ def _persist(
     # ── LogEntry rows (glucose readings) ──────────────────────────────────────
     for reading in output.glucose_readings:
         ts = _parse_timestamp(reading.timestamp)
-        if ts and ts.tzinfo is None:
-            ts = tz.make_aware(ts, tz.get_current_timezone())
         if ts is None:
-            ts = tz.now()
+            result.errors.append(
+                "Lecture glycémique sans timestamp explicite — non sauvegardée."
+            )
+            continue
+        if ts.tzinfo is None:
+            ts = tz.make_aware(ts, tz.get_current_timezone())
 
         client_uuid = _make_uuid(patient.pk, ts, reading.value_mgdl, import_batch_id)
 
@@ -129,22 +132,15 @@ def _make_uuid(patient_id: int, ts: datetime, glucose: float, batch: str) -> str
 def _parse_timestamp(ts: Optional[str]) -> Optional[datetime]:
     if not ts:
         return None
-    formats = [
-        '%Y-%m-%dT%H:%M:%S',
-        '%Y-%m-%d %H:%M:%S',
-        '%Y-%m-%d %H:%M',
-        '%d/%m/%Y %H:%M',
-        '%d/%m/%Y %H:%M:%S',
-        '%m/%d/%Y %H:%M',
-        '%Y-%m-%d',
-    ]
-    ts_clean = str(ts).strip().rstrip('Z')
-    for fmt in formats:
-        try:
-            return datetime.strptime(ts_clean[:len(fmt)], fmt)
-        except ValueError:
-            continue
-    return None
+
+    candidate = str(ts).strip()
+    if 'T' not in candidate and ' ' not in candidate:
+        return None
+
+    try:
+        return datetime.fromisoformat(candidate.replace('Z', '+00:00'))
+    except ValueError:
+        return None
 
 
 def _parse_date(d: Optional[str]):
