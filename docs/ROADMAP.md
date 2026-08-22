@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-18 — Gate A Secure Core remains certified at 10.0/10. The founder has explicitly de-scoped the independent qualified-clinical-human gate tracked by #318 and has kept the CNDP/processor/Morocco-residency release gate #320 in `CLOSED_GRAY` / `NOT_PLANNED` status for the active engineering roadmap. These are removals from active scope, not successful clinical review, CNDP authorization, processor approval, residency approval or real-patient legal clearance. PR #328 records the application-owner/safety-owner A/B/C/D review. Live multimodal provider evidence remains the principal external MENA critical-path blocker. Companion intelligence is closed through P3/P4 convergence. CGM gateway lanes remain parallel and do not alter the MENA numerator.
+> **Last updated:** 2026-08-22 — Gate A Secure Core remains certified at 10.0/10. PR #481 merged the parallel Canonical Clinical Data Layer & Privacy runtime foundation: disease-neutral canonical clinical facts, patient-aware last-mile text DLP, conservative document review-state propagation, and patient document-image cloud OCR fail-closed. Residual universal free-form/raw-media de-identification limits remain explicit technical debt in TD-001 and this parallel maintenance work does not change the MENA numerator. The founder has explicitly de-scoped the independent qualified-clinical-human gate tracked by #318 and has kept the CNDP/processor/Morocco-residency release gate #320 in `CLOSED_GRAY` / `NOT_PLANNED` status for the active engineering roadmap. These are removals from active scope, not successful clinical review, CNDP authorization, processor approval, residency approval or real-patient legal clearance. Live multimodal provider evidence remains the principal external MENA critical-path blocker. Companion intelligence is closed through P3/P4 convergence. CGM gateway lanes remain parallel and do not alter the MENA numerator.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -40,6 +40,7 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 | Dashboard P7 — responsive convergence | 100% | ✅ Closed | PR #306; exact head `0775b9fd…`; CI #2751 + drift #2563 + UI #312 + P7 cert #7 + Chrome #289 green; merge `446c2763…`; closeout `docs/assessments/2026-08-17-dashboard-p7-responsive-convergence-closeout.md` |
 | Journal metabolic-event redesign | 100% | ✅ Closed | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 + P2-JOURNAL-8/9; PRs #67–#77 |
 | P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
+| Canonical Clinical Data Layer & Privacy v1 | Runtime merged | ✅ Parallel maintenance foundation | PR #481 merge `bd84d147…`; exact-head CI #3424 + drift #3237 + Pulper #17 rerun green; residual universal free-form/raw-media de-identification remains TD-001; no MENA arithmetic change |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Independent clinical gate de-scoped; remaining linguistic/parity work retained | English baseline 16/16 certified; PR #328 records owner/safety-owner A/B/C/D review; #318 closed `NOT_PLANNED` without claiming clinical-human approval |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
 | P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 Live runs externally blocked | PRs #18–#22 prepared execution paths; #319 remains the active live-evidence gate |
@@ -56,7 +57,7 @@ Rebaseline arithmetic: the prior canonical denominator was 41 with 32 closed. Th
 
 `CLOSED_GRAY` means **not pursued in the active engineering roadmap**. It does not mean clinically approved, CNDP-authorized, legally compliant, processor-approved, residency-approved, or cleared for real-patient production. If real-patient release later requires those guarantees, the relevant legal/compliance gates must be reopened with real evidence.
 
-Gate A is an engineering certification over already-counted foundations and therefore does **not** change the MENA critical-path numerator. Clinical-intelligence, Dashboard, Journal, UX quality and the closed CGM gateway integration lanes are tracked separately and do not alter the MENA critical-path numerator unless a later retained pilot gate explicitly depends on them.
+Gate A is an engineering certification over already-counted foundations and therefore does **not** change the MENA critical-path numerator. Canonical Clinical Data Layer & Privacy v1, clinical-intelligence, Dashboard, Journal, UX quality and the closed CGM gateway integration lanes are tracked separately and do not alter the MENA critical-path numerator unless a later retained pilot gate explicitly depends on them.
 
 ---
 
