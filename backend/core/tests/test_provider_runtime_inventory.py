@@ -8,18 +8,29 @@ from llm.errors import LLMProviderInternalFailure, LLMProviderTimeout
 from llm.runtime import execute_external_provider_call
 
 _BACKEND = Path(__file__).resolve().parents[2]
-_MULTIMODAL_CALLSITES = (
+_MULTIMODAL_SDK_CALLSITES = (
     _BACKEND / "media" / "voice.py",
     _BACKEND / "media" / "vision.py",
-    _BACKEND / "media" / "documents" / "extractors" / "image.py",
+)
+_DOCUMENT_IMAGE_CALLSITE = (
+    _BACKEND / "media" / "documents" / "extractors" / "image.py"
 )
 
 
 def test_all_multimodal_sdk_calls_use_central_runtime_boundary():
-    for path in _MULTIMODAL_CALLSITES:
+    for path in _MULTIMODAL_SDK_CALLSITES:
         source = path.read_text()
         assert "execute_external_provider_call" in source, path
         assert "assert_ai_egress_allowed" not in source, path
+
+
+def test_document_image_ocr_delegates_to_governed_vision_boundary():
+    source = _DOCUMENT_IMAGE_CALLSITE.read_text()
+    assert "VisionBackend" in source
+    assert "GeminiVisionBackend" in source
+    assert "selected.generate(" in source
+    assert "google.genai" not in source
+    assert "assert_ai_egress_allowed" not in source
 
 
 def test_runtime_checks_scope_and_processor_policy_before_provider_call(monkeypatch):

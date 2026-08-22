@@ -1,16 +1,15 @@
 """
 Document Pulper — Store layer (Phase 12).
 
-Persists a validated PulperOutput to the database:
-  - LabReport row    (one per patient + source SHA-256 when available)
-  - LogEntry rows    (one per distinct imported glucose reading)
+Persists validated structured facts and bounded provenance. Full extracted raw text
+is transient review data and is not persisted for new imports.
 
 Idempotency:
   - patient-scoped source SHA-256 reuses the same LabReport on re-import;
   - all diabetes import paths share one deterministic reading identity;
   - semantic lookup catches legacy rows created by older UUID schemes.
 
-Never raises — returns a StoreResult with counts and any errors.
+Never raises — returns a StoreResult with counts and safe errors.
 """
 from __future__ import annotations
 
@@ -40,10 +39,10 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 @dataclass
 class StoreResult:
-    lab_report_id:          Optional[int] = None
-    glucose_readings_saved: int           = 0
-    glucose_duplicates:     int           = 0
-    errors:                 List[str]     = field(default_factory=list)
+    lab_report_id: Optional[int] = None
+    glucose_readings_saved: int = 0
+    glucose_duplicates: int = 0
+    errors: List[str] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
@@ -55,9 +54,21 @@ def persist(output: PulperOutput, patient: User, import_batch_id: str) -> StoreR
     result = StoreResult()
     try:
         _persist(output, patient, import_batch_id, result)
+    except ValueError as exc:
+        if str(exc) == "source_sha256 invalide":
+            result.errors.append("source_sha256 invalide")
+        else:
+            logger.error(
+                "pulper.store.persist unexpected failure error_class=%s",
+                type(exc).__name__,
+            )
+            result.errors.append("Erreur de sauvegarde du document.")
     except Exception as exc:
-        logger.exception("pulper.store.persist unexpected error: %s", exc)
-        result.errors.append(f"Erreur de sauvegarde: {exc}")
+        logger.error(
+            "pulper.store.persist unexpected failure error_class=%s",
+            type(exc).__name__,
+        )
+        result.errors.append("Erreur de sauvegarde du document.")
     return result
 
 
@@ -82,7 +93,8 @@ def _persist(
         "creatinine_umol": lv.creatinine_umol,
         "confidence": output.confidence,
         "clinical_notes": output.clinical_notes,
-        "raw_text": output.raw_text,
+        # Full extracted text remains in the one-hour review cache only.
+        "raw_text": "",
         "extraction_provenance": provenance_snapshot(output),
         "import_batch_id": import_batch_id,
     }
@@ -133,8 +145,11 @@ def _persist(
         except IntegrityError:
             result.glucose_duplicates += 1
         except Exception as exc:
-            logger.warning("store: LogEntry creation failed: %s", exc)
-            result.errors.append(f"Lecture glycémique ignorée: {exc}")
+            logger.warning(
+                "pulper.store reading write failed error_class=%s",
+                type(exc).__name__,
+            )
+            result.errors.append("Lecture glycémique ignorée lors de la sauvegarde.")
 
     if result.glucose_readings_saved:
         LabReport.objects.filter(pk=report.pk).update(
