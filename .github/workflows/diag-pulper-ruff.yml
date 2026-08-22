@@ -1,0 +1,30 @@
+name: Diagnostic Pulper Ruff exact fix
+
+on:
+  push:
+    branches: [diag/pulper-ruff-exact]
+
+permissions:
+  contents: read
+
+jobs:
+  ruff-exact-fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install exact Ruff
+        run: pip install ruff==0.15.17
+      - name: Print Ruff-generated patch
+        run: |
+          ruff check diabetes/tests/test_pulper_provenance.py --fix
+          echo '--- RUFF EXACT DIFF ---'
+          git diff -- diabetes/tests/test_pulper_provenance.py
+          echo '--- END RUFF EXACT DIFF ---'
+          ruff check diabetes/tests/test_pulper_provenance.py
