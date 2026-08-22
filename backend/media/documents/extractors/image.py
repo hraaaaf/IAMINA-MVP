@@ -16,6 +16,7 @@ from media.documents.ocr_router import (
     OcrRequest,
     choose_ocr_lane,
 )
+from media.documents.ocr_telemetry import record_ocr_route
 from media.documents.security import DocumentSecurityError, inspect_document
 from media.vision import GeminiVisionBackend, VisionBackend
 
@@ -84,6 +85,12 @@ def extract_image(
     decision = choose_ocr_lane(
         effective_request,
         _runtime_ocr_capabilities(provider_name),
+    )
+    record_ocr_route(
+        modality=effective_request.modality,
+        script=effective_request.script,
+        bounded_capture=effective_request.bounded_capture,
+        lane=decision.lane,
     )
 
     if decision.lane == "unavailable":
