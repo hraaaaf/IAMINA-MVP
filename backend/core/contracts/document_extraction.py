@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from string import hexdigits
 from typing import TypeAlias
 
 ScalarValue: TypeAlias = str | int | float | bool | None
@@ -32,6 +33,42 @@ class ExtractionDecision(str, Enum):
 
 
 @dataclass(frozen=True, slots=True)
+class FieldProvenance:
+    """Disease-neutral evidence metadata for one extracted field."""
+
+    source_sha256: str
+    source_ref: str
+    extractor: str
+    extractor_version: str
+    schema_version: str
+    extractor_model: str | None = None
+    parser_model: str | None = None
+    prompt_version: str | None = None
+    evidence_verified: bool = False
+
+    def __post_init__(self) -> None:
+        digest = self.source_sha256.strip().lower()
+        if len(digest) != 64 or any(char not in hexdigits for char in digest):
+            raise ValueError("source_sha256 must be a 64-character hexadecimal digest")
+        object.__setattr__(self, "source_sha256", digest)
+
+        for name in (
+            "source_ref",
+            "extractor",
+            "extractor_version",
+            "schema_version",
+        ):
+            value = getattr(self, name)
+            if not value.strip():
+                raise ValueError(f"{name} is required")
+
+        for name in ("extractor_model", "parser_model", "prompt_version"):
+            value = getattr(self, name)
+            if value is not None and not value.strip():
+                raise ValueError(f"{name} cannot be blank")
+
+
+@dataclass(frozen=True, slots=True)
 class ExtractedField:
     code: str
     value: ScalarValue
@@ -41,6 +78,8 @@ class ExtractedField:
     source_ref: str | None = None
     decision: ExtractionDecision = ExtractionDecision.REVIEW_REQUIRED
     decision_reason: str | None = None
+    raw_value: ScalarValue = None
+    provenance: FieldProvenance | None = None
 
     def __post_init__(self) -> None:
         if not self.code.strip():
@@ -51,6 +90,13 @@ class ExtractedField:
             raise ValueError("field decision must be an ExtractionDecision")
         if self.decision_reason is not None and not self.decision_reason.strip():
             raise ValueError("field decision_reason cannot be blank")
+
+        if self.provenance is not None:
+            if self.source_ref is None:
+                object.__setattr__(self, "source_ref", self.provenance.source_ref)
+            elif self.source_ref != self.provenance.source_ref:
+                raise ValueError("field source_ref conflicts with provenance source_ref")
+
         if self.verified:
             if self.decision is ExtractionDecision.REJECTED:
                 raise ValueError("a verified field cannot be rejected")
