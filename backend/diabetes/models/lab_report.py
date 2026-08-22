@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models import Q
 
 
 class LabReport(models.Model):
@@ -44,6 +45,12 @@ class LabReport(models.Model):
     creatinine_umol        = models.FloatField(null=True, blank=True)
 
     # ── Metadata ─────────────────────────────────────────────────────────────
+    source_sha256 = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        help_text='SHA-256 of source bytes for patient-scoped document idempotency.',
+    )
     glucose_readings_imported = models.IntegerField(default=0, help_text='LogEntry rows created from this document')
     import_batch_id  = models.CharField(max_length=64, blank=True, default='', help_text='Links LogEntry rows to this report')
     confidence       = models.FloatField(default=0.0, help_text='0.0–1.0 extraction confidence')
@@ -58,6 +65,13 @@ class LabReport(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['patient', 'source_sha256'],
+                condition=Q(source_sha256__isnull=False) & ~Q(source_sha256=''),
+                name='uniq_labreport_patient_sha256',
+            ),
+        ]
 
     def __str__(self):
         return f"LabReport({self.document_type}, {self.report_date}, confidence={self.confidence:.0%})"
