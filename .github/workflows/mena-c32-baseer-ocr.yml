@@ -1,0 +1,216 @@
+name: MENA C32 Baseer Arabic document evidence
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mena-c32-baseer-ocr.yml"
+      - "backend/evaluation/baseer_numeric_benchmark.py"
+      - "backend/evaluation/tests/test_baseer_numeric_benchmark.py"
+      - "backend/evaluation/misraj_numeric_benchmark.py"
+      - "backend/evaluation/fixtures/c26_misraj_source.json"
+      - "scripts/run_misraj_baseer_numeric_benchmark.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  C32_HF_REVISION: 511458b8aaecac37fe403bb1f9aaa24761af0c10
+  C32_TORCH_VERSION: "2.8.0"
+  C32_TORCHVISION_VERSION: "0.23.0"
+  C32_TRANSFORMERS_VERSION: "5.2.0"
+  C32_HF_HUB_VERSION: "1.5.0"
+  C32_TOKENIZERS_VERSION: "0.22.2"
+  C32_PROTOBUF_VERSION: "6.33.5"
+  C32_ACCELERATE_VERSION: "1.10.1"
+  C32_QWEN_VL_UTILS_VERSION: "0.0.14"
+
+jobs:
+  baseer-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pinned CPU Baseer stack
+        run: |
+          python -m pip install --disable-pip-version-check \
+            --index-url https://download.pytorch.org/whl/cpu \
+            "torch==${C32_TORCH_VERSION}" \
+            "torchvision==${C32_TORCHVISION_VERSION}"
+          python -m pip install --disable-pip-version-check \
+            "transformers==${C32_TRANSFORMERS_VERSION}" \
+            "huggingface-hub==${C32_HF_HUB_VERSION}" \
+            "tokenizers==${C32_TOKENIZERS_VERSION}" \
+            "protobuf==${C32_PROTOBUF_VERSION}" \
+            "accelerate==${C32_ACCELERATE_VERSION}" \
+            "qwen-vl-utils==${C32_QWEN_VL_UTILS_VERSION}" \
+            pillow pytest
+          python - <<'PY'
+          import importlib.metadata
+          import torch
+          import torchvision
+          import transformers
+
+          expected = {
+              "torch": "2.8.0+cpu",
+              "torchvision": "0.23.0+cpu",
+              "transformers": "5.2.0",
+              "huggingface-hub": "1.5.0",
+              "tokenizers": "0.22.2",
+              "protobuf": "6.33.5",
+              "accelerate": "1.10.1",
+              "qwen-vl-utils": "0.0.14",
+          }
+          for package, version in expected.items():
+              actual = importlib.metadata.version(package)
+              assert actual == version, (package, actual, version)
+          assert torch.cuda.is_available() is False
+          print("torch", torch.__version__)
+          print("torchvision", torchvision.__version__)
+          print("transformers", transformers.__version__)
+          PY
+
+      - name: Run C32 contract tests
+        env:
+          PYTHONPATH: backend
+        run: |
+          pytest -q --confcutdir=backend/evaluation/tests \
+            backend/evaluation/tests/test_baseer_numeric_benchmark.py
+
+      - name: Download pinned Baseer model and record SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          from huggingface_hub import snapshot_download
+
+          revision = os.environ["C32_HF_REVISION"]
+          model_dir = Path("/tmp/baseer-ocr-v1")
+          snapshot_download(
+              repo_id="AbdoTarek/Baseer-OCR-V1.0",
+              revision=revision,
+              local_dir=model_dir,
+          )
+          model_file = model_dir / "model.safetensors"
+          config_file = model_dir / "config.json"
+          if not model_file.is_file():
+              raise SystemExit("pinned Baseer model.safetensors missing")
+          if not config_file.is_file():
+              raise SystemExit("pinned Baseer config.json missing")
+          config = json.loads(config_file.read_text(encoding="utf-8"))
+          expected_transformers = os.environ["C32_TRANSFORMERS_VERSION"]
+          if config.get("transformers_version") != expected_transformers:
+              raise SystemExit(
+                  "Baseer checkpoint Transformers contract mismatch: "
+                  f"{config.get('transformers_version')} != {expected_transformers}"
+              )
+          digest = hashlib.sha256(model_file.read_bytes()).hexdigest()
+          print("revision", revision)
+          print("checkpoint_transformers", config["transformers_version"])
+          print("model_sha256", digest)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+              env.write(f"C32_BASEER_MODEL_DIR={model_dir}\n")
+              env.write(f"C32_MODEL_SHA256={digest}\n")
+          PY
+
+      - name: Smoke pinned Baseer model initialization
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+          from pathlib import Path
+
+          sys.path.insert(0, str(Path.cwd() / "backend"))
+          from evaluation.baseer_numeric_benchmark import _default_model_factory
+
+          model, processor = _default_model_factory()
+          assert model is not None
+          assert processor is not None
+          assert os.environ["C32_MODEL_SHA256"]
+          print("Baseer OCR CPU initialization OK")
+          PY
+
+      - name: Fetch pinned 10-row Misraj viewer slice
+        run: |
+          curl --fail --location --proto '=https' --tlsv1.2 --retry 3 \
+            --connect-timeout 30 --max-time 180 \
+            --output /tmp/misraj-viewer.json \
+            'https://datasets-server.huggingface.co/rows?dataset=Misraj%2FMisraj-DocOCR&config=default&split=train&offset=0&length=10'
+
+      - name: Run and validate Baseer evidence
+        shell: bash
+        run: |
+          set +e
+          python scripts/run_misraj_baseer_numeric_benchmark.py /tmp/misraj-viewer.json \
+            --output c32-baseer.json
+          benchmark_status=$?
+          set -e
+
+          test "$benchmark_status" -eq 0 -o \
+               "$benchmark_status" -eq 1 -o \
+               "$benchmark_status" -eq 2
+
+          BENCHMARK_STATUS="$benchmark_status" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          result = json.loads(Path("c32-baseer.json").read_text(encoding="utf-8"))
+          status = int(os.environ["BENCHMARK_STATUS"])
+          outcome = result["execution_outcome"]
+          expected_status = {"pass": 0, "verdict_reject": 1, "runtime_error": 2}
+          assert outcome in expected_status
+          assert status == expected_status[outcome]
+          assert result["benchmark"] == "c32-misraj-baseer-ocr-exact-numeric-safety"
+          assert result["engine"] == "baseer-ocr-v1.0"
+          assert result["raw_ground_truth_emitted"] is False
+          assert result["raw_ocr_text_emitted"] is False
+          assert result["provider_api"] is False
+          assert result["paid_inference"] is False
+          assert "runtime_error_message" not in result
+
+          config = result["engine_config"]
+          assert config["model_revision"] == os.environ["C32_HF_REVISION"]
+          assert config["model_sha256"] == os.environ["C32_MODEL_SHA256"]
+          assert config["device"] == "cpu"
+          assert config["dtype"] == "bfloat16"
+
+          if outcome == "runtime_error":
+              assert result["execution_phase"] in {"fixture_load", "model_init", "benchmark"}
+              assert isinstance(result["runtime_error_type"], str)
+              assert result["runtime_error_type"]
+              assert "cases" not in result
+              assert "source_images_pinned" not in result
+          else:
+              assert result["execution_phase"] == "complete"
+              assert result["runtime_error_type"] is None
+              assert result["source_images_pinned"] is True
+              assert result["sampled_rows"] == 10
+              assert result["numeric_total"] == 10
+              assert 0 <= result["numeric_safe_cases"] <= 10
+              assert result["numeric_safety_floor_passed"] is (outcome == "pass")
+              if outcome == "pass":
+                  assert result["numeric_safe_cases"] == 10
+              else:
+                  assert result["numeric_safe_cases"] < 10
+          PY
+
+          exit "$benchmark_status"
+
+      - name: Upload exact evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mena-c32-baseer-ocr
+          path: c32-baseer.json
+          if-no-files-found: error
+          retention-days: 14
