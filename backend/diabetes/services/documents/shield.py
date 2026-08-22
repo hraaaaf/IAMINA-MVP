@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from .schema import GlucoseReading, LabValues, PulperOutput
@@ -56,6 +56,48 @@ def _validate_date(d: Optional[str], field_name: str, warnings: list) -> Optiona
     except ValueError:
         warnings.append(f"{field_name}: format de date non reconnu ({d!r}) — ignoré.")
         return None
+
+
+def _validate_datetime(
+    value: Optional[str],
+    field_name: str,
+    warnings: list,
+) -> Optional[str]:
+    """Validate an ISO-8601 datetime without discarding time or timezone."""
+    if value is None:
+        return None
+
+    candidate = value.strip()
+    if "T" not in candidate and " " not in candidate:
+        warnings.append(
+            f"{field_name}: heure absente ({value!r}) — timestamp ignoré."
+        )
+        return None
+
+    try:
+        parsed = datetime.fromisoformat(candidate.replace("Z", "+00:00"))
+    except ValueError:
+        warnings.append(
+            f"{field_name}: format datetime non reconnu ({value!r}) — ignoré."
+        )
+        return None
+
+    if parsed.year < 1900:
+        warnings.append(f"{field_name}: date invalide ({value}) — ignorée.")
+        return None
+
+    if parsed.tzinfo is None:
+        is_future = parsed > datetime.now()
+    else:
+        is_future = parsed.astimezone(timezone.utc) > datetime.now(timezone.utc)
+
+    if is_future:
+        warnings.append(f"{field_name}: date future ({value}) — ignorée.")
+        return None
+
+    # Preserve the accepted source representation exactly (apart from surrounding
+    # whitespace). In particular, never coerce an offset/Z timestamp to a date.
+    return candidate
 
 
 def _validate_lab(lab: LabValues, warnings: list) -> LabValues:
@@ -119,7 +161,7 @@ class PulperShield:
         for r in output.glucose_readings:
             validated = _clamp_glucose(r, w)
             if validated:
-                validated.timestamp = _validate_date(
+                validated.timestamp = _validate_datetime(
                     validated.timestamp, "Timestamp glycémie", w
                 )
                 clean.append(validated)

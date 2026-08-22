@@ -89,9 +89,11 @@ Rules:
 - confidence: 0.0–1.0 — how certain you are about the extracted values
 - Convert mmol/L to mg/dL: multiply by 18.018
 - Convert % HbA1c values (e.g. "7.2%" → 7.2)
-- dates must be "YYYY-MM-DD" format
+- lab_values.report_date: use "YYYY-MM-DD" when present
+- glucose_readings.timestamp: preserve an explicit source date+time as ISO-8601; keep its timezone/offset when present
+- if a glucose reading has no explicit time, set timestamp to null; NEVER invent midnight or a timezone
 - context must be one of: fasting, post_meal, bedtime, random, or null
-- glucose_readings: list only readings with explicit timestamps if present
+- glucose_readings: include explicit numeric readings; timestamp may be null when the source provides no date-time
 - NEVER invent values — if not present in the document, use null
 - clinical_notes: short summary of any medical observations, diagnoses, or recommendations
 - Return ONLY the JSON object — no markdown, no explanation
