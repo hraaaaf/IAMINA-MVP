@@ -311,6 +311,9 @@ def authorize_text_payload(payload: Mapping[str, object]) -> AuthorizedTextPaylo
     if missing:
         raise AIPayloadDenied(f"Missing text payload fields: {sorted(missing)}")
 
+    from core.phi_privacy import current_patient_identity, redact_identity_values
+
+    patient_identity = current_patient_identity()
     authorized: dict[str, str] = {}
     for field_name in sorted(_TEXT_PAYLOAD_FIELDS):
         value = payload[field_name]
@@ -323,7 +326,11 @@ def authorize_text_payload(payload: Mapping[str, object]) -> AuthorizedTextPaylo
                 f"Text payload field {field_name} exceeds the {limits[field_name]} character limit "
                 f"for purpose {context.purpose}"
             )
-        findings = _detect_sensitive_text(value)
+
+        findings = set(_detect_sensitive_text(value))
+        inspected = _mask_allowed_placeholders(_normalise_for_dlp(value))
+        if redact_identity_values(inspected, patient_identity) != inspected:
+            findings.add("current_patient_identity")
         if findings:
             logger.warning(
                 "ai_text_payload denied patient_id=%s purpose=%s field=%s findings=%s",

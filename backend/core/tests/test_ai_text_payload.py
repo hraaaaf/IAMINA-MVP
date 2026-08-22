@@ -20,7 +20,12 @@ from llm.factory import _enforce_text_payload_policy
 
 @pytest.fixture
 def consenting_patient(db):
-    user = User.objects.create_user(username="payload-patient")
+    user = User.objects.create_user(
+        username="payload-patient",
+        first_name="Amina",
+        last_name="El Mansouri",
+        email="amina@example.ma",
+    )
     BasePatientProfile.objects.create(
         patient=user,
         date_of_birth=date(1990, 1, 1),
@@ -97,6 +102,26 @@ def test_purpose_specific_size_limit_is_enforced(consenting_patient):
 def test_semantic_dlp_denies_identifiers(consenting_patient, value, finding):
     with ai_egress_scope(consenting_patient.id, "companion_chat", TEXT):
         with pytest.raises(AIPayloadDenied, match=finding):
+            authorize_text_payload(
+                {"system_prompt": "system", "user_prompt": value}
+            )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "Bonjour Amina, voici votre synthèse.",
+        "El Mansouri présente une glycémie à 126 mg/dL.",
+        "Compte payload-patient.",
+        "Date 1990-01-01.",
+    ],
+)
+def test_current_patient_identity_is_denied_without_identity_label(
+    consenting_patient,
+    value,
+):
+    with ai_egress_scope(consenting_patient.id, "companion_chat", TEXT):
+        with pytest.raises(AIPayloadDenied, match="current_patient_identity"):
             authorize_text_payload(
                 {"system_prompt": "system", "user_prompt": value}
             )
@@ -193,6 +218,21 @@ def test_provider_complete_is_not_called_when_dlp_denies_payload(consenting_pati
     with ai_egress_scope(consenting_patient.id, "companion_chat", TEXT):
         with pytest.raises(AIPayloadDenied, match="email"):
             guarded.complete("system", "patient@example.com")
+
+    original_complete.assert_not_called()
+
+
+def test_provider_complete_is_not_called_for_current_patient_name(consenting_patient):
+    provider = MagicMock()
+    original_complete = MagicMock()
+    provider.complete = original_complete
+    provider.stream = MagicMock()
+    provider.think = MagicMock()
+    guarded = _enforce_text_payload_policy(provider)
+
+    with ai_egress_scope(consenting_patient.id, "companion_chat", TEXT):
+        with pytest.raises(AIPayloadDenied, match="current_patient_identity"):
+            guarded.complete("system", "Amina a une glycémie à 126 mg/dL")
 
     original_complete.assert_not_called()
 
