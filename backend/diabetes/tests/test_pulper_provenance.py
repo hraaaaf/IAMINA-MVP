@@ -12,6 +12,7 @@ from diabetes.models import LabReport
 from diabetes.services.documents.neutral_adapter import from_neutral, to_neutral
 from diabetes.services.documents.pulper import ingest
 from diabetes.services.documents.store import persist
+from media.documents.security import DocumentInspection
 
 _DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
@@ -61,6 +62,10 @@ class PulperTextProvenanceTest(SimpleTestCase):
         )
         with (
             patch(
+                "diabetes.services.documents.pulper.inspect_document",
+                return_value=DocumentInspection(kind="docx", mime_type=_DOCX_MIME),
+            ),
+            patch(
                 "diabetes.services.documents.pulper.extract_docx",
                 return_value=raw_text,
             ),
@@ -91,8 +96,12 @@ class PulperTextProvenanceTest(SimpleTestCase):
             hashlib.sha256(b"synthetic-docx").hexdigest(),
         )
         self.assertEqual(output.extractor, "media.docx")
+        self.assertEqual(output.extractor_version, "2")
         self.assertEqual(output.parser_model, "gemini-2.5-flash")
-        self.assertEqual(output.prompt_version, "pulper-parse-v2-provenance")
+        self.assertEqual(
+            output.prompt_version,
+            "pulper-parse-v3-untrusted-boundary",
+        )
         self.assertEqual(evidence.raw_value, "7.2%")
         self.assertEqual(evidence.source_ref, "text:L0002")
         self.assertTrue(evidence.verified)
@@ -153,6 +162,7 @@ class PulperSpreadsheetProvenanceTest(SimpleTestCase):
             hashlib.sha256(payload).hexdigest(),
         )
         self.assertEqual(output.extractor, "diabetes.spreadsheet")
+        self.assertEqual(output.extractor_version, "2")
         self.assertIsNone(output.parser_model)
 
         glucose_evidence = reading.evidence["value_mgdl"]
@@ -217,6 +227,7 @@ class PulperProvenancePersistenceTest(TestCase):
         )
         self.assertEqual(provenance["extractor"], "diabetes.spreadsheet")
         self.assertNotIn("raw_text", provenance)
+        self.assertEqual(report.raw_text, "")
 
         glucose_record = provenance["records"][0]
         self.assertEqual(glucose_record["record_type"], "glucose_reading")

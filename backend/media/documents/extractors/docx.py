@@ -1,46 +1,52 @@
-"""
-DOCX / plain-text extractor — Phase 12 Document Pulper.
+"""Bounded DOCX text extractor for the Document Pulper."""
 
-Extracts all paragraph and table text from .docx files.
-Returns raw text that is then passed to the LLM parsing prompt.
-"""
 from __future__ import annotations
 
 import io
 import logging
 
+from media.documents.security import DocumentSecurityError, validate_office_container
+
 logger = logging.getLogger(__name__)
+_MAX_TEXT_CHARS = 1_000_000
 
 
 def extract_docx(file_bytes: bytes) -> str:
-    """
-    Extract text from a Word (.docx) file.
-
-    Returns plain text, or '' on failure.
-    """
+    """Extract bounded text from a validated DOCX container."""
+    validate_office_container(file_bytes, "docx")
     try:
         from docx import Document
-        doc    = Document(io.BytesIO(file_bytes))
-        parts  = []
 
-        # Paragraphs
+        doc = Document(io.BytesIO(file_bytes))
+        parts: list[str] = []
+        total_chars = 0
+
+        def append_part(text: str) -> None:
+            nonlocal total_chars
+            if not text:
+                return
+            total_chars += len(text)
+            if total_chars > _MAX_TEXT_CHARS:
+                raise DocumentSecurityError("docx_text_limit")
+            parts.append(text)
+
         for para in doc.paragraphs:
-            text = para.text.strip()
-            if text:
-                parts.append(text)
+            append_part(para.text.strip())
 
-        # Tables
         for table in doc.tables:
             for row in table.rows:
-                row_text = '\t'.join(cell.text.strip() for cell in row.cells)
-                if row_text.strip():
-                    parts.append(row_text)
+                append_part("\t".join(cell.text.strip() for cell in row.cells).strip())
 
-        return '\n'.join(parts)
+        return "\n".join(parts)
 
+    except DocumentSecurityError:
+        raise
     except ImportError:
-        logger.error("python-docx not installed — DOCX extraction unavailable.")
-        return ''
+        logger.error("docx_extractor: python-docx unavailable")
+        return ""
     except Exception as exc:
-        logger.warning("docx_extractor: failed: %s", exc)
-        return ''
+        logger.warning(
+            "docx_extractor: failed error_class=%s",
+            type(exc).__name__,
+        )
+        return ""
