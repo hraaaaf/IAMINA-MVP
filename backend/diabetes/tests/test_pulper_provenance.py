@@ -100,7 +100,7 @@ class PulperTextProvenanceTest(SimpleTestCase):
         self.assertEqual(output.parser_model, "gemini-2.5-flash")
         self.assertEqual(
             output.prompt_version,
-            "pulper-parse-v3-untrusted-boundary",
+            "pulper-parse-v4-sparse-output",
         )
         self.assertEqual(evidence.raw_value, "7.2%")
         self.assertEqual(evidence.source_ref, "text:L0002")

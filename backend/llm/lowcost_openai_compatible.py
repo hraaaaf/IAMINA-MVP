@@ -101,6 +101,12 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
             {"role": "user", "content": user},
         ]
 
+    def _request_tuning(self) -> dict[str, str]:
+        """Return provider/model-specific tuning without leaking it across adapters."""
+        if self.provider_id == "groq" and self.model.startswith("openai/gpt-oss-"):
+            return {"reasoning_effort": "low"}
+        return {}
+
     def complete(self, system: str, user: str) -> LLMResponse:
         try:
             response = self.client.chat.completions.create(
@@ -108,6 +114,7 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
                 messages=self._messages(system, user),
                 max_tokens=_MAX_OUTPUT_TOKENS,
                 timeout=self.timeout_seconds,
+                **self._request_tuning(),
             )
         except Exception as exc:
             raise normalize_provider_exception(exc, self.provider_id) from exc
@@ -124,6 +131,7 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
                 messages=self._messages(system, user),
                 max_tokens=_MAX_OUTPUT_TOKENS,
                 timeout=self.timeout_seconds,
+                **self._request_tuning(),
             ) as stream:
                 for text in stream.text_stream:
                     if text:

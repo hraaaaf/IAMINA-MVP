@@ -99,7 +99,7 @@ class PulperSecurityBoundaryTest(SimpleTestCase):
         self.assertEqual(_EXTRACTOR_VERSION, "2")
         self.assertEqual(
             _PARSE_PROMPT_VERSION,
-            "pulper-parse-v3-untrusted-boundary",
+            "pulper-parse-v4-sparse-output",
         )
 
     def test_mime_content_mismatch_fails_before_extraction(self):

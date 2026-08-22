@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -71,6 +72,24 @@ def _synthetic_provider(exc: Exception) -> tuple[OpenAICompatibleLowCostProvider
     return provider, client
 
 
+def _successful_provider(
+    provider_id: str,
+    model: str,
+) -> tuple[OpenAICompatibleLowCostProvider, MagicMock]:
+    provider = object.__new__(OpenAICompatibleLowCostProvider)
+    provider.provider_id = provider_id
+    provider.model = model
+    provider.timeout_seconds = 15.0
+    client = MagicMock()
+    response = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content="{}"))],
+        usage=None,
+    )
+    client.chat.completions.create.return_value = response
+    provider.client = client
+    return provider, client
+
+
 @pytest.mark.parametrize(
     ("exc", "expected_error"),
     [
@@ -87,3 +106,31 @@ def test_openai_compatible_failures_are_normalized_without_hidden_retry(exc, exp
 
     assert raised.value.provider == "groq"
     assert client.chat.completions.create.call_count == 1
+
+
+def test_groq_gpt_oss_uses_low_reasoning_with_fixed_160_token_ceiling():
+    provider, client = _successful_provider("groq", "openai/gpt-oss-120b")
+
+    provider.complete("system", "synthetic user")
+
+    kwargs = client.chat.completions.create.call_args.kwargs
+    assert kwargs["max_tokens"] == 160
+    assert kwargs["reasoning_effort"] == "low"
+
+
+@pytest.mark.parametrize(
+    ("provider_id", "model"),
+    [
+        ("qwen", "qwen-plus"),
+        ("deepseek", "deepseek-chat"),
+        ("groq", "llama-3.3-70b-versatile"),
+    ],
+)
+def test_reasoning_effort_is_not_leaked_to_other_provider_model_pairs(provider_id, model):
+    provider, client = _successful_provider(provider_id, model)
+
+    provider.complete("system", "synthetic user")
+
+    kwargs = client.chat.completions.create.call_args.kwargs
+    assert kwargs["max_tokens"] == 160
+    assert "reasoning_effort" not in kwargs
