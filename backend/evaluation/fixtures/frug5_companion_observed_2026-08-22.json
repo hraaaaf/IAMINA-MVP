@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "source": {
+    "repository": "hraaaaf/IAMINA-MVP",
+    "pull_request": 483,
+    "workflow_run_id": 32602461710,
+    "observed_head": "a21a5cf0beeeaebb3078abd2e1e3b0240355f003",
+    "run_date": "2026-08-22"
+  },
+  "traffic": {
+    "synthetic": true,
+    "patient_data": false,
+    "scope": "controlled_synthetic_companion_production_route",
+    "current_history_budget_chars": 1800,
+    "baseline_history_budget_chars": 3000
+  },
+  "provider": {
+    "id": "groq",
+    "model": "openai/gpt-oss-120b",
+    "pricing_fixture": "frug7_groq_text_price.json"
+  },
+  "events": [
+    {"event": "companion_route", "route": "zero_model"},
+    {"event": "companion_route", "route": "zero_model"},
+    {"event": "companion_route", "route": "safety"},
+    {"event": "companion_route", "route": "safety"},
+    {"event": "companion_route", "route": "llm"},
+    {
+      "event": "llm_usage",
+      "status": "success",
+      "workload": "conversation",
+      "provider_route": "openai/gpt-oss-120b",
+      "from_cache": false,
+      "prompt_chars": 3623,
+      "input_tokens": 867,
+      "output_tokens": 60,
+      "cached_input_tokens": null,
+      "total_tokens": 927,
+      "latency_ms": 700.5
+    },
+    {"event": "companion_route", "route": "llm"},
+    {
+      "event": "llm_usage",
+      "status": "success",
+      "workload": "conversation",
+      "provider_route": "openai/gpt-oss-120b",
+      "from_cache": false,
+      "prompt_chars": 3603,
+      "input_tokens": 857,
+      "output_tokens": 72,
+      "cached_input_tokens": null,
+      "total_tokens": 929,
+      "latency_ms": 701.9
+    },
+    {"event": "companion_route", "route": "llm"},
+    {
+      "event": "llm_usage",
+      "status": "success",
+      "workload": "conversation",
+      "provider_route": "openai/gpt-oss-120b",
+      "from_cache": false,
+      "prompt_chars": 3609,
+      "input_tokens": 874,
+      "output_tokens": 70,
+      "cached_input_tokens": null,
+      "total_tokens": 944,
+      "latency_ms": 628.0
+    },
+    {"event": "companion_route", "route": "llm"},
+    {
+      "event": "llm_usage",
+      "status": "success",
+      "workload": "conversation",
+      "provider_route": "openai/gpt-oss-120b",
+      "from_cache": false,
+      "prompt_chars": 3629,
+      "input_tokens": 886,
+      "output_tokens": 76,
+      "cached_input_tokens": null,
+      "total_tokens": 962,
+      "latency_ms": 337.8
+    }
+  ],
+  "baseline_comparison": {
+    "complete": false,
+    "status": "quota_limited",
+    "input_token_p50": null,
+    "input_token_p95": null,
+    "p95_reduction_ratio": null
+  },
+  "provider_throttle": {
+    "observed": true,
+    "status_code": 429,
+    "dimension": "tokens_per_minute",
+    "limit": 8000,
+    "used_before_rejected_request": 7661,
+    "rejected_request_tokens": 1178,
+    "automatic_retry": false
+  },
+  "proof_boundaries": {
+    "production_or_beta_traffic": false,
+    "provider_billing_reconciliation": false,
+    "native_speaker_quality_certification": false,
+    "patient_egress_approval": false,
+    "accepted_safe_answer_cost_available": false
+  }
+}

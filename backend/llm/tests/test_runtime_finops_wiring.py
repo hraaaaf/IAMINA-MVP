@@ -1,5 +1,5 @@
 import json
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -217,9 +217,18 @@ def test_stale_price_blocks_before_external_provider_call(
     consenting_patient,
     monkeypatch,
 ):
+    runtime_today = date.today()
+    runtime_now = datetime(
+        runtime_today.year,
+        runtime_today.month,
+        runtime_today.day,
+        12,
+        tzinfo=UTC,
+    )
+    monkeypatch.setattr("llm.factory.timezone.now", lambda: runtime_now)
     _configure(
         monkeypatch,
-        review_due_on=date.today() - timedelta(days=1),
+        review_due_on=runtime_today - timedelta(days=1),
     )
     provider = SyntheticProvider()
     guarded = _external_guard(provider, monkeypatch)
