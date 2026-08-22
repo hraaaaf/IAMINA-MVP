@@ -5,6 +5,7 @@ import pytest
 from evaluation.frug9_scale_cost_model import (
     SCALE_TIERS,
     EvidenceValue,
+    ScaleCapacityInputs,
     ScalePriceInputs,
     ScaleUsageInputs,
     build_scale_scaffold,
@@ -43,8 +44,13 @@ def test_builds_exact_canonical_scale_tiers() -> None:
 
     assert tuple(tier.mau for tier in scaffold.tiers) == SCALE_TIERS
     assert scaffold.fully_costed is True
+    assert scaffold.capacity_assessed is False
     assert all(tier.total_cost_microusd is not None for tier in scaffold.tiers)
     assert all(tier.cost_per_mau_microusd is not None for tier in scaffold.tiers)
+    assert all(
+        tier.llm_provider_tpm_capacity_status == "not_assessed"
+        for tier in scaffold.tiers
+    )
 
 
 def test_missing_price_remains_unavailable_instead_of_becoming_zero() -> None:
@@ -113,6 +119,108 @@ def test_variable_costs_scale_linearly_while_fixed_cost_does_not() -> None:
     assert ten_k.cloud_ocr_cost_microusd == one_k.cloud_ocr_cost_microusd * 10
     assert ten_k.fixed_cost_microusd == one_k.fixed_cost_microusd
     assert ten_k.total_cost_microusd != one_k.total_cost_microusd * 10
+
+
+def test_observed_tpm_limit_alone_does_not_extrapolate_scale_capacity() -> None:
+    capacity = ScaleCapacityInputs(
+        llm_provider_tpm_limit=ev(
+            "8000",
+            source="GitHub Actions run 32602461710 observed Groq throttle",
+        )
+    )
+
+    scaffold = build_scale_scaffold(
+        complete_usage(),
+        complete_prices(),
+        capacity,
+    )
+    tier = scaffold.tiers[0]
+
+    assert tier.llm_provider_tpm_limit == Decimal("8000")
+    assert tier.projected_peak_llm_tpm is None
+    assert tier.llm_provider_tpm_utilization_ratio is None
+    assert tier.llm_provider_tpm_capacity_status == "unresolved"
+    assert tier.capacity_unresolved_inputs == (
+        "peak_llm_calls_per_minute_per_mau",
+    )
+    assert scaffold.capacity_assessed is False
+
+
+def test_peak_scenario_can_compare_tiers_without_becoming_measured_capacity() -> None:
+    capacity = ScaleCapacityInputs(
+        llm_provider_tpm_limit=ev(
+            "8000",
+            source="GitHub Actions run 32602461710 observed Groq throttle",
+        ),
+        peak_llm_calls_per_minute_per_mau=ev(
+            "0.001",
+            kind="scenario",
+            source="synthetic peak scenario A",
+        ),
+    )
+
+    scaffold = build_scale_scaffold(
+        complete_usage(),
+        complete_prices(),
+        capacity,
+    )
+    one_k, hundred_k = scaffold.tiers[0], scaffold.tiers[-1]
+
+    assert one_k.projected_peak_llm_tpm == Decimal("580.000")
+    assert one_k.llm_provider_tpm_utilization_ratio == Decimal("0.0725")
+    assert one_k.llm_provider_tpm_capacity_status == "within_observed_limit"
+    assert hundred_k.projected_peak_llm_tpm == Decimal("58000.000")
+    assert hundred_k.llm_provider_tpm_utilization_ratio == Decimal("7.25")
+    assert hundred_k.llm_provider_tpm_capacity_status == "exceeds_observed_limit"
+    assert one_k.evidence_kinds == ("measured", "scenario")
+    assert scaffold.capacity_assessed is True
+
+
+def test_missing_token_evidence_keeps_capacity_unresolved() -> None:
+    usage = complete_usage()
+    usage = ScaleUsageInputs(
+        interactions_per_mau=usage.interactions_per_mau,
+        llm_calls_per_interaction=usage.llm_calls_per_interaction,
+        llm_input_tokens_per_call=None,
+        llm_output_tokens_per_call=usage.llm_output_tokens_per_call,
+        cloud_ocr_pages_per_mau=usage.cloud_ocr_pages_per_mau,
+        storage_gb_month_per_mau=usage.storage_gb_month_per_mau,
+        egress_gb_per_mau=usage.egress_gb_per_mau,
+    )
+    capacity = ScaleCapacityInputs(
+        llm_provider_tpm_limit=ev("8000"),
+        peak_llm_calls_per_minute_per_mau=ev("0.001"),
+    )
+
+    tier = build_scale_scaffold(usage, complete_prices(), capacity).tiers[0]
+
+    assert tier.projected_peak_llm_tpm is None
+    assert tier.llm_provider_tpm_capacity_status == "unresolved"
+    assert "llm_input_tokens_per_call" in tier.capacity_unresolved_inputs
+
+
+def test_provider_tpm_limit_must_be_measured_evidence() -> None:
+    capacity = ScaleCapacityInputs(
+        llm_provider_tpm_limit=ev(
+            "8000",
+            kind="scenario",
+            source="hypothetical quota",
+        ),
+        peak_llm_calls_per_minute_per_mau=ev("0.001"),
+    )
+
+    with pytest.raises(ValueError, match="measured evidence"):
+        build_scale_scaffold(complete_usage(), complete_prices(), capacity)
+
+
+def test_non_positive_provider_tpm_limit_fails_closed() -> None:
+    capacity = ScaleCapacityInputs(
+        llm_provider_tpm_limit=ev("0"),
+        peak_llm_calls_per_minute_per_mau=ev("0.001"),
+    )
+
+    with pytest.raises(ValueError, match="TPM limit"):
+        build_scale_scaffold(complete_usage(), complete_prices(), capacity)
 
 
 def test_invalid_evidence_fails_closed() -> None:
