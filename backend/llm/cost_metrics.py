@@ -15,6 +15,17 @@ from typing import Any
 
 _COST_PREFIX = "cost_telemetry "
 _ROUTES = ("safety", "zero_model", "llm")
+_OCR_LANES = (
+    "local_text_layer",
+    "on_device_ocr",
+    "local_ocr",
+    "governed_cloud_ocr",
+    "unavailable",
+)
+_OCR_MODALITIES = frozenset(
+    {"digital_pdf", "scanned_pdf", "document_image", "glucometer"}
+)
+_OCR_SCRIPTS = frozenset({"latin", "arabic", "unknown"})
 _TOKEN_FIELDS = (
     "input_tokens",
     "output_tokens",
@@ -47,8 +58,9 @@ def parse_cost_telemetry_lines(lines: Iterable[str]) -> list[dict[str, Any]]:
 
 
 def aggregate_cost_events(events: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
-    """Aggregate companion route and LLM usage events without guessed precision."""
+    """Aggregate companion, OCR-route and LLM usage events without guessing."""
     route_counts = Counter({route: 0 for route in _ROUTES})
+    ocr_lane_counts = Counter({lane: 0 for lane in _OCR_LANES})
     llm_successes: list[Mapping[str, Any]] = []
     llm_errors = 0
 
@@ -59,6 +71,10 @@ def aggregate_cost_events(events: Iterable[Mapping[str, Any]]) -> dict[str, Any]
             if route not in _ROUTES:
                 raise ValueError(f"unsupported companion route in telemetry: {route}")
             route_counts[route] += 1
+            continue
+        if event_type == "ocr_route":
+            _validate_ocr_route_event(event)
+            ocr_lane_counts[str(event["lane"])] += 1
             continue
         if event_type != "llm_usage":
             continue
@@ -77,6 +93,16 @@ def aggregate_cost_events(events: Iterable[Mapping[str, Any]]) -> dict[str, Any]
         for route in _ROUTES
     }
 
+    ocr_decisions = sum(ocr_lane_counts.values())
+    ocr_lane_rates = {
+        lane: (ocr_lane_counts[lane] / ocr_decisions if ocr_decisions else None)
+        for lane in _OCR_LANES
+    }
+    local_ocr_count = sum(
+        ocr_lane_counts[lane]
+        for lane in ("local_text_layer", "on_device_ocr", "local_ocr")
+    )
+
     by_workload: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     for event in llm_successes:
         workload = event.get("workload")
@@ -91,6 +117,14 @@ def aggregate_cost_events(events: Iterable[Mapping[str, Any]]) -> dict[str, Any]
         "llm_call_rate_per_interaction": route_rates["llm"],
         "zero_model_rate_per_interaction": route_rates["zero_model"],
         "safety_rate_per_interaction": route_rates["safety"],
+        "ocr_route_decisions": ocr_decisions,
+        "ocr_lane_counts": dict(ocr_lane_counts),
+        "ocr_lane_rates": ocr_lane_rates,
+        "ocr_local_rate": (
+            local_ocr_count / ocr_decisions if ocr_decisions else None
+        ),
+        "ocr_cloud_rate": ocr_lane_rates["governed_cloud_ocr"],
+        "ocr_unavailable_rate": ocr_lane_rates["unavailable"],
         "llm_success_events": len(llm_successes),
         "llm_error_events": llm_errors,
         "overall": _summarize_usage_group(llm_successes),
@@ -100,6 +134,21 @@ def aggregate_cost_events(events: Iterable[Mapping[str, Any]]) -> dict[str, Any]
         },
         "cost_status": "unavailable_without_reconciled_billing_and_stable_pricing",
     }
+
+
+def _validate_ocr_route_event(event: Mapping[str, Any]) -> None:
+    modality = event.get("modality")
+    script = event.get("script")
+    bounded_capture = event.get("bounded_capture")
+    lane = event.get("lane")
+    if modality not in _OCR_MODALITIES:
+        raise ValueError(f"unsupported OCR modality in telemetry: {modality}")
+    if script not in _OCR_SCRIPTS:
+        raise ValueError(f"unsupported OCR script in telemetry: {script}")
+    if not isinstance(bounded_capture, bool):
+        raise ValueError("OCR bounded_capture telemetry must be bool")
+    if lane not in _OCR_LANES:
+        raise ValueError(f"unsupported OCR lane in telemetry: {lane}")
 
 
 def _summarize_usage_group(events: list[Mapping[str, Any]]) -> dict[str, Any]:
