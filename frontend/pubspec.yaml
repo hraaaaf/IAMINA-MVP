@@ -45,6 +45,9 @@ dependencies:
 
   # Document Pulper — Phase 12 (multi-format file import)
   file_picker: ^8.1.4
+  # FRUG-1 pre-upload raster minimization + exact-byte digest
+  crypto: 3.0.7
+  image: 4.9.1
 
   # Utilities
   uuid: ^4.0.0
