@@ -125,7 +125,7 @@ class PulperTimestampIntegrityTest(SimpleTestCase):
             any("sans timestamp explicite" in error for error in result.errors)
         )
 
-    def test_persist_keeps_aware_timestamp_semantics(self):
+    def test_persist_keeps_aware_timestamp_instant_when_canonicalized_to_utc(self):
         timestamp = "2026-01-15T10:20:30+01:00"
         output = PulperOutput(
             glucose_readings=[GlucoseReading(value_mgdl=123, timestamp=timestamp)],
@@ -139,6 +139,7 @@ class PulperTimestampIntegrityTest(SimpleTestCase):
                 "diabetes.services.documents.store.LabReport.objects.create",
                 return_value=report,
             ),
+            patch("diabetes.services.documents.store.LabReport.objects.filter") as filter_report,
             patch("diabetes.services.documents.store.LogEntry.objects.filter") as filter_log,
             patch("diabetes.services.documents.store.LogEntry.objects.create") as create_log,
         ):
@@ -148,4 +149,7 @@ class PulperTimestampIntegrityTest(SimpleTestCase):
         self.assertEqual(result.errors, [])
         self.assertEqual(result.glucose_readings_saved, 1)
         logged_at = create_log.call_args.kwargs["logged_at"]
-        self.assertEqual(logged_at.isoformat(), timestamp)
+        source_instant = datetime.fromisoformat(timestamp).astimezone(timezone.utc)
+        self.assertEqual(logged_at, source_instant)
+        self.assertEqual(logged_at.utcoffset(), timedelta(0))
+        filter_report.return_value.update.assert_called_once()

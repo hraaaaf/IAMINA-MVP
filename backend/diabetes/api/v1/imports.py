@@ -8,32 +8,34 @@ POST /api/v1/import/librelink
 Pipeline:
   1. Read uploaded CSV bytes, decode to text
   2. Parse via diabetes.services.import_csv (anti-hallucination range check)
-  3. Bulk-create LogEntry records (idempotent via client_uuid)
+  3. Create LogEntry records with shared import identity
   4. Return import summary: {imported, duplicates, rejected, preview[0:3]}
 
 Idempotency:
-  Each reading gets a deterministic UUID5 derived from
-  (patient_id, timestamp, glucose) so re-uploading the same file is a no-op.
+  All diabetes import paths share a deterministic identity derived from
+  (patient_id, canonical UTC timestamp, glucose at storage precision).
+  Semantic lookup also catches legacy imported rows with older UUID schemes.
 """
 from __future__ import annotations
 
-import hashlib
 import logging
-import uuid
 from typing import Optional
 
+from django.db import IntegrityError
 from django.http import HttpRequest
-from django.utils import timezone as tz
 from ninja import File, Router, Schema, UploadedFile
 
 from diabetes.models import LogEntry
 from diabetes.services.import_csv import parse_librelink_csv
+from diabetes.services.import_identity import (
+    imported_reading_exists,
+    make_import_client_uuid,
+    normalize_import_timestamp,
+)
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["import"])
 
-
-# ── Response schemas ──────────────────────────────────────────────────────────
 
 class ImportSample(Schema):
     timestamp:   str
@@ -45,28 +47,17 @@ class ImportResultResponse(Schema):
     ok:              bool
     imported:        int
     duplicates:      int
-    rejected_values: int   # out-of-range physiological values
+    rejected_values: int
     skipped_rows:    int
     detected_format: str
     error:           Optional[str] = None
-    sample:          list[ImportSample]   # first 3 readings for UI preview
+    sample:          list[ImportSample]
 
-
-# ── Idempotency helper ────────────────────────────────────────────────────────
 
 def _make_client_uuid(patient_id: int, ts, glucose: float) -> str:
-    """
-    Deterministic UUID for idempotency across re-uploads of the same file.
-    SHA-256 of (patient_id, ISO timestamp, glucose rounded to 1dp) → UUID bytes.
-    Same reading → same UUID → unique constraint on LogEntry.client_uuid blocks
-    the duplicate without raising an unhandled exception.
-    """
-    seed = f"librelink:{patient_id}:{ts.isoformat()}:{glucose:.1f}"
-    digest = hashlib.sha256(seed.encode()).digest()
-    return str(uuid.UUID(bytes=digest[:16]))
+    """Backward-compatible wrapper around the shared import identity."""
+    return make_import_client_uuid(patient_id, ts, glucose)
 
-
-# ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @router.post("/import/librelink", response=ImportResultResponse)
 def import_librelink_csv(request: HttpRequest, csv_file: UploadedFile = File(...)):
@@ -84,10 +75,9 @@ def import_librelink_csv(request: HttpRequest, csv_file: UploadedFile = File(...
         detected_format — "librelink_detailed" | "simple" | "unknown"
         sample          — first 3 parsed readings (for UI preview)
     """
-    patient    = request.auth
+    patient = request.auth
     patient_id = getattr(patient, "id", 0)
 
-    # Decode uploaded file to text (LibreLink CSVs are typically UTF-8 or Latin-1)
     raw_bytes = csv_file.read()
     try:
         csv_text = raw_bytes.decode("utf-8")
@@ -108,38 +98,38 @@ def import_librelink_csv(request: HttpRequest, csv_file: UploadedFile = File(...
             sample=[],
         )
 
-    imported   = 0
+    imported = 0
     duplicates = 0
+    database_failed = False
 
     for reading in result.readings:
-        client_uuid = _make_client_uuid(patient_id, reading.timestamp, reading.glucose_mgdl)
+        canonical_ts = normalize_import_timestamp(reading.timestamp)
 
-        # Fast-path idempotency check: skip if UUID already stored
-        if LogEntry.objects.filter(client_uuid=client_uuid).exists():
+        if imported_reading_exists(patient, canonical_ts, reading.glucose_mgdl):
             duplicates += 1
             continue
 
-        ts = reading.timestamp
-        if ts.tzinfo is None:
-            ts = tz.make_aware(ts, tz.get_current_timezone())
+        client_uuid = _make_client_uuid(
+            patient_id,
+            canonical_ts,
+            reading.glucose_mgdl,
+        )
 
         try:
             LogEntry.objects.create(
                 patient=patient,
-                logged_at=ts,
+                logged_at=canonical_ts,
                 blood_sugar=reading.glucose_mgdl,
                 client_uuid=client_uuid,
                 source="import",
                 meal_type="",
             )
             imported += 1
+        except IntegrityError:
+            duplicates += 1
         except Exception as exc:
-            # Unique constraint race (unlikely but safe to handle) or other DB error
-            if "unique" in str(exc).lower() or "duplicate" in str(exc).lower():
-                duplicates += 1
-            else:
-                logger.warning("librelink import: row failed: %s", exc)
-                duplicates += 1
+            database_failed = True
+            logger.warning("librelink import: row failed: %s", exc)
 
     sample = [
         ImportSample(
@@ -152,15 +142,20 @@ def import_librelink_csv(request: HttpRequest, csv_file: UploadedFile = File(...
 
     logger.info(
         "import.librelink patient=%s imported=%d duplicates=%d rejected=%d format=%s",
-        patient_id, imported, duplicates, result.rejected_values, result.detected_format,
+        patient_id,
+        imported,
+        duplicates,
+        result.rejected_values,
+        result.detected_format,
     )
 
     return ImportResultResponse(
-        ok=True,
+        ok=not database_failed,
         imported=imported,
         duplicates=duplicates,
         rejected_values=result.rejected_values,
         skipped_rows=result.skipped_rows,
         detected_format=result.detected_format,
+        error="database_write_failed" if database_failed else None,
         sample=sample,
     )
