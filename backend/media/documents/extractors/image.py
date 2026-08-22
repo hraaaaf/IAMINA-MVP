@@ -11,6 +11,7 @@ from core.ai_processor_policy import (
     AIProcessorPolicyDenied,
     get_processor_policy,
 )
+from core.phi_privacy import current_patient_egress_purpose
 from media.documents.ocr_router import (
     OcrCapabilities,
     OcrRequest,
@@ -56,6 +57,12 @@ def _runtime_ocr_capabilities(provider: str) -> OcrCapabilities:
                 and _DEFAULT_PURPOSE in policy.allowed_purposes
             )
     except AIProcessorPolicyDenied:
+        governed_cloud_allowed = False
+
+    # A patient medical-document image can contain identity before OCR. Until
+    # IAMINA has a qualified local de-identification lane, sending those raw
+    # pixels to cloud OCR would cross the PHI boundary before text masking.
+    if current_patient_egress_purpose() == _DEFAULT_PURPOSE:
         governed_cloud_allowed = False
 
     return OcrCapabilities(governed_cloud_allowed=governed_cloud_allowed)
