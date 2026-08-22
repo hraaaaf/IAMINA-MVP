@@ -9,7 +9,10 @@ class SharedDocumentExtractorCloseoutTest(TestCase):
         source = Path(pulper.__file__).read_text(encoding="utf-8")
         self.assertIn("from media.documents.extractors.docx import extract_docx", source)
         self.assertIn("from media.documents.extractors.pdf import extract_pdf", source)
-        self.assertIn("from media.documents.extractors.image import extract_image", source)
+        self.assertRegex(
+            source,
+            r"from media\.documents\.extractors\.image import .*extract_image",
+        )
         self.assertNotIn("diabetes.services.documents.extractors.docx", source)
         self.assertNotIn("diabetes.services.documents.extractors.pdf", source)
         self.assertNotIn("diabetes.services.documents.extractors.image", source)
