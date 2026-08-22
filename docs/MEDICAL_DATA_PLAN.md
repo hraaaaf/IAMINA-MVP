@@ -65,6 +65,14 @@ Every metric/pattern must define:
 
 Do not hide insufficient data behind confident prose.
 
+### Canonical clinical input facts
+
+PR #481 adds the chassis-owned `CanonicalClinicalFact` compatibility contract so heterogeneous source adapters can express the same normalized clinical shape without moving diabetes-specific clinical authority into shared core. Current adapters cover manual/import/voice `LogEntry`, normalized `CGMReadingRecord`, and neutral Pulper `DocumentExtraction`; they do **not** yet replace the authoritative persistence models.
+
+Canonical facts must preserve patient subject reference, normalized concept/value, effective time when known, source/provenance, confidence and an explicit `accepted` / `review_required` / `rejected` decision. Pulper-derived facts retain available source hash/reference, extractor/version, schema, model/prompt version and evidence-verification metadata. Any supporting timestamp/context/attribute actually used by a fact contributes to the fact's review state: a used `review_required` field prevents silent promotion to `accepted`, while rejected supporting metadata is omitted rather than treated as trusted context.
+
+FHIR/LOINC/UCUM are interoperability vocabularies, not permission to invent semantics. An adapter may attach a coding system only when it can prove the relevant meaning. Unknown units must not be auto-labelled UCUM, and no LOINC code may be inferred merely from a broad label such as “glucose” when specimen/method semantics are absent.
+
 ### Context observations
 
 Illness, stress, activity, sleep and fatigue context are observational patient-entered data. Missing context is **unknown**, not evidence of a negative/normal state. New logging paths must therefore avoid manufacturing `no`, `good` or `ok` values when the patient did not report them. Existing historical rows are not retrospectively rewritten to guess intent. Context may later support explicitly governed observational pattern detection, but it must not be presented as a proven cause of a glucose change or converted into treatment/dose advice.
@@ -242,11 +250,13 @@ Requirements:
 
 Clinical inputs must reach domain/AI logic only after deterministic normalization and validation.
 
-Current invariant after P0-A:
+Current invariants:
 
 - protected legacy and registry-mounted module routes are covered by the unit guard;
 - namespaced routes such as `/api/v1/diabetes/...` must not bypass normalization;
-- unexpected normalization failures are fail-closed rather than allowing unvalidated clinical payloads to continue.
+- unexpected normalization failures are fail-closed rather than allowing unvalidated clinical payloads to continue;
+- where an input adapter emits `CanonicalClinicalFact`, source provenance and review state must be preserved rather than inferred away;
+- interoperability coding is explicit: unknown units remain without a claimed unit system and missing specimen/method semantics must not be filled with guessed LOINC codes.
 
 ## 9. MENA locale safety
 
@@ -266,7 +276,7 @@ A translation being linguistically correct is not sufficient; the safety intent 
 
 ### Current enforced egress governance layer
 
-P0-MENA-1 completed the central server-side AI/data-egress boundary for currently wired live external operations.
+P0-MENA-1 completed the central server-side AI/data-egress boundary for currently wired live external operations. PR #481 strengthens the text boundary so it independently resolves the currently scoped patient's known identity and denies the final text payload if a known direct identifier survives caller-side pseudonymization.
 
 Before a real external model/media call, the system requires:
 
@@ -284,7 +294,8 @@ The following conditions deny egress by default:
 - unknown purpose;
 - undeclared/unauthorized modality;
 - payload outside the sanctioned minimization/allowlist contract;
-- provider/path outside the governed egress policy.
+- provider/path outside the governed egress policy;
+- a final text payload that still contains a known direct identifier of the scoped patient.
 
 This authorization is intentionally evaluated at real egress time so deterministic emergency/safety handling remains available even when a patient declines AI.
 
@@ -298,9 +309,11 @@ External models may receive only the minimum approved payload for an explicit pu
 - raw unrelated clinical logs;
 - unrelated health data.
 
-Raw audio/images/documents require stronger treatment because sensitive content can be embedded in the media itself and therefore require the applicable granular consent/policy boundary.
+The patient-aware last-mile text check covers identity values IAMINA can authoritatively resolve from its current identity model (Django name/email/username and profile date of birth), while generic DLP independently targets structured identifiers such as CIN, email, phone and account-like IDs. This is strong pseudonymization, not a proof that every possible free-form identifier has been anonymized: IAMINA currently has no canonical address field to exact-match an unlabeled address, and heuristic address guessing must not be sold as certainty.
 
-Repository-level implementation of the P0-MENA-1 authorization/minimization contract does not itself constitute external legal or deployment approval. Pilot processor/subprocessor, residency/cross-border and restricted consent approvals remain separate fail-closed readiness gates in `docs/ROADMAP.md`.
+Raw audio/images/documents require stronger treatment because sensitive content can be embedded in the media itself and therefore require the applicable granular consent/policy boundary. In particular, patient `document_ingest` images fail closed before cloud OCR until a qualified local OCR/de-identification lane exists; redacting OCR text after raw pixels have already left IAMINA would be too late.
+
+Repository-level implementation of the authorization/minimization contract does not itself constitute external legal or deployment approval. Any release-time processor/residency/consent requirements remain governed by the active roadmap and deployment policy rather than being inferred from adapter existence.
 
 CI must prevent new live direct provider callsites from bypassing the sanctioned authorization boundary.
 

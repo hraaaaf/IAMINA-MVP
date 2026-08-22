@@ -9,7 +9,7 @@
 
 ## 1. Product architecture in one sentence
 
-IAmina is a **Flutter + Django modular monolith for one live diabetes companion**, with existing chassis/module seams, deterministic clinical/safety logic, offline-first data capture, Django-owned auth/token flows with guarded legacy migration compatibility, and a server-enforced AI/data-egress governance boundary for external model/media operations.
+IAmina is a **Flutter + Django modular monolith for one live diabetes companion**, with existing chassis/module seams, deterministic clinical/safety logic, offline-first data capture, Django-owned auth/token flows with guarded legacy migration compatibility, a disease-neutral canonical clinical-fact compatibility seam, and a server-enforced AI/data-egress governance boundary for external model/media operations.
 
 The existence of platform seams does **not** mean IAmina is currently a multi-condition platform.
 
@@ -21,11 +21,13 @@ The existence of platform seams does **not** mean IAmina is currently a multi-co
 - Flutter client for web/mobile.
 - Django + django-ninja backend.
 - Diabetes-specific clinical data, KPI logic, pattern detection, and companion context.
-- Shared core contracts, safety registry/middleware, account/auth infrastructure, observability, and retention instrumentation.
+- Shared core contracts, including the in-memory `CanonicalClinicalFact` compatibility contract, safety registry/middleware, account/auth infrastructure, observability, and retention instrumentation.
 - Django-owned registration/login/logout, signed IAMINA bearer-token flows, revocation and password lifecycle; controlled Firebase migration/link/unlink compatibility remains until the zero-Firebase gate legitimately passes.
 - Provider-specific AI/STT/vision/document adapters still exist behind governed egress boundaries.
 - A governed read-only CGM integration boundary exists at `backend/integrations/cgm/`: Dexcom Share, LibreLinkUp, or LinX/AiDEX X may feed IAmina only through an external Nightscout-compatible bridge. LinX is qualified through an external Juggluco-to-Nightscout path; no Juggluco GPL code, BLE stack, or vendor credential is embedded in IAmina. The boundary exposes normalized timestamped glucose readings with explicit configured source provenance. Bridge/vendor credentials remain outside IAmina, HTTPS is required outside localhost, malformed transport data fails closed, unknown providers are rejected, and this boundary grants no new clinical authority or patient-facing behavior.
-- The completed `core.ai_egress` / P0-MENA-1 boundary governs live external model/media operations by authenticated patient, purpose, modality, consent, payload minimization/allowlisting and applicable provider/processor policy.
+- Current diabetes adapters can project manual/import/voice logs, normalized CGM rows and neutral Pulper document extraction into `CanonicalClinicalFact` while existing database models remain authoritative.
+- The completed `core.ai_egress` / P0-MENA-1 boundary governs live external model/media operations by authenticated patient, purpose, modality, consent, payload minimization/allowlisting and applicable provider/processor policy. PR #481 adds a patient-aware last-mile text identity check at this same boundary.
+- Patient `document_ingest` images fail closed before raw cloud OCR until a qualified local OCR/de-identification lane exists; redacting text after image egress is not treated as equivalent privacy protection.
 - IAmina has an executable truth-provenance and capability/authority contract: generative models may narrate approved data but are not clinical decision authorities.
 - CI blocks new direct external AI callsites that omit the central authorization assertion.
 
@@ -33,7 +35,7 @@ The existence of platform seams does **not** mean IAmina is currently a multi-co
 
 - MENA country-by-country/locale-by-locale rollout.
 - Retire remaining Firebase compatibility only after account-preserving reconciliation/rollback requirements and the permanent zero-Firebase audit gate pass.
-- Keep outbound AI/media policy provider-agnostic while completing external processor/residency/legal approvals for the pilot.
+- Keep outbound AI/media policy provider-agnostic while completing whatever external processor/residency/legal approvals are retained by the active deployment roadmap.
 - Select text/STT/vision providers independently by the prepared live benchmark rather than adapter availability.
 - No second condition until the Retention Gate passes.
 
@@ -72,8 +74,10 @@ Shared core responsibilities include:
 - safety middleware/registries;
 - canonical deterministic patient-facing emergency response composition;
 - shared module contracts;
+- disease-neutral `CanonicalClinicalFact` shape/provenance/review-state invariants, without owning diabetes-specific mappings or persistence;
 - IAmina truth-provenance and capability/authority contracts;
 - AI/media egress authorization and payload-governance policy;
+- patient-aware last-mile text identity denial for known scoped-patient identifiers;
 - unstructured generative clinical-context evidence minimization;
 - observability and retention instrumentation;
 - account deletion/consent hooks;
@@ -91,6 +95,7 @@ The diabetes module owns:
 - diabetes clinical/pattern rules;
 - diabetes-specific structured context;
 - diabetes-specific API surfaces and domain behavior;
+- source adapters that map diabetes-owned logs/CGM and neutral Pulper extraction into the shared canonical-fact shape;
 - recomputable longitudinal `ClinicalObservationState` for approved deterministic personal-response observations;
 - separate `ProactiveInsightState` workflow/delivery state derived from those observations, including bounded non-urgent prioritization and attention-budget bookkeeping.
 
@@ -140,6 +145,7 @@ The current authority order is:
 ```text
 patient input
   → deterministic preprocessing / normalization
+  → optional source adapter → CanonicalClinicalFact compatibility shape
   → deterministic emergency and safety gates
   → diabetes/domain analysis
   → approved structured result
@@ -149,6 +155,7 @@ patient input
        → patient/purpose/modality egress scope
        → server-side consent authorization
        → purpose-specific payload minimization/allowlisting
+       → patient-aware last-mile text identity denial where applicable
        → governed provider/processor policy
        → provider call
   → output safety policy
@@ -203,7 +210,7 @@ Generative AI must never be the authority for:
 
 ## 6. AI / model boundary
 
-### Current state after P0-MENA-1, P0.2, P0.3 and P0.7
+### Current state after P0-MENA-1, P0.2, P0.3, P0.7 and PR #481
 
 `core.ai_egress` is the central governance boundary for currently wired live external model/media operations.
 
@@ -224,7 +231,8 @@ Default-deny conditions include:
 - unknown purpose;
 - modality not authorized for that purpose;
 - payload outside the sanctioned purpose contract;
-- provider/path outside governed policy.
+- provider/path outside governed policy;
+- final text payload containing a known direct identifier of the scoped patient.
 
 The boundary is intentionally **lazy**: entering a request scope does not itself require AI consent. Deterministic emergency/safety behavior can still complete for a patient who declined AI as long as no external provider call is attempted.
 
@@ -232,23 +240,21 @@ The shared text gateway additionally enforces the IAmina capability matrix befor
 
 For unstructured generative clinical context, the shared gateway also applies the P0.7 evidence ceiling before the existing PHI masking boundary. Raw internal detector identifiers are therefore not accepted as semantic clinical evidence merely because a legacy memory/pivot/prompt shape still contains them.
 
+The last-mile text payload boundary independently resolves the scoped patient's current Django identity and rejects surviving known name/email/username/date-of-birth values. Generic semantic DLP independently detects structured email/phone/CIN/account-like identifiers and explicit identity labels. This is not claimed as universal free-form anonymization; identifiers outside the authoritative identity model, such as an unlabeled address, remain documented debt.
+
+Patient `document_ingest` image egress is stricter: raw cloud OCR is unavailable while direct identity may be embedded in pixels before text extraction. A qualified local OCR/de-identification lane is required before widening that path.
+
 Live call paths wired through this policy include the currently inventoried text/gateway, chat, summary/doctor-brief, structured diabetes insight formatting, STT/audio, vision/OCR, and document-processing flows.
 
 CI contains an AI-egress anti-bypass gate so new direct model/provider callsites cannot silently omit the authorization assertion. Focused IAmina contracts prevent both the AI API/doctor-brief path and the structured diabetes insight formatter from returning to direct text-provider access.
 
 ### Important remaining limitations
 
-Completion of P0-MENA-1 is an implementation/governance boundary, not a provider-selection or real-patient deployment approval.
+Completion of the runtime boundary is not a provider-selection or real-patient deployment approval.
 
-Still open outside that runtime contract:
+Still open under current product/deployment governance include the retained locale/provider/readiness gates in `docs/ROADMAP.md`; any external legal/compliance outcomes that were de-scoped must not be rewritten as successful approval.
 
-- restricted pilot processor/subprocessor and consent approval;
-- Morocco residency/cross-border deployment approval;
-- native-language safety parity gates;
-- live P0-MENA-4 text/STT/vision benchmark and evidence-based provider selection;
-- final decommission of legacy provider/auth compatibility seams only after their explicit operational gates pass.
-
-Therefore adapter existence does not imply provider approval, and external legal/deployment readiness remains fail-closed under `docs/ROADMAP.md`.
+Therefore adapter existence does not imply provider approval, and external deployment readiness remains governed separately from runtime implementation.
 
 ## 7. Data-egress policy
 
@@ -264,7 +270,9 @@ Do not send by default:
 - raw unrelated clinical logs;
 - unrelated health data.
 
-Raw audio/images/documents may disclose sensitive information even without explicit text fields, so media transmission requires an approved purpose and the consent/policy level defined by the completed P0-MENA-1 contract.
+Known direct identity values are checked again at the final text authorization boundary. This strengthens pseudonymization but is not universal anonymization: free-form identifiers not represented in IAMINA's identity model still require generic DLP or a future qualified local de-identification layer.
+
+Raw audio/images/documents may disclose sensitive information even without explicit text fields, so media transmission requires an approved purpose and the consent/policy level defined by the completed egress contract. Patient medical-document images remain fail-closed for raw cloud OCR until local de-identification is qualified.
 
 ## 8. Authentication
 
@@ -321,6 +329,8 @@ A locale/dialect is disabled for patient pilot until it has:
 - `client_uuid` is the sync idempotency key and must not be repurposed.
 - KPI calculations covered by ADR-0007 remain SQL-first.
 - Clinical data ownership stays inside the diabetes domain unless a clearly shared concept is proven.
+- `CanonicalClinicalFact` is a shared in-memory compatibility shape, not a new authoritative persistence store; diabetes adapters retain ownership of diabetes-specific mapping semantics.
+- Canonical-fact terminology claims are explicit: unknown unit systems remain unclaimed, and underspecified clinical concepts must not be assigned guessed LOINC codes.
 - Normative clinical metrics require source/version, eligibility rules, and regression fixtures; SQLite-only success is insufficient evidence for PostgreSQL-specific raw SQL.
 - Deterministic derived metrics/patterns remain derived truth and should be recomputed from authoritative source data rather than promoted to immutable patient facts. Approved `ClinicalObservationState` is a recomputable materialized lifecycle, not immutable clinical fact.
 
@@ -332,6 +342,8 @@ A locale/dialect is disabled for patient pilot until it has:
 | One shared patient-facing emergency response composer in core | Consistent safety behavior across POST, SSE and companion paths |
 | Raw internal detector identifiers are not unstructured generative clinical evidence | Epistemic safety / authority separation |
 | Unit normalization before clinical/AI logic, fail-closed on unexpected normalization failure | Data integrity |
+| Canonical facts preserve source provenance and the most conservative review state of supporting data actually used | Clinical data integrity |
+| Unknown terminology semantics are not fabricated as UCUM/LOINC authority | Interoperability truthfulness |
 | Cookie/session API writes retain CSRF protection | Web/API security |
 | No diagnosis/prescription/treatment optimization | Product/regulatory boundary |
 | Model inference never silently becomes patient fact or clinical authority | Clinical truthfulness |
@@ -340,6 +352,8 @@ A locale/dialect is disabled for patient pilot until it has:
 | Every live external model/media call requires sanctioned egress authorization | Privacy + sovereignty |
 | Missing scope/consent/purpose/modality authorization denies egress | Default-deny safety |
 | Purpose-specific minimization/allowlisting governs external payloads | Data minimization |
+| Known scoped-patient identity is denied again at the final text payload boundary | PHI defense in depth |
+| Patient medical-document images cannot use raw cloud OCR before qualified local de-identification | PHI-before-OCR safety |
 | CGM transport source provenance is explicit and transport data alone grants no clinical authority | Clinical provenance / authority separation |
 | Clinical Twin derivation remains recomputable and source-erasure consistent | Data lifecycle / provenance integrity |
 | Proactive workflow state cannot widen Clinical Twin authority | Clinical safety |

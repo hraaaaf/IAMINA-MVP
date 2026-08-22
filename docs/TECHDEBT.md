@@ -9,14 +9,14 @@ Rules:
 - A roadmap blocker appears here only when it represents a persistent technical compromise in the current system.
 - Provider-brand migration wishes are not technical debt unless they reflect a concrete current defect.
 
-## TD-001 — AI egress authorization exists, but payload/media governance is not yet complete
+## TD-001 — Structured text egress is governed, but free-form/raw-media de-identification is not universal
 
 - **Area:** Privacy / AI architecture
-- **Priority:** Critical before real-patient pilot
-- **Resolved foundation:** P0-B introduced one central provider-agnostic authorization boundary for currently wired live external AI/media operations. Patient, purpose, modality, and server-side consent are enforced at real egress time; missing/unknown authorization state fails closed; CI blocks new direct callsites that omit the central authorization assertion.
-- **Current compromise:** authorization is stronger than payload governance. Explicit field allowlists, uniformly enforced minimization/redaction, purpose/modality-granular raw-media consent, processor/subprocessor metadata, residency/retention/no-training metadata, and timeout/failure policy are not yet complete as one enforceable contract.
-- **Risk:** an authorized call can still be insufficiently minimized or insufficiently described operationally even though it cannot bypass consent/scope authorization.
-- **Resolution:** finish P0-MENA-1 by making payload/media eligibility and processor/retention/failure policy explicit and testable at the boundary.
+- **Priority:** Critical before any real-patient path relies on external processing of unstructured patient documents
+- **Resolved foundation:** P0-B/P0-MENA-1 established one central provider-agnostic authorization/minimization boundary. PR #481 adds patient-aware last-mile text DLP for the scoped patient's known Django identity (name, email, username and profile DOB), retains generic CIN/email/phone/account-ID detection, and makes patient `document_ingest` images fail closed before raw cloud OCR. Purpose/modality consent, payload allowlists, provider policy, anti-bypass CI and secret/SAST gates remain enforced.
+- **Current compromise:** deterministic matching cannot prove removal of every free-form identifier that is neither represented in the patient identity model nor syntactically recognizable. In particular, IAMINA has no canonical patient-address field to exact-match an unlabeled address embedded in arbitrary text. Patient medical-document cloud OCR therefore remains intentionally unavailable until a qualified local OCR/de-identification lane exists.
+- **Risk:** uncommon or unlabeled free-form identifiers could survive a text-only redaction pass if they evade the generic DLP, while raw document pixels may contain identity before OCR.
+- **Resolution:** keep patient-document cloud OCR fail closed; qualify a local OCR/de-identification lane and evaluate a multilingual PHI corpus for false negatives/false positives before widening egress. If IAMINA later stores additional direct identifiers such as address, add them to the authoritative patient-identity redaction source rather than relying on heuristic guessing.
 
 ## TD-002 — Firebase remains sovereignty-critical legacy authentication infrastructure
 

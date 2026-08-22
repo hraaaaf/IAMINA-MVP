@@ -277,6 +277,12 @@ Representative data includes:
 
 `client_uuid` remains the offline-sync idempotency key.
 
+### Canonical clinical fact compatibility layer
+
+`core.contracts.clinical_fact.CanonicalClinicalFact` is a disease-neutral in-memory compatibility contract for normalized clinical inputs. Current diabetes adapters map manual/import/voice logs, normalized CGM rows and neutral Pulper document extraction into that shape while preserving source provenance and review state. Existing database models remain authoritative; this layer is not a new persistence table and does not make IAMINA a multi-condition product.
+
+Canonical facts may carry an optional coding system only when the adapter has sufficient semantics to justify it. Adapter-known units may be marked UCUM; unknown units remain unclaimed. LOINC is optional and must not be guessed from underspecified labels. For document-derived facts, any supporting field actually used in the fact participates in the resulting decision: `review_required` cannot silently become `accepted`, and rejected supporting metadata is not promoted as trusted context.
+
 ## 6. Analytics contract
 
 Representative diabetes analytics include:
@@ -344,7 +350,8 @@ Authoritative deterministic triage belongs to shared safety/core ownership rathe
 Clinical input normalization is upstream of domain/AI logic on protected routes.
 
 - legacy and `/api/v1/{module}/...` namespaced routes must not diverge in unit-safety coverage;
-- unexpected normalization errors fail closed rather than passing an unvalidated clinical payload onward.
+- unexpected normalization errors fail closed rather than passing an unvalidated clinical payload onward;
+- canonical-fact adapters preserve uncertainty/review state and do not fabricate terminology authority.
 
 ### Treatment boundary
 
@@ -365,7 +372,7 @@ IAmina must not:
 
 ## 9. AI / model contract
 
-### Current enforced contract after P0-MENA-1
+### Current enforced contract after P0-MENA-1 + PR #481
 
 Currently wired live external AI/model/media operations use the completed central server-side egress governance boundary.
 
@@ -386,11 +393,16 @@ The following fail closed:
 - unknown purpose;
 - modality not allowed for the purpose;
 - payload outside the sanctioned purpose contract;
-- provider/path outside the governed egress policy.
+- provider/path outside the governed egress policy;
+- final text payloads that still contain a known direct identifier of the scoped patient.
 
 The authorization is evaluated lazily at actual provider egress so deterministic emergency/safety behavior remains available when AI consent is absent, provided no external call is attempted.
 
 For shared text-gateway calls, the capability matrix adds a separate authority check: egress permission does not grant a forbidden clinical capability, and an allowed narrative capability still requires the ordinary egress/consent/minimization boundary.
+
+The last-mile text boundary independently resolves the scoped patient's current Django identity and denies surviving known name/email/username/date-of-birth values; generic semantic DLP separately targets email, phone, Moroccan national ID, account-like identifiers and explicit identity labels. This is not represented as universal free-form anonymization: identifiers not present in the identity model, such as an unlabeled address, remain a documented limitation in `docs/TECHDEBT.md`.
+
+Patient `document_ingest` images cannot use raw cloud OCR while identity may be present in pixels before transcription. That path fails closed until a qualified local OCR/de-identification lane exists.
 
 Currently inventoried/wired surfaces include text/gateway narration, chat, summary/doctor brief, structured diabetes insight formatting, STT/audio, vision/OCR, and document-processing paths.
 
@@ -398,7 +410,7 @@ CI prevents new direct external model/provider callsites from omitting the centr
 
 ### Remaining readiness work
 
-Repository implementation of the P0-MENA-1 contract does not itself approve a provider or a real-patient deployment. Remaining readiness is external/governance work tracked in `docs/ROADMAP.md`, including restricted processor/subprocessor and consent approval, Morocco residency/cross-border approval, native-language safety parity and the P0-MENA-4 live provider benchmarks.
+Repository implementation of the egress contract does not itself approve a provider or a real-patient deployment. Remaining readiness follows the active `docs/ROADMAP.md` and deployment policy; de-scoped legal/compliance outcomes must not be rewritten as successful approval.
 
 Provider selection remains per modality and must follow the P0-MENA-4 benchmark; no provider is approved merely because an adapter exists.
 
@@ -428,7 +440,7 @@ Current code includes flows for some combination of:
 - image/OCR-assisted capture;
 - audio transcription/voice input.
 
-External model/media portions of these flows must pass the completed P0-MENA-1 patient/purpose/modality/consent, minimization and provider-policy boundary.
+External model/media portions of these flows must pass the completed patient/purpose/modality/consent, minimization and provider-policy boundary. Patient medical-document images remain fail-closed for raw cloud OCR until a qualified local de-identification lane exists.
 
 ### IAmina companion
 
