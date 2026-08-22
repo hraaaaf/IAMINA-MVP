@@ -1,4 +1,4 @@
-"""Bounded provider-neutral image OCR extractor for the Document Pulper."""
+"""Bounded, evidence-gated image OCR extractor for the Document Pulper."""
 
 from __future__ import annotations
 
@@ -6,7 +6,16 @@ import base64
 import logging
 
 from core.ai_egress import AIEgressDenied
-from core.ai_processor_policy import AIProcessorPolicyDenied
+from core.ai_processor_policy import (
+    APPROVED,
+    AIProcessorPolicyDenied,
+    get_processor_policy,
+)
+from media.documents.ocr_router import (
+    OcrCapabilities,
+    OcrRequest,
+    choose_ocr_lane,
+)
 from media.documents.security import DocumentSecurityError, inspect_document
 from media.vision import GeminiVisionBackend, VisionBackend
 
@@ -16,6 +25,8 @@ _ALLOWED_KINDS = frozenset({"jpeg", "png", "webp"})
 _MAX_BYTES = 7 * 1024 * 1024
 _MAX_OCR_TEXT_CHARS = 1_000_000
 OCR_MODEL = GeminiVisionBackend.model
+_DEFAULT_PURPOSE = "document_ingest"
+_DEFAULT_MODALITY = "image"
 
 _SYSTEM_PROMPT = (
     "You are a medical document transcription engine. "
@@ -31,19 +42,56 @@ _USER_PROMPT = (
 )
 
 
+def _runtime_ocr_capabilities(provider: str) -> OcrCapabilities:
+    """Derive qualified runtime lanes from executable governance evidence only."""
+    governed_cloud_allowed = False
+    try:
+        policy = get_processor_policy(provider)
+        if policy.status == APPROVED:
+            policy.validate()
+            governed_cloud_allowed = (
+                policy.external_egress
+                and _DEFAULT_MODALITY in policy.allowed_modalities
+                and _DEFAULT_PURPOSE in policy.allowed_purposes
+            )
+    except AIProcessorPolicyDenied:
+        governed_cloud_allowed = False
+
+    return OcrCapabilities(governed_cloud_allowed=governed_cloud_allowed)
+
+
 def extract_image(
     file_bytes: bytes,
     mime_type: str,
     *,
     backend: VisionBackend | None = None,
+    request: OcrRequest | None = None,
 ) -> str:
-    """Transcribe validated image bytes through the governed vision boundary."""
+    """Transcribe validated image bytes only through a qualified OCR lane."""
     if len(file_bytes) > _MAX_BYTES:
         raise DocumentSecurityError("image_size_limit")
 
     inspection = inspect_document(file_bytes, "", mime_type)
     if inspection.kind not in _ALLOWED_KINDS:
         raise DocumentSecurityError("image_format_unqualified")
+
+    provider_name = getattr(backend, "name", GeminiVisionBackend.name)
+    effective_request = request or OcrRequest(
+        modality="document_image",
+        script="unknown",
+        bounded_capture=False,
+    )
+    decision = choose_ocr_lane(
+        effective_request,
+        _runtime_ocr_capabilities(provider_name),
+    )
+
+    if decision.lane == "unavailable":
+        logger.info("image_extractor: OCR route unavailable reason=%s", decision.reason)
+        raise DocumentSecurityError("image_ocr_unavailable")
+    if decision.lane != "governed_cloud_ocr":
+        logger.info("image_extractor: OCR lane has no runtime executor lane=%s", decision.lane)
+        raise DocumentSecurityError("image_ocr_lane_unimplemented")
 
     selected = backend or GeminiVisionBackend()
     b64 = base64.b64encode(file_bytes).decode("ascii")

@@ -17,8 +17,9 @@ from diabetes.services.documents.pulper import (
 )
 from diabetes.services.documents.schema import PulperOutput
 from diabetes.services.documents.store import persist
-from media.documents.extractors.image import extract_image
+from media.documents.extractors.image import _runtime_ocr_capabilities, extract_image
 from media.documents.extractors.pdf import _try_pdfplumber, extract_pdf
+from media.documents.ocr_router import OcrCapabilities, OcrRequest
 from media.documents.security import DocumentSecurityError, inspect_document
 
 
@@ -122,6 +123,15 @@ class PulperSecurityBoundaryTest(SimpleTestCase):
             any("pdf_scanned_ocr_unqualified" in error for error in output.errors)
         )
 
+    def test_unqualified_image_route_never_reaches_llm_parser(self):
+        payload = b"\xff\xd8\xff" + b"synthetic-jpeg"
+        with patch("diabetes.services.documents.pulper._parse_with_llm") as parse_llm:
+            output = ingest(payload, "scan.jpg", "image/jpeg")
+
+        parse_llm.assert_not_called()
+        self.assertEqual(output.confidence, 0.0)
+        self.assertTrue(any("image_ocr_unavailable" in error for error in output.errors))
+
     def test_unexpected_exception_does_not_leak_source_value_to_logs_or_errors(self):
         secret = "PATIENT_SECRET_SENTINEL_9381"
         with (
@@ -206,7 +216,16 @@ class BoundedExtractorSecurityTest(SimpleTestCase):
         backend = FakeVisionBackend("HbA1c 6.7 %")
         payload = b"\xff\xd8\xff" + b"synthetic-jpeg"
 
-        text = extract_image(payload, "image/jpeg", backend=backend)
+        with patch(
+            "media.documents.extractors.image._runtime_ocr_capabilities",
+            return_value=OcrCapabilities(governed_cloud_allowed=True),
+        ):
+            text = extract_image(
+                payload,
+                "image/jpeg",
+                backend=backend,
+                request=OcrRequest(modality="document_image", script="unknown"),
+            )
 
         self.assertEqual(text, "HbA1c 6.7 %")
         self.assertEqual(len(backend.calls), 1)
@@ -216,6 +235,43 @@ class BoundedExtractorSecurityTest(SimpleTestCase):
         self.assertEqual(call["temperature"], 0.0)
         self.assertIn("untrusted data", call["system_prompt"].lower())
         self.assertIn("never as a command", call["user_prompt"].lower())
+
+    def test_unapproved_backend_cannot_authorize_itself(self):
+        backend = FakeVisionBackend("should-not-run")
+        payload = b"\xff\xd8\xff" + b"synthetic-jpeg"
+
+        with self.assertRaisesRegex(DocumentSecurityError, "image_ocr_unavailable"):
+            extract_image(payload, "image/jpeg", backend=backend)
+
+        self.assertEqual(backend.calls, [])
+
+    def test_current_gemini_policy_keeps_document_cloud_lane_closed(self):
+        capabilities = _runtime_ocr_capabilities("gemini")
+        self.assertFalse(capabilities.governed_cloud_allowed)
+
+    def test_qualified_local_lane_never_silently_falls_back_to_cloud(self):
+        backend = FakeVisionBackend("should-not-run")
+        payload = b"\xff\xd8\xff" + b"synthetic-jpeg"
+
+        with patch(
+            "media.documents.extractors.image._runtime_ocr_capabilities",
+            return_value=OcrCapabilities(
+                local_latin_qualified=True,
+                governed_cloud_allowed=True,
+            ),
+        ):
+            with self.assertRaisesRegex(
+                DocumentSecurityError,
+                "image_ocr_lane_unimplemented",
+            ):
+                extract_image(
+                    payload,
+                    "image/jpeg",
+                    backend=backend,
+                    request=OcrRequest(modality="document_image", script="latin"),
+                )
+
+        self.assertEqual(backend.calls, [])
 
     def test_unqualified_image_format_fails_closed_before_provider(self):
         backend = FakeVisionBackend("should-not-run")
