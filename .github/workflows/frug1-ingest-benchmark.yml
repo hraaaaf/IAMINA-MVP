@@ -1,0 +1,97 @@
+name: FRUG-1 ingest minimization benchmark
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/frug1-ingest-benchmark.yml"
+      - "backend/evaluation/frug1_ingest_benchmark.py"
+      - "backend/evaluation/frug1_lossless_ingest_benchmark.py"
+      - "backend/evaluation/misraj_dataset_preflight.py"
+      - "backend/evaluation/misraj_numeric_benchmark.py"
+      - "backend/evaluation/tesseract_arabic_camera_benchmark.py"
+      - "backend/evaluation/fixtures/c26_misraj_source.json"
+      - "frontend/lib/services/document_ingest_minimizer.dart"
+      - "frontend/tool/frug1_minimize_image.dart"
+      - "frontend/pubspec.yaml"
+      - "frontend/pubspec.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  exact-numeric-ingest-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+      - name: Install pinned OCR runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-ara
+          python -m pip install Pillow==11.3.0
+          tesseract --version | head -1
+          tesseract --list-langs | grep -Fx ara
+      - name: Resolve Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Fetch pinned 10-row Misraj viewer slice
+        run: |
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output /tmp/misraj-viewer.json \
+            'https://datasets-server.huggingface.co/rows?dataset=Misraj%2FMisraj-DocOCR&config=default&split=train&offset=0&length=10'
+      - name: Run exact numeric before-after ingest benchmark
+        env:
+          PYTHONPATH: backend
+        run: |
+          python backend/evaluation/frug1_lossless_ingest_benchmark.py /tmp/misraj-viewer.json \
+            --source backend/evaluation/fixtures/c26_misraj_source.json \
+            --frontend frontend \
+            --output frug1-ingest-benchmark.json
+      - name: Validate evidence contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("frug1-ingest-benchmark.json").read_text(encoding="utf-8"))
+          assert result["benchmark"] == "frug1-ingest-minimization-exact-numeric"
+          assert result["source_images_pinned"] is True
+          assert result["sampled_rows"] == 10
+          assert result["numeric_total"] == 10
+          assert result["numeric_preserved_cases"] == result["numeric_total"]
+          assert result["numeric_regressions"] == 0
+          assert result["minimized_numeric_safe_cases"] >= result["baseline_numeric_safe_cases"]
+          assert result["reduction_fixture_kind"] == "png-level0-from-pinned-source-raster"
+          assert result["reduction_fixture_total"] == result["numeric_total"]
+          assert result["reduction_fixture_numeric_preserved_cases"] == result["reduction_fixture_total"]
+          assert result["reduction_fixture_numeric_regressions"] == 0
+          assert result["reduction_fixture_transformed_cases"] == result["reduction_fixture_total"]
+          assert result["reduction_fixture_median_upload_bytes"] < result["reduction_fixture_median_source_bytes"]
+          assert result["reduction_fixture_total_upload_bytes"] < result["reduction_fixture_total_source_bytes"]
+          assert result["passed"] is True
+          assert result["raw_ground_truth_emitted"] is False
+          assert result["raw_ocr_text_emitted"] is False
+          assert result["iamina_patient_data"] is False
+          assert result["provider_api"] is False
+          assert result["paid_inference"] is False
+          PY
+      - name: Upload FRUG-1 exact evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frug1-ingest-minimization-exact-numeric
+          path: frug1-ingest-benchmark.json
+          if-no-files-found: error
+          retention-days: 14

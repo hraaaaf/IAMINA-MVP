@@ -5,6 +5,7 @@ import 'package:chopper/chopper.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'auth_service.dart';
+import 'document_ingest_minimizer.dart';
 import '../data/models/ai_models.dart';
 import '../data/models/document_models.dart';
 import '../data/models/personal_response_models.dart';
@@ -160,6 +161,8 @@ bool isDocumentUploadSizeAllowed(int byteLength) =>
 class ApiClient {
   final String baseUrl;
   final AuthService _authService;
+  final PendingDocumentDeduplicator<PulperPreview> _documentDeduplicator =
+      PendingDocumentDeduplicator<PulperPreview>();
 
   ApiClient({this.baseUrl = kBaseUrl, AuthService? authService})
     : _authService = authService ?? AuthService();
@@ -608,6 +611,54 @@ class ApiClient {
     String filename,
     String mimeType,
   ) async {
+    if (!isDocumentUploadSizeAllowed(byteLength)) return null;
+    if (!isMinimizableDocumentImage(filename: filename, mimeType: mimeType)) {
+      return _ingestDocumentStreamRaw(
+        fileStream,
+        byteLength,
+        filename,
+        mimeType,
+      );
+    }
+
+    try {
+      final source = await readDocumentStreamBounded(
+        fileStream,
+        maxBytes: kMaxDocumentUploadBytes,
+      );
+      final minimized = minimizeDocumentImage(
+        source,
+        filename: filename,
+        mimeType: mimeType,
+      );
+      final cached = _documentDeduplicator.lookup(minimized.sha256Digest);
+      if (cached != null) return cached;
+
+      final preview = await _ingestDocumentStreamRaw(
+        Stream<List<int>>.value(minimized.bytes),
+        minimized.bytes.length,
+        minimized.filename,
+        minimized.mimeType,
+      );
+      if (preview != null) {
+        _documentDeduplicator.remember(
+          digest: minimized.sha256Digest,
+          batchId: preview.batchId,
+          value: preview,
+        );
+      }
+      return preview;
+    } on DocumentStreamLimitExceeded {
+      return null;
+    }
+  }
+
+  Future<PulperPreview?> _ingestDocumentStreamRaw(
+    Stream<List<int>> fileStream,
+    int byteLength,
+    String filename,
+    String mimeType,
+  ) async {
     if (!isDocumentUploadSizeAllowed(byteLength)) {
       return null;
     }
@@ -653,9 +704,11 @@ class ApiClient {
         body: <String, dynamic>{},
       );
       if (response.isSuccessful && response.body != null) {
-        return PulperConfirmResult.fromJson(
+        final result = PulperConfirmResult.fromJson(
           response.body as Map<String, dynamic>,
         );
+        _documentDeduplicator.clearBatch(batchId);
+        return result;
       }
       return null;
     } catch (_) {

@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import 'auth_epoch.dart';
+
 const String kAuthBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'http://localhost:8000',
@@ -36,6 +38,8 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  static int get authEpoch => AuthEpoch.value;
+
   bool get isInitialized => _initialized;
   bool get isAuthenticated =>
       _auditSession ||
@@ -61,7 +65,7 @@ class AuthService extends ChangeNotifier {
       _nativeToken = null;
     } finally {
       _initialized = true;
-      notifyListeners();
+      _notifyAuthChanged();
     }
   }
 
@@ -70,7 +74,7 @@ class AuthService extends ChangeNotifier {
       throw StateError('Audit session requires initialized authentication');
     }
     _auditSession = true;
-    notifyListeners();
+    _notifyAuthChanged();
   }
 
   Future<String?> getIdToken() async {
@@ -144,13 +148,13 @@ class AuthService extends ChangeNotifier {
     _nativeToken = null;
     await _storage.delete(key: _tokenKey);
     await _firebaseAuth?.signOut();
-    notifyListeners();
+    _notifyAuthChanged();
   }
 
   Future<void> signInAnonymously() async {
     if (_firebaseAuth == null) throw StateError('Firebase non initialisé');
     await _firebaseAuth.signInAnonymously();
-    notifyListeners();
+    _notifyAuthChanged();
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
@@ -212,6 +216,11 @@ class AuthService extends ChangeNotifier {
     }
     _nativeToken = token;
     await _storage.write(key: _tokenKey, value: token);
+    _notifyAuthChanged();
+  }
+
+  void _notifyAuthChanged() {
+    AuthEpoch.advance();
     notifyListeners();
   }
 
