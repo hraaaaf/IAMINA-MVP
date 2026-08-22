@@ -2,27 +2,21 @@ import hashlib
 import json
 import pickle
 from types import SimpleNamespace
-from unittest import TestCase
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
-from django.test import TestCase as DjangoTestCase
+from django.test import SimpleTestCase, TestCase
 
-from core.contracts.document_extraction import (
-    ExtractionDecision,
-    ExtractedField,
-    FieldProvenance,
-)
+from core.contracts.document_extraction import ExtractedField, ExtractionDecision, FieldProvenance
 from diabetes.models import LabReport
 from diabetes.services.documents.neutral_adapter import from_neutral, to_neutral
 from diabetes.services.documents.pulper import ingest
 from diabetes.services.documents.store import persist
 
-
 _DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
 
-class FieldProvenanceContractTest(TestCase):
+class FieldProvenanceContractTest(SimpleTestCase):
     def test_verified_evidence_does_not_mean_clinical_acceptance(self):
         provenance = FieldProvenance(
             source_sha256="A" * 64,
@@ -57,7 +51,7 @@ class FieldProvenanceContractTest(TestCase):
             )
 
 
-class PulperTextProvenanceTest(TestCase):
+class PulperTextProvenanceTest(SimpleTestCase):
     def _ingest_docx(self, llm_payload: dict, raw_text: str):
         llm = SimpleNamespace(
             complete=lambda *_args, **_kwargs: SimpleNamespace(
@@ -143,7 +137,7 @@ class PulperTextProvenanceTest(TestCase):
         self.assertNotIn("hba1c_pct", output.lab_values.evidence)
 
 
-class PulperSpreadsheetProvenanceTest(TestCase):
+class PulperSpreadsheetProvenanceTest(SimpleTestCase):
     CSV = (
         "timestamp,glucose\n"
         "2026-08-20T08:15:00+01:00,126\n"
@@ -198,11 +192,12 @@ class PulperSpreadsheetProvenanceTest(TestCase):
 
     def test_pulper_output_provenance_is_cache_serializable(self):
         output = ingest(self.CSV.encode(), "readings.csv", "text/csv")
-        restored = pickle.loads(pickle.dumps(output))
+        # Trusted in-test round-trip only; no untrusted bytes are deserialized here.
+        restored = pickle.loads(pickle.dumps(output))  # nosec B301
         self.assertEqual(restored, output)
 
 
-class PulperProvenancePersistenceTest(DjangoTestCase):
+class PulperProvenancePersistenceTest(TestCase):
     def test_provenance_survives_persistence_without_copying_full_raw_text(self):
         payload = (
             "timestamp,glucose\n"
