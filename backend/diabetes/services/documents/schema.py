@@ -8,7 +8,16 @@ valid; the shield decides whether confidence is sufficient to persist.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Dict, List, Optional
+
+
+@dataclass
+class FieldEvidence:
+    """Verified pointer from a normalized value back to source evidence."""
+
+    raw_value: Optional[str] = None
+    source_ref: Optional[str] = None
+    verified: bool = False
 
 
 @dataclass
@@ -18,6 +27,7 @@ class GlucoseReading:
     context:       Optional[str]   = None   # fasting|post_meal|bedtime|random
     original_value: Optional[float] = None
     original_unit:  Optional[str]  = None   # "mg/dL" | "mmol/L"
+    evidence: Dict[str, FieldEvidence] = field(default_factory=dict)
 
 
 @dataclass
@@ -30,6 +40,7 @@ class LabValues:
     triglycerides_mgdl:     Optional[float] = None
     creatinine_umol:        Optional[float] = None
     report_date:            Optional[str]   = None   # "YYYY-MM-DD"
+    evidence: Dict[str, FieldEvidence] = field(default_factory=dict)
 
 
 @dataclass
@@ -38,6 +49,7 @@ class MedicationEntry:
     dose:      Optional[str] = None
     frequency: Optional[str] = None
     drug_type: Optional[str] = None   # oral|insulin_basal|insulin_rapid|other
+    evidence: Dict[str, FieldEvidence] = field(default_factory=dict)
 
 
 @dataclass
@@ -52,6 +64,15 @@ class PulperOutput:
     lab_values:       LabValues            = field(default_factory=LabValues)
     medications:      List[MedicationEntry]= field(default_factory=list)
     clinical_notes:   str                  = ''
+
+    # ── Provenance ────────────────────────────────────────────────────────────
+    source_sha256:     str           = ''
+    extractor:         str           = ''
+    extractor_version: str           = ''
+    extractor_model:   Optional[str] = None
+    schema_version:    str           = 'pulper-output-v2'
+    parser_model:      Optional[str] = None
+    prompt_version:    Optional[str] = None
 
     # ── Audit / debug ────────────────────────────────────────────────────────
     raw_text:   str        = ''

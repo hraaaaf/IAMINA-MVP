@@ -49,6 +49,11 @@ class LabReport(models.Model):
     confidence       = models.FloatField(default=0.0, help_text='0.0–1.0 extraction confidence')
     clinical_notes   = models.TextField(blank=True, default='')
     raw_text         = models.TextField(blank=True, default='', help_text='Full extracted text for audit trail')
+    extraction_provenance = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Structured field-level extraction evidence; excludes the full source text.',
+    )
     created_at       = models.DateTimeField(auto_now_add=True)
 
     class Meta:

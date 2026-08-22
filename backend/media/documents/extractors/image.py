@@ -20,7 +20,8 @@ from llm.runtime import execute_external_provider_call
 logger = logging.getLogger(__name__)
 
 _ALLOWED_MIME = frozenset({"image/jpeg", "image/png", "image/webp", "image/heic"})
-_MAX_BYTES    = 15 * 1_024 * 1_024   # 15 MB — Gemini limit
+_MAX_BYTES = 15 * 1_024 * 1_024   # 15 MB — Gemini limit
+OCR_MODEL = "gemini-2.0-flash"
 
 
 def extract_image(file_bytes: bytes, mime_type: str) -> str:
@@ -45,7 +46,7 @@ def extract_image(file_bytes: bytes, mime_type: str) -> str:
         import google.generativeai as genai
 
         genai.configure(api_key=os.environ['GEMINI_API_KEY'])
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel(OCR_MODEL)
 
         response = execute_external_provider_call(
             "gemini",

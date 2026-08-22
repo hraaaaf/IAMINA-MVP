@@ -22,6 +22,7 @@ LLM_GATEWAY_ALLOWED_EXACT = frozenset(
         "llm/factory.py",
         "llm/pipeline.py",
         "diabetes/tests/test_llm_factory.py",
+        "diabetes/tests/test_pulper_provenance.py",
         "ai/api/v1/ai.py",
         "diabetes/services/summary.py",
         "diabetes/services/clinical/engine.py",

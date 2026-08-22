@@ -11,6 +11,7 @@ Detection order (most specific first):
 
 Returns (readings: list[dict], source_type: str, raw_text: str)
   readings = [{'timestamp': str|None, 'value_mgdl': float, 'context': str|None}]
+Private ``_source_*`` keys retain row/column evidence for Pulper provenance.
 """
 from __future__ import annotations
 
@@ -58,12 +59,15 @@ def extract_spreadsheet(file_bytes: bytes, filename: str) -> Tuple[List[Dict], s
     try:
         if ext in ('xlsx', 'xls'):
             df = pd.read_excel(io.BytesIO(file_bytes), engine='openpyxl' if ext == 'xlsx' else 'xlrd')
+            source_row_offset = 2
         else:
             # Try UTF-8 first, fallback to latin-1 (LibreLink exports)
+            skip_rows = _detect_skip_rows(file_bytes)
             try:
-                df = pd.read_csv(io.BytesIO(file_bytes), encoding='utf-8', skiprows=_detect_skip_rows(file_bytes))
+                df = pd.read_csv(io.BytesIO(file_bytes), encoding='utf-8', skiprows=skip_rows)
             except UnicodeDecodeError:
-                df = pd.read_csv(io.BytesIO(file_bytes), encoding='latin-1', skiprows=_detect_skip_rows(file_bytes))
+                df = pd.read_csv(io.BytesIO(file_bytes), encoding='latin-1', skiprows=skip_rows)
+            source_row_offset = skip_rows + 2
     except Exception as exc:
         logger.warning("spreadsheet_extractor: failed to parse file: %s", exc)
         return [], 'unknown', ''
@@ -78,7 +82,13 @@ def extract_spreadsheet(file_bytes: bytes, filename: str) -> Tuple[List[Dict], s
         logger.info("spreadsheet_extractor: no glucose column found. Available: %s", list(cols_lower.keys()))
         return [], source_type, raw_summary
 
-    readings = _extract_readings(df, glucose_col, time_col, unit)
+    readings = _extract_readings(
+        df,
+        glucose_col,
+        time_col,
+        unit,
+        source_row_offset=source_row_offset,
+    )
     return readings, source_type, raw_summary
 
 
@@ -126,9 +136,16 @@ def _to_mgdl(value: float, unit: str) -> float:
     return value
 
 
-def _extract_readings(df, glucose_col: str, time_col: Optional[str], unit: str) -> List[Dict]:
+def _extract_readings(
+    df,
+    glucose_col: str,
+    time_col: Optional[str],
+    unit: str,
+    *,
+    source_row_offset: int = 2,
+) -> List[Dict]:
     readings = []
-    for _, row in df.iterrows():
+    for row_index, (_, row) in enumerate(df.iterrows()):
         raw_val = row.get(glucose_col)
         if raw_val is None or str(raw_val).strip() in ('', 'nan', 'NaN'):
             continue
@@ -142,10 +159,12 @@ def _extract_readings(df, glucose_col: str, time_col: Optional[str], unit: str) 
             continue
 
         ts = None
+        raw_timestamp = None
         if time_col and time_col in row:
             ts_raw = row[time_col]
             if ts_raw and str(ts_raw).strip() not in ('', 'nan', 'NaT'):
-                ts = str(ts_raw)
+                raw_timestamp = str(ts_raw)
+                ts = raw_timestamp
 
         readings.append({
             'value_mgdl':     val_mgdl,
@@ -153,5 +172,10 @@ def _extract_readings(df, glucose_col: str, time_col: Optional[str], unit: str) 
             'context':        None,
             'original_value': val,
             'original_unit':  unit,
+            '_source_row':    source_row_offset + row_index,
+            '_glucose_column': glucose_col,
+            '_timestamp_column': time_col,
+            '_raw_glucose':   str(raw_val),
+            '_raw_timestamp': raw_timestamp,
         })
     return readings

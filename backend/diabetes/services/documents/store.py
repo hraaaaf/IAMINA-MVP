@@ -25,6 +25,7 @@ from django.utils import timezone as tz
 
 from diabetes.models import LabReport, LogEntry
 
+from .neutral_adapter import provenance_snapshot
 from .schema import PulperOutput
 
 logger = logging.getLogger(__name__)
@@ -79,6 +80,7 @@ def _persist(
         confidence=output.confidence,
         clinical_notes=output.clinical_notes,
         raw_text=output.raw_text,
+        extraction_provenance=provenance_snapshot(output),
         import_batch_id=import_batch_id,
     )
     result.lab_report_id = report.pk
