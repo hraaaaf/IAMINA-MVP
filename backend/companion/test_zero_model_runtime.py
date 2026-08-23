@@ -19,3 +19,8 @@ def test_exact_thanks_bypasses_llm_in_stream_chat():
         stream_chat("merci", memory=None, deep=object(), llm=ExplodingLLM())
     )
     assert chunks == ["Avec plaisir 🙏"]
+
+
+def test_exact_farewell_bypasses_llm_in_chat():
+    reply = chat("Au revoir", memory=None, deep=object(), llm=ExplodingLLM())
+    assert reply == "À bientôt 👋"

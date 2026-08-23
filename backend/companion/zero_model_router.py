@@ -1,7 +1,8 @@
 """Fail-closed zero-model routing for exact non-clinical companion turns.
 
-Only whole-message greetings and thanks are eligible. Any extra token, number,
-clinical wording or ambiguity returns ``None`` and keeps the governed LLM path.
+Only whole-message greetings, thanks, and farewells are eligible. Any extra token,
+number, clinical wording or ambiguity returns ``None`` and keeps the governed LLM
+path.
 """
 
 import re
@@ -26,23 +27,33 @@ _THANKS = {
     "شكرا",
     "شكراً",
 }
+_FAREWELLS = {
+    "au revoir",
+    "goodbye",
+    "bslama",
+    "مع السلامة",
+}
 
 _REPLIES = {
     "fr": {
         "greeting": "Bonjour 👋 Je suis là. Que puis-je faire pour toi ?",
         "thanks": "Avec plaisir 🙏",
+        "farewell": "À bientôt 👋",
     },
     "en": {
         "greeting": "Hello 👋 I'm here. How can I help?",
         "thanks": "You're welcome 🙏",
+        "farewell": "See you soon 👋",
     },
     "ar": {
         "greeting": "مرحباً 👋 أنا هنا. كيف يمكنني مساعدتك؟",
         "thanks": "بكل سرور 🙏",
+        "farewell": "إلى اللقاء 👋",
     },
     "ar-MA": {
         "greeting": "سلام 👋 أنا هنا معاك.",
         "thanks": "مرحبا 🙏",
+        "farewell": "بالسلامة 👋",
     },
 }
 
@@ -62,6 +73,8 @@ def exact_chitchat_reply(message: str, language: str) -> str | None:
         intent = "greeting"
     elif normalized in _THANKS:
         intent = "thanks"
+    elif normalized in _FAREWELLS:
+        intent = "farewell"
     else:
         return None
 

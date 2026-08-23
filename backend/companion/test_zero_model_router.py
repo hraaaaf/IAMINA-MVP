@@ -8,12 +8,16 @@ from companion.zero_model_router import exact_chitchat_reply
     [
         ("Salut", "fr"),
         ("merci beaucoup!", "fr"),
+        ("Au revoir", "fr"),
         ("Hello", "en"),
         ("thank you", "en"),
+        ("Goodbye", "en"),
         ("salam", "ar-MA"),
         ("chokran", "ar-MA"),
+        ("bslama", "ar-MA"),
         ("سلام", "ar-MA"),
         ("شكرا", "ar"),
+        ("مع السلامة", "ar"),
     ],
 )
 def test_exact_non_clinical_turns_are_eligible(message, language):
@@ -31,8 +35,16 @@ def test_exact_non_clinical_turns_are_eligible(message, language):
         "شكرا السكر 40",
         "hello I took insulin",
         "merci mais je vais tomber",
+        "au revoir glycémie 40",
+        "goodbye I took insulin",
+        "مع السلامة السكر 40",
+        "bslama 42",
         "bonjour merci",
         "salam chokran",
+        "ok",
+        "yes",
+        "no",
+        "d'accord",
         "",
     ],
 )
