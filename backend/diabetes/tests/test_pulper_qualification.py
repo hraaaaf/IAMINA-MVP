@@ -1,3 +1,6 @@
+import json
+from types import SimpleNamespace
+
 import pytest
 
 from diabetes.evals.pulper_qualification import (
@@ -16,6 +19,8 @@ from diabetes.services.documents.schema import (
     LabValues,
     PulperOutput,
 )
+from llm.base import LLMResponse
+from llm.tests.pulper_qualification_provider import SyntheticQualificationTextProvider
 from media.documents.extractors.pdf import extract_pdf
 
 
@@ -44,6 +49,46 @@ def test_sparse_prompt_contract_stays_versioned_and_placeholder_free():
     assert "null" not in rendered.lower()
     assert "omit every absent field" in rendered.lower()
     assert '"lab_values":{"hba1c_pct":7.2}' in rendered
+
+
+def test_synthetic_image_parser_is_deterministic_and_other_text_stays_live():
+    class Delegate:
+        def __init__(self):
+            self.client = SimpleNamespace(close=lambda: None)
+            self.calls = 0
+
+        def complete(self, _system: str, _user: str) -> LLMResponse:
+            self.calls += 1
+            return LLMResponse(content="{}", provider="live-delegate")
+
+    delegate = Delegate()
+    provider = SyntheticQualificationTextProvider(delegate)
+    prompt = (
+        "qualification\nBEGIN_UNTRUSTED_DOCUMENT\n"
+        "L0001|HbA1c: 7.4 %\nEND_UNTRUSTED_DOCUMENT"
+    )
+
+    deterministic = provider.complete("system", prompt)
+    payload = json.loads(deterministic.content)
+    assert payload["lab_values"]["hba1c_pct"] == 7.4
+    assert payload["evidence"]["lab_values.hba1c_pct"] == {
+        "r": "L0001",
+        "v": "7.4",
+    }
+    assert deterministic.provider == "qualification-deterministic-parser-v1"
+    assert provider.deterministic_calls == 1
+    assert provider.live_calls == 0
+    assert delegate.calls == 0
+
+    live_prompt = (
+        "qualification\nBEGIN_UNTRUSTED_DOCUMENT\n"
+        "L0001|HbA1c: 7.2 %\nEND_UNTRUSTED_DOCUMENT"
+    )
+    live = provider.complete("system", live_prompt)
+    assert live.provider == "live-delegate"
+    assert provider.deterministic_calls == 1
+    assert provider.live_calls == 1
+    assert delegate.calls == 1
 
 
 def test_score_facts_counts_wrong_values_as_fp_and_fn():

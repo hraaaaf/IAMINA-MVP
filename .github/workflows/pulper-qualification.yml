@@ -11,7 +11,13 @@ on:
       - backend/diabetes/services/documents/**
       - backend/diabetes/tests/test_pulper*.py
       - backend/media/documents/**
-      - backend/llm/**
+      - backend/llm/base.py
+      - backend/llm/errors.py
+      - backend/llm/factory.py
+      - backend/llm/lowcost_openai_compatible.py
+      - backend/llm/provider_registry.py
+      - backend/llm/pseudonymizer.py
+      - backend/llm/tests/pulper_qualification_provider.py
   workflow_dispatch:
 
 permissions:
@@ -23,7 +29,7 @@ concurrency:
 
 jobs:
   qualify:
-    name: Synthetic live qualification
+    name: Synthetic bounded qualification
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -59,7 +65,7 @@ jobs:
             echo "Pulper qualification requires GROQ_API_KEY."
             exit 2
           fi
-      - name: Run one synthetic live benchmark
+      - name: Run one bounded synthetic benchmark
         working-directory: backend
         run: |
           python -c 'import django; django.setup(); from diabetes.evals.pulper_qualification import main; raise SystemExit(main())' \
