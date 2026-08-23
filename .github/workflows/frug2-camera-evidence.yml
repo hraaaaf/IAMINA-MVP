@@ -1,0 +1,43 @@
+name: FRUG-2 retained camera OCR evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/evaluation/frug2_camera_observed_evidence.py"
+      - "backend/evaluation/fixtures/frug2_camera_observed_2026-08-23.json"
+      - "backend/evaluation/tests/test_frug2_camera_observed_evidence.py"
+      - ".github/workflows/frug2-camera-evidence.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frug2-camera-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  evidence:
+    name: Validate minimized real-camera OCR evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: frug2-camera-evidence-nonproduction
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: sqlite:///frug2-camera-evidence.db
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt
+      - name: Validate retained FRUG-2 camera evidence
+        run: pytest -q evaluation/tests/test_frug2_camera_observed_evidence.py

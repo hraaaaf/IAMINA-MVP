@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "source": {
+    "run_date": "2026-08-23",
+    "scope": "controlled_user_supplied_false_documents",
+    "capture_kind": "real_camera_or_screen_image",
+    "raw_media_retained_in_repo": false,
+    "raw_media_reason": "data_minimization_keep_hashes_and_content_free_measurements_only",
+    "patient_data": false,
+    "patient_data_basis": "user_attested_false_documents_and_names_redacted_before_measurement",
+    "engine": "tesseract",
+    "engine_version": "5.5.0",
+    "execution": "local_cpu"
+  },
+  "fixtures": [
+    {
+      "fixture_id": "arabic_typed",
+      "sha256": "4852e5593013f758fdc24c340b99f47f76426f92490e146505df4b9e78015fb9",
+      "modality": "document_image",
+      "script": "arabic",
+      "bounded_capture": false,
+      "ocr_languages": "ara+eng",
+      "critical_tokens": ["2026", "05", "18-00"],
+      "matched_critical_tokens": ["2026", "05", "18-00"],
+      "critical_gate_passed": true,
+      "candidate_quality": "critical_tokens_pass",
+      "routing_conclusion": "do_not_promote_full_arabic_from_one_camera_fixture"
+    },
+    {
+      "fixture_id": "french_handwritten_medical",
+      "sha256": "23b747d11f809bdb0b949cf406396a30c9538851b07689d0a45958e0dc5c3206",
+      "modality": "document_image",
+      "script": "latin",
+      "bounded_capture": false,
+      "ocr_languages": "fra+eng",
+      "critical_tokens": ["32"],
+      "matched_critical_tokens": [],
+      "critical_gate_passed": false,
+      "candidate_quality": "critical_numeric_fail",
+      "routing_conclusion": "handwriting_local_primary_unqualified"
+    },
+    {
+      "fixture_id": "french_handwritten_echo",
+      "sha256": "e00b5ea13656986ce2df101a0a8e51bd02f672235f8947129c651711ac1a2dfb",
+      "modality": "document_image",
+      "script": "latin",
+      "bounded_capture": false,
+      "ocr_languages": "fra+eng",
+      "critical_tokens": ["1/6/26"],
+      "matched_critical_tokens": [],
+      "critical_gate_passed": false,
+      "candidate_quality": "critical_numeric_fail",
+      "routing_conclusion": "handwriting_local_primary_unqualified"
+    },
+    {
+      "fixture_id": "lab_structured",
+      "sha256": "87671cddff1dc3931804d5abe9e0704c135ce1d3e6fb83bb38b09b3f823e7dfc",
+      "modality": "document_image",
+      "script": "latin",
+      "bounded_capture": false,
+      "ocr_languages": "eng+ara",
+      "critical_tokens": ["210", "110", "200", "190", "130", "125", "mg/dL"],
+      "matched_critical_tokens": ["210", "110", "200", "190", "130", "125", "mg/dL"],
+      "critical_gate_passed": true,
+      "candidate_quality": "critical_numbers_and_units_pass",
+      "routing_conclusion": "local_printed_candidate_supported_but_runtime_executor_still_separate_gate"
+    },
+    {
+      "fixture_id": "glucometer",
+      "sha256": "2a8e4e927e3514729ac5a98ec52bfd9476ca36195ff9b1bca0d6cfc46f3ebe54",
+      "modality": "glucometer",
+      "script": "latin",
+      "bounded_capture": true,
+      "ocr_languages": "eng",
+      "critical_tokens": ["8.0", "mmol/L"],
+      "matched_critical_tokens": [],
+      "critical_gate_passed": false,
+      "candidate_quality": "generic_document_ocr_fail",
+      "routing_conclusion": "keep_specialized_on_device_glucometer_lane"
+    }
+  ],
+  "aggregate": {
+    "fixtures": 5,
+    "generic_local_critical_pass": 2,
+    "generic_local_critical_fail": 3,
+    "generic_local_critical_pass_rate": 0.4
+  },
+  "proof_boundaries": {
+    "production_or_beta_route_mix": false,
+    "full_arabic_document_local_primary_qualified": false,
+    "handwriting_local_primary_qualified": false,
+    "generic_tesseract_glucometer_qualified": false,
+    "runtime_local_executor_implemented_by_this_evidence": false,
+    "raw_media_retained_in_repo": false
+  }
+}
