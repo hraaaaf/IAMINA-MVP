@@ -1,0 +1,64 @@
+name: FRUG-5 Gulf product-prompt quality sample
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/evaluation/frug5_product_prompt_gulf_benchmark.py"
+      - "backend/evaluation/tests/test_frug5_product_prompt_gulf_benchmark.py"
+      - "backend/companion/narrator_prompts.py"
+      - "backend/evaluation/fixtures/frug7_groq_text_price.json"
+      - "backend/llm/provider_registry.py"
+      - ".github/workflows/frug5-product-prompt-gulf.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frug5-product-prompt-gulf-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Groq bounded Gulf product-prompt sample
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: frug5-product-prompt-nonproduction
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: sqlite:///frug5-product-prompt.db
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      FRUG5_PRODUCT_PROMPT_NETWORK_AUTHORIZED: "true"
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt
+      - name: Validate product-prompt benchmark before network
+        run: >-
+          pytest -q
+          evaluation/tests/test_frug5_product_prompt_gulf_benchmark.py
+          companion/test_gulf_locale_wiring.py
+          core/tests/test_locale_runtime_wiring.py
+      - name: Run bounded Gulf product-prompt sample
+        run: >-
+          python -m evaluation.frug5_product_prompt_gulf_benchmark
+          --output ../artifacts/frug5-product-prompt-gulf.json
+      - name: Upload review artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frug5-product-prompt-gulf
+          path: artifacts/frug5-product-prompt-gulf.json
+          if-no-files-found: warn
+          retention-days: 14

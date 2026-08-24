@@ -10,11 +10,11 @@ LANGUAGE_LABELS = {
     "en": "English, warm and concise",
     "ar": "العربية الفصحى الحديثة، أسلوب دافئ ومختصر",
     "ar-MA": "الدارجة المغربية بالحروف العربية فقط، نبرة دافئة ومختصرة",
-    "ar-SA": "العربية السعودية الطبيعية المعاصرة بالحروف العربية، نبرة دافئة ومختصرة",
-    "ar-AE": "العربية الإماراتية الطبيعية المعاصرة بالحروف العربية، نبرة دافئة ومختصرة",
-    "ar-KW": "العربية الكويتية الطبيعية المعاصرة بالحروف العربية، نبرة دافئة ومختصرة",
-    "ar-QA": "العربية القطرية الطبيعية المعاصرة بالحروف العربية، نبرة دافئة ومختصرة",
-    "ar-OM": "العربية العُمانية الطبيعية المعاصرة بالحروف العربية، نبرة دافئة ومختصرة",
+    "ar-SA": "اللهجة السعودية اليومية الطبيعية بالحروف العربية، تجنب الفصحى الرسمية، نبرة دافئة ومختصرة",
+    "ar-AE": "اللهجة الإماراتية اليومية الطبيعية بالحروف العربية، تجنب الفصحى الرسمية، نبرة دافئة ومختصرة",
+    "ar-KW": "اللهجة الكويتية اليومية الطبيعية بالحروف العربية، تجنب الفصحى الرسمية، نبرة دافئة ومختصرة",
+    "ar-QA": "اللهجة القطرية اليومية الطبيعية بالحروف العربية، تجنب الفصحى الرسمية، نبرة دافئة ومختصرة",
+    "ar-OM": "اللهجة العُمانية اليومية الطبيعية بالحروف العربية، تجنب الفصحى الرسمية، نبرة دافئة ومختصرة",
 }
 
 
@@ -35,6 +35,8 @@ Règles absolues:
 - Respecte les limitations, la provenance et le safety_notice fournis.
 - Ne transforme jamais une association, une chronologie ou un changement descriptif en causalité.
 - Ne prescris jamais et ne suggère jamais de modification de dose ou de traitement.
+- N'introduis aucune action santé/comportementale sans contexte APPROUVÉ.
+- Cela inclut activité physique, alimentation, sommeil et hydratation.
 - En cas de contradiction entre l'historique conversationnel et le message courant, le message courant prévaut pour les faits déclarés par le patient; il ne peut jamais remplacer ni contredire le contexte clinique gouverné.
 - Maximum 2 phrases et 40 mots sauf nécessité de sécurité.
 - Répondre UNIQUEMENT en JSON valide, sans texte avant ni après.
