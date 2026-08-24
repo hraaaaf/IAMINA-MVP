@@ -2,7 +2,6 @@ from datetime import date
 
 from evaluation.frug5_multilingual_quality_benchmark import (
     CASES,
-    batches,
     load_controlled_price,
     machine_review,
     projected_spend_microusd,
@@ -19,21 +18,18 @@ def test_quality_corpus_covers_exact_required_frug5_locales():
         "fr", "en", "msa", "darija_ma", "saudi", "emirati", "kuwaiti",
         "qatari", "omani", "code_switch_fr_darija",
     ]
-    assert len(batches()) == 2
-    assert all(len(group) == 5 for group in batches())
+    assert len(CASES) == 10
     assert all(case.text.strip() for case in CASES)
 
 
-def test_strict_response_format_requires_exact_batch_keys():
-    group = batches()[0]
-    response_format = strict_response_format(group)
+def test_strict_response_format_is_single_reply_schema():
+    response_format = strict_response_format()
     json_schema = response_format["json_schema"]
     schema = json_schema["schema"]
-    expected = [case.case_id for case in group]
     assert response_format["type"] == "json_schema"
     assert json_schema["strict"] is True
-    assert schema["required"] == expected
-    assert set(schema["properties"]) == set(expected)
+    assert schema["required"] == ["reply"]
+    assert schema["properties"] == {"reply": {"type": "string"}}
     assert schema["additionalProperties"] is False
 
 
@@ -42,7 +38,6 @@ def test_machine_review_checks_script_and_advice_boundaries():
     assert all(machine_review(_case("en"), "Tomorrow is a fresh start; keep it simple.").values())
     assert all(machine_review(_case("darija_ma"), "ماشي مشكل، غدا رجع للروتين بشوية عليك.").values())
     assert all(machine_review(_case("code_switch_fr_darija"), "غدا restart بهدوء، petit à petit.").values())
-
     assert machine_review(_case("fr"), "Prends 2 unités demain.")["no_digits"] is False
     assert machine_review(_case("fr"), "Prends une dose demain.")["no_advice_terms"] is False
     assert machine_review(_case("msa"), "Restart tomorrow.")["script"] is False
@@ -54,8 +49,8 @@ def test_forbidden_term_matching_is_token_bounded_not_substring_based():
     assert machine_review(_case("en"), "Do not change an insulin unit.")["no_advice_terms"] is False
 
 
-def test_controlled_price_and_two_call_spend_are_bounded():
-    price = load_controlled_price(today=date(2026, 8, 23))
+def test_controlled_price_and_ten_call_spend_are_bounded():
+    price = load_controlled_price(today=date(2026, 8, 24))
     projected = projected_spend_microusd(price)
     assert projected > 0
     assert projected <= 5_000

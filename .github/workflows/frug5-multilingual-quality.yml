@@ -51,7 +51,7 @@ jobs:
           evaluation/tests/test_frug5_multilingual_quality_benchmark.py
           companion/test_history_budget_benchmark.py
           companion/test_route_telemetry_runtime.py
-      - name: Run one bounded two-call multilingual sample
+      - name: Run one bounded per-locale multilingual sample
         run: >-
           python -m evaluation.frug5_multilingual_quality_benchmark
           --output ../artifacts/frug5-multilingual-quality.json
