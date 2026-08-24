@@ -41,6 +41,8 @@ _STREAM_SUFFIX = (
 )
 
 _ARABIC_RE = re.compile(r"[؀-ۿݐ-ݿ]")
+_GULF_DIALECT_KEYS = frozenset({"ar-SA", "ar-AE", "ar-KW", "ar-QA", "ar-OM"})
+_ARABIC_LANGUAGE_KEYS = frozenset({"ar", "ar-MA", *_GULF_DIALECT_KEYS})
 _DARIJA_LATIN_RE = re.compile(
     r"\b(wach|zwina|dima|m3lich|mzyan|bghit|3yayt|3andi|3ndek|dyali|dyalek|"
     r"kayn|mazal|daba|hna|nta|nti|wakha|khouya|khti|bzaf|chhal|kifach|chno|"
@@ -81,16 +83,23 @@ def _turn_count(patient) -> int:
     return store.count(patient.id)
 
 
+def _deterministic_language(language: str) -> str:
+    """Keep Gulf dialects narrator-only; deterministic clinical copy uses MSA."""
+    return "ar" if language in _GULF_DIALECT_KEYS else language
+
+
 def _get_context(patient, context_days: int, language: str = "fr") -> DomainContext:
+    domain_language = _deterministic_language(language)
     if patient is None:
-        return DomainContext.empty(language=language)
-    return get_domain_context(patient.id, language=language, days=context_days)
+        return DomainContext.empty(language=domain_language)
+    return get_domain_context(patient.id, language=domain_language, days=context_days)
 
 
 def _get_companion_context(patient, language: str = "fr") -> CompanionContext:
+    domain_language = _deterministic_language(language)
     if patient is None:
-        return CompanionContext.empty(language=language)
-    return get_companion_context(patient.id, language=language)
+        return CompanionContext.empty(language=domain_language)
+    return get_companion_context(patient.id, language=domain_language)
 
 
 def _is_emotional(message: str) -> bool:
@@ -98,7 +107,7 @@ def _is_emotional(message: str) -> bool:
 
 
 def detect_language(message: str, default: str) -> str:
-    if default in ("ar", "ar-MA"):
+    if default in _ARABIC_LANGUAGE_KEYS:
         return default
     if _ARABIC_RE.search(message) or _DARIJA_LATIN_RE.search(message):
         return "ar-MA"
@@ -280,21 +289,22 @@ def _build_runtime_prompt(
 
 def _safety_reply(message: str, patient, language: str) -> str | None:
     decision = evaluate_input_safety(message)
+    deterministic_language = _deterministic_language(language)
     if decision.action == URGENT:
         return compose_emergency_for_patient(
             decision,
             patient=patient,
-            language=language,
+            language=deterministic_language,
             message=message,
         ).reply
     if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
-        return no_prescription_message(language)
+        return no_prescription_message(deterministic_language)
     return None
 
 
 def _finalize_reply(reply: str, deep, language: str) -> str:
     reply = apply_advice_throttle(reply, deep)
-    reply = apply_no_prescription_policy(reply, language)
+    reply = apply_no_prescription_policy(reply, _deterministic_language(language))
     deep.save()
     return reply
 
@@ -324,7 +334,11 @@ def chat(
         _update_relationship_memory(message, memory)
         return safety_reply
 
-    zero_model_reply = exact_chitchat_reply(message, detect_language(message, language))
+    detected_language = detect_language(message, language)
+    zero_model_reply = exact_chitchat_reply(
+        message,
+        _deterministic_language(detected_language),
+    )
     if zero_model_reply is not None:
         record_companion_route("zero_model")
         _append_turn(patient, "user", message)
@@ -359,7 +373,7 @@ def chat(
         reply = get_offline_fallback(
             patient.id if patient else None,
             ctx,
-            language,
+            _deterministic_language(language),
         )
 
     reply = _finalize_reply(reply, deep, language)
@@ -387,7 +401,11 @@ def stream_chat(
         yield safety_reply
         return
 
-    zero_model_reply = exact_chitchat_reply(message, detect_language(message, language))
+    detected_language = detect_language(message, language)
+    zero_model_reply = exact_chitchat_reply(
+        message,
+        _deterministic_language(detected_language),
+    )
     if zero_model_reply is not None:
         record_companion_route("zero_model")
         _append_turn(patient, "user", message)
@@ -423,7 +441,7 @@ def stream_chat(
             full_reply = get_offline_fallback(
                 patient.id if patient else None,
                 ctx,
-                language,
+                _deterministic_language(language),
             )
         full_reply = _finalize_reply(full_reply, deep, language)
         _append_turn(patient, "assistant", full_reply)
@@ -444,7 +462,7 @@ def stream_chat(
         fallback = get_offline_fallback(
             patient.id if patient else None,
             ctx,
-            language,
+            _deterministic_language(language),
         )
         yield fallback
         assembled = [fallback]
