@@ -112,9 +112,12 @@ def _case_prompt(case: QualityCase) -> str:
 def _script_ok(case: QualityCase, reply: str) -> bool:
     has_arabic = bool(_ARABIC.search(reply))
     has_latin = bool(_LATIN.search(reply))
-    if case.script == "arabic": return has_arabic
-    if case.script == "latin": return has_latin and not has_arabic
-    if case.script == "mixed": return has_arabic and has_latin
+    if case.script == "arabic":
+        return has_arabic
+    if case.script == "latin":
+        return has_latin and not has_arabic
+    if case.script == "mixed":
+        return has_arabic and has_latin
     raise BenchmarkConfigurationError(f"unsupported script contract: {case.script}")
 
 
@@ -149,7 +152,8 @@ def projected_spend_microusd(price) -> int:
 
 def _usage_row(response) -> dict[str, int | None]:
     usage = getattr(response, "usage", None)
-    if usage is None: raise BenchmarkConfigurationError("provider usage evidence missing")
+    if usage is None:
+        raise BenchmarkConfigurationError("provider usage evidence missing")
     details = getattr(usage, "prompt_tokens_details", None)
     cached = getattr(details, "cached_tokens", None) if details is not None else None
     return {
@@ -252,7 +256,9 @@ def run_benchmark(*, output_path: Path, today: date) -> dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(); parser.add_argument("--output", type=Path, required=True); args = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
     report = run_benchmark(output_path=args.output, today=date.today())
     print(json.dumps({
         "machine_passed": report["machine_gate"]["passed"],
