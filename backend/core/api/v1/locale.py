@@ -22,7 +22,7 @@ router = Router(tags=["locale"])
 _LANGUAGE_VALUES = {"fr", "ar", "en"}
 _SCRIPT_VALUES = {"latin", "arabic"}
 _TRANSLITERATION_VALUES = {"none", "latin_arabic"}
-_DIALECT_VALUES = {"ar-MA"}
+_DIALECT_VALUES = {value for value, _label in PatientLocalePreference.DIALECT_CHOICES}
 _GLUCOSE_UNIT_VALUES = {"mg/dL", "mmol/L"}
 
 _DIMENSIONS = {

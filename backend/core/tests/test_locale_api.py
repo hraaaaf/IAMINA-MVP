@@ -13,6 +13,8 @@ from core.api.v1.locale import (
 from core.models.locale import PatientLocalePreference
 from core.models.patient import BasePatientProfile
 
+GULF_DIALECTS = ("ar-SA", "ar-AE", "ar-KW", "ar-QA", "ar-OM")
+
 
 @pytest.fixture
 def patient(db):
@@ -89,6 +91,25 @@ def test_confirmed_dimensions_are_independent(patient):
         "timezone": "Africa/Casablanca",
         "country_confirmed": True,
         "timezone_confirmed": True,
+    }
+
+
+@pytest.mark.parametrize("dialect", GULF_DIALECTS)
+def test_api_can_confirm_each_supported_gulf_dialect(patient, dialect):
+    state = confirm_locale_preferences(
+        _request(patient),
+        LocalePatchSchema(
+            response_language="ar",
+            dialect=dialect,
+        ),
+    )
+
+    assert state["resolved"]["response_language"] == "ar"
+    assert state["resolved"]["dialect"] == dialect
+    assert state["stored"]["dialect"] == {
+        "value": dialect,
+        "provenance": "user_confirmed",
+        "confirmed": True,
     }
 
 

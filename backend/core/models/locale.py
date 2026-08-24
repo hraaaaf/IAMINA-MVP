@@ -21,7 +21,14 @@ class PatientLocalePreference(models.Model):
     LANGUAGE_CHOICES = [("fr", "French"), ("ar", "Modern Standard Arabic"), ("en", "English")]
     SCRIPT_CHOICES = [("latin", "Latin"), ("arabic", "Arabic")]
     TRANSLITERATION_CHOICES = [("none", "None"), ("latin_arabic", "Arabic in Latin script")]
-    DIALECT_CHOICES = [("ar-MA", "Moroccan Darija")]
+    DIALECT_CHOICES = [
+        ("ar-MA", "Moroccan Darija"),
+        ("ar-SA", "Saudi Arabic"),
+        ("ar-AE", "Emirati Arabic"),
+        ("ar-KW", "Kuwaiti Arabic"),
+        ("ar-QA", "Qatari Arabic"),
+        ("ar-OM", "Omani Arabic"),
+    ]
     GLUCOSE_UNIT_CHOICES = [("mg/dL", "mg/dL"), ("mmol/L", "mmol/L")]
 
     profile = models.OneToOneField(

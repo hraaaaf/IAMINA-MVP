@@ -6,6 +6,8 @@ from ai.api.v1.voice import _get_language
 from core.models.locale import PatientLocalePreference
 from core.models.patient import BasePatientProfile
 
+GULF_DIALECTS = ("ar-SA", "ar-AE", "ar-KW", "ar-QA", "ar-OM")
+
 
 @pytest.fixture
 def patient(db):
@@ -54,3 +56,31 @@ def test_confirmed_dialect_is_used_only_after_confirmation(patient):
 
     assert _get_patient_language(patient) == "ar-MA"
     assert _get_language(patient) == "ar-MA"
+
+
+@pytest.mark.parametrize("dialect", GULF_DIALECTS)
+def test_confirmed_gulf_dialect_controls_text_and_voice(patient, dialect):
+    PatientLocalePreference.objects.create(
+        profile=patient.base_profile,
+        response_language="ar",
+        response_language_provenance="user_confirmed",
+        dialect=dialect,
+        dialect_provenance="user_confirmed",
+    )
+
+    assert _get_patient_language(patient) == dialect
+    assert _get_language(patient) == dialect
+
+
+@pytest.mark.parametrize("dialect", GULF_DIALECTS)
+def test_suggested_gulf_dialect_cannot_control_runtime(patient, dialect):
+    PatientLocalePreference.objects.create(
+        profile=patient.base_profile,
+        response_language="ar",
+        response_language_provenance="user_confirmed",
+        dialect=dialect,
+        dialect_provenance="suggested",
+    )
+
+    assert _get_patient_language(patient) == "ar"
+    assert _get_language(patient) == "ar"
