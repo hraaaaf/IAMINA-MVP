@@ -101,9 +101,25 @@ def strict_response_format() -> dict[str, Any]:
     }
 
 
+def _script_requirement(script: str) -> str:
+    requirements = {
+        "arabic": "Use Arabic script in the reply.",
+        "latin": "Use Latin script only; do not use Arabic script.",
+        "mixed": "Use both French in Latin script and Moroccan Darija in Arabic script in the reply.",
+    }
+    try:
+        return requirements[script]
+    except KeyError as exc:
+        raise BenchmarkConfigurationError(f"unsupported script contract: {script}") from exc
+
+
 def _case_prompt(case: QualityCase) -> str:
     return json.dumps(
-        {"locale": case.locale, "message": case.text},
+        {
+            "locale": case.locale,
+            "message": case.text,
+            "script_requirement": _script_requirement(case.script),
+        },
         ensure_ascii=False,
         separators=(",", ":"),
     )
