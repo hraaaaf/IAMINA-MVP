@@ -1,0 +1,64 @@
+name: FRUG-5 accepted-safe cost comparison
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/evaluation/frug5_accepted_safe_cost_benchmark.py"
+      - "backend/evaluation/tests/test_frug5_accepted_safe_cost_benchmark.py"
+      - "backend/evaluation/frug5_multilingual_quality_benchmark.py"
+      - "backend/evaluation/fixtures/frug7_groq_text_price.json"
+      - "backend/companion/conversation.py"
+      - "backend/companion/narrator_prompts.py"
+      - ".github/workflows/frug5-accepted-safe-cost.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frug5-accepted-safe-cost-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    name: Groq paired 3000-vs-1800 machine-safe cost sample
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: frug5-accepted-safe-nonproduction
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: sqlite:///frug5-accepted-safe.db
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      FRUG5_ACCEPTED_SAFE_NETWORK_AUTHORIZED: "true"
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt
+      - name: Validate paired benchmark before network
+        run: pytest -q evaluation/tests/test_frug5_accepted_safe_cost_benchmark.py
+      - name: Run one bounded paired comparison
+        run: >-
+          python manage.py shell -c
+          "from datetime import date; from pathlib import Path;
+          from evaluation.frug5_accepted_safe_cost_benchmark import run_benchmark;
+          r=run_benchmark(output_path=Path('../artifacts/frug5-accepted-safe-cost.json'), today=date.today());
+          raise SystemExit(0 if r['comparison_gate']['passed'] else 1)"
+      - name: Upload paired evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frug5-accepted-safe-cost
+          path: artifacts/frug5-accepted-safe-cost.json
+          if-no-files-found: warn
+          retention-days: 14
