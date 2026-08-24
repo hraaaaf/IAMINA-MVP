@@ -9,7 +9,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from .cost_ledger import reconcile_month
+from .cost_ledger import BillingEvidence, reconcile_month
 
 logger = logging.getLogger("iamina.cost")
 
@@ -134,6 +134,7 @@ def build_finops_audit_report(
     active_users: int,
     billed_microusd: int,
     workload_costs_microusd: dict[str, int],
+    billing_evidence: BillingEvidence | None = None,
     reconciliation_floor: float = 0.95,
     anomaly_ratio_threshold: float = 2.0,
     anomaly_minimum_delta: int = 1,
@@ -150,6 +151,7 @@ def build_finops_audit_report(
         active_users=active_users,
         billed_microusd=billed_microusd,
         workload_costs_microusd=workload_costs_microusd,
+        billing_evidence=billing_evidence,
     )
     reconciliation_ok = snapshot.meets_reconciliation_floor(reconciliation_floor)
     return {
