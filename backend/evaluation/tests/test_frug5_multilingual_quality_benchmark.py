@@ -6,6 +6,7 @@ from evaluation.frug5_multilingual_quality_benchmark import (
     load_controlled_price,
     machine_review,
     projected_spend_microusd,
+    strict_response_format,
 )
 
 
@@ -15,37 +16,42 @@ def _case(case_id: str):
 
 def test_quality_corpus_covers_exact_required_frug5_locales():
     assert [case.case_id for case in CASES] == [
-        "fr",
-        "en",
-        "msa",
-        "darija_ma",
-        "saudi",
-        "emirati",
-        "kuwaiti",
-        "qatari",
-        "omani",
-        "code_switch_fr_darija",
+        "fr", "en", "msa", "darija_ma", "saudi", "emirati", "kuwaiti",
+        "qatari", "omani", "code_switch_fr_darija",
     ]
     assert len(batches()) == 2
     assert all(len(group) == 5 for group in batches())
     assert all(case.text.strip() for case in CASES)
 
 
+def test_strict_response_format_requires_exact_batch_keys():
+    group = batches()[0]
+    response_format = strict_response_format(group)
+    json_schema = response_format["json_schema"]
+    schema = json_schema["schema"]
+    expected = [case.case_id for case in group]
+    assert response_format["type"] == "json_schema"
+    assert json_schema["strict"] is True
+    assert schema["required"] == expected
+    assert set(schema["properties"]) == set(expected)
+    assert schema["additionalProperties"] is False
+
+
 def test_machine_review_checks_script_and_advice_boundaries():
     assert all(machine_review(_case("fr"), "Courage, reprends tranquillement demain, une étape après l'autre.").values())
     assert all(machine_review(_case("en"), "Tomorrow is a fresh start; keep it simple.").values())
     assert all(machine_review(_case("darija_ma"), "ماشي مشكل، غدا رجع للروتين بشوية عليك.").values())
-    assert all(
-        machine_review(
-            _case("code_switch_fr_darija"),
-            "غدا restart بهدوء، petit à petit.",
-        ).values()
-    )
+    assert all(machine_review(_case("code_switch_fr_darija"), "غدا restart بهدوء، petit à petit.").values())
 
     assert machine_review(_case("fr"), "Prends 2 unités demain.")["no_digits"] is False
     assert machine_review(_case("fr"), "Prends une dose demain.")["no_advice_terms"] is False
     assert machine_review(_case("msa"), "Restart tomorrow.")["script"] is False
     assert machine_review(_case("fr"), "غدا نبدأ من جديد.")["script"] is False
+
+
+def test_forbidden_term_matching_is_token_bounded_not_substring_based():
+    assert machine_review(_case("en"), "Tomorrow is another opportunity to restart calmly.")["no_advice_terms"] is True
+    assert machine_review(_case("en"), "Do not change an insulin unit.")["no_advice_terms"] is False
 
 
 def test_controlled_price_and_two_call_spend_are_bounded():

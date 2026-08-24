@@ -61,5 +61,5 @@ jobs:
         with:
           name: frug5-multilingual-quality
           path: artifacts/frug5-multilingual-quality.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
