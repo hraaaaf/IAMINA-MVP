@@ -12,7 +12,8 @@ Retention : 6 years (RGPD health data).
 from django.contrib.auth.models import User
 from django.db import models
 
-# Re-export so Django's migration framework discovers this model in the core app.
+# Re-export so Django's migration framework discovers cross-cutting core models.
+from core.finops_events import FinOpsTelemetryEvent  # noqa: F401
 from core.observability.events import ObservabilityEvent  # noqa: F401
 
 
