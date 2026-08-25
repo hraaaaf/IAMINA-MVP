@@ -1,0 +1,11 @@
+{
+  "provider": "mistral",
+  "model": "mistral-small-2603",
+  "currency": "USD",
+  "input_microusd_per_million": 150000,
+  "cached_input_microusd_per_million": null,
+  "output_microusd_per_million": 600000,
+  "evidence_reference": "https://docs.mistral.ai/models/mistral-small-4-0-26-03",
+  "verified_on": "2026-08-25",
+  "review_due_on": "2026-09-24"
+}
