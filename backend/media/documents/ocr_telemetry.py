@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import logging
 
+from llm.cost_event_store import persist_cost_event
+
 logger = logging.getLogger("iamina.cost")
 
 _ALLOWED_MODALITIES = frozenset(
@@ -43,17 +45,15 @@ def record_ocr_route(
     if lane not in _ALLOWED_LANES:
         raise ValueError(f"unsupported OCR lane: {lane}")
 
+    event = {
+        "event": "ocr_route",
+        "modality": modality,
+        "script": script,
+        "bounded_capture": bounded_capture,
+        "lane": lane,
+    }
     logger.info(
         "cost_telemetry %s",
-        json.dumps(
-            {
-                "event": "ocr_route",
-                "modality": modality,
-                "script": script,
-                "bounded_capture": bounded_capture,
-                "lane": lane,
-            },
-            sort_keys=True,
-            separators=(",", ":"),
-        ),
+        json.dumps(event, sort_keys=True, separators=(",", ":")),
     )
+    persist_cost_event(event)

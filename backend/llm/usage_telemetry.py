@@ -13,6 +13,7 @@ from contextvars import ContextVar
 from typing import Iterator
 
 from llm.base import LLMResponse
+from llm.cost_event_store import persist_cost_event
 
 logger = logging.getLogger("iamina.cost")
 
@@ -58,6 +59,7 @@ def _emit(event: dict[str, object]) -> None:
         "cost_telemetry %s",
         json.dumps(event, sort_keys=True, separators=(",", ":")),
     )
+    persist_cost_event(event)
 
 
 def record_llm_success(
