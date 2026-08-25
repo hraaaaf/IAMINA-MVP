@@ -1,6 +1,7 @@
 name: FRUG-5 accepted-safe cost comparison
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
@@ -9,8 +10,6 @@ on:
       - "backend/evaluation/frug5_multilingual_quality_benchmark.py"
       - "backend/evaluation/fixtures/frug7_groq_text_price.json"
       - "backend/companion/conversation.py"
-      - "backend/companion/narrator_prompts.py"
-      - ".github/workflows/frug5-accepted-safe-cost.yml"
 
 permissions:
   contents: read
@@ -22,7 +21,7 @@ concurrency:
 jobs:
   benchmark:
     name: Groq paired 3000-vs-1800 machine-safe cost sample
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:

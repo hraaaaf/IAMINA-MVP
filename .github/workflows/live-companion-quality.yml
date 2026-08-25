@@ -6,6 +6,7 @@ on:
     paths:
       - "backend/companion/narrator_prompts.py"
       - "backend/evaluation/live_companion_quality.py"
+      - "backend/evaluation/companion_quality_gate.py"
       - "backend/evaluation/tests/test_companion_quality_contract.py"
       - ".github/workflows/live-companion-quality.yml"
 
@@ -47,6 +48,7 @@ jobs:
           ruff check
           companion/narrator_prompts.py
           evaluation/live_companion_quality.py
+          evaluation/companion_quality_gate.py
           evaluation/tests/test_companion_quality_contract.py
           && pytest -q evaluation/tests/test_companion_quality_contract.py
           && python manage.py shell -c
@@ -56,6 +58,8 @@ jobs:
           python manage.py shell -c
           "from pathlib import Path; from evaluation.live_companion_quality import run;
           run(Path('../artifacts/iamina-companion-quality.json'))"
+      - name: Apply machine quality gate
+        run: python -m evaluation.companion_quality_gate ../artifacts/iamina-companion-quality.json
       - name: Upload synthetic transcript
         if: always()
         uses: actions/upload-artifact@v4
