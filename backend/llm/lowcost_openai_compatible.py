@@ -10,7 +10,8 @@ from .errors import normalize_provider_exception
 logger = logging.getLogger(__name__)
 
 _TIMEOUT_SECONDS = 15.0
-_MAX_OUTPUT_TOKENS = 160
+_DEFAULT_MAX_OUTPUT_TOKENS = 160
+_GPT_OSS_MAX_OUTPUT_TOKENS = 256
 
 try:
     from openai import OpenAI
@@ -101,18 +102,20 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
             {"role": "user", "content": user},
         ]
 
-    def _request_tuning(self) -> dict[str, str]:
-        """Return provider/model-specific tuning without leaking it across adapters."""
+    def _request_tuning(self) -> dict[str, str | int]:
+        """Keep reasoning headroom bounded and isolated to GPT-OSS on Groq."""
         if self.provider_id == "groq" and self.model.startswith("openai/gpt-oss-"):
-            return {"reasoning_effort": "low"}
-        return {}
+            return {
+                "reasoning_effort": "low",
+                "max_completion_tokens": _GPT_OSS_MAX_OUTPUT_TOKENS,
+            }
+        return {"max_tokens": _DEFAULT_MAX_OUTPUT_TOKENS}
 
     def complete(self, system: str, user: str) -> LLMResponse:
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=self._messages(system, user),
-                max_tokens=_MAX_OUTPUT_TOKENS,
                 timeout=self.timeout_seconds,
                 **self._request_tuning(),
             )
@@ -129,7 +132,6 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
             with self.client.chat.completions.stream(
                 model=self.model,
                 messages=self._messages(system, user),
-                max_tokens=_MAX_OUTPUT_TOKENS,
                 timeout=self.timeout_seconds,
                 **self._request_tuning(),
             ) as stream:

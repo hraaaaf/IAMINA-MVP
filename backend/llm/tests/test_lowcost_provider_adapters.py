@@ -108,13 +108,14 @@ def test_openai_compatible_failures_are_normalized_without_hidden_retry(exc, exp
     assert client.chat.completions.create.call_count == 1
 
 
-def test_groq_gpt_oss_uses_low_reasoning_with_fixed_160_token_ceiling():
+def test_groq_gpt_oss_uses_low_reasoning_with_bounded_completion_headroom():
     provider, client = _successful_provider("groq", "openai/gpt-oss-120b")
 
     provider.complete("system", "synthetic user")
 
     kwargs = client.chat.completions.create.call_args.kwargs
-    assert kwargs["max_tokens"] == 160
+    assert kwargs["max_completion_tokens"] == 256
+    assert "max_tokens" not in kwargs
     assert kwargs["reasoning_effort"] == "low"
 
 
@@ -133,4 +134,5 @@ def test_reasoning_effort_is_not_leaked_to_other_provider_model_pairs(provider_i
 
     kwargs = client.chat.completions.create.call_args.kwargs
     assert kwargs["max_tokens"] == 160
+    assert "max_completion_tokens" not in kwargs
     assert "reasoning_effort" not in kwargs

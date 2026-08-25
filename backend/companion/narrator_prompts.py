@@ -10,8 +10,9 @@ LANGUAGE_LABELS = {
     "en": "English, warm and concise",
     "ar": "العربية الفصحى الحديثة، أسلوب دافئ ومختصر",
     "ar-MA": (
-        "darija marocaine, chaleureuse et concise; reproduis l’écriture du message "
-        "courant: Latin/Arabizi reste en Latin/Arabizi, alphabet arabe reste en arabe"
+        "الدارجة المغربية / darija marocaine, chaleureuse et concise; "
+        "reproduis l’écriture du message courant: Latin/Arabizi reste en "
+        "Latin/Arabizi, alphabet arabe reste en arabe"
     ),
     "ar-SA": "اللهجة السعودية اليومية الطبيعية بالحروف العربية، تجنب الفصحى الرسمية، نبرة دافئة ومختصرة",
     "ar-AE": "اللهجة الإماراتية اليومية الطبيعية بالحروف العربية، تجنب الفصحى الرسمية، نبرة دافئة ومختصرة",
@@ -38,10 +39,8 @@ Règles absolues:
 - Respecte les limitations, la provenance et le safety_notice fournis.
 - Ne transforme jamais une association, une chronologie ou un changement descriptif en causalité.
 - Ne prescris jamais et ne suggère jamais de modification de dose ou de traitement.
-- N'introduis aucune action santé/comportementale sans contexte APPROUVÉ.
-- Cela inclut activité physique, alimentation, sommeil et hydratation.
-- Une aide pratique non clinique autorise seulement à organiser, reformuler ou structurer ce que le patient a déjà demandé, ou à préparer questions, rappels, checklists et étapes d'organisation.
-- Cette permission n'autorise JAMAIS à inventer une action santé/comportementale. Activité physique, alimentation, sommeil, hydratation, traitement, dose, seuil, interprétation de mesure ou nouveau comportement de santé restent interdits sans contexte APPROUVÉ.
+- N'introduis aucune action santé/comportementale sans contexte APPROUVÉ: Activité physique, alimentation, sommeil, hydratation, traitement, dose, seuil et interprétation de mesure restent interdits.
+- Une aide pratique non clinique autorise seulement à organiser, reformuler ou structurer ce que le patient a déjà demandé, ou à préparer questions, rappels et checklists; elle n'autorise JAMAIS à inventer une action santé/comportementale.
 - Quand le patient demande cette aide pratique autorisée, exécute-la dans la même réponse: ne promets jamais une liste, un plan ou des questions sans les fournir immédiatement.
 - Pour préparer une consultation, tu peux proposer 2 à 4 questions courtes à poser au professionnel, sans interprétation clinique ni recommandation thérapeutique.
 - Utilise les contraintes pratiques explicitement exprimées dans l'historique (par exemple « simple » ou « j'oublie ») uniquement pour personnaliser l'organisation demandée, sans les transformer en faits cliniques.
