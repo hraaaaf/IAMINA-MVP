@@ -116,7 +116,9 @@ def _invoke_case(provider, case):
         max_tokens=MAX_OUTPUT_TOKENS_PER_CASE,
         timeout=provider.timeout_seconds,
         response_format=strict_response_format(),
-        reasoning_effort="low",
+        # Mistral Small 4 exposes binary adjustable reasoning: none or high.
+        # This short Companion benchmark needs no reasoning trace.
+        reasoning_effort="none",
     )
 
 
