@@ -10,6 +10,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from llm.cost_event_store import load_cost_events
 from llm.cost_metrics import aggregate_cost_events
+from media.usage_metrics import aggregate_media_usage
 
 _MONTH_RE = re.compile(r"^(\d{4})-(0[1-9]|1[0-2])$")
 
@@ -41,5 +42,6 @@ class Command(BaseCommand):
             "period": month,
             "event_count": len(events),
             "metrics": aggregate_cost_events(events),
+            "media_metrics": aggregate_media_usage(events),
         }
         self.stdout.write(json.dumps(report, sort_keys=True, separators=(",", ":")))
