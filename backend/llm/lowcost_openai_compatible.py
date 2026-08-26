@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 _TIMEOUT_SECONDS = 15.0
 _DEFAULT_MAX_OUTPUT_TOKENS = 160
-_GPT_OSS_MAX_OUTPUT_TOKENS = 256
+_GPT_OSS_MAX_OUTPUT_TOKENS = 512
 
 try:
     from openai import OpenAI

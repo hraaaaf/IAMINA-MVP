@@ -114,7 +114,7 @@ def test_groq_gpt_oss_uses_low_reasoning_with_bounded_completion_headroom():
     provider.complete("system", "synthetic user")
 
     kwargs = client.chat.completions.create.call_args.kwargs
-    assert kwargs["max_completion_tokens"] == 256
+    assert kwargs["max_completion_tokens"] == 512
     assert "max_tokens" not in kwargs
     assert kwargs["reasoning_effort"] == "low"
 
