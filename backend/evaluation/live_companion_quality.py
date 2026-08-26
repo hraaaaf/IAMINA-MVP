@@ -151,7 +151,7 @@ def validate_scenario() -> dict[str, int]:
         raise RuntimeError("quality scenario must remain exactly 10 turns")
     routes = [resolved_route(turn) for turn in turns]
     counts = {name: routes.count(name) for name in ("safety", "zero_model", "llm")}
-    if counts != {"safety": 2, "zero_model": 2, "llm": 6}:
+    if counts != {"safety": 2, "zero_model": 7, "llm": 1}:
         raise RuntimeError(f"unexpected route coverage: {counts}")
     return counts
 

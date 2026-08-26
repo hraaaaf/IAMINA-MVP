@@ -8,6 +8,9 @@ on:
       - "backend/companion/narrator_prompts.py"
       - "backend/companion/output_guard.py"
       - "backend/companion/test_output_guard.py"
+      - "backend/companion/zero_model_router.py"
+      - "backend/companion/test_zero_model_router.py"
+      - "backend/companion/test_zero_model_runtime.py"
       - "backend/evaluation/live_companion_quality.py"
       - "backend/evaluation/companion_quality_gate.py"
       - "backend/evaluation/tests/test_companion_quality_contract.py"
@@ -52,6 +55,9 @@ jobs:
           companion/narrator_prompts.py
           companion/output_guard.py
           companion/test_output_guard.py
+          companion/zero_model_router.py
+          companion/test_zero_model_router.py
+          companion/test_zero_model_runtime.py
           evaluation/live_companion_quality.py
           evaluation/companion_quality_gate.py
           evaluation/tests/test_companion_quality_contract.py
@@ -59,6 +65,8 @@ jobs:
           llm/tests/test_lowcost_provider_adapters.py
           && pytest -q
           companion/test_output_guard.py
+          companion/test_zero_model_router.py
+          companion/test_zero_model_runtime.py
           evaluation/tests/test_companion_quality_contract.py
           llm/tests/test_lowcost_provider_adapters.py
           core/tests/test_companion_convergence_p3_narrator_only.py

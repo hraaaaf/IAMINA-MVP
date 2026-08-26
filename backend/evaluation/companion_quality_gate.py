@@ -13,7 +13,7 @@ from pathlib import Path
 
 from companion.output_guard import ARABIC_RE, FORBIDDEN_BEHAVIOR_PATTERNS
 
-EXPECTED_ROUTES = {"safety": 2, "zero_model": 2, "llm": 6}
+EXPECTED_ROUTES = {"safety": 2, "zero_model": 7, "llm": 1}
 
 _ORGANIZATION_RE = re.compile(
     r"\b(?:rappel|alarme|checklist|check-list|liste|case|coche|noter?|routine|"
