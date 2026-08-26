@@ -1,4 +1,4 @@
-from companion.output_guard import guard_narrator_output
+from companion.output_guard import ARABIC_RE, guard_narrator_output, safe_fallback
 
 
 def test_guard_blocks_explicit_behavior_advice_without_approved_context():
@@ -72,6 +72,37 @@ def test_guard_blocks_model_selected_tracking_content():
     assert "rappel" in guarded.lower()
 
 
+def test_guard_blocks_model_selected_daily_frequency():
+    reply = "Aujourd’hui j’ai noté mon suivi et coché la case du jour précédent."
+    guarded = guard_narrator_output(
+        reply,
+        language="fr",
+        approved_session_context=False,
+    )
+    assert guarded != reply
+    assert "jour précédent" not in guarded.lower()
+    assert "rappel" in guarded.lower()
+
+
+def test_guard_reframes_clinician_tracking_question_without_selecting_content():
+    reply = (
+        "Prépare ces 4 questions :\n"
+        "- Quelles informations voulez-vous que je note ?\n"
+        "- Quels changements dois-je vous signaler ?\n"
+        "- Quels critères utilisez-vous pour réévaluer mon traitement ?\n"
+        "- Quand dois-je vous recontacter ?"
+    )
+    guarded = guard_narrator_output(
+        reply,
+        language="fr",
+        approved_session_context=False,
+        mode="clinician_prep",
+    )
+    assert "apporter" in guarded.lower()
+    assert "que je note" not in guarded.lower()
+    assert guarded.count("?") == 4
+
+
 def test_guard_blocks_arabizi_content_selection():
     guarded = guard_narrator_output(
         "Sji mood dyalk f checklist.",
@@ -95,12 +126,27 @@ def test_guard_bounds_emotional_shape():
     assert "moment" in guarded.lower()
 
 
-def test_guard_keeps_latin_darija_fallback_script():
+def test_guard_replaces_arabic_contamination_after_latin_darija_input():
+    reply = "Khlliha minimal bla contenu مفروض."
     guarded = guard_narrator_output(
-        "Dir riayada 10 d9aye9.",
+        reply,
         language="ar-MA",
         approved_session_context=False,
         prefer_latin_script=True,
     )
-    assert "reminder" in guarded.lower()
-    assert not any("\u0600" <= char <= "\u06ff" for char in guarded)
+    assert guarded != reply
+    assert not ARABIC_RE.search(guarded)
+
+
+def test_all_latin_darija_fallbacks_are_script_clean():
+    for mode in ("practical", "emotional", "clinician_prep"):
+        for weekly in (False, True):
+            for very_long in (False, True):
+                fallback = safe_fallback(
+                    "ar-MA",
+                    mode=mode,
+                    weekly=weekly,
+                    very_long=very_long,
+                    prefer_latin_script=True,
+                )
+                assert not ARABIC_RE.search(fallback)

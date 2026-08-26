@@ -11,6 +11,12 @@ import re
 ARABIC_RE = re.compile(r"[\u0600-\u06ff\u0750-\u077f]")
 _WORD_RE = re.compile(r"\b[\wÀ-ÿ]+\b", re.UNICODE)
 
+_FREQUENCY_SELECTION_PATTERN = re.compile(
+    r"\b(?:chaque jour|tous les jours|jour précédent|quotidien(?:ne)?|"
+    r"daily|every day|kol nhar)\b",
+    re.IGNORECASE,
+)
+
 FORBIDDEN_BEHAVIOR_PATTERNS = (
     re.compile(r"\b(?:fais|faire)\b.{0,20}\b(?:de la )?marche\b", re.IGNORECASE),
     re.compile(r"\bmarch(?:e|er)\b.{0,24}\b(?:\d+\s*)?(?:min|minute|minutes|pas)\b", re.IGNORECASE),
@@ -53,6 +59,7 @@ FORBIDDEN_BEHAVIOR_PATTERNS = (
         r"\b(?:humeur|mood|relation|3la9at|farha)\b",
         re.IGNORECASE,
     ),
+    _FREQUENCY_SELECTION_PATTERN,
 )
 
 _SAFE_ORGANIZATION_FR = (
@@ -69,7 +76,7 @@ _SAFE_WEEK_FR = (
 )
 _SAFE_CLINICIAN_FR = (
     "Prépare ces 4 questions :\n"
-    "- Quelles informations voulez-vous que je note ?\n"
+    "- Quelles informations dois-je apporter ?\n"
     "- Quels changements dois-je vous signaler ?\n"
     "- Quels critères utilisez-vous pour réévaluer mon traitement ?\n"
     "- Quand dois-je vous recontacter ?"
@@ -90,7 +97,7 @@ _SAFE_WEEK_EN = (
 )
 _SAFE_CLINICIAN_EN = (
     "Prepare these 4 questions:\n"
-    "- What information should I record?\n"
+    "- What information should I bring?\n"
     "- What changes should I report?\n"
     "- What criteria do you use to reassess my treatment?\n"
     "- When should I contact you again?"
@@ -100,13 +107,13 @@ _SAFE_EMOTIONAL_EN = "That sounds exhausting to carry every day, and I’m here 
 _SAFE_ORGANIZATION_AR = "ابدأ بشيء واحد: تذكير واحد في وقت ثابت وخانة واحدة للتعليم، وإذا فاتك ارجع مع التذكير التالي."
 _SAFE_COMPACT_AR = "بسّطها أكثر: ثلاث خانات فارغة فقط بدون محتوى مفروض، وعلّم فقط ما تم إنجازه."
 _SAFE_WEEK_AR = "لهذا الأسبوع: اختر وقتًا ثابتًا واحدًا، وضع تذكيرًا واحدًا وثلاث خانات فارغة كحد أقصى، وعلّم فقط ما تم إنجازه."
-_SAFE_CLINICIAN_AR = "حضّر هذه الأسئلة الأربعة: ما المعلومات التي تريدني أن أسجلها؟ ما التغيّرات التي يجب أن أخبرك بها؟ ما معايير إعادة تقييم علاجي؟ ومتى أتواصل معك مجددًا؟"
+_SAFE_CLINICIAN_AR = "حضّر هذه الأسئلة الأربعة: ما المعلومات التي يجب أن أحضرها؟ ما التغيّرات التي يجب أن أخبرك بها؟ ما معايير إعادة تقييم علاجي؟ ومتى أتواصل معك مجددًا؟"
 _SAFE_EMOTIONAL_AR = "واضح إن التفكير في هذا كل يوم متعب جدًا، وأنا معك في هذه اللحظة بدون ما أزيد عليك مهام."
 
 _SAFE_DARIJA_LATIN = "Bda b 7aja wa7da: reminder wa7ed f wa9t tabet, w case wa7da t3ellem 3liha. Ila nsiti, kmml m3a reminder li b3do."
-_SAFE_COMPACT_DARIJA_LATIN = "Khlliha minimal: 3 cases khawyin bla contenu mفرض, w 3ellem ghir mlli tkmel."
+_SAFE_COMPACT_DARIJA_LATIN = "Khlliha minimal: 3 cases khawyin bla contenu mfroud, w 3ellem ghir mlli tkmel."
 _SAFE_WEEK_DARIJA_LATIN = "Had simana: khtar wa9t tabet wa7ed, dir reminder wa7ed, w khlli 3 cases khawyin max. 3ellem ghir mlli tkmel."
-_SAFE_CLINICIAN_DARIJA_LATIN = "Wjjed had 4 swalat: chno n9yed? chno taghyir n9ol lik 3lih? b ach kat3awd t9yyem l3ilaj dyali? w imta n3awd ntwassel m3ak?"
+_SAFE_CLINICIAN_DARIJA_LATIN = "Wjjed had 4 swalat: chno njib m3aya? chno taghyir n9ol lik 3lih? b ach kat3awd t9yyem l3ilaj dyali? w imta n3awd ntwassel m3ak?"
 _SAFE_EMOTIONAL_DARIJA_LATIN = "Kayban belli had lham kol nhar m3yik bzaf, w ana hna m3ak daba bla ma nzid 3lik chi haja."
 
 
@@ -179,6 +186,7 @@ def guard_narrator_output(
     forbidden = contains_unapproved_behavior_action(reply)
     words = word_count(reply)
     lines = nonempty_line_count(reply)
+    script_violation = prefer_latin_script and bool(ARABIC_RE.search(reply))
 
     if mode == "emotional":
         invalid_shape = words > 30 or lines > 1
@@ -188,7 +196,7 @@ def guard_narrator_output(
     else:
         invalid_shape = words > 45 or lines > 5
 
-    if forbidden or invalid_shape:
+    if forbidden or invalid_shape or script_violation:
         return safe_fallback(
             language,
             mode=mode,
