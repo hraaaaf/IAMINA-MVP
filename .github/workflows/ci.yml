@@ -23,6 +23,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Reject tracked credentials and local secret files
         run: python scripts/check_secrets.py
+      - name: Pilot packaging foundation contract
+        run: python scripts/check_pilot_packaging_contract.py
 
   backend:
     name: Backend — ruff + pytest
