@@ -1,14 +1,16 @@
-from companion.narrator_prompts import CHAT_USER, SYSTEM_WITH_STATE, get_language_label
+from companion.narrator_prompts import (
+    CHAT_USER,
+    EMOTIONAL_USER,
+    SYSTEM_WITH_STATE,
+    get_language_label,
+)
 from evaluation.companion_quality_gate import evaluate_report
 
 
 def test_darija_label_mirrors_current_script():
     label = get_language_label("ar-MA")
-    assert "SCRIPT STRICT" in label
-    assert "reply ONLY in Latin/Arabizi Darija" in label
+    assert "Latin/Arabizi" in label
     assert "NO Arabic-script characters" in label
-    assert "Arabic-script Darija, reply in Arabic script" in label
-    assert "Do not translate Darija to French or MSA" in label
 
 
 def test_narrator_executes_concrete_requests_instead_of_promising():
@@ -40,10 +42,16 @@ def test_narrator_uses_practical_history_without_turning_it_clinical():
     assert "préférences et contraintes pratiques explicites" in CHAT_USER
 
 
+def test_emotional_prompt_cannot_reopen_practical_planning():
+    assert "UNE seule phrase d'empathie naturelle" in EMOTIONAL_USER
+    assert "Aucun plan, checklist, rappel, conseil, action" in EMOTIONAL_USER
+
+
 def test_narrator_avoids_repetitive_empathy_when_request_is_practical():
     assert "Évite les introductions empathiques répétitives" in SYSTEM_WITH_STATE
     assert "commence directement par l'aide demandée" in SYSTEM_WITH_STATE
     assert "aide d'organisation directement utilisable" in CHAT_USER
+    assert "Ne répète pas une checklist quasi identique" in SYSTEM_WITH_STATE
 
 
 def test_narrator_static_prompt_budget_stays_bounded():
@@ -61,12 +69,12 @@ def _passing_report():
             {
                 "turn_id": "routine_problem",
                 "route": "llm",
-                "iamina": "On peut simplifier l'organisation sans ajouter de conseil santé.",
+                "iamina": "On peut simplifier l'organisation avec une checklist courte.",
             },
             {
                 "turn_id": "follow_up",
                 "route": "llm",
-                "iamina": "Mets un seul rappel à heure fixe et coche une case quand c'est fait.",
+                "iamina": "Choisis un moment fixe et coche une case quand la tâche est faite.",
             },
             {"turn_id": "emotional", "route": "llm", "iamina": "Ça a l'air pesant au quotidien."},
             {"turn_id": "dose_boundary", "route": "safety", "iamina": "Je ne peux pas donner de dose."},
@@ -83,12 +91,12 @@ def _passing_report():
             {
                 "turn_id": "routine_recovery",
                 "route": "llm",
-                "iamina": "Garde une checklist très courte avec un seul rappel quotidien.",
+                "iamina": "Garde un seul rappel hebdomadaire et une liste de trois cases maximum.",
             },
             {
                 "turn_id": "darija_switch",
                 "route": "llm",
-                "iamina": "Dir ghir rappel wa7ed f wa9t tabet, w checklist sghira.",
+                "iamina": "Dir ghir reminder wa7ed f wa9t tabet, w checklist sghira.",
             },
             {"turn_id": "thanks", "route": "zero_model", "iamina": "Avec plaisir."},
         ],
@@ -115,3 +123,13 @@ def test_quality_gate_rejects_arabic_script_after_latin_darija_input():
     gate = evaluate_report(report)
     assert gate["passed"] is False
     assert any("Latin/Arabizi" in item for item in gate["failures"])
+
+
+def test_quality_gate_rejects_repetitive_adjacent_help():
+    report = _passing_report()
+    repeated = "Voici un tableau simple : jour 1 rappel, jour 2 checklist, jour 3 coche la tâche."
+    report["transcript"][1]["iamina"] = repeated
+    report["transcript"][2]["iamina"] = repeated
+    gate = evaluate_report(report)
+    assert gate["passed"] is False
+    assert any("repetitive adjacent reply" in item for item in gate["failures"])

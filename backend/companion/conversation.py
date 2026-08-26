@@ -3,7 +3,13 @@ import re
 
 from companion.advice_filter import apply_advice_throttle
 from companion.memory import _detect_emotional_signals
-from companion.narrator_prompts import CHAT_USER, SYSTEM_WITH_STATE, get_language_label
+from companion.narrator_prompts import (
+    CHAT_USER,
+    EMOTIONAL_USER,
+    SYSTEM_WITH_STATE,
+    get_language_label,
+)
+from companion.output_guard import guard_unapproved_behavior
 from companion.parser import parse_llm_json
 from companion.route_telemetry import record_companion_route
 from companion.state import compute_state, state_to_prompt
@@ -257,7 +263,8 @@ def _build_runtime_prompt(
     )
     safe_history = _safe_text(pseudonymizer, first_name, history)
 
-    base_prompt = CHAT_USER.format(
+    prompt_template = EMOTIONAL_USER if emotional else CHAT_USER
+    base_prompt = prompt_template.format(
         memory=memory_summary,
         history=safe_history,
         message=safe_message,
@@ -268,23 +275,24 @@ def _build_runtime_prompt(
             base_prompt = base_prompt[: base_prompt.index(json_tag)].rstrip()
             base_prompt += "\n\nContrainte: MAX 2 phrases, 40 mots. Texte simple, sans JSON."
 
-    intent_hint = (
-        "\n[INTENT: EMOTIONAL — empathie uniquement, sans données chiffrées]"
-        if emotional
-        else ""
-    )
-
     variety_hint = ""
     previous = _recent_turns(patient, 1, role="assistant")
     if previous:
-        opener = previous[0].message[:12].lower()
+        previous_reply = previous[0].message
+        opener = previous_reply[:12].lower()
+        hints: list[str] = []
         if any(word in opener for word in ("salam", "bonjour", "ana iamina", "kanfhemek")):
-            variety_hint = (
-                f"\n[STYLE: L'accroche précédente était '{opener.strip()}' — "
-                "utilise une formule différente cette fois]"
-            )
+            hints.append("change l'accroche")
+        if not emotional and re.search(
+            r"\b(?:tableau|checklist|rappel|jour 1|jour 2)\b",
+            previous_reply,
+            re.IGNORECASE,
+        ):
+            hints.append("ne répète pas la même liste; donne une seule simplification adaptée")
+        if hints:
+            variety_hint = "\n[STYLE: " + "; ".join(hints) + "]"
 
-    return language, ctx, system, base_prompt + intent_hint + variety_hint
+    return language, ctx, system, base_prompt + variety_hint
 
 
 def _safety_reply(message: str, patient, language: str) -> str | None:
@@ -302,9 +310,22 @@ def _safety_reply(message: str, patient, language: str) -> str | None:
     return None
 
 
-def _finalize_reply(reply: str, deep, language: str) -> str:
+def _finalize_reply(
+    reply: str,
+    deep,
+    language: str,
+    *,
+    approved_session_context: bool = False,
+    prefer_latin_script: bool = False,
+) -> str:
     reply = apply_advice_throttle(reply, deep)
     reply = apply_no_prescription_policy(reply, _deterministic_language(language))
+    reply = guard_unapproved_behavior(
+        reply,
+        language=language,
+        approved_session_context=approved_session_context,
+        prefer_latin_script=prefer_latin_script,
+    )
     deep.save()
     return reply
 
@@ -376,7 +397,13 @@ def chat(
             _deterministic_language(language),
         )
 
-    reply = _finalize_reply(reply, deep, language)
+    reply = _finalize_reply(
+        reply,
+        deep,
+        language,
+        approved_session_context=bool(ctx.pivot_text),
+        prefer_latin_script=(language == "ar-MA" and not _ARABIC_RE.search(message)),
+    )
     _append_turn(patient, "assistant", reply)
     _update_relationship_memory(message, memory)
     return reply
@@ -428,8 +455,9 @@ def stream_chat(
         streaming=True,
     )
     _append_turn(patient, "user", message)
+    prefer_latin_script = language == "ar-MA" and not _ARABIC_RE.search(message)
 
-    if not medical_streaming_enabled():
+    if not medical_streaming_enabled() or not ctx.pivot_text:
         try:
             result = llm.complete(system, user_prompt)
             full_reply = result.content
@@ -443,7 +471,13 @@ def stream_chat(
                 ctx,
                 _deterministic_language(language),
             )
-        full_reply = _finalize_reply(full_reply, deep, language)
+        full_reply = _finalize_reply(
+            full_reply,
+            deep,
+            language,
+            approved_session_context=bool(ctx.pivot_text),
+            prefer_latin_script=prefer_latin_script,
+        )
         _append_turn(patient, "assistant", full_reply)
         _update_relationship_memory(message, memory)
         yield full_reply
@@ -467,6 +501,12 @@ def stream_chat(
         yield fallback
         assembled = [fallback]
 
-    full_reply = _finalize_reply("".join(assembled), deep, language)
+    full_reply = _finalize_reply(
+        "".join(assembled),
+        deep,
+        language,
+        approved_session_context=bool(ctx.pivot_text),
+        prefer_latin_script=prefer_latin_script,
+    )
     _append_turn(patient, "assistant", full_reply)
     _update_relationship_memory(message, memory)
