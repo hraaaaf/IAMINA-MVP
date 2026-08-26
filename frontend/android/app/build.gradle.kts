@@ -28,7 +28,9 @@ val releaseSigningConfigured = listOf(
 }
 
 android {
-    namespace = "ma.iamina.app"
+    // P5-4: the permanent pilot ID is ma.iamina.app, but the runtime target
+    // remains on the historical Firebase-bound ID until FlutterFire is rebound.
+    namespace = "com.example.amina"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -42,7 +44,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "ma.iamina.app"
+        applicationId = "com.example.amina"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
