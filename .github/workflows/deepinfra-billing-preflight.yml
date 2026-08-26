@@ -1,0 +1,57 @@
+name: DeepInfra billing preflight
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/deepinfra-billing-preflight.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DEEPINFRA_API_KEY: ${{ secrets.DEEPINFRA_API_KEY }}
+    steps:
+      - name: Query non-sensitive billing status
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          import urllib.error
+
+          token = os.environ.get("DEEPINFRA_API_KEY", "").strip()
+          if not token:
+              raise SystemExit("missing DEEPINFRA_API_KEY")
+
+          req = urllib.request.Request(
+              "https://api.deepinfra.com/payment/checklist?compute_owed=true",
+              headers={"Authorization": f"Bearer {token}"},
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=15) as response:
+                  payload = json.load(response)
+          except urllib.error.HTTPError as exc:
+              print(json.dumps({"http_status": exc.code, "preflight": "failed"}))
+              raise
+
+          safe = {
+              "suspended": bool(payload.get("suspended", False)),
+              "suspend_reason": payload.get("suspend_reason"),
+              "payment_method": bool(payload.get("payment_method", False)),
+              "billing_address": bool(payload.get("billing_address", False)),
+              "overdue_invoices": int(payload.get("overdue_invoices", 0) or 0),
+              "topup": bool(payload.get("topup", False)),
+              "topup_failed": bool(payload.get("topup_failed", False)),
+              "has_spending_limit": payload.get("limit") is not None,
+          }
+          print(json.dumps(safe, sort_keys=True))
+          if safe["suspended"]:
+              raise SystemExit(2)
+          PY
