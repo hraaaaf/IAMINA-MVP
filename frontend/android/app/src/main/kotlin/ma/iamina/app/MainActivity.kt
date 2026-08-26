@@ -1,5 +1,0 @@
-package ma.iamina.app
-
-import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity : FlutterActivity()
