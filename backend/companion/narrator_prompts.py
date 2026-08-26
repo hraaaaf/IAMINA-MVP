@@ -10,9 +10,11 @@ LANGUAGE_LABELS = {
     "en": "English, warm and concise",
     "ar": "العربية الفصحى الحديثة، أسلوب دافئ ومختصر",
     "ar-MA": (
-        "الدارجة المغربية / darija marocaine, chaleureuse et concise; "
-        "reproduis l’écriture du message courant: Latin/Arabizi reste en "
-        "Latin/Arabizi et la réponse reste en darija, alphabet arabe reste en arabe"
+        "Darija marocaine, chaleureuse et concise. SCRIPT STRICT: mirror the "
+        "current user message. If it is Latin/Arabizi Darija, reply ONLY in "
+        "Latin/Arabizi Darija and use NO Arabic-script characters. If it is "
+        "Arabic-script Darija, reply in Arabic script. Do not translate Darija "
+        "to French or MSA."
     ),
     "ar-SA": "اللهجة السعودية اليومية الطبيعية بالحروف العربية، تجنب الفصحى الرسمية، نبرة دافئة ومختصرة",
     "ar-AE": "اللهجة الإماراتية اليومية الطبيعية بالحروف العربية، تجنب الفصحى الرسمية، نبرة دافئة ومختصرة",

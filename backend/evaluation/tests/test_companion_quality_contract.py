@@ -4,8 +4,11 @@ from evaluation.companion_quality_gate import evaluate_report
 
 def test_darija_label_mirrors_current_script():
     label = get_language_label("ar-MA")
-    assert "Latin/Arabizi reste en Latin/Arabizi" in label
-    assert "alphabet arabe reste en arabe" in label
+    assert "SCRIPT STRICT" in label
+    assert "reply ONLY in Latin/Arabizi Darija" in label
+    assert "NO Arabic-script characters" in label
+    assert "Arabic-script Darija, reply in Arabic script" in label
+    assert "Do not translate Darija to French or MSA" in label
 
 
 def test_narrator_executes_concrete_requests_instead_of_promising():
