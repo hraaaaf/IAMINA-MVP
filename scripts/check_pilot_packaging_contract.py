@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Static P5-4 pilot packaging contract.
 
-Default mode validates the repository-side foundation that can be proven without
+Default mode validates repository-side preparation that can be proven without
 private signing material or external Apple/Firebase configuration. --release-ready
-adds the external/mobile configuration floors required before a signed pilot build.
+adds permanent mobile-identity and FlutterFire rebinding floors required before
+a signed pilot build is accepted.
 """
 from __future__ import annotations
 
@@ -33,21 +34,8 @@ def main() -> int:
     errors: list[str] = []
     gradle = read("frontend/android/app/build.gradle.kts")
     android_ignore = read("frontend/android/.gitignore")
-    main_activity = read(
-        "frontend/android/app/src/main/kotlin/ma/iamina/app/MainActivity.kt"
-    )
     release_doc = read("docs/PILOT_RELEASE.md")
 
-    require(
-        f'applicationId = "{CANONICAL_APP_ID}"' in gradle,
-        "Android applicationId is not the canonical pilot ID",
-        errors,
-    )
-    require(
-        f'namespace = "{CANONICAL_APP_ID}"' in gradle,
-        "Android namespace is not the canonical pilot ID",
-        errors,
-    )
     require(
         "signingConfigs.getByName(\"debug\")" not in gradle,
         "Android release path still references the debug signing key",
@@ -56,11 +44,6 @@ def main() -> int:
     require(
         'create("release")' in gradle and "releaseSigningConfigured" in gradle,
         "Android release signing is not fail-closed on private key.properties",
-        errors,
-    )
-    require(
-        main_activity.startswith(f"package {CANONICAL_APP_ID}\n"),
-        "Android MainActivity package does not match the canonical pilot ID",
         errors,
     )
     require(
@@ -84,6 +67,28 @@ def main() -> int:
     if args.release_ready:
         ios_project = read("frontend/ios/Runner.xcodeproj/project.pbxproj")
         firebase_options = read("frontend/lib/firebase_options.dart")
+        main_activity_path = ROOT / (
+            "frontend/android/app/src/main/kotlin/ma/iamina/app/MainActivity.kt"
+        )
+
+        require(
+            f'applicationId = "{CANONICAL_APP_ID}"' in gradle,
+            "Android applicationId is not the canonical pilot ID",
+            errors,
+        )
+        require(
+            f'namespace = "{CANONICAL_APP_ID}"' in gradle,
+            "Android namespace is not the canonical pilot ID",
+            errors,
+        )
+        require(
+            main_activity_path.exists()
+            and main_activity_path.read_text(encoding="utf-8").startswith(
+                f"package {CANONICAL_APP_ID}\n"
+            ),
+            "Android MainActivity package does not match the canonical pilot ID",
+            errors,
+        )
         require(
             "com.example.amina" not in ios_project,
             "iOS project still contains placeholder com.example.amina identifiers",
@@ -95,8 +100,9 @@ def main() -> int:
             errors,
         )
         require(
-            f"iosBundleId: '{CANONICAL_APP_ID}'" in firebase_options,
-            "FlutterFire iOS options are not rebound to the canonical pilot bundle ID",
+            "com.example.amina" not in firebase_options
+            and f"iosBundleId: '{CANONICAL_APP_ID}'" in firebase_options,
+            "FlutterFire mobile options are not rebound to the canonical pilot identity",
             errors,
         )
 
