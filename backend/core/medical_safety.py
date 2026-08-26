@@ -59,9 +59,9 @@ def no_prescription_message(language: str = "fr") -> str:
             "prepare questions for your clinician."
         )
     return (
-        "Je ne peux pas prescrire, modifier une dose d'insuline, arreter un traitement, "
-        "ou poser un diagnostic. Je peux t'aider a organiser tes observations "
-        "et preparer les bonnes questions pour ton medecin."
+        "Je ne peux pas prescrire, modifier une dose d'insuline, arrêter un traitement, "
+        "ou poser un diagnostic. Je peux t'aider à organiser tes observations "
+        "et préparer les bonnes questions pour ton médecin."
     )
 
 

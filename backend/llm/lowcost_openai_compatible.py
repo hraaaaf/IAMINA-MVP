@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 _TIMEOUT_SECONDS = 15.0
 _DEFAULT_MAX_OUTPUT_TOKENS = 160
-_GPT_OSS_MAX_OUTPUT_TOKENS = 512
+_GPT_OSS_MAX_OUTPUT_TOKENS = 256
+_GPT_OSS_EMOTIONAL_MAX_OUTPUT_TOKENS = 384
+_EMOTIONAL_INTENT_MARKER = "[INTENT: EMOTIONAL"
 
 try:
     from openai import OpenAI
@@ -102,12 +104,17 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
             {"role": "user", "content": user},
         ]
 
-    def _request_tuning(self) -> dict[str, str | int]:
+    def _request_tuning(self, user: str = "") -> dict[str, str | int]:
         """Keep reasoning headroom bounded and isolated to GPT-OSS on Groq."""
         if self.provider_id == "groq" and self.model.startswith("openai/gpt-oss-"):
+            max_completion_tokens = (
+                _GPT_OSS_EMOTIONAL_MAX_OUTPUT_TOKENS
+                if _EMOTIONAL_INTENT_MARKER in user
+                else _GPT_OSS_MAX_OUTPUT_TOKENS
+            )
             return {
                 "reasoning_effort": "low",
-                "max_completion_tokens": _GPT_OSS_MAX_OUTPUT_TOKENS,
+                "max_completion_tokens": max_completion_tokens,
             }
         return {"max_tokens": _DEFAULT_MAX_OUTPUT_TOKENS}
 
@@ -117,7 +124,7 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
                 model=self.model,
                 messages=self._messages(system, user),
                 timeout=self.timeout_seconds,
-                **self._request_tuning(),
+                **self._request_tuning(user),
             )
         except Exception as exc:
             raise normalize_provider_exception(exc, self.provider_id) from exc
@@ -133,7 +140,7 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
                 model=self.model,
                 messages=self._messages(system, user),
                 timeout=self.timeout_seconds,
-                **self._request_tuning(),
+                **self._request_tuning(user),
             ) as stream:
                 for text in stream.text_stream:
                     if text:
