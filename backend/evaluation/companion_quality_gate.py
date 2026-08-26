@@ -20,6 +20,10 @@ _ORGANIZATION_RE = re.compile(
     r"agenda|calendrier|moment fixe|heure fixe|une fois|un seul|wa9t|sa3a|reminder)\b",
     re.IGNORECASE,
 )
+_EMOTIONAL_PLAN_RE = re.compile(
+    r"\b(?:tableau|plan|planning)\b",
+    re.IGNORECASE,
+)
 _GENERIC_EMPATHY_OPENERS = (
     "je comprends",
     "c'est compréhensible",
@@ -119,7 +123,7 @@ def evaluate_report(report: dict) -> dict:
             failures.append(f"{turn_id}: generic empathy opener instead of direct practical help")
 
     emotional = str(turns.get("emotional", {}).get("iamina", ""))
-    if _ORGANIZATION_RE.search(emotional):
+    if _ORGANIZATION_RE.search(emotional) or _EMOTIONAL_PLAN_RE.search(emotional):
         failures.append("emotional: unsolicited organization instead of empathy-only response")
 
     darija = str(turns.get("darija_switch", {}).get("iamina", ""))
