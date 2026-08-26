@@ -108,27 +108,14 @@ def test_openai_compatible_failures_are_normalized_without_hidden_retry(exc, exp
     assert client.chat.completions.create.call_count == 1
 
 
-def test_groq_gpt_oss_uses_low_reasoning_with_frugal_default_headroom():
+def test_groq_gpt_oss_uses_low_reasoning_with_bounded_completion_headroom():
     provider, client = _successful_provider("groq", "openai/gpt-oss-120b")
 
     provider.complete("system", "synthetic user")
 
     kwargs = client.chat.completions.create.call_args.kwargs
-    assert kwargs["max_completion_tokens"] == 256
-    assert "max_tokens" not in kwargs
-    assert kwargs["reasoning_effort"] == "low"
-
-
-def test_groq_gpt_oss_expands_headroom_only_for_trusted_emotional_intent_marker():
-    provider, client = _successful_provider("groq", "openai/gpt-oss-120b")
-
-    provider.complete(
-        "system",
-        "synthetic user\n[INTENT: EMOTIONAL — empathie uniquement, sans données chiffrées]",
-    )
-
-    kwargs = client.chat.completions.create.call_args.kwargs
     assert kwargs["max_completion_tokens"] == 384
+    assert "max_tokens" not in kwargs
     assert kwargs["reasoning_effort"] == "low"
 
 

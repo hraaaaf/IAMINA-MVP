@@ -17,8 +17,9 @@ def test_narrator_executes_concrete_requests_instead_of_promising():
 def test_narrator_practical_help_cannot_reopen_behavioral_advice():
     assert "autorise seulement à organiser, reformuler ou structurer" in SYSTEM_WITH_STATE
     assert "n'autorise JAMAIS à inventer une action santé/comportementale" in SYSTEM_WITH_STATE
+    lowered = SYSTEM_WITH_STATE.lower()
     for forbidden_domain in (
-        "Activité physique",
+        "activité physique",
         "alimentation",
         "sommeil",
         "hydratation",
@@ -26,7 +27,7 @@ def test_narrator_practical_help_cannot_reopen_behavioral_advice():
         "dose",
         "interprétation de mesure",
     ):
-        assert forbidden_domain in SYSTEM_WITH_STATE
+        assert forbidden_domain in lowered
     assert "n'ajoute aucun conseil santé ou comportemental" in CHAT_USER
 
 
@@ -40,6 +41,10 @@ def test_narrator_avoids_repetitive_empathy_when_request_is_practical():
     assert "Évite les introductions empathiques répétitives" in SYSTEM_WITH_STATE
     assert "commence directement par l'aide demandée" in SYSTEM_WITH_STATE
     assert "aide d'organisation directement utilisable" in CHAT_USER
+
+
+def test_narrator_static_prompt_budget_stays_bounded():
+    assert len(SYSTEM_WITH_STATE) + len(CHAT_USER) <= 2_000
 
 
 def _passing_report():
