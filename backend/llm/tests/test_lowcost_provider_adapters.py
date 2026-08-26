@@ -108,7 +108,7 @@ def test_openai_compatible_failures_are_normalized_without_hidden_retry(exc, exp
     assert client.chat.completions.create.call_count == 1
 
 
-def test_groq_gpt_oss_uses_low_reasoning_with_bounded_completion_headroom():
+def test_groq_gpt_oss_uses_low_reasoning_with_strict_json_reply():
     provider, client = _successful_provider("groq", "openai/gpt-oss-120b")
 
     provider.complete("system", "synthetic user")
@@ -117,6 +117,35 @@ def test_groq_gpt_oss_uses_low_reasoning_with_bounded_completion_headroom():
     assert kwargs["max_completion_tokens"] == 384
     assert "max_tokens" not in kwargs
     assert kwargs["reasoning_effort"] == "low"
+    assert kwargs["extra_body"] == {"reasoning_format": "hidden"}
+    assert kwargs["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "iamina_reply",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {"reply": {"type": "string"}},
+                "required": ["reply"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def test_groq_gpt_oss_stream_does_not_use_structured_outputs():
+    provider, client = _successful_provider("groq", "openai/gpt-oss-120b")
+    stream_context = MagicMock()
+    stream_context.__enter__.return_value.text_stream = []
+    client.chat.completions.stream.return_value = stream_context
+
+    assert list(provider.stream("system", "synthetic user")) == []
+
+    kwargs = client.chat.completions.stream.call_args.kwargs
+    assert kwargs["max_completion_tokens"] == 384
+    assert kwargs["reasoning_effort"] == "low"
+    assert "response_format" not in kwargs
+    assert "extra_body" not in kwargs
 
 
 @pytest.mark.parametrize(
@@ -127,7 +156,7 @@ def test_groq_gpt_oss_uses_low_reasoning_with_bounded_completion_headroom():
         ("groq", "llama-3.3-70b-versatile"),
     ],
 )
-def test_reasoning_effort_is_not_leaked_to_other_provider_model_pairs(provider_id, model):
+def test_reasoning_and_structured_output_do_not_leak_to_other_pairs(provider_id, model):
     provider, client = _successful_provider(provider_id, model)
 
     provider.complete("system", "synthetic user")
@@ -136,3 +165,5 @@ def test_reasoning_effort_is_not_leaked_to_other_provider_model_pairs(provider_i
     assert kwargs["max_tokens"] == 160
     assert "max_completion_tokens" not in kwargs
     assert "reasoning_effort" not in kwargs
+    assert "response_format" not in kwargs
+    assert "extra_body" not in kwargs

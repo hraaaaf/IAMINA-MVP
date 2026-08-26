@@ -1,8 +1,8 @@
-"""Deterministic scope/shape guard for narrator-only output.
+"""Deterministic condition-agnostic scope/shape guard for narrator output.
 
-It blocks explicit unapproved behavior recommendations and bounds responses that
-violate the narrator contract when no approved session context exists. Mere
-mention or organization of recorded health topics remains allowed.
+Clinical context presence is evidence, not behavior-action authorization. Until a
+dedicated authorization contract exists, the chassis keeps behavior/content
+selection bounded and falls back to abstract organization only.
 """
 from __future__ import annotations
 
@@ -40,15 +40,32 @@ FORBIDDEN_BEHAVIOR_PATTERNS = (
     re.compile(r"(?:اشرب|إشرب).{0,20}(?:ماء|الماء)"),
     re.compile(r"(?:امش|إمش|مشي).{0,20}(?:دقيق|دقيقة|دقائق)"),
     re.compile(r"(?:قم|قومي|حاول|حاولي).{0,20}(?:بتمرين|بالرياضة|بالمشي)"),
+    # Selecting what to track is authority too. Empty reminders/checklists are OK;
+    # model-selected health/behavior content is not.
+    re.compile(
+        r"\b(?:note|notes|consigne|consignes|mesure|mesures)\b"
+        r"(?!\s+(?:une?|la|le)?\s*(?:case|checklist|liste|rappel)\b)",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\b(?:sji|sjel|ktb|kteb)\b", re.IGNORECASE),
+    re.compile(
+        r"\b\d+\s*(?:min|minute|minutes|d9i9a|d9aye9)\b.{0,60}"
+        r"\b(?:humeur|mood|relation|3la9at|farha)\b",
+        re.IGNORECASE,
+    ),
 )
 
 _SAFE_ORGANIZATION_FR = (
-    "Encore plus simple : mets un seul rappel à heure fixe et garde une seule case "
-    "à cocher. Si tu oublies, reprends au rappel suivant sans refaire tout le planning."
+    "Commence par un seul repère : un rappel à heure fixe et une case à cocher. "
+    "Si tu oublies, reprends simplement au rappel suivant."
+)
+_SAFE_COMPACT_FR = (
+    "Réduis au minimum : une checklist de trois cases vides, sans contenu imposé. "
+    "Coche ce qui est fait et repars de là."
 )
 _SAFE_WEEK_FR = (
-    "Cette semaine : choisis un seul moment fixe, mets un rappel et garde trois cases "
-    "maximum. Coche seulement ce qui est fait, puis prépare deux questions pour ton médecin."
+    "Cette semaine : choisis un seul moment fixe, mets un rappel et garde trois cases vides maximum. "
+    "Coche seulement ce qui est fait, sans ajouter de contenu santé."
 )
 _SAFE_CLINICIAN_FR = (
     "Prépare ces 4 questions :\n"
@@ -58,13 +75,18 @@ _SAFE_CLINICIAN_FR = (
     "- Quand dois-je vous recontacter ?"
 )
 _SAFE_EMOTIONAL_FR = "Ça a l’air lourd à porter au quotidien, et je reste avec toi dans ce moment-là."
+
 _SAFE_ORGANIZATION_EN = (
-    "Keep it simple: set one reminder at a fixed time and keep one box to tick. "
-    "If you miss it, resume at the next reminder without rebuilding the plan."
+    "Start with one anchor: one reminder at a fixed time and one box to tick. "
+    "If you miss it, simply resume at the next reminder."
+)
+_SAFE_COMPACT_EN = (
+    "Strip it down: keep three empty checklist boxes with no imposed content. "
+    "Tick what is done and restart from there."
 )
 _SAFE_WEEK_EN = (
-    "This week: choose one fixed time, set one reminder, and keep at most three boxes. "
-    "Tick only what is done, then prepare two questions for your clinician."
+    "This week: choose one fixed time, set one reminder, and keep at most three empty boxes. "
+    "Tick only what is done without adding health content."
 )
 _SAFE_CLINICIAN_EN = (
     "Prepare these 4 questions:\n"
@@ -74,12 +96,16 @@ _SAFE_CLINICIAN_EN = (
     "- When should I contact you again?"
 )
 _SAFE_EMOTIONAL_EN = "That sounds exhausting to carry every day, and I’m here with you in this moment."
-_SAFE_ORGANIZATION_AR = "خلّيها بسيطة: تذكير واحد في وقت ثابت وقائمة قصيرة جدًا، وإذا فاتك يوم كمّل مع التذكير التالي بدون ما تعيد الخطة من البداية."
-_SAFE_WEEK_AR = "لهذا الأسبوع: اختر وقتًا ثابتًا واحدًا، وضع تذكيرًا واحدًا وثلاث خانات كحد أقصى، ثم حضّر سؤالين لطبيبك."
+
+_SAFE_ORGANIZATION_AR = "ابدأ بشيء واحد: تذكير واحد في وقت ثابت وخانة واحدة للتعليم، وإذا فاتك ارجع مع التذكير التالي."
+_SAFE_COMPACT_AR = "بسّطها أكثر: ثلاث خانات فارغة فقط بدون محتوى مفروض، وعلّم فقط ما تم إنجازه."
+_SAFE_WEEK_AR = "لهذا الأسبوع: اختر وقتًا ثابتًا واحدًا، وضع تذكيرًا واحدًا وثلاث خانات فارغة كحد أقصى، وعلّم فقط ما تم إنجازه."
 _SAFE_CLINICIAN_AR = "حضّر هذه الأسئلة الأربعة: ما المعلومات التي تريدني أن أسجلها؟ ما التغيّرات التي يجب أن أخبرك بها؟ ما معايير إعادة تقييم علاجي؟ ومتى أتواصل معك مجددًا؟"
 _SAFE_EMOTIONAL_AR = "واضح إن التفكير في هذا كل يوم متعب جدًا، وأنا معك في هذه اللحظة بدون ما أزيد عليك مهام."
-_SAFE_DARIJA_LATIN = "Khlliha sahla: dir reminder wa7ed f wa9t tabet, w khlli checklist dyal 3 cases max. Ila nsiti, kmml m3a reminder li b3do bla ma t3awd kolchi."
-_SAFE_WEEK_DARIJA_LATIN = "Had simana: khtar wa9t tabet wa7ed, dir reminder wa7ed, w khlli 3 cases max. F lekher, wjjed juj swalat l-tbib."
+
+_SAFE_DARIJA_LATIN = "Bda b 7aja wa7da: reminder wa7ed f wa9t tabet, w case wa7da t3ellem 3liha. Ila nsiti, kmml m3a reminder li b3do."
+_SAFE_COMPACT_DARIJA_LATIN = "Khlliha minimal: 3 cases khawyin bla contenu mفرض, w 3ellem ghir mlli tkmel."
+_SAFE_WEEK_DARIJA_LATIN = "Had simana: khtar wa9t tabet wa7ed, dir reminder wa7ed, w khlli 3 cases khawyin max. 3ellem ghir mlli tkmel."
 _SAFE_CLINICIAN_DARIJA_LATIN = "Wjjed had 4 swalat: chno n9yed? chno taghyir n9ol lik 3lih? b ach kat3awd t9yyem l3ilaj dyali? w imta n3awd ntwassel m3ak?"
 _SAFE_EMOTIONAL_DARIJA_LATIN = "Kayban belli had lham kol nhar m3yik bzaf, w ana hna m3ak daba bla ma nzid 3lik chi haja."
 
@@ -101,6 +127,7 @@ def safe_fallback(
     *,
     mode: str,
     weekly: bool = False,
+    very_long: bool = False,
     prefer_latin_script: bool = False,
 ) -> str:
     if language == "ar-MA" and prefer_latin_script:
@@ -108,24 +135,32 @@ def safe_fallback(
             return _SAFE_EMOTIONAL_DARIJA_LATIN
         if mode == "clinician_prep":
             return _SAFE_CLINICIAN_DARIJA_LATIN
-        return _SAFE_WEEK_DARIJA_LATIN if weekly else _SAFE_DARIJA_LATIN
+        if weekly:
+            return _SAFE_WEEK_DARIJA_LATIN
+        return _SAFE_COMPACT_DARIJA_LATIN if very_long else _SAFE_DARIJA_LATIN
     if language.startswith("ar"):
         if mode == "emotional":
             return _SAFE_EMOTIONAL_AR
         if mode == "clinician_prep":
             return _SAFE_CLINICIAN_AR
-        return _SAFE_WEEK_AR if weekly else _SAFE_ORGANIZATION_AR
+        if weekly:
+            return _SAFE_WEEK_AR
+        return _SAFE_COMPACT_AR if very_long else _SAFE_ORGANIZATION_AR
     if language == "en":
         if mode == "emotional":
             return _SAFE_EMOTIONAL_EN
         if mode == "clinician_prep":
             return _SAFE_CLINICIAN_EN
-        return _SAFE_WEEK_EN if weekly else _SAFE_ORGANIZATION_EN
+        if weekly:
+            return _SAFE_WEEK_EN
+        return _SAFE_COMPACT_EN if very_long else _SAFE_ORGANIZATION_EN
     if mode == "emotional":
         return _SAFE_EMOTIONAL_FR
     if mode == "clinician_prep":
         return _SAFE_CLINICIAN_FR
-    return _SAFE_WEEK_FR if weekly else _SAFE_ORGANIZATION_FR
+    if weekly:
+        return _SAFE_WEEK_FR
+    return _SAFE_COMPACT_FR if very_long else _SAFE_ORGANIZATION_FR
 
 
 def guard_narrator_output(
@@ -137,8 +172,9 @@ def guard_narrator_output(
     weekly: bool = False,
     prefer_latin_script: bool = False,
 ) -> str:
-    if approved_session_context:
-        return reply
+    # Kept for call-site compatibility. Neither DomainContext.pivot_text nor
+    # CompanionContext carries behavior-action authorization.
+    del approved_session_context
 
     forbidden = contains_unapproved_behavior_action(reply)
     words = word_count(reply)
@@ -157,6 +193,7 @@ def guard_narrator_output(
             language,
             mode=mode,
             weekly=weekly,
+            very_long=words > 60,
             prefer_latin_script=prefer_latin_script,
         )
     return reply

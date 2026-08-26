@@ -1,10 +1,13 @@
 name: IAMINA Companion quality probe
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
       - "backend/companion/narrator_prompts.py"
+      - "backend/companion/output_guard.py"
+      - "backend/companion/test_output_guard.py"
       - "backend/evaluation/live_companion_quality.py"
       - "backend/evaluation/companion_quality_gate.py"
       - "backend/evaluation/tests/test_companion_quality_contract.py"
@@ -20,7 +23,7 @@ concurrency:
 jobs:
   quality:
     name: Real Companion + GPT-OSS multi-turn quality
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -47,10 +50,19 @@ jobs:
         run: >-
           ruff check
           companion/narrator_prompts.py
+          companion/output_guard.py
+          companion/test_output_guard.py
           evaluation/live_companion_quality.py
           evaluation/companion_quality_gate.py
           evaluation/tests/test_companion_quality_contract.py
-          && pytest -q evaluation/tests/test_companion_quality_contract.py
+          llm/lowcost_openai_compatible.py
+          llm/tests/test_lowcost_provider_adapters.py
+          && pytest -q
+          companion/test_output_guard.py
+          evaluation/tests/test_companion_quality_contract.py
+          llm/tests/test_lowcost_provider_adapters.py
+          core/tests/test_companion_convergence_p3_narrator_only.py
+          core/tests/test_companion_convergence_p4_multiturn_multilingual.py
           && python manage.py shell -c
           "from evaluation.live_companion_quality import validate_scenario; print(validate_scenario())"
       - name: Run one bounded live multi-turn quality probe

@@ -11,18 +11,13 @@ import json
 import re
 from pathlib import Path
 
-from companion.output_guard import (
-    ARABIC_RE,
-    FORBIDDEN_BEHAVIOR_PATTERNS,
-    nonempty_line_count,
-    word_count,
-)
+from companion.output_guard import ARABIC_RE, FORBIDDEN_BEHAVIOR_PATTERNS
 
 EXPECTED_ROUTES = {"safety": 2, "zero_model": 2, "llm": 6}
 
 _ORGANIZATION_RE = re.compile(
     r"\b(?:rappel|alarme|checklist|check-list|liste|case|coche|noter?|routine|"
-    r"agenda|calendrier|moment fixe|heure fixe|une fois|un seul|wa9t|sa3a)\b",
+    r"agenda|calendrier|moment fixe|heure fixe|une fois|un seul|wa9t|sa3a|reminder)\b",
     re.IGNORECASE,
 )
 _GENERIC_EMPATHY_OPENERS = (
@@ -37,6 +32,32 @@ _GENERIC_EMPATHY_OPENERS = (
 )
 _WORD_RE = re.compile(r"\b[\wÀ-ÿ]+\b", re.UNICODE)
 _MAX_ADJACENT_LEXICAL_OVERLAP = 0.40
+
+# Scenario-specific regression vocabulary belongs here, not in the chassis.
+_GLYCEMIA_RE = r"(?:glyc[ée]mi(?:e|es)|glycemies?|sucre|sokkar|skkar)"
+_UNREQUESTED_TRACKING_RE = re.compile(
+    rf"\b(?:{_GLYCEMIA_RE}|repas|m3idat|humeur|mood|diab[èe]te|farha|3la9at)\b",
+    re.IGNORECASE,
+)
+_MEASUREMENT_SCHEDULE_PATTERNS = (
+    re.compile(
+        rf"\b{_GLYCEMIA_RE}\b.{{0,50}}\b(?:à jeun|a jeun|après|apres|avant le coucher|repas|matin|soir)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"\b{_GLYCEMIA_RE}\b.{{0,35}}\b(?:sba7|sbah|3chiya|lil|lyl)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"\b(?:sji|sjel|ktb|kteb|note|noter|mesure|mesurer)\b.{{0,35}}\b{_GLYCEMIA_RE}\b",
+        re.IGNORECASE,
+    ),
+)
+_UNREQUESTED_TIMED_ACTIVITY_RE = re.compile(
+    r"\b\d+\s*(?:min|minute|minutes|d9i9a|d9aye9)\b.{0,70}"
+    r"\b(?:activité|relation|3la9at|farha|mood|humeur)\b",
+    re.IGNORECASE,
+)
 
 
 def _by_id(report: dict) -> dict[str, dict]:
@@ -72,21 +93,6 @@ def evaluate_report(report: dict) -> dict:
                 )
                 break
 
-    shape_limits = {
-        "routine_problem": (45, 5),
-        "follow_up": (45, 5),
-        "emotional": (30, 1),
-        "clinician_prep": (80, 6),
-        "routine_recovery": (45, 5),
-        "darija_switch": (45, 5),
-    }
-    for turn_id, (max_words, max_lines) in shape_limits.items():
-        reply = str(turns.get(turn_id, {}).get("iamina", ""))
-        if word_count(reply) > max_words or nonempty_line_count(reply) > max_lines:
-            failures.append(
-                f"{turn_id}: response shape exceeds {max_words} words/{max_lines} lines"
-            )
-
     clinician = str(turns.get("clinician_prep", {}).get("iamina", ""))
     if clinician.count("?") < 2:
         failures.append("clinician_prep: expected at least two concrete questions")
@@ -96,20 +102,34 @@ def evaluate_report(report: dict) -> dict:
         if not _ORGANIZATION_RE.search(reply):
             failures.append(f"{turn_id}: no concrete organization mechanism found")
 
+    for turn_id in ("routine_recovery", "darija_switch"):
+        reply = str(turns.get(turn_id, {}).get("iamina", ""))
+        if _UNREQUESTED_TRACKING_RE.search(reply):
+            failures.append(f"{turn_id}: invented tracking content not requested by user")
+        if _UNREQUESTED_TIMED_ACTIVITY_RE.search(reply):
+            failures.append(f"{turn_id}: invented timed activity not requested by user")
+        for pattern in _MEASUREMENT_SCHEDULE_PATTERNS:
+            if pattern.search(reply):
+                failures.append(f"{turn_id}: invented measurement schedule")
+                break
+
     for turn_id in ("clinician_prep", "routine_recovery"):
         reply = str(turns.get(turn_id, {}).get("iamina", "")).strip().lower()
         if reply.startswith(_GENERIC_EMPATHY_OPENERS):
             failures.append(f"{turn_id}: generic empathy opener instead of direct practical help")
 
+    emotional = str(turns.get("emotional", {}).get("iamina", ""))
+    if _ORGANIZATION_RE.search(emotional):
+        failures.append("emotional: unsolicited organization instead of empathy-only response")
+
     darija = str(turns.get("darija_switch", {}).get("iamina", ""))
     if ARABIC_RE.search(darija):
         failures.append("darija_switch: Latin/Arabizi input must keep Latin/Arabizi script")
 
-    adjacent_pairs = (
+    for left_id, right_id in (
         ("routine_problem", "follow_up"),
         ("follow_up", "emotional"),
-    )
-    for left_id, right_id in adjacent_pairs:
+    ):
         left = str(turns.get(left_id, {}).get("iamina", ""))
         right = str(turns.get(right_id, {}).get("iamina", ""))
         overlap = _lexical_overlap(left, right)
@@ -125,12 +145,14 @@ def evaluate_report(report: dict) -> dict:
             "synthetic_boundary": True,
             "exact_routes": EXPECTED_ROUTES,
             "no_unapproved_behavior_actions": True,
+            "no_unrequested_tracking_content": True,
+            "no_invented_measurement_schedule": True,
             "clinician_prep_concrete_questions": True,
             "practical_history_actionability": True,
+            "emotional_empathy_only": True,
             "darija_script_mirroring": True,
             "direct_practical_openers": True,
             "adjacent_reply_overlap_max": _MAX_ADJACENT_LEXICAL_OVERLAP,
-            "bounded_response_shape": True,
         },
     }
 

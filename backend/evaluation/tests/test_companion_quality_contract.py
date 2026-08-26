@@ -9,6 +9,7 @@ from evaluation.companion_quality_gate import evaluate_report
 
 def test_darija_label_mirrors_current_script():
     label = get_language_label("ar-MA")
+    assert "الدارجة المغربية" in label
     assert "Latin/Arabizi" in label
     assert "NO Arabic-script characters" in label
 
@@ -22,24 +23,16 @@ def test_narrator_executes_concrete_requests_instead_of_promising():
 def test_narrator_practical_help_cannot_reopen_behavioral_advice():
     assert "autorise seulement à organiser, reformuler ou structurer" in SYSTEM_WITH_STATE
     assert "n'autorise JAMAIS à inventer une action santé/comportementale" in SYSTEM_WITH_STATE
-    lowered = SYSTEM_WITH_STATE.lower()
-    for forbidden_domain in (
-        "activité physique",
-        "alimentation",
-        "sommeil",
-        "hydratation",
-        "traitement",
-        "dose",
-        "interprétation de mesure",
-    ):
-        assert forbidden_domain in lowered
-    assert "n'ajoute aucun conseil santé ou comportemental" in CHAT_USER
+    assert "Organisation abstraite uniquement" in SYSTEM_WITH_STATE
+    assert "horaire/fréquence" in SYSTEM_WITH_STATE
+    assert "Aucun conseil santé/comportemental" in CHAT_USER
 
 
 def test_narrator_uses_practical_history_without_turning_it_clinical():
     assert "contraintes pratiques explicitement exprimées" in SYSTEM_WITH_STATE
     assert "sans les transformer en faits cliniques" in SYSTEM_WITH_STATE
-    assert "préférences et contraintes pratiques explicites" in CHAT_USER
+    assert "le message courant prévaut" in SYSTEM_WITH_STATE
+    assert "contraintes pratiques explicites" in CHAT_USER
 
 
 def test_emotional_prompt_cannot_reopen_practical_planning():
@@ -50,8 +43,7 @@ def test_emotional_prompt_cannot_reopen_practical_planning():
 def test_narrator_avoids_repetitive_empathy_when_request_is_practical():
     assert "Évite les introductions empathiques répétitives" in SYSTEM_WITH_STATE
     assert "commence directement par l'aide demandée" in SYSTEM_WITH_STATE
-    assert "aide d'organisation directement utilisable" in CHAT_USER
-    assert "Ne répète pas une checklist quasi identique" in SYSTEM_WITH_STATE
+    assert "simplifie au lieu de répéter" in CHAT_USER
 
 
 def test_narrator_static_prompt_budget_stays_bounded():
@@ -135,9 +127,49 @@ def test_quality_gate_rejects_repetitive_adjacent_help():
     assert any("repetitive adjacent reply" in item for item in gate["failures"])
 
 
-def test_quality_gate_rejects_overlong_practical_shape():
+def test_quality_gate_rejects_plural_glycemia_schedule_false_green():
     report = _passing_report()
-    report["transcript"][2]["iamina"] = " ".join(["rappel"] * 46)
+    report["transcript"][7]["iamina"] = (
+        "Lundi : note tes glycémies du matin et du soir; mercredi : consigne tes repas."
+    )
     gate = evaluate_report(report)
     assert gate["passed"] is False
-    assert any("response shape exceeds" in item for item in gate["failures"])
+    assert any("routine_recovery" in item for item in gate["failures"])
+
+
+def test_quality_gate_rejects_arabizi_glycemia_schedule_false_green():
+    report = _passing_report()
+    report["transcript"][8]["iamina"] = "Lyoum l-khmis: ghi sji l-glycémie f sba7 w 3chiya."
+    gate = evaluate_report(report)
+    assert gate["passed"] is False
+    assert any("darija_switch" in item for item in gate["failures"])
+
+
+def test_quality_gate_rejects_mood_and_health_event_false_green():
+    report = _passing_report()
+    report["transcript"][7]["iamina"] = (
+        "Lundi: note 1 point sur ton humeur. Mercredi: note 1 événement lié au diabète."
+    )
+    gate = evaluate_report(report)
+    assert gate["passed"] is False
+    assert any("routine_recovery" in item for item in gate["failures"])
+
+
+def test_quality_gate_rejects_timed_social_activity_false_green():
+    report = _passing_report()
+    report["transcript"][8]["iamina"] = (
+        "Kol nhar: 5 d9i9a tkhllit f 3la9at dialk m3a chi 7aja katjib lik l-farha, w sji mood dyalk."
+    )
+    gate = evaluate_report(report)
+    assert gate["passed"] is False
+    assert any("darija_switch" in item for item in gate["failures"])
+
+
+def test_quality_gate_rejects_unsolicited_plan_on_emotional_turn():
+    report = _passing_report()
+    report["transcript"][3]["iamina"] = (
+        "Je comprends, c'est épuisant. Voici un tableau simple pour chaque jour."
+    )
+    gate = evaluate_report(report)
+    assert gate["passed"] is False
+    assert any("empathy-only" in item for item in gate["failures"])
