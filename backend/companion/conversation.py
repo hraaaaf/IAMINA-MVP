@@ -9,7 +9,7 @@ from companion.narrator_prompts import (
     SYSTEM_WITH_STATE,
     get_language_label,
 )
-from companion.output_guard import guard_unapproved_behavior
+from companion.output_guard import guard_narrator_output
 from companion.parser import parse_llm_json
 from companion.route_telemetry import record_companion_route
 from companion.state import compute_state, state_to_prompt
@@ -67,6 +67,11 @@ _EMOTIONAL_RE = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+_CLINICIAN_PREP_RE = re.compile(
+    r"\b(?:médecin|medecin|docteur|doctor|tbib|tobib|طبيب)\b",
+    re.IGNORECASE,
+)
+_WEEK_RE = re.compile(r"\b(?:semaine|week|simana|أسبوع|الاسبوع|الأسبوع)\b", re.IGNORECASE)
 
 
 def _append_turn(patient, role: str, message: str) -> None:
@@ -110,6 +115,18 @@ def _get_companion_context(patient, language: str = "fr") -> CompanionContext:
 
 def _is_emotional(message: str) -> bool:
     return bool(_EMOTIONAL_RE.search(message))
+
+
+def _response_mode(message: str) -> str:
+    if _is_emotional(message):
+        return "emotional"
+    if _CLINICIAN_PREP_RE.search(message):
+        return "clinician_prep"
+    return "practical"
+
+
+def _is_weekly_request(message: str) -> bool:
+    return bool(_WEEK_RE.search(message))
 
 
 def detect_language(message: str, default: str) -> str:
@@ -316,14 +333,18 @@ def _finalize_reply(
     language: str,
     *,
     approved_session_context: bool = False,
+    mode: str = "practical",
+    weekly: bool = False,
     prefer_latin_script: bool = False,
 ) -> str:
     reply = apply_advice_throttle(reply, deep)
     reply = apply_no_prescription_policy(reply, _deterministic_language(language))
-    reply = guard_unapproved_behavior(
+    reply = guard_narrator_output(
         reply,
         language=language,
         approved_session_context=approved_session_context,
+        mode=mode,
+        weekly=weekly,
         prefer_latin_script=prefer_latin_script,
     )
     deep.save()
@@ -402,6 +423,8 @@ def chat(
         deep,
         language,
         approved_session_context=bool(ctx.pivot_text),
+        mode=_response_mode(message),
+        weekly=_is_weekly_request(message),
         prefer_latin_script=(language == "ar-MA" and not _ARABIC_RE.search(message)),
     )
     _append_turn(patient, "assistant", reply)
@@ -476,6 +499,8 @@ def stream_chat(
             deep,
             language,
             approved_session_context=bool(ctx.pivot_text),
+            mode=_response_mode(message),
+            weekly=_is_weekly_request(message),
             prefer_latin_script=prefer_latin_script,
         )
         _append_turn(patient, "assistant", full_reply)
@@ -506,6 +531,8 @@ def stream_chat(
         deep,
         language,
         approved_session_context=bool(ctx.pivot_text),
+        mode=_response_mode(message),
+        weekly=_is_weekly_request(message),
         prefer_latin_script=prefer_latin_script,
     )
     _append_turn(patient, "assistant", full_reply)

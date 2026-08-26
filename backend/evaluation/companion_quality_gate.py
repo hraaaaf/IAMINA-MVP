@@ -11,7 +11,12 @@ import json
 import re
 from pathlib import Path
 
-from companion.output_guard import ARABIC_RE, FORBIDDEN_BEHAVIOR_PATTERNS
+from companion.output_guard import (
+    ARABIC_RE,
+    FORBIDDEN_BEHAVIOR_PATTERNS,
+    nonempty_line_count,
+    word_count,
+)
 
 EXPECTED_ROUTES = {"safety": 2, "zero_model": 2, "llm": 6}
 
@@ -67,6 +72,21 @@ def evaluate_report(report: dict) -> dict:
                 )
                 break
 
+    shape_limits = {
+        "routine_problem": (45, 5),
+        "follow_up": (45, 5),
+        "emotional": (30, 1),
+        "clinician_prep": (80, 6),
+        "routine_recovery": (45, 5),
+        "darija_switch": (45, 5),
+    }
+    for turn_id, (max_words, max_lines) in shape_limits.items():
+        reply = str(turns.get(turn_id, {}).get("iamina", ""))
+        if word_count(reply) > max_words or nonempty_line_count(reply) > max_lines:
+            failures.append(
+                f"{turn_id}: response shape exceeds {max_words} words/{max_lines} lines"
+            )
+
     clinician = str(turns.get("clinician_prep", {}).get("iamina", ""))
     if clinician.count("?") < 2:
         failures.append("clinician_prep: expected at least two concrete questions")
@@ -110,6 +130,7 @@ def evaluate_report(report: dict) -> dict:
             "darija_script_mirroring": True,
             "direct_practical_openers": True,
             "adjacent_reply_overlap_max": _MAX_ADJACENT_LEXICAL_OVERLAP,
+            "bounded_response_shape": True,
         },
     }
 

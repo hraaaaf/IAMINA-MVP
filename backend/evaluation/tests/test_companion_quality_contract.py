@@ -133,3 +133,11 @@ def test_quality_gate_rejects_repetitive_adjacent_help():
     gate = evaluate_report(report)
     assert gate["passed"] is False
     assert any("repetitive adjacent reply" in item for item in gate["failures"])
+
+
+def test_quality_gate_rejects_overlong_practical_shape():
+    report = _passing_report()
+    report["transcript"][2]["iamina"] = " ".join(["rappel"] * 46)
+    gate = evaluate_report(report)
+    assert gate["passed"] is False
+    assert any("response shape exceeds" in item for item in gate["failures"])
