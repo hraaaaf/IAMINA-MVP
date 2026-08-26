@@ -12,8 +12,7 @@ ARABIC_RE = re.compile(r"[\u0600-\u06ff\u0750-\u077f]")
 _WORD_RE = re.compile(r"\b[\wÀ-ÿ]+\b", re.UNICODE)
 
 _FREQUENCY_SELECTION_PATTERN = re.compile(
-    r"\b(?:chaque jour|tous les jours|jour précédent|quotidien(?:ne)?|"
-    r"daily|every day|kol nhar)\b",
+    r"\b(?:chaque jour|tous les jours|jour précédent|daily|every day|kol nhar)\b",
     re.IGNORECASE,
 )
 
