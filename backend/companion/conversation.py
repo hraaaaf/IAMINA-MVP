@@ -31,11 +31,7 @@ from core.input_safety import (
     evaluate_input_safety,
 )
 from core.llm_gateway import get_gateway_llm
-from core.medical_safety import (
-    apply_no_prescription_policy,
-    medical_streaming_enabled,
-    no_prescription_message,
-)
+from core.medical_safety import apply_no_prescription_policy, no_prescription_message
 from llm.pseudonymizer import PHIPseudonymizer
 
 logger = logging.getLogger(__name__)
@@ -441,7 +437,7 @@ def stream_chat(
     patient=None,
     context_days: int = 14,
 ):
-    """Narrator-only SSE path with the same deterministic authority boundaries."""
+    """Narrator-only SSE path; guard the full reply before emitting any chunk."""
     safety_reply = _safety_reply(message, patient, language)
     if safety_reply is not None:
         record_companion_route("safety")
@@ -480,54 +476,22 @@ def stream_chat(
     _append_turn(patient, "user", message)
     prefer_latin_script = language == "ar-MA" and not _ARABIC_RE.search(message)
 
-    if not medical_streaming_enabled() or not ctx.pivot_text:
-        try:
-            result = llm.complete(system, user_prompt)
-            full_reply = result.content
-        except Exception:
-            logger.exception(
-                "IAmina stream_chat buffered fallback failed for patient=%s",
-                patient.id if patient else None,
-            )
-            full_reply = get_offline_fallback(
-                patient.id if patient else None,
-                ctx,
-                _deterministic_language(language),
-            )
-        full_reply = _finalize_reply(
-            full_reply,
-            deep,
-            language,
-            approved_session_context=bool(ctx.pivot_text),
-            mode=_response_mode(message),
-            weekly=_is_weekly_request(message),
-            prefer_latin_script=prefer_latin_script,
-        )
-        _append_turn(patient, "assistant", full_reply)
-        _update_relationship_memory(message, memory)
-        yield full_reply
-        return
-
-    assembled: list[str] = []
     try:
-        for chunk in llm.stream(system, user_prompt):
-            assembled.append(chunk)
-            yield chunk
+        result = llm.complete(system, user_prompt)
+        full_reply = result.content
     except Exception:
         logger.exception(
-            "IAmina stream_chat failed for patient=%s",
+            "IAmina stream_chat buffered fallback failed for patient=%s",
             patient.id if patient else None,
         )
-        fallback = get_offline_fallback(
+        full_reply = get_offline_fallback(
             patient.id if patient else None,
             ctx,
             _deterministic_language(language),
         )
-        yield fallback
-        assembled = [fallback]
 
     full_reply = _finalize_reply(
-        "".join(assembled),
+        full_reply,
         deep,
         language,
         approved_session_context=bool(ctx.pivot_text),
@@ -537,3 +501,4 @@ def stream_chat(
     )
     _append_turn(patient, "assistant", full_reply)
     _update_relationship_memory(message, memory)
+    yield full_reply
