@@ -1,6 +1,7 @@
 name: FRUG-5 multilingual quality sample
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
@@ -8,9 +9,6 @@ on:
       - "backend/evaluation/tests/test_frug5_multilingual_quality_benchmark.py"
       - "backend/evaluation/fixtures/frug7_groq_text_price.json"
       - "backend/evaluation/provider_benchmark_preflight.py"
-      - "backend/llm/lowcost_openai_compatible.py"
-      - "backend/llm/provider_registry.py"
-      - ".github/workflows/frug5-multilingual-quality.yml"
 
 permissions:
   contents: read
@@ -22,7 +20,7 @@ concurrency:
 jobs:
   benchmark:
     name: Groq bounded 10-locale quality sample
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:

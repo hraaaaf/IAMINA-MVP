@@ -1,24 +1,17 @@
 name: Pulper Golden Corpus Qualification
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - main
     paths:
-      - .github/workflows/pulper-qualification.yml
       - backend/requirements.txt
       - backend/diabetes/evals/**
       - backend/diabetes/services/documents/**
       - backend/diabetes/tests/test_pulper*.py
       - backend/media/documents/**
-      - backend/llm/base.py
-      - backend/llm/errors.py
-      - backend/llm/factory.py
-      - backend/llm/lowcost_openai_compatible.py
-      - backend/llm/provider_registry.py
-      - backend/llm/pseudonymizer.py
       - backend/llm/tests/pulper_qualification_provider.py
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -30,6 +23,7 @@ concurrency:
 jobs:
   qualify:
     name: Synthetic bounded qualification
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:

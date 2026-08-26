@@ -10,7 +10,21 @@ from .errors import normalize_provider_exception
 logger = logging.getLogger(__name__)
 
 _TIMEOUT_SECONDS = 15.0
-_MAX_OUTPUT_TOKENS = 160
+_DEFAULT_MAX_OUTPUT_TOKENS = 160
+_GPT_OSS_MAX_OUTPUT_TOKENS = 384
+_GPT_OSS_REPLY_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "iamina_reply",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {"reply": {"type": "string"}},
+            "required": ["reply"],
+            "additionalProperties": False,
+        },
+    },
+}
 
 try:
     from openai import OpenAI
@@ -101,20 +115,37 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
             {"role": "user", "content": user},
         ]
 
-    def _request_tuning(self) -> dict[str, str]:
-        """Return provider/model-specific tuning without leaking it across adapters."""
-        if self.provider_id == "groq" and self.model.startswith("openai/gpt-oss-"):
-            return {"reasoning_effort": "low"}
-        return {}
+    def _is_groq_gpt_oss(self) -> bool:
+        return self.provider_id == "groq" and self.model.startswith("openai/gpt-oss-")
+
+    def _request_tuning(self) -> dict[str, object]:
+        """Keep reasoning headroom bounded and isolated to GPT-OSS on Groq."""
+        if self._is_groq_gpt_oss():
+            return {
+                "reasoning_effort": "low",
+                "max_completion_tokens": _GPT_OSS_MAX_OUTPUT_TOKENS,
+            }
+        return {"max_tokens": _DEFAULT_MAX_OUTPUT_TOKENS}
+
+    def _complete_tuning(self) -> dict[str, object]:
+        """Use Groq constrained JSON only on non-streaming GPT-OSS completions."""
+        tuning = self._request_tuning()
+        if self._is_groq_gpt_oss():
+            tuning.update(
+                {
+                    "response_format": _GPT_OSS_REPLY_FORMAT,
+                    "extra_body": {"reasoning_format": "hidden"},
+                }
+            )
+        return tuning
 
     def complete(self, system: str, user: str) -> LLMResponse:
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=self._messages(system, user),
-                max_tokens=_MAX_OUTPUT_TOKENS,
                 timeout=self.timeout_seconds,
-                **self._request_tuning(),
+                **self._complete_tuning(),
             )
         except Exception as exc:
             raise normalize_provider_exception(exc, self.provider_id) from exc
@@ -129,7 +160,6 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
             with self.client.chat.completions.stream(
                 model=self.model,
                 messages=self._messages(system, user),
-                max_tokens=_MAX_OUTPUT_TOKENS,
                 timeout=self.timeout_seconds,
                 **self._request_tuning(),
             ) as stream:

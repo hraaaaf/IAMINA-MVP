@@ -3,7 +3,13 @@ import re
 
 from companion.advice_filter import apply_advice_throttle
 from companion.memory import _detect_emotional_signals
-from companion.narrator_prompts import CHAT_USER, SYSTEM_WITH_STATE, get_language_label
+from companion.narrator_prompts import (
+    CHAT_USER,
+    EMOTIONAL_USER,
+    SYSTEM_WITH_STATE,
+    get_language_label,
+)
+from companion.output_guard import guard_narrator_output
 from companion.parser import parse_llm_json
 from companion.route_telemetry import record_companion_route
 from companion.state import compute_state, state_to_prompt
@@ -25,16 +31,12 @@ from core.input_safety import (
     evaluate_input_safety,
 )
 from core.llm_gateway import get_gateway_llm
-from core.medical_safety import (
-    apply_no_prescription_policy,
-    medical_streaming_enabled,
-    no_prescription_message,
-)
+from core.medical_safety import apply_no_prescription_policy, no_prescription_message
 from llm.pseudonymizer import PHIPseudonymizer
 
 logger = logging.getLogger(__name__)
 
-_HISTORY_CHAR_BUDGET = 1800
+_HISTORY_CHAR_BUDGET = 900
 _STREAM_SUFFIX = (
     "\nRéponds en texte SIMPLE et direct — PAS de JSON, PAS de guillemets autour "
     "de la réponse, PAS de clés comme 'reply'. Juste la réponse naturelle."
@@ -61,6 +63,11 @@ _EMOTIONAL_RE = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+_CLINICIAN_PREP_RE = re.compile(
+    r"\b(?:médecin|medecin|docteur|doctor|tbib|tobib|طبيب)\b",
+    re.IGNORECASE,
+)
+_WEEK_RE = re.compile(r"\b(?:semaine|week|simana|أسبوع|الاسبوع|الأسبوع)\b", re.IGNORECASE)
 
 
 def _append_turn(patient, role: str, message: str) -> None:
@@ -104,6 +111,18 @@ def _get_companion_context(patient, language: str = "fr") -> CompanionContext:
 
 def _is_emotional(message: str) -> bool:
     return bool(_EMOTIONAL_RE.search(message))
+
+
+def _response_mode(message: str) -> str:
+    if _is_emotional(message):
+        return "emotional"
+    if _CLINICIAN_PREP_RE.search(message):
+        return "clinician_prep"
+    return "practical"
+
+
+def _is_weekly_request(message: str) -> bool:
+    return bool(_WEEK_RE.search(message))
 
 
 def detect_language(message: str, default: str) -> str:
@@ -257,7 +276,8 @@ def _build_runtime_prompt(
     )
     safe_history = _safe_text(pseudonymizer, first_name, history)
 
-    base_prompt = CHAT_USER.format(
+    prompt_template = EMOTIONAL_USER if emotional else CHAT_USER
+    base_prompt = prompt_template.format(
         memory=memory_summary,
         history=safe_history,
         message=safe_message,
@@ -268,23 +288,24 @@ def _build_runtime_prompt(
             base_prompt = base_prompt[: base_prompt.index(json_tag)].rstrip()
             base_prompt += "\n\nContrainte: MAX 2 phrases, 40 mots. Texte simple, sans JSON."
 
-    intent_hint = (
-        "\n[INTENT: EMOTIONAL — empathie uniquement, sans données chiffrées]"
-        if emotional
-        else ""
-    )
-
     variety_hint = ""
     previous = _recent_turns(patient, 1, role="assistant")
     if previous:
-        opener = previous[0].message[:12].lower()
+        previous_reply = previous[0].message
+        opener = previous_reply[:12].lower()
+        hints: list[str] = []
         if any(word in opener for word in ("salam", "bonjour", "ana iamina", "kanfhemek")):
-            variety_hint = (
-                f"\n[STYLE: L'accroche précédente était '{opener.strip()}' — "
-                "utilise une formule différente cette fois]"
-            )
+            hints.append("change l'accroche")
+        if not emotional and re.search(
+            r"\b(?:tableau|checklist|rappel|jour 1|jour 2)\b",
+            previous_reply,
+            re.IGNORECASE,
+        ):
+            hints.append("ne répète pas la même liste; donne une seule simplification adaptée")
+        if hints:
+            variety_hint = "\n[STYLE: " + "; ".join(hints) + "]"
 
-    return language, ctx, system, base_prompt + intent_hint + variety_hint
+    return language, ctx, system, base_prompt + variety_hint
 
 
 def _safety_reply(message: str, patient, language: str) -> str | None:
@@ -302,9 +323,26 @@ def _safety_reply(message: str, patient, language: str) -> str | None:
     return None
 
 
-def _finalize_reply(reply: str, deep, language: str) -> str:
+def _finalize_reply(
+    reply: str,
+    deep,
+    language: str,
+    *,
+    approved_session_context: bool = False,
+    mode: str = "practical",
+    weekly: bool = False,
+    prefer_latin_script: bool = False,
+) -> str:
     reply = apply_advice_throttle(reply, deep)
     reply = apply_no_prescription_policy(reply, _deterministic_language(language))
+    reply = guard_narrator_output(
+        reply,
+        language=language,
+        approved_session_context=approved_session_context,
+        mode=mode,
+        weekly=weekly,
+        prefer_latin_script=prefer_latin_script,
+    )
     deep.save()
     return reply
 
@@ -376,7 +414,15 @@ def chat(
             _deterministic_language(language),
         )
 
-    reply = _finalize_reply(reply, deep, language)
+    reply = _finalize_reply(
+        reply,
+        deep,
+        language,
+        approved_session_context=bool(ctx.pivot_text),
+        mode=_response_mode(message),
+        weekly=_is_weekly_request(message),
+        prefer_latin_script=(language == "ar-MA" and not _ARABIC_RE.search(message)),
+    )
     _append_turn(patient, "assistant", reply)
     _update_relationship_memory(message, memory)
     return reply
@@ -391,7 +437,7 @@ def stream_chat(
     patient=None,
     context_days: int = 14,
 ):
-    """Narrator-only SSE path with the same deterministic authority boundaries."""
+    """Narrator-only SSE path; guard the full reply before emitting any chunk."""
     safety_reply = _safety_reply(message, patient, language)
     if safety_reply is not None:
         record_companion_route("safety")
@@ -428,45 +474,31 @@ def stream_chat(
         streaming=True,
     )
     _append_turn(patient, "user", message)
+    prefer_latin_script = language == "ar-MA" and not _ARABIC_RE.search(message)
 
-    if not medical_streaming_enabled():
-        try:
-            result = llm.complete(system, user_prompt)
-            full_reply = result.content
-        except Exception:
-            logger.exception(
-                "IAmina stream_chat buffered fallback failed for patient=%s",
-                patient.id if patient else None,
-            )
-            full_reply = get_offline_fallback(
-                patient.id if patient else None,
-                ctx,
-                _deterministic_language(language),
-            )
-        full_reply = _finalize_reply(full_reply, deep, language)
-        _append_turn(patient, "assistant", full_reply)
-        _update_relationship_memory(message, memory)
-        yield full_reply
-        return
-
-    assembled: list[str] = []
     try:
-        for chunk in llm.stream(system, user_prompt):
-            assembled.append(chunk)
-            yield chunk
+        result = llm.complete(system, user_prompt)
+        full_reply = result.content
     except Exception:
         logger.exception(
-            "IAmina stream_chat failed for patient=%s",
+            "IAmina stream_chat buffered fallback failed for patient=%s",
             patient.id if patient else None,
         )
-        fallback = get_offline_fallback(
+        full_reply = get_offline_fallback(
             patient.id if patient else None,
             ctx,
             _deterministic_language(language),
         )
-        yield fallback
-        assembled = [fallback]
 
-    full_reply = _finalize_reply("".join(assembled), deep, language)
+    full_reply = _finalize_reply(
+        full_reply,
+        deep,
+        language,
+        approved_session_context=bool(ctx.pivot_text),
+        mode=_response_mode(message),
+        weekly=_is_weekly_request(message),
+        prefer_latin_script=prefer_latin_script,
+    )
     _append_turn(patient, "assistant", full_reply)
     _update_relationship_memory(message, memory)
+    yield full_reply

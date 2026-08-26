@@ -1,5 +1,6 @@
 import pytest
 
+from companion.output_guard import ARABIC_RE
 from companion.zero_model_router import exact_chitchat_reply
 
 
@@ -25,6 +26,57 @@ def test_exact_non_clinical_turns_are_eligible(message, language):
 
 
 @pytest.mark.parametrize(
+    ("message", "language", "expected"),
+    [
+        (
+            "J'ai du mal à être régulier dans mon suivi. "
+            "Je commence bien puis j'oublie au bout de quelques jours.",
+            "fr",
+            "un seul repère",
+        ),
+        (
+            "Hier encore j'ai oublié. Je voudrais quelque chose de simple "
+            "que je puisse vraiment tenir.",
+            "fr",
+            "Réduis au minimum",
+        ),
+        (
+            "D'accord, ne me donne pas de dose. Aide-moi plutôt à préparer "
+            "ce que je dois demander à mon médecin.",
+            "fr",
+            "Quelles informations dois-je apporter",
+        ),
+        (
+            "Ok, je ne touche pas au traitement. Aide-moi juste à organiser "
+            "un suivi très simple pour cette semaine.",
+            "fr",
+            "trois cases vides",
+        ),
+        (
+            "Wakha, bghit ghir chi routine sahla bach nb9a mntadem "
+            "bla nasi7a 3ilajiya.",
+            "ar-MA",
+            "reminder",
+        ),
+    ],
+)
+def test_bounded_practical_turns_use_deterministic_replies(message, language, expected):
+    reply = exact_chitchat_reply(message, language)
+    assert reply is not None
+    assert expected in reply
+
+
+def test_latin_darija_practical_reply_stays_latin():
+    reply = exact_chitchat_reply(
+        "Wakha, bghit ghir chi routine sahla bach nb9a mntadem "
+        "bla nasi7a 3ilajiya.",
+        "ar-MA",
+    )
+    assert reply is not None
+    assert not ARABIC_RE.search(reply)
+
+
+@pytest.mark.parametrize(
     "message",
     [
         "Bonjour",
@@ -41,6 +93,8 @@ def test_exact_non_clinical_turns_are_eligible(message, language):
         "bslama 42",
         "bonjour merci",
         "salam chokran",
+        "Aide-moi à préparer mes doses pour mon médecin",
+        "Je veux une routine d'insuline simple",
         "ok",
         "yes",
         "no",
