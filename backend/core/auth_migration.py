@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from django.contrib.auth.models import User
 from django.db import transaction
 
+from core.firebase_migration_policy import firebase_migration_enabled
 from core.models import BasePatientProfile
 from diabetes.models import DiabetesProfile
 
@@ -36,7 +37,9 @@ class VerifiedFirebaseIdentity:
 
 
 def verify_firebase_token(id_token: str) -> VerifiedFirebaseIdentity:
-    """Verify one Firebase token and return a minimized immutable identity."""
+    """Verify one Firebase token only inside an explicit migration window."""
+    if not firebase_migration_enabled():
+        raise FirebaseMigrationError("firebase_migration_disabled")
     if not isinstance(id_token, str) or not id_token.strip():
         raise FirebaseMigrationError("invalid_firebase_credential")
 

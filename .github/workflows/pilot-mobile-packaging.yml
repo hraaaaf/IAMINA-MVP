@@ -1,0 +1,71 @@
+name: Pilot mobile packaging
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/pilot-mobile-packaging.yml"
+      - "frontend/android/**"
+      - "frontend/pubspec.yaml"
+      - "frontend/pubspec.lock"
+      - "frontend/lib/main.dart"
+      - "frontend/lib/services/auth_service.dart"
+      - "frontend/lib/services/firebase_migration_policy.dart"
+      - "frontend/lib/features/journal/widgets/amina_chat_view.dart"
+      - "scripts/check_pilot_packaging_contract.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pilot-mobile-packaging-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-debug-compile:
+    name: Android pilot identity — compile smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Reject dependency drift
+        run: git diff --exit-code -- pubspec.lock
+
+      - name: Verify voice recorder dependency contract
+        run: |
+          set -euo pipefail
+          grep -F 'record: 6.2.1' pubspec.yaml
+          grep -F 'version: "6.2.1"' pubspec.lock
+          grep -F "package:record/record.dart" lib/features/journal/widgets/amina_chat_view.dart
+          grep -F "startStream" lib/features/journal/widgets/amina_chat_view.dart
+
+      - name: Validate packaging contract
+        working-directory: .
+        run: python scripts/check_pilot_packaging_contract.py
+
+      - name: Compile Android debug APK with Firebase migration disabled
+        run: >-
+          flutter build apk --debug
+          --dart-define=ENABLE_FIREBASE_MIGRATION=false
+
+      - name: Verify APK exists
+        run: test -s build/app/outputs/flutter-apk/app-debug.apk

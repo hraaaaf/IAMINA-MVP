@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'auth_epoch.dart';
+import 'firebase_migration_policy.dart';
 
 const String kAuthBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
@@ -31,6 +32,7 @@ class AuthService extends ChangeNotifier {
         _httpClient = httpClient ?? http.Client();
 
   static FirebaseAuth? _getAuthInstance(FirebaseAuth? provided) {
+    if (!kFirebaseMigrationEnabled) return null;
     try {
       return provided ?? FirebaseAuth.instance;
     } catch (_) {
@@ -44,7 +46,7 @@ class AuthService extends ChangeNotifier {
   bool get isAuthenticated =>
       _auditSession ||
       (_nativeToken?.isNotEmpty ?? false) ||
-      _firebaseAuth?.currentUser != null;
+      (_firebaseAuth?.currentUser != null);
   bool get isAnonymous =>
       _auditSession ||
       (_nativeToken == null && (_firebaseAuth?.currentUser?.isAnonymous ?? false));
@@ -152,7 +154,9 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signInAnonymously() async {
-    if (_firebaseAuth == null) throw StateError('Firebase non initialisé');
+    if (_firebaseAuth == null) {
+      throw StateError('Firebase migration is disabled');
+    }
     await _firebaseAuth.signInAnonymously();
     _notifyAuthChanged();
   }

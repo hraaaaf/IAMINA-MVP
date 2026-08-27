@@ -3,9 +3,6 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    // START: FlutterFire Configuration
-    id("com.google.gms.google-services")
-    // END: FlutterFire Configuration
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
@@ -28,9 +25,7 @@ val releaseSigningConfigured = listOf(
 }
 
 android {
-    // P5-4: the permanent pilot ID is ma.iamina.app, but the runtime target
-    // remains on the historical Firebase-bound ID until FlutterFire is rebound.
-    namespace = "com.example.amina"
+    namespace = "ma.iamina.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -44,7 +39,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.amina"
+        applicationId = "ma.iamina.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

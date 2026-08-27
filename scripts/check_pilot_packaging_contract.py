@@ -2,9 +2,9 @@
 """Static P5-4 pilot packaging contract.
 
 Default mode validates repository-side preparation that can be proven without
-private signing material or external Apple/Firebase configuration. --release-ready
-adds permanent mobile-identity and FlutterFire rebinding floors required before
-a signed pilot build is accepted.
+private signing material or external Apple provisioning. ``--release-ready``
+adds the remaining iOS permanent-identity floor required before signed pilot
+artifacts are accepted.
 """
 from __future__ import annotations
 
@@ -35,7 +35,36 @@ def main() -> int:
     gradle = read("frontend/android/app/build.gradle.kts")
     android_ignore = read("frontend/android/.gitignore")
     release_doc = read("docs/PILOT_RELEASE.md")
+    backend_firebase_policy = read("backend/core/firebase_migration_policy.py")
+    flutter_firebase_policy = read("frontend/lib/services/firebase_migration_policy.dart")
+    flutter_main = read("frontend/lib/main.dart")
+    main_activity_path = ROOT / (
+        "frontend/android/app/src/main/kotlin/ma/iamina/app/MainActivity.kt"
+    )
 
+    require(
+        f'applicationId = "{CANONICAL_APP_ID}"' in gradle,
+        "Android applicationId is not the canonical pilot ID",
+        errors,
+    )
+    require(
+        f'namespace = "{CANONICAL_APP_ID}"' in gradle,
+        "Android namespace is not the canonical pilot ID",
+        errors,
+    )
+    require(
+        main_activity_path.exists()
+        and main_activity_path.read_text(encoding="utf-8").startswith(
+            f"package {CANONICAL_APP_ID}\n"
+        ),
+        "Android MainActivity package does not match the canonical pilot ID",
+        errors,
+    )
+    require(
+        "com.google.gms.google-services" not in gradle,
+        "Android pilot target still applies the Firebase Google Services plugin",
+        errors,
+    )
     require(
         "signingConfigs.getByName(\"debug\")" not in gradle,
         "Android release path still references the debug signing key",
@@ -56,6 +85,21 @@ def main() -> int:
         "Pilot release document does not freeze the canonical app ID",
         errors,
     )
+    require(
+        'os.environ.get("ENABLE_FIREBASE_MIGRATION", "false")' in backend_firebase_policy,
+        "Backend Firebase migration is not fail-closed by default",
+        errors,
+    )
+    require(
+        "defaultValue: false" in flutter_firebase_policy,
+        "Flutter Firebase migration is not fail-closed by default",
+        errors,
+    )
+    require(
+        "if (kFirebaseMigrationEnabled)" in flutter_main,
+        "Flutter startup does not gate Firebase initialization",
+        errors,
+    )
 
     pubspec = read("frontend/pubspec.yaml")
     require(
@@ -66,29 +110,6 @@ def main() -> int:
 
     if args.release_ready:
         ios_project = read("frontend/ios/Runner.xcodeproj/project.pbxproj")
-        firebase_options = read("frontend/lib/firebase_options.dart")
-        main_activity_path = ROOT / (
-            "frontend/android/app/src/main/kotlin/ma/iamina/app/MainActivity.kt"
-        )
-
-        require(
-            f'applicationId = "{CANONICAL_APP_ID}"' in gradle,
-            "Android applicationId is not the canonical pilot ID",
-            errors,
-        )
-        require(
-            f'namespace = "{CANONICAL_APP_ID}"' in gradle,
-            "Android namespace is not the canonical pilot ID",
-            errors,
-        )
-        require(
-            main_activity_path.exists()
-            and main_activity_path.read_text(encoding="utf-8").startswith(
-                f"package {CANONICAL_APP_ID}\n"
-            ),
-            "Android MainActivity package does not match the canonical pilot ID",
-            errors,
-        )
         require(
             "com.example.amina" not in ios_project,
             "iOS project still contains placeholder com.example.amina identifiers",
@@ -97,12 +118,6 @@ def main() -> int:
         require(
             f"PRODUCT_BUNDLE_IDENTIFIER = {CANONICAL_APP_ID};" in ios_project,
             "iOS Runner bundle ID is not the canonical pilot ID",
-            errors,
-        )
-        require(
-            "com.example.amina" not in firebase_options
-            and f"iosBundleId: '{CANONICAL_APP_ID}'" in firebase_options,
-            "FlutterFire mobile options are not rebound to the canonical pilot identity",
             errors,
         )
 

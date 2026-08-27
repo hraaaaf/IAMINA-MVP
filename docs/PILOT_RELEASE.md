@@ -1,6 +1,6 @@
 # IAMINA Pilot Release Contract
 
-Status: P5-4 engineering foundation. This document does not claim a signed pilot build exists.
+Status: P5-4 engineering foundation + Firebase-off pilot decision. This document does not claim a signed pilot build exists.
 
 ## Goal
 
@@ -11,6 +11,8 @@ Distribute IAMINA to a founder-selected pilot cohort as signed mobile artifacts 
 Android and iOS pilot application identifier: `ma.iamina.app`.
 
 The identifier is treated as permanent for the first distributed pilot line. Changing it after distribution creates a different application identity and is not an update path.
+
+Android has moved to the permanent identifier. iOS remains on the historical placeholder until Apple provisioning is available and is therefore still blocked from release-ready status.
 
 ## Release identity
 
@@ -46,14 +48,18 @@ Distribution certificates, private keys and provisioning profiles remain externa
 
 ## Firebase migration compatibility
 
-IAMINA native Django authentication remains the authoritative path. Firebase is retained only as a controlled migration fallback.
+IAMINA native Django authentication is authoritative. Firebase remains only as dormant legacy migration code.
 
-The current generated mobile FlutterFire options were created for the previous placeholder mobile identity. A pilot release is therefore **not release-ready** until one of these conditions is proven:
+**Pilot decision:** Firebase migration is disabled by default on both backend and Flutter. No pilot build may initialize Firebase or accept Firebase bearer credentials unless an operator explicitly opens a controlled migration window with `ENABLE_FIREBASE_MIGRATION=true` on the relevant runtime/build.
 
-1. new Android/iOS Firebase app registrations are created for `ma.iamina.app` and `frontend/lib/firebase_options.dart` is regenerated from those registrations; or
-2. the pilot build formally disables the Firebase migration fallback and tests prove native registration/login/recovery remain sufficient for the selected cohort.
+The historical `frontend/lib/firebase_options.dart` remains in the repository only for a possible legacy-account migration window. Its old `com.example.amina` metadata is not accepted as pilot identity configuration and is not initialized by default.
 
-No stale Firebase mobile identity may be silently treated as valid pilot configuration.
+For the first pilot line:
+
+1. native registration/login/password recovery are the supported identity path;
+2. Android no longer applies the Google Services Gradle plugin and uses `ma.iamina.app`;
+3. Firebase migration may be re-enabled only by an explicit operator decision with dedicated migration tests;
+4. if a later cohort requires legacy Firebase accounts, the migration bridge must either be rebound to the permanent app identity or run through a separately controlled migration procedure before those accounts are admitted.
 
 ## Update channel
 
@@ -98,7 +104,7 @@ P5-4 remains open until all are retained:
 - Android `ma.iamina.app` signed release artifact on a real target device;
 - iOS `ma.iamina.app` signed/TestFlight-equivalent artifact on a real target device;
 - exact version/build/SHA/digest for both artifacts;
-- Firebase migration compatibility decision proven for the pilot build;
+- Firebase-off pilot decision proven by runtime/CI contracts;
 - N-1 -> N Drift data-preservation proof;
 - documented recovery/forward-fix rehearsal;
 - installation/update instructions successfully followed without repository access or developer tooling.

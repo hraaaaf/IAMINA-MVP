@@ -35,7 +35,8 @@ dependencies:
   connectivity_plus: ^6.0.0
 
   # Voice — recording + TTS
-  record: ^5.0.0          # audio capture (web:WebM  iOS/Android:m4a)
+  # Pin 6.2.1: last record release before Flutter 3.44 / Dart 3.12 floor.
+  record: 6.2.1
   flutter_tts: ^4.0.0     # text-to-speech (web:SpeechSynthesis  mobile:native)
 
   # OCR — on-device glucometer reader (Phase 11-B)

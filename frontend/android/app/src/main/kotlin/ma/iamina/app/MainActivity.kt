@@ -1,4 +1,4 @@
-package com.example.amina
+package ma.iamina.app
 
 import io.flutter.embedding.android.FlutterActivity
 
