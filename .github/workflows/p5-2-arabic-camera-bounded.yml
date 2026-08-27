@@ -1,0 +1,61 @@
+name: P5-2 Arabic real-camera bounded OCR evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/evaluation/p5_2_arabic_camera_bounded_benchmark.py"
+      - "backend/evaluation/tests/test_p5_2_arabic_camera_bounded_benchmark.py"
+      - ".github/workflows/p5-2-arabic-camera-bounded.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p5-2-arabic-camera-bounded-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  evidence:
+    name: Tesseract ara on public real-camera receipt crops
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: p5-2-arabic-camera-nonproduction
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: sqlite:///p5-2-arabic-camera.db
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install Tesseract Arabic language data
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-ara
+      - name: Install backend and pinned dataset loader
+        run: |
+          pip install -r requirements.txt
+          pip install datasets==4.1.1
+      - name: Validate selection and normalization contracts
+        run: pytest -q evaluation/tests/test_p5_2_arabic_camera_bounded_benchmark.py
+      - name: Run frozen real-camera bounded benchmark
+        run: >-
+          python -m evaluation.p5_2_arabic_camera_bounded_benchmark
+          --output ../artifacts/p5-2-arabic-camera-bounded.json
+      - name: Upload minimized evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p5-2-arabic-camera-bounded
+          path: artifacts/p5-2-arabic-camera-bounded.json
+          if-no-files-found: warn
+          retention-days: 14
