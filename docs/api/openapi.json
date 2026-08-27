@@ -347,6 +347,62 @@
         ]
       }
     },
+    "/api/v1/app-compatibility": {
+      "get": {
+        "operationId": "core_api_v1_compatibility_app_compatibility",
+        "summary": "App Compatibility",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "client_version",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Client Version"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "client_build",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Client Build"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppCompatibilitySchema"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the current pilot compatibility window and client decision.",
+        "tags": [
+          "ops"
+        ]
+      }
+    },
     "/api/v1/logs": {
       "get": {
         "operationId": "diabetes_api_v1_logs_list_logs",
@@ -2353,6 +2409,90 @@
           "cache"
         ],
         "title": "HealthSchema",
+        "type": "object"
+      },
+      "AppCompatibilitySchema": {
+        "properties": {
+          "api_contract_version": {
+            "title": "Api Contract Version",
+            "type": "string"
+          },
+          "minimum_supported_app_version": {
+            "title": "Minimum Supported App Version",
+            "type": "string"
+          },
+          "minimum_supported_build": {
+            "title": "Minimum Supported Build",
+            "type": "integer"
+          },
+          "latest_app_version": {
+            "title": "Latest App Version",
+            "type": "string"
+          },
+          "latest_build": {
+            "title": "Latest Build",
+            "type": "integer"
+          },
+          "client_app_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client App Version"
+          },
+          "client_build": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Build"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "compatible": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compatible"
+          },
+          "update_required": {
+            "title": "Update Required",
+            "type": "boolean"
+          },
+          "update_available": {
+            "title": "Update Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "api_contract_version",
+          "minimum_supported_app_version",
+          "minimum_supported_build",
+          "latest_app_version",
+          "latest_build",
+          "client_app_version",
+          "client_build",
+          "status",
+          "compatible",
+          "update_required",
+          "update_available"
+        ],
+        "title": "AppCompatibilitySchema",
         "type": "object"
       },
       "LogEntrySchema": {
