@@ -15,6 +15,7 @@ import 'services/api_client.dart';
 import 'services/audit_access_policy.dart';
 import 'services/auth_service.dart';
 import 'services/consent_service.dart';
+import 'services/firebase_migration_policy.dart';
 import 'services/locale_preference_service.dart';
 import 'services/modules_provider.dart';
 import 'services/sync_service.dart';
@@ -22,12 +23,14 @@ import 'services/sync_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } catch (e) {
-    debugPrint('Firebase init failed: $e');
+  if (kFirebaseMigrationEnabled) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (e) {
+      debugPrint('Firebase migration init failed: $e');
+    }
   }
 
   final db = AppDatabase.defaults();
