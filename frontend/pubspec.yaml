@@ -34,8 +34,7 @@ dependencies:
   http_parser: ^4.0.0
   connectivity_plus: ^6.0.0
 
-  # Voice — recording + TTS
-  record: ^5.0.0          # audio capture (web:WebM  iOS/Android:m4a)
+  # Voice output — TTS only. No audio-capture runtime is currently shipped.
   flutter_tts: ^4.0.0     # text-to-speech (web:SpeechSynthesis  mobile:native)
 
   # OCR — on-device glucometer reader (Phase 11-B)

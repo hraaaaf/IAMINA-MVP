@@ -1,0 +1,60 @@
+name: P5-4 temporary lock refresh
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "frontend/pubspec.yaml"
+      - ".github/workflows/p5-4-lock-refresh.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: p5-4-lock-refresh-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    if: >-
+      github.event.pull_request.number == 521 &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+
+      - name: Prove record package is unused by shipped/test Dart source
+        run: |
+          set -euo pipefail
+          if git grep -n -E "package:record/record\.dart|AudioRecorder|RecordConfig" -- frontend/lib frontend/test; then
+            echo "record package is still referenced; refusing dependency removal" >&2
+            exit 1
+          fi
+
+      - name: Regenerate lockfile with pinned Flutter toolchain
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Commit only regenerated lockfile
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- frontend/pubspec.lock; then
+            echo "Lockfile already coherent"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/pubspec.lock
+          test "$(git diff --cached --name-only)" = "frontend/pubspec.lock"
+          git commit -m "build(frontend): refresh lockfile after removing unused record"
+          git push origin "HEAD:${{ github.head_ref }}"
