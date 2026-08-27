@@ -33,13 +33,15 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Prove record package is unused by shipped/test Dart source
+      - name: Verify current voice callsite contract before dependency refresh
         run: |
           set -euo pipefail
-          if git grep -n -E "package:record/record\.dart|AudioRecorder|RecordConfig" -- frontend/lib frontend/test; then
-            echo "record package is still referenced; refusing dependency removal" >&2
-            exit 1
-          fi
+          FILE="frontend/lib/features/journal/widgets/amina_chat_view.dart"
+          git grep -n "package:record/record.dart" -- "$FILE"
+          git grep -n "AudioRecorder" -- "$FILE"
+          git grep -n "RecordConfig" -- "$FILE"
+          git grep -n "startStream" -- "$FILE"
+          git grep -n "_recorder.stop" -- "$FILE"
 
       - name: Regenerate lockfile with pinned Flutter toolchain
         working-directory: frontend
@@ -56,5 +58,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add frontend/pubspec.lock
           test "$(git diff --cached --name-only)" = "frontend/pubspec.lock"
-          git commit -m "build(frontend): refresh lockfile after removing unused record"
+          git commit -m "build(frontend): refresh lockfile for record 6.2.1"
           git push origin "HEAD:${{ github.head_ref }}"
