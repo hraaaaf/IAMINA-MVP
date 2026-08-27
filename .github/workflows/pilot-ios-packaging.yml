@@ -1,0 +1,61 @@
+name: Pilot iOS packaging
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/pilot-ios-packaging.yml"
+      - "frontend/ios/**"
+      - "frontend/pubspec.yaml"
+      - "frontend/pubspec.lock"
+      - "frontend/lib/main.dart"
+      - "frontend/lib/services/auth_service.dart"
+      - "frontend/lib/services/firebase_migration_policy.dart"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pilot-ios-packaging-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-debug-compile:
+    name: iOS pilot identity — no-codesign compile smoke
+    runs-on: macos-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.0"
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Reject dependency drift
+        run: git diff --exit-code -- pubspec.lock
+
+      - name: Verify permanent iOS identity contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=ios/Runner.xcodeproj/project.pbxproj
+          ! grep -q 'com.example.amina' "$file"
+          test "$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = ma.iamina.app;' "$file")" -eq 3
+          test "$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = ma.iamina.app.RunnerTests;' "$file")" -eq 3
+          test ! -e ios/Runner/GoogleService-Info.plist
+
+      - name: Compile iOS debug app without signing
+        run: >-
+          flutter build ios --debug --no-codesign
+          --dart-define=ENABLE_FIREBASE_MIGRATION=false
+
+      - name: Verify Runner.app exists
+        run: test -d build/ios/iphoneos/Runner.app
