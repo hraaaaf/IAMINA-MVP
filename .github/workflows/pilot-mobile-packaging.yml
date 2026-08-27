@@ -7,9 +7,12 @@ on:
     paths:
       - ".github/workflows/pilot-mobile-packaging.yml"
       - "frontend/android/**"
+      - "frontend/pubspec.yaml"
+      - "frontend/pubspec.lock"
       - "frontend/lib/main.dart"
       - "frontend/lib/services/auth_service.dart"
       - "frontend/lib/services/firebase_migration_policy.dart"
+      - "frontend/lib/features/journal/widgets/amina_chat_view.dart"
       - "scripts/check_pilot_packaging_contract.py"
 
 permissions:
@@ -43,6 +46,17 @@ jobs:
 
       - name: Get dependencies
         run: flutter pub get
+
+      - name: Reject dependency drift
+        run: git diff --exit-code -- pubspec.lock
+
+      - name: Verify voice recorder dependency contract
+        run: |
+          set -euo pipefail
+          grep -F 'record: 6.2.1' pubspec.yaml
+          grep -F 'version: "6.2.1"' pubspec.lock
+          grep -F "package:record/record.dart" lib/features/journal/widgets/amina_chat_view.dart
+          grep -F "startStream" lib/features/journal/widgets/amina_chat_view.dart
 
       - name: Validate packaging contract
         working-directory: .
