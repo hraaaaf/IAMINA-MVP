@@ -1,6 +1,6 @@
 # IAmina — Roadmap
 
-> **Last updated:** 2026-08-26 — Gate A Secure Core remains certified at 10.0/10. P4-FRUGAL PRE-PILOT is closed 10/10. PR #507 merged Companion multi-turn actionability at controlled synthetic 9.3/10 with deterministic organization routing and guarded SSE. The new forward execution lane is P5-PILOT / Pilot Readiness (#514). MENA critical-path arithmetic remains 32/38 because the P5 umbrella does not retroactively manufacture MENA evidence. P0-MENA-4 #319 remains blocked on retained external/human evidence. No Vercel deployment is authorized by this roadmap.
+> **Last updated:** 2026-08-27 — Gate A Secure Core remains certified at 10.0/10. P4-FRUGAL PRE-PILOT is closed 10/10. P5-1 exact-SHA linguistic review engineering packet is merged via #523 but native/competent human certification remains open. P5-2 real-camera Arabic OCR evidence is closed via #517 with a negative qualification result: Tesseract `ara` 2/6 Arabic normalized exact and 2/6 numeric exact; no local Arabic full-document primary qualifies. P5-3 real-device TTS review packet is merged via #525 but listening remains a human-device gate. P5-4 compatibility-window engineering is merged via #522; signed-artifact and real-device release evidence remain open. Pilot Readiness is 2/9 = 22.2%; MENA arithmetic remains 32/38. No Vercel deployment is authorized by this roadmap.
 >
 > **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
 
@@ -43,9 +43,9 @@ Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
 | Canonical Clinical Data Layer & Privacy v1 | Runtime merged | ✅ Parallel maintenance foundation | PR #481 merge `bd84d147…`; exact-head CI #3424 + drift #3237 + Pulper #17 rerun green; residual universal free-form/raw-media de-identification remains TD-001; no MENA arithmetic change |
 | P0-MENA-2 — locale + safety contract | 63% | 🟡 Native linguistic/parity evidence retained | English baseline 16/16 certified; #515 now formalizes the native/competent-speaker review gate; #318 remains `NOT_PLANNED` without claiming independent clinical-human approval |
 | P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
-| P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 BLOCKED_EXTERNAL / HUMAN EVIDENCE | #319: Groq GPT-OSS primary conversational candidate frozen; Tesseract `ara` provisional bounded-field evidence; no local Arabic full-document primary qualifies; native TTS/device and linguistic evidence remain human gates |
+| P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 BLOCKED_EXTERNAL / HUMAN EVIDENCE | #319: Groq GPT-OSS primary conversational candidate frozen; P5-2/#517 real-camera bounded Tesseract `ara` evidence FAIL (2/6 Arabic, 2/6 numeric); no local Arabic full-document primary qualifies; native TTS/device and linguistic evidence remain human gates |
 | P4-FRUGAL PRE-PILOT | 100% | ✅ 10/10 closed | #422 closed; FRUG-0…9 pre-pilot evidence boundary retained; no real-pilot economics claim |
-| P5-PILOT — Pilot Readiness | 1/9 = 11.1% | 🟡 Active | #514; P5-0 security reconciliation closed; P5-1 #515 active HUMAN_GATE |
+| P5-PILOT — Pilot Readiness | 2/9 = 22.2% | 🟡 Active | #514; P5-0 security reconciliation closed; P5-2 #517 evidence gate closed with negative OCR qualification; P5-1/#515 and P5-3/#518 remain human gates; P5-4/#519 active with #522 compatibility window merged |
 | Pilot safety/compliance active scope | 100% | ✅ 10/10 retained active gates closed | Historical 10/13 completed; the three previously remaining external gates were de-scoped from the active engineering roadmap. This is scope reduction, not approval. Real-patient P5-6 must reopen whatever legal/governance evidence is actually required. |
 | Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + P2-COMPANION-0..8 + P3/P4 convergence | ✅ Closed through current convergence closeout | PR #507 current Companion controlled synthetic audit 9.3/10; these lanes do not alter MENA arithmetic |
 | CGM-GW-V1 — Dexcom + Libre ingestion gateway | 100% | ✅ Closed | Runtime PR #276 exact head `706225a4…`; exact-head CI #2568 + drift #2380 green; merge `f8a4ce7f…`; post-merge CI #2569 + drift #2381 green; closeout evidence `docs/assessments/2026-08-16-cgm-gateway-v1-closeout.md` |
@@ -74,10 +74,10 @@ Move IAMINA from certified pre-pilot engineering to one safe, measurable founder
 ## Lots
 
 1. **P5-0 — Security reconciliation — CLOSED.** Reconcile stale security bookkeeping with #30 reachable-history certification; legacy #8 closed on 2026-08-26 with the owner-attestation boundary preserved.
-2. **P5-1 — MENA linguistic certification — ACTIVE / HUMAN_GATE.** Native/competent-speaker review for FR, MSA, Moroccan Darija Arabic + Latin, FR↔Darija code-switching and retained Gulf registers. Contract: #515 and `docs/assessments/2026-08-26-p5-1-mena-linguistic-review-protocol.md`.
-3. **P5-2 — Arabic OCR real-world evidence.** Controlled non-patient real-camera Arabic evidence. Tesseract `ara` remains provisional only where bounded-field evidence qualifies; no local Arabic full-document primary currently passes the strict numeric floor.
-4. **P5-3 — Native TTS real-device evidence.** Real iOS/Android listening evidence; human gate.
-5. **P5-4 — Pilot packaging.** Signed installable build, local-first persistence, update/migration/rollback, secret/code protection and reproducible installation without exposing the repo.
+2. **P5-1 — MENA linguistic certification — ACTIVE / HUMAN_GATE.** Exact-SHA 10-lane engineering packet merged via #523 and machine-green; native/competent-speaker review remains required under #515.
+3. **P5-2 — Arabic OCR real-world evidence — CLOSED.** #517 closed 2026-08-27 after controlled non-patient real-camera evidence returned Tesseract `ara` FAIL: 2/6 Arabic normalized exact and 2/6 numeric exact. Numeric floor unchanged; local full-document Arabic remains `UNQUALIFIED`. Closeout: `docs/assessments/2026-08-27-p5-2-arabic-real-camera-ocr-closeout.md`.
+4. **P5-3 — Native TTS real-device evidence — ACTIVE / HUMAN_DEVICE_GATE.** Engineering listening packet merged via #525; current iOS + Android acoustic listening evidence remains required under #518.
+5. **P5-4 — Pilot packaging — ACTIVE.** Signed installable build, local-first persistence, update/migration/rollback, secret/code protection and reproducible installation without exposing the repo. Compatibility-window engineering is merged via #522; external signing and real-device upgrade evidence remain separate gates.
 6. **P5-5 — End-to-end pilot rehearsal.** Non-patient rehearsal across onboarding, data/import, Companion, OCR, CGM, reports, offline/update/backup/restore and degraded modes.
 7. **P5-6 — Real-patient release gate.** Reopen and satisfy the CNDP/legal/processor/residency/clinical-human requirements that are actually required for a patient pilot. Previous scope reductions are not approval.
 8. **P5-7 — Observed pilot evidence.** Real MAU, retention, safety incidents, reliability, LLM route/cost, storage/egress, satisfaction and support burden. Synthetic evidence must remain labelled synthetic.
@@ -89,7 +89,7 @@ Execution order:
 
 CI-FRUGAL #442 is parallel infrastructure work and must not delay this path.
 
-**Pilot Readiness progress: 1/9 = 11.1%.** This metric is separate from the 32/38 MENA numerator.
+**Pilot Readiness progress: 2/9 = 22.2%.** Closed lots: P5-0 and P5-2. This metric is separate from the 32/38 MENA numerator.
 
 ---
 
