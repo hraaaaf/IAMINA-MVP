@@ -1,16 +1,24 @@
+import pytest
+
 from evaluation.dialect_dataset_groq_benchmark import (
     CASES_PER_COUNTRY,
     EXPECTED_LICENSE,
     TARGETS,
+    BenchmarkConfigurationError,
     SourceSnapshot,
+    _parse_country_code,
     _privacy_screen,
+    _validate_source_url,
     build_cases,
-    strict_response_format,
 )
 
 
 def _row(row_id, country, text):
-    return {"id": str(row_id), "source_country": country, "source_text": text}
+    return {
+        "id": str(row_id),
+        "source_country": country,
+        "source_text": text,
+    }
 
 
 def test_target_coverage_is_exact_mena_set():
@@ -20,11 +28,31 @@ def test_target_coverage_is_exact_mena_set():
 
 def test_privacy_screen_rejects_obvious_pii_and_noise():
     assert _privacy_screen("تكفين خليني أروح، قولي له يخليني أروح") is True
+    assert _privacy_screen("ليش ما نزلت") is True
     assert _privacy_screen("[03/06, 2:06 am] Ahmed: الله يحفظ الجميع") is False
     assert _privacy_screen("+973 3849 9318 الله يحفظ الجميع") is False
     assert _privacy_screen("راسلني على user@example.com لو سمحت") is False
     assert _privacy_screen("https://example.com هذا رابط طويل") is False
     assert _privacy_screen("short") is False
+
+
+def test_source_urls_are_https_and_huggingface_only():
+    _validate_source_url("https://huggingface.co/api/datasets/example/repo")
+    with pytest.raises(BenchmarkConfigurationError):
+        _validate_source_url("http://huggingface.co/api/datasets/example/repo")
+    with pytest.raises(BenchmarkConfigurationError):
+        _validate_source_url("file:///tmp/dataset.csv")
+    with pytest.raises(BenchmarkConfigurationError):
+        _validate_source_url("https://example.com/dataset.csv")
+
+
+def test_plain_country_code_contract_is_strict():
+    assert _parse_country_code("sa") == "SA"
+    assert _parse_country_code(" QA\n") == "QA"
+    with pytest.raises(BenchmarkConfigurationError):
+        _parse_country_code("SA because this sounds Saudi")
+    with pytest.raises(BenchmarkConfigurationError):
+        _parse_country_code('{"country_code":"SA"}')
 
 
 def test_build_cases_is_deterministic_and_does_not_need_raw_text_in_report():
@@ -71,10 +99,3 @@ def test_build_cases_is_deterministic_and_does_not_need_raw_text_in_report():
     assert [case.country_code for case in cases].count("MA") == 3
     assert cases[0].case_id == "sa-1"
     assert all(_privacy_screen(case.text) for case in cases)
-
-
-def test_schema_allows_only_target_country_codes():
-    schema = strict_response_format()["json_schema"]["schema"]
-    assert schema["additionalProperties"] is False
-    assert schema["required"] == ["country_code"]
-    assert schema["properties"]["country_code"]["enum"] == sorted(TARGETS)

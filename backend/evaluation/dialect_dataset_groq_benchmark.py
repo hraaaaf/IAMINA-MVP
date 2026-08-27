@@ -13,6 +13,7 @@ import io
 import json
 import os
 import re
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from datetime import date
@@ -44,6 +45,7 @@ TARGETS = {
     "MA": ("ebubekr53/organic-maghrebi-arabic-dialect-dataset", "morocco"),
 }
 EXPECTED_LICENSE = "cc-by-4.0"
+_ALLOWED_SOURCE_HOSTS = frozenset({"huggingface.co"})
 
 _ARABIC = re.compile(r"[\u0600-\u06ff]")
 _LATIN = re.compile(r"[A-Za-z]")
@@ -88,21 +90,28 @@ class DialectCase:
     text: str
 
 
-def _http_json(url: str) -> dict[str, Any]:
+def _validate_source_url(url: str) -> None:
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme != "https" or parsed.hostname not in _ALLOWED_SOURCE_HOSTS:
+        raise BenchmarkConfigurationError("benchmark source URL is not allowlisted")
+
+
+def _open_source_url(url: str):
+    _validate_source_url(url)
     request = urllib.request.Request(
         url,
         headers={"User-Agent": "IAMINA-benchmark/1.0"},
     )
-    with urllib.request.urlopen(request, timeout=20) as response:
+    return urllib.request.urlopen(request, timeout=20)  # nosec B310
+
+
+def _http_json(url: str) -> dict[str, Any]:
+    with _open_source_url(url) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
 def _http_bytes(url: str) -> bytes:
-    request = urllib.request.Request(
-        url,
-        headers={"User-Agent": "IAMINA-benchmark/1.0"},
-    )
-    with urllib.request.urlopen(request, timeout=20) as response:
+    with _open_source_url(url) as response:
         return response.read()
 
 
@@ -150,7 +159,7 @@ def _source_snapshot(repo_id: str) -> SourceSnapshot:
 
 
 def _privacy_screen(text: str) -> bool:
-    """Reject obvious PII/noise while retaining genuine short dialect utterances."""
+    """Reject obvious PII/noise while retaining genuine short utterances."""
     value = " ".join(text.split()).strip()
     if len(value) < 5 or len(value) > 160:
         return False
@@ -207,33 +216,21 @@ def build_cases(
     return tuple(cases)
 
 
-def strict_response_format() -> dict[str, Any]:
-    return {
-        "type": "json_schema",
-        "json_schema": {
-            "name": "mena_dialect_country",
-            "strict": True,
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "country_code": {
-                        "type": "string",
-                        "enum": sorted(TARGETS),
-                    }
-                },
-                "required": ["country_code"],
-                "additionalProperties": False,
-            },
-        },
-    }
-
-
 def _case_prompt(case: DialectCase) -> str:
     return json.dumps(
         {"sample": case.text, "allowed_codes": sorted(TARGETS)},
         ensure_ascii=False,
         separators=(",", ":"),
     )
+
+
+def _parse_country_code(content: str | None) -> str:
+    value = (content or "").strip().upper()
+    if value not in TARGETS:
+        raise BenchmarkConfigurationError(
+            f"unexpected country-code response: {value!r}"
+        )
+    return value
 
 
 def projected_spend_microusd(
@@ -273,7 +270,6 @@ def _invoke_case(provider, case: DialectCase):
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": _case_prompt(case)},
         ],
-        response_format=strict_response_format(),
         reasoning_effort="low",
         max_completion_tokens=MAX_COMPLETION_TOKENS,
         timeout=provider.timeout_seconds,
@@ -327,9 +323,8 @@ def run_benchmark(*, output_path: Path, today: date) -> dict[str, Any]:
     try:
         for case in cases:
             response = _invoke_case(provider, case)
-            parsed = json.loads(response.choices[0].message.content or "")
-            predicted = (
-                parsed.get("country_code") if isinstance(parsed, dict) else None
+            predicted = _parse_country_code(
+                response.choices[0].message.content
             )
             usage = _usage_row(response)
             input_tokens = usage["input_tokens"]
@@ -386,6 +381,7 @@ def run_benchmark(*, output_path: Path, today: date) -> dict[str, Any]:
         "public_external_dataset": True,
         "raw_source_text_retained": False,
         "source_license_required": EXPECTED_LICENSE,
+        "response_contract": "exact_iso_country_code_text",
         "source_snapshots": {
             repo_id: {
                 "revision": snapshot.revision,
