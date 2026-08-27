@@ -30,8 +30,8 @@ from evaluation.provider_benchmark_preflight import ProviderBenchmarkPreflight
 
 DATASET_ID = "iamina-mena-dialect-datasets-v1"
 CASES_PER_COUNTRY = 3
-MAX_COMPLETION_TOKENS = 64
-SPEND_CEILING_MICROUSD = 5_000
+MAX_COMPLETION_TOKENS = 384
+SPEND_CEILING_MICROUSD = 7_000
 
 TARGETS = {
     "SA": ("ebubekr53/organic-gulf-arabic-dialect-dataset", "saudi arabia"),
