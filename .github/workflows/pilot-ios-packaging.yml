@@ -20,8 +20,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ios-debug-compile:
-    name: iOS pilot identity — no-codesign compile smoke
+  ios-release-compile:
+    name: iOS pilot identity — release no-codesign compile
     runs-on: macos-latest
     timeout-minutes: 35
     defaults:
@@ -51,35 +51,13 @@ jobs:
           test "$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = ma.iamina.app;' "$file")" -eq 3
           test "$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = ma.iamina.app.RunnerTests;' "$file")" -eq 3
           test ! -e ios/Runner/GoogleService-Info.plist
+          grep -q "platform :ios, '15.5'" ios/Podfile
+          grep -q '^IPHONEOS_DEPLOYMENT_TARGET=15.5$' ios/Flutter/Release.xcconfig
 
-      - name: Capture iOS toolchain versions
-        shell: bash
-        run: |
-          set -o pipefail
-          {
-            flutter --version
-            xcodebuild -version
-            pod --version || true
-          } 2>&1 | tee ios-toolchain.log
-
-      - name: Compile iOS debug app without signing
-        shell: bash
-        run: |
-          set -o pipefail
-          flutter build ios --debug --no-codesign \
-            --dart-define=ENABLE_FIREBASE_MIGRATION=false \
-            2>&1 | tee ios-build.log
-
-      - name: Upload iOS build diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-build-diagnostics
-          path: |
-            frontend/ios-toolchain.log
-            frontend/ios-build.log
-          if-no-files-found: error
-          retention-days: 3
+      - name: Compile iOS release app without signing
+        run: >-
+          flutter build ios --release --no-codesign
+          --dart-define=ENABLE_FIREBASE_MIGRATION=false
 
       - name: Verify Runner.app exists
         run: test -d build/ios/iphoneos/Runner.app
