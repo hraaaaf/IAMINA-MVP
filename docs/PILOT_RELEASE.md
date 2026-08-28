@@ -12,7 +12,7 @@ Android and iOS pilot application identifier: `ma.iamina.app`.
 
 The identifier is treated as permanent for the first distributed pilot line. Changing it after distribution creates a different application identity and is not an update path.
 
-Android has moved to the permanent identifier. iOS remains on the historical placeholder until Apple provisioning is available and is therefore still blocked from release-ready status.
+Android and iOS project configuration now use the permanent identifier. Apple signing/provisioning remains external, so this does not constitute a signed iOS release.
 
 ## Release identity
 
