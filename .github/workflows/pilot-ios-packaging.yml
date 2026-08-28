@@ -52,10 +52,34 @@ jobs:
           test "$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = ma.iamina.app.RunnerTests;' "$file")" -eq 3
           test ! -e ios/Runner/GoogleService-Info.plist
 
+      - name: Capture iOS toolchain versions
+        shell: bash
+        run: |
+          set -o pipefail
+          {
+            flutter --version
+            xcodebuild -version
+            pod --version || true
+          } 2>&1 | tee ios-toolchain.log
+
       - name: Compile iOS debug app without signing
-        run: >-
-          flutter build ios --debug --no-codesign
-          --dart-define=ENABLE_FIREBASE_MIGRATION=false
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter build ios --debug --no-codesign \
+            --dart-define=ENABLE_FIREBASE_MIGRATION=false \
+            2>&1 | tee ios-build.log
+
+      - name: Upload iOS build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-diagnostics
+          path: |
+            frontend/ios-toolchain.log
+            frontend/ios-build.log
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Verify Runner.app exists
         run: test -d build/ios/iphoneos/Runner.app
