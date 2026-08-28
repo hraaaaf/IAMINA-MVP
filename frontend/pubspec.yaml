@@ -42,7 +42,7 @@ dependencies:
   # OCR — on-device glucometer reader (Phase 11-B)
   # Mobile only (iOS/Android). Web/desktop: button hidden via kIsWeb guard.
   image_picker: ^1.1.2
-  google_mlkit_text_recognition: ^0.13.0
+  google_mlkit_text_recognition: ^0.16.0
 
   # Document Pulper — Phase 12 (multi-format file import)
   file_picker: ^8.1.4
