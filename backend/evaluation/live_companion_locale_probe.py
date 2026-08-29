@@ -4,14 +4,14 @@ import json
 import os
 from pathlib import Path
 
-import evaluation.live_companion_multilingual_parity as parity
-
 
 _ALLOWED_CLINICIAN_ROUTES = {"llm", "zero_model"}
 _REQUIRED_LLM_TURNS = ("routine_problem", "evening_constraint", "emotional", "recap")
 
 
 def run_locale(locale: str, output: Path) -> dict:
+    from evaluation import live_companion_multilingual_parity as parity
+
     if locale not in parity.SCENARIOS:
         raise RuntimeError(f"unsupported locale: {locale}")
 
