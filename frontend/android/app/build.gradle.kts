@@ -64,6 +64,17 @@ android {
     }
 }
 
+// google_mlkit_text_recognition references these script-specific option classes
+// from the plugin bridge. Release R8 resolves the references eagerly, so the
+// matching native artifacts must be present even though IAMINA currently uses
+// the default Latin recognizer path.
+dependencies {
+    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
+    implementation("com.google.mlkit:text-recognition-devanagari:16.0.1")
+    implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
+    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
+}
+
 gradle.taskGraph.whenReady {
     val releaseRequested = allTasks.any { task ->
         task.name.contains("release", ignoreCase = true)
