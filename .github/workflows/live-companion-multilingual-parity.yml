@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: iamina-companion-multilingual-parity
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   parity:
