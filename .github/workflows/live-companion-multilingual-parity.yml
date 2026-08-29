@@ -11,6 +11,8 @@ on:
       - "backend/core/tests/test_input_safety.py"
       - "backend/companion/conversation.py"
       - "backend/companion/test_conversation_intent.py"
+      - "backend/companion/output_guard.py"
+      - "backend/companion/test_output_guard.py"
       - ".github/workflows/live-companion-multilingual-parity.yml"
 
 permissions:
@@ -54,8 +56,8 @@ jobs:
         run: pip install -r requirements.txt ruff==0.15.17
       - name: Validate safety and probe before network
         run: |
-          ruff check core/input_safety.py core/tests/test_input_safety.py companion/conversation.py companion/test_conversation_intent.py evaluation/live_companion_multilingual_parity.py evaluation/live_companion_locale_probe.py
-          pytest -q core/tests/test_input_safety.py companion/test_conversation_intent.py
+          ruff check core/input_safety.py core/tests/test_input_safety.py companion/conversation.py companion/test_conversation_intent.py companion/output_guard.py companion/test_output_guard.py evaluation/live_companion_multilingual_parity.py evaluation/live_companion_locale_probe.py
+          pytest -q core/tests/test_input_safety.py companion/test_conversation_intent.py companion/test_output_guard.py
           python manage.py migrate --noinput
           python manage.py shell -c "from evaluation.live_companion_multilingual_parity import validate_scenarios; print(validate_scenarios())"
       - name: Run bounded real locale Companion probe
