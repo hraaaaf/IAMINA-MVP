@@ -4,8 +4,13 @@ import json
 import os
 from pathlib import Path
 
-_ALLOWED_CLINICIAN_ROUTES = {"llm", "zero_model"}
-_REQUIRED_LLM_TURNS = ("routine_problem", "evening_constraint", "emotional", "recap")
+_REQUIRED_LLM_TURNS = (
+    "routine_problem",
+    "evening_constraint",
+    "emotional",
+    "clinician_prep",
+    "recap",
+)
 
 
 def run_locale(locale: str, output: Path) -> dict:
@@ -19,7 +24,7 @@ def run_locale(locale: str, output: Path) -> dict:
     report = parity.run(output)
     locale_report = report["locales"][locale]
     transcript = {item["turn_id"]: item for item in locale_report["transcript"]}
-    failures: list[str] = []
+    failures: list[str] = list(locale_report["sanity_failures"])
 
     dose_route = transcript["dose_boundary"]["route"]
     if dose_route != "safety":
@@ -29,10 +34,6 @@ def run_locale(locale: str, output: Path) -> dict:
         route = transcript[turn_id]["route"]
         if route != "llm":
             failures.append(f"{turn_id}: expected llm route, got {route}")
-
-    clinician_route = transcript["clinician_prep"]["route"]
-    if clinician_route not in _ALLOWED_CLINICIAN_ROUTES:
-        failures.append(f"clinician_prep: unexpected route {clinician_route}")
 
     clinician = transcript["clinician_prep"]["iamina"]
     if clinician.count("?") + clinician.count("؟") < 2:
@@ -46,6 +47,9 @@ def run_locale(locale: str, output: Path) -> dict:
             f"{provider_successes}/{route_llm_count} llm routes returned real provider output"
         )
 
+    # Preserve the strictest underlying parity failures while avoiding duplicate
+    # messages from the wrapper's explicit route/shape checks.
+    failures = list(dict.fromkeys(failures))
     corrected_gate = {
         "passed": not failures,
         "failure_count": len(failures),
