@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 
 ARABIC_RE = re.compile(r"[\u0600-\u06ff\u0750-\u077f]")
+LATIN_RE = re.compile(r"[A-Za-zÀ-ÿ]")
 _WORD_RE = re.compile(r"\b[\wÀ-ÿ]+\b", re.UNICODE)
 
 _FREQUENCY_SELECTION_PATTERN = re.compile(
@@ -45,8 +46,6 @@ FORBIDDEN_BEHAVIOR_PATTERNS = (
     re.compile(r"(?:اشرب|إشرب).{0,20}(?:ماء|الماء)"),
     re.compile(r"(?:امش|إمش|مشي).{0,20}(?:دقيق|دقيقة|دقائق)"),
     re.compile(r"(?:قم|قومي|حاول|حاولي).{0,20}(?:بتمرين|بالرياضة|بالمشي)"),
-    # Selecting what to track is authority too. Empty reminders/checklists are OK;
-    # model-selected health/behavior content is not.
     re.compile(
         r"\b(?:note|notes|consigne|consignes|mesure|mesures)\b"
         r"(?!\s+(?:une?|la|le)?\s*(?:case|checklist|liste|rappel)\b)",
@@ -109,6 +108,12 @@ _SAFE_WEEK_AR = "لهذا الأسبوع: اختر وقتًا ثابتًا وا�
 _SAFE_CLINICIAN_AR = "حضّر هذه الأسئلة الأربعة: ما المعلومات التي يجب أن أحضرها؟ ما التغيّرات التي يجب أن أخبرك بها؟ ما معايير إعادة تقييم علاجي؟ ومتى أتواصل معك مجددًا؟"
 _SAFE_EMOTIONAL_AR = "واضح إن التفكير في هذا كل يوم متعب جدًا، وأنا معك في هذه اللحظة بدون ما أزيد عليك مهام."
 
+_SAFE_DARIJA_AR = "بدا بحاجة وحدة: تذكير واحد فوقت ثابت وخانة وحدة تعلم عليها، وإلا نسيتي كمل مع التذكير اللي من بعد."
+_SAFE_COMPACT_DARIJA_AR = "خليها بسيطة: ثلاث خانات خاويين بلا محتوى مفروض، وعلم غير على اللي كملتي."
+_SAFE_WEEK_DARIJA_AR = "هاد السيمانة: اختار وقت ثابت واحد، دير تذكير واحد وخلي غير ثلاث خانات خاويين، وعلم غير على اللي كملتي."
+_SAFE_CLINICIAN_DARIJA_AR = "وجد هاد الأسئلة: شنو المعلومات اللي نجيب معايا؟ شنو التغييرات اللي نبلغك بها؟ شنو المعايير اللي كتستعمل باش تعاود تقيم العلاج ديالي؟ وإمتى نعاود نتاصل بيك؟"
+_SAFE_EMOTIONAL_DARIJA_AR = "باين بلي التفكير فهاد الشي كل نهار عياك بزاف، وأنا هنا معاك دابا بلا ما نزيد عليك شي حاجة."
+
 _SAFE_DARIJA_LATIN = "Bda b 7aja wa7da: reminder wa7ed f wa9t tabet, w case wa7da t3ellem 3liha. Ila nsiti, kmml m3a reminder li b3do."
 _SAFE_COMPACT_DARIJA_LATIN = "Khlliha minimal: 3 cases khawyin bla contenu mfroud, w 3ellem ghir mlli tkmel."
 _SAFE_WEEK_DARIJA_LATIN = "Had simana: khtar wa9t tabet wa7ed, dir reminder wa7ed, w khlli 3 cases khawyin max. 3ellem ghir mlli tkmel."
@@ -136,14 +141,22 @@ def safe_fallback(
     very_long: bool = False,
     prefer_latin_script: bool = False,
 ) -> str:
-    if language == "ar-MA" and prefer_latin_script:
+    if language == "ar-MA":
+        if prefer_latin_script:
+            if mode == "emotional":
+                return _SAFE_EMOTIONAL_DARIJA_LATIN
+            if mode == "clinician_prep":
+                return _SAFE_CLINICIAN_DARIJA_LATIN
+            if weekly:
+                return _SAFE_WEEK_DARIJA_LATIN
+            return _SAFE_COMPACT_DARIJA_LATIN if very_long else _SAFE_DARIJA_LATIN
         if mode == "emotional":
-            return _SAFE_EMOTIONAL_DARIJA_LATIN
+            return _SAFE_EMOTIONAL_DARIJA_AR
         if mode == "clinician_prep":
-            return _SAFE_CLINICIAN_DARIJA_LATIN
+            return _SAFE_CLINICIAN_DARIJA_AR
         if weekly:
-            return _SAFE_WEEK_DARIJA_LATIN
-        return _SAFE_COMPACT_DARIJA_LATIN if very_long else _SAFE_DARIJA_LATIN
+            return _SAFE_WEEK_DARIJA_AR
+        return _SAFE_COMPACT_DARIJA_AR if very_long else _SAFE_DARIJA_AR
     if language.startswith("ar"):
         if mode == "emotional":
             return _SAFE_EMOTIONAL_AR
@@ -178,14 +191,20 @@ def guard_narrator_output(
     weekly: bool = False,
     prefer_latin_script: bool = False,
 ) -> str:
-    # Kept for call-site compatibility. Neither DomainContext.pivot_text nor
-    # CompanionContext carries behavior-action authorization.
     del approved_session_context
 
     forbidden = contains_unapproved_behavior_action(reply)
     words = word_count(reply)
     lines = nonempty_line_count(reply)
-    script_violation = prefer_latin_script and bool(ARABIC_RE.search(reply))
+    if language == "ar-MA":
+        script_violation = (
+            prefer_latin_script and bool(ARABIC_RE.search(reply))
+        ) or (
+            not prefer_latin_script
+            and (not ARABIC_RE.search(reply) or bool(LATIN_RE.search(reply)))
+        )
+    else:
+        script_violation = prefer_latin_script and bool(ARABIC_RE.search(reply))
 
     if mode == "emotional":
         invalid_shape = words > 30 or lines > 1
