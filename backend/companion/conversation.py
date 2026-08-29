@@ -59,7 +59,7 @@ _EMOTIONAL_RE = re.compile(
     r"j.?abandonne|c.?est inutile|à quoi ça sert|ras le bol|découragé|"
     r"3yayt|3yit|t3bna|t3bit|ma b9ich|mab9inch|ma nqderch|ma nqdarch|"
     r"khlass|bghit nwaqaf|7chuma|ma3ndich|i give up|i.?m done|can.?t do this|"
-    r"so tired|exhausted|hopeless"
+    r"i.?m(?: honestly)? tired|it.?s exhausting|so tired|exhausted|hopeless"
     r")\b|تعبت|مرهق(?:ني)?|عييت|تعبني)",
     re.IGNORECASE,
 )
