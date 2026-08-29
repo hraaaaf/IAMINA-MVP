@@ -46,7 +46,7 @@ jobs:
           python -m py_compile evaluation/live_companion_multilingual_parity.py
           python manage.py shell -c "from evaluation.live_companion_multilingual_parity import validate_scenarios; print(validate_scenarios())"
       - name: Run bounded real multilingual Companion probe
-        run: python -m evaluation.live_companion_multilingual_parity
+        run: python manage.py shell -c "from evaluation.live_companion_multilingual_parity import main; main()"
       - name: Upload raw synthetic transcripts
         if: always()
         uses: actions/upload-artifact@v4
