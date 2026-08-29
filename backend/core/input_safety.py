@@ -23,17 +23,21 @@ INSULIN_BLOCK = "INSULIN_BLOCK"
 PRESCRIPTION_BLOCK = "PRESCRIPTION_BLOCK"
 
 # Deterministic Arabic/dialect coverage for explicit insulin-dose requests.
-# Keep educational insulin questions outside this boundary.
+# Keep general educational insulin questions outside this boundary.
 _ARABIC_INSULIN_DOSE_PATTERNS = (
     re.compile(
-        r"(?:كم|شحال|جم)\s*(?:من\s+)?(?:وحدة|وحدات)?[^؟?\n]{0,40}"
+        r"(?:كم|شحال|جم)\s*(?:من\s+)?(?:وحدة|وحدات)[^؟?\n]{0,40}"
         r"(?:ال)?[إأا]نسولين"
     ),
     re.compile(
         r"(?:ال)?[إأا]نسولين[^؟?\n]{0,40}(?:كم|شحال|جم)\s*(?:من\s+)?"
-        r"(?:وحدة|وحدات)?"
+        r"(?:وحدة|وحدات)"
     ),
     re.compile(r"(?:جرعة|الجرعة)[^؟?\n]{0,24}(?:ال)?[إأا]نسولين"),
+    re.compile(
+        r"(?:كم|شحال|جم)\s+(?:ال)?[إأا]نسولين[^؟?\n]{0,24}"
+        r"(?:آخذ|اخذ|أخذ|ناخد|ناخذ|نأخذ|أحقن|احقن|أستعمل|استعمل)"
+    ),
 )
 
 
