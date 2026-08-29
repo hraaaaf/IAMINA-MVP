@@ -1,12 +1,10 @@
 """Fail-closed single-locale wrapper for the live multilingual Companion probe."""
 
-from __future__ import annotations
-
 import json
 import os
 from pathlib import Path
 
-from evaluation import live_companion_multilingual_parity as parity
+import evaluation.live_companion_multilingual_parity as parity
 
 
 _ALLOWED_CLINICIAN_ROUTES = {"llm", "zero_model"}
