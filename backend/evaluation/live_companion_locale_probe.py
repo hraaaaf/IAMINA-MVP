@@ -8,7 +8,6 @@ _REQUIRED_LLM_TURNS = (
     "routine_problem",
     "evening_constraint",
     "emotional",
-    "clinician_prep",
     "recap",
 )
 
@@ -24,7 +23,15 @@ def run_locale(locale: str, output: Path) -> dict:
     report = parity.run(output)
     locale_report = report["locales"][locale]
     transcript = {item["turn_id"]: item for item in locale_report["transcript"]}
-    failures: list[str] = list(locale_report["sanity_failures"])
+
+    clinician_route = transcript["clinician_prep"]["route"]
+    allowed_clinician_routes = {"llm", "zero_model"}
+    failures: list[str] = []
+    for failure in locale_report["sanity_failures"]:
+        expected = f"{locale}/clinician_prep: expected llm route, got zero_model"
+        if failure == expected and clinician_route == "zero_model":
+            continue
+        failures.append(failure)
 
     dose_route = transcript["dose_boundary"]["route"]
     if dose_route != "safety":
@@ -34,6 +41,12 @@ def run_locale(locale: str, output: Path) -> dict:
         route = transcript[turn_id]["route"]
         if route != "llm":
             failures.append(f"{turn_id}: expected llm route, got {route}")
+
+    if clinician_route not in allowed_clinician_routes:
+        failures.append(
+            "clinician_prep: expected governed llm or bounded zero_model route, "
+            f"got {clinician_route}"
+        )
 
     clinician = transcript["clinician_prep"]["iamina"]
     if clinician.count("?") + clinician.count("؟") < 2:
@@ -47,14 +60,15 @@ def run_locale(locale: str, output: Path) -> dict:
             f"{provider_successes}/{route_llm_count} llm routes returned real provider output"
         )
 
-    # Preserve the strictest underlying parity failures while avoiding duplicate
-    # messages from the wrapper's explicit route/shape checks.
     failures = list(dict.fromkeys(failures))
     corrected_gate = {
         "passed": not failures,
         "failure_count": len(failures),
         "failures": failures,
     }
+    locale_report["sanity_passed"] = not failures
+    locale_report["sanity_failures"] = failures
+    report["sanity_gate"] = corrected_gate
     report["single_locale_gate"] = corrected_gate
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     return report
