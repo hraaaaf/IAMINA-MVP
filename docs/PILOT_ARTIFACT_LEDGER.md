@@ -47,9 +47,38 @@ Automatic rejection conditions:
 - a failed migration was hidden by resetting local storage;
 - the installation path required repository access or developer tooling for the pilot user.
 
+## Retained build evidence — not yet promoted to device proof
+
+### Android 0.1.0+1 — signed build evidence
+
+```text
+Release: 0.1.0+1
+Platform: android
+Application ID: ma.iamina.app
+Git SHA: 13b2159d14a211516262cfa96872dc9a722a6743
+Artifact / build ID: GitHub Actions artifact 9718955721 / iamina-android-13b2159d14a2
+APK SHA-256: ab1b91742c41a4880c01ac0f5cf84582c337e7ffa56096d2e683e66712073cca
+Signing reference: certificate SHA-256 8f33268da08fe895951945b2d70e841f13c6552235f0e10d9d0e4f883cf2a7ce
+Signature scheme: APK Signature Scheme v2
+Signing-lineage source: encrypted JKS artifact 9718544880; exact lineage restored and verified; no regeneration in successful run
+Build workflow: hraaaaf/-IAMINA-RELEASE run 33266734607 — success
+Build repository visibility during run: public, then verified private after completion
+Device / OS: NOT YET PROVEN
+Install mode: NOT YET PROVEN
+Previous version/build: N/A until N-1 -> N rehearsal
+Local-data fixture: NOT YET PROVEN ON DEVICE
+Migration/data preservation: NOT YET PROVEN ON DEVICE
+Offline reopen: NOT YET PROVEN
+Compatibility contract: NOT YET PROVEN ON DEVICE
+Recovery rehearsal: NOT YET PROVEN
+Tester/reviewer: NOT YET PROVEN
+Timestamp UTC: 2026-08-29T17:59:33Z artifact upload completion evidence
+Notes: Signed artifact exists and is cryptographically traceable, but this is build evidence only. It is not yet a complete pilot release/device record and does not authorize distribution to patients.
+```
+
 ## Retained release records
 
-Do not pre-fill this section before real artifacts exist. Add one dated subsection per promoted pilot build only after evidence is collected.
+Do not pre-fill this section before real device evidence exists. Add one dated subsection per promoted pilot build only after device/install/update evidence is collected.
 
 ### Template
 
