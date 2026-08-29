@@ -54,17 +54,17 @@ _DARIJA_LATIN_RE = re.compile(
     re.IGNORECASE,
 )
 _EMOTIONAL_RE = re.compile(
-    r"\b("
+    r"(?:\b("
     r"j.?en ai marre|j.?en peux plus|c.?est trop|je suis fatigué|je suis épuisé|"
     r"j.?abandonne|c.?est inutile|à quoi ça sert|ras le bol|découragé|"
     r"3yayt|3yit|t3bna|t3bit|ma b9ich|mab9inch|ma nqderch|ma nqdarch|"
     r"khlass|bghit nwaqaf|7chuma|ma3ndich|i give up|i.?m done|can.?t do this|"
     r"so tired|exhausted|hopeless"
-    r")\b",
+    r")\b|تعبت|مرهق(?:ني)?|عييت|تعبني)",
     re.IGNORECASE,
 )
 _CLINICIAN_PREP_RE = re.compile(
-    r"\b(?:médecin|medecin|docteur|doctor|tbib|tobib|طبيب)\b",
+    r"(?:\b(?:médecin|medecin|docteur|doctor|tbib|tobib)\b|(?:ال)?طبيب|(?:ال)?دكتور)",
     re.IGNORECASE,
 )
 _WEEK_RE = re.compile(r"\b(?:semaine|week|simana|أسبوع|الاسبوع|الأسبوع)\b", re.IGNORECASE)
