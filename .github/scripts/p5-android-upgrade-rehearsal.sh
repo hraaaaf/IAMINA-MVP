@@ -19,16 +19,35 @@ wait_for_marker() {
   test "$found" = "1"
 }
 
-first_install_time() {
-  awk '/^[[:space:]]*firstInstallTime=/ {sub(/^[[:space:]]*firstInstallTime=/, ""); print; exit}' <<< "$1"
+first_install_time_file() {
+  awk '/^[[:space:]]*firstInstallTime=/ {sub(/^[[:space:]]*firstInstallTime=/, ""); print; exit}' "$1"
 }
 
-package_user_id() {
-  awk '/^[[:space:]]*userId=/ {sub(/^[[:space:]]*userId=/, ""); print; exit}' <<< "$1"
+package_user_id_file() {
+  awk '/^[[:space:]]*userId=/ {sub(/^[[:space:]]*userId=/, ""); print; exit}' "$1"
 }
 
-package_version_code() {
-  awk 'match($0, /versionCode=[0-9]+/) {value=substr($0, RSTART, RLENGTH); sub(/^versionCode=/, "", value); print value; exit}' <<< "$1"
+package_version_code_file() {
+  awk 'match($0, /versionCode=[0-9]+/) {value=substr($0, RSTART, RLENGTH); sub(/^versionCode=/, "", value); print value; exit}' "$1"
+}
+
+require_equal() {
+  local label="$1"
+  local actual="$2"
+  local expected="$3"
+  if [ "$actual" != "$expected" ]; then
+    echo "::error::$label expected=$expected actual=${actual:-<empty>}"
+    return 1
+  fi
+}
+
+require_nonempty() {
+  local label="$1"
+  local actual="$2"
+  if [ -z "$actual" ]; then
+    echo "::error::$label is empty"
+    return 1
+  fi
 }
 
 echo "Emulator API: $(adb shell getprop ro.build.version.sdk | tr -d '\r')" >> rehearsal/evidence.txt
@@ -40,22 +59,33 @@ adb logcat -c
 adb shell monkey -p "$APP_ID" -c android.intent.category.LAUNCHER 1 >/dev/null
 wait_for_marker 'IAMINA_P5_UPGRADE_SEED_OK' rehearsal/seed-logcat.txt
 
-PACKAGE_BEFORE="$(adb shell dumpsys package "$APP_ID" | tr -d '\r')"
-FIRST_INSTALL="$(first_install_time "$PACKAGE_BEFORE")"
-USER_ID="$(package_user_id "$PACKAGE_BEFORE")"
-VERSION_BEFORE="$(package_version_code "$PACKAGE_BEFORE")"
-test "$VERSION_BEFORE" = "1"
-test -n "$FIRST_INSTALL" && test -n "$USER_ID"
+adb shell dumpsys package "$APP_ID" | tr -d '\r' > rehearsal/package-before.txt
+FIRST_INSTALL="$(first_install_time_file rehearsal/package-before.txt)"
+USER_ID="$(package_user_id_file rehearsal/package-before.txt)"
+VERSION_BEFORE="$(package_version_code_file rehearsal/package-before.txt)"
+{
+  echo "N-1 observed versionCode: ${VERSION_BEFORE:-<empty>}"
+  echo "N-1 observed firstInstallTime: ${FIRST_INSTALL:-<empty>}"
+  echo "N-1 observed userId: ${USER_ID:-<empty>}"
+} >> rehearsal/evidence.txt
+require_equal "N-1 versionCode" "$VERSION_BEFORE" "1"
+require_nonempty "N-1 firstInstallTime" "$FIRST_INSTALL"
+require_nonempty "N-1 userId" "$USER_ID"
 
 adb install -r rehearsal/n.apk | tee rehearsal/install-n.txt
 grep -Fq Success rehearsal/install-n.txt
-PACKAGE_AFTER="$(adb shell dumpsys package "$APP_ID" | tr -d '\r')"
-VERSION_AFTER="$(package_version_code "$PACKAGE_AFTER")"
-FIRST_AFTER="$(first_install_time "$PACKAGE_AFTER")"
-UID_AFTER="$(package_user_id "$PACKAGE_AFTER")"
-test "$VERSION_AFTER" = "2"
-test "$FIRST_AFTER" = "$FIRST_INSTALL"
-test "$UID_AFTER" = "$USER_ID"
+adb shell dumpsys package "$APP_ID" | tr -d '\r' > rehearsal/package-after.txt
+VERSION_AFTER="$(package_version_code_file rehearsal/package-after.txt)"
+FIRST_AFTER="$(first_install_time_file rehearsal/package-after.txt)"
+UID_AFTER="$(package_user_id_file rehearsal/package-after.txt)"
+{
+  echo "N observed versionCode: ${VERSION_AFTER:-<empty>}"
+  echo "N observed firstInstallTime: ${FIRST_AFTER:-<empty>}"
+  echo "N observed userId: ${UID_AFTER:-<empty>}"
+} >> rehearsal/evidence.txt
+require_equal "N versionCode" "$VERSION_AFTER" "2"
+require_equal "firstInstallTime preservation" "$FIRST_AFTER" "$FIRST_INSTALL"
+require_equal "userId preservation" "$UID_AFTER" "$USER_ID"
 
 adb logcat -c
 adb shell am force-stop "$APP_ID"
@@ -65,7 +95,7 @@ wait_for_marker 'IAMINA_P5_UPGRADE_VERIFY_OK' rehearsal/update-logcat.txt
 adb root >/dev/null 2>&1 || true
 adb wait-for-device
 PING_BIN="$(adb shell command -v ping | tr -d '\r')"
-test -n "$PING_BIN"
+require_nonempty "ping command" "$PING_BIN"
 adb shell ping -c 1 -W 2 8.8.8.8 > rehearsal/network-before.txt 2>&1
 
 echo "Network probe command available: PASS" >> rehearsal/evidence.txt
