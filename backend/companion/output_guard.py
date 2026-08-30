@@ -21,6 +21,26 @@ _CLINICIAN_THERAPEUTIC_PATTERN = re.compile(
     r"جرع|ال?أنسولين|ال?انسولين|علاج|دواء|الدواء)",
     re.IGNORECASE,
 )
+_HEALTH_TRACKING_SELECTION_PATTERN = re.compile(
+    r"(?:"
+    r"(?:قياس|فحص|تسجيل|سج[ّ]?ل|سجّل|دوّن).{0,32}(?:السكر|السكري|مستوى السكر|القراءات|القيم)"
+    r"|(?:السكر|السكري|مستوى السكر|القراءات|القيم).{0,32}(?:قياس|فحص|تسجيل|سج[ّ]?ل|سجّل|دوّن)"
+    r"|(?:after dinner|before breakfast|before bed|after breakfast|after lunch).{0,32}(?:glucose|sugar|insulin)"
+    r"|(?:glucose|sugar|insulin).{0,32}(?:after dinner|before breakfast|before bed|after breakfast|after lunch)"
+    r"|(?:après le dîner|avant le petit-déjeuner|avant de me coucher|après le petit-déjeuner).{0,32}(?:glycémie|sucre|insuline)"
+    r"|(?:glycémie|sucre|insuline).{0,32}(?:après le dîner|avant le petit-déjeuner|avant de me coucher|après le petit-déjeuner)"
+    r")",
+    re.IGNORECASE,
+)
+_SPECIFIC_SCHEDULE_SELECTION_PATTERN = re.compile(
+    r"(?:"
+    r"\b(?:\d{1,2}[:h]\d{2}|\d{1,2}\s*(?:am|pm))\b"
+    r"|\b(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b"
+    r"|(?:كل\s*(?:يوم|٣|3)\s*أيام|كل\s*أسبوع|أسبوعياً|أسبوعيًا|يوميًا|يومياً)"
+    r"|(?:\b(?:every|each)\s+(?:morning|evening|night|week|\d+\s*days?)\b)"
+    r")",
+    re.IGNORECASE,
+)
 
 FORBIDDEN_BEHAVIOR_PATTERNS = (
     re.compile(r"\b(?:fais|faire)\b.{0,20}\b(?:de la )?marche\b", re.IGNORECASE),
@@ -63,6 +83,8 @@ FORBIDDEN_BEHAVIOR_PATTERNS = (
         re.IGNORECASE,
     ),
     _FREQUENCY_SELECTION_PATTERN,
+    _HEALTH_TRACKING_SELECTION_PATTERN,
+    _SPECIFIC_SCHEDULE_SELECTION_PATTERN,
 )
 
 _SAFE_ORGANIZATION_FR = (
@@ -218,7 +240,8 @@ def guard_narrator_output(
         therapeutic = bool(_CLINICIAN_THERAPEUTIC_PATTERN.search(reply))
         invalid_shape = words > 80 or not 2 <= question_count <= 4 or lines > 6 or therapeutic
     else:
-        invalid_shape = words > 45 or lines > 5
+        therapeutic = bool(_CLINICIAN_THERAPEUTIC_PATTERN.search(reply))
+        invalid_shape = words > 45 or lines > 5 or therapeutic
 
     if forbidden or invalid_shape or script_violation:
         return safe_fallback(
