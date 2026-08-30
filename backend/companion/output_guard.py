@@ -13,18 +13,25 @@ LATIN_RE = re.compile(r"[A-Za-zÀ-ÿ]")
 _WORD_RE = re.compile(r"\b[\wÀ-ÿ]+\b", re.UNICODE)
 
 _FREQUENCY_SELECTION_PATTERN = re.compile(
-    r"\b(?:chaque jour|tous les jours|jour précédent|daily|every day|kol nhar)\b",
+    r"(?:\b(?:chaque jour|tous les jours|jour précédent|daily|every day|kol nhar)\b|كل\s*نهار)",
     re.IGNORECASE,
 )
 _CLINICIAN_THERAPEUTIC_PATTERN = re.compile(
     r"(?:\b(?:dose|dosage|insulin|insuline|bolus|treatment|traitement)\b|"
-    r"جرع|ال?أنسولين|ال?انسولين|علاج|دواء|الدواء)",
+    r"جرع|(?:ال)?[اإأ]نسولين|(?:ال)?أنسولين|علاج|دواء|الدواء)",
+    re.IGNORECASE,
+)
+_CLINICIAN_RISKY_QUESTION_PATTERN = re.compile(
+    r"(?:\b(?:caus(?:e|es|ing)|corrective actions?|adjustments? to (?:my|your) routine)\b|"
+    r"(?:سبب|أسباب|إجراء(?:ات)? تصحيحي|تعديل.{0,20}روتين))",
     re.IGNORECASE,
 )
 _HEALTH_TRACKING_SELECTION_PATTERN = re.compile(
     r"(?:"
     r"(?:قياس|فحص|تسجيل|سج[ّ]?ل|سجّل|دوّن).{0,32}(?:السكر|السكري|مستوى السكر|القراءات|القيم)"
     r"|(?:السكر|السكري|مستوى السكر|القراءات|القيم).{0,32}(?:قياس|فحص|تسجيل|سج[ّ]?ل|سجّل|دوّن)"
+    r"|\b(?:record|measure|check|log)\b.{0,24}\b(?:glucose|blood sugar|sugar reading)\b"
+    r"|\b(?:glucose|blood sugar|sugar reading)\b.{0,24}\b(?:record|measure|check|log)\b"
     r"|(?:after dinner|before breakfast|before bed|after breakfast|after lunch).{0,32}(?:glucose|sugar|insulin)"
     r"|(?:glucose|sugar|insulin).{0,32}(?:after dinner|before breakfast|before bed|after breakfast|after lunch)"
     r"|(?:après le dîner|avant le petit-déjeuner|avant de me coucher|après le petit-déjeuner).{0,32}(?:glycémie|sucre|insuline)"
@@ -38,6 +45,7 @@ _SPECIFIC_SCHEDULE_SELECTION_PATTERN = re.compile(
     r"|\b(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b"
     r"|(?:كل\s*(?:يوم|٣|3)\s*أيام|كل\s*أسبوع|أسبوعياً|أسبوعيًا|يوميًا|يومياً)"
     r"|(?:\b(?:every|each)\s+(?:morning|evening|night|week|\d+\s*days?)\b)"
+    r"|(?:\d+\s*(?:دقيقة|دقائق).{0,24}(?:بعد\s*(?:العشا|العشاء)|قبل\s*(?:الفطور|النوم)))"
     r")",
     re.IGNORECASE,
 )
@@ -238,7 +246,14 @@ def guard_narrator_output(
     elif mode == "clinician_prep":
         question_count = reply.count("?") + reply.count("؟")
         therapeutic = bool(_CLINICIAN_THERAPEUTIC_PATTERN.search(reply))
-        invalid_shape = words > 80 or not 2 <= question_count <= 4 or lines > 6 or therapeutic
+        risky_question = bool(_CLINICIAN_RISKY_QUESTION_PATTERN.search(reply))
+        invalid_shape = (
+            words > 80
+            or not 2 <= question_count <= 4
+            or lines > 6
+            or therapeutic
+            or risky_question
+        )
     else:
         therapeutic = bool(_CLINICIAN_THERAPEUTIC_PATTERN.search(reply))
         invalid_shape = words > 45 or lines > 5 or therapeutic
