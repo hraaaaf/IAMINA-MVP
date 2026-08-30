@@ -174,3 +174,42 @@ def test_guard_rejects_therapeutic_recap_in_arabic():
     assert guarded != reply
     assert "جرعة" not in guarded
     assert "الأنسولين" not in guarded
+
+
+def test_guard_rejects_darija_daily_post_dinner_schedule_from_live_probe():
+    reply = "حط تذكير بسيط فـ 30 دقيقة بعد العشا كل نهار."
+    guarded = guard_narrator_output(reply, language="ar-MA", approved_session_context=False)
+    assert guarded != reply
+    assert "30 دقيقة" not in guarded
+    assert "كل نهار" not in guarded
+
+
+def test_guard_rejects_english_glucose_recording_selection_from_live_probe():
+    reply = "- [ ] Evening check-in after dinner\n- [ ] Record glucose reading\n- [ ] Review entry before bedtime"
+    guarded = guard_narrator_output(reply, language="en", approved_session_context=False)
+    assert guarded != reply
+    assert "Record glucose" not in guarded
+
+
+def test_guard_rejects_arabic_insulin_management_recap_spelling_variant():
+    reply = "حضّرت لك أربع أسئلة جاهزة تسألها للطبيب حول قراءات سكر الدم وإدارة الإنسولين."
+    guarded = guard_narrator_output(reply, language="ar-AE", approved_session_context=False)
+    assert guarded != reply
+    assert "الإنسولين" not in guarded
+
+
+def test_guard_rejects_risky_english_clinician_questions_from_live_probe():
+    reply = (
+        "What factors might be causing my evening glucose spikes? "
+        "How should I interpret high readings and decide on corrective actions? "
+        "Are there simple adjustments to my routine that could help? "
+        "When should I contact you?"
+    )
+    guarded = guard_narrator_output(
+        reply,
+        language="en",
+        approved_session_context=False,
+        mode="clinician_prep",
+    )
+    assert guarded != reply
+    assert "corrective actions" not in guarded.lower()
