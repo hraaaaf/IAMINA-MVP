@@ -116,3 +116,25 @@ def test_all_arabic_darija_fallbacks_are_script_clean():
                 fallback = safe_fallback("ar-MA", mode=mode, weekly=weekly, very_long=very_long, prefer_latin_script=False)
                 assert ARABIC_RE.search(fallback)
                 assert not LATIN_RE.search(fallback)
+
+
+def test_guard_replaces_arabic_therapeutic_clinician_questions():
+    reply = (
+        "هادي أسئلة للطبيب:\n"
+        "- شحال الجرعة المناسبة ديال الإنسولين؟\n"
+        "- واش نزيد الجرعة؟\n"
+        "- إمتى نبدل العلاج؟\n"
+        "- إمتى نرجع عندك؟"
+    )
+    guarded = guard_narrator_output(reply, language="ar-MA", approved_session_context=False, mode="clinician_prep")
+    assert guarded != reply
+    assert "شحال الجرعة" not in guarded
+    assert guarded.count("؟") == 4
+
+
+def test_guard_replaces_english_therapeutic_clinician_questions():
+    reply = "What insulin dose should I take? Should I increase it? What treatment should change? When should I call you?"
+    guarded = guard_narrator_output(reply, language="en", approved_session_context=False, mode="clinician_prep")
+    assert guarded != reply
+    assert "What insulin dose" not in guarded
+    assert guarded.count("?") == 4
