@@ -432,3 +432,79 @@ def chat(
     _append_turn(patient, "assistant", reply)
     _update_relationship_memory(message, memory)
     return reply
+
+
+def stream_chat(
+    message: str,
+    memory,
+    deep,
+    llm=None,
+    language: str = "fr",
+    patient=None,
+    context_days: int = 14,
+):
+    """Narrator-only SSE path; guard the full reply before emitting any chunk."""
+    safety_reply = _safety_reply(message, patient, language)
+    if safety_reply is not None:
+        record_companion_route("safety")
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", safety_reply)
+        _update_relationship_memory(message, memory)
+        yield safety_reply
+        return
+
+    detected_language = detect_language(message, language)
+    zero_model_reply = exact_chitchat_reply(
+        message,
+        _deterministic_language(detected_language),
+    )
+    if zero_model_reply is not None:
+        record_companion_route("zero_model")
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", zero_model_reply)
+        _update_relationship_memory(message, memory)
+        yield zero_model_reply
+        return
+
+    record_companion_route("llm")
+    if llm is None:
+        llm = get_gateway_llm()
+
+    language, ctx, system, user_prompt = _build_runtime_prompt(
+        message=message,
+        memory=memory,
+        deep=deep,
+        language=language,
+        patient=patient,
+        context_days=context_days,
+        streaming=True,
+    )
+    _append_turn(patient, "user", message)
+    prefer_latin_script = language == "ar-MA" and not _ARABIC_RE.search(message)
+
+    try:
+        result = llm.complete(system, user_prompt)
+        full_reply = result.content
+    except Exception:
+        logger.exception(
+            "IAmina stream_chat buffered fallback failed for patient=%s",
+            patient.id if patient else None,
+        )
+        full_reply = get_offline_fallback(
+            patient.id if patient else None,
+            ctx,
+            _deterministic_language(language),
+        )
+
+    full_reply = _finalize_reply(
+        full_reply,
+        deep,
+        language,
+        approved_session_context=bool(ctx.pivot_text),
+        mode=_response_mode(message),
+        weekly=_is_weekly_request(message),
+        prefer_latin_script=prefer_latin_script,
+    )
+    _append_turn(patient, "assistant", full_reply)
+    _update_relationship_memory(message, memory)
+    yield full_reply
