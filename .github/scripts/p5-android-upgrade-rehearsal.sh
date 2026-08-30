@@ -4,6 +4,21 @@ set -euo pipefail
 : "${APP_ID:?APP_ID is required}"
 mkdir -p rehearsal
 
+wait_for_marker() {
+  local marker="$1"
+  local output="$2"
+  local found=0
+  for _ in $(seq 1 60); do
+    adb logcat -d > "$output"
+    if grep -Fq "$marker" "$output"; then
+      found=1
+      break
+    fi
+    sleep 2
+  done
+  test "$found" = "1"
+}
+
 echo "Emulator API: $(adb shell getprop ro.build.version.sdk | tr -d '\r')" >> rehearsal/evidence.txt
 echo "Emulator model: $(adb shell getprop ro.product.model | tr -d '\r')" >> rehearsal/evidence.txt
 
@@ -11,16 +26,7 @@ adb install rehearsal/n1.apk | tee rehearsal/install-n1.txt
 grep -Fq Success rehearsal/install-n1.txt
 adb logcat -c
 adb shell monkey -p "$APP_ID" -c android.intent.category.LAUNCHER 1 >/dev/null
-found=0
-for _ in $(seq 1 60); do
-  if adb logcat -d | grep -Fq 'IAMINA_P5_UPGRADE_SEED_OK'; then
-    found=1
-    break
-  fi
-  sleep 2
-done
-adb logcat -d > rehearsal/seed-logcat.txt
-test "$found" = "1"
+wait_for_marker 'IAMINA_P5_UPGRADE_SEED_OK' rehearsal/seed-logcat.txt
 
 PACKAGE_BEFORE="$(adb shell dumpsys package "$APP_ID" | tr -d '\r')"
 FIRST_INSTALL="$(printf '%s\n' "$PACKAGE_BEFORE" | sed -n 's/^[[:space:]]*firstInstallTime=//p' | head -1)"
@@ -42,38 +48,30 @@ test "$UID_AFTER" = "$USER_ID"
 adb logcat -c
 adb shell am force-stop "$APP_ID"
 adb shell monkey -p "$APP_ID" -c android.intent.category.LAUNCHER 1 >/dev/null
-found=0
-for _ in $(seq 1 60); do
-  if adb logcat -d | grep -Fq 'IAMINA_P5_UPGRADE_VERIFY_OK'; then
-    found=1
-    break
-  fi
-  sleep 2
-done
-adb logcat -d > rehearsal/update-logcat.txt
-test "$found" = "1"
+wait_for_marker 'IAMINA_P5_UPGRADE_VERIFY_OK' rehearsal/update-logcat.txt
 
 adb root >/dev/null 2>&1 || true
 adb wait-for-device
+PING_BIN="$(adb shell command -v ping | tr -d '\r')"
+test -n "$PING_BIN"
+adb shell ping -c 1 -W 2 8.8.8.8 > rehearsal/network-before.txt 2>&1
+
+echo "Network probe command available: PASS" >> rehearsal/evidence.txt
+echo "Pre-isolation connectivity: PASS" >> rehearsal/evidence.txt
+
 adb shell svc wifi disable || true
 adb shell ip link set eth0 down || true
-if adb shell ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
+if adb shell ping -c 1 -W 1 8.8.8.8 > rehearsal/network-after.txt 2>&1; then
   echo "::error::Emulator still has network connectivity"
   exit 1
 fi
+
+echo "Post-isolation connectivity blocked: PASS" >> rehearsal/evidence.txt
+
 adb logcat -c
 adb shell am force-stop "$APP_ID"
 adb shell monkey -p "$APP_ID" -c android.intent.category.LAUNCHER 1 >/dev/null
-found=0
-for _ in $(seq 1 60); do
-  if adb logcat -d | grep -Fq 'IAMINA_P5_UPGRADE_VERIFY_OK'; then
-    found=1
-    break
-  fi
-  sleep 2
-done
-adb logcat -d > rehearsal/offline-logcat.txt
-test "$found" = "1"
+wait_for_marker 'IAMINA_P5_UPGRADE_VERIFY_OK' rehearsal/offline-logcat.txt
 
 {
   echo "N-1 clean install: PASS"
