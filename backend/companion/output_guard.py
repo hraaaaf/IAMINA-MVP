@@ -16,6 +16,11 @@ _FREQUENCY_SELECTION_PATTERN = re.compile(
     r"\b(?:chaque jour|tous les jours|jour précédent|daily|every day|kol nhar)\b",
     re.IGNORECASE,
 )
+_CLINICIAN_THERAPEUTIC_PATTERN = re.compile(
+    r"(?:\b(?:dose|dosage|insulin|insuline|bolus|treatment|traitement)\b|"
+    r"جرع|ال?أنسولين|ال?انسولين|علاج|دواء|الدواء)",
+    re.IGNORECASE,
+)
 
 FORBIDDEN_BEHAVIOR_PATTERNS = (
     re.compile(r"\b(?:fais|faire)\b.{0,20}\b(?:de la )?marche\b", re.IGNORECASE),
@@ -210,7 +215,8 @@ def guard_narrator_output(
         invalid_shape = words > 30 or lines > 1
     elif mode == "clinician_prep":
         question_count = reply.count("?") + reply.count("؟")
-        invalid_shape = words > 80 or not 2 <= question_count <= 4 or lines > 6
+        therapeutic = bool(_CLINICIAN_THERAPEUTIC_PATTERN.search(reply))
+        invalid_shape = words > 80 or not 2 <= question_count <= 4 or lines > 6 or therapeutic
     else:
         invalid_shape = words > 45 or lines > 5
 
