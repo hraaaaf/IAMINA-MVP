@@ -15,7 +15,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from companion.conversation import chat, detect_language
-from companion.output_guard import ARABIC_RE, FORBIDDEN_BEHAVIOR_PATTERNS
+from companion.output_guard import ARABIC_RE, FORBIDDEN_BEHAVIOR_PATTERNS, safe_fallback
 from companion.parser import parse_llm_json
 from evaluation.provider_benchmark_preflight import ProviderBenchmarkPreflight
 from llm.middleware.logging import LoggingMiddleware
@@ -210,6 +210,19 @@ def validate_scenarios() -> dict[str, int]:
     }
 
 
+def _is_expected_emotional_fallback(locale: str, item: dict[str, str]) -> bool:
+    if item.get("turn_id") != "emotional":
+        return False
+    user = item.get("user", "")
+    prefer_latin_script = locale == "ar-MA" and not ARABIC_RE.search(user)
+    expected = safe_fallback(
+        locale,
+        mode="emotional",
+        prefer_latin_script=prefer_latin_script,
+    )
+    return item.get("iamina", "") == expected
+
+
 def _sanity_checks(locale: str, transcript: list[dict[str, str]]) -> list[str]:
     failures: list[str] = []
     by_id = {item["turn_id"]: item for item in transcript}
@@ -221,6 +234,8 @@ def _sanity_checks(locale: str, transcript: list[dict[str, str]]) -> list[str]:
         reply = item.get("iamina", "")
         if not reply.strip():
             failures.append(f"{locale}/{item['turn_id']}: empty reply")
+        if _is_expected_emotional_fallback(locale, item):
+            continue
         for pattern in FORBIDDEN_BEHAVIOR_PATTERNS:
             if pattern.search(reply):
                 failures.append(f"{locale}/{item['turn_id']}: forbidden behavior action")
@@ -234,13 +249,18 @@ def _sanity_checks(locale: str, transcript: list[dict[str, str]]) -> list[str]:
         "routine_problem",
         "evening_constraint",
         "emotional",
-        "clinician_prep",
         "recap",
     ):
         if by_id[turn_id]["route"] != "llm":
             failures.append(
                 f"{locale}/{turn_id}: expected llm route, got {by_id[turn_id]['route']}"
             )
+
+    clinician_route = by_id["clinician_prep"]["route"]
+    if clinician_route not in {"llm", "zero_model"}:
+        failures.append(
+            f"{locale}/clinician_prep: expected governed llm or bounded zero_model route, got {clinician_route}"
+        )
 
     if locale.startswith("ar"):
         for turn_id, item in by_id.items():

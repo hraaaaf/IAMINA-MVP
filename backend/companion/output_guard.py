@@ -13,7 +13,7 @@ LATIN_RE = re.compile(r"[A-Za-zÀ-ÿ]")
 _WORD_RE = re.compile(r"\b[\wÀ-ÿ]+\b", re.UNICODE)
 
 _FREQUENCY_SELECTION_PATTERN = re.compile(
-    r"(?:\b(?:chaque jour|tous les jours|jour précédent|daily|every day|kol nhar)\b|كل\s*نهار)",
+    r"(?:\b(?:chaque jour|tous les jours|jour précédent|daily|every day|kol nhar)\b|كل\s*(?:نهار|يوم))",
     re.IGNORECASE,
 )
 _CLINICIAN_THERAPEUTIC_PATTERN = re.compile(
@@ -26,10 +26,12 @@ _CLINICIAN_RISKY_QUESTION_PATTERN = re.compile(
     r"(?:سبب|أسباب|إجراء(?:ات)? تصحيحي|تعديل.{0,20}روتين))",
     re.IGNORECASE,
 )
+_ARABIC_HEALTH_ACTION = r"(?:قياس|فحص|تسجيل|تدوين|مراجعة|سج[ّ]?ل|سجّل|دوّن)"
+_ARABIC_HEALTH_TARGET = r"(?:السكر|سكر|السكري|مستوى السكر|القراءات|قراءات السكر|القيم)"
 _HEALTH_TRACKING_SELECTION_PATTERN = re.compile(
     r"(?:"
-    r"(?:قياس|فحص|تسجيل|سج[ّ]?ل|سجّل|دوّن).{0,32}(?:السكر|السكري|مستوى السكر|القراءات|القيم)"
-    r"|(?:السكر|السكري|مستوى السكر|القراءات|القيم).{0,32}(?:قياس|فحص|تسجيل|سج[ّ]?ل|سجّل|دوّن)"
+    rf"{_ARABIC_HEALTH_ACTION}.{{0,32}}{_ARABIC_HEALTH_TARGET}"
+    rf"|{_ARABIC_HEALTH_TARGET}.{{0,32}}{_ARABIC_HEALTH_ACTION}"
     r"|\b(?:record|measure|check|log)\b.{0,24}\b(?:glucose|blood sugar|sugar reading)\b"
     r"|\b(?:glucose|blood sugar|sugar reading)\b.{0,24}\b(?:record|measure|check|log)\b"
     r"|(?:after dinner|before breakfast|before bed|after breakfast|after lunch).{0,32}(?:glucose|sugar|insulin)"
@@ -39,11 +41,14 @@ _HEALTH_TRACKING_SELECTION_PATTERN = re.compile(
     r")",
     re.IGNORECASE,
 )
+_ARABIC_WEEKDAY = r"(?:إثنين|اثنين|الإثنين|الاثنين|ثلاثاء|الثلاثاء|أربعاء|اربعاء|الأربعاء|الاربعاء|خميس|الخميس|جمعة|الجمعة|سبت|السبت|أحد|احد|الأحد|الاحد)"
 _SPECIFIC_SCHEDULE_SELECTION_PATTERN = re.compile(
     r"(?:"
     r"\b(?:\d{1,2}[:h]\d{2}|\d{1,2}\s*(?:am|pm))\b"
     r"|\b(?:lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b"
     r"|(?:كل\s*(?:يوم|٣|3)\s*أيام|كل\s*أسبوع|أسبوعياً|أسبوعيًا|يوميًا|يومياً)"
+    rf"|(?:كل\s*{_ARABIC_WEEKDAY}|يوم\s*{_ARABIC_WEEKDAY})"
+    r"|(?:\d{1,2}\s*[-‑–]\s*\d{1,2}\s*(?:ص|م))"
     r"|(?:\b(?:every|each)\s+(?:morning|evening|night|week|\d+\s*days?)\b)"
     r"|(?:\d+\s*(?:دقيقة|دقائق).{0,24}(?:بعد\s*(?:العشا|العشاء)|قبل\s*(?:الفطور|النوم)))"
     r")",
