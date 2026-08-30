@@ -19,6 +19,18 @@ wait_for_marker() {
   test "$found" = "1"
 }
 
+first_install_time() {
+  awk '/^[[:space:]]*firstInstallTime=/ {sub(/^[[:space:]]*firstInstallTime=/, ""); print; exit}' <<< "$1"
+}
+
+package_user_id() {
+  awk '/^[[:space:]]*userId=/ {sub(/^[[:space:]]*userId=/, ""); print; exit}' <<< "$1"
+}
+
+package_version_code() {
+  awk 'match($0, /versionCode=[0-9]+/) {value=substr($0, RSTART, RLENGTH); sub(/^versionCode=/, "", value); print value; exit}' <<< "$1"
+}
+
 echo "Emulator API: $(adb shell getprop ro.build.version.sdk | tr -d '\r')" >> rehearsal/evidence.txt
 echo "Emulator model: $(adb shell getprop ro.product.model | tr -d '\r')" >> rehearsal/evidence.txt
 
@@ -29,18 +41,18 @@ adb shell monkey -p "$APP_ID" -c android.intent.category.LAUNCHER 1 >/dev/null
 wait_for_marker 'IAMINA_P5_UPGRADE_SEED_OK' rehearsal/seed-logcat.txt
 
 PACKAGE_BEFORE="$(adb shell dumpsys package "$APP_ID" | tr -d '\r')"
-FIRST_INSTALL="$(printf '%s\n' "$PACKAGE_BEFORE" | sed -n 's/^[[:space:]]*firstInstallTime=//p' | head -1)"
-USER_ID="$(printf '%s\n' "$PACKAGE_BEFORE" | sed -n 's/^[[:space:]]*userId=//p' | head -1)"
-VERSION_BEFORE="$(printf '%s\n' "$PACKAGE_BEFORE" | sed -n 's/.*versionCode=\([0-9]*\).*/\1/p' | head -1)"
+FIRST_INSTALL="$(first_install_time "$PACKAGE_BEFORE")"
+USER_ID="$(package_user_id "$PACKAGE_BEFORE")"
+VERSION_BEFORE="$(package_version_code "$PACKAGE_BEFORE")"
 test "$VERSION_BEFORE" = "1"
 test -n "$FIRST_INSTALL" && test -n "$USER_ID"
 
 adb install -r rehearsal/n.apk | tee rehearsal/install-n.txt
 grep -Fq Success rehearsal/install-n.txt
 PACKAGE_AFTER="$(adb shell dumpsys package "$APP_ID" | tr -d '\r')"
-VERSION_AFTER="$(printf '%s\n' "$PACKAGE_AFTER" | sed -n 's/.*versionCode=\([0-9]*\).*/\1/p' | head -1)"
-FIRST_AFTER="$(printf '%s\n' "$PACKAGE_AFTER" | sed -n 's/^[[:space:]]*firstInstallTime=//p' | head -1)"
-UID_AFTER="$(printf '%s\n' "$PACKAGE_AFTER" | sed -n 's/^[[:space:]]*userId=//p' | head -1)"
+VERSION_AFTER="$(package_version_code "$PACKAGE_AFTER")"
+FIRST_AFTER="$(first_install_time "$PACKAGE_AFTER")"
+UID_AFTER="$(package_user_id "$PACKAGE_AFTER")"
 test "$VERSION_AFTER" = "2"
 test "$FIRST_AFTER" = "$FIRST_INSTALL"
 test "$UID_AFTER" = "$USER_ID"
