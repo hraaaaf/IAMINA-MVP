@@ -29,6 +29,12 @@ jobs:
       FLUTTER_VERSION: 3.41.0
 
     steps:
+      - name: Checkout rehearsal harness
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
       - name: Guard zero-cost rehearsal scope
         shell: bash
         run: |
@@ -37,6 +43,7 @@ jobs:
           [[ "$N1_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           [[ "$N_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
           test "$N1_SOURCE_SHA" != "$N_SOURCE_SHA"
+          test -f .github/scripts/p5-android-upgrade-rehearsal.sh
           mkdir -p rehearsal
           cat > rehearsal/evidence.txt <<EOF
           Test class: CI-only Android emulator upgrade rehearsal
