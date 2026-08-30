@@ -138,3 +138,39 @@ def test_guard_replaces_english_therapeutic_clinician_questions():
     assert guarded != reply
     assert "What insulin dose" not in guarded
     assert guarded.count("?") == 4
+
+
+def test_guard_rejects_arabic_glucose_measurement_schedule_from_live_probe():
+    reply = "ضبط تنبيه هاتفك بعد 30-45 دقيقة من العشاء ثم قياس السكر وتسجيل النتيجة."
+    guarded = guard_narrator_output(reply, language="ar", approved_session_context=False)
+    assert guarded != reply
+    assert "قياس السكر" not in guarded
+
+
+def test_guard_rejects_arabic_selected_tracking_frequency_from_live_probe():
+    reply = "حدد توقيت ثابت كل 3 أيام لتسجيل مستوى السكر ثم راجع الملاحظات أسبوعياً."
+    guarded = guard_narrator_output(reply, language="ar-SA", approved_session_context=False)
+    assert guarded != reply
+    assert "تسجيل مستوى السكر" not in guarded
+
+
+def test_guard_rejects_specific_schedule_selection_without_health_content():
+    reply = "- Après le dîner\n- Avant de me coucher\n- Début de la semaine (ex. lundi)"
+    guarded = guard_narrator_output(reply, language="fr", approved_session_context=False)
+    assert guarded != reply
+    assert "lundi" not in guarded.lower()
+
+
+def test_guard_rejects_therapeutic_recap_in_english():
+    reply = "We’ll prepare questions for your doctor about insulin dosing and related concerns."
+    guarded = guard_narrator_output(reply, language="en", approved_session_context=False)
+    assert guarded != reply
+    assert "insulin" not in guarded.lower()
+
+
+def test_guard_rejects_therapeutic_recap_in_arabic():
+    reply = "حضّرت لك أسئلة للطبيب بخصوص قراءات السكري وتعديل جرعة الأنسولين."
+    guarded = guard_narrator_output(reply, language="ar-SA", approved_session_context=False)
+    assert guarded != reply
+    assert "جرعة" not in guarded
+    assert "الأنسولين" not in guarded
