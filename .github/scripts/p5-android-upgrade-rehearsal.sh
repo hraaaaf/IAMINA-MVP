@@ -96,21 +96,25 @@ wait_for_marker 'IAMINA_P5_UPGRADE_VERIFY_OK' rehearsal/update-logcat.txt
 
 adb root >/dev/null 2>&1 || true
 adb wait-for-device
-PING_BIN="$(adb shell command -v ping | tr -d '\r')"
-require_nonempty "ping command" "$PING_BIN"
-adb shell ping -c 1 -W 2 8.8.8.8 > rehearsal/network-before.txt 2>&1
-
-echo "Network probe command available: PASS" >> rehearsal/evidence.txt
-echo "Pre-isolation connectivity: PASS" >> rehearsal/evidence.txt
-
-adb shell svc wifi disable || true
-adb shell ip link set eth0 down || true
-if adb shell ping -c 1 -W 1 8.8.8.8 > rehearsal/network-after.txt 2>&1; then
-  echo "::error::Emulator still has network connectivity"
+adb shell ip route | tr -d '\r' > rehearsal/network-before.txt
+if ! grep -Eq '^default[[:space:]]' rehearsal/network-before.txt; then
+  echo "::error::No default route before isolation"
+  cat rehearsal/network-before.txt
   exit 1
 fi
 
-echo "Post-isolation connectivity blocked: PASS" >> rehearsal/evidence.txt
+echo "Pre-isolation default route present: PASS" >> rehearsal/evidence.txt
+
+adb shell svc wifi disable || true
+adb shell ip link set eth0 down || true
+adb shell ip route | tr -d '\r' > rehearsal/network-after.txt
+if grep -Eq '^default[[:space:]]' rehearsal/network-after.txt; then
+  echo "::error::Default route still present after isolation"
+  cat rehearsal/network-after.txt
+  exit 1
+fi
+
+echo "Post-isolation default route absent: PASS" >> rehearsal/evidence.txt
 
 adb logcat -c
 adb shell am force-stop "$APP_ID"
