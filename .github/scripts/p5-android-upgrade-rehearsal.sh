@@ -96,26 +96,24 @@ wait_for_marker 'IAMINA_P5_UPGRADE_VERIFY_OK' rehearsal/update-logcat.txt
 
 adb root >/dev/null 2>&1 || true
 adb wait-for-device
-adb shell ip -o addr show scope global | tr -d '\r' > rehearsal/network-before.txt
-if ! grep -Eq 'inet[[:space:]]+10\.0\.2\.[0-9]+' rehearsal/network-before.txt; then
-  echo "::error::No emulator network address before isolation"
-  cat rehearsal/network-before.txt
+adb shell iptables -S OUTPUT | tr -d '\r' > rehearsal/network-before.txt
+if adb shell iptables -C OUTPUT -m owner --uid-owner "$UID_BEFORE" -j REJECT >/dev/null 2>&1; then
+  echo "::error::IAMINA UID already blocked before isolation"
   exit 1
 fi
 
-echo "Pre-isolation emulator network address present: PASS" >> rehearsal/evidence.txt
+echo "Pre-isolation IAMINA UID unrestricted: PASS" >> rehearsal/evidence.txt
 
-adb shell svc wifi disable || true
-adb shell ip link set wlan0 down || true
-adb shell ip link set eth0 down || true
-adb shell ip -o addr show scope global | tr -d '\r' > rehearsal/network-after.txt
-if grep -Eq 'inet[[:space:]]+10\.0\.2\.[0-9]+' rehearsal/network-after.txt; then
-  echo "::error::Emulator network address still present after isolation"
+adb shell iptables -I OUTPUT 1 -m owner --uid-owner "$UID_BEFORE" -j REJECT
+adb shell iptables -C OUTPUT -m owner --uid-owner "$UID_BEFORE" -j REJECT
+adb shell iptables -S OUTPUT | tr -d '\r' > rehearsal/network-after.txt
+if ! grep -Fq -- "--uid-owner $UID_BEFORE -j REJECT" rehearsal/network-after.txt; then
+  echo "::error::IAMINA UID network reject rule not observable"
   cat rehearsal/network-after.txt
   exit 1
 fi
 
-echo "Post-isolation emulator network addresses absent: PASS" >> rehearsal/evidence.txt
+echo "Post-isolation IAMINA UID outbound network blocked: PASS" >> rehearsal/evidence.txt
 
 adb logcat -c
 adb shell am force-stop "$APP_ID"
@@ -130,7 +128,7 @@ wait_for_marker 'IAMINA_P5_UPGRADE_VERIFY_OK' rehearsal/offline-logcat.txt
   echo "firstInstallTime preserved: PASS"
   echo "package UID preserved: PASS"
   echo "Drift logs/profile/medication/reminder preserved: PASS"
-  echo "Offline network interfaces isolated: PASS"
+  echo "Offline network block by app UID: PASS"
   echo "Offline reopen and Drift verification: PASS"
   echo "Physical-device evidence: NOT PROVEN"
 } >> rehearsal/evidence.txt
