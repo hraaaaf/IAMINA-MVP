@@ -244,7 +244,9 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fq 'N-1 -> N adb install -r: PASS' rehearsal/evidence.txt
+          grep -Fq 'package UID preserved: PASS' rehearsal/evidence.txt
           grep -Fq 'Drift logs/profile/medication/reminder preserved: PASS' rehearsal/evidence.txt
+          grep -Fq 'Post-isolation connectivity blocked: PASS' rehearsal/evidence.txt
           grep -Fq 'Offline reopen and Drift verification: PASS' rehearsal/evidence.txt
           grep -Fq 'Physical-device evidence: NOT PROVEN' rehearsal/evidence.txt
 
@@ -257,6 +259,8 @@ jobs:
             rehearsal/evidence.txt
             rehearsal/*-logcat.txt
             rehearsal/install-*.txt
+            rehearsal/package-*.txt
+            rehearsal/network-*.txt
             rehearsal/n1-apksigner.txt
             rehearsal/n-apksigner.txt
           if-no-files-found: warn
