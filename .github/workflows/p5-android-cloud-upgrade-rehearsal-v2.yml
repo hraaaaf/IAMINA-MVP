@@ -246,7 +246,8 @@ jobs:
           grep -Fq 'N-1 -> N adb install -r: PASS' rehearsal/evidence.txt
           grep -Fq 'package UID preserved: PASS' rehearsal/evidence.txt
           grep -Fq 'Drift logs/profile/medication/reminder preserved: PASS' rehearsal/evidence.txt
-          grep -Fq 'Post-isolation connectivity blocked: PASS' rehearsal/evidence.txt
+          grep -Fq 'Post-isolation IAMINA UID outbound network blocked: PASS' rehearsal/evidence.txt
+          grep -Fq 'Offline network block by app UID: PASS' rehearsal/evidence.txt
           grep -Fq 'Offline reopen and Drift verification: PASS' rehearsal/evidence.txt
           grep -Fq 'Physical-device evidence: NOT PROVEN' rehearsal/evidence.txt
 
