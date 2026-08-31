@@ -1,6 +1,6 @@
 # IAMINA Pilot Install & Update Protocol
 
-Status: P5-4 preflight contract. This document does **not** claim that a signed Android or iOS pilot artifact exists or has been tested on a real device.
+Status: P5-4 preflight contract. A signed Android build artifact now exists, and a CI-only Android emulator N-1 → N upgrade rehearsal has passed. This document does **not** claim that the retained production-signed Android artifact or any iOS pilot artifact has been installed/upgraded on a real physical device.
 
 ## Goal
 
@@ -33,6 +33,15 @@ Before first install, verify:
 
 For an update, install the newer signed artifact over the existing application. Do **not** uninstall the previous version first. After update, verify the displayed/current build identity and retained local data before continuing the pilot.
 
+### Current Android engineering evidence
+
+The retained ledger contains two distinct evidence classes that must not be conflated:
+
+- permanent signed Android build evidence tied to the production signing lineage;
+- CI-only Android emulator upgrade rehearsal evidence using an ephemeral non-production signer.
+
+The cloud rehearsal passed the N-1 → N in-place update, package identity preservation, Drift fixture preservation and offline reopen checks on Android API 35. It proves engineering semantics, but it does **not** prove that the exact retained production-signed APK chain works on a real physical handset.
+
 ## iOS pilot path
 
 Preferred pilot distribution is TestFlight or another Apple-supported signed distribution path under `ma.iamina.app`.
@@ -56,6 +65,8 @@ Before promoting build N on each platform:
 
 Any missing/corrupted retained local data is an automatic FAIL.
 
+The CI-only Android emulator rehearsal satisfies the engineering portion of steps 1-6 for its instrumented ephemeral-signing harness. It does not satisfy the real-device, production-signing, compatibility-endpoint or human-usability evidence needed to close P5-4.
+
 ## Failed update / recovery
 
 If installation, startup or migration fails:
@@ -69,12 +80,13 @@ If installation, startup or migration fails:
 
 ## Human usability proof required for P5-4
 
-P5-4 cannot close from this document alone. Retain evidence that a person who did not use the repository followed the final platform instructions and successfully:
+P5-4 remains **OPEN**. Retain evidence that a person who did not use the repository followed the final platform instructions and successfully:
 
 - installed IAMINA on a clean target device;
-- upgraded N-1 → N on an existing-data target device;
+- upgraded N-1 → N on an existing-data target device using the real retained signing lineage/channel;
 - reopened the app with retained local data;
 - identified the installed version/build;
+- verified compatibility behavior for the supported installed client;
 - completed the documented recovery/forward-fix rehearsal where applicable.
 
 The corresponding artifact/device evidence belongs in `docs/PILOT_ARTIFACT_LEDGER.md` or a release-specific retained copy derived from that template.
