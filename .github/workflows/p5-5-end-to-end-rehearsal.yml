@@ -43,6 +43,7 @@ jobs:
       DATABASE_URL: sqlite:///p5-5-rehearsal.db
       FIREBASE_CREDENTIALS_PATH: ""
       GEMINI_API_KEY: ""
+      SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +79,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: p5-5-end-to-end-rehearsal-${{ github.sha }}
+          name: p5-5-end-to-end-rehearsal-${{ github.event.pull_request.head.sha || github.sha }}
           path: artifacts/p5-5-rehearsal.txt
           if-no-files-found: error
           retention-days: 30
