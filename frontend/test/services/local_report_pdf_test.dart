@@ -74,13 +74,15 @@ void main() {
       throwsArgumentError,
     );
 
+    final tooLongValue = List<String>.filled(
+      LocalReportPdf.maxCharsPerLine,
+      'x',
+    ).join();
     expect(
       () => LocalReportPdf.build(
         title: 'IAMINA synthetic report',
         generatedAtUtc: generatedAt,
-        lines: <LocalReportLine>[
-          LocalReportLine('Row', 'x' * LocalReportPdf.maxCharsPerLine),
-        ],
+        lines: <LocalReportLine>[LocalReportLine('Row', tooLongValue)],
       ),
       throwsArgumentError,
     );
