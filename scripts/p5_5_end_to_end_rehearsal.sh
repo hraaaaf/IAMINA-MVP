@@ -3,12 +3,14 @@ set -u -o pipefail
 
 OUT="${1:-artifacts/p5-5-rehearsal.txt}"
 mkdir -p "$(dirname "$OUT")"
-SHA="$(git rev-parse HEAD)"
+TESTED_SHA="$(git rev-parse HEAD)"
+SOURCE_HEAD_SHA="${SOURCE_HEAD_SHA:-$TESTED_SHA}"
 FAILURES=0
 
 cat >"$OUT" <<EOF
 IAMINA P5-5 END-TO-END PILOT REHEARSAL
-sha=$SHA
+tested_sha=$TESTED_SHA
+source_head_sha=$SOURCE_HEAD_SHA
 patient_data=false
 fixture_class=synthetic_only
 proof_type=automated_engineering
@@ -101,7 +103,7 @@ vercel-deployment | NOT_PERFORMED | outside P5-5 and not authorized
 EOF
 
 if [[ "$FAILURES" -eq 0 ]]; then
-  record "overall-machine-rehearsal" "PASS" "all mandatory machine-testable lanes passed on exact SHA"
+  record "overall-machine-rehearsal" "PASS" "all mandatory machine-testable lanes passed on exact tested/source SHA pair"
 else
   record "overall-machine-rehearsal" "FAIL" "$FAILURES mandatory machine-testable lane(s) failed"
 fi
