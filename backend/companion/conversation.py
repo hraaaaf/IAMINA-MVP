@@ -67,6 +67,11 @@ _CLINICIAN_PREP_RE = re.compile(
     r"(?:\b(?:médecin|medecin|docteur|doctor|tbib|tobib)\b|(?:ال)?طبيب|(?:ال)?دكتور)",
     re.IGNORECASE,
 )
+_RECAP_RE = re.compile(
+    r"(?:\b(?:résume|resume|récap(?:itule)?|recap(?:itulate)?|summari[sz]e|summary)\b|"
+    r"لخ[ّ]?ص|اختصر|ملخ[ّ]?ص|وش اتفقنا|شو اتفقنا|إيش اتفقنا|ايش اتفقنا|شنو اتفقنا)",
+    re.IGNORECASE,
+)
 _WEEK_RE = re.compile(r"\b(?:semaine|week|simana|أسبوع|الاسبوع|الأسبوع)\b", re.IGNORECASE)
 _DARIJA_AR_NO_PRESCRIPTION = (
     "ما نقدرش نوصف ليك علاج، نبدل ليك جرعة الإنسولين، نوقف ليك دوا، ولا نشخص حالة. "
@@ -120,6 +125,8 @@ def _is_emotional(message: str) -> bool:
 def _response_mode(message: str) -> str:
     if _is_emotional(message):
         return "emotional"
+    if _RECAP_RE.search(message):
+        return "recap"
     if _CLINICIAN_PREP_RE.search(message):
         return "clinician_prep"
     return "practical"
@@ -127,6 +134,35 @@ def _response_mode(message: str) -> str:
 
 def _is_weekly_request(message: str) -> bool:
     return bool(_WEEK_RE.search(message))
+
+
+def _normalize_reply(text: str) -> str:
+    return " ".join(text.split()).casefold()
+
+
+def _is_verbatim_repeat(reply: str, patient, mode: str) -> bool:
+    if mode == "emotional":
+        return False
+    previous = _recent_turns(patient, 1, role="assistant")
+    if not previous:
+        return False
+    return _normalize_reply(reply) == _normalize_reply(previous[0].message)
+
+
+def _continuity_retry_prompt(user_prompt: str, mode: str) -> str:
+    instruction = (
+        "\n[CONTINUITY_RETRY]\n"
+        "La première réponse a reproduit la réponse précédente et est rejetée. "
+        "Réponds au message courant avec une formulation réellement nouvelle. "
+        "Utilise seulement les contraintes pratiques explicitement données; "
+        "n'invente aucune action santé/comportementale, mesure, repas, activité ou dose."
+    )
+    if mode == "recap":
+        instruction += (
+            " Résume réellement tout ce qui a été convenu dans l'historique, "
+            "au format demandé, sans recycler une réponse précédente."
+        )
+    return user_prompt + instruction
 
 
 def detect_language(message: str, default: str) -> str:
@@ -248,6 +284,7 @@ def _build_runtime_prompt(
     ctx = _get_context(patient, context_days, language)
     companion_ctx = _get_companion_context(patient, language)
     emotional = _is_emotional(message)
+    mode = _response_mode(message)
 
     tone_ctx = select_relationship_tone(
         emotional=emotional,
@@ -286,6 +323,11 @@ def _build_runtime_prompt(
         history=safe_history,
         message=safe_message,
     )
+    if mode == "recap":
+        base_prompt += (
+            "\n[MODE: RECAP] Synthétise tout l'historique réellement convenu, "
+            "sans reprendre mot pour mot une ancienne réponse."
+        )
     if streaming:
         json_tag = "\nRéponds UNIQUEMENT en JSON:"
         if json_tag in base_prompt:
@@ -360,6 +402,43 @@ def _update_relationship_memory(message: str, memory) -> None:
     memory.save()
 
 
+def _retry_finalized_repeat(
+    *,
+    reply: str,
+    message: str,
+    llm,
+    system: str,
+    user_prompt: str,
+    deep,
+    language: str,
+    patient,
+    ctx,
+    prefer_latin_script: bool,
+) -> str:
+    mode = _response_mode(message)
+    if not _is_verbatim_repeat(reply, patient, mode):
+        return reply
+    try:
+        result = llm.complete(system, _continuity_retry_prompt(user_prompt, mode))
+        parsed = parse_llm_json(result.content, ["reply"])
+        retry_reply = parsed["reply"]
+    except Exception:
+        logger.exception(
+            "IAmina continuity retry failed for patient=%s",
+            patient.id if patient else None,
+        )
+        return reply
+    return _finalize_reply(
+        retry_reply,
+        deep,
+        language,
+        approved_session_context=bool(ctx.pivot_text),
+        mode=mode,
+        weekly=_is_weekly_request(message),
+        prefer_latin_script=prefer_latin_script,
+    )
+
+
 def chat(
     message: str,
     memory,
@@ -404,6 +483,7 @@ def chat(
         streaming=False,
     )
     _append_turn(patient, "user", message)
+    prefer_latin_script = language == "ar-MA" and not _ARABIC_RE.search(message)
 
     try:
         result = llm.complete(system, user_prompt)
@@ -427,7 +507,19 @@ def chat(
         approved_session_context=bool(ctx.pivot_text),
         mode=_response_mode(message),
         weekly=_is_weekly_request(message),
-        prefer_latin_script=(language == "ar-MA" and not _ARABIC_RE.search(message)),
+        prefer_latin_script=prefer_latin_script,
+    )
+    reply = _retry_finalized_repeat(
+        reply=reply,
+        message=message,
+        llm=llm,
+        system=system,
+        user_prompt=user_prompt,
+        deep=deep,
+        language=language,
+        patient=patient,
+        ctx=ctx,
+        prefer_latin_script=prefer_latin_script,
     )
     _append_turn(patient, "assistant", reply)
     _update_relationship_memory(message, memory)
@@ -503,6 +595,18 @@ def stream_chat(
         approved_session_context=bool(ctx.pivot_text),
         mode=_response_mode(message),
         weekly=_is_weekly_request(message),
+        prefer_latin_script=prefer_latin_script,
+    )
+    full_reply = _retry_finalized_repeat(
+        reply=full_reply,
+        message=message,
+        llm=llm,
+        system=system,
+        user_prompt=user_prompt,
+        deep=deep,
+        language=language,
+        patient=patient,
+        ctx=ctx,
         prefer_latin_script=prefer_latin_script,
     )
     _append_turn(patient, "assistant", full_reply)
