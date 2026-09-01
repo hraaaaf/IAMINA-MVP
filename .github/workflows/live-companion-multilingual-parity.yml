@@ -13,6 +13,7 @@ on:
       - "backend/companion/narrator_prompts.py"
       - "backend/companion/test_conversation_intent.py"
       - "backend/companion/test_narrator_prompts_continuity.py"
+      - "backend/companion/test_runtime_continuity.py"
       - "backend/companion/output_guard.py"
       - "backend/companion/test_output_guard.py"
       - "backend/companion/test_safety_script.py"
@@ -59,8 +60,8 @@ jobs:
         run: pip install -r requirements.txt ruff==0.15.17
       - name: Validate safety and probe before network
         run: |
-          ruff check core/input_safety.py core/tests/test_input_safety.py companion/conversation.py companion/narrator_prompts.py companion/test_conversation_intent.py companion/test_narrator_prompts_continuity.py companion/output_guard.py companion/test_output_guard.py companion/test_safety_script.py evaluation/live_companion_multilingual_parity.py evaluation/live_companion_locale_probe.py
-          pytest -q core/tests/test_input_safety.py companion/test_conversation_intent.py companion/test_narrator_prompts_continuity.py companion/test_output_guard.py companion/test_safety_script.py
+          ruff check core/input_safety.py core/tests/test_input_safety.py companion/conversation.py companion/narrator_prompts.py companion/test_conversation_intent.py companion/test_narrator_prompts_continuity.py companion/test_runtime_continuity.py companion/output_guard.py companion/test_output_guard.py companion/test_safety_script.py evaluation/live_companion_multilingual_parity.py evaluation/live_companion_locale_probe.py
+          pytest -q core/tests/test_input_safety.py companion/test_conversation_intent.py companion/test_narrator_prompts_continuity.py companion/test_runtime_continuity.py companion/test_output_guard.py companion/test_safety_script.py
           python manage.py migrate --noinput
           python manage.py shell -c "from evaluation.live_companion_multilingual_parity import validate_scenarios; print(validate_scenarios())"
       - name: Run bounded real locale Companion probe
