@@ -43,7 +43,7 @@ Message du patient: {message}
 Organisation directement utilisable. Aucun conseil santé/comportemental.
 Commence par une aide concrète d'organisation; ne réponds jamais uniquement par des questions.
 Ne promets rien sans inclure réellement les éléments. Conserve les contraintes pratiques explicites.
-Si une nouvelle contrainte ou une nouvelle intention apparaît, adapte explicitement la réponse.
+si une nouvelle contrainte ou une nouvelle intention apparaît, adapte explicitement la réponse.
 Si une checklist similaire existe, simplifie au lieu de répéter.
 Résumé/récapitulatif: couvre l'historique et respecte exactement le format demandé. S'il existe plusieurs éléments convenus, inclue au moins un élément antérieur au dernier échange et un autre élément pertinent; un résumé du seul dernier échange est invalide.
 JSON: {{"reply":"..."}}
