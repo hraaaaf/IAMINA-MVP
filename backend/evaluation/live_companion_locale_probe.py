@@ -81,6 +81,13 @@ def main() -> None:
     )
     report = run_locale(locale, output)
     gate = report["single_locale_gate"]
+    transcript = report["locales"][locale]["transcript"]
+    print(
+        json.dumps(
+            {"locale": locale, "synthetic_transcript": transcript},
+            ensure_ascii=False,
+        )
+    )
     print(json.dumps({"locale": locale, "gate": gate}, ensure_ascii=False))
     if not gate["passed"]:
         raise RuntimeError("single-locale Companion quality gate failed")
