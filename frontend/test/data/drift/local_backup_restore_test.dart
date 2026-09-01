@@ -93,6 +93,8 @@ void main() {
 
     await LocalBackup.restoreJson(db, backup);
 
+    final expectedLoggedAt = DateTime.utc(2026, 8, 31, 12, 30);
+
     final log = await db.select(db.logEntries).getSingle();
     expect(log.id, 11);
     expect(log.bloodSugar, 143);
@@ -100,6 +102,8 @@ void main() {
     expect(log.mealDescription, 'synthetic fixture dinner');
     expect(log.clientUuid, 'p5-backup-log-0001');
     expect(log.syncAttempts, 2);
+    expect(log.createdAt.toUtc(), expectedLoggedAt);
+    expect(log.loggedAt?.toUtc(), expectedLoggedAt);
 
     final profile = await db.select(db.patientProfiles).getSingle();
     expect(profile.userId, 7);
@@ -107,20 +111,27 @@ void main() {
     expect(profile.targetRangeLow, 82);
     expect(profile.targetRangeHigh, 155);
     expect(profile.treatment, 'tablets');
-    expect(profile.aiConsentGivenAt, DateTime.utc(2026, 8, 1));
+    expect(profile.updatedAt.toUtc(), expectedLoggedAt);
+    expect(profile.aiConsentGivenAt?.toUtc(), DateTime.utc(2026, 8, 1));
 
     final chat = await db.select(db.chatMessages).getSingle();
     expect(chat.conversationId, 'p5-backup-fixture');
     expect(chat.message, 'synthetic non-patient fixture');
+    expect(chat.createdAt.toUtc(), expectedLoggedAt);
 
     final medication = await db.select(db.medicationEvents).getSingle();
     expect(medication.label, 'synthetic metformin fixture');
     expect(medication.dose, 500);
     expect(medication.unit, 'mg');
+    expect(medication.takenAt.toUtc(), expectedLoggedAt);
 
     final reminder = await db.select(db.reminders).getSingle();
     expect(reminder.title, 'synthetic reminder fixture');
     expect(reminder.enabled, isTrue);
+    expect(
+      reminder.dueAt.toUtc(),
+      expectedLoggedAt.add(const Duration(hours: 6)),
+    );
   });
 
   test('P5-5 failed restore rolls back instead of clearing local data', () async {
