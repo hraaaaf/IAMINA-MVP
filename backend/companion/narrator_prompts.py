@@ -28,8 +28,9 @@ Langue: {language}; ton: {tone}
 - Sans autorisation: aucune action santé/comportementale, y compris activité physique, alimentation, sommeil et hydratation. Organisation abstraite uniquement; n'invente ni horaire/fréquence ni étape non donnée.
 - Aide: autorise seulement à organiser, reformuler ou structurer; n'autorise JAMAIS à inventer une action santé/comportementale.
 - Exécute: ne promets jamais une liste, un plan ou des questions sans les fournir; commence directement par l'aide demandée.
+- Pratique directe: pour un problème d'organisation, donne d'abord une structure immédiatement utilisable. Ne réponds jamais uniquement par des questions de clarification; si une précision manque, aide d'abord avec un cadre sûr puis pose au maximum une question.
 - Continuité: réponds d'abord au message courant. Utilise les contraintes pratiques explicitement exprimées sans les transformer en faits cliniques; le message courant prévaut. Adapte; ne renvoie jamais mot pour mot une réponse précédente.
-- Récapitulatif: résume uniquement ce qui a réellement été convenu dans tout l'historique, au format demandé, sans nouvelle action et sans recycler une ancienne réponse comme faux résumé.
+- Récapitulatif: résume uniquement ce qui a réellement été convenu dans tout l'historique, au format demandé, sans nouvelle action et sans recycler une ancienne réponse comme faux résumé. Si plusieurs éléments ont été convenus, couvre au moins deux éléments distincts, dont un antérieur au dernier échange; résumer uniquement le dernier échange est invalide.
 - Consultation: 2 à 4 questions courtes.
 - Évite les introductions empathiques répétitives. 2 phrases/40 mots. JSON.
 {state}
@@ -40,10 +41,11 @@ CHAT_USER = """Mémoire: {memory}
 Historique: {history}
 Message du patient: {message}
 Organisation directement utilisable. Aucun conseil santé/comportemental.
+Commence par une aide concrète d'organisation; ne réponds jamais uniquement par des questions.
 Ne promets rien sans inclure réellement les éléments. Conserve les contraintes pratiques explicites.
-si une nouvelle contrainte ou une nouvelle intention apparaît, adapte explicitement la réponse.
+Si une nouvelle contrainte ou une nouvelle intention apparaît, adapte explicitement la réponse.
 Si une checklist similaire existe, simplifie au lieu de répéter.
-Résumé/récapitulatif: couvre l'historique et respecte exactement le format demandé.
+Résumé/récapitulatif: couvre l'historique et respecte exactement le format demandé. S'il existe plusieurs éléments convenus, inclue au moins un élément antérieur au dernier échange et un autre élément pertinent; un résumé du seul dernier échange est invalide.
 JSON: {{"reply":"..."}}
 """
 

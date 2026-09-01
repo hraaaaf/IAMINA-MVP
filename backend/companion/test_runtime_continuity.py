@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from companion import conversation
+from companion import conversation, narrator_prompts
 
 
 @pytest.mark.parametrize(
@@ -53,3 +53,13 @@ def test_recap_retry_requires_history_synthesis_not_previous_reply_recycling():
     assert "tout ce qui a été convenu dans l'historique" in prompt
     assert "sans recycler une réponse précédente" in prompt
     assert "n'invente aucune action santé/comportementale" in prompt
+
+
+def test_narrator_contract_requires_direct_practical_help_before_questions():
+    assert "Ne réponds jamais uniquement par des questions de clarification" in narrator_prompts.SYSTEM_WITH_STATE
+    assert "ne réponds jamais uniquement par des questions" in narrator_prompts.CHAT_USER
+
+
+def test_narrator_contract_recap_must_cover_more_than_latest_exchange():
+    assert "au moins deux éléments distincts" in narrator_prompts.SYSTEM_WITH_STATE
+    assert "un résumé du seul dernier échange est invalide" in narrator_prompts.CHAT_USER
