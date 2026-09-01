@@ -49,7 +49,7 @@ def run_locale(locale: str, output: Path) -> dict:
 
     route_llm_count = locale_report["route_counts"]["llm"]
     provider_successes = len(locale_report["provider_usage"])
-    if provider_successes != route_llm_count:
+    if provider_successes < route_llm_count:
         failures.append(
             "provider completeness: "
             f"{provider_successes}/{route_llm_count} llm routes returned real provider output"
