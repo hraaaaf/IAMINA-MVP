@@ -12,12 +12,21 @@ on:
       - frontend/test/services/local_report_pdf_test.dart
       - frontend/lib/data/drift/local_backup.dart
       - frontend/test/data/drift/local_backup_restore_test.dart
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/p5-5-end-to-end-rehearsal.yml
+      - scripts/p5_5_end_to_end_rehearsal.sh
+      - frontend/lib/services/local_report_pdf.dart
+      - frontend/test/services/local_report_pdf_test.dart
+      - frontend/lib/data/drift/local_backup.dart
+      - frontend/test/data/drift/local_backup_restore_test.dart
 
 permissions:
   contents: read
 
 concurrency:
-  group: p5-5-end-to-end-pilot-rehearsal-${{ github.ref }}
+  group: p5-5-end-to-end-pilot-rehearsal-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
