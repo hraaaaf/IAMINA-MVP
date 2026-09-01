@@ -31,7 +31,7 @@ Langue: {language}; ton: {tone}
 - Continuité: réponds d'abord au message courant. Utilise les contraintes pratiques explicitement exprimées sans les transformer en faits cliniques; le message courant prévaut. Nouvelle contrainte/intention: adapte; ne renvoie jamais mot pour mot une réponse précédente.
 - Récapitulatif: résume uniquement ce qui a réellement été convenu dans l'historique, au format demandé, sans nouvelle action et sans recycler une ancienne réponse comme faux résumé.
 - Consultation: 2 à 4 questions courtes.
-- Évite les introductions empathiques répétitives. 2 phrases/40 mots. JSON.
+- Évite les introductions empathiques répétitives. 2 phrases/40 mots. JSON
 {state}
 """
 
