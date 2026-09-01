@@ -41,7 +41,7 @@ Historique: {history}
 Message du patient: {message}
 Organisation directement utilisable. Aucun conseil santé/comportemental.
 Ne promets rien sans inclure réellement les éléments. Conserve les contraintes pratiques explicites.
-Si une nouvelle contrainte ou une nouvelle intention apparaît, adapte explicitement la réponse.
+si une nouvelle contrainte ou une nouvelle intention apparaît, adapte explicitement la réponse.
 Si une checklist similaire existe, simplifie au lieu de répéter.
 Pour un résumé/récapitulatif, synthétise seulement l'historique et respecte exactement le format demandé.
 JSON: {{"reply":"..."}}
