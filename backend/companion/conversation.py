@@ -73,6 +73,45 @@ _RECAP_RE = re.compile(
     re.IGNORECASE,
 )
 _WEEK_RE = re.compile(r"\b(?:semaine|week|simana|أسبوع|الاسبوع|الأسبوع)\b", re.IGNORECASE)
+_EVENING_MARKERS = {
+    "fr": ("soir", "dîner", "diner"),
+    "en": ("evening", "dinner"),
+    "ar": ("المساء", "العشاء", "بالليل"),
+    "ar-MA": ("بالليل", "العشا", "العشاء", "من بعد"),
+    "ar-SA": ("بالليل", "العشاء", "العشا"),
+    "ar-AE": ("بالليل", "عقب العشا", "العشا"),
+    "ar-KW": ("بالليل", "عقب العشا", "العشا"),
+    "ar-QA": ("بالليل", "عقب العشا", "العشا"),
+    "ar-OM": ("بالليل", "بعد العشا", "العشا"),
+}
+_EVENING_PRACTICAL_FALLBACKS = {
+    "fr": "Pour le soir après le dîner, garde seulement une checklist très simple de trois cases vides, sans contenu imposé.",
+    "en": "For the evening after dinner, keep it very simple: three empty checklist boxes with no imposed content.",
+    "ar": "في المساء بعد العشاء، خلّه بسيطًا جدًا: ثلاث خانات فارغة فقط بدون محتوى مفروض.",
+    "ar-MA": "بالليل من بعد العشا، خليها بسيطة بزاف: غير ثلاث خانات خاويين بلا محتوى مفروض.",
+    "ar-SA": "بالليل بعد العشاء، خلّها بسيطة جدًا: ثلاث خانات فاضية بس بدون محتوى مفروض.",
+    "ar-AE": "بالليل عقب العشا، خلّها بسيطة وايد: ثلاث خانات فاضية بس بدون محتوى مفروض.",
+    "ar-KW": "بالليل عقب العشا، خلّها بسيطة حيل: ثلاث خانات فاضية بس بدون محتوى مفروض.",
+    "ar-QA": "بالليل عقب العشا، خلّها بسيطة وايد: ثلاث خانات فاضية بس بدون محتوى مفروض.",
+    "ar-OM": "بالليل بعد العشا، خلّها بسيطة واجد: ثلاث خانات فاضية بس بدون محتوى مفروض.",
+}
+_EVENING_RECAP_FALLBACKS = {
+    "fr": "On garde une organisation très simple pour le soir après le dîner, et on prépare des questions à poser à ton médecin.",
+    "en": "We're keeping the evening after dinner very simple, and we're preparing questions for you to ask your doctor.",
+    "ar": "اتفقنا أن يكون الأمر بسيطًا جدًا في المساء بعد العشاء، وأن نجهّز أسئلة تطرحها على الطبيب.",
+    "ar-MA": "اتفقنا نخليوها بسيطة بزاف بالليل من بعد العشا، ونوجدو أسئلة تسولهم للطبيب.",
+    "ar-SA": "اتفقنا نخليها بسيطة جدًا بالليل بعد العشاء، ونجهز أسئلة تسألها للطبيب.",
+    "ar-AE": "اتفقنا نخليها بسيطة وايد بالليل عقب العشا، ونجهز أسئلة تسألها للطبيب.",
+    "ar-KW": "اتفقنا نخليها بسيطة حيل بالليل عقب العشا، ونجهز أسئلة تسألها للطبيب.",
+    "ar-QA": "اتفقنا نخليها بسيطة وايد بالليل عقب العشا، ونجهز أسئلة تسألها للطبيب.",
+    "ar-OM": "اتفقنا نخليها بسيطة واجد بالليل بعد العشا، ونجهز أسئلة تسألها للطبيب.",
+}
+_DARIJA_LATIN_EVENING_PRACTICAL = (
+    "Bllil mn b3d l3cha, khlliha simple bzaf: ghir 3 cases khawyin bla contenu mfroud."
+)
+_DARIJA_LATIN_EVENING_RECAP = (
+    "Ttafe9na nkhliwha simple bzaf bllil mn b3d l3cha, w nwjdo swalat bach tswel tbib."
+)
 _DARIJA_AR_NO_PRESCRIPTION = (
     "ما نقدرش نوصف ليك علاج، نبدل ليك جرعة الإنسولين، نوقف ليك دوا، ولا نشخص حالة. "
     "نقدر نعاونك تنظم الملاحظات ديالك وتوجد أسئلة للطبيب ديالك."
@@ -151,10 +190,75 @@ def _is_verbatim_repeat(reply: str, patient, mode: str) -> bool:
     return any(normalized_reply == _normalize_reply(turn.message) for turn in previous)
 
 
+def _contains_evening_anchor(language: str, text: str) -> bool:
+    normalized = _normalize_reply(text)
+    return any(
+        _normalize_reply(marker) in normalized
+        for marker in _EVENING_MARKERS.get(language, ())
+    )
+
+
+def _history_has_evening_constraint(patient, language: str) -> bool:
+    return any(
+        _contains_evening_anchor(language, turn.message)
+        for turn in _recent_turns(patient, 20, role="user")
+    )
+
+
+def _history_has_clinician_prep(patient) -> bool:
+    return any(
+        _CLINICIAN_PREP_RE.search(turn.message)
+        for turn in _recent_turns(patient, 20, role="user")
+    )
+
+
+def _needs_continuity_retry(
+    reply: str,
+    message: str,
+    patient,
+    mode: str,
+    language: str,
+) -> bool:
+    if _is_verbatim_repeat(reply, patient, mode):
+        return True
+    if mode == "practical":
+        return _contains_evening_anchor(language, message) and not _contains_evening_anchor(
+            language, reply
+        )
+    if mode == "recap":
+        return _history_has_evening_constraint(patient, language) and not _contains_evening_anchor(
+            language, reply
+        )
+    return False
+
+
+def _contextual_continuity_fallback(
+    *,
+    message: str,
+    patient,
+    language: str,
+    mode: str,
+    prefer_latin_script: bool,
+) -> str | None:
+    if mode == "practical" and _contains_evening_anchor(language, message):
+        if language == "ar-MA" and prefer_latin_script:
+            return _DARIJA_LATIN_EVENING_PRACTICAL
+        return _EVENING_PRACTICAL_FALLBACKS.get(language)
+    if (
+        mode == "recap"
+        and _history_has_evening_constraint(patient, language)
+        and _history_has_clinician_prep(patient)
+    ):
+        if language == "ar-MA" and prefer_latin_script:
+            return _DARIJA_LATIN_EVENING_RECAP
+        return _EVENING_RECAP_FALLBACKS.get(language)
+    return None
+
+
 def _continuity_retry_prompt(user_prompt: str, mode: str) -> str:
     instruction = (
         "\n[CONTINUITY_RETRY]\n"
-        "La première réponse a reproduit la réponse précédente et est rejetée. "
+        "La première réponse ne respecte pas le contrat de continuité et est rejetée. "
         "Réponds au message courant avec une formulation réellement nouvelle. "
         "Utilise seulement les contraintes pratiques explicitement données; "
         "n'invente aucune action santé/comportementale, mesure, repas, activité ou dose."
@@ -418,8 +522,16 @@ def _retry_finalized_repeat(
     prefer_latin_script: bool,
 ) -> str:
     mode = _response_mode(message)
-    if not _is_verbatim_repeat(reply, patient, mode):
+    if not _needs_continuity_retry(reply, message, patient, mode, language):
         return reply
+
+    contextual_fallback = _contextual_continuity_fallback(
+        message=message,
+        patient=patient,
+        language=language,
+        mode=mode,
+        prefer_latin_script=prefer_latin_script,
+    )
     try:
         result = llm.complete(system, _continuity_retry_prompt(user_prompt, mode))
         parsed = parse_llm_json(result.content, ["reply"])
@@ -429,11 +541,39 @@ def _retry_finalized_repeat(
             "IAmina continuity retry failed for patient=%s",
             patient.id if patient else None,
         )
-        return reply
-    return _finalize_reply(
+        if contextual_fallback is None:
+            return reply
+        return guard_narrator_output(
+            contextual_fallback,
+            language=language,
+            approved_session_context=bool(ctx.pivot_text),
+            mode=mode,
+            weekly=_is_weekly_request(message),
+            prefer_latin_script=prefer_latin_script,
+        )
+
+    finalized_retry = _finalize_reply(
         retry_reply,
         deep,
         language,
+        approved_session_context=bool(ctx.pivot_text),
+        mode=mode,
+        weekly=_is_weekly_request(message),
+        prefer_latin_script=prefer_latin_script,
+    )
+    if not _needs_continuity_retry(
+        finalized_retry,
+        message,
+        patient,
+        mode,
+        language,
+    ):
+        return finalized_retry
+    if contextual_fallback is None:
+        return reply
+    return guard_narrator_output(
+        contextual_fallback,
+        language=language,
         approved_session_context=bool(ctx.pivot_text),
         mode=mode,
         weekly=_is_weekly_request(message),
