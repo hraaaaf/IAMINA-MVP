@@ -5,6 +5,7 @@ from evaluation.frug5_multilingual_quality_benchmark import load_controlled_pric
 from evaluation.frug5_product_prompt_gulf_benchmark import (
     _GULF_CASES,
     _GULF_LOCALES,
+    _gpt_oss_request_tuning,
     _system_prompt,
     _user_prompt,
     projected_spend_microusd,
@@ -38,6 +39,17 @@ def test_gulf_product_user_prompt_is_synthetic_and_contains_case_message():
         assert case.text in prompt
         assert "Aucune donnée relationnelle mémorisée" in prompt
         assert "Message du patient" in prompt
+
+
+def test_gulf_product_prompt_transport_matches_runtime_gpt_oss_contract():
+    tuning = _gpt_oss_request_tuning()
+    assert "max_tokens" not in tuning
+    assert tuning["max_completion_tokens"] > 0
+    assert tuning["reasoning_effort"] == "low"
+    assert tuning["extra_body"] == {"reasoning_format": "hidden"}
+    response_format = tuning["response_format"]
+    assert response_format["type"] == "json_schema"
+    assert response_format["json_schema"]["strict"] is True
 
 
 def test_product_prompt_gulf_live_sample_stays_under_explicit_spend_ceiling():
