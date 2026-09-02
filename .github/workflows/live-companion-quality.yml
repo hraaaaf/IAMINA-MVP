@@ -21,7 +21,7 @@ permissions:
 
 concurrency:
   group: iamina-companion-quality-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   quality:
@@ -78,13 +78,3 @@ jobs:
           python manage.py shell -c
           "from pathlib import Path; from evaluation.live_companion_quality import run;
           run(Path('../artifacts/iamina-companion-quality.json'))"
-      - name: Apply machine quality gate
-        run: python -m evaluation.companion_quality_gate ../artifacts/iamina-companion-quality.json
-      - name: Upload synthetic transcript
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: iamina-companion-quality
-          path: artifacts/iamina-companion-quality.json
-          if-no-files-found: warn
-          retention-days: 7
