@@ -77,7 +77,7 @@ _EVENING_MARKERS = {
     "fr": ("soir", "dîner", "diner"),
     "en": ("evening", "dinner"),
     "ar": ("المساء", "العشاء", "بالليل"),
-    "ar-MA": ("بالليل", "العشا", "العشاء", "من بعد"),
+    "ar-MA": ("بالليل", "العشا", "العشاء"),
     "ar-SA": ("بالليل", "العشاء", "العشا"),
     "ar-AE": ("بالليل", "عقب العشا", "العشا"),
     "ar-KW": ("بالليل", "عقب العشا", "العشا"),
@@ -116,6 +116,28 @@ _DARIJA_AR_NO_PRESCRIPTION = (
     "ما نقدرش نوصف ليك علاج، نبدل ليك جرعة الإنسولين، نوقف ليك دوا، ولا نشخص حالة. "
     "نقدر نعاونك تنظم الملاحظات ديالك وتوجد أسئلة للطبيب ديالك."
 )
+_GULF_NO_PRESCRIPTION = {
+    "ar-SA": (
+        "ما أقدر أوصف لك علاج، أو أغيّر جرعة الإنسولين، أو أوقف دوا، أو أشخّص حالة. "
+        "أقدر أساعدك ترتّب ملاحظاتك وتجهّز أسئلة لطبيبك."
+    ),
+    "ar-AE": (
+        "ما أقدر أوصف لك علاج، أو أغيّر جرعة الإنسولين، أو أوقف دوا، أو أشخّص حالة. "
+        "أقدر أساعدك ترتّب ملاحظاتك وتجهّز أسئلة لطبيبك."
+    ),
+    "ar-KW": (
+        "ما أقدر أوصف لك علاج، أو أغيّر جرعة الإنسولين، أو أوقف دوا، أو أشخّص حالة. "
+        "أقدر أساعدك ترتّب ملاحظاتك وتجهّز أسئلة لطبيبك."
+    ),
+    "ar-QA": (
+        "ما أقدر أوصف لك علاج، أو أغيّر جرعة الإنسولين، أو أوقف دوا، أو أشخّص حالة. "
+        "أقدر أساعدك ترتّب ملاحظاتك وتجهّز أسئلة لطبيبك."
+    ),
+    "ar-OM": (
+        "ما أقدر أوصف لك علاج، أو أغيّر جرعة الإنسولين، أو أوقف دوا، أو أشخّص حالة. "
+        "أقدر أساعدك ترتّب ملاحظاتك وتجهّز أسئلة لطبيبك."
+    ),
+}
 
 
 def _append_turn(patient, role: str, message: str) -> None:
@@ -222,9 +244,9 @@ def _needs_continuity_retry(
     if _is_verbatim_repeat(reply, patient, mode):
         return True
     if mode == "practical":
-        return _contains_evening_anchor(language, message) and not _contains_evening_anchor(
-            language, reply
-        )
+        message_has_evening = _contains_evening_anchor(language, message)
+        reply_has_evening = _contains_evening_anchor(language, reply)
+        return message_has_evening != reply_has_evening
     if mode == "recap":
         return _history_has_evening_constraint(patient, language) and not _contains_evening_anchor(
             language, reply
@@ -473,6 +495,8 @@ def _safety_reply(message: str, patient, language: str) -> str | None:
     if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
         if language == "ar-MA" and _ARABIC_RE.search(message):
             return _DARIJA_AR_NO_PRESCRIPTION
+        if language in _GULF_NO_PRESCRIPTION:
+            return _GULF_NO_PRESCRIPTION[language]
         return no_prescription_message(deterministic_language)
     return None
 
