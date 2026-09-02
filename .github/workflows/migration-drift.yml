@@ -1,10 +1,24 @@
 name: Django migration drift
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, dev]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/migration-drift.yml'
   pull_request:
     branches: [main, dev]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/migration-drift.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: django-migration-drift-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   migration-drift:
