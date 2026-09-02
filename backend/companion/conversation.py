@@ -143,10 +143,12 @@ def _normalize_reply(text: str) -> str:
 def _is_verbatim_repeat(reply: str, patient, mode: str) -> bool:
     if mode == "emotional":
         return False
-    previous = _recent_turns(patient, 1, role="assistant")
+    history_limit = 20 if mode == "recap" else 1
+    previous = _recent_turns(patient, history_limit, role="assistant")
     if not previous:
         return False
-    return _normalize_reply(reply) == _normalize_reply(previous[0].message)
+    normalized_reply = _normalize_reply(reply)
+    return any(normalized_reply == _normalize_reply(turn.message) for turn in previous)
 
 
 def _continuity_retry_prompt(user_prompt: str, mode: str) -> str:
