@@ -30,8 +30,8 @@ _ARABIC_HEALTH_ACTION = r"(?:قياس|فحص|تسجيل|تدوين|مراجعة|
 _ARABIC_HEALTH_TARGET = r"(?:السكر|سكر|السكري|مستوى السكر|القراءات|قراءات السكر|القيم)"
 _HEALTH_TRACKING_SELECTION_PATTERN = re.compile(
     r"(?:"
-    rf"{_ARABIC_HEALTH_ACTION}.{{0,32}}{_ARABIC_HEALTH_TARGET}"
-    rf"|{_ARABIC_HEALTH_TARGET}.{{0,32}}{_ARABIC_HEALTH_ACTION}"
+    rf"{_ARABIC_HEALTH_ACTION}.{{0,80}}{_ARABIC_HEALTH_TARGET}"
+    rf"|{_ARABIC_HEALTH_TARGET}.{{0,80}}{_ARABIC_HEALTH_ACTION}"
     r"|\b(?:record|measure|check|log)\b.{0,24}\b(?:glucose|blood sugar|sugar reading)\b"
     r"|\b(?:glucose|blood sugar|sugar reading)\b.{0,24}\b(?:record|measure|check|log)\b"
     r"|(?:after dinner|before breakfast|before bed|after breakfast|after lunch).{0,32}(?:glucose|sugar|insulin)"
@@ -52,6 +52,11 @@ _SPECIFIC_SCHEDULE_SELECTION_PATTERN = re.compile(
     r"|(?:\b(?:every|each)\s+(?:morning|evening|night|week|\d+\s*days?)\b)"
     r"|(?:\d+\s*(?:دقيقة|دقائق).{0,24}(?:بعد\s*(?:العشا|العشاء)|قبل\s*(?:الفطور|النوم)))"
     r")",
+    re.IGNORECASE,
+)
+_TECHNICAL_FAILURE_PATTERN = re.compile(
+    r"(?:temporary technical issue|technical issue|probl[eè]me technique temporaire|"
+    r"مشكلة تقنية مؤقتة|عطل تقني مؤقت)",
     re.IGNORECASE,
 )
 
@@ -160,6 +165,36 @@ _SAFE_WEEK_DARIJA_LATIN = "Had simana: khtar wa9t tabet wa7ed, dir reminder wa7e
 _SAFE_CLINICIAN_DARIJA_LATIN = "Wjjed had 4 swalat: chno njib m3aya? chno taghyir n9ol lik 3lih? b ach kat3awd t9yyem l3ilaj dyali? w imta n3awd ntwassel m3ak?"
 _SAFE_EMOTIONAL_DARIJA_LATIN = "Kayban belli had lham kol nhar m3yik bzaf, w ana hna m3ak daba bla ma nzid 3lik chi haja."
 
+_GULF_ORGANIZATION = {
+    "ar-SA": "خلّها بسيطة: ثلاث خانات فاضية بدون محتوى محدد، وحط علامة بس على اللي خلصته.",
+    "ar-AE": "خلّها بسيطة وايد: ثلاث خانات فاضية من غير محتوى محدد، وعلّم بس على اللي خلصته.",
+    "ar-KW": "خلّها بسيطة حيل: ثلاث خانات فاضية من غير محتوى محدد، وعلّم بس على اللي خلصته.",
+    "ar-QA": "خلّها بسيطة وايد: ثلاث خانات فاضية من غير محتوى محدد، وعلّم بس على اللي خلصته.",
+    "ar-OM": "خلّها بسيطة واجد: ثلاث خانات فاضية من غير محتوى محدد، وعلّم بس على اللي خلصته.",
+}
+_GULF_CLINICIAN = {
+    "ar-SA": "جهّز هالـ4 أسئلة: وش المعلومات اللي أجيبها؟ وش التغيّرات اللي أقول لك عنها؟ وش المعايير اللي تعتمدها لإعادة تقييم علاجي؟ ومتى أتواصل معك مرة ثانية؟",
+    "ar-AE": "جهّز هالـ4 أسئلة: شو المعلومات اللي أجيبها؟ شو التغيّرات اللي أخبرك عنها؟ شو المعايير اللي تعتمدها لإعادة تقييم علاجي؟ ومتى أتواصل وياك مرة ثانية؟",
+    "ar-KW": "جهّز هالـ4 أسئلة: شنو المعلومات اللي أجيبها؟ شنو التغيّرات اللي أقول لك عنها؟ شنو المعايير اللي تعتمدها لإعادة تقييم علاجي؟ ومتى أتواصل معاك مرة ثانية؟",
+    "ar-QA": "جهّز هالـ4 أسئلة: شنو المعلومات اللي أجيبها؟ شنو التغيّرات اللي أقول لك عنها؟ شنو المعايير اللي تعتمدها لإعادة تقييم علاجي؟ ومتى أتواصل معاك مرة ثانية؟",
+    "ar-OM": "جهّز هالـ4 أسئلة: وش المعلومات اللي أجيبها؟ وش التغيّرات اللي أقول لك عنها؟ وش المعايير اللي تعتمدها لإعادة تقييم علاجي؟ ومتى أتواصل معك مرة ثانية؟",
+}
+_GULF_EMOTIONAL = {
+    "ar-SA": "أفهمك، كثرة التفكير بالسكري كل يوم متعبة فعلًا.",
+    "ar-AE": "أفهمك، ترا التفكير بالسكري كل يوم يتعب الواحد فعلًا.",
+    "ar-KW": "أفهمك، التفكير بالسكري كل يوم متعب حيل.",
+    "ar-QA": "أفهمك، التفكير بالسكري كل يوم متعب وايد.",
+    "ar-OM": "أفهمك، التفكير بالسكري كل يوم متعب واجد.",
+}
+_GULF_DIALECT_MARKERS = {
+    "ar-SA": ("وش", "أبغ", "الحين", "هالمشكلة", "خلّها", "نخليها", "فاضية بس"),
+    "ar-AE": ("شو", "أبا", "وايد", "عقب", "ترا", "وياك"),
+    "ar-KW": ("شنو", "أبي", "حيل", "عقب", "هال"),
+    "ar-QA": ("شنو", "أبي", "وايد", "عقب", "هال"),
+    "ar-OM": ("وش", "واجد", "بعد العشا", "هال"),
+}
+_DARIJA_BAD_NATURALNESS = re.compile(r"(?:مقنّع|مقنع|بكمّك|بكمك)")
+
 
 def word_count(text: str) -> int:
     return len(_WORD_RE.findall(text))
@@ -197,6 +232,12 @@ def safe_fallback(
         if weekly:
             return _SAFE_WEEK_DARIJA_AR
         return _SAFE_COMPACT_DARIJA_AR if very_long else _SAFE_DARIJA_AR
+    if language in _GULF_ORGANIZATION:
+        if mode == "emotional":
+            return _GULF_EMOTIONAL[language]
+        if mode == "clinician_prep":
+            return _GULF_CLINICIAN[language]
+        return _GULF_ORGANIZATION[language]
     if language.startswith("ar"):
         if mode == "emotional":
             return _SAFE_EMOTIONAL_AR
@@ -234,8 +275,10 @@ def guard_narrator_output(
     del approved_session_context
 
     forbidden = contains_unapproved_behavior_action(reply)
+    technical_failure = bool(_TECHNICAL_FAILURE_PATTERN.search(reply))
     words = word_count(reply)
     lines = nonempty_line_count(reply)
+    question_count = reply.count("?") + reply.count("؟")
     if language == "ar-MA":
         script_violation = (
             prefer_latin_script and bool(ARABIC_RE.search(reply))
@@ -246,10 +289,18 @@ def guard_narrator_output(
     else:
         script_violation = prefer_latin_script and bool(ARABIC_RE.search(reply))
 
+    gulf_dialect_violation = language in _GULF_DIALECT_MARKERS and not any(
+        marker in reply for marker in _GULF_DIALECT_MARKERS[language]
+    )
+    darija_naturalness_violation = (
+        language == "ar-MA"
+        and mode == "emotional"
+        and bool(_DARIJA_BAD_NATURALNESS.search(reply))
+    )
+
     if mode == "emotional":
         invalid_shape = words > 30 or lines > 1
     elif mode == "clinician_prep":
-        question_count = reply.count("?") + reply.count("؟")
         therapeutic = bool(_CLINICIAN_THERAPEUTIC_PATTERN.search(reply))
         risky_question = bool(_CLINICIAN_RISKY_QUESTION_PATTERN.search(reply))
         invalid_shape = (
@@ -261,9 +312,17 @@ def guard_narrator_output(
         )
     else:
         therapeutic = bool(_CLINICIAN_THERAPEUTIC_PATTERN.search(reply))
-        invalid_shape = words > 45 or lines > 5 or therapeutic
+        question_only_shape = question_count >= 2
+        invalid_shape = words > 45 or lines > 5 or therapeutic or question_only_shape
 
-    if forbidden or invalid_shape or script_violation:
+    if (
+        forbidden
+        or technical_failure
+        or invalid_shape
+        or script_violation
+        or gulf_dialect_violation
+        or darija_naturalness_violation
+    ):
         return safe_fallback(
             language,
             mode=mode,
