@@ -51,6 +51,16 @@ def _user_prompt(case) -> str:
     )
 
 
+def _gpt_oss_request_tuning() -> dict[str, Any]:
+    """Mirror the production Groq GPT-OSS non-streaming transport exactly."""
+    return {
+        "max_completion_tokens": MAX_OUTPUT_TOKENS_PER_CASE,
+        "response_format": strict_response_format(),
+        "reasoning_effort": "low",
+        "extra_body": {"reasoning_format": "hidden"},
+    }
+
+
 def projected_spend_microusd(price) -> int:
     total = 0
     for case in _GULF_CASES:
@@ -69,10 +79,8 @@ def _invoke_case(provider, case):
             {"role": "system", "content": _system_prompt(case.case_id)},
             {"role": "user", "content": _user_prompt(case)},
         ],
-        max_tokens=MAX_OUTPUT_TOKENS_PER_CASE,
         timeout=provider.timeout_seconds,
-        response_format=strict_response_format(),
-        reasoning_effort="low",
+        **_gpt_oss_request_tuning(),
     )
 
 
