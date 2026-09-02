@@ -104,3 +104,127 @@ def test_narrator_contract_requires_direct_practical_help_before_questions():
 def test_narrator_contract_recap_must_cover_more_than_latest_exchange():
     assert "au moins deux éléments distincts" in narrator_prompts.SYSTEM_WITH_STATE
     assert "un résumé du seul dernier échange est invalide" in narrator_prompts.CHAT_USER
+
+
+@pytest.mark.parametrize(
+    ("language", "message"),
+    [
+        ("fr", "C'est surtout le soir après le dîner que j'oublie."),
+        ("en", "I mostly forget in the evening after dinner."),
+        ("ar", "أنسى غالبًا في المساء بعد العشاء."),
+        ("ar-MA", "كننسى كثر بالليل من بعد العشا."),
+        ("ar-SA", "غالبًا أنسى بالليل بعد العشاء."),
+        ("ar-AE", "أكثر شي أنسى بالليل عقب العشا."),
+        ("ar-KW", "غالبًا أنسى بالليل عقب العشا."),
+        ("ar-QA", "غالبًا أنسى بالليل عقب العشا."),
+        ("ar-OM", "غالبًا أنسى بالليل بعد العشا."),
+    ],
+)
+def test_runtime_evening_anchor_detection_matches_certification_locales(language, message):
+    assert conversation._contains_evening_anchor(language, message)
+
+
+def test_missing_explicit_evening_anchor_triggers_retry(monkeypatch):
+    monkeypatch.setattr(conversation, "_recent_turns", lambda *args, **kwargs: [])
+
+    assert conversation._needs_continuity_retry(
+        "Garde une checklist très simple.",
+        "C'est surtout le soir après le dîner que j'oublie.",
+        patient=object(),
+        mode="practical",
+        language="fr",
+    )
+
+
+def test_recap_missing_earlier_evening_anchor_triggers_retry_and_has_safe_fallback(monkeypatch):
+    def recent_turns(_patient, _limit, role=None, **_kwargs):
+        if role == "assistant":
+            return []
+        if role == "user":
+            return [
+                SimpleNamespace(message="Ne me donne pas de dose. Aide-moi à préparer ce que je dois demander à mon médecin."),
+                SimpleNamespace(message="C'est surtout le soir après le dîner que j'oublie. Je veux quelque chose de très simple."),
+            ]
+        return []
+
+    monkeypatch.setattr(conversation, "_recent_turns", recent_turns)
+    patient = object()
+
+    assert conversation._needs_continuity_retry(
+        "On a préparé des questions pour ton médecin.",
+        "Résume ce qu'on vient de décider en une phrase simple.",
+        patient=patient,
+        mode="recap",
+        language="fr",
+    )
+    fallback = conversation._contextual_continuity_fallback(
+        message="Résume ce qu'on vient de décider en une phrase simple.",
+        patient=patient,
+        language="fr",
+        mode="recap",
+        prefer_latin_script=False,
+    )
+    assert fallback is not None
+    assert "soir" in fallback.lower()
+    assert "médecin" in fallback.lower()
+
+
+def test_retry_revalidates_second_repeat_and_uses_contextual_fallback(monkeypatch):
+    repeated = (
+        "Réduis au minimum : une checklist de trois cases vides, sans contenu imposé. "
+        "Coche ce qui est fait et repars de là."
+    )
+
+    def recent_turns(_patient, _limit, role=None, **_kwargs):
+        if role == "assistant":
+            return [SimpleNamespace(message=repeated)]
+        if role == "user":
+            return [SimpleNamespace(message="C'est surtout le soir après le dîner que j'oublie.")]
+        return []
+
+    monkeypatch.setattr(conversation, "_recent_turns", recent_turns)
+    monkeypatch.setattr(conversation, "_finalize_reply", lambda reply, *args, **kwargs: reply)
+    llm = SimpleNamespace(
+        complete=lambda *_args, **_kwargs: SimpleNamespace(content=f'{{"reply": "{repeated}"}}')
+    )
+
+    repaired = conversation._retry_finalized_repeat(
+        reply=repeated,
+        message="C'est surtout le soir après le dîner que j'oublie. Je veux quelque chose de très simple.",
+        llm=llm,
+        system="system",
+        user_prompt="prompt",
+        deep=object(),
+        language="fr",
+        patient=object(),
+        ctx=SimpleNamespace(pivot_text=None),
+        prefer_latin_script=False,
+    )
+
+    assert repaired != repeated
+    assert "soir" in repaired.lower()
+    assert "dîner" in repaired.lower()
+
+
+@pytest.mark.parametrize(
+    ("language", "message", "dialect_marker"),
+    [
+        ("ar-MA", "كننسى كثر بالليل من بعد العشا.", "من بعد"),
+        ("ar-SA", "غالبًا أنسى بالليل بعد العشاء.", "بالليل"),
+        ("ar-AE", "أكثر شي أنسى بالليل عقب العشا.", "عقب العشا"),
+        ("ar-KW", "غالبًا أنسى بالليل عقب العشا.", "حيل"),
+        ("ar-QA", "غالبًا أنسى بالليل عقب العشا.", "وايد"),
+        ("ar-OM", "غالبًا أنسى بالليل بعد العشا.", "واجد"),
+    ],
+)
+def test_contextual_fallback_preserves_target_dialect(language, message, dialect_marker):
+    fallback = conversation._contextual_continuity_fallback(
+        message=message,
+        patient=object(),
+        language=language,
+        mode="practical",
+        prefer_latin_script=False,
+    )
+
+    assert fallback is not None
+    assert dialect_marker in fallback
