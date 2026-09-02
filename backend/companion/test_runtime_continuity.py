@@ -33,6 +33,44 @@ def test_verbatim_repeat_detection_is_whitespace_and_case_insensitive(monkeypatc
     )
 
 
+def test_recap_rejects_repeat_of_older_assistant_turn(monkeypatch):
+    calls = []
+
+    def recent_turns(_patient, limit, role=None, **_kwargs):
+        calls.append((limit, role))
+        return [
+            SimpleNamespace(message="Prepare these four questions."),
+            SimpleNamespace(message="Start with one anchor."),
+            SimpleNamespace(message="Strip it down."),
+        ][:limit]
+
+    monkeypatch.setattr(conversation, "_recent_turns", recent_turns)
+
+    assert conversation._is_verbatim_repeat(
+        "Start with one anchor.",
+        patient=object(),
+        mode="recap",
+    )
+    assert calls[-1] == (20, "assistant")
+
+
+def test_practical_repeat_only_compares_latest_assistant_turn(monkeypatch):
+    monkeypatch.setattr(
+        conversation,
+        "_recent_turns",
+        lambda *args, **kwargs: [
+            SimpleNamespace(message="Prepare these four questions."),
+            SimpleNamespace(message="Start with one anchor."),
+        ],
+    )
+
+    assert not conversation._is_verbatim_repeat(
+        "Start with one anchor.",
+        patient=object(),
+        mode="practical",
+    )
+
+
 def test_emotional_reply_never_triggers_continuity_retry(monkeypatch):
     monkeypatch.setattr(
         conversation,
