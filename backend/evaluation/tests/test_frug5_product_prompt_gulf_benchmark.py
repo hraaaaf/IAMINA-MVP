@@ -28,7 +28,7 @@ def test_gulf_product_prompt_uses_exact_runtime_language_labels():
         assert "NARRATEUR" in system
         assert "diagnostic" in system
         assert "dose" in system
-        assert "aucune action santé/comportementale" in system
+        assert "n'autorise JAMAIS à inventer une action santé/comportementale" in system
         assert "activité physique, alimentation, sommeil et hydratation" in system
 
 
