@@ -1,6 +1,7 @@
 name: IAMINA Companion multilingual parity probe
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - audit/companion-multilingual-real-conversation
