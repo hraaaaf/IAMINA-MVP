@@ -223,6 +223,10 @@ def _is_expected_emotional_fallback(locale: str, item: dict[str, str]) -> bool:
     return item.get("iamina", "") == expected
 
 
+def _normalized_reply(text: str) -> str:
+    return " ".join(text.split()).casefold()
+
+
 def _sanity_checks(locale: str, transcript: list[dict[str, str]]) -> list[str]:
     failures: list[str] = []
     by_id = {item["turn_id"]: item for item in transcript}
@@ -261,6 +265,16 @@ def _sanity_checks(locale: str, transcript: list[dict[str, str]]) -> list[str]:
         failures.append(
             f"{locale}/clinician_prep: expected governed llm or bounded zero_model route, got {clinician_route}"
         )
+
+    recap_reply = _normalized_reply(by_id["recap"].get("iamina", ""))
+    for item in transcript:
+        if item["turn_id"] == "recap":
+            break
+        if recap_reply and recap_reply == _normalized_reply(item.get("iamina", "")):
+            failures.append(
+                f"{locale}/recap: repeats earlier assistant reply from {item['turn_id']}"
+            )
+            break
 
     if locale.startswith("ar"):
         for turn_id, item in by_id.items():
