@@ -41,7 +41,7 @@ Commence par une aide concrète; ne réponds jamais uniquement par des questions
 si une nouvelle contrainte ou une nouvelle intention apparaît, adapte explicitement la réponse.
 Si une checklist similaire existe, simplifie au lieu de répéter.
 Liste/plan/questions: ne promets pas sans inclure réellement les éléments.
-Résumé: couvre l'historique et respecte exactement le format demandé; si plusieurs éléments sont convenus, inclue au moins un élément antérieur au dernier échange.
+Résumé: couvre l'historique et respecte exactement le format demandé; si plusieurs éléments sont convenus, inclue au moins un élément antérieur au dernier échange; un résumé du seul dernier échange est invalide.
 JSON: {{"reply":"..."}}
 """
 
