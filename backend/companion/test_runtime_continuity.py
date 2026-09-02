@@ -55,20 +55,23 @@ def test_recap_rejects_repeat_of_older_assistant_turn(monkeypatch):
 
 
 def test_practical_repeat_only_compares_latest_assistant_turn(monkeypatch):
-    monkeypatch.setattr(
-        conversation,
-        "_recent_turns",
-        lambda *args, **kwargs: [
+    calls = []
+
+    def recent_turns(_patient, limit, role=None, **_kwargs):
+        calls.append((limit, role))
+        return [
             SimpleNamespace(message="Prepare these four questions."),
             SimpleNamespace(message="Start with one anchor."),
-        ],
-    )
+        ][:limit]
+
+    monkeypatch.setattr(conversation, "_recent_turns", recent_turns)
 
     assert not conversation._is_verbatim_repeat(
         "Start with one anchor.",
         patient=object(),
         mode="practical",
     )
+    assert calls[-1] == (1, "assistant")
 
 
 def test_emotional_reply_never_triggers_continuity_retry(monkeypatch):
