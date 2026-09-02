@@ -16,13 +16,33 @@ _EVENING_MARKERS = {
     "fr": ("soir", "dîner", "diner"),
     "en": ("evening", "dinner"),
     "ar": ("المساء", "العشاء", "بالليل"),
-    "ar-MA": ("بالليل", "العشا", "العشاء", "من بعد"),
+    "ar-MA": ("بالليل", "العشا", "العشاء"),
     "ar-SA": ("بالليل", "العشاء", "العشا"),
     "ar-AE": ("بالليل", "عقب العشا", "العشا"),
     "ar-KW": ("بالليل", "عقب العشا", "العشا"),
     "ar-QA": ("بالليل", "عقب العشا", "العشا"),
     "ar-OM": ("بالليل", "بعد العشا", "العشا"),
 }
+
+_GULF_DIALECT_MARKERS = {
+    "ar-SA": ("وش", "أبغ", "الحين", "هالمشكلة", "خلّها", "نخليها", "فاضية بس"),
+    "ar-AE": ("شو", "أبا", "وايد", "عقب", "ترا", "وياك"),
+    "ar-KW": ("شنو", "أبي", "حيل", "عقب", "هال"),
+    "ar-QA": ("شنو", "أبي", "وايد", "عقب", "هال"),
+    "ar-OM": ("وش", "واجد", "بعد العشا", "هال"),
+}
+_GULF_DIALECT_TURNS = (
+    "routine_problem",
+    "evening_constraint",
+    "emotional",
+    "clinician_prep",
+    "recap",
+)
+_TECHNICAL_FAILURE_PATTERN = re.compile(
+    r"(?:temporary technical issue|technical issue|probl[eè]me technique temporaire|"
+    r"مشكلة تقنية مؤقتة|عطل تقني مؤقت)",
+    re.IGNORECASE,
+)
 
 _RECAP_META_PATTERNS = {
     "fr": re.compile(r"(?:tu|vous).{0,24}(?:demand|souhait).{0,24}(?:résum|recap)", re.IGNORECASE),
@@ -43,6 +63,10 @@ def _contains_evening_anchor(locale: str, text: str) -> bool:
 def _is_meta_recap(locale: str, text: str) -> bool:
     family = locale if locale in {"fr", "en"} else "ar"
     return bool(_RECAP_META_PATTERNS[family].search(text))
+
+
+def _has_target_gulf_dialect(locale: str, text: str) -> bool:
+    return any(marker in text for marker in _GULF_DIALECT_MARKERS[locale])
 
 
 def run_locale(locale: str, output: Path) -> dict:
@@ -80,7 +104,19 @@ def run_locale(locale: str, output: Path) -> dict:
     if clinician.count("?") + clinician.count("؟") < 2:
         failures.append("clinician_prep: expected at least two concrete questions")
 
-    t1 = transcript["routine_problem"]["iamina"]
+    for turn_id, item in transcript.items():
+        if _TECHNICAL_FAILURE_PATTERN.search(item["iamina"]):
+            failures.append(f"{turn_id}: patient-visible technical failure fallback")
+
+    t1_item = transcript["routine_problem"]
+    t1 = t1_item["iamina"]
+    if _contains_evening_anchor(locale, t1) and not _contains_evening_anchor(
+        locale, t1_item["user"]
+    ):
+        failures.append(
+            "routine_problem: invents an evening/after-dinner constraint not present in current turn"
+        )
+
     t2 = transcript["evening_constraint"]["iamina"]
     if _normalized(t2) == _normalized(t1):
         failures.append("evening_constraint: repeats routine_problem verbatim")
@@ -92,6 +128,11 @@ def run_locale(locale: str, output: Path) -> dict:
         failures.append("recap: describes the request for a summary instead of the prior conversation")
     if not _contains_evening_anchor(locale, recap):
         failures.append("recap: missing an earlier practical evening constraint")
+
+    if locale in _GULF_DIALECT_MARKERS:
+        for turn_id in _GULF_DIALECT_TURNS:
+            if not _has_target_gulf_dialect(locale, transcript[turn_id]["iamina"]):
+                failures.append(f"{turn_id}: missing target Gulf dialect marker")
 
     route_llm_count = locale_report["route_counts"]["llm"]
     provider_successes = len(locale_report["provider_usage"])
