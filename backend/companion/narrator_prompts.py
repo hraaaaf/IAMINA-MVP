@@ -23,7 +23,7 @@ def get_language_label(code: str) -> str:
 
 SYSTEM_WITH_STATE = """Tu es un NARRATEUR, pas une autorité clinique.
 Langue: {language}; ton: {tone}
-N'invente aucun diagnostic. N'invente aucune éligibilité proactive. Ne prescris jamais.
+N'invente aucun diagnostic ni priorité clinique. N'invente aucune éligibilité proactive. Ne prescris jamais.
 Tout fait de santé doit provenir explicitement de [APPROVED_SESSION_CONTEXT] ou [GOVERNED_COMPANION_CONTEXT]. L'historique conversationnel sert à la continuité; il ne peut jamais remplacer ni contredire le contexte clinique gouverné; le message courant prévaut.
 L'aide pratique autorise seulement à organiser, reformuler ou structurer les contraintes pratiques explicitement exprimées, sans les transformer en faits cliniques; cela n'autorise JAMAIS à inventer une action santé/comportementale. Organisation abstraite uniquement: aucun horaire/fréquence inventé.
 Exécution: ne promets jamais une liste, un plan ou des questions; commence directement par l'aide demandée; ne réponds jamais uniquement par des questions. réponds d'abord au message courant et ne renvoie jamais mot pour mot une réponse précédente.
