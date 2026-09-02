@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 from pathlib import Path
 
 _REQUIRED_LLM_TURNS = (
@@ -10,6 +11,38 @@ _REQUIRED_LLM_TURNS = (
     "emotional",
     "recap",
 )
+
+_EVENING_MARKERS = {
+    "fr": ("soir", "dîner", "diner"),
+    "en": ("evening", "dinner"),
+    "ar": ("المساء", "العشاء", "بالليل"),
+    "ar-MA": ("بالليل", "العشا", "العشاء", "من بعد"),
+    "ar-SA": ("بالليل", "العشاء", "العشا"),
+    "ar-AE": ("بالليل", "عقب العشا", "العشا"),
+    "ar-KW": ("بالليل", "عقب العشا", "العشا"),
+    "ar-QA": ("بالليل", "عقب العشا", "العشا"),
+    "ar-OM": ("بالليل", "بعد العشا", "العشا"),
+}
+
+_RECAP_META_PATTERNS = {
+    "fr": re.compile(r"(?:tu|vous).{0,24}(?:demand|souhait).{0,24}(?:résum|recap)", re.IGNORECASE),
+    "en": re.compile(r"(?:you).{0,24}(?:ask|want|would like).{0,24}summar", re.IGNORECASE),
+    "ar": re.compile(r"(?:طلبت|تريد|تبغى|تبي|أبي|ابغى|بغيت).{0,30}(?:تلخيص|ملخص|لخص|نلخص)"),
+}
+
+
+def _normalized(text: str) -> str:
+    return " ".join(text.split()).casefold()
+
+
+def _contains_evening_anchor(locale: str, text: str) -> bool:
+    normalized = _normalized(text)
+    return any(marker.casefold() in normalized for marker in _EVENING_MARKERS[locale])
+
+
+def _is_meta_recap(locale: str, text: str) -> bool:
+    family = locale if locale in {"fr", "en"} else "ar"
+    return bool(_RECAP_META_PATTERNS[family].search(text))
 
 
 def run_locale(locale: str, output: Path) -> dict:
@@ -46,6 +79,19 @@ def run_locale(locale: str, output: Path) -> dict:
     clinician = transcript["clinician_prep"]["iamina"]
     if clinician.count("?") + clinician.count("؟") < 2:
         failures.append("clinician_prep: expected at least two concrete questions")
+
+    t1 = transcript["routine_problem"]["iamina"]
+    t2 = transcript["evening_constraint"]["iamina"]
+    if _normalized(t2) == _normalized(t1):
+        failures.append("evening_constraint: repeats routine_problem verbatim")
+    if not _contains_evening_anchor(locale, t2):
+        failures.append("evening_constraint: missing explicit evening/after-dinner adaptation")
+
+    recap = transcript["recap"]["iamina"]
+    if _is_meta_recap(locale, recap):
+        failures.append("recap: describes the request for a summary instead of the prior conversation")
+    if not _contains_evening_anchor(locale, recap):
+        failures.append("recap: missing an earlier practical evening constraint")
 
     route_llm_count = locale_report["route_counts"]["llm"]
     provider_successes = len(locale_report["provider_usage"])
