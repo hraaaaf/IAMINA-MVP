@@ -87,6 +87,19 @@ def test_gulf_practical_fallback_is_locale_colloquial(language, marker):
     assert marker in safe_fallback(language, mode="practical")
 
 
+def test_saudi_emotional_fallback_is_locale_colloquial():
+    generic_msa = "أفهمك، كثرة التفكير بالسكري كل يوم متعبة فعلًا."
+    guarded = guard_narrator_output(
+        generic_msa,
+        language="ar-SA",
+        approved_session_context=False,
+        mode="emotional",
+    )
+    assert guarded != generic_msa
+    assert "هالمشكلة" in guarded
+    assert guarded.count(".") <= 1
+
+
 def test_qatari_recap_health_tracking_selection_is_rejected():
     reply = (
         "اتفقنا إنك تسجّل ملاحظات بسيطة بعد العشا وتجهّز أربع أسئلة للطبيب "
