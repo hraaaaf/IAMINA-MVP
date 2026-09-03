@@ -193,7 +193,7 @@ _GULF_DIALECT_MARKERS = {
     "ar-QA": ("شنو", "أبي", "وايد", "عقب", "هال"),
     "ar-OM": ("وش", "واجد", "بعد العشا", "هال"),
 }
-_DARIJA_BAD_NATURALNESS = re.compile(r"(?:مقنّع|مقنع|بكمّك|بكمك)")
+_DARIJA_BAD_NATURALNESS = re.compile(r"(?:مقنّع|مقنع|بكمّك|بكمك|توعدنا|خانات\s+فارغة)")
 
 
 def word_count(text: str) -> int:
@@ -293,9 +293,7 @@ def guard_narrator_output(
         marker in reply for marker in _GULF_DIALECT_MARKERS[language]
     )
     darija_naturalness_violation = (
-        language == "ar-MA"
-        and mode == "emotional"
-        and bool(_DARIJA_BAD_NATURALNESS.search(reply))
+        language == "ar-MA" and bool(_DARIJA_BAD_NATURALNESS.search(reply))
     )
 
     if mode == "emotional":
