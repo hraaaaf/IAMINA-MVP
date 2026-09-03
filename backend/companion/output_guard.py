@@ -293,7 +293,8 @@ def guard_narrator_output(
         marker in reply for marker in _GULF_DIALECT_MARKERS[language]
     )
     darija_naturalness_violation = (
-        language == "ar-MA" and bool(_DARIJA_BAD_NATURALNESS.search(reply))
+        language == "ar-MA"
+        and bool(_DARIJA_BAD_NATURALNESS.search(reply))
     )
 
     if mode == "emotional":
