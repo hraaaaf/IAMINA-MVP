@@ -34,12 +34,15 @@ def test_gulf_product_prompt_uses_exact_runtime_language_labels():
         assert "activité physique, alimentation, sommeil et hydratation" in system
 
 
-def test_gulf_product_user_prompt_is_synthetic_and_contains_case_message():
+def test_gulf_product_user_prompt_mirrors_emotional_runtime_route():
     for case in _GULF_CASES:
         prompt = _user_prompt(case)
         assert case.text in prompt
         assert "Aucune donnée relationnelle mémorisée" in prompt
         assert "Message du patient" in prompt
+        assert "UNE seule phrase d'empathie naturelle" in prompt
+        assert "Aucun plan, checklist, rappel, conseil, action" in prompt
+        assert "Liste/plan/questions" not in prompt
 
 
 def test_gulf_product_prompt_transport_matches_runtime_gpt_oss_contract():
