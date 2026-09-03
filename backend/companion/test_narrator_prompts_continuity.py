@@ -13,6 +13,11 @@ def test_system_prompt_requires_real_recap_from_history():
     assert "Ne décris jamais la demande de résumé elle-même" in SYSTEM_WITH_STATE
 
 
+def test_system_prompt_forbids_invented_reminder_cadence():
+    assert "aucun horaire/fréquence inventé" in SYSTEM_WITH_STATE
+    assert "N'invente jamais de rappel ni d'heure fixe" in SYSTEM_WITH_STATE
+
+
 def test_chat_prompt_forces_new_constraint_and_recap_handling():
     assert "reprends cette contrainte concrètement dans la réponse" in CHAT_USER
     assert "adapte-la au message courant au lieu de la répéter" in CHAT_USER
