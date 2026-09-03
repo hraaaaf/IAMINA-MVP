@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from companion.narrator_prompts import CHAT_USER, SYSTEM_WITH_STATE, get_language_label
+from companion.narrator_prompts import EMOTIONAL_USER, SYSTEM_WITH_STATE, get_language_label
 from evaluation.frug5_multilingual_quality_benchmark import (
     CASES,
     MODEL,
@@ -44,7 +44,8 @@ def _system_prompt(case_id: str) -> str:
 
 
 def _user_prompt(case) -> str:
-    return CHAT_USER.format(
+    """Mirror runtime routing for the benchmark's supportive/emotional scenarios."""
+    return EMOTIONAL_USER.format(
         memory="Aucune donnée relationnelle mémorisée.",
         history="",
         message=case.text,
