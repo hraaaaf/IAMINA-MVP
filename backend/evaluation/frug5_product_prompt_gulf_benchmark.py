@@ -11,7 +11,6 @@ from typing import Any
 from companion.narrator_prompts import CHAT_USER, SYSTEM_WITH_STATE, get_language_label
 from evaluation.frug5_multilingual_quality_benchmark import (
     CASES,
-    MAX_OUTPUT_TOKENS_PER_CASE,
     MODEL,
     PROVIDER,
     SPEND_CEILING_MICROUSD,
@@ -22,6 +21,7 @@ from evaluation.frug5_multilingual_quality_benchmark import (
     strict_response_format,
 )
 from evaluation.provider_benchmark_preflight import ProviderBenchmarkPreflight
+from llm.lowcost_openai_compatible import _GPT_OSS_MAX_OUTPUT_TOKENS
 
 DATASET_ID = "iamina-frug5-product-prompt-gulf-v1"
 _GULF_LOCALES = {
@@ -54,7 +54,7 @@ def _user_prompt(case) -> str:
 def _gpt_oss_request_tuning() -> dict[str, Any]:
     """Mirror the production Groq GPT-OSS non-streaming transport exactly."""
     return {
-        "max_completion_tokens": MAX_OUTPUT_TOKENS_PER_CASE,
+        "max_completion_tokens": _GPT_OSS_MAX_OUTPUT_TOKENS,
         "response_format": strict_response_format(),
         "reasoning_effort": "low",
         "extra_body": {"reasoning_format": "hidden"},
@@ -67,7 +67,7 @@ def projected_spend_microusd(price) -> int:
         payload = _system_prompt(case.case_id) + _user_prompt(case)
         total += price.worst_case_microusd(
             input_tokens=len(payload.encode("utf-8")),
-            output_tokens=MAX_OUTPUT_TOKENS_PER_CASE,
+            output_tokens=_GPT_OSS_MAX_OUTPUT_TOKENS,
         )
     return total
 
