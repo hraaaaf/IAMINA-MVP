@@ -100,6 +100,19 @@ def test_saudi_emotional_fallback_is_locale_colloquial():
     assert guarded.count(".") <= 1
 
 
+def test_guard_rejects_mixed_msa_darija_recap_wording():
+    mixed = "توعدنا نخلي ملاحظة بسيطة بالليل بعد العشاء، بثلاث خانات فارغة، وحضرنا أسئلة للطبيب."
+    guarded = guard_narrator_output(
+        mixed,
+        language="ar-MA",
+        approved_session_context=False,
+        mode="recap",
+    )
+    assert guarded != mixed
+    assert "توعدنا" not in guarded
+    assert "خانات فارغة" not in guarded
+
+
 def test_qatari_recap_health_tracking_selection_is_rejected():
     reply = (
         "اتفقنا إنك تسجّل ملاحظات بسيطة بعد العشا وتجهّز أربع أسئلة للطبيب "
