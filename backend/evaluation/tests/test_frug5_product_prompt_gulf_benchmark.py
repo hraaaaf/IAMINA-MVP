@@ -10,6 +10,7 @@ from evaluation.frug5_product_prompt_gulf_benchmark import (
     _user_prompt,
     projected_spend_microusd,
 )
+from llm.lowcost_openai_compatible import _GPT_OSS_MAX_OUTPUT_TOKENS
 
 
 def test_gulf_product_prompt_uses_exact_runtime_language_labels():
@@ -44,7 +45,7 @@ def test_gulf_product_user_prompt_is_synthetic_and_contains_case_message():
 def test_gulf_product_prompt_transport_matches_runtime_gpt_oss_contract():
     tuning = _gpt_oss_request_tuning()
     assert "max_tokens" not in tuning
-    assert tuning["max_completion_tokens"] > 0
+    assert tuning["max_completion_tokens"] == _GPT_OSS_MAX_OUTPUT_TOKENS
     assert tuning["reasoning_effort"] == "low"
     assert tuning["extra_body"] == {"reasoning_format": "hidden"}
     response_format = tuning["response_format"]
