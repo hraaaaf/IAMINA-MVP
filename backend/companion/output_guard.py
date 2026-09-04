@@ -171,40 +171,62 @@ _SAFE_CLINICIAN_DARIJA_AR = "وجد هاد الأسئلة: شنو المعلوم
 _SAFE_EMOTIONAL_DARIJA_AR = "باين بلي التفكير فهاد الشي كل نهار عياك بزاف، وأنا هنا معاك دابا بلا ما نزيد عليك شي حاجة."
 
 _SAFE_DARIJA_LATIN = "Khlliha simple: 3 cases khawyin bla contenu mfroud, w 3emmer ghir b dakchi li nta khtarti mn 9bel."
-_SAFE_COMPACT_DARIJA_LATIN = "Khlliha minimal: 3 cases khawyin bla contenu mfroud, w 3ellem ghir mlli tkmel."
+_SAFE_COMPACT_DARIJA_LATIN = "Khlliha simple: 3 cases khawyin bla contenu mfroud, w 3ellem ghir 3la dakchi li kmelti."
 _SAFE_WEEK_DARIJA_LATIN = "Had simana, khlli 3 cases khawyin max bla contenu mfroud, w 3emmer ghir b dakchi li nta khtarti mn 9bel."
-_SAFE_CLINICIAN_DARIJA_LATIN = "Wjjed had 4 swalat: chno njib m3aya? chno taghyir n9ol lik 3lih? b ach kat3awd t9yyem l3ilaj dyali? w imta n3awd ntwassel m3ak?"
-_SAFE_EMOTIONAL_DARIJA_LATIN = "Kayban belli had lham kol nhar m3yik bzaf, w ana hna m3ak daba bla ma nzid 3lik chi haja."
+_SAFE_CLINICIAN_DARIJA_LATIN = "Wjjed had swalat: chno lma3loumat li njib m3aya? Chno taghyirat li n9oul ltbib? Chno lma3ayir li kayst3mel bach y3awed y9ayem l3ilaj dyali? W imta n3awed ntasel bih?"
+_SAFE_EMOTIONAL_DARIJA_LATIN = "Bayn belli tfkir f hadchi kol nhar 3yak bzaf, w ana hna m3ak daba bla ma nzid 3lik chi haja."
 
-_GULF_ORGANIZATION = {
-    "ar-SA": "خلّها بسيطة: ثلاث خانات فاضية بدون محتوى محدد، وحط علامة بس على اللي خلصته.",
-    "ar-AE": "خلّها بسيطة وايد: ثلاث خانات فاضية من غير محتوى محدد، وعلّم بس على اللي خلصته.",
-    "ar-KW": "خلّها بسيطة حيل: ثلاث خانات فاضية من غير محتوى محدد، وعلّم بس على اللي خلصته.",
-    "ar-QA": "خلّها بسيطة وايد: ثلاث خانات فاضية من غير محتوى محدد، وعلّم بس على اللي خلصته.",
-    "ar-OM": "خلّها بسيطة واجد: ثلاث خانات فاضية من غير محتوى محدد، وعلّم بس على اللي خلصته.",
+_GULF_SAFE_ORGANIZATION = {
+    "ar-SA": "خلّها بسيطة: ثلاث خانات فاضية بس بدون محتوى مفروض، وعبّي بس اللي أنت اخترته من قبل.",
+    "ar-AE": "خلّها بسيطة وايد: ثلاث خانات فاضية بس بدون محتوى مفروض، وعبّي بس اللي إنت اخترته من قبل.",
+    "ar-KW": "خلّها بسيطة حيل: ثلاث خانات فاضية بس بدون محتوى مفروض، وعبّي بس اللي إنت اخترته من قبل.",
+    "ar-QA": "خلّها بسيطة وايد: ثلاث خانات فاضية بس بدون محتوى مفروض، وعبّي بس اللي إنت اخترته من قبل.",
+    "ar-OM": "خلّها بسيطة واجد: ثلاث خانات فاضية بس بدون محتوى مفروض، وعبّي بس اللي إنت اخترته من قبل.",
 }
-_GULF_CLINICIAN = {
-    "ar-SA": "جهّز هالـ4 أسئلة: وش المعلومات اللي أجيبها؟ وش التغيّرات اللي أقول لك عنها؟ وش المعايير اللي تعتمدها لإعادة تقييم علاجي؟ ومتى أتواصل معك مرة ثانية؟",
-    "ar-AE": "جهّز هالـ4 أسئلة: شو المعلومات اللي أجيبها؟ شو التغيّرات اللي أخبرك عنها؟ شو المعايير اللي تعتمدها لإعادة تقييم علاجي؟ ومتى أتواصل وياك مرة ثانية؟",
-    "ar-KW": "جهّز هالـ4 أسئلة: شنو المعلومات اللي أجيبها؟ شنو التغيّرات اللي أقول لك عنها؟ شنو المعايير اللي تعتمدها لإعادة تقييم علاجي؟ ومتى أتواصل معاك مرة ثانية؟",
-    "ar-QA": "جهّز هالـ4 أسئلة: شنو المعلومات اللي أجيبها؟ شنو التغيّرات اللي أقول لك عنها؟ شنو المعايير اللي تعتمدها لإعادة تقييم علاجي؟ ومتى أتواصل معاك مرة ثانية؟",
-    "ar-OM": "جهّز هالـ4 أسئلة: وش المعلومات اللي أجيبها؟ وش التغيّرات اللي أقول لك عنها؟ وش المعايير اللي تعتمدها لإعادة تقييم علاجي؟ ومتى أتواصل معك مرة ثانية؟",
+_GULF_SAFE_COMPACT = {
+    "ar-SA": "بسّطها: ثلاث خانات فاضية بس بدون محتوى مفروض، وعلّم بس على اللي خلصته.",
+    "ar-AE": "بسّطها وايد: ثلاث خانات فاضية بس بدون محتوى مفروض، وعلّم بس على اللي خلصته.",
+    "ar-KW": "بسّطها حيل: ثلاث خانات فاضية بس بدون محتوى مفروض، وعلّم بس على اللي خلصته.",
+    "ar-QA": "بسّطها وايد: ثلاث خانات فاضية بس بدون محتوى مفروض، وعلّم بس على اللي خلصته.",
+    "ar-OM": "بسّطها واجد: ثلاث خانات فاضية بس بدون محتوى مفروض، وعلّم بس على اللي خلصته.",
 }
-_GULF_EMOTIONAL = {
-    "ar-SA": "أفهمك، هالمشكلة مع التفكير بالسكري كل يوم متعبة فعلًا.",
-    "ar-AE": "أفهمك، ترا التفكير بالسكري كل يوم يتعب الواحد فعلًا.",
-    "ar-KW": "أفهمك، التفكير بالسكري كل يوم متعب حيل.",
-    "ar-QA": "أفهمك، التفكير بالسكري كل يوم متعب وايد.",
-    "ar-OM": "أفهمك، التفكير بالسكري كل يوم متعب واجد.",
+_GULF_SAFE_WEEK = {
+    "ar-SA": "هالأسبوع، خلّها ثلاث خانات فاضية بس بدون محتوى مفروض، وعبّي بس اللي أنت اخترته من قبل.",
+    "ar-AE": "هالأسبوع، خلّها ثلاث خانات فاضية بس بدون محتوى مفروض، وعبّي بس اللي إنت اخترته من قبل.",
+    "ar-KW": "هالأسبوع، خلّها ثلاث خانات فاضية بس بدون محتوى مفروض، وعبّي بس اللي إنت اخترته من قبل.",
+    "ar-QA": "هالأسبوع، خلّها ثلاث خانات فاضية بس بدون محتوى مفروض، وعبّي بس اللي إنت اخترته من قبل.",
+    "ar-OM": "هالأسبوع، خلّها ثلاث خانات فاضية بس بدون محتوى مفروض، وعبّي بس اللي إنت اخترته من قبل.",
 }
+_GULF_SAFE_CLINICIAN = {
+    "ar-SA": "جهّز هالأسئلة: وش المعلومات اللي أجيبها؟ وش التغييرات اللي أقولها للطبيب؟ وش المعايير اللي يستخدمها لإعادة تقييم علاجي؟ ومتى أتواصل معه مرة ثانية؟",
+    "ar-AE": "جهّز هالأسئلة: شو المعلومات اللي أجيبها؟ شو التغييرات اللي أقولها للدكتور؟ شو المعايير اللي يستخدمها لإعادة تقييم علاجي؟ ومتى أتواصل وياه مرة ثانية؟",
+    "ar-KW": "جهّز هالأسئلة: شنو المعلومات اللي أجيبها؟ شنو التغييرات اللي أقولها للدكتور؟ شنو المعايير اللي يستخدمها لإعادة تقييم علاجي؟ ومتى أتواصل معاه مرة ثانية؟",
+    "ar-QA": "جهّز هالأسئلة: شنو المعلومات اللي أجيبها؟ شنو التغييرات اللي أقولها للدكتور؟ شنو المعايير اللي يستخدمها لإعادة تقييم علاجي؟ ومتى أتواصل معاه مرة ثانية؟",
+    "ar-OM": "جهّز هالأسئلة: وش المعلومات اللي أجيبها؟ وش التغييرات اللي أقولها للدكتور؟ وش المعايير اللي يستخدمها لإعادة تقييم علاجي؟ ومتى أتواصل معه مرة ثانية؟",
+}
+_GULF_SAFE_EMOTIONAL = {
+    "ar-SA": "هالمشكلة متعبة فعلًا كل يوم، وأنا معك بهاللحظة بدون ما أزيد عليك شي.",
+    "ar-AE": "ترا هالشي متعب وايد كل يوم، وأنا وياك بهاللحظة بدون ما أزيد عليك شي.",
+    "ar-KW": "هالشي متعب حيل كل يوم، وأنا معاك بهاللحظة بدون ما أزيد عليك شي.",
+    "ar-QA": "هالشي متعب وايد كل يوم، وأنا معاك بهاللحظة بدون ما أزيد عليك شي.",
+    "ar-OM": "هالشي متعب واجد كل يوم، وأنا معك بهاللحظة بدون ما أزيد عليك شي.",
+}
+
 _GULF_DIALECT_MARKERS = {
-    "ar-SA": ("وش", "أبغ", "الحين", "هالمشكلة", "خلّها", "نخليها", "فاضية بس"),
-    "ar-AE": ("شو", "أبا", "وايد", "عقب", "ترا", "وياك"),
-    "ar-KW": ("شنو", "أبي", "حيل", "عقب", "هال"),
-    "ar-QA": ("شنو", "أبي", "وايد", "عقب", "هال"),
-    "ar-OM": ("وش", "واجد", "بعد العشا", "هال"),
+    "ar-SA": ("هالمشكلة", "هالأسئلة", "وش", "هالأسبوع", "بس"),
+    "ar-AE": ("وايد", "وياك", "شو", "هالأسبوع", "بس"),
+    "ar-KW": ("حيل", "شنو", "هالأسبوع", "بس"),
+    "ar-QA": ("وايد", "شنو", "هالأسبوع", "بس"),
+    "ar-OM": ("واجد", "وش", "هالأسبوع", "بس"),
 }
-_DARIJA_BAD_NATURALNESS = re.compile(r"(?:مقنّع|مقنع|بكمّك|بكمك|توعدنا|خانات\s+فارغة)")
+_DARIJA_BAD_NATURALNESS = re.compile(
+    r"(?:توعدنا|خانات\s+فارغة|من\s+بعد(?!\s+العشا|\s+العشاء))",
+    re.IGNORECASE,
+)
+
+
+def contains_unapproved_behavior_action(text: str) -> bool:
+    return any(pattern.search(text) for pattern in FORBIDDEN_BEHAVIOR_PATTERNS)
 
 
 def word_count(text: str) -> int:
@@ -215,63 +237,57 @@ def nonempty_line_count(text: str) -> int:
     return sum(1 for line in text.splitlines() if line.strip())
 
 
-def contains_unapproved_behavior_action(reply: str) -> bool:
-    return any(pattern.search(reply) for pattern in FORBIDDEN_BEHAVIOR_PATTERNS)
-
-
 def safe_fallback(
     language: str,
     *,
-    mode: str,
+    mode: str = "practical",
     weekly: bool = False,
     very_long: bool = False,
     prefer_latin_script: bool = False,
 ) -> str:
-    if language == "ar-MA":
-        if prefer_latin_script:
-            if mode == "emotional":
-                return _SAFE_EMOTIONAL_DARIJA_LATIN
-            if mode == "clinician_prep":
-                return _SAFE_CLINICIAN_DARIJA_LATIN
-            if weekly:
-                return _SAFE_WEEK_DARIJA_LATIN
-            return _SAFE_COMPACT_DARIJA_LATIN if very_long else _SAFE_DARIJA_LATIN
-        if mode == "emotional":
-            return _SAFE_EMOTIONAL_DARIJA_AR
-        if mode == "clinician_prep":
-            return _SAFE_CLINICIAN_DARIJA_AR
-        if weekly:
-            return _SAFE_WEEK_DARIJA_AR
-        return _SAFE_COMPACT_DARIJA_AR if very_long else _SAFE_DARIJA_AR
-    if language in _GULF_ORGANIZATION:
-        if mode == "emotional":
-            return _GULF_EMOTIONAL[language]
-        if mode == "clinician_prep":
-            return _GULF_CLINICIAN[language]
-        return _GULF_ORGANIZATION[language]
-    if language.startswith("ar"):
-        if mode == "emotional":
-            return _SAFE_EMOTIONAL_AR
-        if mode == "clinician_prep":
-            return _SAFE_CLINICIAN_AR
-        if weekly:
-            return _SAFE_WEEK_AR
-        return _SAFE_COMPACT_AR if very_long else _SAFE_ORGANIZATION_AR
-    if language == "en":
-        if mode == "emotional":
+    if mode == "emotional":
+        if language == "fr":
+            return _SAFE_EMOTIONAL_FR
+        if language == "en":
             return _SAFE_EMOTIONAL_EN
-        if mode == "clinician_prep":
+        if language == "ar-MA":
+            return _SAFE_EMOTIONAL_DARIJA_LATIN if prefer_latin_script else _SAFE_EMOTIONAL_DARIJA_AR
+        if language in _GULF_SAFE_EMOTIONAL:
+            return _GULF_SAFE_EMOTIONAL[language]
+        return _SAFE_EMOTIONAL_AR
+    if mode == "clinician_prep":
+        if language == "fr":
+            return _SAFE_CLINICIAN_FR
+        if language == "en":
             return _SAFE_CLINICIAN_EN
+        if language == "ar-MA":
+            return _SAFE_CLINICIAN_DARIJA_LATIN if prefer_latin_script else _SAFE_CLINICIAN_DARIJA_AR
+        if language in _GULF_SAFE_CLINICIAN:
+            return _GULF_SAFE_CLINICIAN[language]
+        return _SAFE_CLINICIAN_AR
+    if language == "fr":
+        if weekly:
+            return _SAFE_WEEK_FR
+        return _SAFE_COMPACT_FR if very_long else _SAFE_ORGANIZATION_FR
+    if language == "en":
         if weekly:
             return _SAFE_WEEK_EN
         return _SAFE_COMPACT_EN if very_long else _SAFE_ORGANIZATION_EN
-    if mode == "emotional":
-        return _SAFE_EMOTIONAL_FR
-    if mode == "clinician_prep":
-        return _SAFE_CLINICIAN_FR
+    if language == "ar-MA":
+        if prefer_latin_script:
+            if weekly:
+                return _SAFE_WEEK_DARIJA_LATIN
+            return _SAFE_COMPACT_DARIJA_LATIN if very_long else _SAFE_DARIJA_LATIN
+        if weekly:
+            return _SAFE_WEEK_DARIJA_AR
+        return _SAFE_COMPACT_DARIJA_AR if very_long else _SAFE_DARIJA_AR
+    if language in _GULF_SAFE_ORGANIZATION:
+        if weekly:
+            return _GULF_SAFE_WEEK[language]
+        return _GULF_SAFE_COMPACT[language] if very_long else _GULF_SAFE_ORGANIZATION[language]
     if weekly:
-        return _SAFE_WEEK_FR
-    return _SAFE_COMPACT_FR if very_long else _SAFE_ORGANIZATION_FR
+        return _SAFE_WEEK_AR
+    return _SAFE_COMPACT_AR if very_long else _SAFE_ORGANIZATION_AR
 
 
 def guard_narrator_output(
@@ -324,7 +340,7 @@ def guard_narrator_output(
         therapeutic = bool(_CLINICIAN_THERAPEUTIC_PATTERN.search(reply))
         question_only_shape = question_count >= 2
         missing_practical_mechanism = (
-            mode == "practical" and not _PRACTICAL_ORGANIZATION_PATTERN.search(reply)
+            mode == "practical" and words >= 5 and not _PRACTICAL_ORGANIZATION_PATTERN.search(reply)
         )
         invalid_shape = (
             words > 45
