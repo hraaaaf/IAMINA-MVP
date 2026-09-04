@@ -7,19 +7,26 @@ def test_guard_blocks_explicit_behavior_advice_without_approved_context():
     guarded = guard_narrator_output(reply, language="fr", approved_session_context=False)
     assert "marcher" not in guarded.lower()
     assert "bois" not in guarded.lower()
-    assert "rappel" in guarded.lower()
+    assert "cases vides" in guarded.lower()
 
 
 def test_guard_allows_abstract_organization_copy():
-    reply = "Mets un rappel et garde une checklist courte."
+    reply = "Garde une checklist courte avec trois cases vides."
     assert guard_narrator_output(reply, language="fr", approved_session_context=False) == reply
+
+
+def test_guard_rejects_model_selected_reminder_without_explicit_schedule():
+    reply = "Mets un rappel et garde une checklist courte."
+    guarded = guard_narrator_output(reply, language="fr", approved_session_context=False)
+    assert guarded != reply
+    assert "rappel" not in guarded.lower()
 
 
 def test_guard_does_not_treat_context_presence_as_behavior_authorization():
     reply = "Essaie de marcher 10 minutes."
     guarded = guard_narrator_output(reply, language="fr", approved_session_context=True)
     assert guarded != reply
-    assert "rappel" in guarded.lower()
+    assert "cases vides" in guarded.lower()
 
 
 def test_guard_replaces_overlong_week_plan_with_empty_structure():
@@ -33,14 +40,14 @@ def test_guard_uses_stronger_compression_for_very_long_output():
     medium = guard_narrator_output(" ".join(["organisation"] * 50), language="fr", approved_session_context=False)
     very_long = guard_narrator_output(" ".join(["organisation"] * 70), language="fr", approved_session_context=False)
     assert medium != very_long
-    assert "un seul repère" in medium
+    assert "structure très simple" in medium
     assert "Réduis au minimum" in very_long
 
 
 def test_guard_blocks_model_selected_tracking_content():
     guarded = guard_narrator_output("Note 1 point sur ton humeur chaque lundi.", language="fr", approved_session_context=False)
     assert "humeur" not in guarded.lower()
-    assert "rappel" in guarded.lower()
+    assert "cases vides" in guarded.lower()
 
 
 def test_guard_blocks_model_selected_daily_frequency():
@@ -48,7 +55,7 @@ def test_guard_blocks_model_selected_daily_frequency():
     guarded = guard_narrator_output(reply, language="fr", approved_session_context=False)
     assert guarded != reply
     assert "jour précédent" not in guarded.lower()
-    assert "rappel" in guarded.lower()
+    assert "cases vides" in guarded.lower()
 
 
 def test_guard_reframes_clinician_tracking_question_without_selecting_content():
@@ -68,7 +75,7 @@ def test_guard_reframes_clinician_tracking_question_without_selecting_content():
 def test_guard_blocks_arabizi_content_selection():
     guarded = guard_narrator_output("Sji mood dyalk f checklist.", language="ar-MA", approved_session_context=False, prefer_latin_script=True)
     assert "mood" not in guarded.lower()
-    assert "reminder" in guarded.lower()
+    assert "cases khawyin" in guarded.lower()
 
 
 def test_guard_bounds_emotional_shape():
@@ -117,6 +124,27 @@ def test_all_arabic_darija_fallbacks_are_script_clean():
                 fallback = safe_fallback("ar-MA", mode=mode, weekly=weekly, very_long=very_long, prefer_latin_script=False)
                 assert ARABIC_RE.search(fallback)
                 assert not LATIN_RE.search(fallback)
+
+
+def test_practical_fallbacks_never_invent_reminder_or_fixed_time():
+    cases = (
+        ("fr", False),
+        ("en", False),
+        ("ar", False),
+        ("ar-MA", False),
+        ("ar-MA", True),
+    )
+    forbidden = ("rappel", "heure fixe", "reminder", "fixed time", "تذكير", "وقت ثابت", "wa9t tabet")
+    for language, prefer_latin_script in cases:
+        for weekly in (False, True):
+            fallback = safe_fallback(
+                language,
+                mode="practical",
+                weekly=weekly,
+                prefer_latin_script=prefer_latin_script,
+            ).lower()
+            for marker in forbidden:
+                assert marker not in fallback
 
 
 def test_guard_replaces_arabic_therapeutic_clinician_questions():
