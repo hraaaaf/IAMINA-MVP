@@ -62,8 +62,8 @@ def _passing_report():
                 "turn_id": "routine_problem",
                 "route": "zero_model",
                 "iamina": (
-                    "Commence par un seul repère : un rappel à heure fixe et une case "
-                    "à cocher. Si tu oublies, reprends simplement au rappel suivant."
+                    "Garde une structure très simple : trois cases vides, sans contenu imposé. "
+                    "Remplis seulement avec les éléments que tu as déjà choisis."
                 ),
             },
             {
@@ -100,17 +100,16 @@ def _passing_report():
                 "turn_id": "routine_recovery",
                 "route": "zero_model",
                 "iamina": (
-                    "Cette semaine : choisis un seul moment fixe, mets un rappel et "
-                    "garde trois cases vides maximum. Coche seulement ce qui est fait, "
-                    "sans ajouter de contenu santé."
+                    "Cette semaine : garde trois cases vides maximum, sans contenu imposé. "
+                    "Remplis-les uniquement avec ce que tu as déjà choisi."
                 ),
             },
             {
                 "turn_id": "darija_switch",
                 "route": "zero_model",
                 "iamina": (
-                    "Bda b 7aja wa7da: reminder wa7ed f wa9t tabet, w case wa7da "
-                    "t3ellem 3liha. Ila nsiti, kmml m3a reminder li b3do."
+                    "Khlliha simple: 3 cases khawyin bla contenu mfroud, "
+                    "w 3emmer ghir b dakchi li nta khtarti mn 9bel."
                 ),
             },
             {"turn_id": "thanks", "route": "zero_model", "iamina": "Avec plaisir."},
