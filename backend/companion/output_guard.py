@@ -106,16 +106,16 @@ FORBIDDEN_BEHAVIOR_PATTERNS = (
 )
 
 _SAFE_ORGANIZATION_FR = (
-    "Commence par un seul repère : un rappel à heure fixe et une case à cocher. "
-    "Si tu oublies, reprends simplement au rappel suivant."
+    "Garde une structure très simple : trois cases vides, sans contenu imposé. "
+    "Remplis seulement avec les éléments que tu as déjà choisis."
 )
 _SAFE_COMPACT_FR = (
     "Réduis au minimum : une checklist de trois cases vides, sans contenu imposé. "
     "Coche ce qui est fait et repars de là."
 )
 _SAFE_WEEK_FR = (
-    "Cette semaine : choisis un seul moment fixe, mets un rappel et garde trois cases vides maximum. "
-    "Coche seulement ce qui est fait, sans ajouter de contenu santé."
+    "Cette semaine, garde trois cases vides maximum, sans contenu imposé. "
+    "Remplis seulement avec les éléments que tu as déjà choisis."
 )
 _SAFE_CLINICIAN_FR = (
     "Prépare ces 4 questions :\n"
@@ -127,16 +127,16 @@ _SAFE_CLINICIAN_FR = (
 _SAFE_EMOTIONAL_FR = "Ça a l’air lourd à porter au quotidien, et je reste avec toi dans ce moment-là."
 
 _SAFE_ORGANIZATION_EN = (
-    "Start with one anchor: one reminder at a fixed time and one box to tick. "
-    "If you miss it, simply resume at the next reminder."
+    "Keep it very simple: three empty checklist boxes with no imposed content. "
+    "Fill them only with items you already chose."
 )
 _SAFE_COMPACT_EN = (
     "Strip it down: keep three empty checklist boxes with no imposed content. "
     "Tick what is done and restart from there."
 )
 _SAFE_WEEK_EN = (
-    "This week: choose one fixed time, set one reminder, and keep at most three empty boxes. "
-    "Tick only what is done without adding health content."
+    "This week, keep at most three empty checklist boxes with no imposed content. "
+    "Fill them only with items you already chose."
 )
 _SAFE_CLINICIAN_EN = (
     "Prepare these 4 questions:\n"
@@ -147,21 +147,21 @@ _SAFE_CLINICIAN_EN = (
 )
 _SAFE_EMOTIONAL_EN = "That sounds exhausting to carry every day, and I’m here with you in this moment."
 
-_SAFE_ORGANIZATION_AR = "ابدأ بشيء واحد: تذكير واحد في وقت ثابت وخانة واحدة للتعليم، وإذا فاتك ارجع مع التذكير التالي."
+_SAFE_ORGANIZATION_AR = "خلّها بسيطة: ثلاث خانات فارغة بدون محتوى مفروض، واملأ فقط بما اخترته مسبقًا."
 _SAFE_COMPACT_AR = "بسّطها أكثر: ثلاث خانات فارغة فقط بدون محتوى مفروض، وعلّم فقط ما تم إنجازه."
-_SAFE_WEEK_AR = "لهذا الأسبوع: اختر وقتًا ثابتًا واحدًا، وضع تذكيرًا واحدًا وثلاث خانات فارغة كحد أقصى، وعلّم فقط ما تم إنجازه."
+_SAFE_WEEK_AR = "لهذا الأسبوع، احتفظ بثلاث خانات فارغة كحد أقصى بدون محتوى مفروض، واملأ فقط بما اخترته مسبقًا."
 _SAFE_CLINICIAN_AR = "حضّر هذه الأسئلة الأربعة: ما المعلومات التي يجب أن أحضرها؟ ما التغيّرات التي يجب أن أخبرك بها؟ ما معايير إعادة تقييم علاجي؟ ومتى أتواصل معك مجددًا؟"
 _SAFE_EMOTIONAL_AR = "واضح إن التفكير في هذا كل يوم متعب جدًا، وأنا معك في هذه اللحظة بدون ما أزيد عليك مهام."
 
-_SAFE_DARIJA_AR = "بدا بحاجة وحدة: تذكير واحد فوقت ثابت وخانة وحدة تعلم عليها، وإلا نسيتي كمل مع التذكير اللي من بعد."
+_SAFE_DARIJA_AR = "خليها بسيطة: ثلاث خانات خاويين بلا محتوى مفروض، وعمر غير باللي نتا اخترتي من قبل."
 _SAFE_COMPACT_DARIJA_AR = "خليها بسيطة: ثلاث خانات خاويين بلا محتوى مفروض، وعلم غير على اللي كملتي."
-_SAFE_WEEK_DARIJA_AR = "هاد السيمانة: اختار وقت ثابت واحد، دير تذكير واحد وخلي غير ثلاث خانات خاويين، وعلم غير على اللي كملتي."
+_SAFE_WEEK_DARIJA_AR = "هاد السيمانة، خلي غير ثلاث خانات خاويين بلا محتوى مفروض، وعمر غير باللي نتا اخترتي من قبل."
 _SAFE_CLINICIAN_DARIJA_AR = "وجد هاد الأسئلة: شنو المعلومات اللي نجيب معايا؟ شنو التغييرات اللي نبلغك بها؟ شنو المعايير اللي كتستعمل باش تعاود تقيم العلاج ديالي؟ وإمتى نعاود نتاصل بيك؟"
 _SAFE_EMOTIONAL_DARIJA_AR = "باين بلي التفكير فهاد الشي كل نهار عياك بزاف، وأنا هنا معاك دابا بلا ما نزيد عليك شي حاجة."
 
-_SAFE_DARIJA_LATIN = "Bda b 7aja wa7da: reminder wa7ed f wa9t tabet, w case wa7da t3ellem 3liha. Ila nsiti, kmml m3a reminder li b3do."
+_SAFE_DARIJA_LATIN = "Khlliha simple: 3 cases khawyin bla contenu mfroud, w 3emmer ghir b dakchi li nta khtarti mn 9bel."
 _SAFE_COMPACT_DARIJA_LATIN = "Khlliha minimal: 3 cases khawyin bla contenu mfroud, w 3ellem ghir mlli tkmel."
-_SAFE_WEEK_DARIJA_LATIN = "Had simana: khtar wa9t tabet wa7ed, dir reminder wa7ed, w khlli 3 cases khawyin max. 3ellem ghir mlli tkmel."
+_SAFE_WEEK_DARIJA_LATIN = "Had simana, khlli 3 cases khawyin max bla contenu mfroud, w 3emmer ghir b dakchi li nta khtarti mn 9bel."
 _SAFE_CLINICIAN_DARIJA_LATIN = "Wjjed had 4 swalat: chno njib m3aya? chno taghyir n9ol lik 3lih? b ach kat3awd t9yyem l3ilaj dyali? w imta n3awd ntwassel m3ak?"
 _SAFE_EMOTIONAL_DARIJA_LATIN = "Kayban belli had lham kol nhar m3yik bzaf, w ana hna m3ak daba bla ma nzid 3lik chi haja."
 
