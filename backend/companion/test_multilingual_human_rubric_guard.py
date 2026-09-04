@@ -129,3 +129,61 @@ def test_qatari_recap_health_tracking_selection_is_rejected():
     )
     assert guarded != reply
     assert "قراءات السكر" not in guarded
+
+
+def test_guard_rejects_english_practical_summary_without_mechanism():
+    reply = (
+        "You’ve shared that keeping up with diabetes tracking feels hard, and that "
+        "the routine tends to fade after a few days."
+    )
+    guarded = guard_narrator_output(
+        reply,
+        language="en",
+        approved_session_context=False,
+        mode="practical",
+    )
+    assert guarded != reply
+    assert "empty checklist boxes" in guarded.lower()
+
+
+def test_guard_rejects_arabic_practical_summary_without_mechanism():
+    reply = "متابعة السكري صعبة وتنسى بعد بضعة أيام، وهذا يعكس صعوبة الاستمرار."
+    guarded = guard_narrator_output(
+        reply,
+        language="ar",
+        approved_session_context=False,
+        mode="practical",
+    )
+    assert guarded != reply
+    assert "خانات فارغة" in guarded
+
+
+def test_guard_rejects_french_glucose_checklist_from_live_parity():
+    reply = (
+        "Voici une checklist simple après le dîner :\n"
+        "- J’ai vérifié ma glycémie\n"
+        "- J’ai noté le résultat\n"
+        "- J’ai rangé le matériel"
+    )
+    guarded = guard_narrator_output(
+        reply,
+        language="fr",
+        approved_session_context=False,
+        mode="practical",
+    )
+    assert guarded != reply
+    assert "glycémie" not in guarded.lower()
+    assert "cases vides" in guarded.lower()
+
+
+def test_guard_rejects_arabic_reminder_inflection_from_live_parity():
+    reply = "ثلاثة خانات فاضية تذكّرك بمتابعة السكري، وحطّها بمكان تشوفه عقب العشا."
+    guarded = guard_narrator_output(
+        reply,
+        language="ar-AE",
+        approved_session_context=False,
+        mode="practical",
+    )
+    assert guarded != reply
+    assert "تذكّرك" not in guarded
+    assert "وايد" in guarded
