@@ -48,7 +48,9 @@ def test_guard_replaces_visible_technical_failure_with_practical_help():
         mode="practical",
     )
     assert "technical issue" not in guarded.lower()
-    assert "anchor" in guarded.lower()
+    assert "empty checklist boxes" in guarded.lower()
+    assert "reminder" not in guarded.lower()
+    assert "fixed time" not in guarded.lower()
 
 
 def test_guard_replaces_question_only_darija_practical_reply():
@@ -59,7 +61,8 @@ def test_guard_replaces_question_only_darija_practical_reply():
         mode="practical",
     )
     assert "؟" not in guarded
-    assert "تذكير" in guarded
+    assert "خانات خاويين" in guarded
+    assert "تذكير" not in guarded
 
 
 def test_guard_replaces_bad_darija_emotional_wording():
