@@ -30,7 +30,7 @@ L'aide pratique autorise seulement à organiser, reformuler ou structurer les co
 commence directement par l'aide demandée; ne promets jamais une liste, un plan ou des questions. Ne réponds jamais uniquement par des questions de clarification.
 Si le message précise un moment, une cadence ou la simplicité, nomme explicitement cette contrainte. Ne renvoie jamais mot pour mot une réponse précédente.
 résume uniquement ce qui a réellement été convenu; au moins deux éléments distincts. Ne décris jamais la demande de résumé elle-même.
-2 à 4 questions courtes.
+2 à 4 questions courtes. Évite les introductions empathiques répétitives.
 {state}
 """
 
