@@ -16,6 +16,10 @@ _FREQUENCY_SELECTION_PATTERN = re.compile(
     r"(?:\b(?:chaque jour|tous les jours|jour précédent|daily|every day|kol nhar)\b|كل\s*(?:نهار|يوم))",
     re.IGNORECASE,
 )
+_REMINDER_SELECTION_PATTERN = re.compile(
+    r"(?:\b(?:rappel|reminder)\b|تذكير)",
+    re.IGNORECASE,
+)
 _CLINICIAN_THERAPEUTIC_PATTERN = re.compile(
     r"(?:\b(?:dose|dosage|insulin|insuline|bolus|treatment|traitement)\b|"
     r"جرع|(?:ال)?[اإأ]نسولين|(?:ال)?أنسولين|علاج|دواء|الدواء)",
@@ -101,6 +105,7 @@ FORBIDDEN_BEHAVIOR_PATTERNS = (
         re.IGNORECASE,
     ),
     _FREQUENCY_SELECTION_PATTERN,
+    _REMINDER_SELECTION_PATTERN,
     _HEALTH_TRACKING_SELECTION_PATTERN,
     _SPECIFIC_SCHEDULE_SELECTION_PATTERN,
 )
