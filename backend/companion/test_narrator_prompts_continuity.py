@@ -22,4 +22,4 @@ def test_chat_prompt_forces_new_constraint_and_recap_handling():
     assert "reprends cette contrainte concrètement dans la réponse" in CHAT_USER
     assert "adapte-la au message courant au lieu de la répéter" in CHAT_USER
     assert "relie au moins deux éléments distincts" in CHAT_USER
-    assert "ne résume jamais seulement la demande actuelle" in CHAT_USER
+    assert "un résumé du seul dernier échange est invalide" in CHAT_USER
