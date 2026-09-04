@@ -1,6 +1,6 @@
 # IAMINA P5-5 End-to-End Pilot Rehearsal
 
-Status: ACTIVE — engineering rehearsal only. No patient data, legal/CNDP approval, production-signing proof, physical-device proof or Vercel deployment is implied.
+Status: ACTIVE — machine rehearsal certified on the retained source/tested SHA pair below; PR merge and post-merge validation remain required before P5-5 can be CLOSED. No patient data, legal/CNDP approval, production-signing proof, physical-device proof or Vercel deployment is implied.
 
 ## Goal
 
@@ -8,26 +8,51 @@ Prove, with one retained non-patient rehearsal packet, that IAMINA's pilot-criti
 
 ## Success
 
-P5-5 engineering success requires every machine-testable lane below to produce retained PASS/FAIL evidence on one exact Git SHA. A lane that depends on physical hardware, native listening, native linguistic review, live sensors, legal approval or production signing must remain explicitly gated and must not be relabelled PASS from synthetic evidence.
+P5-5 engineering success requires every machine-testable lane below to produce retained PASS/FAIL evidence on one exact Git source/tested SHA pair. A lane that depends on physical hardware, native listening, native linguistic review, live sensors, legal approval or production signing remains explicitly gated and is not relabelled PASS from synthetic evidence.
 
-## Proof
+## Retained green proof
 
-Retain exact SHA, workflow/run identifiers, fixture identifiers, commands/tests executed, PASS/FAIL per lane, and any negative qualification result.
+- source HEAD: `42cefbe4d1596274e2c7fd5e031bdbe382ee8c1f`
+- GitHub tested merge SHA: `cc97c604c51b1695336841398c5d60cecbb2f115`
+- P5-5 rehearsal run: `33563038752` — PASS
+- retained artifact: `9822090507`
+- artifact name: `p5-5-end-to-end-rehearsal-42cefbe4d1596274e2c7fd5e031bdbe382ee8c1f`
+- artifact digest: `sha256:9461d41bc7039695aabba530d551f632718b6045d1b67a21be93f8df9fc19387`
+- CI run: `33563038810` — PASS
+- migration drift run: `33563038791` — PASS
+- fixture class: `synthetic_only`
+- patient data: `false`
+- proof type: automated engineering
 
-## Rehearsal lanes
+## Final machine matrix
 
-| Lane | Required engineering proof | Current boundary |
+| Lane | Status | Retained proof / boundary |
 |---|---|---|
-| Onboarding | deterministic non-patient onboarding path reaches usable app state | machine-testable |
-| Manual data entry | representative glucose/context/meal/medication/reminder data persists | machine-testable |
-| Document import / OCR | bounded fixture import executes and qualification state is respected | Arabic full-document primary remains UNQUALIFIED |
-| Companion | deterministic safety/zero-model/LLM routing contracts remain enforced | machine-testable; no real-patient claim |
-| CGM | gateway accepts retained synthetic/provenance fixtures and preserves source truth | live physical sensor remains external |
-| Reports | retained local data produces expected report/export semantics | machine-testable where existing contracts exist |
-| Offline | app reopens with retained local data while app UID network egress is blocked | Android emulator proof already exists; physical device remains external |
-| Update | N-1 -> N install preserves package identity and Drift fixture | Android emulator proof already exists; production signing/physical device external |
-| Backup / restore | export/backup fixture can be restored without silent loss or storage reset | must be proven or explicitly FAIL/NOT IMPLEMENTED |
-| Degraded modes | provider/network/OCR/CGM failures remain bounded, truthful and non-destructive | machine-testable where failure injection exists |
+| Static analysis | PASS | `flutter analyze --no-fatal-infos` |
+| Onboarding | PASS | localized onboarding + consent contracts |
+| Manual data entry | PASS | synthetic glucose/context/meal/insulin/medication contracts |
+| Document import / OCR | PASS | synthetic import truthfulness + local Latin OCR smoke + OCR route/shield contracts; Arabic full-document primary remains UNQUALIFIED |
+| Companion | PASS | frontend truthfulness + deterministic zero-model/output guard contracts |
+| CGM | PASS | synthetic/provenance gateway contracts; live physical sensor not claimed |
+| Reports / export | PASS | deterministic local PDF bytes + summary truthfulness; UI share/print and Unicode PDF not claimed |
+| Offline | PASS | connectivity/sync contracts plus retained emulator prerequisite run `33440140316`; physical device not claimed |
+| Update | PASS | Drift N-1 to N migration contract plus retained emulator prerequisite run `33440140316`; production signing not claimed |
+| Backup / restore | PASS | versioned five-table Drift round trip + transactional rollback on invalid backup |
+| Degraded modes | PASS | provider/network/Companion/summary/import failures remain explicit and bounded |
+
+Overall machine rehearsal: **PASS**.
+
+## External / negative qualification boundaries
+
+| Boundary | Status | Evidence |
+|---|---|---|
+| Physical Android device | NOT_PROVEN | P5-4 evidence is emulator-only |
+| Live physical CGM sensor | NOT_PROVEN | synthetic/provenance fixtures only |
+| Production signing lineage | NOT_PROVEN | P5-4 cloud rehearsal does not prove production signing |
+| Arabic local full-document primary | UNQUALIFIED | retained P5-2 negative qualification remains authoritative |
+| Report Unicode/Arabic PDF | NOT_QUALIFIED | export fails closed outside printable ASCII instead of corrupting content |
+| Real-patient use | NOT_PROVEN | explicitly outside this synthetic rehearsal |
+| Vercel deployment | NOT_PERFORMED | outside P5-5 and not authorized |
 
 ## Automatic FAIL conditions
 
@@ -39,23 +64,10 @@ Retain exact SHA, workflow/run identifiers, fixture identifiers, commands/tests 
 - failure mode produces fabricated success, silent data loss or an unbounded retry loop;
 - backup/restore is claimed without a retained restore proof.
 
-## Existing retained evidence allowed as prerequisites
+## Existing retained prerequisite
 
-- P5-4 Android CI-only emulator upgrade rehearsal: run `33440140316`, artifact `9776292420`, digest `sha256:73c28c972fb43fd738bdbbfbc8de5628b67b3ba046f0bee95102ddf154226635`.
-- The Android rehearsal proves N-1 -> N package/update semantics, Drift preservation and offline reopen on an instrumented emulator only. It does not prove a physical device or production signing lineage.
-- P5-2 Arabic real-camera OCR qualification remains negative for local full-document Arabic primary and must be honored by P5-5.
-
-## Execution order
-
-1. inventory exact existing tests/scripts for each lane;
-2. mark every lane `COVERED`, `PARTIAL`, `MISSING` or `EXTERNAL_GATE` with file/test references;
-3. add the smallest missing deterministic fixtures/tests;
-4. create one P5-5 rehearsal runner that executes only retained non-patient evidence;
-5. run on one exact SHA and retain evidence artifact;
-6. fix any FAIL without weakening the contract;
-7. update this file with the final matrix and evidence references;
-8. PR -> CI -> merge -> post-merge.
+P5-4 Android CI-only emulator upgrade rehearsal: run `33440140316`, artifact `9776292420`, digest `sha256:73c28c972fb43fd738bdbbfbc8de5628b67b3ba046f0bee95102ddf154226635`. It proves N-1 -> N package/update semantics, Drift preservation and offline reopen on an instrumented emulator only. It does not prove a physical device or production signing lineage.
 
 ## Closure rule
 
-P5-5 closes only when every machine-testable lane is PASS and every non-machine lane is explicitly recorded as an external gate. P5-5 closure does not close P5-1, P5-3, P5-4 physical-device evidence or P5-6 real-patient authorization.
+Machine certification is green. P5-5 remains ACTIVE until this canonical evidence commit is itself green in PR CI, PR #535 is merged, and post-merge validation on `main` is green. P5-5 closure does not close P5-1, P5-3, P5-4 physical-device evidence or P5-6 real-patient authorization.
