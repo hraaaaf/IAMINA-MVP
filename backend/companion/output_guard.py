@@ -17,7 +17,11 @@ _FREQUENCY_SELECTION_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _REMINDER_SELECTION_PATTERN = re.compile(
-    r"(?:\b(?:rappel|reminder)\b|تذكير)",
+    r"(?:\b(?:rappel|reminder)\b|(?:تذكير|تذكّ?رك|ذكّ?رك))",
+    re.IGNORECASE,
+)
+_PRACTICAL_ORGANIZATION_PATTERN = re.compile(
+    r"(?:\b(?:checklist|check-list|box|boxes|case|cases|tick|structure|list|liste)\b|خانة|خانات)",
     re.IGNORECASE,
 )
 _CLINICIAN_THERAPEUTIC_PATTERN = re.compile(
@@ -38,6 +42,8 @@ _HEALTH_TRACKING_SELECTION_PATTERN = re.compile(
     rf"|{_ARABIC_HEALTH_TARGET}.{{0,80}}{_ARABIC_HEALTH_ACTION}"
     r"|\b(?:record|measure|check|log)\b.{0,24}\b(?:glucose|blood sugar|sugar reading)\b"
     r"|\b(?:glucose|blood sugar|sugar reading)\b.{0,24}\b(?:record|measure|check|log)\b"
+    r"|\b(?:vérifi(?:e|é|er)|verifi(?:e|é|er)|mesur(?:e|é|er)|not(?:e|é|er)|enregistr(?:e|é|er))\b.{0,40}\b(?:glycémie|glycemie|sucre)\b"
+    r"|\b(?:glycémie|glycemie|sucre)\b.{0,40}\b(?:vérifi(?:e|é|er)|verifi(?:e|é|er)|mesur(?:e|é|er)|not(?:e|é|er)|enregistr(?:e|é|er))\b"
     r"|(?:after dinner|before breakfast|before bed|after breakfast|after lunch).{0,32}(?:glucose|sugar|insulin)"
     r"|(?:glucose|sugar|insulin).{0,32}(?:after dinner|before breakfast|before bed|after breakfast|after lunch)"
     r"|(?:après le dîner|avant le petit-déjeuner|avant de me coucher|après le petit-déjeuner).{0,32}(?:glycémie|sucre|insuline)"
@@ -317,7 +323,16 @@ def guard_narrator_output(
     else:
         therapeutic = bool(_CLINICIAN_THERAPEUTIC_PATTERN.search(reply))
         question_only_shape = question_count >= 2
-        invalid_shape = words > 45 or lines > 5 or therapeutic or question_only_shape
+        missing_practical_mechanism = (
+            mode == "practical" and not _PRACTICAL_ORGANIZATION_PATTERN.search(reply)
+        )
+        invalid_shape = (
+            words > 45
+            or lines > 5
+            or therapeutic
+            or question_only_shape
+            or missing_practical_mechanism
+        )
 
     if (
         forbidden
