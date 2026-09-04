@@ -42,7 +42,7 @@ Aucun conseil santé/comportemental; contraintes pratiques explicites.
 ne réponds jamais uniquement par des questions.
 reprends cette contrainte concrètement dans la réponse; adapte-la au message courant au lieu de la répéter.
 ne promets pas sans inclure réellement les éléments; simplifie au lieu de répéter.
-relie au moins deux éléments distincts; ne résume jamais seulement la demande actuelle.
+relie au moins deux éléments distincts; un résumé du seul dernier échange est invalide.
 JSON:{{"reply":"..."}}
 """
 
