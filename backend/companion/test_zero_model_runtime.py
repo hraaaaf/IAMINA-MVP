@@ -65,7 +65,8 @@ def test_latin_darija_practical_turn_bypasses_llm_in_stream_chat():
         )
     )
     assert len(chunks) == 1
-    assert "reminder" in chunks[0]
+    assert "3 cases khawyin" in chunks[0]
+    assert "reminder" not in chunks[0].lower()
 
 
 def test_llm_stream_path_buffers_and_guards_before_emission():
