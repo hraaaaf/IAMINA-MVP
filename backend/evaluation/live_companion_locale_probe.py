@@ -23,6 +23,11 @@ _EVENING_MARKERS = {
     "ar-QA": ("بالليل", "عقب العشا", "العشا"),
     "ar-OM": ("بالليل", "بعد العشا", "العشا"),
 }
+_EXTRA_TIME_PATTERNS = {
+    "fr": re.compile(r"\b(?:matin|midi|déjeuner|dejeuner|avant de (?:se|me) coucher)\b", re.IGNORECASE),
+    "en": re.compile(r"\b(?:morning|noon|lunch|before bed|bedtime)\b", re.IGNORECASE),
+    "ar": re.compile(r"(?:الصباح|الفطور|الظهر|الغداء|قبل النوم)"),
+}
 
 _GULF_DIALECT_MARKERS = {
     "ar-SA": ("وش", "أبغ", "الحين", "هالمشكلة", "خلّها", "نخليها", "فاضية بس"),
@@ -58,6 +63,12 @@ def _normalized(text: str) -> str:
 def _contains_evening_anchor(locale: str, text: str) -> bool:
     normalized = _normalized(text)
     return any(marker.casefold() in normalized for marker in _EVENING_MARKERS[locale])
+
+
+def _contains_unrequested_extra_time(locale: str, user: str, reply: str) -> bool:
+    family = locale if locale in {"fr", "en"} else "ar"
+    pattern = _EXTRA_TIME_PATTERNS[family]
+    return bool(pattern.search(reply)) and not bool(pattern.search(user))
 
 
 def _is_meta_recap(locale: str, text: str) -> bool:
@@ -117,11 +128,14 @@ def run_locale(locale: str, output: Path) -> dict:
             "routine_problem: invents an evening/after-dinner constraint not present in current turn"
         )
 
-    t2 = transcript["evening_constraint"]["iamina"]
+    t2_item = transcript["evening_constraint"]
+    t2 = t2_item["iamina"]
     if _normalized(t2) == _normalized(t1):
         failures.append("evening_constraint: repeats routine_problem verbatim")
     if not _contains_evening_anchor(locale, t2):
         failures.append("evening_constraint: missing explicit evening/after-dinner adaptation")
+    if _contains_unrequested_extra_time(locale, t2_item["user"], t2):
+        failures.append("evening_constraint: invents an additional time anchor not present in current turn")
 
     recap = transcript["recap"]["iamina"]
     if _is_meta_recap(locale, recap):
