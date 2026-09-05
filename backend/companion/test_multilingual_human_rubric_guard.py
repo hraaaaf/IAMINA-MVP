@@ -187,3 +187,29 @@ def test_guard_rejects_arabic_reminder_inflection_from_live_parity():
     assert guarded != reply
     assert "تذكّرك" not in guarded
     assert "وايد" in guarded
+
+
+@pytest.mark.parametrize(
+    ("language", "reply", "marker"),
+    [
+        (
+            "ar-KW",
+            "طلبت شيء بسيط جداً، فاقتراح بسيط: ورقة فيها ثلاث خانات فاضية تكتب فيها المعلومات اللي تختارها.",
+            "حيل",
+        ),
+        (
+            "ar-QA",
+            "طلبت شيء بسيط جداً، نقدر نرتب لك ثلاث خانات فاضية تملأها بالمعلومات اللي تختارها.",
+            "وايد",
+        ),
+    ],
+)
+def test_guard_does_not_treat_arabic_simple_word_as_gulf_dialect_marker(language, reply, marker):
+    guarded = guard_narrator_output(
+        reply,
+        language=language,
+        approved_session_context=False,
+        mode="practical",
+    )
+    assert guarded != reply
+    assert marker in guarded
