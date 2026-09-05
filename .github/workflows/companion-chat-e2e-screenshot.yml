@@ -1,0 +1,355 @@
+name: Companion real chat E2E screenshots
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/companion/**'
+      - 'frontend/lib/services/companion_service.dart'
+      - 'frontend/lib/ui_companion_chat_e2e_main.dart'
+      - 'frontend/lib/modules/diabetes_module.dart'
+      - 'frontend/test/services/companion_service_chat_test.dart'
+      - 'backend/ai/api/v1/ai.py'
+      - 'backend/companion/**'
+      - '.github/workflows/companion-chat-e2e-screenshot.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  real-chat-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      BASELINE_SHA: e2015dfd82840ab74295eb7689ebdcd3c21068bd
+      AFTER_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: iamina-companion-chat-e2e-nonproduction
+      DEBUG: 'True'
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: sqlite:///iamina-companion-chat-e2e.db
+      IAMINA_CONVERSATION_NETWORK_AUTHORIZED: 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Prepare proof directory
+        run: mkdir -p companion-chat-e2e
+
+      - name: Capture BEFORE companion overview at 390x844
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach "$BASELINE_SHA"
+          cd frontend
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart
+          flutter build web --release -t lib/ui_browser_audit_main.dart
+          python3 -m pip install --quiet websocket-client
+          python3 -m http.server 7357 --directory build/web >/tmp/iamina-before-http.log 2>&1 &
+          HTTP_PID=$!
+          trap 'kill "$HTTP_PID" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:7357 >/dev/null && break
+            sleep 1
+          done
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          PROFILE="$(mktemp -d)"
+          "$CHROME" --headless=new --no-sandbox --enable-unsafe-swiftshader --hide-scrollbars \
+            --remote-allow-origins='*' --remote-debugging-port=9222 --user-data-dir="$PROFILE" \
+            --window-size=390,844 'http://127.0.0.1:7357/?surface=companion' >/tmp/iamina-before-chrome.log 2>&1 &
+          CHROME_PID=$!
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:9222/json/list >/dev/null && break
+            sleep 1
+          done
+          cat > /tmp/capture_before.py <<'PY'
+          import base64, json, time, urllib.request
+          from websocket import create_connection
+          pages = json.load(urllib.request.urlopen('http://127.0.0.1:9222/json/list'))
+          page = next(item for item in pages if item.get('type') == 'page')
+          ws = create_connection(page['webSocketDebuggerUrl'], timeout=20)
+          counter = 0
+          def call(method, params=None):
+              global counter
+              counter += 1
+              ws.send(json.dumps({'id': counter, 'method': method, 'params': params or {}}))
+              while True:
+                  response = json.loads(ws.recv())
+                  if response.get('id') == counter:
+                      return response
+          call('Page.enable')
+          call('Emulation.setDeviceMetricsOverride', {'width':390,'height':844,'deviceScaleFactor':1,'mobile':True})
+          call('Page.reload', {'ignoreCache': True})
+          time.sleep(10)
+          shot = call('Page.captureScreenshot', {'format':'png','captureBeyondViewport':False,'fromSurface':True})
+          data = shot['result']['data']
+          open('../companion-chat-e2e/before-companion-overview-390x844.png','wb').write(base64.b64decode(data))
+          ws.close()
+          PY
+          python3 /tmp/capture_before.py
+          test -s ../companion-chat-e2e/before-companion-overview-390x844.png
+          kill "$CHROME_PID" "$HTTP_PID" 2>/dev/null || true
+          rm -rf "$PROFILE"
+          trap - EXIT
+          cd ..
+          git checkout --detach "$AFTER_SHA"
+
+      - name: Validate current Flutter chat implementation
+        working-directory: frontend
+        run: |
+          flutter pub get
+          dart format --output=none --set-exit-if-changed \
+            lib/features/companion/companion_conversation_screen.dart \
+            lib/services/companion_service.dart \
+            lib/ui_companion_chat_e2e_main.dart \
+            test/services/companion_service_chat_test.dart
+          flutter analyze --no-fatal-infos \
+            lib/features/companion/companion_conversation_screen.dart \
+            lib/services/companion_service.dart \
+            lib/ui_companion_chat_e2e_main.dart \
+            lib/modules/diabetes_module.dart
+          flutter test test/services/companion_service_chat_test.dart
+
+      - name: Start real local IAMINA backend and synthetic identity
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          pip install -r requirements.txt
+          python manage.py migrate --noinput
+          python manage.py runserver 127.0.0.1:8000 >/tmp/iamina-chat-backend.log 2>&1 &
+          echo $! >/tmp/iamina-chat-backend.pid
+          READY=0
+          for _ in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8000/api/v1/health >/dev/null 2>&1 || \
+               curl -fsS http://127.0.0.1:8000/api/docs >/dev/null 2>&1; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" != '1' ]; then
+            cat /tmp/iamina-chat-backend.log >&2
+            exit 1
+          fi
+          EMAIL="e2e-chat-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}@example.invalid"
+          PASSWORD='IAMINA-E2E-2026!Synthetic#42'
+          python - <<'PY' > /tmp/register-payload.json
+          import json, os
+          print(json.dumps({
+              'email': os.environ['EMAIL'],
+              'password': os.environ['PASSWORD'],
+              'first_name': 'Synthetic',
+              'last_name': 'E2E',
+          }))
+          PY
+        env:
+          EMAIL: e2e-chat-${{ github.run_id }}-${{ github.run_attempt }}@example.invalid
+          PASSWORD: IAMINA-E2E-2026!Synthetic#42
+
+      - name: Register synthetic user and retain token locally only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST http://127.0.0.1:8000/api/v1/auth/register \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/register-payload.json > /tmp/register-response.json
+          python3 - <<'PY'
+          import json
+          payload = json.load(open('/tmp/register-response.json'))
+          token = payload.get('access_token', '')
+          assert token.startswith('iamina.'), 'synthetic native token missing'
+          open('/tmp/iamina-e2e-token', 'w').write(token)
+          print('Synthetic IAMINA identity created; token retained locally only.')
+          PY
+
+      - name: Build current real chat browser entrypoint
+        working-directory: frontend
+        run: |
+          flutter build web --release -t lib/ui_companion_chat_e2e_main.dart \
+            --dart-define=API_BASE_URL=http://127.0.0.1:7358
+
+      - name: Run real Chrome exchange and capture typed + reply states
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet websocket-client
+          cat > /tmp/iamina_proxy.py <<'PY'
+          import http.client
+          import http.server
+          import os
+          from pathlib import Path
+          from urllib.parse import urlsplit
+
+          root = Path(os.environ['STATIC_ROOT'])
+          proof = Path(os.environ['PROOF_DIR'])
+          token = Path('/tmp/iamina-e2e-token').read_text().strip()
+
+          class Handler(http.server.SimpleHTTPRequestHandler):
+              def __init__(self, *args, **kwargs):
+                  super().__init__(*args, directory=str(root), **kwargs)
+
+              def do_POST(self):
+                  if not self.path.startswith('/api/'):
+                      self.send_error(404)
+                      return
+                  length = int(self.headers.get('content-length', '0'))
+                  body = self.rfile.read(length)
+                  conn = http.client.HTTPConnection('127.0.0.1', 8000, timeout=30)
+                  headers = {
+                      'Authorization': f'Bearer {token}',
+                      'Content-Type': self.headers.get('content-type', 'application/json'),
+                  }
+                  conn.request('POST', self.path, body=body, headers=headers)
+                  response = conn.getresponse()
+                  payload = response.read()
+                  self.send_response(response.status)
+                  self.send_header('Content-Type', response.getheader('Content-Type', 'application/json'))
+                  self.send_header('Content-Length', str(len(payload)))
+                  self.end_headers()
+                  self.wfile.write(payload)
+                  if self.path == '/api/v1/ai/chat':
+                      proof.mkdir(parents=True, exist_ok=True)
+                      (proof / 'chat-response.json').write_bytes(payload)
+                      (proof / 'chat-request.json').write_bytes(body)
+                  conn.close()
+
+              def log_message(self, fmt, *args):
+                  return
+
+          http.server.ThreadingHTTPServer(('127.0.0.1', 7358), Handler).serve_forever()
+          PY
+          STATIC_ROOT="$GITHUB_WORKSPACE/frontend/build/web" \
+          PROOF_DIR="$GITHUB_WORKSPACE/companion-chat-e2e" \
+            python3 /tmp/iamina_proxy.py >/tmp/iamina-e2e-proxy.log 2>&1 &
+          PROXY_PID=$!
+          trap 'kill "$PROXY_PID" "$(cat /tmp/iamina-chat-backend.pid 2>/dev/null)" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:7358 >/dev/null && break
+            sleep 1
+          done
+
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          PROFILE="$(mktemp -d)"
+          "$CHROME" --headless=new --no-sandbox --enable-unsafe-swiftshader --hide-scrollbars \
+            --force-renderer-accessibility --remote-allow-origins='*' \
+            --remote-debugging-port=9222 --user-data-dir="$PROFILE" --window-size=390,844 \
+            http://127.0.0.1:7358/ >/tmp/iamina-chat-chrome.log 2>&1 &
+          CHROME_PID=$!
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:9222/json/list >/dev/null && break
+            sleep 1
+          done
+
+          cat > /tmp/chat_cdp.py <<'PY'
+          import base64
+          import json
+          import time
+          import urllib.request
+          from pathlib import Path
+          from websocket import create_connection
+
+          proof = Path('companion-chat-e2e')
+          pages = json.load(urllib.request.urlopen('http://127.0.0.1:9222/json/list'))
+          page = next(item for item in pages if item.get('type') == 'page')
+          ws = create_connection(page['webSocketDebuggerUrl'], timeout=20)
+          counter = 0
+          def call(method, params=None):
+              global counter
+              counter += 1
+              ws.send(json.dumps({'id': counter, 'method': method, 'params': params or {}}))
+              while True:
+                  response = json.loads(ws.recv())
+                  if response.get('id') == counter:
+                      if 'error' in response:
+                          raise RuntimeError(response['error'])
+                      return response.get('result', {})
+          def screenshot(name):
+              shot = call('Page.captureScreenshot', {
+                  'format': 'png', 'captureBeyondViewport': False, 'fromSurface': True,
+              })
+              (proof / name).write_bytes(base64.b64decode(shot['data']))
+          def click(x, y):
+              call('Input.dispatchMouseEvent', {'type':'mousePressed','x':x,'y':y,'button':'left','clickCount':1})
+              call('Input.dispatchMouseEvent', {'type':'mouseReleased','x':x,'y':y,'button':'left','clickCount':1})
+
+          call('Page.enable')
+          call('Runtime.enable')
+          call('Emulation.setDeviceMetricsOverride', {
+              'width':390,'height':844,'deviceScaleFactor':1,'mobile':True,
+          })
+          call('Page.reload', {'ignoreCache': True})
+          time.sleep(8)
+          screenshot('chat-empty-390x844.png')
+
+          message = "Est-ce que tu peux me dire quelle dose d'insuline prendre ?"
+          click(155, 793)
+          time.sleep(.5)
+          call('Input.insertText', {'text': message})
+          time.sleep(.8)
+          screenshot('chat-typed-390x844.png')
+          click(354, 793)
+
+          deadline = time.time() + 12
+          while time.time() < deadline:
+              if (proof / 'chat-response.json').exists():
+                  break
+              time.sleep(.25)
+          if not (proof / 'chat-response.json').exists():
+              raise RuntimeError('No /api/v1/ai/chat response captured from the app')
+          payload = json.loads((proof / 'chat-response.json').read_text())
+          reply = payload.get('reply', '')
+          if not reply or payload.get('reply_language') != 'fr':
+              raise RuntimeError(f'Unexpected real chat response: {payload}')
+          time.sleep(2)
+          screenshot('chat-reply-390x844.png')
+          ws.close()
+          PY
+          python3 /tmp/chat_cdp.py
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          request = json.loads(Path('companion-chat-e2e/chat-request.json').read_text())
+          response = json.loads(Path('companion-chat-e2e/chat-response.json').read_text())
+          assert request['message'] == "Est-ce que tu peux me dire quelle dose d'insuline prendre ?"
+          assert request['context_days'] == 14
+          assert response['reply']
+          assert response['conversation_id'].startswith('conv-')
+          assert response['reply_language'] == 'fr'
+          for name in ('chat-empty-390x844.png', 'chat-typed-390x844.png', 'chat-reply-390x844.png'):
+              path = Path('companion-chat-e2e') / name
+              assert path.stat().st_size > 10000, (name, path.stat().st_size)
+          print('Real UI -> proxy -> IAMINA API -> certified Companion exchange verified.')
+          PY
+
+          kill "$CHROME_PID" "$PROXY_PID" "$(cat /tmp/iamina-chat-backend.pid)" 2>/dev/null || true
+          rm -rf "$PROFILE"
+          trap - EXIT
+
+      - name: Upload real chat visual proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-companion-real-chat-e2e
+          path: |
+            companion-chat-e2e/*.png
+            companion-chat-e2e/chat-request.json
+            companion-chat-e2e/chat-response.json
+          if-no-files-found: warn
+          retention-days: 7
