@@ -24,6 +24,16 @@ _PRACTICAL_ORGANIZATION_PATTERN = re.compile(
     r"(?:\b(?:checklist|check-list|box|boxes|case|cases|tick|structure|list|liste)\b|خانة|خانات)",
     re.IGNORECASE,
 )
+_PRACTICAL_PLACEMENT_PATTERN = re.compile(
+    r"(?:"
+    r"\b(?:keep|put|place|leave)\b.{0,48}\b(?:on|near|by)\b.{0,24}"
+    r"\b(?:kitchen\s+counter|counter|fridge|refrigerator|bedside\s+table|table|door|sink)\b"
+    r"|\b(?:mets?|place|garde)\b.{0,48}\b(?:sur|près de|à côté de)\b.{0,24}"
+    r"\b(?:table|frigo|réfrigérateur|comptoir|lit)\b"
+    r"|(?:حط|ضع|خلي).{0,40}(?:على|جنب|قريب من).{0,24}(?:الطاولة|الثلاجة|المطبخ|السرير)"
+    r")",
+    re.IGNORECASE,
+)
 _CLINICIAN_THERAPEUTIC_PATTERN = re.compile(
     r"(?:\b(?:dose|dosage|insulin|insuline|bolus|treatment|traitement)\b|"
     r"جرع|(?:ال)?[اإأ]نسولين|(?:ال)?أنسولين|علاج|دواء|الدواء)",
@@ -112,6 +122,7 @@ FORBIDDEN_BEHAVIOR_PATTERNS = (
     ),
     _FREQUENCY_SELECTION_PATTERN,
     _REMINDER_SELECTION_PATTERN,
+    _PRACTICAL_PLACEMENT_PATTERN,
     _HEALTH_TRACKING_SELECTION_PATTERN,
     _SPECIFIC_SCHEDULE_SELECTION_PATTERN,
 )
