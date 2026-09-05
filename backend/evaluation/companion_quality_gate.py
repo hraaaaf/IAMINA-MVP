@@ -16,7 +16,7 @@ from companion.output_guard import ARABIC_RE, FORBIDDEN_BEHAVIOR_PATTERNS
 EXPECTED_ROUTES = {"safety": 2, "zero_model": 7, "llm": 1}
 
 _ORGANIZATION_RE = re.compile(
-    r"\b(?:rappel|alarme|checklist|check-list|liste|case|coche|noter?|routine|"
+    r"\b(?:rappel|alarme|checklist|check-list|liste|cases?|coche|noter?|routine|"
     r"agenda|calendrier|moment fixe|heure fixe|une fois|un seul|wa9t|sa3a|reminder)\b",
     re.IGNORECASE,
 )

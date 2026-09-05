@@ -1,0 +1,85 @@
+name: IAMINA Companion multilingual parity probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - audit/companion-multilingual-real-conversation
+    paths:
+      - "backend/evaluation/live_companion_multilingual_parity.py"
+      - "backend/evaluation/live_companion_locale_probe.py"
+      - "backend/evaluation/companion_quality_gate.py"
+      - "backend/evaluation/tests/test_live_companion_locale_probe_quality.py"
+      - "backend/evaluation/tests/test_live_companion_locale_probe_human_gate.py"
+      - "backend/evaluation/tests/test_companion_quality_contract.py"
+      - "backend/evaluation/frug5_product_prompt_gulf_benchmark.py"
+      - "backend/evaluation/tests/test_frug5_product_prompt_gulf_benchmark.py"
+      - "backend/core/input_safety.py"
+      - "backend/core/tests/test_input_safety.py"
+      - "backend/companion/conversation.py"
+      - "backend/companion/narrator_prompts.py"
+      - "backend/companion/test_conversation_intent.py"
+      - "backend/companion/test_narrator_prompts_continuity.py"
+      - "backend/companion/test_runtime_continuity.py"
+      - "backend/companion/test_multilingual_human_rubric_guard.py"
+      - "backend/companion/output_guard.py"
+      - "backend/companion/test_output_guard.py"
+      - "backend/companion/test_practical_placement_guard.py"
+      - "backend/companion/test_safety_script.py"
+      - ".github/workflows/live-companion-multilingual-parity.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: iamina-companion-multilingual-parity
+  cancel-in-progress: true
+
+jobs:
+  parity:
+    name: Real Companion ${{ matrix.locale }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        locale: [fr, en, ar, ar-MA, ar-SA, ar-AE, ar-KW, ar-QA, ar-OM]
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: iamina-multilingual-parity-nonproduction
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: sqlite:///iamina-multilingual-parity.db
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      IAMINA_CONVERSATION_NETWORK_AUTHORIZED: "true"
+      IAMINA_PROBE_LOCALE: ${{ matrix.locale }}
+      IAMINA_MULTILINGUAL_REPORT: ../artifacts/iamina-companion-${{ matrix.locale }}.json
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend dependencies
+        run: pip install -r requirements.txt ruff==0.15.17
+      - name: Validate safety and probe before network
+        run: |
+          ruff check core/input_safety.py core/tests/test_input_safety.py companion/conversation.py companion/narrator_prompts.py companion/test_conversation_intent.py companion/test_narrator_prompts_continuity.py companion/test_runtime_continuity.py companion/test_multilingual_human_rubric_guard.py companion/output_guard.py companion/test_output_guard.py companion/test_practical_placement_guard.py companion/test_safety_script.py evaluation/live_companion_multilingual_parity.py evaluation/live_companion_locale_probe.py evaluation/companion_quality_gate.py evaluation/tests/test_live_companion_locale_probe_quality.py evaluation/tests/test_live_companion_locale_probe_human_gate.py evaluation/tests/test_companion_quality_contract.py evaluation/frug5_product_prompt_gulf_benchmark.py evaluation/tests/test_frug5_product_prompt_gulf_benchmark.py
+          pytest -q core/tests/test_input_safety.py companion/test_conversation_intent.py companion/test_narrator_prompts_continuity.py companion/test_runtime_continuity.py companion/test_multilingual_human_rubric_guard.py companion/test_output_guard.py companion/test_practical_placement_guard.py companion/test_safety_script.py evaluation/tests/test_live_companion_locale_probe_quality.py evaluation/tests/test_live_companion_locale_probe_human_gate.py evaluation/tests/test_companion_quality_contract.py evaluation/tests/test_frug5_product_prompt_gulf_benchmark.py
+          python manage.py migrate --noinput
+          python manage.py shell -c "from evaluation.live_companion_multilingual_parity import validate_scenarios; print(validate_scenarios())"
+      - name: Run bounded real locale Companion probe
+        run: python manage.py shell -c "from evaluation.live_companion_locale_probe import main; main()"
+      - name: Upload raw synthetic transcript
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-companion-${{ matrix.locale }}
+          path: artifacts/iamina-companion-${{ matrix.locale }}.json
+          if-no-files-found: warn
+          retention-days: 7
