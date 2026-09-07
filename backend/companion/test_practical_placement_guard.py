@@ -102,3 +102,20 @@ def test_post_filter_rejects_bad_emirati_empathy_from_live_parity():
     assert "نفكّس شوية" not in guarded
     assert "ترا هالشي متعب وايد" in guarded
     assert "وأنا وياك" in guarded
+
+
+def test_post_filter_rejects_invented_french_tracking_checklist_from_live_parity():
+    reply = (
+        "Voici une petite checklist très simple à placer après le dîner :\n"
+        "[ ] J’ai noté mon suivi du diabète\n"
+        "[ ] J’ai vérifié le point essentiel que j’ai choisi\n"
+        "[ ] J’ai coché la case correspondante\n"
+        "Utilise‑la chaque soir, rien de plus."
+    )
+    guarded = sanitize_practical_boundary(reply)
+    assert guarded != reply
+    assert "suivi du diabète" not in guarded.lower()
+    assert "point essentiel" not in guarded.lower()
+    assert "chaque soir" not in guarded.lower()
+    assert "trois cases vides" in guarded.lower()
+    assert "après le dîner" in guarded.lower()
