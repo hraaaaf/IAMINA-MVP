@@ -83,14 +83,21 @@ class _CompanionConversationScreenState
       body: SafeArea(
         child: Column(
           children: [
-            _ConversationHeader(onClose: () => Navigator.of(context).maybePop()),
+            _ConversationHeader(
+              onClose: () => Navigator.of(context).maybePop(),
+            ),
             Expanded(
               child: _messages.isEmpty
                   ? const _EmptyConversation()
                   : ListView.separated(
                       key: const Key('companion-chat-message-list'),
                       controller: _scrollController,
-                      padding: const EdgeInsetsDirectional.fromSTEB(18, 18, 18, 20),
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                        18,
+                        18,
+                        18,
+                        20,
+                      ),
                       itemCount: _messages.length + (_sending ? 1 : 0),
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
@@ -139,7 +146,9 @@ class _ConversationHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(18, 12, 12, 12),
       decoration: BoxDecoration(
-        color: AminaVisualLanguage.controlSurface(context).withValues(alpha: .94),
+        color: AminaVisualLanguage.controlSurface(
+          context,
+        ).withValues(alpha: .94),
         border: Border(
           bottom: BorderSide(color: AminaVisualLanguage.controlBorder(context)),
         ),
@@ -155,7 +164,10 @@ class _ConversationHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(15),
               boxShadow: AminaVisualLanguage.cardShadowLight,
             ),
-            child: Image.asset('assets/images/logo_amina.png', fit: BoxFit.contain),
+            child: Image.asset(
+              'assets/images/logo_amina.png',
+              fit: BoxFit.contain,
+            ),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -195,7 +207,9 @@ class _ConversationHeader extends StatelessWidget {
               minimumSize: const Size(44, 44),
               backgroundColor: AminaVisualLanguage.controlSurface(context),
               foregroundColor: AminaVisualLanguage.forestDeep,
-              side: BorderSide(color: AminaVisualLanguage.controlBorder(context)),
+              side: BorderSide(
+                color: AminaVisualLanguage.controlBorder(context),
+              ),
             ),
           ),
         ],
@@ -279,7 +293,9 @@ class _Composer extends StatelessWidget {
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 12, 14),
       decoration: BoxDecoration(
-        color: AminaVisualLanguage.controlSurface(context).withValues(alpha: .96),
+        color: AminaVisualLanguage.controlSurface(
+          context,
+        ).withValues(alpha: .96),
         border: Border(
           top: BorderSide(color: AminaVisualLanguage.controlBorder(context)),
         ),
@@ -305,7 +321,12 @@ class _Composer extends StatelessWidget {
                 ),
                 filled: true,
                 fillColor: AminaVisualLanguage.controlSurface(context),
-                contentPadding: const EdgeInsetsDirectional.fromSTEB(15, 13, 15, 13),
+                contentPadding: const EdgeInsetsDirectional.fromSTEB(
+                  15,
+                  13,
+                  15,
+                  13,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(18),
                   borderSide: BorderSide(
@@ -352,21 +373,25 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUser = message.role == _ConversationRole.user;
     return Align(
-      alignment: isUser ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
+      alignment: isUser
+          ? AlignmentDirectional.centerEnd
+          : AlignmentDirectional.centerStart,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 310),
         child: Container(
-          key: Key(isUser ? 'companion-user-bubble' : 'companion-assistant-bubble'),
+          key: Key(
+            isUser ? 'companion-user-bubble' : 'companion-assistant-bubble',
+          ),
           padding: const EdgeInsetsDirectional.fromSTEB(15, 12, 15, 12),
           decoration: BoxDecoration(
             color: isUser
                 ? AminaVisualLanguage.forestDeep
                 : AminaVisualLanguage.controlSurface(context),
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(19),
-              topRight: const Radius.circular(19),
-              bottomLeft: Radius.circular(isUser ? 19 : 6),
-              bottomRight: Radius.circular(isUser ? 6 : 19),
+            borderRadius: BorderRadiusDirectional.only(
+              topStart: const Radius.circular(19),
+              topEnd: const Radius.circular(19),
+              bottomStart: Radius.circular(isUser ? 19 : 6),
+              bottomEnd: Radius.circular(isUser ? 6 : 19),
             ),
             border: isUser
                 ? null
