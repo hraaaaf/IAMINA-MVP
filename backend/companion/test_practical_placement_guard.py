@@ -29,3 +29,16 @@ def test_guard_rejects_darija_masculine_feminine_mismatch():
     assert guarded != reply
     assert "نتا اخترتي" not in guarded
     assert "نتا اخترت" in guarded
+
+
+def test_guard_rejects_broken_arabic_empathy_from_live_parity():
+    reply = "أشعر بكمّك، وأقدّر صعوبة التحمل مع التفكير المتواصل في السكري."
+    guarded = guard_narrator_output(
+        reply,
+        language="ar",
+        approved_session_context=False,
+        mode="emotional",
+    )
+    assert guarded != reply
+    assert "أشعر بكمّك" not in guarded
+    assert "متعب" in guarded
