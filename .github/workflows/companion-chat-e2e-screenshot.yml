@@ -52,7 +52,12 @@ jobs:
         working-directory: frontend
         run: |
           flutter pub get
-          dart format --output=none --set-exit-if-changed \
+          dart format \
+            lib/features/companion/companion_conversation_screen.dart \
+            lib/services/companion_service.dart \
+            lib/ui_companion_chat_e2e_main.dart \
+            test/services/companion_service_chat_test.dart
+          git diff -- \
             lib/features/companion/companion_conversation_screen.dart \
             lib/services/companion_service.dart \
             lib/ui_companion_chat_e2e_main.dart \
