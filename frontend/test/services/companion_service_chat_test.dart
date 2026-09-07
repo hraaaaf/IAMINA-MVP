@@ -1,10 +1,10 @@
 import 'dart:convert';
 
+import 'package:amina/services/auth_service.dart';
+import 'package:amina/services/companion_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:iamina/services/auth_service.dart';
-import 'package:iamina/services/companion_service.dart';
 
 class _TokenAuthService extends AuthService {
   _TokenAuthService();
