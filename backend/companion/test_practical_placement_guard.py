@@ -58,3 +58,35 @@ def test_guard_rejects_invented_french_self_reminder_from_live_parity():
     assert guarded != reply
     assert "te rappeler" not in guarded.lower()
     assert "cases vides" in guarded.lower()
+
+
+def test_guard_rejects_invented_kuwaiti_tracking_content_from_live_parity():
+    reply = (
+        "حط لك قالب بسيط فيه ثلاث خانات فاضية تكتب فيها ملاحظاتك أو توقيت المتابعة، "
+        "وتعبّيها فقط بالمعلومات اللي تختارها من قبل."
+    )
+    guarded = guard_narrator_output(
+        reply,
+        language="ar-KW",
+        approved_session_context=False,
+        mode="practical",
+    )
+    assert guarded != reply
+    assert "ملاحظاتك أو توقيت المتابعة" not in guarded
+    assert "ثلاث خانات فاضية" in guarded
+
+
+def test_guard_rejects_invented_omani_memory_trigger_from_live_parity():
+    reply = (
+        "ممكن تحط ثلاثة خانات فاضية بدون محتوى محدد الآن، "
+        "وتعبّي أي خانة تختارها وقت ما تحس إنك تذكّرت."
+    )
+    guarded = guard_narrator_output(
+        reply,
+        language="ar-OM",
+        approved_session_context=False,
+        mode="practical",
+    )
+    assert guarded != reply
+    assert "وقت ما تحس" not in guarded
+    assert "ثلاث خانات فاضية" in guarded
