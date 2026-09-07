@@ -42,3 +42,19 @@ def test_guard_rejects_broken_arabic_empathy_from_live_parity():
     assert guarded != reply
     assert "أشعر بكمّك" not in guarded
     assert "متعب" in guarded
+
+
+def test_guard_rejects_invented_french_self_reminder_from_live_parity():
+    reply = (
+        "Voici trois cases simples pour le soir après le dîner. "
+        "Tu peux les garder visibles pour te rappeler de ton suivi."
+    )
+    guarded = guard_narrator_output(
+        reply,
+        language="fr",
+        approved_session_context=False,
+        mode="practical",
+    )
+    assert guarded != reply
+    assert "te rappeler" not in guarded.lower()
+    assert "cases vides" in guarded.lower()
