@@ -83,3 +83,22 @@ def test_post_filter_rejects_invented_omani_memory_trigger_from_live_parity():
     assert "وقت ما تحس" not in guarded
     assert "واجد" in guarded
     assert "ثلاث خانات فاضية" in guarded
+
+
+def test_post_filter_rejects_invented_darija_content_from_live_parity():
+    reply = "من بعد العشا، دير ثلاث خانات خاويين وتعبّيهم غير ب-«اخترت هاد الشي» ملي كتفطر العشا."
+    guarded = sanitize_practical_boundary(reply)
+    assert guarded != reply
+    assert "اخترت هاد الشي" not in guarded
+    assert "كتفطر العشا" not in guarded
+    assert "خانات خاويين" in guarded
+    assert "نتا اخترت من قبل" in guarded
+
+
+def test_post_filter_rejects_bad_emirati_empathy_from_live_parity():
+    reply = "ترا التفكير بهالشي متعب وايد، وكلنا نحتاج نفكّس شوية."
+    guarded = sanitize_practical_boundary(reply)
+    assert guarded != reply
+    assert "نفكّس شوية" not in guarded
+    assert "ترا هالشي متعب وايد" in guarded
+    assert "وأنا وياك" in guarded
