@@ -17,7 +17,7 @@ _FREQUENCY_SELECTION_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _REMINDER_SELECTION_PATTERN = re.compile(
-    r"(?:\b(?:rappel|reminder)\b|(?:تذكير|تذكّ?رك|ذكّ?رك))",
+    r"(?:\b(?:rappel|reminder)\b|pour\s+(?:te|vous)\s+rappeler|to\s+remind\s+yourself|so\s+you\s+remember|(?:تذكير|تذكّ?رك|ذكّ?رك))",
     re.IGNORECASE,
 )
 _PRACTICAL_ORGANIZATION_PATTERN = re.compile(
