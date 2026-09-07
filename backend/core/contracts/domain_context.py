@@ -19,26 +19,58 @@ AnalysisStatus = Literal["complete", "partial", "unavailable", "insufficient_dat
 @dataclass
 class DomainContext:
     kpi_summary: dict
-    # Module-computed KPIs as a plain dict. Values must be JSON-serializable.
+    # Module-computed KPIs as a plain dict. Values must be JSON-serializable
+    # (no ORM objects, no numpy types).
+    # Example: {"tir_pct": 68.2, "gmi": 7.1, "cv_pct": 33.4, "entries": 42}
 
     detected_patterns: list[str]
+    # Human-readable pattern labels detected by the module's clinical engine.
+    # Example: ["dawn_phenomenon", "post_exercise_hypoglycemia"]
+
     insights: list[str]
+    # English plain-text clinical insights for the LLM prompt.
+    # Must be PHI-free: no patient names, no DOB, no national IDs.
+    # Example: ["Patient shows consistent dawn phenomenon over 7 days."]
+
     pivot_text: str
+    # Compressed English pivot text for the LLM system prompt.
+    # Output of SemanticCompressor. Must be PHI-free.
+
     language: str
+    # BCP-47 target language for the narrative response.
+    # Example: "ar-MA" (Darija), "fr", "en"
 
-    # Companion-facing fields.
+    # ── P4.5 companion-facing fields ──────────────────────────────────────────
+    # The companion runtime (chat, tone, narration) consumes the SAME DomainContext
+    # that narrate() consumes — one module→chassis clinical contract. Defaults keep
+    # existing narrate() callers unaffected. All values must be JSON-serializable.
+
     has_sufficient_data: bool = False
-    tone_signals: dict = field(default_factory=dict)
-    trend: dict = field(default_factory=dict)
-    primary_label: str = "score"
-    patterns_detail: list = field(default_factory=list)
+    # False → companion shows a "not enough data yet" message and skips the LLM.
 
-    # ANALYSIS-0 integrity/observability contract.
-    # This status describes execution integrity, never clinical severity.
+    tone_signals: dict = field(default_factory=dict)
+    # Two normalized scores the tone/state logic reads, condition-agnostic:
+    #   primary:   0–100, higher = better (diabetes: TIR%; HTN: time-in-BP-target%)
+    #   stability: lower = steadier      (diabetes: CV%;  HTN: BP variability)
+    # Example: {"primary": 68.2, "stability": 33.4}
+
+    trend: dict = field(default_factory=dict)
+    # Opaque module-produced trend dict read by key ("direction", etc.).
+
+    primary_label: str = "score"
+    # Vocabulary hint for IAmina's internal self-note (diabetes: "TIR").
+
+    patterns_detail: list = field(default_factory=list)
+    # Patterns with evidence for the Mode-3 summary prompt.
+    # Example: [{"code": "DAWN_PHENOMENON", "priority": 2, "evidence": "…"}]
+
+    # ── ANALYSIS-0 execution-integrity fields ──────────────────────────────────
+    # These fields describe whether the analysis executed completely. They are
+    # technical observability metadata, never clinical severity/confidence.
     analysis_status: AnalysisStatus = "complete"
     analysis_degradations: list[str] = field(default_factory=list)
-    # Degradation codes must be technical, stable and PHI-free. They exist so a
-    # failed detector/query cannot silently masquerade as "no clinical finding".
+    # Stable PHI-free technical codes. A failed query/detector must not silently
+    # masquerade as "no clinical finding".
 
     def __post_init__(self) -> None:
         if self.analysis_status == "complete" and self.analysis_degradations:
@@ -52,7 +84,7 @@ class DomainContext:
 
     @classmethod
     def empty(cls, language: str = "fr") -> "DomainContext":
-        """Neutral context for a valid analysis with insufficient clinical data."""
+        """Neutral context — valid analysis, but insufficient patient data."""
         return cls(
             kpi_summary={},
             detected_patterns=[],
