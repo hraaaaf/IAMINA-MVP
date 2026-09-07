@@ -142,25 +142,32 @@ Success criteria:
 
 Current verified proof:
 - PR #533 is OPEN/DRAFT on branch `audit/companion-multilingual-real-conversation`;
-- runtime head `dbef251d18d57bf9d1ab62fe7ed27a54067ba350` passed CI #3667 / run `33578640723`;
-- Django migration drift #3480 / run `33578640716` passed;
-- multilingual pre-network gate passes 79 tests per locale;
+- final runtime certification head is `7a8583f26de1384423d282ac2f350d3bbd70cceb`; its only change beyond runtime head `85ba6013f5e461e20e0d55aa4f821f42adfece2c` is a neutral workflow retrigger comment in `.github/workflows/live-companion-multilingual-parity.yml`;
+- exact-head CI run `34164726231` SUCCESS;
+- exact-head Django migration drift run `34164726199` SUCCESS;
+- exact-head Companion quality probe run `34164726194` SUCCESS;
+- exact-head UI screenshot audit run `34164726235` SUCCESS;
+- exact-head Companion real chat E2E screenshots run `34164726236` SUCCESS;
+- exact-head responsive Dashboard certification run `34164726225` SUCCESS;
+- exact-head UI browser screenshot certification run `34164726239` is still in progress at the last verified check;
+- multilingual pre-network gate passes `149/149` tests on every inspected final-head locale job;
 - synthetic scenario contract validates 9 locales × 6 turns = 54 turns;
-- parity #66 / run `33578637556` completed with all 9 locale jobs failing at the provider stage; inspected failures were Groq TPD 429 and therefore do not count as real-provider certification evidence.
+- parity #141 / run `34164723952` is attached to exact head `7a8583f26de1384423d282ac2f350d3bbd70cceb`;
+- `fr`, `en`, and `ar` are machine-green with complete real-provider transcripts;
+- `ar-MA`, `ar-SA`, `ar-AE`, `ar-KW`, `ar-QA`, and `ar-OM` failed only at provider completeness after Groq `openai/gpt-oss-120b` TPD 429 responses; no code/safety/dialect regression is proven by those failures;
+- `ar-OM` obtained 1/5 real-provider LLM responses before quota exhaustion; the other inspected quota failures did not reach complete provider coverage and therefore do not count as certification evidence;
+- individual `ar-MA` rerun job `101874779187` again passed `149/149` pre-network tests but failed `0/5` provider completeness because Groq was still at approximately `199700/200000` TPD, with requested calls larger than the remaining capacity;
+- manual review is `18/54`: all six real-provider replies for each of `fr`, `en`, and `ar` passed safety, continuity, semantic fidelity, language/script and t1–t6 rubric review;
+- 9/9 machine parity and 54/54 human review are therefore NOT yet certified.
 
 Execution order:
-1. Lot 1 — `fr`: individual rerun, then manual t1–t6 audit if a real provider transcript is produced.
-2. Lot 2 — `en`.
-3. Lot 3 — `ar`.
-4. Lot 4 — `ar-MA`.
-5. Lot 5 — `ar-SA`.
-6. Lot 6 — `ar-AE`.
-7. Lot 7 — `ar-KW`.
-8. Lot 8 — `ar-QA`.
-9. Lot 9 — `ar-OM`.
-10. Closeout — require 9/9 machine + 54/54 human, synchronize this roadmap, undraft PR #533, merge with expected-head protection, then post-merge validation.
+1. Freeze runtime code while all remaining failures are provider-quota-only; do not patch a non-proven defect.
+2. Resume with individual `ar-MA` rerun only after provider capacity is sufficient for a full five-LLM-turn locale probe.
+3. Then rerun only one quota-only locale at a time: `ar-SA`, `ar-AE`, `ar-KW`, `ar-QA`, `ar-OM`.
+4. After each machine-green locale, manually audit its six real-provider replies before moving the human count forward.
+5. Once 9/9 machine + 54/54 human are proven, synchronize final evidence here, undraft PR #533, merge with expected-head protection, then perform post-merge validation.
 
-Quota rule: rerun only the individual locale job that failed solely because of provider quota. Never use a bulk failed-job rerun for this certification.
+Quota rule: rerun only the individual locale job that failed solely because of provider quota. Never use a bulk failed-job rerun for this certification. After two equivalent quota failures on the same locale, stop retrying until provider capacity has materially changed.
 
 ## Certification infrastructure
 
