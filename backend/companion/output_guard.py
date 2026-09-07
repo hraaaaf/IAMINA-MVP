@@ -234,6 +234,7 @@ _DARIJA_BAD_NATURALNESS = re.compile(
     r"(?:توعدنا|خانات\s+فارغة|مقنّع|نتا\s+اخترتي|من\s+بعد(?!\s+العشا|\s+العشاء))",
     re.IGNORECASE,
 )
+_ARABIC_BAD_NATURALNESS = re.compile(r"(?:أشعر\s+بكمّك)", re.IGNORECASE)
 
 
 def contains_unapproved_behavior_action(text: str) -> bool:
@@ -334,6 +335,10 @@ def guard_narrator_output(
         language == "ar-MA"
         and bool(_DARIJA_BAD_NATURALNESS.search(reply))
     )
+    arabic_naturalness_violation = (
+        language.startswith("ar")
+        and bool(_ARABIC_BAD_NATURALNESS.search(reply))
+    )
 
     if mode == "emotional":
         invalid_shape = words > 30 or lines > 1
@@ -368,6 +373,7 @@ def guard_narrator_output(
         or script_violation
         or gulf_dialect_violation
         or darija_naturalness_violation
+        or arabic_naturalness_violation
     ):
         return safe_fallback(
             language,
