@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'features/companion/companion_conversation_screen.dart';
 import 'services/auth_service.dart';
@@ -20,6 +21,12 @@ void main() {
     MaterialApp(
       debugShowCheckedModeBanner: false,
       locale: const Locale('fr'),
+      supportedLocales: const [Locale('fr')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(useMaterial3: true, fontFamily: 'Inter'),
       home: CompanionConversationScreen(service: service),
     ),
