@@ -1,4 +1,5 @@
 from companion.output_guard import guard_narrator_output
+from companion.practical_boundary_filter import sanitize_practical_boundary
 
 
 def test_guard_rejects_model_selected_kitchen_counter_from_live_parity():
@@ -60,33 +61,25 @@ def test_guard_rejects_invented_french_self_reminder_from_live_parity():
     assert "cases vides" in guarded.lower()
 
 
-def test_guard_rejects_invented_kuwaiti_tracking_content_from_live_parity():
+def test_post_filter_rejects_invented_kuwaiti_tracking_content_from_live_parity():
     reply = (
         "حط لك قالب بسيط فيه ثلاث خانات فاضية تكتب فيها ملاحظاتك أو توقيت المتابعة، "
         "وتعبّيها فقط بالمعلومات اللي تختارها من قبل."
     )
-    guarded = guard_narrator_output(
-        reply,
-        language="ar-KW",
-        approved_session_context=False,
-        mode="practical",
-    )
+    guarded = sanitize_practical_boundary(reply)
     assert guarded != reply
     assert "ملاحظاتك أو توقيت المتابعة" not in guarded
+    assert "حيل" in guarded
     assert "ثلاث خانات فاضية" in guarded
 
 
-def test_guard_rejects_invented_omani_memory_trigger_from_live_parity():
+def test_post_filter_rejects_invented_omani_memory_trigger_from_live_parity():
     reply = (
         "ممكن تحط ثلاثة خانات فاضية بدون محتوى محدد الآن، "
         "وتعبّي أي خانة تختارها وقت ما تحس إنك تذكّرت."
     )
-    guarded = guard_narrator_output(
-        reply,
-        language="ar-OM",
-        approved_session_context=False,
-        mode="practical",
-    )
+    guarded = sanitize_practical_boundary(reply)
     assert guarded != reply
     assert "وقت ما تحس" not in guarded
+    assert "واجد" in guarded
     assert "ثلاث خانات فاضية" in guarded
