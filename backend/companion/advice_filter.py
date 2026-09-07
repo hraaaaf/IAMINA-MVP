@@ -14,6 +14,8 @@ detector covers exactly what the LLM was taught to produce.
 """
 import re
 
+from companion.practical_boundary_filter import sanitize_practical_boundary
+
 # ── Pattern set ──────────────────────────────────────────────────────────────
 # Sources: prompts.py LANGUAGE_LABELS + few-shot examples in CHAT_USER / REACTION_USER.
 # Case-insensitive, punctuation-tolerant.
@@ -86,14 +88,17 @@ def apply_advice_throttle(reply: str, deep) -> str:
     Main entry point — call after every LLM reply before returning to patient.
 
     Rules (order is mandatory):
-      1. No disclaimer detected → return reply unchanged, no stamp.
-      2. Disclaimer detected + outside 24h window → keep reply, stamp now.
-      3. Disclaimer detected + inside 24h window → strip disclaimer, do NOT stamp.
+      1. Remove exact unapproved practical inventions from live parity.
+      2. No disclaimer detected → return reply unchanged, no stamp.
+      3. Disclaimer detected + outside 24h window → keep reply, stamp now.
+      4. Disclaimer detected + inside 24h window → strip disclaimer, do NOT stamp.
          If stripping leaves an empty result (e.g. ، clause without sentence break),
          return the original rather than an empty response — never stamp in this case.
 
     deep must expose: advice_given_within(hours) and record_advice_given().
     """
+    reply = sanitize_practical_boundary(reply)
+
     if not contains_medical_advice(reply):
         return reply
 
