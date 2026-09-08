@@ -81,6 +81,7 @@ Le chantier est CLOSED uniquement si :
 ## ANALYSIS-0 — Integrity & observability gate
 
 **Priorité** : P1  
+**État** : CLOSED — mergé via PR #537, `main@ec18c9bc2c18e3d5cd87224902229c2a75227bdb`; post-merge CI #34207685998 SUCCESS et drift #34207685984 SUCCESS.  
 **Goal** : rendre impossible la confusion entre absence de donnée, analyse partielle et panne technique.
 
 ### À faire
@@ -101,13 +102,14 @@ Un échec synthétique SQL ou détecteur produit un état explicite et testable 
 
 ### Preuve
 
-Tests fault-injection + endpoint/runtime synthétique.
+Tests fault-injection + endpoint/runtime synthétique ; post-merge CI #34207685998 SUCCESS ; drift #34207685984 SUCCESS.
 
 ---
 
 ## ANALYSIS-1 — Canonical input contract
 
 **Priorité** : P1  
+**État** : ACTIVE — PR #538, branche `analysis/canonical-input-contract`, HEAD documenté `eda54d0e99e64997955166cba116d31e72a64b2b` avant mise à jour de ce fichier.  
 **Goal** : une seule vérité pour les entrées cliniques.
 
 ### À faire
@@ -129,11 +131,11 @@ Tests fault-injection + endpoint/runtime synthétique.
 
 ### Succès
 
-Le même payload obtient la même décision de validation à chaque frontière.
+Le même payload obtient la même décision de validation à chaque frontière et une donnée future ne peut contaminer les analytics actuels.
 
 ### Preuve
 
-Matrice de tests de conversion + boundary values + timestamps + enums.
+Matrice de tests de conversion + boundary values + timestamps + enums + exclusion synthétique des lignes futures des KPI/daily/AGP/fallback CV. La CI finale du lot doit être verte avant fermeture.
 
 ---
 
@@ -416,20 +418,22 @@ Avant closeout final :
 - audit statique initial du moteur d'analyse ;
 - identification du moteur public evidence-gated ;
 - baseline forces/gaps ;
-- définition de la roadmap ≥9/10.
+- définition de la roadmap ≥9/10 ;
+- ANALYSIS-0 Integrity & observability gate — PR #537 mergée, post-merge CI #34207685998 SUCCESS, drift #34207685984 SUCCESS.
 
 ### OPEN
 
-- ANALYSIS-0 à ANALYSIS-7 ;
+- ANALYSIS-1 — ACTIVE dans PR #538 ;
+- ANALYSIS-2 à ANALYSIS-7 ;
 - recertification finale.
 
 ### NEXT EXACT
 
-**ANALYSIS-0 — Integrity & observability gate** : auditer les types/consommateurs de `DomainContext`, définir le contrat `analysis_status`, écrire les tests de fault injection avant modification runtime.
+**ANALYSIS-1 — Canonical input contract** : obtenir CI + drift verts sur le HEAD final de PR #538, corriger tout échec réellement causé par le lot, puis passer la PR ready, merger, vérifier post-merge et seulement alors ouvrir ANALYSIS-2.
 
 ### Séquence restante
 
-ANALYSIS-0 → tests → closeout lot → ANALYSIS-1 → ANALYSIS-2 → ANALYSIS-3 → ANALYSIS-4 → ANALYSIS-5 → ANALYSIS-6 → ANALYSIS-7 → audit final pondéré → docs/evidence registry coherence → CI final → closeout canonique.
+ANALYSIS-1 → CI/drift → closeout/merge/post-merge → ANALYSIS-2 → ANALYSIS-3 → ANALYSIS-4 → ANALYSIS-5 → ANALYSIS-6 → ANALYSIS-7 → audit final pondéré → docs/evidence registry coherence → CI final → closeout canonique.
 
 ---
 
