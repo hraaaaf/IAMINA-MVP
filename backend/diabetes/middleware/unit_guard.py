@@ -6,12 +6,12 @@ This middleware intercepts incoming API requests and outgoing responses to:
 
 1. Detect the declared unit (mg/dL | g/L | mmol/L).
 2. Convert to the canonical internal unit (mg/dL).
-3. Reject values outside physiologically plausible bounds.
+3. Reject values outside the canonical persisted-input bounds.
 4. Log any unit mismatch for clinical audit.
 
-Unit confusion (mg/dL vs g/L) is a documented source of dangerous dosing errors.
-The guard therefore fails closed on unexpected normalization errors and protects
-both legacy API paths and registry-mounted module paths.
+Unit confusion (mg/dL vs g/L) can be safety-relevant. The guard therefore fails
+closed on unexpected normalization errors and protects both legacy API paths and
+registry-mounted module paths.
 
 See docs/adr/0007-analytical-sql-over-llm.md
 """
@@ -23,28 +23,13 @@ from typing import Any
 
 from django.http import JsonResponse
 
+from diabetes.contracts.log_entry import (
+    LogInputValidationError,
+    convert_glucose_to_mg_dl,
+    validate_mg_dl as _validate_canonical_mg_dl,
+)
+
 logger = logging.getLogger(__name__)
-
-
-# ──────────────────────────────────────────────────────────────
-# 1. CONVERSION CONSTANTS & BOUNDS
-# ──────────────────────────────────────────────────────────────
-
-# Physiologically plausible blood glucose range in mg/dL
-# Source: ADA 2025 clinical standards
-_MIN_GLUCOSE_MG_DL = 20.0
-_MAX_GLUCOSE_MG_DL = 700.0
-
-# Conversion factors TO mg/dL
-_CONVERSION_FACTORS: dict[str, float] = {
-    "mg/dl": 1.0,
-    "mgdl": 1.0,
-    "g/l": 100.0,  # 1 g/L = 100 mg/dL
-    "gl": 100.0,
-    "mmol/l": 18.016,  # 1 mmol/L = 18.016 mg/dL
-    "mmol": 18.016,
-    "mmoll": 18.016,
-}
 
 # Legacy paths that carry glucose values and must remain guarded during route migration.
 _LEGACY_GUARDED_PATHS = (
@@ -57,86 +42,37 @@ _GLUCOSE_FIELDS = ("blood_sugar", "glucose", "glucose_value", "glycemia")
 _UNIT_FIELDS = ("unit", "glucose_unit", "blood_sugar_unit")
 
 
-# ──────────────────────────────────────────────────────────────
-# 2. CONVERSION LOGIC
-# ──────────────────────────────────────────────────────────────
-
 class UnitConversionError(ValueError):
-    """Raised when a glucose value cannot be safely normalised."""
+    """Backward-compatible public error for unsafe glucose normalization."""
 
 
 def convert_to_mg_dl(value: float, unit: str) -> float:
-    """
-    Convert a glucose value to mg/dL.
+    """Convert a supported glucose value to canonical mg/dL."""
+    try:
+        converted = convert_glucose_to_mg_dl(value, unit)
+    except LogInputValidationError as exc:
+        raise UnitConversionError(str(exc)) from exc
 
-    Args:
-        value: Numeric glucose measurement.
-        unit: Source unit string (case-insensitive).
-
-    Returns:
-        Value in mg/dL, rounded to 1 decimal.
-
-    Raises:
-        UnitConversionError: If the unit is unknown or the result is physiologically implausible.
-    """
-    normalised_unit = unit.lower().replace(" ", "").replace("-", "")
-    factor = _CONVERSION_FACTORS.get(normalised_unit)
-
-    if factor is None:
-        raise UnitConversionError(
-            f"Unknown glucose unit: '{unit}'. Accepted: mg/dL, g/L, mmol/L."
-        )
-
-    converted = round(value * factor, 1)
-
-    if not (_MIN_GLUCOSE_MG_DL <= converted <= _MAX_GLUCOSE_MG_DL):
-        raise UnitConversionError(
-            f"Glucose value {converted} mg/dL (converted from {value} {unit}) is outside "
-            f"physiologically plausible range [{_MIN_GLUCOSE_MG_DL}–{_MAX_GLUCOSE_MG_DL}] mg/dL. "
-            "Submission rejected for patient safety."
-        )
-
-    if unit.lower() not in ("mg/dl", "mgdl"):
+    if str(unit).strip().lower().replace(" ", "") not in ("mg/dl", "mgdl"):
         logger.info(
-            "UnitGuard: Converted %.1f %s → %.1f mg/dL",
+            "UnitGuard: Converted %s %s → %.1f mg/dL",
             value,
             unit,
             converted,
         )
-
     return converted
 
 
 def validate_mg_dl(value: float) -> float:
-    """
-    Validate a value already in mg/dL for physiological plausibility.
+    """Validate a value already expressed in canonical mg/dL."""
+    try:
+        return _validate_canonical_mg_dl(value)
+    except LogInputValidationError as exc:
+        raise UnitConversionError(str(exc)) from exc
 
-    Raises:
-        UnitConversionError: If the value is outside safe bounds.
-    """
-    if not (_MIN_GLUCOSE_MG_DL <= float(value) <= _MAX_GLUCOSE_MG_DL):
-        raise UnitConversionError(
-            f"Glucose value {value} mg/dL is outside physiologically safe range "
-            f"[{_MIN_GLUCOSE_MG_DL}–{_MAX_GLUCOSE_MG_DL}] mg/dL."
-        )
-    return float(value)
-
-
-# ──────────────────────────────────────────────────────────────
-# 3. DJANGO MIDDLEWARE
-# ──────────────────────────────────────────────────────────────
 
 class UnitGuardMiddleware:
-    """
-    Django WSGI middleware that intercepts guarded API endpoints
-    and enforces glucose unit validation on JSON request bodies.
-
-    Activation: add 'diabetes.middleware.unit_guard.UnitGuardMiddleware'
-    to MIDDLEWARE in settings.py AFTER SecurityMiddleware.
-
-    Only POST/PUT/PATCH requests with a JSON body are inspected.
-    GET requests and non-guarded paths are passed through unchanged.
-    """
+    """Fail-closed normalization for guarded JSON API writes."""
 
     def __init__(self, get_response) -> None:
         self.get_response = get_response
@@ -152,8 +88,6 @@ class UnitGuardMiddleware:
                     status=422,
                 )
             except Exception:
-                # Safety boundary: an unexpected normalization failure must never
-                # allow an unvalidated glucose payload to continue downstream.
                 logger.exception("UnitGuard: Unexpected normalization error — request blocked.")
                 return JsonResponse(
                     {
@@ -164,8 +98,6 @@ class UnitGuardMiddleware:
                 )
 
         return self.get_response(request)
-
-    # ── private ──
 
     @staticmethod
     def _path_matches_prefix(path: str, prefix: str) -> bool:
@@ -183,7 +115,6 @@ class UnitGuardMiddleware:
                 for registered in ModuleRegistry.all()
             )
         except Exception:
-            # Registry lookup failure must not remove protection from legacy paths.
             logger.exception("UnitGuard: Could not resolve module registry paths.")
             return ()
 
@@ -197,11 +128,50 @@ class UnitGuardMiddleware:
             for prefix in guarded_paths
         )
 
+    @staticmethod
+    def _declared_unit(payload: dict[str, Any]) -> str | None:
+        for field in _UNIT_FIELDS:
+            if field in payload:
+                return str(payload[field]).strip()
+        return None
+
+    @classmethod
+    def _normalise_object(cls, payload: dict[str, Any]) -> bool:
+        modified = False
+        declared_unit = cls._declared_unit(payload)
+
+        for field in _GLUCOSE_FIELDS:
+            if field not in payload or payload[field] is None:
+                continue
+            raw_value = payload[field]
+            if declared_unit:
+                payload[field] = convert_to_mg_dl(raw_value, declared_unit)
+            else:
+                payload[field] = validate_mg_dl(raw_value)
+            modified = True
+
+        if modified and declared_unit:
+            for field in _UNIT_FIELDS:
+                if field in payload:
+                    payload[field] = "mg/dL"
+        return modified
+
+    @classmethod
+    def _normalise_payload(cls, payload: Any) -> bool:
+        """Normalize one log object or a batch list of log objects."""
+        if isinstance(payload, dict):
+            return cls._normalise_object(payload)
+        if isinstance(payload, list):
+            modified = False
+            for item in payload:
+                if not isinstance(item, dict):
+                    raise UnitConversionError("Batch glucose payload items must be objects.")
+                modified = cls._normalise_object(item) or modified
+            return modified
+        return False
+
     def _normalise_request(self, request):
-        """
-        Reads the JSON body, detects glucose fields, converts units,
-        and writes a normalised body back onto the request object.
-        """
+        """Normalize supported glucose fields in a JSON object or batch array."""
         content_type = request.content_type or ""
         if "application/json" not in content_type:
             return request
@@ -211,37 +181,11 @@ class UnitGuardMiddleware:
             return request
 
         try:
-            payload: dict[str, Any] = json.loads(raw_body)
+            payload: Any = json.loads(raw_body)
         except json.JSONDecodeError:
-            return request  # malformed JSON handled by Ninja validators
+            return request
 
-        modified = False
-
-        # Detect declared unit
-        declared_unit = None
-        for field in _UNIT_FIELDS:
-            if field in payload:
-                declared_unit = str(payload[field]).strip()
-                break
-
-        # Normalise glucose fields
-        for field in _GLUCOSE_FIELDS:
-            if field in payload and payload[field] is not None:
-                raw_value = float(payload[field])
-                if declared_unit and declared_unit.lower() not in ("mg/dl", "mgdl"):
-                    payload[field] = convert_to_mg_dl(raw_value, declared_unit)
-                else:
-                    payload[field] = validate_mg_dl(raw_value)
-                modified = True
-
-        if modified:
-            # Canonicalise unit field after conversion
-            for field in _UNIT_FIELDS:
-                if field in payload:
-                    payload[field] = "mg/dL"
-
-            # Patch the request body in-place
-            normalised = json.dumps(payload).encode("utf-8")
-            request._body = normalised  # type: ignore[attr-defined]
+        if self._normalise_payload(payload):
+            request._body = json.dumps(payload).encode("utf-8")  # type: ignore[attr-defined]
 
         return request
