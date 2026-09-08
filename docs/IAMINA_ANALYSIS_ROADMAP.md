@@ -109,33 +109,36 @@ Tests fault-injection + endpoint/runtime synthétique ; post-merge CI #342076859
 ## ANALYSIS-1 — Canonical input contract
 
 **Priorité** : P1  
-**État** : ACTIVE — PR #538, branche `analysis/canonical-input-contract`, HEAD documenté `eda54d0e99e64997955166cba116d31e72a64b2b` avant mise à jour de ce fichier.  
-**Goal** : une seule vérité pour les entrées cliniques.
+**État** : READY TO MERGE — PR #538 ; preuve pré-merge sur `4c1d24ce91f1e3d0582c758b76604abcff75cf24` : CI #34211182653 SUCCESS, drift #34211182658 SUCCESS. Le lot ne sera CLOSED qu'après merge + preuve post-merge.  
+**Goal** : une seule vérité pour les entrées cliniques runtime.
 
-### À faire
+### Réalisé
 
-- unifier les bornes glucose entre middleware, schema API et DB ;
-- normaliser `mg/dL`, `mmol/L`, `g/L` au même contrat ;
-- empêcher `logged_at > now + tolerance` ;
-- empêcher dates absurdes/out-of-domain ;
-- remplacer les `str` métier par enums/Literals versionnés :
-  - source ;
-  - glycemic_context ;
-  - meal_type ;
-  - stressed ;
-  - exercised ;
-  - sleep_quality ;
-  - fatigue_level ;
-  - is_sick ;
-- tests API/DB/middleware identiques.
+- bornes runtime glucose unifiées à `30–600 mg/dL` entre contrat canonique, API, UnitGuard réel et contrainte DB ;
+- normalisation `mg/dL`, `mmol/L`, `g/L` centralisée ;
+- valeurs non finies et unités inconnues fail-closed ;
+- batch UnitGuard couvert ;
+- `logged_at` timezone-aware avec tolérance future maximale de 5 minutes ;
+- valeurs contextuelles/source inconnues rejetées par validateurs runtime ;
+- lignes datées dans le futur exclues de KPI, daily averages, AGP et fallback CV avec un `now` unique par calcul ;
+- tests synthétiques des bornes, conversions, timestamps, catégories, DB et contamination future ;
+- aucune migration catégorielle imposée sans audit préalable des anciennes lignes.
+
+### Compatibilité legacy explicitement bornée
+
+`diabetes.middleware.unit_guard.validate_mg_dl()` conserve temporairement son ancien contrat direct `20–700` uniquement pour compatibilité legacy. **Ce helper n'est plus utilisé par le chemin middleware runtime.** Le middleware passe par `_canonical_runtime_value()` puis `diabetes.contracts.log_entry`, donc applique `30–600`. Un test dédié prouve que le runtime rejette explicitement `20` et `700`. Le retrait de ce shim sera traité avec le nettoyage d'autorité legacy d'ANALYSIS-3 ; il ne constitue pas une deuxième autorité d'entrée clinique runtime.
 
 ### Succès
 
-Le même payload obtient la même décision de validation à chaque frontière et une donnée future ne peut contaminer les analytics actuels.
+Le même payload obtient la même décision de validation aux frontières runtime pertinentes et une donnée future ne peut contaminer les analytics actuels.
 
 ### Preuve
 
-Matrice de tests de conversion + boundary values + timestamps + enums + exclusion synthétique des lignes futures des KPI/daily/AGP/fallback CV. La CI finale du lot doit être verte avant fermeture.
+- matrice `test_canonical_input_contract.py` ;
+- CI #34211182653 SUCCESS : Ruff, import-linter, LLM anti-bypass, AI egress anti-bypass, Bandit, OpenAPI, tests SQLite et PostgreSQL ;
+- drift #34211182658 SUCCESS ;
+- branche vérifiée 18 commits ahead / 0 behind `main` avant ce commit documentaire ;
+- aucun patient réel, aucun déploiement Vercel, aucune écriture DB de production.
 
 ---
 
@@ -173,6 +176,7 @@ Tests intégration route → engine → alert + golden cases.
 - interdire tout wiring vers l'ancien moteur hors tests de compatibilité ;
 - auditer toutes routes/API/summary/companion/doctor brief/LLM context ;
 - imposer `project_public_kpis()` / `guard_normative_kpis()` comme frontière unique ;
+- retirer le shim direct UnitGuard 20–700 après migration des derniers callers/tests legacy ;
 - ajouter contrat anti-régression : impossible d'exposer TIR/CV/GMI/GRI non gouverné.
 
 ### Succès
@@ -421,19 +425,22 @@ Avant closeout final :
 - définition de la roadmap ≥9/10 ;
 - ANALYSIS-0 Integrity & observability gate — PR #537 mergée, post-merge CI #34207685998 SUCCESS, drift #34207685984 SUCCESS.
 
+### READY TO MERGE
+
+- ANALYSIS-1 — PR #538 ; pre-merge CI #34211182653 SUCCESS + drift #34211182658 SUCCESS sur `4c1d24ce91f1e3d0582c758b76604abcff75cf24` avant le commit documentaire de closeout.
+
 ### OPEN
 
-- ANALYSIS-1 — ACTIVE dans PR #538 ;
 - ANALYSIS-2 à ANALYSIS-7 ;
 - recertification finale.
 
 ### NEXT EXACT
 
-**ANALYSIS-1 — Canonical input contract** : obtenir CI + drift verts sur le HEAD final de PR #538, corriger tout échec réellement causé par le lot, puis passer la PR ready, merger, vérifier post-merge et seulement alors ouvrir ANALYSIS-2.
+**ANALYSIS-1 — closeout** : obtenir CI + drift verts sur le commit documentaire final, passer PR #538 ready, merger, vérifier `main` + post-merge CI/drift, marquer ANALYSIS-1 CLOSED puis ouvrir ANALYSIS-2.
 
 ### Séquence restante
 
-ANALYSIS-1 → CI/drift → closeout/merge/post-merge → ANALYSIS-2 → ANALYSIS-3 → ANALYSIS-4 → ANALYSIS-5 → ANALYSIS-6 → ANALYSIS-7 → audit final pondéré → docs/evidence registry coherence → CI final → closeout canonique.
+ANALYSIS-1 final CI/drift → ready/merge/post-merge → ANALYSIS-2 → ANALYSIS-3 → ANALYSIS-4 → ANALYSIS-5 → ANALYSIS-6 → ANALYSIS-7 → audit final pondéré → docs/evidence registry coherence → CI final → closeout canonique.
 
 ---
 
