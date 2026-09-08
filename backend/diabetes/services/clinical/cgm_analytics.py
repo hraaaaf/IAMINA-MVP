@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from statistics import stdev
 
+from django.db.models import F, Q
+
 from diabetes.models import CGMReadingRecord
 
 
@@ -24,11 +26,12 @@ def compute_verified_cgm_metrics(
     target_low: float = 70.0,
     target_high: float = 180.0,
 ) -> VerifiedCgmMetrics:
-    """Compute descriptive CGM metrics from session-linked readings in one window.
+    """Compute descriptive CGM metrics from valid session-linked readings.
 
     The caller must separately prove CGM sufficiency. This function deliberately
-    ignores unlinked transport rows and collapses duplicate timestamps so sensor
-    replacement boundaries cannot double-weight a reading.
+    ignores unlinked transport rows, source/session mismatches and readings that
+    fall outside the linked session interval. Duplicate timestamps are collapsed
+    so sensor replacement boundaries cannot double-weight a reading.
     """
     rows = (
         CGMReadingRecord.objects.filter(
@@ -36,7 +39,10 @@ def compute_verified_cgm_metrics(
             session__isnull=False,
             recorded_at__gte=window_start,
             recorded_at__lte=window_end,
+            recorded_at__gte=F("session__started_at"),
+            source=F("session__source"),
         )
+        .filter(Q(session__ended_at__isnull=True) | Q(recorded_at__lte=F("session__ended_at")))
         .order_by("recorded_at", "id")
         .values_list("recorded_at", "glucose_mg_dl")
     )
