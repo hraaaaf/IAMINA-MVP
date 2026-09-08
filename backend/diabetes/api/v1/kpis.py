@@ -7,12 +7,16 @@ Cached response shape remains backward-compatible.
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from typing import Optional
 
 from django.core.cache import cache
+from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
+from diabetes.services.clinical.cgm_analytics import compute_verified_cgm_metrics
+from diabetes.services.clinical.cgm_eligibility import assess_cgm_window
 from diabetes.services.clinical.evidence_projection import project_public_kpis
 from diabetes.services.clinical.sql_analytics import AnalyticalKPIs, compute_kpis
 
@@ -20,6 +24,8 @@ logger = logging.getLogger(__name__)
 router = Router(tags=["kpis"])
 
 _KPI_TTL = 300
+_STANDARD_TARGET_LOW = 70.0
+_STANDARD_TARGET_HIGH = 180.0
 
 
 class KPIsOut(BaseModel):
@@ -60,11 +66,11 @@ def get_kpis(
 ):
     """Return evidence-gated KPIs for the authenticated patient.
 
-    Raw SQL remains descriptive source data. Normative CGM labels such as TIR,
-    CV stability, GMI and GRI are returned only when the governed CGM sufficiency
-    contract verifies actual coverage. The current LogEntry schema cannot prove
-    wear-time/cadence, so those fields fail closed to null rather than being
-    inferred from the fraction of rows labelled ``source='cgm'``.
+    Mixed/manual ``LogEntry`` rows remain descriptive only. TIR/TAR/TBR/CV can
+    be promoted only for the standard 70–180 mg/dL range when a persisted CGM
+    sensor window proves sufficiency; the promoted values are then recomputed
+    directly from session-linked ``CGMReadingRecord`` rows. GMI/GRI remain
+    fail-closed pending their dedicated promotion decisions.
     """
     cache_key = _kpi_cache_key(request.user.id, days, target_low, target_high)
     hit = cache.get(cache_key)
@@ -78,7 +84,33 @@ def get_kpis(
         target_low=target_low,
         target_high=target_high,
     )
-    projection = project_public_kpis(kpis)
+
+    window_end = timezone.now()
+    window_start = window_end - timedelta(days=days)
+    cgm_window = assess_cgm_window(
+        patient_id=request.user.id,
+        window_start=window_start,
+        window_end=window_end,
+    )
+    standard_range = (
+        float(target_low) == _STANDARD_TARGET_LOW
+        and float(target_high) == _STANDARD_TARGET_HIGH
+    )
+    cgm_metrics = None
+    if cgm_window.verified and standard_range:
+        cgm_metrics = compute_verified_cgm_metrics(
+            patient_id=request.user.id,
+            window_start=window_start,
+            window_end=window_end,
+            target_low=_STANDARD_TARGET_LOW,
+            target_high=_STANDARD_TARGET_HIGH,
+        )
+
+    projection = project_public_kpis(
+        kpis,
+        cgm_window=cgm_window,
+        cgm_metrics=cgm_metrics,
+    )
     result = {
         "avg_glucose": projection["avg_glucose"],
         "std_dev": projection["std_dev"],
