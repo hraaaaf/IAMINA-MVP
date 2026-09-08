@@ -1,4 +1,3 @@
-import math
 from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.contrib.auth.models import User
@@ -56,13 +55,13 @@ class RealCgmSufficiencyContractTests(TestCase):
         CGMReadingRecord.objects.bulk_create(rows)
 
     def _expected_full_window(self):
-        seconds = (self.end - self.start).total_seconds()
-        return math.floor(seconds / (self.interval_minutes * 60)) + 1
+        seconds = int((self.end - self.start).total_seconds())
+        return seconds // (self.interval_minutes * 60) + 1
 
     def test_fourteen_day_window_at_or_above_seventy_percent_is_verified(self):
         session = self._session(key="sensor-a")
         expected = self._expected_full_window()
-        count = math.ceil(expected * 0.70)
+        count = (expected * 70 + 99) // 100
         self._readings(session, start=self.start, count=count)
 
         result = assess_cgm_window(
@@ -79,7 +78,7 @@ class RealCgmSufficiencyContractTests(TestCase):
     def test_below_seventy_percent_fails_closed(self):
         session = self._session(key="sensor-b")
         expected = self._expected_full_window()
-        count = math.floor(expected * 0.69)
+        count = expected * 69 // 100
         self._readings(session, start=self.start, count=count)
 
         result = assess_cgm_window(
@@ -110,12 +109,10 @@ class RealCgmSufficiencyContractTests(TestCase):
         first = self._session(key="sensor-d1", end=midpoint)
         second = self._session(key="sensor-d2", start=midpoint, end=self.end)
 
-        first_expected = math.floor(
-            (midpoint - self.start).total_seconds() / (self.interval_minutes * 60)
-        ) + 1
-        second_expected = math.floor(
-            (self.end - midpoint).total_seconds() / (self.interval_minutes * 60)
-        ) + 1
+        first_seconds = int((midpoint - self.start).total_seconds())
+        second_seconds = int((self.end - midpoint).total_seconds())
+        first_expected = first_seconds // (self.interval_minutes * 60) + 1
+        second_expected = second_seconds // (self.interval_minutes * 60) + 1
         self._readings(first, start=self.start, count=first_expected)
         self._readings(second, start=midpoint, count=second_expected)
 
@@ -159,9 +156,8 @@ class RealCgmSufficiencyContractTests(TestCase):
     def test_short_window_fails_even_with_complete_sensor_data(self):
         short_end = self.start + timedelta(days=13, hours=23)
         session = self._session(key="sensor-f", end=short_end)
-        count = math.floor(
-            (short_end - self.start).total_seconds() / (self.interval_minutes * 60)
-        ) + 1
+        seconds = int((short_end - self.start).total_seconds())
+        count = seconds // (self.interval_minutes * 60) + 1
         self._readings(session, start=self.start, count=count)
 
         result = assess_cgm_window(
