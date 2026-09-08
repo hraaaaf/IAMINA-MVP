@@ -25,11 +25,11 @@ class AnalysisIntegrityRunnerTests(SimpleTestCase):
         broken = mock.MagicMock(__name__="detect_example", side_effect=RuntimeError("boom"))
         with (
             mock.patch(
-                "diabetes.services.clinical.analysis_integrity._ACTIVE_ENTRY_DETECTORS",
+                "diabetes.services.clinical.analysis_integrity.engine._ACTIVE_ENTRY_DETECTORS",
                 (broken,),
             ),
             mock.patch(
-                "diabetes.services.clinical.analysis_integrity._high_variability_from_kpis",
+                "diabetes.services.clinical.analysis_integrity.engine._high_variability_from_kpis",
                 return_value=None,
             ),
         ):
@@ -42,11 +42,11 @@ class AnalysisIntegrityRunnerTests(SimpleTestCase):
     def test_successful_empty_analysis_has_no_degradation(self):
         with (
             mock.patch(
-                "diabetes.services.clinical.analysis_integrity._ACTIVE_ENTRY_DETECTORS",
+                "diabetes.services.clinical.analysis_integrity.engine._ACTIVE_ENTRY_DETECTORS",
                 (),
             ),
             mock.patch(
-                "diabetes.services.clinical.analysis_integrity._high_variability_from_kpis",
+                "diabetes.services.clinical.analysis_integrity.engine._high_variability_from_kpis",
                 return_value=None,
             ),
         ):
