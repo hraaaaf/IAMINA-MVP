@@ -15,7 +15,7 @@ from diabetes.contracts.log_entry import (
     validate_logged_at,
     validate_mg_dl,
 )
-from diabetes.middleware.unit_guard import UnitGuardMiddleware
+from diabetes.middleware.unit_guard import UnitConversionError, UnitGuardMiddleware
 from diabetes.models import LogEntry
 from diabetes.services.clinical.sql_analytics import (
     compute_agp_profile,
@@ -55,6 +55,11 @@ class CanonicalGlucoseContractTests(SimpleTestCase):
         self.assertEqual(payload[0]["unit"], "mg/dL")
         self.assertEqual(payload[1]["blood_sugar"], 100.0)
         self.assertEqual(payload[1]["unit"], "mg/dL")
+
+    def test_runtime_gate_rejects_legacy_only_20_and_700_bounds(self):
+        for value in (20.0, 700.0):
+            with self.subTest(value=value), self.assertRaises(UnitConversionError):
+                UnitGuardMiddleware._normalise_payload({"blood_sugar": value})
 
 
 class CanonicalTimestampAndEnumTests(SimpleTestCase):
