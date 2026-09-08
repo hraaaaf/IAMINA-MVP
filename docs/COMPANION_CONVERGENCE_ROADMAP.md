@@ -124,7 +124,7 @@ Status: CLOSED
 
 ## Additional certification — Multilingual Real Conversation
 
-Status: CLOSEOUT — pre-merge certification complete
+Status: CLOSED
 
 Goal: certify the bounded real Companion conversation across all 9 supported narrator locales on synthetic non-patient traffic, with both machine parity and manual language/safety review.
 
@@ -140,35 +140,26 @@ Success criteria:
 - t6 genuinely synthesizes the multi-turn history and is not a copy of t1–t5;
 - Arabic script is correct; `ar-MA` is Darija; Gulf locales use the target dialect rather than generic MSA.
 
-Current verified proof:
-- PR #533 remains OPEN/DRAFT on branch `audit/companion-multilingual-real-conversation` pending repository closeout;
-- final runtime certification SHA is `7a8583f26de1384423d282ac2f350d3bbd70cceb`; runtime code SHA `85ba6013f5e461e20e0d55aa4f821f42adfece2c` differs only by a neutral workflow retrigger comment in `.github/workflows/live-companion-multilingual-parity.yml`;
+Verified proof:
+- runtime certification SHA `7a8583f26de1384423d282ac2f350d3bbd70cceb`; runtime code SHA `85ba6013f5e461e20e0d55aa4f821f42adfece2c` differs only by a neutral workflow retrigger comment;
 - exact-runtime CI `34164726231` SUCCESS;
 - exact-runtime Django migration drift `34164726199` SUCCESS;
 - exact-runtime Companion quality probe `34164726194` SUCCESS;
-- exact-runtime UI screenshot audit `34164726235` SUCCESS;
-- exact-runtime Companion real chat E2E screenshots `34164726236` SUCCESS;
+- exact-runtime Companion real chat E2E `34164726236` SUCCESS;
 - exact-runtime responsive Dashboard certification `34164726225` SUCCESS;
 - exact-runtime UI browser screenshot certification `34164726239` SUCCESS;
-- every inspected final-head locale job passes the pre-network gate with `149/149` tests;
-- synthetic scenario contract validates 9 locales × 6 turns = 54 turns;
-- parity workflow run #141 / `34164723952` is attached to exact runtime SHA `7a8583f26de1384423d282ac2f350d3bbd70cceb`;
-- final machine result is **9/9 locales green** with complete real-provider coverage for every LLM-routed turn;
-- final manual review is **54/54 replies accepted** for safety, continuity, semantic fidelity, language/script, target dialect and t1–t6 rubric;
-- certified locales: `fr`, `en`, `ar`, `ar-MA`, `ar-SA`, `ar-AE`, `ar-KW`, `ar-QA`, `ar-OM`;
-- retained Gulf/Darija artifacts include `ar-MA` `10035398137`, `ar-SA` `10047350575`, `ar-AE` `10047724524`, `ar-KW` `10048343537`, `ar-QA` `10049396917`, `ar-OM` `10049505794`;
-- `ar-OM` final artifact ZIP SHA256 is `3fedfe8fbb0b0f4d19451736af3f3bacb0667258251d0ebc222bea3c6dcab18d`;
-- `ar-OM` final transcript uses Omani-targeted forms including `واجد`, `أريد`, `وش`; deterministic insulin-dose boundary contains no dose or treatment change;
-- historical Groq quota failures remain documented as provider-capacity failures and do not replace or dilute the later complete real-provider certification evidence;
+- every inspected final-head locale job passes `149/149` pre-network tests;
+- scenario contract validates 9 locales × 6 turns = 54 turns;
+- parity workflow run #141 / `34164723952` is attached to runtime SHA `7a8583f26de1384423d282ac2f350d3bbd70cceb`;
+- final machine result: **9/9 locales green** with complete real-provider coverage for every LLM-routed turn;
+- final manual result: **54/54 replies accepted** for safety, continuity, semantic fidelity, language/script, target dialect and t1–t6 rubric;
+- retained Gulf/Darija artifacts: `ar-MA` `10035398137`, `ar-SA` `10047350575`, `ar-AE` `10047724524`, `ar-KW` `10048343537`, `ar-QA` `10049396917`, `ar-OM` `10049505794`;
+- `ar-OM` final ZIP SHA256 `3fedfe8fbb0b0f4d19451736af3f3bacb0667258251d0ebc222bea3c6dcab18d`;
+- Ahem widget-test captures are explicitly geometry-only and are not used as readable typography proof; real Chrome screenshots are the visual authority;
+- synchronized pre-merge head `2b6da8fccc83eb15f03b5e8b1ec90195aed6ee15` passed CI `34213192568`, Django drift `34213192451`, Companion quality `34213192439`, FRUG-5 Gulf `34213192392`, Companion E2E `34213192385`, P7 responsive `34213192388`, UI geometry/Ahem `34213192531`, and real Chrome UI browser cert `34213192668`;
+- PR #533 merged into `main` at `9b842a693cf3580895e45a9e4ea402acbd7ddfa1` on 2026-09-08;
+- post-merge `main@9b842a693cf3580895e45a9e4ea402acbd7ddfa1` passed CI `34215039315`, Django migration drift `34215039262`, UI geometry/Ahem `34215039288`, and real Chrome UI browser certification `34215039320`;
 - proof boundary remains synthetic non-patient text only: no patient data, production/beta traffic, native-speaker certification, clinical certification or Vercel deployment is claimed.
-
-Closeout remaining:
-1. synchronize PR branch with current `main` without changing certified Companion runtime semantics;
-2. verify mergeability, review threads and proportional checks on the synchronized head;
-3. mark PR #533 ready for review and update PR evidence;
-4. merge with expected-head protection;
-5. perform post-merge validation on `main`;
-6. change this section to CLOSED only after post-merge proof exists.
 
 ## Certification infrastructure
 
