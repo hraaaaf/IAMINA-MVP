@@ -4,355 +4,174 @@
 > **Créé le** : 2026-09-08  
 > **Repo** : `hraaaaf/IAMINA-MVP`  
 > **Branche canonique** : `main`  
-> **HEAD de départ vérifié** : `2e1348afa9d293fcc0f585e5582200a38e0d6f5e`  
+> **Baseline audit statique** : ~7,9/10, non équivalent à une certification runtime  
 > **Déploiement Vercel** : INTERDIT sans autorisation explicite  
-> **Données patient** : aucune donnée patient nécessaire pour ce chantier
+> **Données patient** : aucune donnée patient réelle nécessaire
 
 ---
 
 ## 1. GOAL FINAL
 
-Faire passer le moteur d'analyse IAMINA d'un **socle statique audité ~7,9/10** à un moteur **≥9/10 réellement certifié**, sans sacrifier la sécurité clinique, l'incertitude, la traçabilité ou l'architecture capsule.
-
-Le score 7,9/10 est un **baseline d'audit statique**, pas une certification runtime.
+Faire passer le moteur d’analyse IAMINA à **≥9,0/10 réellement certifié**, sans sacrifier sécurité clinique, incertitude, traçabilité, isolation patient ou architecture capsule.
 
 ### Succès final observable
 
 Le chantier est CLOSED uniquement si :
 
-1. les contrats d'entrée clinique sont cohérents et fail-closed ;
-2. toute analyse expose un état explicite `complete | partial | unavailable | insufficient_data` ;
-3. aucun moteur legacy ne peut contourner la frontière d'evidence publique ;
-4. les alertes déterministes réellement déclarées sont atteignables et testées ;
-5. les cibles glycémiques normatives ne sont appliquées qu'avec contexte/population admissible ;
-6. TIR/CV/AGP/GMI/GRI restent bloqués tant que le contrat CGM réel n'est pas prouvé ;
-7. un vrai contrat CGM peut prouver cadence, wear-time et fenêtre d'analyse avant toute promotion normative ;
-8. les nouvelles analyses longitudinales restent descriptives tant qu'aucune validation causale/prédictive n'existe ;
-9. tests unitaires + intégration + comportement runtime observé sont verts ;
-10. la documentation canonique et le registre d'evidence sont cohérents avec le runtime ;
-11. un audit final atteint **≥9,0/10** sans note artificielle ni fonction annoncée mais inactive.
+1. les contrats d’entrée sont cohérents et fail-closed ;
+2. chaque analyse expose `complete | partial | unavailable | insufficient_data` ;
+3. aucune voie publique ne contourne l’autorité evidence-gated ;
+4. chaque alerte déclarée est réellement atteignable et testée ;
+5. aucune cible normative n’est appliquée sans provenance/applicabilité ;
+6. TIR/CV/AGP/GMI/GRI restent bloqués tant que le contrat CGM requis n’est pas prouvé ;
+7. la suffisance CGM peut prouver cadence, couverture et fenêtre ;
+8. les analyses longitudinales restent descriptives sans validation causale/prédictive ;
+9. tests ciblés + suites SQLite/PostgreSQL + CI finale sont verts ;
+10. evidence registry, runtime et ce fichier sont cohérents ;
+11. le re-audit pondéré final atteint **≥9,0/10** sans note artificielle.
 
 ### Preuve finale
 
-- code `main` ;
-- tests ciblés verts ;
-- CI GitHub verte sur le HEAD final ;
-- preuves runtime synthétiques non-patient ;
-- aucun champ normatif exposé sans gate d'evidence ;
-- re-audit final item par item ;
-- ce fichier mis à jour avec les preuves exactes.
+`main` final + tests synthétiques non-patient + CI GitHub + re-audit item par item + présent fichier à jour.
 
 ---
 
-## 2. BASELINE AUDIT 2026-09-08
+## 2. ÉTAT DES LOTS
 
-### Forces vérifiées
+### ANALYSIS-0 — Integrity & observability gate — CLOSED ✅
 
-- architecture capsule diabète réelle ;
-- `EvidenceGuardedDiabetesEngine` enregistré comme moteur public ;
-- calculs SQL-first, LLM non autoritaire ;
-- evidence registry versionné et immutable ;
-- fail-closed CGM actuel ;
-- Clinical Twin longitudinal ;
-- mémoire personnelle 90 jours ;
-- proactive intelligence + attention budget ;
-- LLM limité à narration/explication ;
-- prédiction glycémique et corrélations non validées volontairement désactivées ;
-- GRI volontairement non publié ;
-- suppression/modification des sources réconcilie la mémoire clinique.
+**Goal** : distinguer données insuffisantes, analyse partielle et panne technique.
 
-### Gaps vérifiés / importants
+**Réalisé** :
+- `analysis_status = complete | partial | unavailable | insufficient_data` ;
+- codes de dégradation stables, non-PHI ;
+- panne KPI → `unavailable` ;
+- panne détecteur → `partial` ;
+- insuffisance réelle → `insufficient_data`.
 
-1. **CGM contract absent** : `source='cgm'` ne prouve pas wear-time/cadence ;
-2. **analysis degradation opaque** : erreurs de calcul/détecteur peuvent devenir silencieusement “vide” ;
-3. **alerte hyper soutenue** : branche nécessitant `recent_readings`, non alimentée par le wrapper principal observé ;
-4. **contrats glucose divergents** : middleware 20–700 vs API/DB 30–600 mg/dL ;
-5. **timestamps futurs** : borne haute explicite non prouvée sur les écritures/analytics ;
-6. **schemas contextuels trop permissifs** : plusieurs champs métier sont de simples `str` ;
-7. **targets personnalisées non injectées dans le moteur evidence-gated principal** ;
-8. **AGP brut interne** existe sans contrat CGM clinique complet ;
-9. **legacy `DiabetesEngine`** reste présent comme classe utilisable ;
-10. **corrélation/prédiction** volontairement absentes : ne pas réactiver sans validation dédiée.
+**Preuve** : PR #537 ; merge `ec18c9bc2c18e3d5cd87224902229c2a75227bdb` ; post-merge CI #34207685998 SUCCESS ; drift #34207685984 SUCCESS.
 
 ---
 
-# 3. ROADMAP ORDonnée
+### ANALYSIS-1 — Canonical input contract — CLOSED ✅
 
-## ANALYSIS-0 — Integrity & observability gate
+**Goal** : une seule vérité d’entrée clinique runtime.
 
-**Priorité** : P1  
-**État** : CLOSED — mergé via PR #537, `main@ec18c9bc2c18e3d5cd87224902229c2a75227bdb`; post-merge CI #34207685998 SUCCESS et drift #34207685984 SUCCESS.  
-**Goal** : rendre impossible la confusion entre absence de donnée, analyse partielle et panne technique.
+**Réalisé** :
+- contrat glucose runtime `30–600 mg/dL` ;
+- conversion canonique `mg/dL | mmol/L | g/L` ;
+- unités inconnues et valeurs non finies rejetées ;
+- `logged_at` futur >5 min rejeté ;
+- lignes futures exclues KPI/daily/AGP/fallback CV ;
+- contextes/source inconnus rejetés aux frontières runtime ;
+- matrice de tests bornes/conversions/timestamps/catégories.
 
-### À faire
+**Preuve** : PR #538 ; merge `4bc8c706186c5c581d941ec6c5eb556930365f3f` ; post-merge CI #34212026116 SUCCESS ; drift #34212026120 SUCCESS.
 
-- introduire un statut d'analyse explicite :
-  - `complete`
-  - `partial`
-  - `unavailable`
-  - `insufficient_data`
-- transporter les raisons de dégradation sous forme non clinique et non-PHI ;
-- quand un détecteur échoue, marquer l'analyse `partial` ;
-- quand SQL/KPI échoue, ne jamais transformer la panne en simple “pas assez de données” ;
-- ajouter télémétrie non sensible : moteur, étape, code d'erreur, version de règle.
-
-### Succès
-
-Un échec synthétique SQL ou détecteur produit un état explicite et testable sans exposer de donnée patient.
-
-### Preuve
-
-Tests fault-injection + endpoint/runtime synthétique ; post-merge CI #34207685998 SUCCESS ; drift #34207685984 SUCCESS.
+**Note** : le dernier shim direct UnitGuard `20–700` est supprimé dans ANALYSIS-3 ; il délègue désormais au contrat canonique `30–600`.
 
 ---
 
-## ANALYSIS-1 — Canonical input contract
+### ANALYSIS-2 — Alerting contract correctness — CLOSED ✅
 
-**Priorité** : P1  
-**État** : READY TO MERGE — PR #538 ; preuve pré-merge sur `4c1d24ce91f1e3d0582c758b76604abcff75cf24` : CI #34211182653 SUCCESS, drift #34211182658 SUCCESS. Le lot ne sera CLOSED qu'après merge + preuve post-merge.  
-**Goal** : une seule vérité pour les entrées cliniques runtime.
+**Goal** : chaque alerte déclarée doit être atteignable, déterministe et testée par le moteur public enregistré.
 
-### Réalisé
+**Réalisé** :
+- moteur public `EvidenceGuardedAlertingDiabetesEngine` ;
+- `HYPER_SUSTAINED` alimenté par les deux mesures antérieures du même patient ;
+- isolation inter-patient ;
+- priorité des alertes courantes sur l’historique ;
+- seuils exacts testés ;
+- FR / ar / ar-MA ;
+- aucun numéro d’urgence national inventé ;
+- warnings non bloquants journalisés comme `alert`, critical/emergency comme `emergency`.
 
-- bornes runtime glucose unifiées à `30–600 mg/dL` entre contrat canonique, API, UnitGuard réel et contrainte DB ;
-- normalisation `mg/dL`, `mmol/L`, `g/L` centralisée ;
-- valeurs non finies et unités inconnues fail-closed ;
-- batch UnitGuard couvert ;
-- `logged_at` timezone-aware avec tolérance future maximale de 5 minutes ;
-- valeurs contextuelles/source inconnues rejetées par validateurs runtime ;
-- lignes datées dans le futur exclues de KPI, daily averages, AGP et fallback CV avec un `now` unique par calcul ;
-- tests synthétiques des bornes, conversions, timestamps, catégories, DB et contamination future ;
-- aucune migration catégorielle imposée sans audit préalable des anciennes lignes.
-
-### Compatibilité legacy explicitement bornée
-
-`diabetes.middleware.unit_guard.validate_mg_dl()` conserve temporairement son ancien contrat direct `20–700` uniquement pour compatibilité legacy. **Ce helper n'est plus utilisé par le chemin middleware runtime.** Le middleware passe par `_canonical_runtime_value()` puis `diabetes.contracts.log_entry`, donc applique `30–600`. Un test dédié prouve que le runtime rejette explicitement `20` et `700`. Le retrait de ce shim sera traité avec le nettoyage d'autorité legacy d'ANALYSIS-3 ; il ne constitue pas une deuxième autorité d'entrée clinique runtime.
-
-### Succès
-
-Le même payload obtient la même décision de validation aux frontières runtime pertinentes et une donnée future ne peut contaminer les analytics actuels.
-
-### Preuve
-
-- matrice `test_canonical_input_contract.py` ;
-- CI #34211182653 SUCCESS : Ruff, import-linter, LLM anti-bypass, AI egress anti-bypass, Bandit, OpenAPI, tests SQLite et PostgreSQL ;
-- drift #34211182658 SUCCESS ;
-- branche vérifiée 18 commits ahead / 0 behind `main` avant ce commit documentaire ;
-- aucun patient réel, aucun déploiement Vercel, aucune écriture DB de production.
+**Preuve** : PR #539 ; merge `f3da008a4390e839b65465f4e6faf59668023f68` ; pré-merge CI #34218965389 SUCCESS + drift #34218965478 SUCCESS ; post-merge CI #34232357895 SUCCESS + drift #34232357898 SUCCESS.
 
 ---
 
-## ANALYSIS-2 — Alerting contract correctness
+### ANALYSIS-3 — Single evidence authority — ACTIVE 🟡
 
-**Priorité** : P1  
-**Goal** : chaque alerte déclarée est réellement atteignable, déterministe et testée.
+**Goal** : aucune voie publique/production ne doit exposer KPI normatifs, patterns ou résumés cliniques hors de la frontière evidence-gated.
 
-### À faire
+**Branche** : `analysis/single-evidence-authority`  
+**PR** : #540 (draft)  
+**Dernier HEAD connu avant ce commit documentaire** : `7824052b0bcafbe3eeaf89138d370513ec006f79`
 
-- corriger l'alerte `HYPER_SUSTAINED` : injecter l'historique requis ou retirer la règle du contrat public ;
-- verrouiller ordre/priorité : hypo sévère > hypo > hyper sévère > hyper soutenue ;
-- tester valeurs frontières exactes ;
-- vérifier cohérence avec triage vital et emergency routing ;
-- vérifier langues supportées sans inventer de numéro d'urgence.
+**Réalisé et vérifié dans le diff** :
+- `backend/diabetes/services/summary.py` est neutralisé fail-closed ;
+- suppression du fallback hardcodé qui contenait des affirmations fabriquées et un conseil d’augmentation d’insuline ;
+- anciens symboles conservés uniquement pour compatibilité d’import et lèvent `LegacyClinicalSummaryDisabled` ;
+- aucun appel LLM ni écriture `AISummary` possible via ces anciens points d’entrée ;
+- `validate_mg_dl()` ne possède plus de plage secondaire `20–700` et délègue au contrat canonique `30–600` ;
+- tests legacy mis à jour sur `30–600` ;
+- test d’architecture AST : aucun import production de `DiabetesEngine` brut hors `evidence_engine.py` ;
+- `ModuleRegistry` reste verrouillé sur l’autorité evidence-gated + alerting ;
+- `/kpis/` projette via `project_public_kpis()` ;
+- Companion/narrator obtient ses données via `get_domain_context()` et le moteur enregistré ;
+- routes `analytics`, `cgm`, `companion` auditées sans bypass normatif prouvé.
 
-### Succès
+**Preuves intermédiaires** :
+- HEAD `b59bf51488141026123a0ba2505a3d0279037958` : CI #34234067575 SUCCESS + drift #34234067565 SUCCESS ;
+- HEAD `7824052b0bcafbe3eeaf89138d370513ec006f79` : drift #34234793208 SUCCESS ; CI #34234793266 encore queued au moment de cette mise à jour.
 
-Chaque règle du state machine a au moins un test runtime qui l'atteint par le chemin public réel.
+**Succès** : recherche repo + tests d’architecture + tests runtime prouvent une seule autorité clinique publique ; aucune sortie legacy dangereuse ne reste callable.
 
-### Preuve
-
-Tests intégration route → engine → alert + golden cases.
-
----
-
-## ANALYSIS-3 — Single evidence authority
-
-**Priorité** : P1  
-**Goal** : aucune voie ne peut exposer des KPI normatifs ou patterns hors de la frontière evidence-gated.
-
-### À faire
-
-- retirer ou rendre non-public le legacy `DiabetesEngine.analyze()` ;
-- interdire tout wiring vers l'ancien moteur hors tests de compatibilité ;
-- auditer toutes routes/API/summary/companion/doctor brief/LLM context ;
-- imposer `project_public_kpis()` / `guard_normative_kpis()` comme frontière unique ;
-- retirer le shim direct UnitGuard 20–700 après migration des derniers callers/tests legacy ;
-- ajouter contrat anti-régression : impossible d'exposer TIR/CV/GMI/GRI non gouverné.
-
-### Succès
-
-Une recherche repo + tests architecture prouvent une seule autorité clinique publique.
-
-### Preuve
-
-Import-linter/architecture test + tests de fuite normative.
+**Preuve restante avant READY** : CI complète verte sur le HEAD final incluant ce closeout documentaire, puis branche 0 behind `main`.
 
 ---
 
-## ANALYSIS-4 — Real CGM sufficiency contract
+### ANALYSIS-4 — Real CGM sufficiency contract — OPEN
 
-**Priorité** : P1 critique avant toute promotion CGM  
-**Goal** : pouvoir prouver la qualité d'une fenêtre CGM, pas simplement son étiquette de provenance.
+**Goal** : prouver la qualité d’une fenêtre CGM, pas seulement `source='cgm'`.
 
-### Données minimales à modéliser
+À construire : identité/session capteur pseudonymisée, cadence attendue, readings attendues/reçues, active intervals, couverture/wear-time, timezone, déduplication, trous vs arrêt capteur, multi-sensor.
 
-- device/sensor identity pseudonymisée ;
-- session/sensor start-end ;
-- sampling cadence attendue ;
-- readings attendues vs reçues ;
-- active intervals ;
-- wear-time / coverage calculable ;
-- source/provider ;
-- timezone et fenêtres cohérentes ;
-- déduplication/idempotence ;
-- trous de données distingués d'un arrêt capteur.
-
-### À faire
-
-- définir le contrat ingestion CGM canonique ;
-- créer calcul de sufficiency vérifiable ;
-- conserver `verified=False` tant que la preuve n'est pas complète ;
-- tests synthétiques : 14j/70%, trous, doublons, cadence irrégulière, timezone, multi-sensor ;
-- aucune activation GMI/GRI automatique.
-
-### Succès
-
-Une fenêtre synthétique admissible devient `verified=True`; toutes les fenêtres incomplètes restent `False` avec raison exacte.
-
-### Preuve
-
-Tests unitaires + intégration + fixtures synthétiques non-patient.
+**Succès** : une fixture synthétique admissible devient `verified=True`; les fenêtres incomplètes restent `False` avec raison exacte.
 
 ---
 
-## ANALYSIS-5 — Governed CGM analytics promotion
+### ANALYSIS-5 — Governed CGM analytics promotion — OPEN
 
-**Priorité** : après ANALYSIS-4 uniquement  
-**Goal** : exposer progressivement les métriques CGM seulement si evidence + population + sufficiency passent.
+**Goal** : promouvoir progressivement les métriques CGM uniquement si evidence + population + sufficiency passent.
 
-### Ordre de promotion
-
-1. TIR/TAR/TBR ;
-2. CV ;
-3. AGP ;
-4. GMI après décision explicite sur formule/version ;
-5. GRI seulement après validation propre.
-
-### Conditions
-
-- contrat population/applicabilité ;
-- target range individualisé si nécessaire ;
-- evidence registry `GOVERNED_RULE` ;
-- aucune candidate rule promue implicitement ;
-- UI/LLM distinguent : recorded fractions vs true CGM metrics.
-
-### Succès
-
-Chaque métrique possède : evidence ID, population, modalité, limitations, sufficiency gate, tests et wording patient/clinician.
-
-### Preuve
-
-Golden fixtures + registry tests + API projection + narration test.
+Ordre : TIR/TAR/TBR → CV → AGP → GMI après décision version/formule → GRI après validation propre.
 
 ---
 
-## ANALYSIS-6 — Contextual targets & population applicability
+### ANALYSIS-6 — Contextual targets & population applicability — OPEN
 
-**Priorité** : P1 avant toute notion “dans la cible” normative  
-**Goal** : empêcher l'application aveugle de 70–180 ou d'une population générale à tout patient.
+**Goal** : aucune phrase normative “dans/hors cible” sans target provenance + population/applicabilité valide.
 
-### À faire
-
-- définir source de vérité des targets ;
-- brancher les targets de profil quand elles sont gouvernées ;
-- distinguer cible utilisateur, cible clinicien, cible standard ;
-- ajouter population/applicability gate ;
-- fail closed pour grossesse, pédiatrie, populations spéciales non gouvernées ;
-- ne jamais produire de conseil thérapeutique à partir d'un dépassement de cible.
-
-### Succès
-
-Aucune phrase normative “dans/hors cible” sans target provenance + applicability valide.
-
-### Preuve
-
-Tests population/target + narration anti-overclaim.
+Fail-closed requis pour populations non gouvernées ; aucune recommandation thérapeutique dérivée du dépassement d’une cible.
 
 ---
 
-## ANALYSIS-7 — Richer personal analytics without fake causality
+### ANALYSIS-7 — Richer personal analytics without fake causality — OPEN
 
-**Priorité** : P2 après fermeture des P1  
-**Goal** : augmenter la valeur analytique personnelle sans transformer association en causalité.
+**Goal** : ajouter de la valeur longitudinale sans causalité fictive.
 
-### Candidats sûrs
+Candidats : paires pré/post-prandiales structurées, répétabilité, baseline personnelle, évolution des patterns, données manquantes utiles, visualisation explicite de l’incertitude.
 
-- paires pré/post-prandiales mieux structurées ;
-- réponse répétée par type de repas ;
-- détection de données manquantes utile ;
-- évolution des patterns dans le temps ;
-- comparaison à baseline personnelle ;
-- robustness checks : minimum N, distinct days, repeatability ;
-- visualisation de l'incertitude ;
-- `COLLECT_MISSING_DATA` ;
-- `LEARN` ;
-- `FOLLOW_UP_RECORD` lorsque leurs autorités existent.
-
-### Interdit dans ce lot
-
-- causalité ;
-- recommandation de dose ;
-- prescription ;
-- optimisation de traitement ;
-- prédiction glycémique future non validée ;
-- score de “confidence” probabiliste inventé.
-
-### Succès
-
-Les nouvelles observations ajoutent une utilité mesurable sans augmenter les claims cliniques autorisés.
-
-### Preuve
-
-Evals synthétiques + evidence registry + tests anti-causalité + audit humain.
+Interdit : diagnostic, causalité, prescription, dose, optimisation thérapeutique, prédiction non validée, pseudo-probabilité de confiance.
 
 ---
 
-## ANALYSIS-8 — Prediction / causal inference research gate
+### ANALYSIS-8 — Prediction / causal inference research gate — FUTURE
 
-**Priorité** : FUTURE / séparé  
-**Goal** : ne réactiver aucune prédiction ou causalité sans validation scientifique dédiée.
-
-### Gate minimum
-
-- protocole défini avant implémentation patient-facing ;
-- dataset représentatif et légalement utilisable ;
-- calibration prospective ;
-- métriques discrimination + calibration + erreurs dangereuses ;
-- validation population/modality ;
-- gestion abstention/OOD ;
-- clinical review ;
-- evidence registry ;
-- lot sécurité séparé.
-
-### Règle
-
-`prediction.py` doit continuer à retourner `None` et `correlations.py` `[]` jusqu'à clôture explicite de ce gate.
+Hors chemin critique. `prediction.py` doit rester fail-closed et `correlations.py` désactivé tant qu’un protocole scientifique dédié n’est pas certifié.
 
 ---
 
-# 4. ORDRE D'EXÉCUTION CANONIQUE
+## 3. ORDRE D’EXÉCUTION
 
-Chemin critique :
+`ANALYSIS-0 ✅ → ANALYSIS-1 ✅ → ANALYSIS-2 ✅ → ANALYSIS-3 ACTIVE → ANALYSIS-4 → ANALYSIS-5 → ANALYSIS-6 → ANALYSIS-7 → RECERTIFICATION FINALE`
 
-`ANALYSIS-0 → ANALYSIS-1 → ANALYSIS-2 → ANALYSIS-3 → ANALYSIS-4 → ANALYSIS-5 → ANALYSIS-6 → ANALYSIS-7`
-
-`ANALYSIS-8` reste hors chemin critique et ne doit jamais bloquer l'objectif ≥9/10.
+ANALYSIS-8 reste hors chemin critique.
 
 ---
 
-# 5. SCORING DE RECERTIFICATION
-
-Le score final doit être recalculé sur preuves, avec au minimum :
+## 4. SCORING DE RECERTIFICATION
 
 | Axe | Poids |
 |---|---:|
@@ -367,95 +186,61 @@ Le score final doit être recalculé sur preuves, avec au minimum :
 | LLM boundary | 4% |
 | tests / CI / runtime proof | 3% |
 
-### Règles du score
-
-- aucune capacité absente ne peut recevoir un score fonctionnel positif ;
-- une fonctionnalité volontairement fail-closed peut recevoir un bon score de sécurité mais pas de capacité ;
-- aucun “10/10” sans preuve ;
-- runtime non testé = non certifié ;
-- CI absente/en cours ≠ verte ;
-- fallback ≠ preuve provider réelle ;
-- documentation seule ≠ comportement runtime.
+Règles : aucune capacité absente ne reçoit un score fonctionnel positif ; fail-closed peut scorer en sécurité mais pas en capacité ; aucun 10/10 sans preuve ; runtime non testé = non certifié ; docs seules ≠ comportement runtime.
 
 ---
 
-# 6. TEST MATRIX MINIMALE
+## 5. TEST MATRIX MINIMALE FINALE
 
-Avant closeout final :
-
-- entrée glucose : unités + frontières + timestamps ;
-- patient isolation ;
-- calculs SQL ;
-- detector failure ;
-- SQL failure ;
-- partial analysis ;
-- alertes toutes branches ;
-- suppression/modification → Clinical Twin reconciliation ;
+- unités/bornes/timestamps glucose ;
+- isolation patient ;
+- SQL analytics ;
+- SQL/detector failures + états partial/unavailable ;
+- toutes branches d’alertes ;
+- Clinical Twin reconciliation après modification/suppression ;
 - CGM incomplete/valid/multi-sensor ;
-- evidence-gated TIR/CV/AGP/GMI/GRI ;
-- population applicability ;
-- targets personnalisées ;
-- LLM prompt evidence ceiling ;
+- gates TIR/CV/AGP/GMI/GRI ;
+- population/targets ;
+- plafond d’evidence LLM ;
 - fallback offline ;
-- FR / ar-MA / ar / en sur les sorties critiques ;
+- langues critiques ;
 - aucune causalité/diagnostic/dose inventée ;
 - CI complète sur HEAD final.
 
 ---
 
-# 7. RÈGLES DE SÉCURITÉ DU CHANTIER
-
-- aucune donnée patient réelle nécessaire ;
-- utiliser fixtures synthétiques ;
-- aucune prescription, modification de dose ou optimisation thérapeutique ;
-- aucune activation de prédiction sans lot de validation séparé ;
-- aucune promotion de candidate evidence rule par simple présence dans le code ;
-- aucun déploiement Vercel sans autorisation explicite ;
-- ne jamais déclarer ≥9/10 tant que la recertification complète n'est pas prouvée.
-
----
-
-# 8. ÉTAT DE REPRISE
+## 6. ÉTAT DE REPRISE
 
 ### CLOSED
+- ANALYSIS-0 — PR #537 — post-merge certifié.
+- ANALYSIS-1 — PR #538 — post-merge certifié.
+- ANALYSIS-2 — PR #539 — post-merge certifié.
 
-- audit statique initial du moteur d'analyse ;
-- identification du moteur public evidence-gated ;
-- baseline forces/gaps ;
-- définition de la roadmap ≥9/10 ;
-- ANALYSIS-0 Integrity & observability gate — PR #537 mergée, post-merge CI #34207685998 SUCCESS, drift #34207685984 SUCCESS.
-
-### READY TO MERGE
-
-- ANALYSIS-1 — PR #538 ; pre-merge CI #34211182653 SUCCESS + drift #34211182658 SUCCESS sur `4c1d24ce91f1e3d0582c758b76604abcff75cf24` avant le commit documentaire de closeout.
+### ACTIVE
+- ANALYSIS-3 — PR #540.
 
 ### OPEN
-
-- ANALYSIS-2 à ANALYSIS-7 ;
+- ANALYSIS-4 à ANALYSIS-7 ;
 - recertification finale.
 
 ### NEXT EXACT
 
-**ANALYSIS-1 — closeout** : obtenir CI + drift verts sur le commit documentaire final, passer PR #538 ready, merger, vérifier `main` + post-merge CI/drift, marquer ANALYSIS-1 CLOSED puis ouvrir ANALYSIS-2.
+Obtenir CI + drift verts sur le HEAD final ANALYSIS-3 incluant ce fichier → vérifier branche 0 behind `main` → passer #540 ready → merge avec expected HEAD → vérifier `main` + CI/drift post-merge → marquer ANALYSIS-3 CLOSED → ouvrir ANALYSIS-4.
 
 ### Séquence restante
 
-ANALYSIS-1 final CI/drift → ready/merge/post-merge → ANALYSIS-2 → ANALYSIS-3 → ANALYSIS-4 → ANALYSIS-5 → ANALYSIS-6 → ANALYSIS-7 → audit final pondéré → docs/evidence registry coherence → CI final → closeout canonique.
+A3 final CI/drift → ready/merge/post-merge → A4 → A5 → A6 → A7 → re-audit pondéré → cohérence evidence/docs → CI finale → closeout canonique.
 
 ---
 
-# 9. CLOSEOUT FINAL OBLIGATOIRE
+## 7. RÈGLES DE SÉCURITÉ
 
-Le chantier ne peut être déclaré CLOSED qu'après :
-
-1. tous les lots nécessaires fermés ;
-2. tests ciblés + suite pertinente verts ;
-3. CI finale verte ;
-4. aucune régression clinique connue ;
-5. evidence registry cohérent ;
-6. ce fichier mis à jour avec HEAD/PR/runs exacts ;
-7. score final recalculé et ≥9,0/10 ;
-8. vérification post-merge si travail effectué par PR.
+- fixtures synthétiques uniquement ;
+- aucune prescription/modification de dose ;
+- aucune activation de prédiction sans validation séparée ;
+- aucune promotion implicite d’une candidate evidence rule ;
+- aucun Vercel sans autorisation explicite ;
+- ne jamais déclarer ≥9/10 avant recertification complète.
 
 ---
 
