@@ -20,7 +20,7 @@ from core.contracts.companion_context import (
     CompanionPattern,
 )
 from core.contracts.domain_context import DomainContext
-from diabetes.models import LogEntry
+from diabetes.models import DiabetesProfile, LogEntry
 from diabetes.services.clinical.analysis_integrity import (
     run_clinical_analysis_with_integrity,
 )
@@ -35,6 +35,12 @@ from diabetes.services.clinical.evidence_projection import (
 from diabetes.services.clinical.evidence_registry import evidence_for_pattern
 from diabetes.services.clinical.semantic_compressor import build_chat_context
 from diabetes.services.clinical.sql_analytics import compute_kpis
+from diabetes.services.clinical.target_applicability import (
+    assess_target_authority,
+    build_target_assessment,
+    target_narration_evidence,
+    unavailable_target_authority,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +72,17 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
         if not raw_kpis.has_sufficient_data:
             return DomainContext.empty(language=language)
 
+        target_degradations: list[str] = []
+        try:
+            profile = DiabetesProfile.objects.get(base_profile__patient_id=patient_id)
+            target_authority = assess_target_authority(profile, now=window_end)
+        except DiabetesProfile.DoesNotExist:
+            target_authority = unavailable_target_authority("target_profile_missing")
+        except Exception:
+            logger.exception("EvidenceGuardedDiabetesEngine: target authority lookup failed")
+            target_authority = unavailable_target_authority("target_authority_lookup_failed")
+            target_degradations.append("target_authority_lookup_failed")
+
         try:
             cgm_window = assess_cgm_window(
                 patient_id=patient_id,
@@ -80,11 +97,35 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
                     window_end=window_end,
                 )
 
+            target_range_pct = None
+            if cgm_window.verified and target_authority.verified:
+                try:
+                    target_metrics = compute_verified_cgm_metrics(
+                        patient_id=patient_id,
+                        window_start=window_start,
+                        window_end=window_end,
+                        target_low=float(target_authority.target_low_mg_dl),
+                        target_high=float(target_authority.target_high_mg_dl),
+                    )
+                    target_range_pct = target_metrics.tir_pct
+                except Exception:
+                    logger.exception(
+                        "EvidenceGuardedDiabetesEngine: target range metric computation failed"
+                    )
+                    target_degradations.append("target_metric_compute_failed")
+
+            target_assessment = build_target_assessment(
+                target_authority,
+                cgm_verified=cgm_window.verified,
+                target_range_pct=target_range_pct,
+            )
+
             public_kpis = project_public_kpis(
                 raw_kpis,
                 cgm_window=cgm_window,
                 cgm_metrics=cgm_metrics,
             )
+            public_kpis["target_assessment"] = target_assessment
             guarded_kpis = guard_normative_kpis(
                 raw_kpis,
                 cgm_window=cgm_window,
@@ -113,9 +154,12 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
             )
 
             # The existing semantic compressor still evaluates legacy row-provenance
-            # sufficiency and therefore remains conservative until a dedicated CGM-native
-            # compressor contract is promoted.
+            # sufficiency and therefore remains conservative. ANALYSIS-6 appends only
+            # explicit clinician-confirmed target evidence after all authority gates pass.
             pivot = build_chat_context(raw_kpis, report.patterns)
+            target_evidence = target_narration_evidence(target_assessment)
+            if target_evidence:
+                pivot = f"{pivot} {target_evidence}".strip()
 
             # Existing compute_trend is LogEntry-based. A valid CGM window must not
             # magically turn a mixed/manual trend into a CGM trend, so keep it closed
@@ -148,6 +192,7 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
                 degradation_codes=["analysis_pipeline_failed"],
             )
 
+        analysis_degradations = [*degradations, *target_degradations]
         return DomainContext(
             kpi_summary=public_kpis,
             detected_patterns=[p.code for p in report.patterns[:5]],
@@ -155,9 +200,8 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
             pivot_text=pivot,
             language=language,
             has_sufficient_data=True,
-            # ANALYSIS-5 may expose certified CGM numbers, but target/population
-            # applicability belongs to ANALYSIS-6. Keep tone selection neutral so a
-            # promoted TIR/CV value cannot trigger "within/outside target" wording yet.
+            # Target assessment is explicit structured evidence in kpi_summary/pivot.
+            # Relationship tone stays clinically neutral even when a goal comparison exists.
             tone_signals={
                 "primary": None,
                 "stability": None,
@@ -165,8 +209,8 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
             trend=trend,
             primary_label="TIR" if cgm_verified else "Recorded glucose",
             patterns_detail=pattern_details,
-            analysis_status="partial" if degradations else "complete",
-            analysis_degradations=degradations,
+            analysis_status="partial" if analysis_degradations else "complete",
+            analysis_degradations=analysis_degradations,
         )
 
     def companion_context(
