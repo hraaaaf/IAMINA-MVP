@@ -74,7 +74,11 @@ def list_logs(request, page: int = 1, page_size: int = 50):
 @router.post("/logs", response=LogEntrySchema)
 def create_log(request, data: LogEntryCreateSchema):
     try:
-        log = LogEntry.objects.create(patient=request.user, **data.dict())
+        # Keep database integrity failures inside a savepoint. Django marks the
+        # active transaction as broken after IntegrityError until that savepoint
+        # is rolled back, which would otherwise poison callers/test transactions.
+        with transaction.atomic():
+            log = LogEntry.objects.create(patient=request.user, **data.dict())
     except IntegrityError as exc:
         # A uniqueness/check race is a client-visible data conflict, not a 500.
         # Keep the response generic so database constraint names are not leaked.
