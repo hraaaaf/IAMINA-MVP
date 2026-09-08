@@ -44,6 +44,21 @@ class DiabetesProfile(models.Model):
         ('mmol_l', 'mmol/L'),
     ]
 
+    TARGET_RANGE_PROVENANCE_CHOICES = [
+        ('legacy_default', 'Legacy default'),
+        ('patient_declared', 'Patient declared'),
+        ('clinician_confirmed', 'Clinician confirmed'),
+        ('clinician_confirmation_stale', 'Clinician confirmation stale'),
+    ]
+
+    TARGET_POPULATION_CONTEXT_CHOICES = [
+        ('unknown', 'Unknown'),
+        ('general_nonpregnant_adult', 'General nonpregnant adult'),
+        ('older_complex', 'Older adult — complex/intermediate health'),
+        ('pregnancy', 'Pregnancy'),
+        ('individualized', 'Individualized / other'),
+    ]
+
     base_profile = models.OneToOneField(
         "core.BasePatientProfile",
         on_delete=models.CASCADE,
@@ -68,12 +83,56 @@ class DiabetesProfile(models.Model):
 
     target_range_low = models.IntegerField(
         default=70,
-        help_text="Lower target glucose (mg/dL)",
+        help_text=(
+            "Configured lower glucose range bound (mg/dL). This value alone is not "
+            "clinical target authority; see target_range_provenance."
+        ),
     )
 
     target_range_high = models.IntegerField(
         default=180,
-        help_text="Upper target glucose (mg/dL)",
+        help_text=(
+            "Configured upper glucose range bound (mg/dL). This value alone is not "
+            "clinical target authority; see target_range_provenance."
+        ),
+    )
+
+    target_range_provenance = models.CharField(
+        max_length=32,
+        choices=TARGET_RANGE_PROVENANCE_CHOICES,
+        default='legacy_default',
+        help_text=(
+            "Authority provenance for the configured range. Legacy/patient-declared "
+            "ranges are descriptive only."
+        ),
+    )
+
+    target_population_context = models.CharField(
+        max_length=32,
+        choices=TARGET_POPULATION_CONTEXT_CHOICES,
+        default='unknown',
+        help_text=(
+            "Explicit population/applicability context for a clinician-confirmed target. "
+            "Never inferred from demographic fields."
+        ),
+    )
+
+    target_time_in_range_goal_pct = models.FloatField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Clinician-confirmed minimum percentage of verified CGM readings expected "
+            "inside the configured range. NULL means no target-attainment judgment."
+        ),
+    )
+
+    target_confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Timestamp of explicit clinician confirmation. NULL means no current "
+            "clinician-confirmed target authority."
+        ),
     )
 
     unit_preference = models.CharField(
