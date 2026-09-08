@@ -23,11 +23,7 @@ from typing import Any
 
 from django.http import JsonResponse
 
-from diabetes.contracts.log_entry import (
-    LogInputValidationError,
-    convert_glucose_to_mg_dl,
-    validate_mg_dl as _validate_canonical_mg_dl,
-)
+from diabetes.contracts import log_entry as log_input
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +45,8 @@ class UnitConversionError(ValueError):
 def convert_to_mg_dl(value: float, unit: str) -> float:
     """Convert a supported glucose value to canonical mg/dL."""
     try:
-        converted = convert_glucose_to_mg_dl(value, unit)
-    except LogInputValidationError as exc:
+        converted = log_input.convert_glucose_to_mg_dl(value, unit)
+    except log_input.LogInputValidationError as exc:
         raise UnitConversionError(str(exc)) from exc
 
     if str(unit).strip().lower().replace(" ", "") not in ("mg/dl", "mgdl"):
@@ -66,8 +62,8 @@ def convert_to_mg_dl(value: float, unit: str) -> float:
 def validate_mg_dl(value: float) -> float:
     """Validate a value already expressed in canonical mg/dL."""
     try:
-        return _validate_canonical_mg_dl(value)
-    except LogInputValidationError as exc:
+        return log_input.validate_mg_dl(value)
+    except log_input.LogInputValidationError as exc:
         raise UnitConversionError(str(exc)) from exc
 
 
