@@ -62,9 +62,11 @@ def convert_to_mg_dl(value: float, unit: str) -> float:
 def validate_mg_dl(value: float) -> float:
     """Compatibility wrapper over the sole canonical 30–600 mg/dL contract."""
     try:
-        return log_input.validate_mg_dl(float(value))
+        numeric = float(value)
     except (TypeError, ValueError) as exc:
         raise UnitConversionError("Glucose value must be numeric.") from exc
+    try:
+        return log_input.validate_mg_dl(numeric)
     except log_input.LogInputValidationError as exc:
         raise UnitConversionError(str(exc)) from exc
 
