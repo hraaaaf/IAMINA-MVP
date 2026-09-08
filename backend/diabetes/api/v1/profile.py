@@ -202,6 +202,12 @@ def patch_profile(request, data: ProfilePatchSchema):
     """Persist only explicitly supplied patient-declared profile fields."""
     profile = _get_diabetes_profile(request.user)
     base = profile.base_profile
+    payload = data.model_dump(exclude_unset=True)
+
+    proposed_low = payload.get("target_range_low", profile.target_range_low)
+    proposed_high = payload.get("target_range_high", profile.target_range_high)
+    if float(proposed_low) >= float(proposed_high):
+        raise HttpError(422, "target_range_low must be lower than target_range_high")
 
     base_fields = {
         "preferred_language",
@@ -224,7 +230,7 @@ def patch_profile(request, data: ProfilePatchSchema):
     diabetes_changed: list[str] = []
     needs_cache_invalidation = False
 
-    for field, value in data.model_dump(exclude_unset=True).items():
+    for field, value in payload.items():
         if field in base_fields:
             setattr(base, field, value)
             base_changed.append(field)
@@ -238,8 +244,47 @@ def patch_profile(request, data: ProfilePatchSchema):
             "preferred_language",
             "diabetes_type",
             "treatment_type",
+            "date_of_birth",
         }:
             needs_cache_invalidation = True
+
+    target_range_touched = bool(
+        {"target_range_low", "target_range_high"} & payload.keys()
+    )
+    applicability_context_touched = bool(
+        {"diabetes_type", "date_of_birth"} & payload.keys()
+    )
+
+    authority_fields: list[str] = []
+    if target_range_touched:
+        profile.target_range_provenance = "patient_declared"
+        profile.target_population_context = "unknown"
+        profile.target_time_in_range_goal_pct = None
+        profile.target_confirmed_at = None
+        authority_fields = [
+            "target_range_provenance",
+            "target_population_context",
+            "target_time_in_range_goal_pct",
+            "target_confirmed_at",
+        ]
+    elif (
+        applicability_context_touched
+        and profile.target_range_provenance == "clinician_confirmed"
+    ):
+        profile.target_range_provenance = "clinician_confirmation_stale"
+        profile.target_population_context = "unknown"
+        profile.target_time_in_range_goal_pct = None
+        profile.target_confirmed_at = None
+        authority_fields = [
+            "target_range_provenance",
+            "target_population_context",
+            "target_time_in_range_goal_pct",
+            "target_confirmed_at",
+        ]
+
+    for field in authority_fields:
+        if field not in diabetes_changed:
+            diabetes_changed.append(field)
 
     if base_changed:
         base.save(update_fields=base_changed)

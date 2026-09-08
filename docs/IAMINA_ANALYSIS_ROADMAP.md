@@ -95,37 +95,63 @@ Le chantier est CLOSED uniquement si :
 
 ---
 
-### ANALYSIS-5 — Governed CGM analytics promotion — ACTIVE 🟡
+### ANALYSIS-5 — Governed CGM analytics promotion — CLOSED ✅
 
 **Goal** : promouvoir seulement des métriques recalculées sur des lectures CGM réellement certifiées par A4.
 
-**Branche** : `analysis/governed-cgm-analytics-promotion`  
-**PR** : #542 (draft)  
-**HEAD code connu avant ce commit documentaire** : `01983b4fa02e304716d841d7bcd600b3319541e9`
-
-**Implémenté dans le diff** :
-- nouveau calcul `compute_verified_cgm_metrics()` sur `CGMReadingRecord` sessionnés uniquement ;
+**Réalisé** :
+- `compute_verified_cgm_metrics()` calcule sur `CGMReadingRecord` sessionnés uniquement ;
 - lectures non liées, source/session incohérente ou hors intervalle session exclues ;
 - timestamps dupliqués dédupliqués avant calcul ;
-- TIR/TAR/TBR/CV peuvent être publiés seulement si : fenêtre A4 vérifiée + evidence `GOVERNED_RULE` + métrique CGM-native présente ;
-- les KPI `LogEntry` contradictoires restent descriptifs et ne peuvent pas fournir les métriques CGM promues ;
-- `/kpis/` ne promeut que la plage standard 70–180 mg/dL ; les plages personnalisées restent fail-closed jusqu’à A6 ;
+- TIR/TAR/TBR/CV publiés seulement si fenêtre A4 vérifiée + evidence `GOVERNED_RULE` + métrique CGM-native présente ;
+- KPI `LogEntry` contradictoires restent descriptifs et ne peuvent pas fournir les métriques CGM promues ;
+- `/kpis/` promeut seulement la plage standard 70–180 mg/dL ;
 - moteur public `EvidenceGuardedDiabetesEngine` consomme la même frontière ;
 - trend historique `LogEntry` reste fermé même lorsque le CGM est vérifié ;
 - GMI/GRI restent `null` / candidate ;
-- tests synthétiques : fenêtre valide, isolation vis-à-vis de `LogEntry`, fenêtre insuffisante, absence de payload CGM, GMI/GRI fermés.
+- A5 garde les `tone_signals` cliniques à `None`, donc un TIR certifié ne peut pas générer seul un jugement « dans/hors cible » avant A6 ;
+- tests synthétiques couvrent fenêtre valide, isolation vis-à-vis de `LogEntry`, fenêtre insuffisante, absence de payload CGM, GMI/GRI fermés et frontière A5→A6.
 
-**Limitation runtime vérifiée** : le sync Nightscout actuel persiste des `CGMReadingRecord` sans `CGMSensorSession`. Aucune cadence/session ne sera inférée à partir du champ `device`; ces données restent donc fail-closed tant qu’un provider fournit explicitement les faits de session nécessaires.
+**Limitation runtime vérifiée** : le sync Nightscout actuel persiste des `CGMReadingRecord` sans `CGMSensorSession`. Aucune cadence/session n’est inférée à partir du champ `device`; ces données restent fail-closed tant qu’un provider ne fournit pas explicitement les faits de session nécessaires.
 
-**État de preuve** : PR #542 mergeable=true, aucun review thread ; CI #34248416774 et drift #34248416680 en cours sur le HEAD code précédent au moment de cette mise à jour. Ce commit documentaire doit lui-même être recertifié avant READY.
+**Preuve** : PR #542 ; pré-merge HEAD `aac4b75302d12d740e76f4868253a519ff91947d` ; CI #34257276611 SUCCESS ; drift #34257276474 SUCCESS ; merge `9681b77ee2ac71c710120a26f4e98597645af927` ; post-merge CI #34272156304 SUCCESS ; drift #34272156421 SUCCESS.
 
 ---
 
-### ANALYSIS-6 — Contextual targets & population applicability — OPEN
+### ANALYSIS-6 — Contextual targets & population applicability — ACTIVE 🟡
 
-**Goal** : aucune phrase normative “dans/hors cible” sans target provenance + population/applicabilité valide.
+**Goal** : aucune phrase normative « dans/hors cible » sans target provenance + population/applicabilité valide.
 
-Fail-closed requis pour populations non gouvernées ; aucune recommandation thérapeutique dérivée du dépassement d’une cible.
+**Branche** : `analysis/contextual-target-applicability`  
+**PR** : #543 (draft)  
+**Base** : `main@9681b77ee2ac71c710120a26f4e98597645af927`  
+**HEAD code avant ce commit documentaire** : `d9f1f899df1cb24019e12adfe28a1079b114c714`
+
+**Implémenté dans le diff** :
+- métadonnées persistantes séparant plage configurée et autorité clinique : provenance, population explicite, objectif de temps dans la plage %, timestamp de confirmation ;
+- toutes les lignes historiques restent `legacy_default` / `unknown`, donc aucune cible clinique n’est créée rétroactivement ;
+- modification patient de la plage → `patient_declared`, population inconnue, objectif/confirmation effacés ;
+- changement patient du type de diabète ou de la date de naissance → confirmation clinicien existante marquée stale et autorité effacée ;
+- les champs internes d’autorité cible sont absents du modèle PATCH public et ne peuvent pas entrer dans son payload de mutation ; les extras restent ignorés pour préserver le contrat OpenAPI existant ;
+- aucune population/cible guideline n’est auto-inférée depuis âge, type, sexe ou autre démographie ;
+- une comparaison nécessite : provenance `clinician_confirmed` + diabète connu + population explicite + confirmation non future + plage valide + objectif % explicite + CGM A4 vérifié ;
+- plage personnalisée calculée séparément du TIR standard A5 sous `target_range_pct` ;
+- résultat structuré `meets_confirmed_goal | below_confirmed_goal | unavailable` ;
+- la narration LLM ne reçoit le résultat que si tous les gates passent et rappelle explicitement qu’aucun changement de traitement/dose n’est autorisé ;
+- panne du sous-calcul cible → analyse `partial`, métriques CGM valides conservées, jugement cible indisponible ;
+- le ton relationnel reste cliniquement neutre ;
+- OpenAPI public conservé stable.
+
+**Tests ajoutés / adaptés** : legacy/default, patient-declared, population inconnue, confirmation future, objectif % invalide, cible clinicien valide, CGM insuffisant, champs internes hors payload PATCH, plage croisée, séparation TIR standard/plage personnelle, panne target metric partielle, unité A0 isolant explicitement l’absence de profil cible.
+
+**Preuves intermédiaires vérifiées** :
+- migration `0032_diabetesprofile_target_authority` appliquée avec succès sur PostgreSQL ;
+- première suite PostgreSQL A6 : 2169 tests PASS, 1 échec hérité dû à un `SimpleTestCase` effectuant implicitement la nouvelle lecture de profil cible ; test corrigé explicitement, sans changement du comportement production ;
+- Ruff, import-linter, anti-bypass LLM/egress et Bandit verts sur le premier HEAD code ;
+- dérive OpenAPI initiale limitée à la docstring PATCH + `additionalProperties:false`, ensuite supprimée en restaurant le contrat public stable ;
+- drift #34274302687 SUCCESS sur `d9f1f899...` ; CI #34274302666 était encore en cours au moment de ce commit documentaire.
+
+**État de preuve** : ce commit documentaire devient le nouveau HEAD final à certifier. A6 n’est pas CLOSED avant CI + drift verts sur ce HEAD exact, branche 0 behind, absence de review thread bloquant, merge verrouillé et post-merge verts.
 
 ---
 
@@ -133,7 +159,16 @@ Fail-closed requis pour populations non gouvernées ; aucune recommandation thé
 
 **Goal** : ajouter de la valeur longitudinale sans causalité fictive.
 
-Candidats : paires pré/post-prandiales structurées, répétabilité, baseline personnelle, évolution des patterns, données manquantes utiles, visualisation explicite de l’incertitude.
+**Audit de départ vérifié** : le Clinical Twin possède déjà recurrence, evidence density, baseline personnelle sur fenêtre, mouvement relatif à cette baseline, persistance/résolution et limites explicites anti-causalité. `personal_response.py` sait déjà identifier des contextes positifs répétés et des mesures `post_meal` par type de repas.
+
+**Manque principal à traiter** : les patterns repas actuels comparent des mesures post-prandiales absolues à une baseline de fenêtre ; ils ne possèdent pas de lien explicite entre une mesure `pre_meal` et la mesure `post_meal` du même épisode.
+
+**Direction minimale** :
+- ajouter un identifiant opaque d’épisode repas explicite et optionnel ;
+- calculer un delta pré→post uniquement pour des entrées partageant cet identifiant et satisfaisant un contrat temporel/qualité strict ;
+- aucune association par simple proximité temporelle si l’identifiant manque ;
+- exposer complétude/missingness, répétabilité et évolution descriptive des deltas ;
+- réutiliser le Clinical Twin existant plutôt que créer une seconde autorité longitudinale.
 
 Interdit : diagnostic, causalité, prescription, dose, optimisation thérapeutique, prédiction non validée, pseudo-probabilité de confiance.
 
@@ -147,7 +182,7 @@ Hors chemin critique. `prediction.py` doit rester fail-closed et `correlations.p
 
 ## 3. ORDRE D’EXÉCUTION
 
-`ANALYSIS-0 ✅ → ANALYSIS-1 ✅ → ANALYSIS-2 ✅ → ANALYSIS-3 ✅ → ANALYSIS-4 ✅ → ANALYSIS-5 ACTIVE → ANALYSIS-6 → ANALYSIS-7 → RECERTIFICATION FINALE`
+`ANALYSIS-0 ✅ → ANALYSIS-1 ✅ → ANALYSIS-2 ✅ → ANALYSIS-3 ✅ → ANALYSIS-4 ✅ → ANALYSIS-5 ✅ → ANALYSIS-6 ACTIVE → ANALYSIS-7 → RECERTIFICATION FINALE`
 
 ANALYSIS-8 reste hors chemin critique.
 
@@ -182,7 +217,8 @@ Règles : aucune capacité absente ne reçoit un score fonctionnel positif ; fai
 - Clinical Twin reconciliation après modification/suppression ;
 - CGM incomplete/valid/multi-sensor ;
 - gates TIR/CV/AGP/GMI/GRI ;
-- population/targets ;
+- population/targets + provenance cible ;
+- paires repas explicites + missingness + absence d’appariement implicite ;
 - plafond d’evidence LLM ;
 - fallback offline ;
 - langues critiques ;
@@ -199,21 +235,22 @@ Règles : aucune capacité absente ne reçoit un score fonctionnel positif ; fai
 - ANALYSIS-2 — PR #539 — post-merge certifié.
 - ANALYSIS-3 — PR #540 — post-merge certifié.
 - ANALYSIS-4 — PR #541 — merge `71a8b86ac46a2b15ba782e9c8bde3f6e58dda779` — post-merge CI #34247637204 SUCCESS + drift #34247637242 SUCCESS.
+- ANALYSIS-5 — PR #542 — merge `9681b77ee2ac71c710120a26f4e98597645af927` — post-merge CI #34272156304 SUCCESS + drift #34272156421 SUCCESS.
 
 ### ACTIVE
-- ANALYSIS-5 — PR #542 — governed CGM analytics promotion.
+- ANALYSIS-6 — PR #543 — contextual target applicability.
 
 ### OPEN
-- ANALYSIS-6 à ANALYSIS-7 ;
+- ANALYSIS-7 ;
 - recertification finale.
 
 ### NEXT EXACT
 
-Obtenir CI + drift verts sur le HEAD final ANALYSIS-5 incluant ce fichier → corriger tout échec → vérifier branche 0 behind `main` + review threads → READY #542 → merge verrouillé → post-merge → ANALYSIS-6.
+Certifier le HEAD final ANALYSIS-6 par CI + drift → corriger tout échec → vérifier branche 0 behind `main` + review threads → READY #543 → merge verrouillé → post-merge → ANALYSIS-7.
 
 ### Séquence restante
 
-A5 final CI/drift → ready/merge/post-merge → A6 → A7 → re-audit pondéré → cohérence evidence/docs → CI finale → closeout canonique.
+A6 final CI/drift → ready/merge/post-merge → A7 → re-audit pondéré → cohérence evidence/docs → CI finale → closeout canonique.
 
 ---
 
