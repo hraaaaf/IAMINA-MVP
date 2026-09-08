@@ -406,13 +406,13 @@ class ConvertToMgDlTests(SimpleTestCase):
         self.assertIn("Unknown glucose unit", str(ctx.exception))
 
     def test_value_below_min_after_conversion_raises(self):
-        """0.1 mmol/L → 1.8 mg/dL < 20 mg/dL minimum."""
+        """0.1 mmol/L → 1.8 mg/dL, below the canonical 30 mg/dL minimum."""
         from diabetes.middleware.unit_guard import UnitConversionError, convert_to_mg_dl
         with self.assertRaises(UnitConversionError):
             convert_to_mg_dl(0.1, "mmol/L")
 
     def test_value_above_max_after_conversion_raises(self):
-        """40 mmol/L → 720.6 mg/dL > 700 mg/dL maximum."""
+        """40 mmol/L → 720.6 mg/dL, above the canonical 600 mg/dL maximum."""
         from diabetes.middleware.unit_guard import UnitConversionError, convert_to_mg_dl
         with self.assertRaises(UnitConversionError):
             convert_to_mg_dl(40.0, "mmol/L")
@@ -424,7 +424,7 @@ class ConvertToMgDlTests(SimpleTestCase):
 
 
 class ValidateMgDlTests(SimpleTestCase):
-    """validate_mg_dl() — bounds check on already-canonical values."""
+    """validate_mg_dl() — canonical 30–600 mg/dL bounds."""
 
     def test_normal_value_passes_through(self):
         from diabetes.middleware.unit_guard import validate_mg_dl
@@ -432,21 +432,21 @@ class ValidateMgDlTests(SimpleTestCase):
 
     def test_min_boundary_accepted(self):
         from diabetes.middleware.unit_guard import validate_mg_dl
-        self.assertEqual(validate_mg_dl(20.0), 20.0)
+        self.assertEqual(validate_mg_dl(30.0), 30.0)
 
     def test_max_boundary_accepted(self):
         from diabetes.middleware.unit_guard import validate_mg_dl
-        self.assertEqual(validate_mg_dl(700.0), 700.0)
+        self.assertEqual(validate_mg_dl(600.0), 600.0)
 
     def test_below_min_raises(self):
         from diabetes.middleware.unit_guard import UnitConversionError, validate_mg_dl
         with self.assertRaises(UnitConversionError):
-            validate_mg_dl(10.0)
+            validate_mg_dl(20.0)
 
     def test_above_max_raises(self):
         from diabetes.middleware.unit_guard import UnitConversionError, validate_mg_dl
         with self.assertRaises(UnitConversionError):
-            validate_mg_dl(750.0)
+            validate_mg_dl(700.0)
 
 
 class UnitGuardMiddlewareTests(SimpleTestCase):
