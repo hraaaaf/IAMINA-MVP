@@ -9,12 +9,7 @@ from __future__ import annotations
 
 import logging
 
-from .engine import (
-    ClinicalReport,
-    _ACTIVE_ENTRY_DETECTORS,
-    _format_with_llm,
-    _high_variability_from_kpis,
-)
+from . import engine
 from .sql_analytics import AnalyticalKPIs
 
 logger = logging.getLogger(__name__)
@@ -30,7 +25,7 @@ def run_clinical_analysis_with_integrity(
     entries,
     kpis: AnalyticalKPIs,
     language: str = "fr",
-) -> tuple[ClinicalReport, list[str]]:
+) -> tuple[engine.ClinicalReport, list[str]]:
     """Run active deterministic detectors and expose any partial-execution state.
 
     Degradation codes are technical only. They contain neither patient data nor
@@ -42,14 +37,14 @@ def run_clinical_analysis_with_integrity(
     degradations: list[str] = []
 
     try:
-        cgm_variability = _high_variability_from_kpis(kpis)
+        cgm_variability = engine._high_variability_from_kpis(kpis)
         if cgm_variability is not None:
             patterns.append(cgm_variability)
     except Exception:
         logger.exception("ClinicalEngine: KPI-backed variability detector failed")
         degradations.append("detector_failed_cgm_variability")
 
-    for detector in _ACTIVE_ENTRY_DETECTORS:
+    for detector in engine._ACTIVE_ENTRY_DETECTORS:
         try:
             result = detector(entries)
             if result is not None:
@@ -60,6 +55,6 @@ def run_clinical_analysis_with_integrity(
             degradations.append(_detector_code(detector))
 
     patterns.sort(key=lambda p: (p.priority, p.code))
-    insights = _format_with_llm(patterns, language) if patterns else []
-    report = ClinicalReport(kpis=kpis, patterns=patterns, insights=insights)
+    insights = engine._format_with_llm(patterns, language) if patterns else []
+    report = engine.ClinicalReport(kpis=kpis, patterns=patterns, insights=insights)
     return report, sorted(set(degradations))
