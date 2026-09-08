@@ -1069,7 +1069,49 @@
             }
           }
         },
-        "description": "Summarize repeated observations without causal or treatment inference.",
+        "description": "Summarize repeated observations without causal or prescriptive inference.",
+        "tags": [
+          "personal-response"
+        ],
+        "security": [
+          {
+            "HybridBearerAuth": []
+          },
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/personal-response/paired-meals/": {
+      "get": {
+        "operationId": "diabetes_api_v1_personal_response_get_paired_meal_response",
+        "summary": "Get Paired Meal Response",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "default": 90,
+              "title": "Days",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairedMealResponseOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return exact linked pre\u2192post meal episodes and repeated patterns.",
         "tags": [
           "personal-response"
         ],
@@ -2522,6 +2564,18 @@
             "title": "Meal Type",
             "type": "string"
           },
+          "meal_episode_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Episode Id"
+          },
           "blood_sugar": {
             "title": "Blood Sugar",
             "type": "number"
@@ -2712,6 +2766,18 @@
             "title": "Meal Type",
             "type": "string"
           },
+          "meal_episode_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Episode Id"
+          },
           "blood_sugar": {
             "maximum": 600.0,
             "minimum": 30.0,
@@ -2863,6 +2929,18 @@
               }
             ],
             "title": "Meal Type"
+          },
+          "meal_episode_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Episode Id"
           },
           "blood_sugar": {
             "anyOf": [
@@ -3720,6 +3798,192 @@
           "confidence"
         ],
         "title": "PersonalResponsePatternOut",
+        "type": "object"
+      },
+      "PairedMealEpisodeOut": {
+        "properties": {
+          "episode_id": {
+            "format": "uuid",
+            "title": "Episode Id",
+            "type": "string"
+          },
+          "meal_type": {
+            "title": "Meal Type",
+            "type": "string"
+          },
+          "pre_at": {
+            "format": "date-time",
+            "title": "Pre At",
+            "type": "string"
+          },
+          "post_at": {
+            "format": "date-time",
+            "title": "Post At",
+            "type": "string"
+          },
+          "pre_glucose_mg_dl": {
+            "title": "Pre Glucose Mg Dl",
+            "type": "number"
+          },
+          "post_glucose_mg_dl": {
+            "title": "Post Glucose Mg Dl",
+            "type": "number"
+          },
+          "delta_mg_dl": {
+            "title": "Delta Mg Dl",
+            "type": "number"
+          },
+          "elapsed_minutes": {
+            "title": "Elapsed Minutes",
+            "type": "number"
+          }
+        },
+        "required": [
+          "episode_id",
+          "meal_type",
+          "pre_at",
+          "post_at",
+          "pre_glucose_mg_dl",
+          "post_glucose_mg_dl",
+          "delta_mg_dl",
+          "elapsed_minutes"
+        ],
+        "title": "PairedMealEpisodeOut",
+        "type": "object"
+      },
+      "PairedMealPatternOut": {
+        "properties": {
+          "meal_type": {
+            "title": "Meal Type",
+            "type": "string"
+          },
+          "pairs": {
+            "title": "Pairs",
+            "type": "integer"
+          },
+          "distinct_days": {
+            "title": "Distinct Days",
+            "type": "integer"
+          },
+          "median_pre_glucose_mg_dl": {
+            "title": "Median Pre Glucose Mg Dl",
+            "type": "number"
+          },
+          "median_post_glucose_mg_dl": {
+            "title": "Median Post Glucose Mg Dl",
+            "type": "number"
+          },
+          "median_delta_mg_dl": {
+            "title": "Median Delta Mg Dl",
+            "type": "number"
+          },
+          "evidence_density": {
+            "enum": [
+              "limited",
+              "moderate",
+              "strong"
+            ],
+            "title": "Evidence Density",
+            "type": "string"
+          },
+          "evidence_id": {
+            "title": "Evidence Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "meal_type",
+          "pairs",
+          "distinct_days",
+          "median_pre_glucose_mg_dl",
+          "median_post_glucose_mg_dl",
+          "median_delta_mg_dl",
+          "evidence_density",
+          "evidence_id"
+        ],
+        "title": "PairedMealPatternOut",
+        "type": "object"
+      },
+      "PairedMealResponseOut": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ready",
+              "insufficient_data"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "data_scope": {
+            "const": "server_synced_logs_explicit_meal_episodes",
+            "title": "Data Scope",
+            "type": "string"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": "integer"
+          },
+          "explicit_episode_count": {
+            "title": "Explicit Episode Count",
+            "type": "integer"
+          },
+          "complete_pair_count": {
+            "title": "Complete Pair Count",
+            "type": "integer"
+          },
+          "incomplete_or_invalid_episode_count": {
+            "title": "Incomplete Or Invalid Episode Count",
+            "type": "integer"
+          },
+          "pairing_definition": {
+            "title": "Pairing Definition",
+            "type": "string"
+          },
+          "interpretation_notice": {
+            "title": "Interpretation Notice",
+            "type": "string"
+          },
+          "evidence_id": {
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "pairs": {
+            "items": {
+              "$ref": "#/components/schemas/PairedMealEpisodeOut"
+            },
+            "title": "Pairs",
+            "type": "array"
+          },
+          "patterns": {
+            "items": {
+              "$ref": "#/components/schemas/PairedMealPatternOut"
+            },
+            "title": "Patterns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "status",
+          "data_scope",
+          "window_days",
+          "explicit_episode_count",
+          "complete_pair_count",
+          "incomplete_or_invalid_episode_count",
+          "pairing_definition",
+          "interpretation_notice",
+          "evidence_id",
+          "limitations",
+          "pairs",
+          "patterns"
+        ],
+        "title": "PairedMealResponseOut",
         "type": "object"
       },
       "PriorityVectorOut": {
