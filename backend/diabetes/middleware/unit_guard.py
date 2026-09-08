@@ -37,12 +37,6 @@ _LEGACY_GUARDED_PATHS = (
 _GLUCOSE_FIELDS = ("blood_sugar", "glucose", "glucose_value", "glycemia")
 _UNIT_FIELDS = ("unit", "glucose_unit", "blood_sugar_unit")
 
-# Historical helper compatibility only. The middleware runtime path below does
-# NOT use these bounds; every incoming payload is validated by log_input's
-# canonical 30–600 mg/dL contract. Keep until legacy tests/callers are retired.
-_LEGACY_HELPER_MIN_MG_DL = 20.0
-_LEGACY_HELPER_MAX_MG_DL = 700.0
-
 
 class UnitConversionError(ValueError):
     """Backward-compatible public error for unsafe glucose normalization."""
@@ -66,16 +60,13 @@ def convert_to_mg_dl(value: float, unit: str) -> float:
 
 
 def validate_mg_dl(value: float) -> float:
-    """Deprecated compatibility helper; not used by the middleware runtime gate."""
+    """Compatibility wrapper over the sole canonical 30–600 mg/dL contract."""
     try:
-        numeric = float(value)
+        return log_input.validate_mg_dl(float(value))
     except (TypeError, ValueError) as exc:
         raise UnitConversionError("Glucose value must be numeric.") from exc
-    if not (_LEGACY_HELPER_MIN_MG_DL <= numeric <= _LEGACY_HELPER_MAX_MG_DL):
-        raise UnitConversionError(
-            "Glucose value is outside the legacy compatibility range [20–700] mg/dL."
-        )
-    return numeric
+    except log_input.LogInputValidationError as exc:
+        raise UnitConversionError(str(exc)) from exc
 
 
 def _canonical_runtime_value(value: Any, unit: str | None) -> float:
