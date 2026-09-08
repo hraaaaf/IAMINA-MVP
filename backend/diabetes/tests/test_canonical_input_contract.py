@@ -17,6 +17,11 @@ from diabetes.contracts.log_entry import (
 )
 from diabetes.middleware.unit_guard import UnitGuardMiddleware
 from diabetes.models import LogEntry
+from diabetes.services.clinical.sql_analytics import (
+    compute_agp_profile,
+    compute_daily_averages,
+    compute_kpis,
+)
 
 
 class CanonicalGlucoseContractTests(SimpleTestCase):
@@ -102,3 +107,32 @@ class CanonicalDatabaseBoundaryTests(TestCase):
         for value in (29.9, 600.1):
             with self.assertRaises(IntegrityError), transaction.atomic():
                 LogEntry.objects.create(patient=self.user, blood_sugar=value)
+
+    def test_future_row_is_excluded_from_all_current_analytics(self):
+        now = timezone.now()
+        LogEntry.objects.create(
+            patient=self.user,
+            blood_sugar=100,
+            logged_at=now - timedelta(hours=2),
+        )
+        LogEntry.objects.create(
+            patient=self.user,
+            blood_sugar=120,
+            logged_at=now - timedelta(hours=1),
+        )
+        LogEntry.objects.create(
+            patient=self.user,
+            blood_sugar=600,
+            logged_at=now + timedelta(days=1),
+        )
+
+        kpis = compute_kpis(self.user.id, days=21)
+        self.assertEqual(kpis.log_count, 2)
+        self.assertEqual(kpis.avg_glucose, 110.0)
+
+        daily = compute_daily_averages(self.user.id, days=21)
+        self.assertEqual(sum(row["entries"] for row in daily), 2)
+
+        agp = compute_agp_profile(self.user.id, days=21)
+        self.assertEqual(sum(1 for row in agp if row["avg"] is not None), 2)
+        self.assertNotIn(600.0, [row["avg"] for row in agp])
