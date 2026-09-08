@@ -35,12 +35,19 @@ class DiabetesConfig(AppConfig):
             )
         )
 
-        # P1-EVIDENCE: register the evidence-gated diabetes authority boundary.
+        # P1-EVIDENCE + ANALYSIS-2: register the evidence-gated diabetes
+        # authority with the deterministic alert history contract.
         from core.registry import ModuleRegistry
         from diabetes.api.v1.logs import router as _logs_router
         from diabetes.manifest import DIABETES_MANIFEST
-        from diabetes.services.clinical.evidence_engine import EvidenceGuardedDiabetesEngine
-        ModuleRegistry.register(DIABETES_MANIFEST, EvidenceGuardedDiabetesEngine, _logs_router)
+        from diabetes.services.clinical.alerting_authority import (
+            EvidenceGuardedAlertingDiabetesEngine,
+        )
+        ModuleRegistry.register(
+            DIABETES_MANIFEST,
+            EvidenceGuardedAlertingDiabetesEngine,
+            _logs_router,
+        )
 
         # Companion persistence ports (memory + conversation). Clinical data flows
         # through the registered diabetes engine contract, not through ports.
