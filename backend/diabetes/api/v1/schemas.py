@@ -3,12 +3,17 @@ from typing import Annotated, List, Optional
 from uuid import UUID
 
 from ninja import Schema
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from diabetes.contracts import log_entry as log_input
 
 # ── Shared constraint ─────────────────────────────────────────────────────────
-# Physiological range accepted at the API boundary (30–600 mg/dL).
-# Values outside this range are clinically implausible at the sensor/manual level.
-_BloodSugar = Annotated[float, Field(ge=30.0, le=600.0)]
+# Canonical persisted glucose range. UnitGuard uses the same contract before
+# Pydantic receives the normalized mg/dL value.
+_BloodSugar = Annotated[
+    float,
+    Field(ge=log_input.GLUCOSE_MIN_MG_DL, le=log_input.GLUCOSE_MAX_MG_DL),
+]
 _InsulinUnits = Annotated[float, Field(ge=0.0)]
 _MealItem = Annotated[str, Field(min_length=1, max_length=80)]
 
@@ -59,7 +64,64 @@ class PatientProfileSchema(Schema):
     ramadan_end_date: Optional[date] = None
 
 
-class LogEntrySchema(Schema):
+class _CanonicalLogInputMixin:
+    @field_validator("logged_at", check_fields=False)
+    @classmethod
+    def validate_canonical_logged_at(cls, value: datetime | None):
+        return log_input.validate_logged_at(value)
+
+    @staticmethod
+    def _validate_choice(value: str | None, allowed: tuple[str, ...], field_name: str):
+        if value is not None and value not in allowed:
+            raise ValueError(f"Unsupported {field_name} value.")
+        return value
+
+    @field_validator("glycemic_context", check_fields=False)
+    @classmethod
+    def validate_glycemic_context(cls, value: str | None):
+        return cls._validate_choice(
+            value,
+            log_input.GLYCEMIC_CONTEXT_VALUES,
+            "glycemic_context",
+        )
+
+    @field_validator("meal_type", check_fields=False)
+    @classmethod
+    def validate_meal_type(cls, value: str | None):
+        return cls._validate_choice(value, log_input.MEAL_TYPE_VALUES, "meal_type")
+
+    @field_validator("exercised", check_fields=False)
+    @classmethod
+    def validate_exercised(cls, value: str | None):
+        return cls._validate_choice(value, log_input.EXERCISE_VALUES, "exercised")
+
+    @field_validator("sleep_quality", check_fields=False)
+    @classmethod
+    def validate_sleep_quality(cls, value: str | None):
+        return cls._validate_choice(value, log_input.SLEEP_VALUES, "sleep_quality")
+
+    @field_validator("stressed", check_fields=False)
+    @classmethod
+    def validate_stressed(cls, value: str | None):
+        return cls._validate_choice(value, log_input.STRESS_VALUES, "stressed")
+
+    @field_validator("fatigue_level", check_fields=False)
+    @classmethod
+    def validate_fatigue_level(cls, value: str | None):
+        return cls._validate_choice(value, log_input.FATIGUE_VALUES, "fatigue_level")
+
+    @field_validator("is_sick", check_fields=False)
+    @classmethod
+    def validate_is_sick(cls, value: str | None):
+        return cls._validate_choice(value, log_input.SICK_VALUES, "is_sick")
+
+    @field_validator("source", check_fields=False)
+    @classmethod
+    def validate_source(cls, value: str | None):
+        return cls._validate_choice(value, log_input.SOURCE_VALUES, "source")
+
+
+class LogEntrySchema(_CanonicalLogInputMixin, Schema):
     id: int
     logged_at: Optional[datetime]
     glycemic_context: str = ""
@@ -79,7 +141,7 @@ class LogEntrySchema(Schema):
     created_at: datetime
 
 
-class LogEntryCreateSchema(Schema):
+class LogEntryCreateSchema(_CanonicalLogInputMixin, Schema):
     logged_at: Optional[datetime] = None
     glycemic_context: str = ""
     meal_type: str = ""
@@ -102,7 +164,7 @@ class LogEntryCreateSchema(Schema):
         return self
 
 
-class LogEntryUpdateSchema(Schema):
+class LogEntryUpdateSchema(_CanonicalLogInputMixin, Schema):
     """Partial update — all fields optional. Only supplied fields are written."""
 
     logged_at: Optional[datetime] = None

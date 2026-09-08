@@ -155,6 +155,7 @@ FROM diabetes_logentry
 WHERE
     patient_id = %(patient_id)s
     AND COALESCE(logged_at, created_at) >= %(cutoff)s
+    AND COALESCE(logged_at, created_at) <= %(end)s
     AND blood_sugar IS NOT NULL
     AND blood_sugar > 0
 """
@@ -216,6 +217,7 @@ FROM diabetes_logentry
 WHERE
     patient_id = %(patient_id)s
     AND COALESCE(logged_at, created_at) >= %(cutoff)s
+    AND COALESCE(logged_at, created_at) <= %(end)s
     AND blood_sugar IS NOT NULL
     AND blood_sugar > 0
 """
@@ -243,10 +245,12 @@ def compute_kpis(
 
     from django.utils import timezone
 
-    cutoff = timezone.now() - timedelta(days=days)
+    now = timezone.now()
+    cutoff = now - timedelta(days=days)
     params = {
         "patient_id": patient_id,
         "cutoff": cutoff,
+        "end": now,
         "low": target_low,
         "high": target_high,
     }
@@ -272,6 +276,7 @@ def compute_kpis(
             std_dev, cv_pct = _compute_stddev_cv(
                 patient_id=patient_id,
                 cutoff=cutoff,
+                end=now,
                 avg_glucose=float(avg_glucose),
             )
 
@@ -325,6 +330,7 @@ FROM diabetes_logentry
 WHERE
     patient_id = %(patient_id)s
     AND COALESCE(logged_at, created_at) >= %(cutoff)s
+    AND COALESCE(logged_at, created_at) <= %(end)s
     AND blood_sugar IS NOT NULL
     AND blood_sugar > 0
 GROUP BY date(COALESCE(logged_at, created_at))
@@ -341,10 +347,14 @@ def compute_daily_averages(patient_id: int, days: int = 21) -> list[dict]:
 
     from django.utils import timezone
 
-    cutoff = timezone.now() - timedelta(days=days)
+    now = timezone.now()
+    cutoff = now - timedelta(days=days)
     try:
         with connection.cursor() as cursor:
-            cursor.execute(_DAILY_AVG_SQL, {"patient_id": patient_id, "cutoff": cutoff})
+            cursor.execute(
+                _DAILY_AVG_SQL,
+                {"patient_id": patient_id, "cutoff": cutoff, "end": now},
+            )
             rows = cursor.fetchall()
         return [
             {"day": str(r[0]), "avg_glucose": float(r[1]), "entries": int(r[2])}
@@ -375,6 +385,7 @@ FROM diabetes_logentry
 WHERE
     patient_id = %(patient_id)s
     AND COALESCE(logged_at, created_at) >= %(cutoff)s
+    AND COALESCE(logged_at, created_at) <= %(end)s
     AND blood_sugar IS NOT NULL
     AND blood_sugar > 0
 GROUP BY hour
@@ -389,6 +400,7 @@ FROM diabetes_logentry
 WHERE
     patient_id = %(patient_id)s
     AND COALESCE(logged_at, created_at) >= %(cutoff)s
+    AND COALESCE(logged_at, created_at) <= %(end)s
     AND blood_sugar IS NOT NULL
     AND blood_sugar > 0
 ORDER BY hour ASC
@@ -416,8 +428,9 @@ def compute_agp_profile(patient_id: int, days: int = 21) -> list[dict]:
 
     from django.utils import timezone
 
-    cutoff = timezone.now() - timedelta(days=days)
-    params = {"patient_id": patient_id, "cutoff": cutoff}
+    now = timezone.now()
+    cutoff = now - timedelta(days=days)
+    params = {"patient_id": patient_id, "cutoff": cutoff, "end": now}
 
     if connection.vendor == "postgresql":
         try:
@@ -649,6 +662,7 @@ def gri_label_fr(zone: Optional[str]) -> Optional[str]:
 def _compute_stddev_cv(
     patient_id: int,
     cutoff,
+    end,
     avg_glucose: float,
 ) -> tuple[Optional[float], Optional[float]]:
     """
@@ -662,12 +676,16 @@ def _compute_stddev_cv(
         FROM diabetes_logentry
         WHERE patient_id = %(patient_id)s
           AND COALESCE(logged_at, created_at) >= %(cutoff)s
+          AND COALESCE(logged_at, created_at) <= %(end)s
           AND blood_sugar IS NOT NULL
           AND blood_sugar > 0
     """
     try:
         with connection.cursor() as cursor:
-            cursor.execute(sql, {"patient_id": patient_id, "cutoff": cutoff})
+            cursor.execute(
+                sql,
+                {"patient_id": patient_id, "cutoff": cutoff, "end": end},
+            )
             values = [float(row[0]) for row in cursor.fetchall()]
 
         if len(values) < 2:
