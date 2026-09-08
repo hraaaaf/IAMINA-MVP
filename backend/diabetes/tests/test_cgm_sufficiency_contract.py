@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta, timezone as dt_timezone
 import math
+from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.contrib.auth.models import User
 from django.test import TestCase
