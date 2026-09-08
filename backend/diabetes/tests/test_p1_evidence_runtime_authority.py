@@ -4,7 +4,8 @@ from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
-from diabetes.services.clinical.cgm_eligibility import CgmSufficiency
+from diabetes.services.clinical.cgm_analytics import VerifiedCgmMetrics
+from diabetes.services.clinical.cgm_eligibility import CgmWindowSufficiency
 from diabetes.services.clinical.evidence_engine import EvidenceGuardedDiabetesEngine
 from diabetes.services.clinical.evidence_projection import (
     guard_normative_kpis,
@@ -33,6 +34,24 @@ def _raw_cgm_like_kpis() -> AnalyticalKPIs:
         tar_level1_pct=18.0,
         tar_level2_pct=7.0,
         cgm_active_pct=100.0,
+    )
+
+
+def _cgm_window(*, verified: bool) -> CgmWindowSufficiency:
+    coverage = 100.0 if verified else 0.0
+    received = 100 if verified else 0
+    return CgmWindowSufficiency(
+        verified=verified,
+        reason="verified" if verified else "insufficient_coverage",
+        window_days=21.0,
+        active_window_pct=coverage,
+        capture_pct=coverage,
+        coverage_pct=coverage,
+        expected_readings=100,
+        received_readings=received,
+        session_count=1,
+        gap_count=0,
+        evidence_id="rule.metric.gmi-cgm.v1",
     )
 
 
@@ -73,25 +92,37 @@ class EvidenceProjectionTests(SimpleTestCase):
         self.assertEqual(guarded.std_dev, 62.0)
         self.assertEqual(guarded.log_count, 100)
 
-    @patch("diabetes.services.clinical.evidence_projection.assess_cgm_sufficiency")
-    def test_verified_coverage_cannot_auto_promote_candidate_metrics(self, sufficiency_mock):
+    def test_verified_cgm_metrics_promote_governed_fields_but_not_candidates(self):
         raw = _raw_cgm_like_kpis()
-        sufficiency_mock.return_value = CgmSufficiency(
-            verified=True,
-            reason="synthetic future verified coverage",
-            days_with_data=raw.days_with_data,
-            cgm_row_fraction_pct=raw.cgm_active_pct,
-            evidence_id="rule.metric.gmi-cgm.v1",
+        window = _cgm_window(verified=True)
+        metrics = VerifiedCgmMetrics(
+            cv_pct=33.3,
+            tir_pct=72.0,
+            tar_pct=20.0,
+            tbr_pct=8.0,
+            reading_count=100,
         )
 
-        guarded = guard_normative_kpis(raw)
-        public = project_public_kpis(raw)
+        guarded = guard_normative_kpis(
+            raw,
+            cgm_window=window,
+            cgm_metrics=metrics,
+        )
+        public = project_public_kpis(
+            raw,
+            cgm_window=window,
+            cgm_metrics=metrics,
+        )
 
-        self.assertEqual(guarded.tir_pct, 68.0)
-        self.assertEqual(guarded.cv_pct, 40.3)
+        self.assertEqual(guarded.tir_pct, 72.0)
+        self.assertEqual(guarded.cv_pct, 33.3)
+        self.assertNotEqual(guarded.tir_pct, raw.tir_pct)
+        self.assertNotEqual(guarded.cv_pct, raw.cv_pct)
         self.assertIsNone(guarded.gmi)
         self.assertIsNone(guarded.gri)
         self.assertIsNone(guarded.gri_zone)
+        self.assertEqual(public["tir_pct"], 72.0)
+        self.assertEqual(public["recorded_range_pct"], 68.0)
         self.assertIsNone(public["gmi"])
         self.assertIsNone(public["gri"])
         self.assertIsNone(public["gmi_confidence"])
@@ -110,7 +141,7 @@ class EvidenceProjectionTests(SimpleTestCase):
 
 
 class EvidenceGuardedEngineTests(SimpleTestCase):
-    @patch("diabetes.services.clinical.evidence_engine.compute_trend")
+    @patch("diabetes.services.clinical.evidence_engine.assess_cgm_window")
     @patch("diabetes.services.clinical.evidence_engine.build_chat_context", return_value="descriptive")
     @patch("diabetes.services.clinical.evidence_engine.run_clinical_analysis_with_integrity")
     @patch("diabetes.services.clinical.evidence_engine.LogEntry.objects.filter")
@@ -121,10 +152,11 @@ class EvidenceGuardedEngineTests(SimpleTestCase):
         filter_mock,
         clinical_analysis_mock,
         build_context_mock,
-        compute_trend_mock,
+        assess_window_mock,
     ):
         raw = _raw_cgm_like_kpis()
         compute_kpis_mock.return_value = raw
+        assess_window_mock.return_value = _cgm_window(verified=False)
         filter_mock.return_value.order_by.return_value = []
         clinical_analysis_mock.return_value = (
             SimpleNamespace(patterns=[], insights=[]),
@@ -142,19 +174,21 @@ class EvidenceGuardedEngineTests(SimpleTestCase):
         self.assertEqual(context.primary_label, "Recorded glucose")
         self.assertEqual(context.kpi_summary["recorded_range_pct"], 68.0)
         self.assertIsNone(context.kpi_summary["tir_pct"])
-        compute_trend_mock.assert_not_called()
         build_context_mock.assert_called_once()
 
+    @patch("diabetes.api.v1.kpis.assess_cgm_window")
     @patch("diabetes.api.v1.kpis.cache")
     @patch("diabetes.api.v1.kpis.compute_kpis")
     def test_kpi_endpoint_projection_returns_null_normative_fields(
         self,
         compute_kpis_mock,
         cache_mock,
+        assess_window_mock,
     ):
         from diabetes.api.v1.kpis import get_kpis
 
         compute_kpis_mock.return_value = _raw_cgm_like_kpis()
+        assess_window_mock.return_value = _cgm_window(verified=False)
         cache_mock.get.return_value = None
         request = SimpleNamespace(user=SimpleNamespace(id=9))
 
