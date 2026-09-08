@@ -12,7 +12,7 @@ from typing import Optional
 
 from ninja import Router
 from ninja.errors import HttpError
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from core.ai_egress import grant_media_consent, revoke_media_consent
 from core.models import AIMediaConsentGrant, BasePatientProfile
@@ -50,8 +50,6 @@ _MEDIA_CONSENT_OPTION_SET = frozenset(_MEDIA_CONSENT_OPTIONS)
 
 class ProfilePatchSchema(BaseModel):
     """All fields optional; supplied values are treated as patient declarations."""
-
-    model_config = ConfigDict(extra="forbid")
 
     preferred_language: Optional[str] = None
     diabetes_type: Optional[str] = None
@@ -201,13 +199,7 @@ def get_profile(request):
 
 @router.patch("/profile", response=PatientProfileSchema)
 def patch_profile(request, data: ProfilePatchSchema):
-    """Persist only explicitly supplied patient-declared profile fields.
-
-    Patient edits never create or preserve clinician target authority by accident.
-    A range edit becomes ``patient_declared``. A diabetes-type/date-of-birth edit
-    invalidates an existing clinician confirmation because population applicability
-    may have changed.
-    """
+    """Persist only explicitly supplied patient-declared profile fields."""
     profile = _get_diabetes_profile(request.user)
     base = profile.base_profile
     payload = data.model_dump(exclude_unset=True)
