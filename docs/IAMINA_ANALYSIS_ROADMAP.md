@@ -125,25 +125,33 @@ Le chantier est CLOSED uniquement si :
 **Branche** : `analysis/contextual-target-applicability`  
 **PR** : #543 (draft)  
 **Base** : `main@9681b77ee2ac71c710120a26f4e98597645af927`  
-**HEAD code connu avant ce commit documentaire** : `c7d03bffdbaa86837ca0187ffedae84888eca7d0`
+**HEAD code avant ce commit documentaire** : `d9f1f899df1cb24019e12adfe28a1079b114c714`
 
 **Implémenté dans le diff** :
 - métadonnées persistantes séparant plage configurée et autorité clinique : provenance, population explicite, objectif de temps dans la plage %, timestamp de confirmation ;
 - toutes les lignes historiques restent `legacy_default` / `unknown`, donc aucune cible clinique n’est créée rétroactivement ;
 - modification patient de la plage → `patient_declared`, population inconnue, objectif/confirmation effacés ;
 - changement patient du type de diabète ou de la date de naissance → confirmation clinicien existante marquée stale et autorité effacée ;
-- le schéma PATCH interdit les champs internes d’autorité cible ;
+- les champs internes d’autorité cible sont absents du modèle PATCH public et ne peuvent pas entrer dans son payload de mutation ; les extras restent ignorés pour préserver le contrat OpenAPI existant ;
 - aucune population/cible guideline n’est auto-inférée depuis âge, type, sexe ou autre démographie ;
 - une comparaison nécessite : provenance `clinician_confirmed` + diabète connu + population explicite + confirmation non future + plage valide + objectif % explicite + CGM A4 vérifié ;
 - plage personnalisée calculée séparément du TIR standard A5 sous `target_range_pct` ;
 - résultat structuré `meets_confirmed_goal | below_confirmed_goal | unavailable` ;
 - la narration LLM ne reçoit le résultat que si tous les gates passent et rappelle explicitement qu’aucun changement de traitement/dose n’est autorisé ;
 - panne du sous-calcul cible → analyse `partial`, métriques CGM valides conservées, jugement cible indisponible ;
-- le ton relationnel reste cliniquement neutre.
+- le ton relationnel reste cliniquement neutre ;
+- OpenAPI public conservé stable.
 
-**Tests ajoutés** : legacy/default, patient-declared, population inconnue, confirmation future, objectif % invalide, cible clinicien valide, CGM insuffisant, spoof PATCH, plage croisée, séparation TIR standard/plage personnelle, panne target metric partielle.
+**Tests ajoutés / adaptés** : legacy/default, patient-declared, population inconnue, confirmation future, objectif % invalide, cible clinicien valide, CGM insuffisant, champs internes hors payload PATCH, plage croisée, séparation TIR standard/plage personnelle, panne target metric partielle, unité A0 isolant explicitement l’absence de profil cible.
 
-**État de preuve** : PR #543 ouverte en draft. CI #34273738953 et drift #34273739054 ont été lancés sur le HEAD code précédent ; ce commit documentaire devient le nouveau HEAD à certifier. A6 n’est pas CLOSED avant CI/drift verts sur le HEAD final + merge + post-merge.
+**Preuves intermédiaires vérifiées** :
+- migration `0032_diabetesprofile_target_authority` appliquée avec succès sur PostgreSQL ;
+- première suite PostgreSQL A6 : 2169 tests PASS, 1 échec hérité dû à un `SimpleTestCase` effectuant implicitement la nouvelle lecture de profil cible ; test corrigé explicitement, sans changement du comportement production ;
+- Ruff, import-linter, anti-bypass LLM/egress et Bandit verts sur le premier HEAD code ;
+- dérive OpenAPI initiale limitée à la docstring PATCH + `additionalProperties:false`, ensuite supprimée en restaurant le contrat public stable ;
+- drift #34274302687 SUCCESS sur `d9f1f899...` ; CI #34274302666 était encore en cours au moment de ce commit documentaire.
+
+**État de preuve** : ce commit documentaire devient le nouveau HEAD final à certifier. A6 n’est pas CLOSED avant CI + drift verts sur ce HEAD exact, branche 0 behind, absence de review thread bloquant, merge verrouillé et post-merge verts.
 
 ---
 
@@ -151,7 +159,16 @@ Le chantier est CLOSED uniquement si :
 
 **Goal** : ajouter de la valeur longitudinale sans causalité fictive.
 
-Candidats : paires pré/post-prandiales structurées, répétabilité, baseline personnelle, évolution des patterns, données manquantes utiles, visualisation explicite de l’incertitude.
+**Audit de départ vérifié** : le Clinical Twin possède déjà recurrence, evidence density, baseline personnelle sur fenêtre, mouvement relatif à cette baseline, persistance/résolution et limites explicites anti-causalité. `personal_response.py` sait déjà identifier des contextes positifs répétés et des mesures `post_meal` par type de repas.
+
+**Manque principal à traiter** : les patterns repas actuels comparent des mesures post-prandiales absolues à une baseline de fenêtre ; ils ne possèdent pas de lien explicite entre une mesure `pre_meal` et la mesure `post_meal` du même épisode.
+
+**Direction minimale** :
+- ajouter un identifiant opaque d’épisode repas explicite et optionnel ;
+- calculer un delta pré→post uniquement pour des entrées partageant cet identifiant et satisfaisant un contrat temporel/qualité strict ;
+- aucune association par simple proximité temporelle si l’identifiant manque ;
+- exposer complétude/missingness, répétabilité et évolution descriptive des deltas ;
+- réutiliser le Clinical Twin existant plutôt que créer une seconde autorité longitudinale.
 
 Interdit : diagnostic, causalité, prescription, dose, optimisation thérapeutique, prédiction non validée, pseudo-probabilité de confiance.
 
@@ -201,6 +218,7 @@ Règles : aucune capacité absente ne reçoit un score fonctionnel positif ; fai
 - CGM incomplete/valid/multi-sensor ;
 - gates TIR/CV/AGP/GMI/GRI ;
 - population/targets + provenance cible ;
+- paires repas explicites + missingness + absence d’appariement implicite ;
 - plafond d’evidence LLM ;
 - fallback offline ;
 - langues critiques ;
