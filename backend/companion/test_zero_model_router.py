@@ -32,7 +32,7 @@ def test_exact_non_clinical_turns_are_eligible(message, language):
             "J'ai du mal à être régulier dans mon suivi. "
             "Je commence bien puis j'oublie au bout de quelques jours.",
             "fr",
-            "un seul repère",
+            "trois cases vides",
         ),
         (
             "Hier encore j'ai oublié. Je voudrais quelque chose de simple "
@@ -56,7 +56,7 @@ def test_exact_non_clinical_turns_are_eligible(message, language):
             "Wakha, bghit ghir chi routine sahla bach nb9a mntadem "
             "bla nasi7a 3ilajiya.",
             "ar-MA",
-            "reminder",
+            "3 cases khawyin",
         ),
     ],
 )

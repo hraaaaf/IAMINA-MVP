@@ -12,6 +12,26 @@ const String companionApiBaseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:8000',
 );
 
+class CompanionChatReply {
+  final String reply;
+  final String conversationId;
+  final String replyLanguage;
+
+  const CompanionChatReply({
+    required this.reply,
+    required this.conversationId,
+    required this.replyLanguage,
+  });
+
+  factory CompanionChatReply.fromJson(Map<String, dynamic> json) {
+    return CompanionChatReply(
+      reply: json['reply'] as String? ?? '',
+      conversationId: json['conversation_id'] as String? ?? '',
+      replyLanguage: json['reply_language'] as String? ?? 'fr',
+    );
+  }
+}
+
 class CompanionService {
   final AuthService _authService;
   final http.Client _http;
@@ -76,6 +96,41 @@ class CompanionService {
       final decoded = jsonDecode(response.body);
       if (decoded is! Map) return null;
       return CompanionNextAction.fromJson(Map<String, dynamic>.from(decoded));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<CompanionChatReply?> sendChatMessage(
+    String message, {
+    int contextDays = 14,
+  }) async {
+    final trimmed = message.trim();
+    if (trimmed.isEmpty) return null;
+
+    try {
+      final token = await _authService.getIdToken();
+      if (token == null || token.isEmpty) return null;
+      final response = await _http
+          .post(
+            Uri.parse('$baseUrl/api/v1/ai/chat'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'message': trimmed,
+              'context_days': contextDays,
+            }),
+          )
+          .timeout(const Duration(seconds: 45));
+      if (response.statusCode != 200) return null;
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) return null;
+      final reply = CompanionChatReply.fromJson(
+        Map<String, dynamic>.from(decoded),
+      );
+      return reply.reply.trim().isEmpty ? null : reply;
     } catch (_) {
       return null;
     }

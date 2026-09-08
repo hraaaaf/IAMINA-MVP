@@ -1,4 +1,4 @@
-name: UI screenshot audit
+name: UI geometry golden audit (Ahem text)
 
 on:
   workflow_dispatch:
@@ -45,7 +45,7 @@ permissions:
 
 jobs:
   screenshot:
-    name: Representative patient surfaces
+    name: Representative patient geometry (Ahem test font)
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -65,12 +65,12 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Render native Flutter golden screenshots
+      - name: Render native Flutter geometry goldens (Ahem text placeholders)
         run: |
           flutter test --dart-define=IAMINA_VISUAL_AUDIT=true --update-goldens --reporter expanded test/ui_visual_screenshot_test.dart test/features/cgm_how_to_visual_test.dart
           flutter test --dart-define=IAMINA_VISUAL_AUDIT=true --update-goldens --reporter expanded test/dashboard_next_action_visual_test.dart
 
-      - name: Validate screenshot artifact set
+      - name: Validate geometry artifact set
         run: |
           set -euo pipefail
           DIR="test/ui_audit_output"
@@ -117,15 +117,24 @@ jobs:
 
           MOBILE_UNIQUE="$(sha256sum "$DIR"/*-390x844.png | awk '{print $1}' | sort -u | wc -l)"
           if [ "$MOBILE_UNIQUE" -lt 12 ]; then
-            echo "Visual audit produced too few distinct mobile renders: $MOBILE_UNIQUE" >&2
+            echo "Geometry audit produced too few distinct mobile renders: $MOBILE_UNIQUE" >&2
             exit 1
           fi
 
-      - name: Upload UI audit screenshots
+          cat > "$DIR/README-AHEM.txt" <<'EOF'
+          These PNGs are Flutter widget-test geometry goldens.
+          Flutter's Ahem test font intentionally renders text as rectangular blocks.
+          They validate layout/geometry only and MUST NOT be used as readable typography or visual-fidelity evidence.
+          Use the 'UI browser screenshot certification' artifact for human-readable visual proof.
+          EOF
+
+      - name: Upload geometry-only goldens
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iamina-ui-visual-audit
-          path: frontend/test/ui_audit_output/*.png
+          name: iamina-ui-geometry-goldens-ahem
+          path: |
+            frontend/test/ui_audit_output/*.png
+            frontend/test/ui_audit_output/README-AHEM.txt
           if-no-files-found: warn
           retention-days: 7
