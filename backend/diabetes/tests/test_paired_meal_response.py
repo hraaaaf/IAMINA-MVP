@@ -12,7 +12,7 @@ from django.utils import timezone
 from ninja.errors import HttpError
 from pydantic import ValidationError
 
-from diabetes.api.v1.logs import update_log
+from diabetes.api.v1.logs import batch_create_logs, update_log
 from diabetes.api.v1.schemas import LogEntryCreateSchema, LogEntryUpdateSchema
 from diabetes.models.entry import LogEntry
 from diabetes.services.clinical.paired_meal_response import compute_paired_meal_response
@@ -260,6 +260,51 @@ class PairedMealResponseTests(TestCase):
         )
         log.refresh_from_db()
         self.assertIsNone(log.meal_episode_id)
+
+    @patch("diabetes.api.v1.logs.track")
+    @patch("diabetes.api.v1.logs._invalidate_ctx")
+    @patch("diabetes.api.v1.logs._invalidate_kpis")
+    def test_batch_integrity_conflict_does_not_poison_later_valid_row(
+        self,
+        _invalidate_kpis_mock,
+        _invalidate_ctx_mock,
+        _track_mock,
+    ):
+        occupied_episode = uuid4()
+        self._log(
+            episode_id=occupied_episode,
+            context="pre_meal",
+            meal_type="lunch",
+        )
+        conflicting_uuid = uuid4()
+        valid_uuid = uuid4()
+        valid_episode = uuid4()
+        request = SimpleNamespace(user=self.patient)
+
+        result = batch_create_logs(
+            request,
+            [
+                LogEntryCreateSchema(
+                    blood_sugar=130,
+                    client_uuid=conflicting_uuid,
+                    meal_episode_id=occupied_episode,
+                    glycemic_context="pre_meal",
+                    meal_type="lunch",
+                ),
+                LogEntryCreateSchema(
+                    blood_sugar=140,
+                    client_uuid=valid_uuid,
+                    meal_episode_id=valid_episode,
+                    glycemic_context="pre_meal",
+                    meal_type="lunch",
+                ),
+            ],
+        )
+
+        self.assertEqual(result["synced_ids"], [valid_uuid])
+        self.assertEqual(len(result["errors"]), 1)
+        self.assertTrue(LogEntry.objects.filter(client_uuid=valid_uuid).exists())
+        self.assertFalse(LogEntry.objects.filter(client_uuid=conflicting_uuid).exists())
 
     def test_limitations_are_explicitly_non_causal(self):
         self._pair()
