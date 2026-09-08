@@ -3,11 +3,21 @@ from typing import Annotated, List, Optional
 from uuid import UUID
 
 from ninja import Schema
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from diabetes.contracts.log_entry import (
+    FatigueLevel,
+    GlycemicContext,
+    LogSource,
+    MealType,
+    SleepQuality,
+    YesNo,
+    validate_logged_at,
+)
 
 # ── Shared constraint ─────────────────────────────────────────────────────────
-# Physiological range accepted at the API boundary (30–600 mg/dL).
-# Values outside this range are clinically implausible at the sensor/manual level.
+# Canonical persisted glucose range. UnitGuard uses the same contract before
+# Pydantic receives the normalized mg/dL value.
 _BloodSugar = Annotated[float, Field(ge=30.0, le=600.0)]
 _InsulinUnits = Annotated[float, Field(ge=0.0)]
 _MealItem = Annotated[str, Field(min_length=1, max_length=80)]
@@ -59,41 +69,48 @@ class PatientProfileSchema(Schema):
     ramadan_end_date: Optional[date] = None
 
 
+class _CanonicalLoggedAtMixin:
+    @field_validator("logged_at", check_fields=False)
+    @classmethod
+    def validate_canonical_logged_at(cls, value: datetime | None):
+        return validate_logged_at(value)
+
+
 class LogEntrySchema(Schema):
     id: int
     logged_at: Optional[datetime]
-    glycemic_context: str = ""
-    meal_type: str
+    glycemic_context: GlycemicContext = ""
+    meal_type: MealType = ""
     blood_sugar: float
     meal_description: str = ""
     meal_items: List[str] = Field(default_factory=list)
     meal_portions: List[MealPortionSchema] = Field(default_factory=list)
     insulin_units: Optional[float] = None
-    exercised: str = ""
-    sleep_quality: str = ""
-    stressed: str = ""
-    fatigue_level: str = ""
-    is_sick: str = ""
-    source: str = "manual"
+    exercised: YesNo = ""
+    sleep_quality: SleepQuality = ""
+    stressed: YesNo = ""
+    fatigue_level: FatigueLevel = ""
+    is_sick: YesNo = ""
+    source: LogSource = "manual"
     client_uuid: Optional[UUID] = None
     created_at: datetime
 
 
-class LogEntryCreateSchema(Schema):
+class LogEntryCreateSchema(_CanonicalLoggedAtMixin, Schema):
     logged_at: Optional[datetime] = None
-    glycemic_context: str = ""
-    meal_type: str = ""
+    glycemic_context: GlycemicContext = ""
+    meal_type: MealType = ""
     blood_sugar: _BloodSugar
     meal_description: str = ""
     meal_items: List[_MealItem] = Field(default_factory=list, max_length=20)
     meal_portions: List[MealPortionSchema] = Field(default_factory=list, max_length=20)
     insulin_units: Optional[_InsulinUnits] = None
-    exercised: str = ""
-    sleep_quality: str = ""
-    stressed: str = ""
-    fatigue_level: str = ""
-    is_sick: str = ""
-    source: str = "manual"
+    exercised: YesNo = ""
+    sleep_quality: SleepQuality = ""
+    stressed: YesNo = ""
+    fatigue_level: FatigueLevel = ""
+    is_sick: YesNo = ""
+    source: LogSource = "manual"
     client_uuid: Optional[UUID] = None
 
     @model_validator(mode="after")
@@ -102,22 +119,22 @@ class LogEntryCreateSchema(Schema):
         return self
 
 
-class LogEntryUpdateSchema(Schema):
+class LogEntryUpdateSchema(_CanonicalLoggedAtMixin, Schema):
     """Partial update — all fields optional. Only supplied fields are written."""
 
     logged_at: Optional[datetime] = None
-    glycemic_context: Optional[str] = None
-    meal_type: Optional[str] = None
+    glycemic_context: Optional[GlycemicContext] = None
+    meal_type: Optional[MealType] = None
     blood_sugar: Optional[_BloodSugar] = None
     meal_description: Optional[str] = None
     meal_items: Optional[List[_MealItem]] = Field(default=None, max_length=20)
     meal_portions: Optional[List[MealPortionSchema]] = Field(default=None, max_length=20)
     insulin_units: Optional[_InsulinUnits] = None
-    exercised: Optional[str] = None
-    sleep_quality: Optional[str] = None
-    stressed: Optional[str] = None
-    fatigue_level: Optional[str] = None
-    is_sick: Optional[str] = None
+    exercised: Optional[YesNo] = None
+    sleep_quality: Optional[SleepQuality] = None
+    stressed: Optional[YesNo] = None
+    fatigue_level: Optional[FatigueLevel] = None
+    is_sick: Optional[YesNo] = None
 
     @model_validator(mode="after")
     def validate_portion_links_when_complete(self):
