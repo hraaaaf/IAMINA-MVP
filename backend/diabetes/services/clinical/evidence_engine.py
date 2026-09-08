@@ -7,6 +7,7 @@ context merely because many stored rows have ``source='cgm'``.
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 
 from django.db.models import Q
@@ -20,8 +21,11 @@ from core.contracts.companion_context import (
 )
 from core.contracts.domain_context import DomainContext
 from diabetes.models import LogEntry
+from diabetes.services.clinical.analysis_integrity import (
+    run_clinical_analysis_with_integrity,
+)
 from diabetes.services.clinical.companion_overview import build_companion_overview
-from diabetes.services.clinical.engine import DiabetesEngine, run_clinical_analysis
+from diabetes.services.clinical.engine import DiabetesEngine
 from diabetes.services.clinical.evidence_projection import (
     guard_normative_kpis,
     project_public_kpis,
@@ -29,6 +33,8 @@ from diabetes.services.clinical.evidence_projection import (
 from diabetes.services.clinical.evidence_registry import evidence_for_pattern
 from diabetes.services.clinical.semantic_compressor import build_chat_context
 from diabetes.services.clinical.sql_analytics import compute_kpis, compute_trend
+
+logger = logging.getLogger(__name__)
 
 
 def _iso(value: datetime | None) -> str | None:
@@ -44,54 +50,76 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
         language: str = "fr",
         days: int = 14,
     ) -> DomainContext:
-        raw_kpis = compute_kpis(patient_id=patient_id, days=days)
+        try:
+            raw_kpis = compute_kpis(patient_id=patient_id, days=days)
+        except Exception:
+            logger.exception("EvidenceGuardedDiabetesEngine: KPI computation failed")
+            return DomainContext.unavailable(
+                language=language,
+                degradation_codes=["kpi_compute_failed"],
+            )
+
         if not raw_kpis.has_sufficient_data:
             return DomainContext.empty(language=language)
 
-        public_kpis = project_public_kpis(raw_kpis)
-        guarded_kpis = guard_normative_kpis(raw_kpis)
-        sufficiency = public_kpis["cgm_sufficiency"]
-        cgm_verified = bool(
-            isinstance(sufficiency, dict) and sufficiency.get("verified") is True
-        )
+        try:
+            public_kpis = project_public_kpis(raw_kpis)
+            guarded_kpis = guard_normative_kpis(raw_kpis)
+            sufficiency = public_kpis["cgm_sufficiency"]
+            cgm_verified = bool(
+                isinstance(sufficiency, dict) and sufficiency.get("verified") is True
+            )
 
-        since = timezone.now() - timedelta(days=days)
-        entries = list(
-            LogEntry.objects.filter(
-                Q(logged_at__gte=since)
-                | Q(logged_at__isnull=True, created_at__gte=since),
-                patient_id=patient_id,
-                blood_sugar__isnull=False,
-            ).order_by("logged_at", "created_at")
-        )
+            since = timezone.now() - timedelta(days=days)
+            entries = list(
+                LogEntry.objects.filter(
+                    Q(logged_at__gte=since)
+                    | Q(logged_at__isnull=True, created_at__gte=since),
+                    patient_id=patient_id,
+                    blood_sugar__isnull=False,
+                ).order_by("logged_at", "created_at")
+            )
 
-        # Normative-pattern detectors see only evidence-eligible KPI fields. Entry
-        # detectors remain available for explicitly descriptive observations.
-        report = run_clinical_analysis(entries, guarded_kpis, language=language)
+            # Normative-pattern detectors see only evidence-eligible KPI fields. Entry
+            # detectors remain available for explicitly descriptive observations.
+            report, degradations = run_clinical_analysis_with_integrity(
+                entries,
+                guarded_kpis,
+                language=language,
+            )
 
-        # The compressor receives raw descriptive values but performs the same
-        # centralized CGM sufficiency assessment before emitting normative wording.
-        pivot = build_chat_context(raw_kpis, report.patterns)
+            # The compressor receives raw descriptive values but performs the same
+            # centralized CGM sufficiency assessment before emitting normative wording.
+            pivot = build_chat_context(raw_kpis, report.patterns)
 
-        # Existing compute_trend names its row-fraction metric "TIR". Until true
-        # CGM coverage is verified, do not expose that object as a clinical trend.
-        trend = compute_trend(patient_id=patient_id) if cgm_verified else {}
+            # Existing compute_trend names its row-fraction metric "TIR". Until true
+            # CGM coverage is verified, do not expose that object as a clinical trend.
+            trend = compute_trend(patient_id=patient_id) if cgm_verified else {}
 
-        pattern_details: list[dict[str, object]] = []
-        for pattern in report.patterns:
-            evidence = evidence_for_pattern(pattern.code)
-            pattern_details.append(
-                {
-                    "code": pattern.code,
-                    "priority": pattern.priority,
-                    "evidence": pattern.evidence,
-                    "evidence_count": pattern.evidence_count,
-                    "distinct_days": pattern.distinct_days,
-                    "source_version": pattern.source_version,
-                    "limitations": pattern.limitations,
-                    "evidence_id": evidence.evidence_id,
-                    "evidence_metadata": evidence.to_metadata(),
-                }
+            pattern_details: list[dict[str, object]] = []
+            for pattern in report.patterns:
+                evidence = evidence_for_pattern(pattern.code)
+                pattern_details.append(
+                    {
+                        "code": pattern.code,
+                        "priority": pattern.priority,
+                        "evidence": pattern.evidence,
+                        "evidence_count": pattern.evidence_count,
+                        "distinct_days": pattern.distinct_days,
+                        "source_version": pattern.source_version,
+                        "limitations": pattern.limitations,
+                        "evidence_id": evidence.evidence_id,
+                        "evidence_metadata": evidence.to_metadata(),
+                    }
+                )
+        except Exception:
+            # Fail closed rather than letting a projection/query/compression failure look
+            # like a clinically uneventful analysis. Exception details stay in server logs;
+            # the public contract exposes only a stable PHI-free technical code.
+            logger.exception("EvidenceGuardedDiabetesEngine: analysis pipeline failed")
+            return DomainContext.unavailable(
+                language=language,
+                degradation_codes=["analysis_pipeline_failed"],
             )
 
         return DomainContext(
@@ -108,6 +136,8 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
             trend=trend,
             primary_label="TIR" if cgm_verified else "Recorded glucose",
             patterns_detail=pattern_details,
+            analysis_status="partial" if degradations else "complete",
+            analysis_degradations=degradations,
         )
 
     def companion_context(
@@ -169,6 +199,15 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
         """Keep diabetes/TIR degraded wording inside the diabetes capsule."""
         is_ar = language in ("ar", "ar-MA")
         is_darija = language == "ar-MA"
+
+        if context.analysis_status == "unavailable":
+            if is_darija:
+                return "التحليل ما متوفرش دابا. عاود جرّب من بعد شوية."
+            if is_ar:
+                return "التحليل غير متاح حالياً. حاول مجدداً بعد قليل."
+            if language == "en":
+                return "Analysis is temporarily unavailable. Please try again shortly."
+            return "L’analyse est temporairement indisponible. Réessaie dans un instant."
 
         if not context.has_sufficient_data:
             if is_darija:

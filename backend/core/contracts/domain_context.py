@@ -11,6 +11,9 @@ which carries companion persona (name, description, unit). See ADR-0008.
 Data flow: module.analyze(patient_id, language) -> DomainContext -> narrate()
 """
 from dataclasses import dataclass, field
+from typing import Literal
+
+AnalysisStatus = Literal["complete", "partial", "unavailable", "insufficient_data"]
 
 
 @dataclass
@@ -61,9 +64,27 @@ class DomainContext:
     # Patterns with evidence for the Mode-3 summary prompt.
     # Example: [{"code": "DAWN_PHENOMENON", "priority": 2, "evidence": "…"}]
 
+    # ── ANALYSIS-0 execution-integrity fields ──────────────────────────────────
+    # These fields describe whether the analysis executed completely. They are
+    # technical observability metadata, never clinical severity/confidence.
+    analysis_status: AnalysisStatus = "complete"
+    analysis_degradations: list[str] = field(default_factory=list)
+    # Stable PHI-free technical codes. A failed query/detector must not silently
+    # masquerade as "no clinical finding".
+
+    def __post_init__(self) -> None:
+        if self.analysis_status == "complete" and self.analysis_degradations:
+            raise ValueError("complete analysis cannot contain degradation codes")
+        if self.analysis_status == "insufficient_data" and self.has_sufficient_data:
+            raise ValueError("insufficient_data cannot declare sufficient data")
+
+    @property
+    def is_degraded(self) -> bool:
+        return self.analysis_status in {"partial", "unavailable"}
+
     @classmethod
     def empty(cls, language: str = "fr") -> "DomainContext":
-        """Neutral context — no active engine or insufficient data."""
+        """Neutral context — valid analysis, but insufficient patient data."""
         return cls(
             kpi_summary={},
             detected_patterns=[],
@@ -71,4 +92,24 @@ class DomainContext:
             pivot_text="",
             language=language,
             has_sufficient_data=False,
+            analysis_status="insufficient_data",
+        )
+
+    @classmethod
+    def unavailable(
+        cls,
+        *,
+        language: str = "fr",
+        degradation_codes: list[str] | None = None,
+    ) -> "DomainContext":
+        """Fail closed when analysis execution itself is unavailable."""
+        return cls(
+            kpi_summary={},
+            detected_patterns=[],
+            insights=[],
+            pivot_text="",
+            language=language,
+            has_sufficient_data=False,
+            analysis_status="unavailable",
+            analysis_degradations=list(degradation_codes or ["analysis_unavailable"]),
         )

@@ -13,6 +13,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: login-screenshot-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   screenshot:
     name: Login 390x844
