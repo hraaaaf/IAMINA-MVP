@@ -4,6 +4,7 @@ from unittest import mock
 
 from django.test import SimpleTestCase
 
+from diabetes.models import DiabetesProfile
 from diabetes.services.clinical.analysis_integrity import (
     run_clinical_analysis_with_integrity,
 )
@@ -86,6 +87,10 @@ class EvidenceGuardedEngineIntegrityTests(SimpleTestCase):
                 return_value=_kpis(sufficient=True),
             ),
             mock.patch(
+                "diabetes.services.clinical.evidence_engine.DiabetesProfile.objects.get",
+                side_effect=DiabetesProfile.DoesNotExist,
+            ),
+            mock.patch(
                 "diabetes.services.clinical.evidence_engine.assess_cgm_window",
                 return_value=SimpleNamespace(verified=False),
             ),
@@ -113,6 +118,10 @@ class EvidenceGuardedEngineIntegrityTests(SimpleTestCase):
             mock.patch(
                 "diabetes.services.clinical.evidence_engine.compute_kpis",
                 return_value=_kpis(sufficient=True),
+            ),
+            mock.patch(
+                "diabetes.services.clinical.evidence_engine.DiabetesProfile.objects.get",
+                side_effect=DiabetesProfile.DoesNotExist,
             ),
             mock.patch(
                 "diabetes.services.clinical.evidence_engine.assess_cgm_window",
