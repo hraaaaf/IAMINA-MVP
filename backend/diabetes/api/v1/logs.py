@@ -4,7 +4,7 @@ LogEntry CRUD under /api/v1/logs — patient-scoped reads and writes.
 
 from typing import List
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from ninja import Router, Status
 from ninja.errors import HttpError
@@ -73,7 +73,12 @@ def list_logs(request, page: int = 1, page_size: int = 50):
 
 @router.post("/logs", response=LogEntrySchema)
 def create_log(request, data: LogEntryCreateSchema):
-    log = LogEntry.objects.create(patient=request.user, **data.dict())
+    try:
+        log = LogEntry.objects.create(patient=request.user, **data.dict())
+    except IntegrityError as exc:
+        # A uniqueness/check race is a client-visible data conflict, not a 500.
+        # Keep the response generic so database constraint names are not leaked.
+        raise HttpError(409, "Log entry conflicts with existing data") from exc
     _invalidate_ctx(request.user.id)
     _invalidate_kpis(request.user.id)
     track(
@@ -132,8 +137,10 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
                             props={"client_uuid": str(entry_data.client_uuid)},
                         )
                 synced_uuids.append(entry_data.client_uuid)
-            except Exception as e:
-                errors.append(f"Error syncing {entry_data.client_uuid}: {str(e)}")
+            except IntegrityError:
+                errors.append(f"Error syncing {entry_data.client_uuid}: data conflict")
+            except Exception as exc:
+                errors.append(f"Error syncing {entry_data.client_uuid}: {str(exc)}")
 
         if mutated_existing_source:
             # A full-snapshot edit may remove or replace evidence that was already
@@ -200,25 +207,28 @@ def _validate_patch_meal_episode(log: LogEntry, data: LogEntryUpdateSchema) -> N
 @router.patch("/logs/{log_id}", response=LogEntrySchema)
 def update_log(request, log_id: int, data: LogEntryUpdateSchema):
     """Partial update — only supplied fields are written.  404 on cross-patient access."""
-    with transaction.atomic():
-        log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
-        _validate_patch_portion_links(log, data)
-        _validate_patch_meal_episode(log, data)
-        updates = data.model_dump(exclude_none=True)
-        if "meal_episode_id" in data.model_fields_set:
-            # Unlike the older nullable PATCH fields, an episode link must be
-            # explicitly clearable so a mistaken association can be removed.
-            updates["meal_episode_id"] = data.meal_episode_id
-        clinical_source_changed = _changes_clinical_twin_source(log, updates)
-        for field, value in updates.items():
-            setattr(log, field, value)
-        log.save()
-        if clinical_source_changed:
-            # A patch may explicitly erase/replace source fields that contributed
-            # to a durable observation. Rebuild from surviving authoritative rows.
-            reconcile_personal_response_memory_after_source_erasure(
-                patient_id=request.user.id,
-            )
+    try:
+        with transaction.atomic():
+            log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
+            _validate_patch_portion_links(log, data)
+            _validate_patch_meal_episode(log, data)
+            updates = data.model_dump(exclude_none=True)
+            if "meal_episode_id" in data.model_fields_set:
+                # Unlike the older nullable PATCH fields, an episode link must be
+                # explicitly clearable so a mistaken association can be removed.
+                updates["meal_episode_id"] = data.meal_episode_id
+            clinical_source_changed = _changes_clinical_twin_source(log, updates)
+            for field, value in updates.items():
+                setattr(log, field, value)
+            log.save()
+            if clinical_source_changed:
+                # A patch may explicitly erase/replace source fields that contributed
+                # to a durable observation. Rebuild from surviving authoritative rows.
+                reconcile_personal_response_memory_after_source_erasure(
+                    patient_id=request.user.id,
+                )
+    except IntegrityError as exc:
+        raise HttpError(409, "Log entry conflicts with existing data") from exc
     _invalidate_ctx(request.user.id)
     _invalidate_kpis(request.user.id)
     return log
