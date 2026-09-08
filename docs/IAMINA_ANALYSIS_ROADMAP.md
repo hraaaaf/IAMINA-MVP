@@ -42,13 +42,6 @@ Le chantier est CLOSED uniquement si :
 
 **Goal** : distinguer données insuffisantes, analyse partielle et panne technique.
 
-**Réalisé** :
-- `analysis_status = complete | partial | unavailable | insufficient_data` ;
-- codes de dégradation stables, non-PHI ;
-- panne KPI → `unavailable` ;
-- panne détecteur → `partial` ;
-- insuffisance réelle → `insufficient_data`.
-
 **Preuve** : PR #537 ; merge `ec18c9bc2c18e3d5cd87224902229c2a75227bdb` ; post-merge CI #34207685998 SUCCESS ; drift #34207685984 SUCCESS.
 
 ---
@@ -57,18 +50,7 @@ Le chantier est CLOSED uniquement si :
 
 **Goal** : une seule vérité d’entrée clinique runtime.
 
-**Réalisé** :
-- contrat glucose runtime `30–600 mg/dL` ;
-- conversion canonique `mg/dL | mmol/L | g/L` ;
-- unités inconnues et valeurs non finies rejetées ;
-- `logged_at` futur >5 min rejeté ;
-- lignes futures exclues KPI/daily/AGP/fallback CV ;
-- contextes/source inconnus rejetés aux frontières runtime ;
-- matrice de tests bornes/conversions/timestamps/catégories.
-
 **Preuve** : PR #538 ; merge `4bc8c706186c5c581d941ec6c5eb556930365f3f` ; post-merge CI #34212026116 SUCCESS ; drift #34212026120 SUCCESS.
-
-**Note** : le dernier shim direct UnitGuard `20–700` est supprimé dans ANALYSIS-3 ; il délègue désormais au contrat canonique `30–600`.
 
 ---
 
@@ -76,58 +58,59 @@ Le chantier est CLOSED uniquement si :
 
 **Goal** : chaque alerte déclarée doit être atteignable, déterministe et testée par le moteur public enregistré.
 
-**Réalisé** :
-- moteur public `EvidenceGuardedAlertingDiabetesEngine` ;
-- `HYPER_SUSTAINED` alimenté par les deux mesures antérieures du même patient ;
-- isolation inter-patient ;
-- priorité des alertes courantes sur l’historique ;
-- seuils exacts testés ;
-- FR / ar / ar-MA ;
-- aucun numéro d’urgence national inventé ;
-- warnings non bloquants journalisés comme `alert`, critical/emergency comme `emergency`.
-
-**Preuve** : PR #539 ; merge `f3da008a4390e839b65465f4e6faf59668023f68` ; pré-merge CI #34218965389 SUCCESS + drift #34218965478 SUCCESS ; post-merge CI #34232357895 SUCCESS + drift #34232357898 SUCCESS.
+**Preuve** : PR #539 ; merge `f3da008a4390e839b65465f4e6faf59668023f68` ; post-merge CI #34232357895 SUCCESS + drift #34232357898 SUCCESS.
 
 ---
 
-### ANALYSIS-3 — Single evidence authority — ACTIVE 🟡
+### ANALYSIS-3 — Single evidence authority — CLOSED ✅
 
 **Goal** : aucune voie publique/production ne doit exposer KPI normatifs, patterns ou résumés cliniques hors de la frontière evidence-gated.
 
-**Branche** : `analysis/single-evidence-authority`  
-**PR** : #540 (draft)  
-**Dernier HEAD connu avant ce commit documentaire** : `7824052b0bcafbe3eeaf89138d370513ec006f79`
+**Réalisé** :
+- ancien `summary.py` clinique neutralisé fail-closed ;
+- suppression du fallback contenant affirmations fabriquées et conseil d’augmentation d’insuline ;
+- `validate_mg_dl()` aligné exclusivement sur `30–600 mg/dL` ;
+- garde AST anti-import du `DiabetesEngine` brut hors wrapper evidence ;
+- routes KPI/Companion/narrator/doctor brief auditées sans bypass normatif public prouvé ;
+- `ModuleRegistry` verrouillé sur l’autorité evidence-gated + alerting.
 
-**Réalisé et vérifié dans le diff** :
-- `backend/diabetes/services/summary.py` est neutralisé fail-closed ;
-- suppression du fallback hardcodé qui contenait des affirmations fabriquées et un conseil d’augmentation d’insuline ;
-- anciens symboles conservés uniquement pour compatibilité d’import et lèvent `LegacyClinicalSummaryDisabled` ;
-- aucun appel LLM ni écriture `AISummary` possible via ces anciens points d’entrée ;
-- `validate_mg_dl()` ne possède plus de plage secondaire `20–700` et délègue au contrat canonique `30–600` ;
-- tests legacy mis à jour sur `30–600` ;
-- test d’architecture AST : aucun import production de `DiabetesEngine` brut hors `evidence_engine.py` ;
-- `ModuleRegistry` reste verrouillé sur l’autorité evidence-gated + alerting ;
-- `/kpis/` projette via `project_public_kpis()` ;
-- Companion/narrator obtient ses données via `get_domain_context()` et le moteur enregistré ;
-- routes `analytics`, `cgm`, `companion` auditées sans bypass normatif prouvé.
-
-**Preuves intermédiaires** :
-- HEAD `b59bf51488141026123a0ba2505a3d0279037958` : CI #34234067575 SUCCESS + drift #34234067565 SUCCESS ;
-- HEAD `7824052b0bcafbe3eeaf89138d370513ec006f79` : drift #34234793208 SUCCESS ; CI #34234793266 encore queued au moment de cette mise à jour.
-
-**Succès** : recherche repo + tests d’architecture + tests runtime prouvent une seule autorité clinique publique ; aucune sortie legacy dangereuse ne reste callable.
-
-**Preuve restante avant READY** : CI complète verte sur le HEAD final incluant ce closeout documentaire, puis branche 0 behind `main`.
+**Preuve** : PR #540 ; merge `43188147455a4b26af9c59496d018b838aa076cb` ; post-merge CI #34237020000 SUCCESS ; drift #34237020046 SUCCESS.
 
 ---
 
-### ANALYSIS-4 — Real CGM sufficiency contract — OPEN
+### ANALYSIS-4 — Real CGM sufficiency contract — ACTIVE 🟡
 
-**Goal** : prouver la qualité d’une fenêtre CGM, pas seulement `source='cgm'`.
+**Goal** : prouver la qualité d’une fenêtre CGM depuis des faits persistés, pas seulement `source='cgm'`.
 
-À construire : identité/session capteur pseudonymisée, cadence attendue, readings attendues/reçues, active intervals, couverture/wear-time, timezone, déduplication, trous vs arrêt capteur, multi-sensor.
+**Branche** : `analysis/real-cgm-sufficiency-contract`  
+**PR** : #541 (draft)  
+**HEAD avant ce commit documentaire** : `62ca51126c0abbfb1277b9d7b073a5313b61c2e0`
 
-**Succès** : une fixture synthétique admissible devient `verified=True`; les fenêtres incomplètes restent `False` avec raison exacte.
+**Réalisé dans le diff** :
+- ajout de `CGMSensorSession` pseudonymisé avec source, identifiant session, début/fin, cadence attendue, timezone et raison de fin ;
+- liaison optionnelle des `CGMReadingRecord` à une session capteur ;
+- conservation de la déduplication patient/source existante ;
+- `assess_cgm_window()` calcule une couverture conservatrice à partir de la fraction de fenêtre active et du ratio lectures uniques reçues/attendues ;
+- doublons temporels non inflationnistes ;
+- multi-capteurs séquentiels supportés ;
+- chevauchement de sessions ambigu fail-closed ;
+- fenêtre timezone-naive fail-closed ;
+- fenêtre <14 jours fail-closed ;
+- seuil de couverture 70% testé ;
+- aucune promotion normative TIR/CV/AGP/GMI/GRI dans ce lot, réservée à ANALYSIS-5.
+
+**Preuves actuelles** :
+- migration `0031_cgmsensorsession_cgmreadingrecord_session.py` ajoutée ;
+- CI initiale #34238548505 : PostgreSQL source-of-truth + validation migration SUCCESS, mais job Ruff en échec uniquement pour ordre d’import du nouveau test ;
+- correction Ruff poussée en `62ca51126c0abbfb1277b9d7b073a5313b61c2e0` ;
+- drift final #34238832688 SUCCESS ;
+- CI finale #34238832498 encore in_progress au moment de cette mise à jour ;
+- PR #541 mergeable=true, aucun review thread ouvert ;
+- branche 0 behind `main` avant ce commit documentaire.
+
+**Succès** : une fixture synthétique admissible sur 14 jours peut devenir `verified=True`; les fenêtres incomplètes/ambiguës restent `False` avec raison exacte.
+
+**Preuve restante avant READY** : CI complète verte sur le HEAD final incluant ce closeout documentaire, puis merge + preuve post-merge.
 
 ---
 
@@ -165,7 +148,7 @@ Hors chemin critique. `prediction.py` doit rester fail-closed et `correlations.p
 
 ## 3. ORDRE D’EXÉCUTION
 
-`ANALYSIS-0 ✅ → ANALYSIS-1 ✅ → ANALYSIS-2 ✅ → ANALYSIS-3 ACTIVE → ANALYSIS-4 → ANALYSIS-5 → ANALYSIS-6 → ANALYSIS-7 → RECERTIFICATION FINALE`
+`ANALYSIS-0 ✅ → ANALYSIS-1 ✅ → ANALYSIS-2 ✅ → ANALYSIS-3 ✅ → ANALYSIS-4 ACTIVE → ANALYSIS-5 → ANALYSIS-6 → ANALYSIS-7 → RECERTIFICATION FINALE`
 
 ANALYSIS-8 reste hors chemin critique.
 
@@ -215,21 +198,22 @@ Règles : aucune capacité absente ne reçoit un score fonctionnel positif ; fai
 - ANALYSIS-0 — PR #537 — post-merge certifié.
 - ANALYSIS-1 — PR #538 — post-merge certifié.
 - ANALYSIS-2 — PR #539 — post-merge certifié.
+- ANALYSIS-3 — PR #540 — merge `43188147455a4b26af9c59496d018b838aa076cb` — post-merge CI #34237020000 SUCCESS + drift #34237020046 SUCCESS.
 
 ### ACTIVE
-- ANALYSIS-3 — PR #540.
+- ANALYSIS-4 — PR #541 — real CGM sufficiency contract.
 
 ### OPEN
-- ANALYSIS-4 à ANALYSIS-7 ;
+- ANALYSIS-5 à ANALYSIS-7 ;
 - recertification finale.
 
 ### NEXT EXACT
 
-Obtenir CI + drift verts sur le HEAD final ANALYSIS-3 incluant ce fichier → vérifier branche 0 behind `main` → passer #540 ready → merge avec expected HEAD → vérifier `main` + CI/drift post-merge → marquer ANALYSIS-3 CLOSED → ouvrir ANALYSIS-4.
+Obtenir CI + drift verts sur le HEAD final ANALYSIS-4 incluant ce fichier → vérifier branche 0 behind `main` → passer #541 ready → merge avec expected HEAD → vérifier `main` + CI/drift post-merge → marquer ANALYSIS-4 CLOSED → ouvrir ANALYSIS-5.
 
 ### Séquence restante
 
-A3 final CI/drift → ready/merge/post-merge → A4 → A5 → A6 → A7 → re-audit pondéré → cohérence evidence/docs → CI finale → closeout canonique.
+A4 final CI/drift → ready/merge/post-merge → A5 → A6 → A7 → re-audit pondéré → cohérence evidence/docs → CI finale → closeout canonique.
 
 ---
 
