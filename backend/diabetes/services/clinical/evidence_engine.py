@@ -24,6 +24,8 @@ from diabetes.models import LogEntry
 from diabetes.services.clinical.analysis_integrity import (
     run_clinical_analysis_with_integrity,
 )
+from diabetes.services.clinical.cgm_analytics import compute_verified_cgm_metrics
+from diabetes.services.clinical.cgm_eligibility import assess_cgm_window
 from diabetes.services.clinical.companion_overview import build_companion_overview
 from diabetes.services.clinical.engine import DiabetesEngine
 from diabetes.services.clinical.evidence_projection import (
@@ -32,7 +34,7 @@ from diabetes.services.clinical.evidence_projection import (
 )
 from diabetes.services.clinical.evidence_registry import evidence_for_pattern
 from diabetes.services.clinical.semantic_compressor import build_chat_context
-from diabetes.services.clinical.sql_analytics import compute_kpis, compute_trend
+from diabetes.services.clinical.sql_analytics import compute_kpis
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +52,8 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
         language: str = "fr",
         days: int = 14,
     ) -> DomainContext:
+        window_end = timezone.now()
+        window_start = window_end - timedelta(days=days)
         try:
             raw_kpis = compute_kpis(patient_id=patient_id, days=days)
         except Exception:
@@ -63,18 +67,38 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
             return DomainContext.empty(language=language)
 
         try:
-            public_kpis = project_public_kpis(raw_kpis)
-            guarded_kpis = guard_normative_kpis(raw_kpis)
+            cgm_window = assess_cgm_window(
+                patient_id=patient_id,
+                window_start=window_start,
+                window_end=window_end,
+            )
+            cgm_metrics = None
+            if cgm_window.verified:
+                cgm_metrics = compute_verified_cgm_metrics(
+                    patient_id=patient_id,
+                    window_start=window_start,
+                    window_end=window_end,
+                )
+
+            public_kpis = project_public_kpis(
+                raw_kpis,
+                cgm_window=cgm_window,
+                cgm_metrics=cgm_metrics,
+            )
+            guarded_kpis = guard_normative_kpis(
+                raw_kpis,
+                cgm_window=cgm_window,
+                cgm_metrics=cgm_metrics,
+            )
             sufficiency = public_kpis["cgm_sufficiency"]
             cgm_verified = bool(
                 isinstance(sufficiency, dict) and sufficiency.get("verified") is True
             )
 
-            since = timezone.now() - timedelta(days=days)
             entries = list(
                 LogEntry.objects.filter(
-                    Q(logged_at__gte=since)
-                    | Q(logged_at__isnull=True, created_at__gte=since),
+                    Q(logged_at__gte=window_start)
+                    | Q(logged_at__isnull=True, created_at__gte=window_start),
                     patient_id=patient_id,
                     blood_sugar__isnull=False,
                 ).order_by("logged_at", "created_at")
@@ -88,13 +112,15 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
                 language=language,
             )
 
-            # The compressor receives raw descriptive values but performs the same
-            # centralized CGM sufficiency assessment before emitting normative wording.
+            # The existing semantic compressor still evaluates legacy row-provenance
+            # sufficiency and therefore remains conservative until a dedicated CGM-native
+            # compressor contract is promoted.
             pivot = build_chat_context(raw_kpis, report.patterns)
 
-            # Existing compute_trend names its row-fraction metric "TIR". Until true
-            # CGM coverage is verified, do not expose that object as a clinical trend.
-            trend = compute_trend(patient_id=patient_id) if cgm_verified else {}
+            # Existing compute_trend is LogEntry-based. A valid CGM window must not
+            # magically turn a mixed/manual trend into a CGM trend, so keep it closed
+            # until a CGM-native trend implementation is separately governed.
+            trend: dict[str, object] = {}
 
             pattern_details: list[dict[str, object]] = []
             for pattern in report.patterns:
@@ -129,9 +155,12 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
             pivot_text=pivot,
             language=language,
             has_sufficient_data=True,
+            # ANALYSIS-5 may expose certified CGM numbers, but target/population
+            # applicability belongs to ANALYSIS-6. Keep tone selection neutral so a
+            # promoted TIR/CV value cannot trigger "within/outside target" wording yet.
             tone_signals={
-                "primary": public_kpis["tir_pct"],
-                "stability": public_kpis["cv_pct"],
+                "primary": None,
+                "stability": None,
             },
             trend=trend,
             primary_label="TIR" if cgm_verified else "Recorded glucose",

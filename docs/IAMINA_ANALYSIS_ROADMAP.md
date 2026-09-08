@@ -78,47 +78,46 @@ Le chantier est CLOSED uniquement si :
 
 ---
 
-### ANALYSIS-4 — Real CGM sufficiency contract — ACTIVE 🟡
+### ANALYSIS-4 — Real CGM sufficiency contract — CLOSED ✅
 
 **Goal** : prouver la qualité d’une fenêtre CGM depuis des faits persistés, pas seulement `source='cgm'`.
 
-**Branche** : `analysis/real-cgm-sufficiency-contract`  
-**PR** : #541 (draft)  
-**HEAD avant ce commit documentaire** : `62ca51126c0abbfb1277b9d7b073a5313b61c2e0`
-
-**Réalisé dans le diff** :
-- ajout de `CGMSensorSession` pseudonymisé avec source, identifiant session, début/fin, cadence attendue, timezone et raison de fin ;
-- liaison optionnelle des `CGMReadingRecord` à une session capteur ;
-- conservation de la déduplication patient/source existante ;
-- `assess_cgm_window()` calcule une couverture conservatrice à partir de la fraction de fenêtre active et du ratio lectures uniques reçues/attendues ;
+**Réalisé** :
+- `CGMSensorSession` pseudonymisé : source, session opaque, début/fin, cadence attendue, timezone, raison de fin ;
+- `CGMReadingRecord` peut être lié à une session ;
+- `assess_cgm_window()` calcule une couverture conservatrice = fenêtre capteur active × capture réelle ;
 - doublons temporels non inflationnistes ;
 - multi-capteurs séquentiels supportés ;
-- chevauchement de sessions ambigu fail-closed ;
-- fenêtre timezone-naive fail-closed ;
-- fenêtre <14 jours fail-closed ;
-- seuil de couverture 70% testé ;
-- aucune promotion normative TIR/CV/AGP/GMI/GRI dans ce lot, réservée à ANALYSIS-5.
+- chevauchements ambigus, timezone absente, durée <14 jours et couverture <70% échouent fermés ;
+- aucune promotion normative dans A4.
 
-**Preuves actuelles** :
-- migration `0031_cgmsensorsession_cgmreadingrecord_session.py` ajoutée ;
-- CI initiale #34238548505 : PostgreSQL source-of-truth + validation migration SUCCESS, mais job Ruff en échec uniquement pour ordre d’import du nouveau test ;
-- correction Ruff poussée en `62ca51126c0abbfb1277b9d7b073a5313b61c2e0` ;
-- drift final #34238832688 SUCCESS ;
-- CI finale #34238832498 encore in_progress au moment de cette mise à jour ;
-- PR #541 mergeable=true, aucun review thread ouvert ;
-- branche 0 behind `main` avant ce commit documentaire.
-
-**Succès** : une fixture synthétique admissible sur 14 jours peut devenir `verified=True`; les fenêtres incomplètes/ambiguës restent `False` avec raison exacte.
-
-**Preuve restante avant READY** : CI complète verte sur le HEAD final incluant ce closeout documentaire, puis merge + preuve post-merge.
+**Preuve** : PR #541 ; pré-merge HEAD `8b2bcb1ded53c24eb7686b1986af1d3b1ce20527` ; CI #34244731763 SUCCESS ; drift #34244731722 SUCCESS ; merge `71a8b86ac46a2b15ba782e9c8bde3f6e58dda779` ; post-merge CI #34247637204 SUCCESS ; drift #34247637242 SUCCESS.
 
 ---
 
-### ANALYSIS-5 — Governed CGM analytics promotion — OPEN
+### ANALYSIS-5 — Governed CGM analytics promotion — ACTIVE 🟡
 
-**Goal** : promouvoir progressivement les métriques CGM uniquement si evidence + population + sufficiency passent.
+**Goal** : promouvoir seulement des métriques recalculées sur des lectures CGM réellement certifiées par A4.
 
-Ordre : TIR/TAR/TBR → CV → AGP → GMI après décision version/formule → GRI après validation propre.
+**Branche** : `analysis/governed-cgm-analytics-promotion`  
+**PR** : #542 (draft)  
+**HEAD code connu avant ce commit documentaire** : `01983b4fa02e304716d841d7bcd600b3319541e9`
+
+**Implémenté dans le diff** :
+- nouveau calcul `compute_verified_cgm_metrics()` sur `CGMReadingRecord` sessionnés uniquement ;
+- lectures non liées, source/session incohérente ou hors intervalle session exclues ;
+- timestamps dupliqués dédupliqués avant calcul ;
+- TIR/TAR/TBR/CV peuvent être publiés seulement si : fenêtre A4 vérifiée + evidence `GOVERNED_RULE` + métrique CGM-native présente ;
+- les KPI `LogEntry` contradictoires restent descriptifs et ne peuvent pas fournir les métriques CGM promues ;
+- `/kpis/` ne promeut que la plage standard 70–180 mg/dL ; les plages personnalisées restent fail-closed jusqu’à A6 ;
+- moteur public `EvidenceGuardedDiabetesEngine` consomme la même frontière ;
+- trend historique `LogEntry` reste fermé même lorsque le CGM est vérifié ;
+- GMI/GRI restent `null` / candidate ;
+- tests synthétiques : fenêtre valide, isolation vis-à-vis de `LogEntry`, fenêtre insuffisante, absence de payload CGM, GMI/GRI fermés.
+
+**Limitation runtime vérifiée** : le sync Nightscout actuel persiste des `CGMReadingRecord` sans `CGMSensorSession`. Aucune cadence/session ne sera inférée à partir du champ `device`; ces données restent donc fail-closed tant qu’un provider fournit explicitement les faits de session nécessaires.
+
+**État de preuve** : PR #542 mergeable=true, aucun review thread ; CI #34248416774 et drift #34248416680 en cours sur le HEAD code précédent au moment de cette mise à jour. Ce commit documentaire doit lui-même être recertifié avant READY.
 
 ---
 
@@ -148,7 +147,7 @@ Hors chemin critique. `prediction.py` doit rester fail-closed et `correlations.p
 
 ## 3. ORDRE D’EXÉCUTION
 
-`ANALYSIS-0 ✅ → ANALYSIS-1 ✅ → ANALYSIS-2 ✅ → ANALYSIS-3 ✅ → ANALYSIS-4 ACTIVE → ANALYSIS-5 → ANALYSIS-6 → ANALYSIS-7 → RECERTIFICATION FINALE`
+`ANALYSIS-0 ✅ → ANALYSIS-1 ✅ → ANALYSIS-2 ✅ → ANALYSIS-3 ✅ → ANALYSIS-4 ✅ → ANALYSIS-5 ACTIVE → ANALYSIS-6 → ANALYSIS-7 → RECERTIFICATION FINALE`
 
 ANALYSIS-8 reste hors chemin critique.
 
@@ -198,22 +197,23 @@ Règles : aucune capacité absente ne reçoit un score fonctionnel positif ; fai
 - ANALYSIS-0 — PR #537 — post-merge certifié.
 - ANALYSIS-1 — PR #538 — post-merge certifié.
 - ANALYSIS-2 — PR #539 — post-merge certifié.
-- ANALYSIS-3 — PR #540 — merge `43188147455a4b26af9c59496d018b838aa076cb` — post-merge CI #34237020000 SUCCESS + drift #34237020046 SUCCESS.
+- ANALYSIS-3 — PR #540 — post-merge certifié.
+- ANALYSIS-4 — PR #541 — merge `71a8b86ac46a2b15ba782e9c8bde3f6e58dda779` — post-merge CI #34247637204 SUCCESS + drift #34247637242 SUCCESS.
 
 ### ACTIVE
-- ANALYSIS-4 — PR #541 — real CGM sufficiency contract.
+- ANALYSIS-5 — PR #542 — governed CGM analytics promotion.
 
 ### OPEN
-- ANALYSIS-5 à ANALYSIS-7 ;
+- ANALYSIS-6 à ANALYSIS-7 ;
 - recertification finale.
 
 ### NEXT EXACT
 
-Obtenir CI + drift verts sur le HEAD final ANALYSIS-4 incluant ce fichier → vérifier branche 0 behind `main` → passer #541 ready → merge avec expected HEAD → vérifier `main` + CI/drift post-merge → marquer ANALYSIS-4 CLOSED → ouvrir ANALYSIS-5.
+Obtenir CI + drift verts sur le HEAD final ANALYSIS-5 incluant ce fichier → corriger tout échec → vérifier branche 0 behind `main` + review threads → READY #542 → merge verrouillé → post-merge → ANALYSIS-6.
 
 ### Séquence restante
 
-A4 final CI/drift → ready/merge/post-merge → A5 → A6 → A7 → re-audit pondéré → cohérence evidence/docs → CI finale → closeout canonique.
+A5 final CI/drift → ready/merge/post-merge → A6 → A7 → re-audit pondéré → cohérence evidence/docs → CI finale → closeout canonique.
 
 ---
 

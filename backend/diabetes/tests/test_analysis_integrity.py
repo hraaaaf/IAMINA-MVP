@@ -86,6 +86,10 @@ class EvidenceGuardedEngineIntegrityTests(SimpleTestCase):
                 return_value=_kpis(sufficient=True),
             ),
             mock.patch(
+                "diabetes.services.clinical.evidence_engine.assess_cgm_window",
+                return_value=SimpleNamespace(verified=False),
+            ),
+            mock.patch(
                 "diabetes.services.clinical.evidence_engine.project_public_kpis",
                 side_effect=RuntimeError("projection failed"),
             ),
@@ -109,6 +113,10 @@ class EvidenceGuardedEngineIntegrityTests(SimpleTestCase):
             mock.patch(
                 "diabetes.services.clinical.evidence_engine.compute_kpis",
                 return_value=_kpis(sufficient=True),
+            ),
+            mock.patch(
+                "diabetes.services.clinical.evidence_engine.assess_cgm_window",
+                return_value=SimpleNamespace(verified=False),
             ),
             mock.patch(
                 "diabetes.services.clinical.evidence_engine.project_public_kpis",
