@@ -125,7 +125,7 @@ class LogEntrySchema(_CanonicalLogInputMixin, Schema):
     id: int
     logged_at: Optional[datetime]
     glycemic_context: str = ""
-    meal_type: str = ""
+    meal_type: str
     blood_sugar: float
     meal_description: str = ""
     meal_items: List[str] = Field(default_factory=list)
