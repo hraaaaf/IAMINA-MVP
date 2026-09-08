@@ -124,7 +124,7 @@ Status: CLOSED
 
 ## Additional certification — Multilingual Real Conversation
 
-Status: ACTIVE
+Status: CLOSEOUT — pre-merge certification complete
 
 Goal: certify the bounded real Companion conversation across all 9 supported narrator locales on synthetic non-patient traffic, with both machine parity and manual language/safety review.
 
@@ -141,33 +141,34 @@ Success criteria:
 - Arabic script is correct; `ar-MA` is Darija; Gulf locales use the target dialect rather than generic MSA.
 
 Current verified proof:
-- PR #533 is OPEN/DRAFT on branch `audit/companion-multilingual-real-conversation`;
-- final runtime certification head is `7a8583f26de1384423d282ac2f350d3bbd70cceb`; its only change beyond runtime head `85ba6013f5e461e20e0d55aa4f821f42adfece2c` is a neutral workflow retrigger comment in `.github/workflows/live-companion-multilingual-parity.yml`;
-- exact-head CI run `34164726231` SUCCESS;
-- exact-head Django migration drift run `34164726199` SUCCESS;
-- exact-head Companion quality probe run `34164726194` SUCCESS;
-- exact-head UI screenshot audit run `34164726235` SUCCESS;
-- exact-head Companion real chat E2E screenshots run `34164726236` SUCCESS;
-- exact-head responsive Dashboard certification run `34164726225` SUCCESS;
-- exact-head UI browser screenshot certification run `34164726239` is still in progress at the last verified check;
-- multilingual pre-network gate passes `149/149` tests on every inspected final-head locale job;
+- PR #533 remains OPEN/DRAFT on branch `audit/companion-multilingual-real-conversation` pending repository closeout;
+- final runtime certification SHA is `7a8583f26de1384423d282ac2f350d3bbd70cceb`; runtime code SHA `85ba6013f5e461e20e0d55aa4f821f42adfece2c` differs only by a neutral workflow retrigger comment in `.github/workflows/live-companion-multilingual-parity.yml`;
+- exact-runtime CI `34164726231` SUCCESS;
+- exact-runtime Django migration drift `34164726199` SUCCESS;
+- exact-runtime Companion quality probe `34164726194` SUCCESS;
+- exact-runtime UI screenshot audit `34164726235` SUCCESS;
+- exact-runtime Companion real chat E2E screenshots `34164726236` SUCCESS;
+- exact-runtime responsive Dashboard certification `34164726225` SUCCESS;
+- exact-runtime UI browser screenshot certification `34164726239` SUCCESS;
+- every inspected final-head locale job passes the pre-network gate with `149/149` tests;
 - synthetic scenario contract validates 9 locales × 6 turns = 54 turns;
-- parity #141 / run `34164723952` is attached to exact head `7a8583f26de1384423d282ac2f350d3bbd70cceb`;
-- `fr`, `en`, and `ar` are machine-green with complete real-provider transcripts;
-- `ar-MA`, `ar-SA`, `ar-AE`, `ar-KW`, `ar-QA`, and `ar-OM` failed only at provider completeness after Groq `openai/gpt-oss-120b` TPD 429 responses; no code/safety/dialect regression is proven by those failures;
-- `ar-OM` obtained 1/5 real-provider LLM responses before quota exhaustion; the other inspected quota failures did not reach complete provider coverage and therefore do not count as certification evidence;
-- individual `ar-MA` rerun job `101874779187` again passed `149/149` pre-network tests but failed `0/5` provider completeness because Groq was still at approximately `199700/200000` TPD, with requested calls larger than the remaining capacity;
-- manual review is `18/54`: all six real-provider replies for each of `fr`, `en`, and `ar` passed safety, continuity, semantic fidelity, language/script and t1–t6 rubric review;
-- 9/9 machine parity and 54/54 human review are therefore NOT yet certified.
+- parity workflow run #141 / `34164723952` is attached to exact runtime SHA `7a8583f26de1384423d282ac2f350d3bbd70cceb`;
+- final machine result is **9/9 locales green** with complete real-provider coverage for every LLM-routed turn;
+- final manual review is **54/54 replies accepted** for safety, continuity, semantic fidelity, language/script, target dialect and t1–t6 rubric;
+- certified locales: `fr`, `en`, `ar`, `ar-MA`, `ar-SA`, `ar-AE`, `ar-KW`, `ar-QA`, `ar-OM`;
+- retained Gulf/Darija artifacts include `ar-MA` `10035398137`, `ar-SA` `10047350575`, `ar-AE` `10047724524`, `ar-KW` `10048343537`, `ar-QA` `10049396917`, `ar-OM` `10049505794`;
+- `ar-OM` final artifact ZIP SHA256 is `3fedfe8fbb0b0f4d19451736af3f3bacb0667258251d0ebc222bea3c6dcab18d`;
+- `ar-OM` final transcript uses Omani-targeted forms including `واجد`, `أريد`, `وش`; deterministic insulin-dose boundary contains no dose or treatment change;
+- historical Groq quota failures remain documented as provider-capacity failures and do not replace or dilute the later complete real-provider certification evidence;
+- proof boundary remains synthetic non-patient text only: no patient data, production/beta traffic, native-speaker certification, clinical certification or Vercel deployment is claimed.
 
-Execution order:
-1. Freeze runtime code while all remaining failures are provider-quota-only; do not patch a non-proven defect.
-2. Resume with individual `ar-MA` rerun only after provider capacity is sufficient for a full five-LLM-turn locale probe.
-3. Then rerun only one quota-only locale at a time: `ar-SA`, `ar-AE`, `ar-KW`, `ar-QA`, `ar-OM`.
-4. After each machine-green locale, manually audit its six real-provider replies before moving the human count forward.
-5. Once 9/9 machine + 54/54 human are proven, synchronize final evidence here, undraft PR #533, merge with expected-head protection, then perform post-merge validation.
-
-Quota rule: rerun only the individual locale job that failed solely because of provider quota. Never use a bulk failed-job rerun for this certification. After two equivalent quota failures on the same locale, stop retrying until provider capacity has materially changed.
+Closeout remaining:
+1. synchronize PR branch with current `main` without changing certified Companion runtime semantics;
+2. verify mergeability, review threads and proportional checks on the synchronized head;
+3. mark PR #533 ready for review and update PR evidence;
+4. merge with expected-head protection;
+5. perform post-merge validation on `main`;
+6. change this section to CLOSED only after post-merge proof exists.
 
 ## Certification infrastructure
 
