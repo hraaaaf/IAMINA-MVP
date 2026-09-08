@@ -66,11 +66,11 @@ def get_kpis(
 ):
     """Return evidence-gated KPIs for the authenticated patient.
 
-    Mixed/manual ``LogEntry`` rows remain descriptive only. TIR/TAR/TBR/CV can
-    be promoted only for the standard 70–180 mg/dL range when a persisted CGM
-    sensor window proves sufficiency; the promoted values are then recomputed
-    directly from session-linked ``CGMReadingRecord`` rows. GMI/GRI remain
-    fail-closed pending their dedicated promotion decisions.
+    Raw SQL remains descriptive source data. Normative CGM labels such as TIR,
+    CV stability, GMI and GRI are returned only when the governed CGM sufficiency
+    contract verifies actual coverage. The current LogEntry schema cannot prove
+    wear-time/cadence, so those fields fail closed to null rather than being
+    inferred from the fraction of rows labelled ``source='cgm'``.
     """
     cache_key = _kpi_cache_key(request.user.id, days, target_low, target_high)
     hit = cache.get(cache_key)
