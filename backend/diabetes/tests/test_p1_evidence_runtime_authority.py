@@ -112,7 +112,7 @@ class EvidenceProjectionTests(SimpleTestCase):
 class EvidenceGuardedEngineTests(SimpleTestCase):
     @patch("diabetes.services.clinical.evidence_engine.compute_trend")
     @patch("diabetes.services.clinical.evidence_engine.build_chat_context", return_value="descriptive")
-    @patch("diabetes.services.clinical.evidence_engine.run_clinical_analysis")
+    @patch("diabetes.services.clinical.evidence_engine.run_clinical_analysis_with_integrity")
     @patch("diabetes.services.clinical.evidence_engine.LogEntry.objects.filter")
     @patch("diabetes.services.clinical.evidence_engine.compute_kpis")
     def test_engine_closes_normative_cgm_paths_before_patterns_tone_and_trend(
@@ -126,7 +126,10 @@ class EvidenceGuardedEngineTests(SimpleTestCase):
         raw = _raw_cgm_like_kpis()
         compute_kpis_mock.return_value = raw
         filter_mock.return_value.order_by.return_value = []
-        clinical_analysis_mock.return_value = SimpleNamespace(patterns=[], insights=[])
+        clinical_analysis_mock.return_value = (
+            SimpleNamespace(patterns=[], insights=[]),
+            [],
+        )
 
         context = EvidenceGuardedDiabetesEngine().analyze(patient_id=7, language="fr", days=21)
 
