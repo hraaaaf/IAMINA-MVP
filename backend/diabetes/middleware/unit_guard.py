@@ -37,6 +37,12 @@ _LEGACY_GUARDED_PATHS = (
 _GLUCOSE_FIELDS = ("blood_sugar", "glucose", "glucose_value", "glycemia")
 _UNIT_FIELDS = ("unit", "glucose_unit", "blood_sugar_unit")
 
+# Historical helper compatibility only. The middleware runtime path below does
+# NOT use these bounds; every incoming payload is validated by log_input's
+# canonical 30–600 mg/dL contract. Keep until legacy tests/callers are retired.
+_LEGACY_HELPER_MIN_MG_DL = 20.0
+_LEGACY_HELPER_MAX_MG_DL = 700.0
+
 
 class UnitConversionError(ValueError):
     """Backward-compatible public error for unsafe glucose normalization."""
@@ -60,9 +66,27 @@ def convert_to_mg_dl(value: float, unit: str) -> float:
 
 
 def validate_mg_dl(value: float) -> float:
-    """Validate a value already expressed in canonical mg/dL."""
+    """Deprecated compatibility helper; not used by the middleware runtime gate."""
     try:
-        return log_input.validate_mg_dl(value)
+        numeric = float(value)
+    except (TypeError, ValueError) as exc:
+        raise UnitConversionError("Glucose value must be numeric.") from exc
+    if not (_LEGACY_HELPER_MIN_MG_DL <= numeric <= _LEGACY_HELPER_MAX_MG_DL):
+        raise UnitConversionError(
+            "Glucose value is outside the legacy compatibility range [20–700] mg/dL."
+        )
+    return numeric
+
+
+def _canonical_runtime_value(value: Any, unit: str | None) -> float:
+    """Normalize one runtime payload value using the sole canonical input contract."""
+    # Keep type/coercion failures distinct from governed validation failures so an
+    # unexpected malformed payload remains an INTERNAL fail-closed rejection.
+    numeric = float(value)
+    try:
+        if unit:
+            return log_input.convert_glucose_to_mg_dl(numeric, unit)
+        return log_input.validate_mg_dl(numeric)
     except log_input.LogInputValidationError as exc:
         raise UnitConversionError(str(exc)) from exc
 
@@ -139,11 +163,7 @@ class UnitGuardMiddleware:
         for field in _GLUCOSE_FIELDS:
             if field not in payload or payload[field] is None:
                 continue
-            raw_value = payload[field]
-            if declared_unit:
-                payload[field] = convert_to_mg_dl(raw_value, declared_unit)
-            else:
-                payload[field] = validate_mg_dl(raw_value)
+            payload[field] = _canonical_runtime_value(payload[field], declared_unit)
             modified = True
 
         if modified and declared_unit:
