@@ -12,7 +12,7 @@ from django.utils import timezone
 from ninja.errors import HttpError
 from pydantic import ValidationError
 
-from diabetes.api.v1.logs import batch_create_logs, update_log
+from diabetes.api.v1.logs import batch_create_logs, create_log, update_log
 from diabetes.api.v1.schemas import LogEntryCreateSchema, LogEntryUpdateSchema
 from diabetes.models.entry import LogEntry
 from diabetes.services.clinical.paired_meal_response import compute_paired_meal_response
@@ -180,6 +180,72 @@ class PairedMealResponseTests(TestCase):
         with self.assertRaises(IntegrityError), transaction.atomic():
             self._log(episode_id=episode_id, context="pre_meal", glucose=120)
 
+    @patch("diabetes.api.v1.logs.track")
+    @patch("diabetes.api.v1.logs._invalidate_ctx")
+    @patch("diabetes.api.v1.logs._invalidate_kpis")
+    def test_create_duplicate_role_returns_conflict_not_server_error(
+        self,
+        _invalidate_kpis_mock,
+        _invalidate_ctx_mock,
+        _track_mock,
+    ):
+        episode_id = uuid4()
+        self._log(episode_id=episode_id, context="pre_meal", meal_type="lunch")
+        request = SimpleNamespace(user=self.patient)
+
+        with self.assertRaises(HttpError) as caught:
+            create_log(
+                request,
+                LogEntryCreateSchema(
+                    blood_sugar=130,
+                    meal_episode_id=episode_id,
+                    glycemic_context="pre_meal",
+                    meal_type="lunch",
+                ),
+            )
+
+        self.assertEqual(caught.exception.status_code, 409)
+        self.assertEqual(
+            LogEntry.objects.filter(
+                patient=self.patient,
+                meal_episode_id=episode_id,
+                glycemic_context="pre_meal",
+            ).count(),
+            1,
+        )
+
+    @patch("diabetes.api.v1.logs._invalidate_ctx")
+    @patch("diabetes.api.v1.logs._invalidate_kpis")
+    def test_patch_duplicate_role_returns_conflict_and_rolls_back(
+        self,
+        _invalidate_kpis_mock,
+        _invalidate_ctx_mock,
+    ):
+        occupied_episode = uuid4()
+        original_episode = uuid4()
+        self._log(
+            episode_id=occupied_episode,
+            context="pre_meal",
+            meal_type="lunch",
+        )
+        candidate = self._log(
+            episode_id=original_episode,
+            context="pre_meal",
+            meal_type="lunch",
+        )
+        request = SimpleNamespace(user=self.patient)
+
+        with self.assertRaises(HttpError) as caught:
+            update_log(
+                request,
+                candidate.id,
+                LogEntryUpdateSchema(meal_episode_id=occupied_episode),
+            )
+
+        self.assertEqual(caught.exception.status_code, 409)
+        candidate.refresh_from_db()
+        self.assertEqual(candidate.meal_episode_id, original_episode)
+
     def test_demo_episode_never_enters_paired_analytics(self):
         self._pair(source="demo", pre=100, post=220)
 
@@ -303,6 +369,8 @@ class PairedMealResponseTests(TestCase):
 
         self.assertEqual(result["synced_ids"], [valid_uuid])
         self.assertEqual(len(result["errors"]), 1)
+        self.assertIn("data conflict", result["errors"][0])
+        self.assertNotIn("uniq_patient_meal_episode_role", result["errors"][0])
         self.assertTrue(LogEntry.objects.filter(client_uuid=valid_uuid).exists())
         self.assertFalse(LogEntry.objects.filter(client_uuid=conflicting_uuid).exists())
 
