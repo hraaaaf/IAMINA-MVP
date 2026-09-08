@@ -93,6 +93,20 @@ class LogEntry(models.Model):
         help_text="Type de repas"
     )
 
+    # Explicit client-generated meal episode identity. This is deliberately
+    # nullable: legacy pre/post entries remain valid but are never paired by
+    # temporal proximity. Only entries sharing this exact UUID can participate
+    # in ANALYSIS-7 paired-meal analytics.
+    meal_episode_id = models.UUIDField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text=(
+            "Identifiant explicite d'un meme episode repas pour relier une mesure "
+            "pre_meal et post_meal sans appariement temporel infere."
+        ),
+    )
+
     # Core health data
     blood_sugar = models.DecimalField(
         max_digits=5,
@@ -196,6 +210,14 @@ class LogEntry(models.Model):
                 condition=Q(blood_sugar__gte=30) & Q(blood_sugar__lte=600),
                 name='logentry_blood_sugar_range',
                 violation_error_message='Blood sugar must be between 30 and 600 mg/dL.',
+            ),
+            models.UniqueConstraint(
+                fields=('patient', 'meal_episode_id', 'glycemic_context'),
+                condition=(
+                    Q(meal_episode_id__isnull=False)
+                    & Q(glycemic_context__in=('pre_meal', 'post_meal'))
+                ),
+                name='uniq_patient_meal_episode_role',
             ),
         ]
 
