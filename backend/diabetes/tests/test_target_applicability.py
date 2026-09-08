@@ -6,7 +6,6 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 from ninja.errors import HttpError
-from pydantic import ValidationError
 
 from core.models import BasePatientProfile
 from diabetes.api.v1.profile import ProfilePatchSchema, patch_profile
@@ -203,15 +202,35 @@ class TargetProfilePatchTests(TestCase):
         self.assertIsNone(self.profile.target_time_in_range_goal_pct)
         self.assertIsNone(self.profile.target_confirmed_at)
 
-    def test_public_patch_schema_rejects_internal_authority_fields(self):
-        with self.assertRaises(ValidationError):
-            ProfilePatchSchema.model_validate(
-                {
-                    "target_range_provenance": "clinician_confirmed",
-                    "target_population_context": "individualized",
-                    "target_time_in_range_goal_pct": 90,
-                }
-            )
+    def test_internal_authority_fields_never_enter_public_mutation_payload(self):
+        self.profile.target_range_provenance = "patient_declared"
+        self.profile.target_population_context = "unknown"
+        self.profile.target_time_in_range_goal_pct = None
+        self.profile.target_confirmed_at = None
+        self.profile.save(
+            update_fields=[
+                "target_range_provenance",
+                "target_population_context",
+                "target_time_in_range_goal_pct",
+                "target_confirmed_at",
+            ]
+        )
+
+        data = ProfilePatchSchema.model_validate(
+            {
+                "target_range_provenance": "clinician_confirmed",
+                "target_population_context": "individualized",
+                "target_time_in_range_goal_pct": 90,
+            }
+        )
+        self.assertEqual(data.model_dump(exclude_unset=True), {})
+
+        patch_profile(self.request, data)
+        self.profile.refresh_from_db()
+        self.assertEqual(self.profile.target_range_provenance, "patient_declared")
+        self.assertEqual(self.profile.target_population_context, "unknown")
+        self.assertIsNone(self.profile.target_time_in_range_goal_pct)
+        self.assertIsNone(self.profile.target_confirmed_at)
 
     def test_crossed_range_is_rejected(self):
         with self.assertRaises(HttpError) as caught:
