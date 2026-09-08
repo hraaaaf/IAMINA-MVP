@@ -155,9 +155,12 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
             pivot_text=pivot,
             language=language,
             has_sufficient_data=True,
+            # ANALYSIS-5 may expose certified CGM numbers, but target/population
+            # applicability belongs to ANALYSIS-6. Keep tone selection neutral so a
+            # promoted TIR/CV value cannot trigger "within/outside target" wording yet.
             tone_signals={
-                "primary": public_kpis["tir_pct"],
-                "stability": public_kpis["cv_pct"],
+                "primary": None,
+                "stability": None,
             },
             trend=trend,
             primary_label="TIR" if cgm_verified else "Recorded glucose",
