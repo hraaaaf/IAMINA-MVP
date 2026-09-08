@@ -12,7 +12,7 @@ from typing import Optional
 
 from ninja import Router
 from ninja.errors import HttpError
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from core.ai_egress import grant_media_consent, revoke_media_consent
 from core.models import AIMediaConsentGrant, BasePatientProfile
@@ -50,6 +50,8 @@ _MEDIA_CONSENT_OPTION_SET = frozenset(_MEDIA_CONSENT_OPTIONS)
 
 class ProfilePatchSchema(BaseModel):
     """All fields optional; supplied values are treated as patient declarations."""
+
+    model_config = ConfigDict(extra="forbid")
 
     preferred_language: Optional[str] = None
     diabetes_type: Optional[str] = None
