@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone as dt_timezone
+import datetime as dt
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -12,8 +12,8 @@ class RealCgmSufficiencyContractTests(TestCase):
 
     def setUp(self):
         self.patient = User.objects.create_user(username="synthetic-cgm-patient")
-        self.start = datetime(2026, 1, 1, tzinfo=dt_timezone.utc)
-        self.end = self.start + timedelta(days=14)
+        self.start = dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc)
+        self.end = self.start + dt.timedelta(days=14)
 
     def _session(self, *, key, start=None, end=None, source="linx"):
         return CGMSensorSession.objects.create(
@@ -30,7 +30,7 @@ class RealCgmSufficiencyContractTests(TestCase):
     def _readings(self, session, *, start, count, duplicate_first=False):
         rows = []
         for index in range(count):
-            recorded_at = start + timedelta(minutes=self.interval_minutes * index)
+            recorded_at = start + dt.timedelta(minutes=self.interval_minutes * index)
             rows.append(
                 CGMReadingRecord(
                     patient=self.patient,
@@ -105,7 +105,7 @@ class RealCgmSufficiencyContractTests(TestCase):
         self.assertFalse(result.verified)
 
     def test_sequential_multi_sensor_window_can_be_verified(self):
-        midpoint = self.start + timedelta(days=7)
+        midpoint = self.start + dt.timedelta(days=7)
         first = self._session(key="sensor-d1", end=midpoint)
         second = self._session(key="sensor-d2", start=midpoint, end=self.end)
 
@@ -127,10 +127,10 @@ class RealCgmSufficiencyContractTests(TestCase):
         self.assertEqual(result.active_window_pct, 100.0)
 
     def test_overlapping_sensor_sessions_fail_closed(self):
-        self._session(key="sensor-e1", end=self.start + timedelta(days=8))
+        self._session(key="sensor-e1", end=self.start + dt.timedelta(days=8))
         self._session(
             key="sensor-e2",
-            start=self.start + timedelta(days=7),
+            start=self.start + dt.timedelta(days=7),
             end=self.end,
         )
 
@@ -146,15 +146,15 @@ class RealCgmSufficiencyContractTests(TestCase):
     def test_naive_timezone_window_fails_closed(self):
         result = assess_cgm_window(
             patient_id=self.patient.id,
-            window_start=datetime(2026, 1, 1),
-            window_end=datetime(2026, 1, 15),
+            window_start=dt.datetime(2026, 1, 1),
+            window_end=dt.datetime(2026, 1, 15),
         )
 
         self.assertFalse(result.verified)
         self.assertEqual(result.reason, "timezone_required")
 
     def test_short_window_fails_even_with_complete_sensor_data(self):
-        short_end = self.start + timedelta(days=13, hours=23)
+        short_end = self.start + dt.timedelta(days=13, hours=23)
         session = self._session(key="sensor-f", end=short_end)
         seconds = int((short_end - self.start).total_seconds())
         count = seconds // (self.interval_minutes * 60) + 1
