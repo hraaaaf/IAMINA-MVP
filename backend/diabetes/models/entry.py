@@ -2,6 +2,17 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Q
 
+from diabetes.contracts.log_entry import (
+    EXERCISE_VALUES,
+    FATIGUE_VALUES,
+    GLYCEMIC_CONTEXT_VALUES,
+    MEAL_TYPE_VALUES,
+    SICK_VALUES,
+    SLEEP_VALUES,
+    SOURCE_VALUES,
+    STRESS_VALUES,
+)
+
 
 class LogEntry(models.Model):
     """A single health log entry from a patient."""
@@ -196,6 +207,38 @@ class LogEntry(models.Model):
                 condition=Q(blood_sugar__gte=30) & Q(blood_sugar__lte=600),
                 name='logentry_blood_sugar_range',
                 violation_error_message='Blood sugar must be between 30 and 600 mg/dL.',
+            ),
+            models.CheckConstraint(
+                condition=Q(glycemic_context__in=GLYCEMIC_CONTEXT_VALUES),
+                name='logentry_glycemic_context_canonical',
+            ),
+            models.CheckConstraint(
+                condition=Q(meal_type__in=MEAL_TYPE_VALUES),
+                name='logentry_meal_type_canonical',
+            ),
+            models.CheckConstraint(
+                condition=Q(exercised__in=EXERCISE_VALUES),
+                name='logentry_exercised_canonical',
+            ),
+            models.CheckConstraint(
+                condition=Q(sleep_quality__in=SLEEP_VALUES),
+                name='logentry_sleep_quality_canonical',
+            ),
+            models.CheckConstraint(
+                condition=Q(stressed__in=STRESS_VALUES),
+                name='logentry_stressed_canonical',
+            ),
+            models.CheckConstraint(
+                condition=Q(fatigue_level__in=FATIGUE_VALUES),
+                name='logentry_fatigue_canonical',
+            ),
+            models.CheckConstraint(
+                condition=Q(is_sick__in=SICK_VALUES),
+                name='logentry_is_sick_canonical',
+            ),
+            models.CheckConstraint(
+                condition=Q(source__in=SOURCE_VALUES),
+                name='logentry_source_canonical',
             ),
         ]
 
