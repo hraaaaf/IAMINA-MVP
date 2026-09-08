@@ -126,6 +126,7 @@ class LogEntrySchema(_CanonicalLogInputMixin, Schema):
     logged_at: Optional[datetime]
     glycemic_context: str = ""
     meal_type: str
+    meal_episode_id: Optional[UUID] = None
     blood_sugar: float
     meal_description: str = ""
     meal_items: List[str] = Field(default_factory=list)
@@ -145,6 +146,7 @@ class LogEntryCreateSchema(_CanonicalLogInputMixin, Schema):
     logged_at: Optional[datetime] = None
     glycemic_context: str = ""
     meal_type: str = ""
+    meal_episode_id: Optional[UUID] = None
     blood_sugar: _BloodSugar
     meal_description: str = ""
     meal_items: List[_MealItem] = Field(default_factory=list, max_length=20)
@@ -163,6 +165,15 @@ class LogEntryCreateSchema(_CanonicalLogInputMixin, Schema):
         validate_meal_portion_links(self.meal_items, self.meal_portions)
         return self
 
+    @model_validator(mode="after")
+    def validate_meal_episode_link(self):
+        log_input.validate_meal_episode_link(
+            self.meal_episode_id,
+            glycemic_context=self.glycemic_context,
+            meal_type=self.meal_type,
+        )
+        return self
+
 
 class LogEntryUpdateSchema(_CanonicalLogInputMixin, Schema):
     """Partial update — all fields optional. Only supplied fields are written."""
@@ -170,6 +181,7 @@ class LogEntryUpdateSchema(_CanonicalLogInputMixin, Schema):
     logged_at: Optional[datetime] = None
     glycemic_context: Optional[str] = None
     meal_type: Optional[str] = None
+    meal_episode_id: Optional[UUID] = None
     blood_sugar: Optional[_BloodSugar] = None
     meal_description: Optional[str] = None
     meal_items: Optional[List[_MealItem]] = Field(default=None, max_length=20)
