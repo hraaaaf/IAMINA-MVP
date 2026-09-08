@@ -1,3 +1,4 @@
+import ast
 from pathlib import Path
 
 from django.test import SimpleTestCase
@@ -37,16 +38,38 @@ class SingleEvidenceAuthorityTests(SimpleTestCase):
     def test_raw_diabetes_engine_has_no_production_importers_except_evidence_wrapper(self):
         backend_dir = Path(__file__).resolve().parents[2]
         diabetes_dir = backend_dir / "diabetes"
-        needle = "from diabetes.services.clinical.engine import DiabetesEngine"
         allowed = {
             diabetes_dir / "services" / "clinical" / "evidence_engine.py",
         }
         offenders = []
+
         for path in diabetes_dir.rglob("*.py"):
-            if "tests" in path.parts or "migrations" in path.parts:
+            if "tests" in path.parts or "migrations" in path.parts or path in allowed:
                 continue
-            if needle in path.read_text(encoding="utf-8") and path not in allowed:
+
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            imports_raw_engine = False
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom):
+                    module = node.module or ""
+                    is_engine_module = (
+                        module == "diabetes.services.clinical.engine"
+                        or (node.level > 0 and module == "engine")
+                    )
+                    if is_engine_module and any(
+                        alias.name == "DiabetesEngine" for alias in node.names
+                    ):
+                        imports_raw_engine = True
+                elif isinstance(node, ast.Import):
+                    if any(
+                        alias.name == "diabetes.services.clinical.engine"
+                        for alias in node.names
+                    ):
+                        imports_raw_engine = True
+
+            if imports_raw_engine:
                 offenders.append(str(path.relative_to(backend_dir)))
+
         self.assertEqual(offenders, [])
 
     def test_retired_summary_contains_no_treatment_or_fabricated_claim_payload(self):
