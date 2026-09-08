@@ -6,7 +6,7 @@ attainment. IAmina never invents a target from demographics or a guideline.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime
 from math import isfinite
 
@@ -49,6 +49,21 @@ class TargetAuthority:
             "evidence_id": self.evidence_id,
             "limitation": self.limitation,
         }
+
+
+def unavailable_target_authority(reason_code: str) -> TargetAuthority:
+    """Build a neutral authority snapshot when no usable target profile exists."""
+    get_evidence(TARGET_SUPPORTING_EVIDENCE_ID)
+    return TargetAuthority(
+        verified=False,
+        reason_code=reason_code,
+        provenance="unknown",
+        population_context="unknown",
+        target_low_mg_dl=None,
+        target_high_mg_dl=None,
+        target_time_in_range_goal_pct=None,
+        confirmed_at=None,
+    )
 
 
 def _snapshot(profile: DiabetesProfile, *, reason_code: str, verified: bool = False) -> TargetAuthority:
@@ -156,13 +171,13 @@ def target_narration_evidence(assessment: dict[str, object]) -> str:
     if status not in {"meets_confirmed_goal", "below_confirmed_goal"}:
         return ""
 
-    measured = assessment["target_range_pct"]
-    low = assessment["target_low_mg_dl"]
-    high = assessment["target_high_mg_dl"]
-    goal = assessment["target_time_in_range_goal_pct"]
+    measured = float(assessment["target_range_pct"])
+    low = float(assessment["target_low_mg_dl"])
+    high = float(assessment["target_high_mg_dl"])
+    goal = float(assessment["target_time_in_range_goal_pct"])
     relation = "meets" if status == "meets_confirmed_goal" else "is below"
     return (
         "CLINICIAN-CONFIRMED TARGET EVIDENCE: verified CGM time inside the explicitly "
-        f"confirmed {low:g}–{high:g} mg/dL range is {measured}%; this {relation} the "
+        f"confirmed {low:g}–{high:g} mg/dL range is {measured:g}%; this {relation} the "
         f"recorded minimum goal of {goal:g}%. {_TARGET_LIMITATION}"
     )
