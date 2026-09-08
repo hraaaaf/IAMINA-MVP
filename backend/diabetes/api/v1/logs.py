@@ -10,6 +10,7 @@ from ninja import Router, Status
 from ninja.errors import HttpError
 
 from core.observability import EVT_LOG_CREATED, track
+from diabetes.contracts import log_entry as log_input
 from diabetes.models import LogEntry
 from diabetes.services.clinical.observation_erasure import (
     reconcile_personal_response_memory_after_source_erasure,
@@ -167,13 +168,44 @@ def _validate_patch_portion_links(log: LogEntry, data: LogEntryUpdateSchema) -> 
         raise HttpError(422, str(exc)) from exc
 
 
+def _validate_patch_meal_episode(log: LogEntry, data: LogEntryUpdateSchema) -> None:
+    relevant = {"meal_episode_id", "glycemic_context", "meal_type"}
+    if not (relevant & data.model_fields_set):
+        return
+
+    episode_id = (
+        data.meal_episode_id
+        if "meal_episode_id" in data.model_fields_set
+        else log.meal_episode_id
+    )
+    glycemic_context = (
+        data.glycemic_context
+        if data.glycemic_context is not None
+        else log.glycemic_context
+    )
+    meal_type = data.meal_type if data.meal_type is not None else log.meal_type
+    try:
+        log_input.validate_meal_episode_link(
+            episode_id,
+            glycemic_context=glycemic_context,
+            meal_type=meal_type,
+        )
+    except log_input.LogInputValidationError as exc:
+        raise HttpError(422, str(exc)) from exc
+
+
 @router.patch("/logs/{log_id}", response=LogEntrySchema)
 def update_log(request, log_id: int, data: LogEntryUpdateSchema):
     """Partial update — only supplied fields are written.  404 on cross-patient access."""
     with transaction.atomic():
         log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
         _validate_patch_portion_links(log, data)
+        _validate_patch_meal_episode(log, data)
         updates = data.model_dump(exclude_none=True)
+        if "meal_episode_id" in data.model_fields_set:
+            # Unlike the older nullable PATCH fields, an episode link must be
+            # explicitly clearable so a mistaken association can be removed.
+            updates["meal_episode_id"] = data.meal_episode_id
         clinical_source_changed = _changes_clinical_twin_source(log, updates)
         for field, value in updates.items():
             setattr(log, field, value)
