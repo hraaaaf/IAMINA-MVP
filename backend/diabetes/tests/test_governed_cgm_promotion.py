@@ -92,6 +92,53 @@ class GovernedCgmPromotionTests(TestCase):
         self.assertNotEqual(projection["tar_pct"], self._raw_kpis().tar_pct)
         self.assertEqual(projection["cgm_metric_reading_count"], 337)
 
+    def test_verified_cgm_metrics_match_independent_numeric_oracle(self):
+        self._insert_complete_hourly_window()
+        window = assess_cgm_window(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=self.end,
+        )
+        metrics = compute_verified_cgm_metrics(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=self.end,
+        )
+
+        self.assertTrue(window.verified)
+        self.assertEqual(metrics.reading_count, 337)
+        self.assertEqual(metrics.tir_pct, 69.7)
+        self.assertEqual(metrics.tar_pct, 20.2)
+        self.assertEqual(metrics.tbr_pct, 10.1)
+        self.assertEqual(metrics.cv_pct, 39.3)
+        self.assertEqual(
+            round(metrics.tir_pct + metrics.tar_pct + metrics.tbr_pct, 1),
+            100.0,
+        )
+
+    def test_cgm_target_boundaries_are_inclusive(self):
+        values = [70, 180, 69, 181]
+        for index, glucose in enumerate(values):
+            CGMReadingRecord.objects.create(
+                patient=self.patient,
+                source="linx",
+                session=self.session,
+                recorded_at=self.start + dt.timedelta(hours=index),
+                glucose_mg_dl=glucose,
+                dedupe_key=f"analysis5-boundary:{index}",
+            )
+
+        metrics = compute_verified_cgm_metrics(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=self.end,
+        )
+
+        self.assertEqual(metrics.reading_count, 4)
+        self.assertEqual(metrics.tir_pct, 50.0)
+        self.assertEqual(metrics.tar_pct, 25.0)
+        self.assertEqual(metrics.tbr_pct, 25.0)
+
     def test_gmi_and_gri_remain_fail_closed_after_valid_cgm_window(self):
         self._insert_complete_hourly_window()
         window = assess_cgm_window(
