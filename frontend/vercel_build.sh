@@ -12,9 +12,10 @@ export PATH="$FLUTTER_DIR/bin:$PATH"
 flutter config --enable-web
 flutter pub get
 
-if [ "${IAMINA_OFFLINE_DEMO:-false}" = "true" ]; then
-  flutter build web --release --dart-define=IAMINA_OFFLINE_DEMO=true
-else
-  : "${API_BASE_URL:?API_BASE_URL must be configured unless IAMINA_OFFLINE_DEMO=true}"
+if [ -n "${API_BASE_URL:-}" ]; then
+  echo "Building IAMINA web with configured backend: $API_BASE_URL"
   flutter build web --release --dart-define=API_BASE_URL="$API_BASE_URL"
+else
+  echo "Building IAMINA frontend-only demo: no API_BASE_URL configured"
+  flutter build web --release --dart-define=IAMINA_OFFLINE_DEMO=true
 fi
