@@ -17,17 +17,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
       - name: Install Playwright Chromium
         run: |
           npm init -y >/dev/null 2>&1
           npm install --save-dev playwright@1.55.0
           npx playwright install --with-deps chromium
-
       - name: Run mobile demo audit
         env:
           TARGET_URL: https://iamina-review.vercel.app
@@ -36,82 +33,42 @@ jobs:
           cat > audit.mjs <<'JS'
           import { chromium, devices } from 'playwright';
           import fs from 'node:fs';
-
-          const out = 'dashboard-demo-audit';
-          const target = process.env.TARGET_URL;
-          const browser = await chromium.launch({headless: true});
-          const context = await browser.newContext({
-            ...devices['iPhone 13'],
-            viewport: { width: 390, height: 844 },
-            locale: 'fr-FR',
-          });
-          const page = await context.newPage();
-          const log = [];
-          const record = (event, data={}) => log.push({event, at: new Date().toISOString(), ...data});
-
-          page.on('console', msg => record('console', {type: msg.type(), text: msg.text()}));
-          page.on('pageerror', err => record('pageerror', {text: String(err)}));
-          page.on('requestfailed', req => record('requestfailed', {url: req.url(), failure: req.failure()}));
-
+          const out='dashboard-demo-audit';
+          const browser=await chromium.launch({headless:true});
+          const context=await browser.newContext({...devices['iPhone 13'],viewport:{width:390,height:844},locale:'fr-FR'});
+          const page=await context.newPage();
+          const log=[]; const rec=(event,data={})=>log.push({event,at:new Date().toISOString(),...data});
+          page.on('console',m=>rec('console',{type:m.type(),text:m.text()}));
+          page.on('pageerror',e=>rec('pageerror',{text:String(e)}));
+          page.on('requestfailed',r=>rec('requestfailed',{url:r.url(),failure:r.failure()}));
           try {
-            const response = await page.goto(target, {waitUntil: 'networkidle', timeout: 60000});
-            record('landing', {url: page.url(), status: response?.status()});
-            await page.screenshot({path: `${out}/01-landing-390x844.png`, fullPage: true});
-
-            const candidates = [
-              page.getByRole('button', {name: /d[ée]mo|demo/i}),
-              page.getByRole('link', {name: /d[ée]mo|demo/i}),
-              page.getByText(/d[ée]mo|demo/i, {exact: false}),
-            ];
-            let clicked = false;
-            for (const locator of candidates) {
-              if (await locator.count()) {
-                const item = locator.first();
-                if (await item.isVisible().catch(()=>false)) {
-                  record('demo-found', {text: (await item.innerText().catch(()=>'' )).slice(0,200)});
-                  await item.click({timeout: 10000});
-                  clicked = true;
-                  break;
-                }
-              }
-            }
-            if (!clicked) throw new Error('Aucun contrôle Démo visible trouvé');
-
-            await page.waitForLoadState('networkidle', {timeout: 45000}).catch(()=>{});
-            await page.waitForTimeout(3000);
-            record('after-demo', {url: page.url(), title: await page.title()});
-            await page.screenshot({path: `${out}/02-after-demo-390x844.png`, fullPage: true});
-
-            const bodyText = (await page.locator('body').innerText()).trim();
-            fs.writeFileSync(`${out}/dashboard-text.txt`, bodyText);
-            fs.writeFileSync(`${out}/page-url.txt`, page.url());
-
-            const headings = await page.locator('h1,h2,h3,[role="heading"]').allInnerTexts().catch(()=>[]);
-            const buttons = await page.getByRole('button').allInnerTexts().catch(()=>[]);
-            const links = await page.getByRole('link').allInnerTexts().catch(()=>[]);
-            fs.writeFileSync(`${out}/ui-summary.json`, JSON.stringify({url: page.url(), title: await page.title(), headings, buttons, links}, null, 2));
-
-            const total = await page.evaluate(() => Math.max(document.body.scrollHeight, document.documentElement.scrollHeight));
-            const step = 720;
-            let idx = 3;
-            for (let y = 0; y < total; y += step) {
-              await page.evaluate(scrollY => window.scrollTo(0, scrollY), y);
-              await page.waitForTimeout(300);
-              await page.screenshot({path: `${out}/${String(idx).padStart(2,'0')}-dashboard-y${y}-390x844.png`, fullPage: false});
-              idx++;
-            }
-            record('audit-complete', {bodyChars: bodyText.length, totalHeight: total});
-          } catch (err) {
-            record('fatal', {text: String(err), url: page.url()});
-            await page.screenshot({path: `${out}/99-failure-390x844.png`, fullPage: true}).catch(()=>{});
-            throw err;
-          } finally {
-            fs.writeFileSync(`${out}/browser-log.json`, JSON.stringify(log, null, 2));
-            await browser.close();
-          }
+            const r=await page.goto(process.env.TARGET_URL,{waitUntil:'domcontentloaded',timeout:60000});
+            rec('landing',{url:page.url(),status:r?.status()});
+            await page.waitForTimeout(7000);
+            await page.screenshot({path:`${out}/01-landing-390x844.png`,fullPage:true});
+            fs.writeFileSync(`${out}/landing-text.txt`,(await page.locator('body').innerText().catch(()=>'' )).trim());
+            const demo=page.getByText(/acc[eè]s\s+d[ée]mo|d[ée]mo/i,{exact:false}).first();
+            if(!(await demo.count()) || !(await demo.isVisible().catch(()=>false))) throw new Error('Accès démo non trouvé/visible');
+            rec('demo-found',{text:(await demo.innerText().catch(()=>'' )).slice(0,200)});
+            await demo.click({timeout:15000});
+            await page.waitForTimeout(8000);
+            rec('after-demo',{url:page.url(),title:await page.title()});
+            await page.screenshot({path:`${out}/02-after-demo-390x844.png`,fullPage:true});
+            const body=(await page.locator('body').innerText().catch(()=>'' )).trim();
+            fs.writeFileSync(`${out}/dashboard-text.txt`,body);
+            fs.writeFileSync(`${out}/page-url.txt`,page.url());
+            const headings=await page.locator('h1,h2,h3,[role="heading"]').allInnerTexts().catch(()=>[]);
+            const buttons=await page.getByRole('button').allInnerTexts().catch(()=>[]);
+            const links=await page.getByRole('link').allInnerTexts().catch(()=>[]);
+            fs.writeFileSync(`${out}/ui-summary.json`,JSON.stringify({url:page.url(),title:await page.title(),headings,buttons,links},null,2));
+            const total=await page.evaluate(()=>Math.max(document.body.scrollHeight,document.documentElement.scrollHeight));
+            let idx=3;
+            for(let y=0;y<total;y+=720){await page.evaluate(v=>window.scrollTo(0,v),y);await page.waitForTimeout(400);await page.screenshot({path:`${out}/${String(idx).padStart(2,'0')}-dashboard-y${y}-390x844.png`,fullPage:false});idx++;}
+            rec('audit-complete',{bodyChars:body.length,totalHeight:total});
+          } catch(e){rec('fatal',{text:String(e),url:page.url()});await page.screenshot({path:`${out}/99-failure-390x844.png`,fullPage:true}).catch(()=>{});throw e;}
+          finally{fs.writeFileSync(`${out}/browser-log.json`,JSON.stringify(log,null,2));await browser.close();}
           JS
           node audit.mjs
-
       - name: Upload mobile audit proof
         if: always()
         uses: actions/upload-artifact@v4
