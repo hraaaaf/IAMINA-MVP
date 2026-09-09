@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'api_client.dart';
+import 'auth_service.dart';
 
 class LocalExperiencePreference {
   final String language;
@@ -123,7 +124,7 @@ class LocalePreferenceService extends ChangeNotifier {
     }
 
     Object? accountLanguage;
-    if (_auditLocale == null) {
+    if (_auditLocale == null && !kOfflineDemo) {
       try {
         final response = await _apiClient.client.get(
           Uri.parse('/api/v1/profile/locale'),
