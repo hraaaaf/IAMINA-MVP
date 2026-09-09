@@ -19,11 +19,20 @@ String _t(BuildContext context, String fr, String en, String ar) {
   return fr;
 }
 
+String _dashboardDateLocale(BuildContext context) {
+  final locale = Localizations.localeOf(context);
+  return switch (locale.languageCode) {
+    'fr' => 'fr_FR',
+    'ar' => 'ar_MA',
+    'en' => 'en_US',
+    _ => locale.toLanguageTag(),
+  };
+}
+
 const _futureTimestampTolerance = Duration(minutes: 5);
 
-bool _readingTimestampNeedsReview(DateTime latestAt) => latestAt.isAfter(
-      DateTime.now().add(_futureTimestampTolerance),
-    );
+bool _readingTimestampNeedsReview(DateTime latestAt) =>
+    latestAt.isAfter(DateTime.now().add(_futureTimestampTolerance));
 
 Duration _safeReadingAge(DateTime latestAt) {
   final age = DateTime.now().difference(latestAt);
@@ -103,12 +112,7 @@ class DashboardPremiumScreen extends StatelessWidget {
                 logsSnap.connectionState == ConnectionState.waiting) {
               return _PremiumState(
                 loading: true,
-                title: _t(
-                  context,
-                  'Préparation',
-                  'Preparing',
-                  'جارٍ التحضير',
-                ),
+                title: _t(context, 'Préparation', 'Preparing', 'جارٍ التحضير'),
                 body: _t(
                   context,
                   'IAmina prépare votre espace santé.',
@@ -154,14 +158,15 @@ class _DashboardBody extends StatelessWidget {
     required this.companionService,
   });
 
-  String _display(double mg) => unit == 'mmol/L'
-      ? (mg / 18.0).toStringAsFixed(1)
-      : mg.toStringAsFixed(0);
+  String _display(double mg) =>
+      unit == 'mmol/L' ? (mg / 18.0).toStringAsFixed(1) : mg.toStringAsFixed(0);
 
   @override
   Widget build(BuildContext context) {
     final latest = logs.isEmpty ? null : logs.first;
-    final latestAt = latest == null ? null : (latest.loggedAt ?? latest.createdAt);
+    final latestAt = latest == null
+        ? null
+        : (latest.loggedAt ?? latest.createdAt);
     final hasTarget = low != null && high != null && low! < high!;
     final inRange =
         latest != null &&
@@ -169,7 +174,7 @@ class _DashboardBody extends StatelessWidget {
         latest.bloodSugar >= low! &&
         latest.bloodSugar <= high!;
     final highValue = latest != null && hasTarget && latest.bloodSugar > high!;
-    final locale = Localizations.localeOf(context).toLanguageTag();
+    final locale = _dashboardDateLocale(context);
 
     return Scaffold(
       backgroundColor: AminaTheme.isDark(context)
@@ -345,9 +350,7 @@ class _PremiumBrandHeader extends StatelessWidget {
             minimumSize: const Size(48, 48),
             backgroundColor: AminaVisualLanguage.controlSurface(context),
             foregroundColor: AminaVisualLanguage.forestDeep,
-            side: BorderSide(
-              color: AminaVisualLanguage.controlBorder(context),
-            ),
+            side: BorderSide(color: AminaVisualLanguage.controlBorder(context)),
           ),
         ),
       ],
@@ -436,7 +439,10 @@ class _LatestReadingCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: hasData
                       ? inRange || neutralStatus
@@ -608,7 +614,9 @@ class _AmbientBackground extends StatelessWidget {
               height: 250,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(180),
-                color: AminaVisualLanguage.mintWaveStrong.withValues(alpha: .45),
+                color: AminaVisualLanguage.mintWaveStrong.withValues(
+                  alpha: .45,
+                ),
               ),
             ),
           ),
