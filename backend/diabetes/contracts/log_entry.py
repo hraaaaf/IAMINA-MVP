@@ -45,6 +45,15 @@ MEAL_TYPE_VALUES = (
     "suhoor",
     "other",
 )
+PAIRED_MEAL_CONTEXT_VALUES = ("pre_meal", "post_meal")
+PAIRED_MEAL_TYPE_VALUES = (
+    "breakfast",
+    "lunch",
+    "snack",
+    "dinner",
+    "iftar",
+    "suhoor",
+)
 EXERCISE_VALUES = ("", "yes", "no")
 STRESS_VALUES = ("", "yes", "no")
 SLEEP_VALUES = ("", "good", "bad")
@@ -123,3 +132,27 @@ def validate_logged_at(
             "logged_at cannot be more than 5 minutes in the future."
         )
     return value
+
+
+def validate_meal_episode_link(
+    meal_episode_id: object | None,
+    *,
+    glycemic_context: str,
+    meal_type: str,
+) -> None:
+    """Validate explicit pre/post meal linkage without inferring a pairing.
+
+    Legacy pre/post entries may omit ``meal_episode_id``. When an identifier is
+    present it only states that entries belong to the same recorded meal episode;
+    it does not imply a clinical target, cause, or treatment response.
+    """
+    if meal_episode_id is None:
+        return
+    if glycemic_context not in PAIRED_MEAL_CONTEXT_VALUES:
+        raise LogInputValidationError(
+            "meal_episode_id requires glycemic_context pre_meal or post_meal."
+        )
+    if meal_type not in PAIRED_MEAL_TYPE_VALUES:
+        raise LogInputValidationError(
+            "meal_episode_id requires an explicit supported meal_type."
+        )

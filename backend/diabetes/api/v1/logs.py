@@ -4,12 +4,13 @@ LogEntry CRUD under /api/v1/logs — patient-scoped reads and writes.
 
 from typing import List
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from ninja import Router, Status
 from ninja.errors import HttpError
 
 from core.observability import EVT_LOG_CREATED, track
+from diabetes.contracts import log_entry as log_input
 from diabetes.models import LogEntry
 from diabetes.services.clinical.observation_erasure import (
     reconcile_personal_response_memory_after_source_erasure,
@@ -72,7 +73,16 @@ def list_logs(request, page: int = 1, page_size: int = 50):
 
 @router.post("/logs", response=LogEntrySchema)
 def create_log(request, data: LogEntryCreateSchema):
-    log = LogEntry.objects.create(patient=request.user, **data.dict())
+    try:
+        # Keep database integrity failures inside a savepoint. Django marks the
+        # active transaction as broken after IntegrityError until that savepoint
+        # is rolled back, which would otherwise poison callers/test transactions.
+        with transaction.atomic():
+            log = LogEntry.objects.create(patient=request.user, **data.dict())
+    except IntegrityError as exc:
+        # A uniqueness/check race is a client-visible data conflict, not a 500.
+        # Keep the response generic so database constraint names are not leaked.
+        raise HttpError(409, "Log entry conflicts with existing data") from exc
     _invalidate_ctx(request.user.id)
     _invalidate_kpis(request.user.id)
     track(
@@ -101,35 +111,40 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
             existing = LogEntry.objects.filter(client_uuid=entry_data.client_uuid).first()
 
             try:
-                if existing is not None:
-                    # Batch sync is a full local snapshot. Replaying the same UUID is
-                    # idempotent, while an edited local snapshot must update the same
-                    # patient's server row rather than being silently treated as a no-op.
-                    if existing.patient_id != request.user.id:
-                        errors.append("client_uuid is already owned by another patient")
-                        continue
-                    snapshot = entry_data.dict()
-                    snapshot.pop("client_uuid", None)
-                    clinical_source_changed = _changes_clinical_twin_source(
-                        existing,
-                        snapshot,
-                    )
-                    for field, value in snapshot.items():
-                        setattr(existing, field, value)
-                    existing.save()
-                    mutated_existing_source = (
-                        mutated_existing_source or clinical_source_changed
-                    )
-                else:
-                    LogEntry.objects.create(patient=request.user, **entry_data.dict())
-                    track(
-                        EVT_LOG_CREATED,
-                        patient_id=request.user.id,
-                        props={"client_uuid": str(entry_data.client_uuid)},
-                    )
+                # Each row gets a savepoint so a uniqueness/integrity conflict cannot
+                # poison the outer batch transaction and prevent later valid rows.
+                with transaction.atomic():
+                    if existing is not None:
+                        # Batch sync is a full local snapshot. Replaying the same UUID is
+                        # idempotent, while an edited local snapshot must update the same
+                        # patient's server row rather than being silently treated as a no-op.
+                        if existing.patient_id != request.user.id:
+                            errors.append("client_uuid is already owned by another patient")
+                            continue
+                        snapshot = entry_data.dict()
+                        snapshot.pop("client_uuid", None)
+                        clinical_source_changed = _changes_clinical_twin_source(
+                            existing,
+                            snapshot,
+                        )
+                        for field, value in snapshot.items():
+                            setattr(existing, field, value)
+                        existing.save()
+                        mutated_existing_source = (
+                            mutated_existing_source or clinical_source_changed
+                        )
+                    else:
+                        LogEntry.objects.create(patient=request.user, **entry_data.dict())
+                        track(
+                            EVT_LOG_CREATED,
+                            patient_id=request.user.id,
+                            props={"client_uuid": str(entry_data.client_uuid)},
+                        )
                 synced_uuids.append(entry_data.client_uuid)
-            except Exception as e:
-                errors.append(f"Error syncing {entry_data.client_uuid}: {str(e)}")
+            except IntegrityError:
+                errors.append(f"Error syncing {entry_data.client_uuid}: data conflict")
+            except Exception as exc:
+                errors.append(f"Error syncing {entry_data.client_uuid}: {str(exc)}")
 
         if mutated_existing_source:
             # A full-snapshot edit may remove or replace evidence that was already
@@ -167,23 +182,57 @@ def _validate_patch_portion_links(log: LogEntry, data: LogEntryUpdateSchema) -> 
         raise HttpError(422, str(exc)) from exc
 
 
+def _validate_patch_meal_episode(log: LogEntry, data: LogEntryUpdateSchema) -> None:
+    relevant = {"meal_episode_id", "glycemic_context", "meal_type"}
+    if not (relevant & data.model_fields_set):
+        return
+
+    episode_id = (
+        data.meal_episode_id
+        if "meal_episode_id" in data.model_fields_set
+        else log.meal_episode_id
+    )
+    glycemic_context = (
+        data.glycemic_context
+        if data.glycemic_context is not None
+        else log.glycemic_context
+    )
+    meal_type = data.meal_type if data.meal_type is not None else log.meal_type
+    try:
+        log_input.validate_meal_episode_link(
+            episode_id,
+            glycemic_context=glycemic_context,
+            meal_type=meal_type,
+        )
+    except log_input.LogInputValidationError as exc:
+        raise HttpError(422, str(exc)) from exc
+
+
 @router.patch("/logs/{log_id}", response=LogEntrySchema)
 def update_log(request, log_id: int, data: LogEntryUpdateSchema):
     """Partial update — only supplied fields are written.  404 on cross-patient access."""
-    with transaction.atomic():
-        log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
-        _validate_patch_portion_links(log, data)
-        updates = data.model_dump(exclude_none=True)
-        clinical_source_changed = _changes_clinical_twin_source(log, updates)
-        for field, value in updates.items():
-            setattr(log, field, value)
-        log.save()
-        if clinical_source_changed:
-            # A patch may explicitly erase/replace source fields that contributed
-            # to a durable observation. Rebuild from surviving authoritative rows.
-            reconcile_personal_response_memory_after_source_erasure(
-                patient_id=request.user.id,
-            )
+    try:
+        with transaction.atomic():
+            log = get_object_or_404(LogEntry, id=log_id, patient=request.user)
+            _validate_patch_portion_links(log, data)
+            _validate_patch_meal_episode(log, data)
+            updates = data.model_dump(exclude_none=True)
+            if "meal_episode_id" in data.model_fields_set:
+                # Unlike the older nullable PATCH fields, an episode link must be
+                # explicitly clearable so a mistaken association can be removed.
+                updates["meal_episode_id"] = data.meal_episode_id
+            clinical_source_changed = _changes_clinical_twin_source(log, updates)
+            for field, value in updates.items():
+                setattr(log, field, value)
+            log.save()
+            if clinical_source_changed:
+                # A patch may explicitly erase/replace source fields that contributed
+                # to a durable observation. Rebuild from surviving authoritative rows.
+                reconcile_personal_response_memory_after_source_erasure(
+                    patient_id=request.user.id,
+                )
+    except IntegrityError as exc:
+        raise HttpError(409, "Log entry conflicts with existing data") from exc
     _invalidate_ctx(request.user.id)
     _invalidate_kpis(request.user.id)
     return log
