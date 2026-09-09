@@ -201,13 +201,13 @@ jobs:
           PROXY_PID=$!
           trap 'kill $PROXY_PID 2>/dev/null || true; kill $(cat /tmp/iamina-dashboard-backend.pid) 2>/dev/null || true' EXIT
           for _ in $(seq 1 30); do curl -fsS http://127.0.0.1:7358/ >/dev/null && break; sleep 1; done
-          cat >/tmp/capture.js <<'JS'
+          cat >dashboard-global-cert/capture.js <<'JS'
           const { chromium } = require('playwright'); const fs=require('fs'); const path=require('path');
           (async()=>{const browser=await chromium.launch({headless:true}); const matrix=[['mobile',390,844],['tablet',768,1024],['desktop',1280,900]]; const report={};
           for(const [name,width,height] of matrix){const ctx=await browser.newContext({viewport:{width,height},deviceScaleFactor:1}); const page=await ctx.newPage(); const errors=[]; const api=[]; page.on('pageerror',e=>errors.push(String(e))); page.on('response',r=>{if(r.url().includes('/api/')) api.push({url:r.url(),status:r.status()})}); await page.goto('http://127.0.0.1:7358/',{waitUntil:'domcontentloaded',timeout:120000}); await page.waitForTimeout(12000); await page.screenshot({path:path.join('dashboard-global-cert',`${name}-top-${width}x${height}.png`)}); await page.mouse.wheel(0,Math.round(height*.7)); await page.waitForTimeout(1000); await page.screenshot({path:path.join('dashboard-global-cert',`${name}-mid-${width}x${height}.png`)}); await page.mouse.wheel(0,Math.round(height*.85)); await page.waitForTimeout(1000); await page.screenshot({path:path.join('dashboard-global-cert',`${name}-lower-${width}x${height}.png`)}); report[name]={url:page.url(),errors,api}; if(errors.length) throw new Error(`${name}: ${errors}`); if(api.some(x=>x.status>=500)) throw new Error(`${name}: backend 5xx`); await ctx.close();}
           fs.writeFileSync('dashboard-global-cert/browser-report.json',JSON.stringify(report,null,2)); await browser.close();})().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node /tmp/capture.js
+          node dashboard-global-cert/capture.js
 
       - name: Upload certification proof
         if: always()
