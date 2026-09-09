@@ -1,9 +1,9 @@
 # IAMINA — ANALYSE CLINIQUE ≥9/10 — FICHIER CANONIQUE
 
-> **Statut** : CERTIFICATION FINALE EN CLOSEOUT  
+> **Statut** : CLOSED ✅  
 > **Date de recertification** : 2026-09-09  
 > **Repo** : `hraaaaf/IAMINA-MVP`  
-> **Base certifiée** : `main@e7b450214e9b375e77bb517bbffb9653dcb60d4f`  
+> **Base certifiée finale** : `main@b0b9aa773049c02c2f161febb1d6983b5d4645cc`  
 > **Baseline initiale** : ~7,9/10 statique, non-runtime  
 > **Score pondéré final** : **9,46/10**  
 > **Déploiement Vercel** : aucun déploiement effectué  
@@ -11,13 +11,13 @@
 
 ---
 
-## 1. GOAL FINAL
+## 1. GOAL FINAL — ATTEINT ✅
 
 Faire passer le moteur d’analyse IAMINA à **≥9,0/10 réellement certifié**, sans sacrifier sécurité clinique, incertitude, traçabilité, isolation patient ou architecture capsule.
 
 ### Succès observable
 
-Le Goal est atteint techniquement sur `main@e7b45021` :
+Le Goal est atteint et clos :
 
 1. contrats d’entrée cohérents et fail-closed ;
 2. états explicites `complete | partial | unavailable | insufficient_data` ;
@@ -28,9 +28,9 @@ Le Goal est atteint techniquement sur `main@e7b45021` :
 7. cadence/couverture/fenêtre CGM persistées et vérifiées ;
 8. longitudinal descriptif sans causalité/prédiction fictive ;
 9. paires repas pré→post uniquement par épisode explicitement lié ;
-10. suites SQLite/PostgreSQL + contrôles architecture/sécurité/OpenAPI verts sur le merge A7.
-
-La clôture administrative finale reste conditionnée uniquement à la CI/drift du présent commit documentaire puis merge de la PR de recertification.
+10. suites SQLite/PostgreSQL + contrôles architecture/sécurité/OpenAPI verts sur le merge A7 ;
+11. recertification pondérée finale à **9,46/10** ;
+12. PR de closeout #545 mergée et CI post-merge #34330851746 **SUCCESS**.
 
 ---
 
@@ -46,6 +46,7 @@ La clôture administrative finale reste conditionnée uniquement à la CI/drift 
 | A5 — Governed CGM promotion | ✅ CLOSED | PR #542 ; merge `9681b77` ; CI #34272156304 ; drift #34272156421 |
 | A6 — Contextual targets | ✅ CLOSED | PR #543 ; merge `c829eb7` ; CI #34279210367 ; drift #34279210339 |
 | A7 — Explicit paired meal response | ✅ CLOSED | PR #544 ; merge `e7b4502` ; pre-merge CI #34291940119 + drift #34291940184 ; post-merge CI #34330374819 + drift #34330374844 |
+| Final recertification closeout | ✅ CLOSED | PR #545 ; merge `b0b9aa7` ; pre-merge CI #34330776155 ; post-merge CI #34330851746 |
 
 ### A7 final
 
@@ -73,7 +74,7 @@ Le dernier défaut trouvé par CI avant merge était transactionnel : un conflit
 
 ### Interprétation
 
-**Score certifié : 9,46/10**, sous réserve du closeout documentaire final. Le seuil ≥9 est dépassé sans crédit artificiel pour des capacités absentes.
+**Score certifié : 9,46/10.** Le seuil ≥9 est dépassé sans crédit artificiel pour des capacités absentes.
 
 Ce qui empêche une note proche de 10 :
 - pas de causalité ni prédiction clinique, volontairement ;
@@ -117,29 +118,23 @@ A8 n’est pas nécessaire pour le Goal ≥9, car l’absence volontaire de pré
 
 ---
 
-## 6. CLOSEOUT FINAL
+## 6. CLOSEOUT FINAL — CLOSED ✅
 
 ### Preuve A7 post-merge
 - `main@e7b450214e9b375e77bb517bbffb9653dcb60d4f`
 - CI push #34330374819 : **SUCCESS**
-  - PostgreSQL migrations : SUCCESS
-  - PostgreSQL full suite : SUCCESS
-  - Ruff : SUCCESS
-  - import-linter : SUCCESS
-  - LLM gateway anti-bypass : SUCCESS
-  - AI egress anti-bypass : SUCCESS
-  - Bandit : SUCCESS
-  - OpenAPI current : SUCCESS
-  - SQLite tests : SUCCESS
 - drift #34330374844 : **SUCCESS**
+
+### Preuve recertification / closeout
+- PR #545 : mergée
+- merge closeout : `main@b0b9aa773049c02c2f161febb1d6983b5d4645cc`
+- CI pré-merge #34330776155 : **SUCCESS**
+- CI post-merge #34330851746 : **SUCCESS**
+- scope docs-only : backend/frontend correctement skipped sur le commit documentaire final
 
 ### Next exact
 
-Certifier la branche `analysis/final-recertification` → merge de la PR closeout → vérifier CI/drift post-merge sur `main` → marquer le chantier réellement CLOSED.
-
-### Séquence restante
-
-CI/drift closeout → merge → post-merge → CLOSED.
+Aucune action restante dans ce chantier. Toute amélioration future relève d’un nouveau lot, notamment A8 research gate si un protocole scientifique dédié est lancé.
 
 ---
 
