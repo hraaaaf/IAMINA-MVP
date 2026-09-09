@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'api_client.dart';
+import 'auth_service.dart';
 
 class LocalExperiencePreference {
   final String language;
@@ -124,18 +125,20 @@ class LocalePreferenceService extends ChangeNotifier {
 
     Object? accountLanguage;
     if (_auditLocale == null) {
-      try {
-        final response = await _apiClient.client.get(
-          Uri.parse('/api/v1/profile/locale'),
-        );
-        if (response.isSuccessful && response.body is Map<String, dynamic>) {
-          final resolved = (response.body as Map<String, dynamic>)['resolved'];
-          if (resolved is Map<String, dynamic>) {
-            accountLanguage = resolved['ui_language'];
+      if (!kOfflineDemo) {
+        try {
+          final response = await _apiClient.client.get(
+            Uri.parse('/api/v1/profile/locale'),
+          );
+          if (response.isSuccessful && response.body is Map<String, dynamic>) {
+            final resolved = (response.body as Map<String, dynamic>)['resolved'];
+            if (resolved is Map<String, dynamic>) {
+              accountLanguage = resolved['ui_language'];
+            }
           }
+        } catch (_) {
+          // Resolution continues with local and system inputs.
         }
-      } catch (_) {
-        // Resolution continues with local and system inputs.
       }
     }
 

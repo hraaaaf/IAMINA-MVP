@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../modules/module_registry.dart';
 import 'api_client.dart';
+import 'auth_service.dart';
 
 /// Holds the patient's active module set and keeps the chassis nav in sync with
 /// the backend (`GET /api/v1/account/modules`). Frontend equivalent of reading
@@ -19,6 +20,7 @@ class ModulesProvider extends ChangeNotifier {
 
   /// Pull active modules from the backend. Keeps the current set on failure.
   Future<void> refresh() async {
+    if (kOfflineDemo) return;
     final names = await _api.getActiveModules();
     if (names == null) return; // offline / error → keep current
     final known = names.where((n) => ModuleRegistry.byId(n) != null).toSet();
@@ -31,6 +33,7 @@ class ModulesProvider extends ChangeNotifier {
 
   /// Activate a module on the backend, then refresh.
   Future<bool> activate(String moduleName) async {
+    if (kOfflineDemo) return false;
     final ok = await _api.activateModule(moduleName);
     if (ok) await refresh();
     return ok;

@@ -348,99 +348,106 @@ class AppDatabase extends _$AppDatabase {
   // Generates 21 days of realistic Type-2 diabetic patient demo data.
   // Always clears existing entries first so data never goes stale (MISTAKES #22).
   Future<void> seedDemoData() async {
-    // Delete all existing log entries — demo data must be fresh (relative to now).
-    await delete(logEntries).go();
+    return transaction(() async {
+      // Delete all existing log entries — demo data must be fresh (relative to now).
+      await delete(logEntries).go();
 
-    final rng = math.Random(42);
-    const uuid = Uuid();
-    final now = DateTime.now();
+      final rng = math.Random(42);
+      const uuid = Uuid();
+      final now = DateTime.now();
 
-    final mealSlots = [
-      // (hour, minute, glycemicContext, mealType, baseGlucose, insulinBase)
-      (7, 15, 'fasting', null, 95.0, 0.0),
-      (8, 30, 'pre_meal', 'breakfast', 100.0, 0.0),
-      (9, 45, 'post_meal', 'breakfast', 145.0, 0.0),
-      (13, 0, 'pre_meal', 'lunch', 110.0, 4.0),
-      (14, 30, 'post_meal', 'lunch', 170.0, 0.0),
-      (19, 0, 'pre_meal', 'dinner', 105.0, 6.0),
-      (20, 30, 'post_meal', 'dinner', 160.0, 0.0),
-      (23, 0, 'other', null, 115.0, 0.0),
-    ];
+      final mealSlots = [
+        // (hour, minute, glycemicContext, mealType, baseGlucose, insulinBase)
+        (7, 15, 'fasting', null, 95.0, 0.0),
+        (8, 30, 'pre_meal', 'breakfast', 100.0, 0.0),
+        (9, 45, 'post_meal', 'breakfast', 145.0, 0.0),
+        (13, 0, 'pre_meal', 'lunch', 110.0, 4.0),
+        (14, 30, 'post_meal', 'lunch', 170.0, 0.0),
+        (19, 0, 'pre_meal', 'dinner', 105.0, 6.0),
+        (20, 30, 'post_meal', 'dinner', 160.0, 0.0),
+        (23, 0, 'other', null, 115.0, 0.0),
+      ];
 
-    for (int day = 20; day >= 0; day--) {
-      final date = now.subtract(Duration(days: day));
+      for (int day = 20; day >= 0; day--) {
+        final date = now.subtract(Duration(days: day));
 
-      // Use 3-5 slots per day
-      final slotCount = 3 + rng.nextInt(3);
-      final slots = (mealSlots.toList()..shuffle(rng)).take(slotCount).toList();
+        // Use 3-5 slots per day
+        final slotCount = 3 + rng.nextInt(3);
+        final slots = (mealSlots.toList()..shuffle(rng))
+            .take(slotCount)
+            .toList();
 
-      for (final slot in slots) {
-        final (hour, minute, glycemicContext, mealType, base, insulinBase) =
-            slot;
+        for (final slot in slots) {
+          final (hour, minute, glycemicContext, mealType, base, insulinBase) =
+              slot;
 
-        // Add realistic noise: ±25 mg/dL normal, occasional spikes
-        double noise = (rng.nextDouble() - 0.5) * 50;
-        // 10% chance of a notable event
-        if (rng.nextDouble() < 0.10) noise += rng.nextBool() ? 60 : -40;
+          // Add realistic noise: ±25 mg/dL normal, occasional spikes
+          double noise = (rng.nextDouble() - 0.5) * 50;
+          // 10% chance of a notable event
+          if (rng.nextDouble() < 0.10) noise += rng.nextBool() ? 60 : -40;
 
-        final glucose = (base + noise).clamp(55.0, 300.0);
-        final insulin = insulinBase > 0
-            ? insulinBase + rng.nextInt(3).toDouble()
-            : 0.0;
+          final glucose = (base + noise).clamp(55.0, 300.0);
+          final insulin = insulinBase > 0
+              ? insulinBase + rng.nextInt(3).toDouble()
+              : 0.0;
 
-        final loggedAt = DateTime(
-          date.year,
-          date.month,
-          date.day,
-          hour,
-          minute + rng.nextInt(15),
-        );
+          final loggedAt = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            hour,
+            minute + rng.nextInt(15),
+          );
 
-        await into(logEntries).insert(
-          LogEntriesCompanion.insert(
-            createdAt: loggedAt,
-            bloodSugar: glucose,
-            insulinUnits: Value(insulin > 0 ? insulin : null),
-            glycemicContext: Value(glycemicContext),
-            mealType: Value(mealType),
-            clientUuid: uuid.v4(),
-            loggedAt: Value(loggedAt),
-            syncStatus: const Value('synced'),
+          // Demo data must never fabricate readings in the future.
+          if (loggedAt.isAfter(now)) continue;
+
+          await into(logEntries).insert(
+            LogEntriesCompanion.insert(
+              createdAt: loggedAt,
+              bloodSugar: glucose,
+              insulinUnits: Value(insulin > 0 ? insulin : null),
+              glycemicContext: Value(glycemicContext),
+              mealType: Value(mealType),
+              clientUuid: uuid.v4(),
+              loggedAt: Value(loggedAt),
+              syncStatus: const Value('synced'),
+            ),
+          );
+        }
+      }
+
+      // Entrée "EN DIRECT" — il y a 2 min — active le Hero Live dans la démo
+      final liveEntry = now.subtract(const Duration(minutes: 2));
+      await into(logEntries).insert(
+        LogEntriesCompanion.insert(
+          createdAt: liveEntry,
+          bloodSugar: 142.0,
+          insulinUnits: const Value(null),
+          glycemicContext: const Value('post_meal'),
+          mealType: const Value('dinner'),
+          clientUuid: uuid.v4(),
+          loggedAt: Value(liveEntry),
+          syncStatus: const Value('synced'),
+        ),
+      );
+
+      // Ensure profile exists
+      final existing = await (select(
+        patientProfiles,
+      )..limit(1)).getSingleOrNull();
+      if (existing == null) {
+        await into(patientProfiles).insert(
+          PatientProfilesCompanion.insert(
+            userId: const Value(1),
+            updatedAt: now,
+            diabetesType: const Value('type2'),
+            targetRangeLow: const Value(70.0),
+            targetRangeHigh: const Value(180.0),
+            unitPreference: const Value('mg/dL'),
           ),
         );
       }
-    }
-
-    // Entrée "EN DIRECT" — il y a 2 min — active le Hero Live dans la démo
-    final liveEntry = now.subtract(const Duration(minutes: 2));
-    await into(logEntries).insert(
-      LogEntriesCompanion.insert(
-        createdAt: liveEntry,
-        bloodSugar: 142.0,
-        insulinUnits: const Value(null),
-        glycemicContext: const Value('post_meal'),
-        mealType: const Value('dinner'),
-        clientUuid: uuid.v4(),
-        loggedAt: Value(liveEntry),
-        syncStatus: const Value('synced'),
-      ),
-    );
-
-    // Ensure profile exists
-    final existing = await (select(
-      patientProfiles,
-    )..limit(1)).getSingleOrNull();
-    if (existing == null) {
-      await into(patientProfiles).insert(
-        PatientProfilesCompanion.insert(
-          userId: const Value(1),
-          updatedAt: now,
-          diabetesType: const Value('type2'),
-          targetRangeLow: const Value(70.0),
-          targetRangeHigh: const Value(180.0),
-          unitPreference: const Value('mg/dL'),
-        ),
-      );
-    }
+    });
   }
 }

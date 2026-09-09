@@ -13,6 +13,11 @@ const String kAuthBaseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:8000',
 );
 
+const bool kOfflineDemo = bool.fromEnvironment(
+  'IAMINA_OFFLINE_DEMO',
+  defaultValue: false,
+);
+
 class AuthService extends ChangeNotifier {
   static const _tokenKey = 'iamina_native_access_token';
 
@@ -154,6 +159,10 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signInAnonymously() async {
+    if (kOfflineDemo) {
+      enterAuditSession();
+      return;
+    }
     if (_firebaseAuth == null) {
       throw StateError('Firebase migration is disabled');
     }

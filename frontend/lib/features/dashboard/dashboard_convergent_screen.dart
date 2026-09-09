@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -26,20 +25,6 @@ class DashboardConvergentScreen extends StatefulWidget {
 class _DashboardConvergentScreenState extends State<DashboardConvergentScreen> {
   final int _range = 21;
   DateTime _anchorDate = DateTime.now();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted || !kDebugMode) return;
-      final db = context.read<AppDatabase>();
-      final count = await db
-          .select(db.logEntries)
-          .get()
-          .then((rows) => rows.length);
-      if (count == 0) await db.seedDemoData();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
