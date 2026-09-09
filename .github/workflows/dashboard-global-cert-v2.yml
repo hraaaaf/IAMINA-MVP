@@ -222,3 +222,5 @@ jobs:
             /tmp/iamina-dashboard-proxy.log
           if-no-files-found: warn
           retention-days: 7
+
+# trigger: BCP47 runtime certification
