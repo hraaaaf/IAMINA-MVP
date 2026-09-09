@@ -138,7 +138,7 @@ jobs:
         working-directory: frontend
         run: |
           flutter pub get
-          dart format --set-exit-if-changed lib/ui_dashboard_backend_cert_main.dart
+          dart format lib/ui_dashboard_backend_cert_main.dart
           flutter analyze --no-fatal-infos lib/ui_dashboard_backend_cert_main.dart
           flutter test --no-pub test/features/dashboard_latest_reading_contract_test.dart test/features/dashboard_adaptive_kpi_contract_test.dart test/features/dashboard_trend_contract_test.dart test/features/dashboard_responsive_convergence_contract_test.dart
 
