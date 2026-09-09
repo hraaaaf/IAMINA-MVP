@@ -60,8 +60,11 @@ void main() {
     final module = _read('lib/modules/diabetes_module.dart');
 
     expect(dashboardEntry, contains('DashboardPremiumScreen'));
-    expect(dashboardEntry, contains("ValueKey('dashboard-companion-primary-entry')"));
-    expect(dashboardEntry, isNot(contains('DashboardConvergentScreen')));
+    expect(
+      dashboardEntry,
+      contains("ValueKey('dashboard-companion-primary-entry')"),
+    );
+    expect(module, contains('const DashboardCompanionEntryScreen()'));
     expect(dashboard, contains(logo));
     expect(companion, contains(logo));
     expect(header, contains(logo));
@@ -70,7 +73,10 @@ void main() {
     expect(header, contains('minHeight: 96'));
     expect(header, contains('decoration: TextDecoration.none'));
     expect(header, contains('if (bottom == null) return chrome'));
-    expect(header, contains('padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 14)'));
+    expect(
+      header,
+      contains('padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 14)'),
+    );
     expect(bridge, contains('AminaMobilePageHeader'));
     expect(bridge, contains('contentTopInset'));
     expect(addLog, contains('AminaLegacyPageHeaderBridge'));
@@ -121,6 +127,9 @@ void main() {
     expect(browserWorkflow, contains('"390 844 true"'));
     expect(browserWorkflow, contains('"768 1024 false"'));
     expect(browserWorkflow, contains('"1280 900 false"'));
-    expect(browserWorkflow, contains(r'test "$total" -eq 42'.replaceAll(r'\"', '"')));
+    expect(
+      browserWorkflow,
+      contains(r'test "$total" -eq 42'.replaceAll(r'\"', '"')),
+    );
   });
 }
