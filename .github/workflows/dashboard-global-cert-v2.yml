@@ -8,6 +8,7 @@ on:
       - '.github/workflows/dashboard-global-cert-v2.yml'
       - 'frontend/lib/ui_dashboard_backend_cert_main.dart'
       - 'frontend/lib/features/dashboard/**'
+      - 'frontend/test/features/dashboard_latest_reading_contract_test.dart'
       - 'frontend/test/companion_dashboard_entry_contract_test.dart'
       - 'frontend/test/p0_mobile_import_navigation_test.dart'
       - 'frontend/test/p0_real_actions_contract_test.dart'
