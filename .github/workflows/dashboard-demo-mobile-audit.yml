@@ -27,7 +27,7 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run mobile demo audit
         env:
-          TARGET_URL: https://iamina-review.vercel.app
+          TARGET_URL: https://iamina-review-e86tzlvma-achraf-benmoussa-s-projects.vercel.app
         run: |
           mkdir -p dashboard-demo-audit
           cat > audit.mjs <<'JS'
