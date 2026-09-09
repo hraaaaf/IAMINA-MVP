@@ -53,14 +53,16 @@ jobs:
               await page.touchscreen.tap(x,y);
               await page.waitForTimeout(3500);
             }
-            rec('after-demo',{url:page.url(),title:await page.title()});
-            await page.screenshot({path:`${out}/02-after-demo-390x844.png`,fullPage:false});
             if(page.url().includes('#/login')) throw new Error('Les taps Démo n’ont pas quitté /#/login');
-            for(let i=0;i<5;i++){
-              await page.screenshot({path:`${out}/${String(i+3).padStart(2,'0')}-dashboard-scroll-${i}-390x844.png`,fullPage:false});
+            rec('dashboard-entered',{url:page.url(),title:await page.title()});
+            await page.waitForTimeout(30000);
+            rec('seed-settle-wait-complete',{url:page.url()});
+            await page.screenshot({path:`${out}/02-dashboard-stable-top-390x844.png`,fullPage:false});
+            for(let i=0;i<7;i++){
+              await page.screenshot({path:`${out}/${String(i+3).padStart(2,'0')}-dashboard-stable-scroll-${i}-390x844.png`,fullPage:false});
               await page.mouse.move(195,600);
-              await page.mouse.wheel(0,650);
-              await page.waitForTimeout(700);
+              await page.mouse.wheel(0,600);
+              await page.waitForTimeout(900);
             }
             fs.writeFileSync(`${out}/page-url.txt`,page.url());
             rec('audit-complete',{url:page.url()});
