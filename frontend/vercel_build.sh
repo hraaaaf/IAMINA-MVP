@@ -11,4 +11,6 @@ fi
 export PATH="$FLUTTER_DIR/bin:$PATH"
 flutter config --enable-web
 flutter pub get
-flutter build web --release
+
+: "${API_BASE_URL:?API_BASE_URL must be configured for IAMINA release builds}"
+flutter build web --release --dart-define=API_BASE_URL="$API_BASE_URL"
