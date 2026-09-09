@@ -210,7 +210,7 @@ jobs:
           const persist=report=>fs.writeFileSync(reportPath,JSON.stringify(report,null,2));
           (async()=>{const browser=await chromium.launch({headless:true}); const matrix=[['mobile',390,844],['tablet',768,1024],['desktop',1280,900]]; const report={};
           for(const [name,width,height] of matrix){
-            const ctx=await browser.newContext({viewport:{width,height},deviceScaleFactor:1}); const page=await ctx.newPage(); const errors=[]; const consoleErrors=[]; const api=[];
+            const ctx=await browser.newContext({viewport:{width,height},deviceScaleFactor:1,locale:'fr-FR'}); const page=await ctx.newPage(); const errors=[]; const consoleErrors=[]; const api=[];
             page.on('pageerror',e=>{errors.push({message:String(e),stack:e.stack||null}); report[name]={url:page.url(),errors,consoleErrors,api}; persist(report);});
             page.on('console',m=>{if(m.type()==='error'){consoleErrors.push(m.text()); report[name]={url:page.url(),errors,consoleErrors,api}; persist(report);}});
             page.on('response',r=>{if(r.url().includes('/api/')) api.push({url:r.url(),status:r.status()})});
