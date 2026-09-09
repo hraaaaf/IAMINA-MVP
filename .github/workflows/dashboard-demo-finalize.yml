@@ -29,30 +29,20 @@ jobs:
           text = p.read_text()
           marker = "          // Demo data must never fabricate readings in the future.\n          if (loggedAt.isAfter(now)) continue;\n"
           if marker not in text:
-              old = """          final loggedAt = DateTime(
-            date.year,
-            date.month,
-            date.day,
-            hour,
-            minute + rng.nextInt(15),
-          );
-
-          await into(logEntries).insert("""
-              new = """          final loggedAt = DateTime(
-            date.year,
-            date.month,
-            date.day,
-            hour,
-            minute + rng.nextInt(15),
-          );
-
-          // Demo data must never fabricate readings in the future.
-          if (loggedAt.isAfter(now)) continue;
-
-          await into(logEntries).insert("""
-              if old not in text:
-                  raise SystemExit('seed insertion point not found')
-              p.write_text(text.replace(old, new, 1))
+              anchor = "          final loggedAt = DateTime("
+              start = text.find(anchor)
+              if start < 0:
+                  raise SystemExit('loggedAt construction not found')
+              insert_anchor = "          await into(logEntries).insert("
+              insert_at = text.find(insert_anchor, start)
+              if insert_at < 0:
+                  raise SystemExit('seed insert call not found')
+              guard = (
+                  "          // Demo data must never fabricate readings in the future.\n"
+                  "          if (loggedAt.isAfter(now)) continue;\n\n"
+              )
+              text = text[:insert_at] + guard + text[insert_at:]
+              p.write_text(text)
           PY
           git diff --check
 
