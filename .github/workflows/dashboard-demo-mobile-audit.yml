@@ -46,17 +46,21 @@ jobs:
             rec('landing',{url:page.url(),status:r?.status()});
             await page.waitForTimeout(7000);
             await page.screenshot({path:`${out}/01-landing-390x844.png`,fullPage:false});
-            rec('demo-tap',{x:195,y:675});
-            await page.touchscreen.tap(195,675);
-            await page.waitForTimeout(10000);
+            const taps=[[195,650],[195,642],[195,658]];
+            for(const [x,y] of taps){
+              if(!page.url().includes('#/login') && page.url()!==process.env.TARGET_URL) break;
+              rec('demo-tap',{x,y,url:page.url()});
+              await page.touchscreen.tap(x,y);
+              await page.waitForTimeout(3500);
+            }
             rec('after-demo',{url:page.url(),title:await page.title()});
             await page.screenshot({path:`${out}/02-after-demo-390x844.png`,fullPage:false});
-            if(page.url().includes('#/login')) throw new Error('Le tap Démo n’a pas quitté /#/login');
+            if(page.url().includes('#/login')) throw new Error('Les taps Démo n’ont pas quitté /#/login');
             for(let i=0;i<5;i++){
               await page.screenshot({path:`${out}/${String(i+3).padStart(2,'0')}-dashboard-scroll-${i}-390x844.png`,fullPage:false});
-              await page.touchscreen.tap(380,820).catch(()=>{});
+              await page.mouse.move(195,600);
               await page.mouse.wheel(0,650);
-              await page.waitForTimeout(500);
+              await page.waitForTimeout(700);
             }
             fs.writeFileSync(`${out}/page-url.txt`,page.url());
             rec('audit-complete',{url:page.url()});
