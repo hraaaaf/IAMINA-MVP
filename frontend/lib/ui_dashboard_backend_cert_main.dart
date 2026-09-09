@@ -23,8 +23,8 @@ const String _certPassword = String.fromEnvironment('IAMINA_CERT_PASSWORD');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  Intl.defaultLocale = 'fr_FR';
-  await initializeDateFormatting('fr_FR');
+  await initializeDateFormatting();
+  Intl.defaultLocale = 'fr';
 
   if (_certEmail.isEmpty || _certPassword.isEmpty) {
     throw StateError('Certification credentials are required');
