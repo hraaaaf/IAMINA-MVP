@@ -1,0 +1,63 @@
+name: Dashboard BCP47 locale fix
+
+on:
+  push:
+    branches: [audit/dashboard-global-cert-20260909]
+    paths:
+      - '.github/workflows/dashboard-bcp47-locale-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Normalize Dashboard locales to browser-safe BCP47 tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          paths=[
+            Path('frontend/lib/features/dashboard/dashboard_premium_screen.dart'),
+            Path('frontend/lib/features/dashboard/widgets/dashboard_trend_section.dart'),
+            Path('frontend/test/features/dashboard_latest_reading_contract_test.dart'),
+            Path('frontend/test/features/dashboard_trend_contract_test.dart'),
+          ]
+          replacements={
+            "'fr_FR'":"'fr-FR'",
+            "'en_US'":"'en-US'",
+            "'ar_MA'":"'ar-MA'",
+          }
+          for p in paths:
+            s=p.read_text()
+            for a,b in replacements.items(): s=s.replace(a,b)
+            p.write_text(s)
+          PY
+          cd frontend
+          dart format lib/features/dashboard/dashboard_premium_screen.dart lib/features/dashboard/widgets/dashboard_trend_section.dart test/features/dashboard_latest_reading_contract_test.dart test/features/dashboard_trend_contract_test.dart
+          if grep -RInE "fr_FR|en_US|ar_MA" lib/features/dashboard test/features/dashboard_latest_reading_contract_test.dart test/features/dashboard_trend_contract_test.dart; then
+            echo 'Underscore locale tag remains in Dashboard runtime/test path' >&2
+            exit 1
+          fi
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/features/dashboard/dashboard_premium_screen.dart lib/features/dashboard/widgets/dashboard_trend_section.dart
+          flutter test --no-pub test/features/dashboard_latest_reading_contract_test.dart test/features/dashboard_trend_contract_test.dart
+      - name: Commit verified BCP47 locale fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/dashboard/widgets/dashboard_trend_section.dart frontend/test/features/dashboard_latest_reading_contract_test.dart frontend/test/features/dashboard_trend_contract_test.dart
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'fix: use browser-safe BCP47 dashboard locale tags'
+          git push
