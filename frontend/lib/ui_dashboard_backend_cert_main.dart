@@ -37,7 +37,8 @@ Future<void> main() async {
   final modules = ModulesProvider(api);
   await modules.refresh();
   final companion = CompanionService(authService: auth);
-  final profile = await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull();
+  final profile = await (db.select(db.patientProfiles)..limit(1))
+      .getSingleOrNull();
   final consent = ConsentService()
     ..seedInitialProfile(profile)
     ..attachStream(db.watchProfile());
@@ -55,7 +56,9 @@ Future<void> main() async {
           create: (_) => db.watchProfile(),
           initialData: profile,
         ),
-        ChangeNotifierProvider<TweaksNotifier>(create: (_) => TweaksNotifier()),
+        ChangeNotifierProvider<TweaksNotifier>(
+          create: (_) => TweaksNotifier(),
+        ),
       ],
       child: _DashboardBackendCertApp(companion: companion),
     ),
