@@ -45,27 +45,22 @@ jobs:
             const r=await page.goto(process.env.TARGET_URL,{waitUntil:'domcontentloaded',timeout:60000});
             rec('landing',{url:page.url(),status:r?.status()});
             await page.waitForTimeout(7000);
-            await page.screenshot({path:`${out}/01-landing-390x844.png`,fullPage:true});
-            fs.writeFileSync(`${out}/landing-text.txt`,(await page.locator('body').innerText().catch(()=>'' )).trim());
-            const demo=page.getByText(/acc[eè]s\s+d[ée]mo|d[ée]mo/i,{exact:false}).first();
-            if(!(await demo.count()) || !(await demo.isVisible().catch(()=>false))) throw new Error('Accès démo non trouvé/visible');
-            rec('demo-found',{text:(await demo.innerText().catch(()=>'' )).slice(0,200)});
-            await demo.click({timeout:15000});
-            await page.waitForTimeout(8000);
+            await page.screenshot({path:`${out}/01-landing-390x844.png`,fullPage:false});
+            rec('demo-tap',{x:195,y:675});
+            await page.touchscreen.tap(195,675);
+            await page.waitForTimeout(10000);
             rec('after-demo',{url:page.url(),title:await page.title()});
-            await page.screenshot({path:`${out}/02-after-demo-390x844.png`,fullPage:true});
-            const body=(await page.locator('body').innerText().catch(()=>'' )).trim();
-            fs.writeFileSync(`${out}/dashboard-text.txt`,body);
+            await page.screenshot({path:`${out}/02-after-demo-390x844.png`,fullPage:false});
+            if(page.url().includes('#/login')) throw new Error('Le tap Démo n’a pas quitté /#/login');
+            for(let i=0;i<5;i++){
+              await page.screenshot({path:`${out}/${String(i+3).padStart(2,'0')}-dashboard-scroll-${i}-390x844.png`,fullPage:false});
+              await page.touchscreen.tap(380,820).catch(()=>{});
+              await page.mouse.wheel(0,650);
+              await page.waitForTimeout(500);
+            }
             fs.writeFileSync(`${out}/page-url.txt`,page.url());
-            const headings=await page.locator('h1,h2,h3,[role="heading"]').allInnerTexts().catch(()=>[]);
-            const buttons=await page.getByRole('button').allInnerTexts().catch(()=>[]);
-            const links=await page.getByRole('link').allInnerTexts().catch(()=>[]);
-            fs.writeFileSync(`${out}/ui-summary.json`,JSON.stringify({url:page.url(),title:await page.title(),headings,buttons,links},null,2));
-            const total=await page.evaluate(()=>Math.max(document.body.scrollHeight,document.documentElement.scrollHeight));
-            let idx=3;
-            for(let y=0;y<total;y+=720){await page.evaluate(v=>window.scrollTo(0,v),y);await page.waitForTimeout(400);await page.screenshot({path:`${out}/${String(idx).padStart(2,'0')}-dashboard-y${y}-390x844.png`,fullPage:false});idx++;}
-            rec('audit-complete',{bodyChars:body.length,totalHeight:total});
-          } catch(e){rec('fatal',{text:String(e),url:page.url()});await page.screenshot({path:`${out}/99-failure-390x844.png`,fullPage:true}).catch(()=>{});throw e;}
+            rec('audit-complete',{url:page.url()});
+          } catch(e){rec('fatal',{text:String(e),url:page.url()});await page.screenshot({path:`${out}/99-failure-390x844.png`,fullPage:false}).catch(()=>{});throw e;}
           finally{fs.writeFileSync(`${out}/browser-log.json`,JSON.stringify(log,null,2));await browser.close();}
           JS
           node audit.mjs
