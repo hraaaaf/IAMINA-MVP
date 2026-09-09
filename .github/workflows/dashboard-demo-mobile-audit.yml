@@ -5,6 +5,9 @@ on:
     branches:
       - audit/dashboard-demo-mobile-20260909
     paths:
+      - 'frontend/lib/dashboard_screenshot_main.dart'
+      - 'frontend/lib/features/dashboard/**'
+      - 'frontend/lib/data/drift/**'
       - '.github/workflows/dashboard-demo-mobile-audit.yml'
   workflow_dispatch:
 
@@ -14,22 +17,45 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: subosito/flutter-action@v2
         with:
-          node-version: '22'
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Build deterministic dashboard renderer
+        run: flutter build web --release -t lib/dashboard_screenshot_main.dart
       - name: Install Playwright Chromium
+        working-directory: .
         run: |
           npm init -y >/dev/null 2>&1
           npm install --save-dev playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Run mobile demo audit
-        env:
-          TARGET_URL: https://iamina-review-e86tzlvma-achraf-benmoussa-s-projects.vercel.app
+      - name: Run mobile dashboard audit
+        working-directory: .
         run: |
           mkdir -p dashboard-demo-audit
+          python3 -m http.server 7357 --directory frontend/build/web >/tmp/iamina-dashboard-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          READY=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7357 >/dev/null; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          test "$READY" = "1"
+
           cat > audit.mjs <<'JS'
           import { chromium, devices } from 'playwright';
           import fs from 'node:fs';
@@ -42,29 +68,18 @@ jobs:
           page.on('pageerror',e=>rec('pageerror',{text:String(e)}));
           page.on('requestfailed',r=>rec('requestfailed',{url:r.url(),failure:r.failure()}));
           try {
-            const r=await page.goto(process.env.TARGET_URL,{waitUntil:'domcontentloaded',timeout:60000});
-            rec('landing',{url:page.url(),status:r?.status()});
-            await page.waitForTimeout(7000);
-            await page.screenshot({path:`${out}/01-landing-390x844.png`,fullPage:false});
-            const taps=[[195,590],[195,600],[195,580]];
-            for(const [x,y] of taps){
-              if(!page.url().includes('#/login') && page.url()!==process.env.TARGET_URL) break;
-              rec('demo-tap',{x,y,url:page.url()});
-              await page.touchscreen.tap(x,y);
-              await page.waitForTimeout(3500);
-            }
-            if(page.url().includes('#/login')) throw new Error('Le tap Accès démo n’a pas quitté /#/login');
-            rec('dashboard-entered',{url:page.url(),title:await page.title()});
-            await page.waitForTimeout(30000);
-            rec('seed-settle-wait-complete',{url:page.url()});
-            await page.screenshot({path:`${out}/02-dashboard-stable-top-390x844.png`,fullPage:false});
+            const r=await page.goto('http://127.0.0.1:7357',{waitUntil:'domcontentloaded',timeout:60000});
+            rec('dashboard-load',{url:page.url(),status:r?.status()});
+            await page.waitForTimeout(12000);
+            const bodyText=await page.locator('body').innerText().catch(()=> '');
+            if(bodyText.includes('Dashboard seed failed')) throw new Error(bodyText);
+            await page.screenshot({path:`${out}/01-dashboard-top-390x844.png`,fullPage:false});
             for(let i=0;i<7;i++){
-              await page.screenshot({path:`${out}/${String(i+3).padStart(2,'0')}-dashboard-stable-scroll-${i}-390x844.png`,fullPage:false});
+              await page.screenshot({path:`${out}/${String(i+2).padStart(2,'0')}-dashboard-scroll-${i}-390x844.png`,fullPage:false});
               await page.mouse.move(195,600);
               await page.mouse.wheel(0,600);
               await page.waitForTimeout(900);
             }
-            fs.writeFileSync(`${out}/page-url.txt`,page.url());
             rec('audit-complete',{url:page.url()});
           } catch(e){rec('fatal',{text:String(e),url:page.url()});await page.screenshot({path:`${out}/99-failure-390x844.png`,fullPage:false}).catch(()=>{});throw e;}
           finally{fs.writeFileSync(`${out}/browser-log.json`,JSON.stringify(log,null,2));await browser.close();}
@@ -76,5 +91,5 @@ jobs:
         with:
           name: iamina-dashboard-demo-mobile-audit
           path: dashboard-demo-audit/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
