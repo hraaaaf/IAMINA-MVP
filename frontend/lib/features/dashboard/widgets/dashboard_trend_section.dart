@@ -11,20 +11,30 @@ import 'dashboard_trend_painter.dart';
 
 enum _TrendRange { hours24, days7, days14, days30 }
 
+String _dashboardTrendDateLocale(BuildContext context) {
+  final locale = Localizations.localeOf(context);
+  return switch (locale.languageCode) {
+    'fr' => 'fr_FR',
+    'ar' => 'ar_MA',
+    'en' => 'en_US',
+    _ => locale.toLanguageTag(),
+  };
+}
+
 extension on _TrendRange {
   Duration get duration => switch (this) {
-        _TrendRange.hours24 => const Duration(hours: 24),
-        _TrendRange.days7 => const Duration(days: 7),
-        _TrendRange.days14 => const Duration(days: 14),
-        _TrendRange.days30 => const Duration(days: 30),
-      };
+    _TrendRange.hours24 => const Duration(hours: 24),
+    _TrendRange.days7 => const Duration(days: 7),
+    _TrendRange.days14 => const Duration(days: 14),
+    _TrendRange.days30 => const Duration(days: 30),
+  };
 
   String label(AppLocalizations l10n) => switch (this) {
-        _TrendRange.hours24 => l10n.dashboardTrendRangeHours(24),
-        _TrendRange.days7 => l10n.dashboardTrendRangeDays(7),
-        _TrendRange.days14 => l10n.dashboardTrendRangeDays(14),
-        _TrendRange.days30 => l10n.dashboardTrendRangeDays(30),
-      };
+    _TrendRange.hours24 => l10n.dashboardTrendRangeHours(24),
+    _TrendRange.days7 => l10n.dashboardTrendRangeDays(7),
+    _TrendRange.days14 => l10n.dashboardTrendRangeDays(14),
+    _TrendRange.days30 => l10n.dashboardTrendRangeDays(30),
+  };
 }
 
 class DashboardTrendSection extends StatefulWidget {
@@ -151,7 +161,7 @@ class _TrendContent extends StatelessWidget {
             : List<MedicationEventData>.from(
                 snapshot.data ?? const <MedicationEventData>[],
               );
-        final locale = Localizations.localeOf(context).toLanguageTag();
+        final locale = _dashboardTrendDateLocale(context);
         final selected = _selected;
 
         return Column(
@@ -266,50 +276,52 @@ class _RangeSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Row(
-      children: _TrendRange.values.map((value) {
-        final active = value == selected;
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsetsDirectional.only(
-              end: value == _TrendRange.values.last ? 0 : 6,
-            ),
-            child: Semantics(
-              selected: active,
-              button: true,
-              child: InkWell(
-                onTap: () => onChanged(value),
-                borderRadius: BorderRadius.circular(12),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  height: 38,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: active
-                        ? AminaVisualLanguage.mintSurface
-                        : AminaVisualLanguage.controlSurface(context),
+      children: _TrendRange.values
+          .map((value) {
+            final active = value == selected;
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsetsDirectional.only(
+                  end: value == _TrendRange.values.last ? 0 : 6,
+                ),
+                child: Semantics(
+                  selected: active,
+                  button: true,
+                  child: InkWell(
+                    onTap: () => onChanged(value),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: active
-                          ? AminaVisualLanguage.mintBorder
-                          : AminaVisualLanguage.controlBorder(context),
-                    ),
-                  ),
-                  child: Text(
-                    value.label(l10n),
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800,
-                      color: active
-                          ? AminaVisualLanguage.actionGreen
-                          : AminaVisualLanguage.secondary(context),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      height: 38,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: active
+                            ? AminaVisualLanguage.mintSurface
+                            : AminaVisualLanguage.controlSurface(context),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: active
+                              ? AminaVisualLanguage.mintBorder
+                              : AminaVisualLanguage.controlBorder(context),
+                        ),
+                      ),
+                      child: Text(
+                        value.label(l10n),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: active
+                              ? AminaVisualLanguage.actionGreen
+                              : AminaVisualLanguage.secondary(context),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-        );
-      }).toList(growable: false),
+            );
+          })
+          .toList(growable: false),
     );
   }
 }
@@ -345,14 +357,16 @@ class _TrendPlot extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final plotWidth = (constraints.maxWidth -
-                DashboardTrendPainter.leftInset -
-                DashboardTrendPainter.rightInset)
-            .clamp(1.0, double.infinity)
-            .toDouble();
+        final plotWidth =
+            (constraints.maxWidth -
+                    DashboardTrendPainter.leftInset -
+                    DashboardTrendPainter.rightInset)
+                .clamp(1.0, double.infinity)
+                .toDouble();
         return Semantics(
-          label:
-              AppLocalizations.of(context)!.dashboardTrendPointCount(logs.length),
+          label: AppLocalizations.of(
+            context,
+          )!.dashboardTrendPointCount(logs.length),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapDown: (details) {
@@ -362,16 +376,19 @@ class _TrendPlot extends StatelessWidget {
                     constraints.maxWidth - DashboardTrendPainter.rightInset,
                   )
                   .toDouble();
-              final fraction = ((dx - DashboardTrendPainter.leftInset) / plotWidth)
-                  .clamp(0.0, 1.0)
-                  .toDouble();
-              final targetMs = start.millisecondsSinceEpoch +
+              final fraction =
+                  ((dx - DashboardTrendPainter.leftInset) / plotWidth)
+                      .clamp(0.0, 1.0)
+                      .toDouble();
+              final targetMs =
+                  start.millisecondsSinceEpoch +
                   ((end.millisecondsSinceEpoch - start.millisecondsSinceEpoch) *
                           fraction)
                       .round();
               var nearest = logs.first;
               var distance =
-                  (_recordedAt(nearest).millisecondsSinceEpoch - targetMs).abs();
+                  (_recordedAt(nearest).millisecondsSinceEpoch - targetMs)
+                      .abs();
               for (final log in logs.skip(1)) {
                 final candidate =
                     (_recordedAt(log).millisecondsSinceEpoch - targetMs).abs();
