@@ -7,6 +7,12 @@ on:
     paths:
       - '.github/workflows/dashboard-global-cert-v2.yml'
       - 'frontend/lib/ui_dashboard_backend_cert_main.dart'
+      - 'frontend/lib/features/dashboard/**'
+      - 'frontend/test/companion_dashboard_entry_contract_test.dart'
+      - 'frontend/test/p0_mobile_import_navigation_test.dart'
+      - 'frontend/test/p0_real_actions_contract_test.dart'
+      - 'frontend/test/ui_visual_language_contract_test.dart'
+      - 'frontend/test/ux11_action_parity_contract_test.dart'
 
 permissions:
   contents: read
@@ -61,10 +67,15 @@ jobs:
           mkdir -p dashboard-global-cert
           {
             echo 'Canonical route:'
-            grep -n "DashboardCompanionEntryScreen" frontend/lib/modules/diabetes_module.dart || true
+            grep -n "DashboardCompanionEntryScreen" frontend/lib/modules/diabetes_module.dart
             echo
-            echo 'Legacy references outside source:'
-            grep -RInE 'DashboardConvergentScreen|dashboard_convergent_screen' frontend/lib frontend/test --exclude='dashboard_convergent_screen.dart' || true
+            echo 'Legacy references:'
+            if grep -RInE 'DashboardConvergentScreen|dashboard_convergent_screen' frontend/lib frontend/test; then
+              echo 'Legacy dashboard references remain.' >&2
+              exit 1
+            else
+              echo 'none'
+            fi
           } | tee dashboard-global-cert/dashboard-authority.txt
 
       - name: Start PostgreSQL-backed IAMINA backend
@@ -134,13 +145,22 @@ jobs:
           print(json.dumps(statuses,indent=2))
           PY
 
-      - name: Validate Dashboard frontend contracts
+      - name: Validate canonical Dashboard frontend contracts
         working-directory: frontend
         run: |
           flutter pub get
           dart format lib/ui_dashboard_backend_cert_main.dart
           flutter analyze --no-fatal-infos lib/ui_dashboard_backend_cert_main.dart
-          flutter test --no-pub test/features/dashboard_latest_reading_contract_test.dart test/features/dashboard_adaptive_kpi_contract_test.dart test/features/dashboard_trend_contract_test.dart test/features/dashboard_responsive_convergence_contract_test.dart
+          flutter test --no-pub \
+            test/features/dashboard_latest_reading_contract_test.dart \
+            test/features/dashboard_adaptive_kpi_contract_test.dart \
+            test/features/dashboard_trend_contract_test.dart \
+            test/features/dashboard_responsive_convergence_contract_test.dart \
+            test/companion_dashboard_entry_contract_test.dart \
+            test/p0_mobile_import_navigation_test.dart \
+            test/p0_real_actions_contract_test.dart \
+            test/ui_visual_language_contract_test.dart \
+            test/ux11_action_parity_contract_test.dart
 
       - name: Build canonical Dashboard against isolated backend
         working-directory: frontend
