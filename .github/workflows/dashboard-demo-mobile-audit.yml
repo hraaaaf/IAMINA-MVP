@@ -46,14 +46,14 @@ jobs:
             rec('landing',{url:page.url(),status:r?.status()});
             await page.waitForTimeout(7000);
             await page.screenshot({path:`${out}/01-landing-390x844.png`,fullPage:false});
-            const taps=[[195,650],[195,642],[195,658]];
+            const taps=[[195,590],[195,600],[195,580]];
             for(const [x,y] of taps){
               if(!page.url().includes('#/login') && page.url()!==process.env.TARGET_URL) break;
               rec('demo-tap',{x,y,url:page.url()});
               await page.touchscreen.tap(x,y);
               await page.waitForTimeout(3500);
             }
-            if(page.url().includes('#/login')) throw new Error('Les taps Démo n’ont pas quitté /#/login');
+            if(page.url().includes('#/login')) throw new Error('Le tap Accès démo n’a pas quitté /#/login');
             rec('dashboard-entered',{url:page.url(),title:await page.title()});
             await page.waitForTimeout(30000);
             rec('seed-settle-wait-complete',{url:page.url()});
