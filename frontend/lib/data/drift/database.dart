@@ -399,6 +399,9 @@ class AppDatabase extends _$AppDatabase {
             minute + rng.nextInt(15),
           );
 
+          // Demo data must never fabricate readings in the future.
+          if (loggedAt.isAfter(now)) continue;
+
           await into(logEntries).insert(
             LogEntriesCompanion.insert(
               createdAt: loggedAt,
