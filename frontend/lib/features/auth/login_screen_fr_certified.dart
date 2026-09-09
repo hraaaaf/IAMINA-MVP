@@ -202,7 +202,9 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       if (isDemo) {
         await auth.signInAnonymously();
-        await api.seedDemoData(); // best-effort backend mirror
+        if (!kOfflineDemo) {
+          await api.seedDemoData(); // best-effort backend mirror
+        }
         await db.seedDemoData(); // complete local dataset before navigation
       } else {
         await auth.signInWithEmail(_emailCtrl.text.trim(), _passwordCtrl.text);
