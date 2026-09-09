@@ -27,13 +27,14 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run mobile demo audit
         env:
-          TARGET_URL: https://iamina-review-9i2bqz4h2-achraf-benmoussa-s-projects.vercel.app
+          TARGET_URL: https://iamina-review-275t9zih5-achraf-benmoussa-s-projects.vercel.app
         run: |
           mkdir -p dashboard-demo-audit
           cat > audit.mjs <<'JS'
           import { chromium, devices } from 'playwright';
           import fs from 'node:fs';
           const out='dashboard-demo-audit';
+          const expectedHost=new URL(process.env.TARGET_URL).host;
           const browser=await chromium.launch({headless:true});
           const context=await browser.newContext({...devices['iPhone 13'],viewport:{width:390,height:844},locale:'fr-FR'});
           const page=await context.newPage();
@@ -44,11 +45,13 @@ jobs:
           try {
             const r=await page.goto(process.env.TARGET_URL,{waitUntil:'domcontentloaded',timeout:60000});
             rec('landing',{url:page.url(),status:r?.status()});
+            if(new URL(page.url()).host!==expectedHost) throw new Error(`Unexpected redirect host: ${new URL(page.url()).host}`);
             await page.waitForTimeout(7000);
             await page.screenshot({path:`${out}/01-landing-390x844.png`,fullPage:false});
             await page.mouse.click(195,645);
             rec('demo-click',{x:195,y:645,url:page.url()});
             await page.waitForTimeout(6000);
+            if(new URL(page.url()).host!==expectedHost) throw new Error(`Unexpected redirect host after demo click: ${new URL(page.url()).host}`);
             if(page.url().includes('#/login')) throw new Error('Mouse click Accès démo n’a pas quitté /#/login');
             rec('dashboard-entered',{url:page.url(),title:await page.title()});
             await page.waitForTimeout(18000);
@@ -64,7 +67,7 @@ jobs:
             if(fatal) throw new Error(`pageerror: ${fatal.text}`);
             rec('audit-complete',{url:page.url()});
           } catch(e){rec('fatal',{text:String(e),url:page.url()});await page.screenshot({path:`${out}/99-failure-390x844.png`,fullPage:false}).catch(()=>{});throw e;}
-          finally{fs.writeFileSync(`${out}/browser-log.json`,JSON.stringify(log,null,2));await browser.close();}
+          finally{fs.writeFileSync(`${out}/browser-log.json`,JSON.stringify(log,null,2));fs.writeFileSync(`${out}/page-url.txt`,page.url());await browser.close();}
           JS
           node audit.mjs
       - name: Upload mobile audit proof
