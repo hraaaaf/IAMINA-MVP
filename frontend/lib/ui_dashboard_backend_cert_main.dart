@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme/amina_visual_language.dart';
@@ -21,6 +23,9 @@ const String _certPassword = String.fromEnvironment('IAMINA_CERT_PASSWORD');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  Intl.defaultLocale = 'fr_FR';
+  await initializeDateFormatting('fr_FR');
+
   if (_certEmail.isEmpty || _certPassword.isEmpty) {
     throw StateError('Certification credentials are required');
   }
