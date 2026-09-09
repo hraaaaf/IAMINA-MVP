@@ -6,6 +6,12 @@ on:
     branches: [audit/dashboard-global-cert-20260909]
     paths:
       - '.github/workflows/dashboard-global-cert-v2.yml'
+      - 'backend/diabetes/api/v1/kpis.py'
+      - 'backend/diabetes/models/cgm.py'
+      - 'backend/diabetes/services/clinical/**'
+      - 'backend/diabetes/tests/test_cgm_sufficiency_contract.py'
+      - 'backend/diabetes/tests/test_governed_cgm_promotion.py'
+      - 'backend/diabetes/tests/test_p1_evidence_runtime_authority.py'
       - 'frontend/lib/ui_dashboard_backend_cert_main.dart'
       - 'frontend/lib/features/dashboard/**'
       - 'frontend/test/features/dashboard_latest_reading_contract_test.dart'
@@ -147,6 +153,15 @@ jobs:
           print(json.dumps(statuses,indent=2))
           PY
 
+      - name: Validate governed CGM KPI authority on PostgreSQL
+        working-directory: backend
+        run: |
+          python manage.py test \
+            diabetes.tests.test_cgm_sufficiency_contract \
+            diabetes.tests.test_governed_cgm_promotion \
+            diabetes.tests.test_p1_evidence_runtime_authority \
+            --verbosity 2
+
       - name: Validate canonical Dashboard frontend contracts
         working-directory: frontend
         run: |
@@ -208,18 +223,33 @@ jobs:
           const { chromium } = require('playwright'); const fs=require('fs'); const path=require('path');
           const reportPath='dashboard-global-cert/browser-report.json';
           const persist=report=>fs.writeFileSync(reportPath,JSON.stringify(report,null,2));
-          (async()=>{const browser=await chromium.launch({headless:true}); const matrix=[['mobile',390,844],['tablet',768,1024],['desktop',1280,900]]; const report={};
+          const matrix=[['mobile',390,844],['tablet',768,1024],['desktop',1280,900]];
+          const minScreenshotBytes=15000;
+          (async()=>{const report={};
           for(const [name,width,height] of matrix){
-            const ctx=await browser.newContext({viewport:{width,height},deviceScaleFactor:1,locale:'fr-FR'}); const page=await ctx.newPage(); const errors=[]; const consoleErrors=[]; const api=[];
-            page.on('pageerror',e=>{errors.push({message:String(e),stack:e.stack||null}); report[name]={url:page.url(),errors,consoleErrors,api}; persist(report);});
-            page.on('console',m=>{if(m.type()==='error'){consoleErrors.push(m.text()); report[name]={url:page.url(),errors,consoleErrors,api}; persist(report);}});
-            page.on('response',r=>{if(r.url().includes('/api/')) api.push({url:r.url(),status:r.status()})});
-            await page.goto('http://127.0.0.1:7358/',{waitUntil:'domcontentloaded',timeout:120000}); await page.waitForTimeout(12000);
-            await page.screenshot({path:path.join('dashboard-global-cert',`${name}-top-${width}x${height}.png`)}); await page.mouse.wheel(0,Math.round(height*.7)); await page.waitForTimeout(1000); await page.screenshot({path:path.join('dashboard-global-cert',`${name}-mid-${width}x${height}.png`)}); await page.mouse.wheel(0,Math.round(height*.85)); await page.waitForTimeout(1000); await page.screenshot({path:path.join('dashboard-global-cert',`${name}-lower-${width}x${height}.png`)});
-            report[name]={url:page.url(),errors,consoleErrors,api}; persist(report);
-            if(errors.length) throw new Error(`${name}: ${errors.map(e=>`${e.message}\n${e.stack||''}`).join('\n---\n')}`); if(api.some(x=>x.status>=500)) throw new Error(`${name}: backend 5xx`); await ctx.close();
+            const browser=await chromium.launch({headless:true});
+            try {
+              const ctx=await browser.newContext({viewport:{width,height},deviceScaleFactor:1,locale:'fr-FR'}); const page=await ctx.newPage(); const errors=[]; const consoleErrors=[]; const api=[];
+              page.on('pageerror',e=>{errors.push({message:String(e),stack:e.stack||null}); report[name]={url:page.url(),errors,consoleErrors,api}; persist(report);});
+              page.on('console',m=>{if(m.type()==='error'){consoleErrors.push(m.text()); report[name]={url:page.url(),errors,consoleErrors,api}; persist(report);}});
+              page.on('response',r=>{if(r.url().includes('/api/')) api.push({url:r.url(),status:r.status()})});
+              const dashboardReady=page.waitForResponse(r=>r.url().includes('/api/v1/companion/overview') && r.status()>=200 && r.status()<300,{timeout:45000});
+              await page.goto('http://127.0.0.1:7358/',{waitUntil:'domcontentloaded',timeout:120000});
+              await dashboardReady; await page.waitForTimeout(2000);
+              const topPath=path.join('dashboard-global-cert',`${name}-top-${width}x${height}.png`); const top=await page.screenshot({path:topPath});
+              await page.mouse.wheel(0,Math.round(height*.7)); await page.waitForTimeout(1000); const midPath=path.join('dashboard-global-cert',`${name}-mid-${width}x${height}.png`); const mid=await page.screenshot({path:midPath});
+              await page.mouse.wheel(0,Math.round(height*.85)); await page.waitForTimeout(1000); const lowerPath=path.join('dashboard-global-cert',`${name}-lower-${width}x${height}.png`); const lower=await page.screenshot({path:lowerPath});
+              const screenshotBytes={top:top.length,mid:mid.length,lower:lower.length};
+              report[name]={url:page.url(),errors,consoleErrors,api,screenshotBytes}; persist(report);
+              if(errors.length) throw new Error(`${name}: ${errors.map(e=>`${e.message}\n${e.stack||''}`).join('\n---\n')}`);
+              if(api.some(x=>x.status>=500)) throw new Error(`${name}: backend 5xx`);
+              if(Object.values(screenshotBytes).some(bytes=>bytes<minScreenshotBytes)) throw new Error(`${name}: blank/suspicious capture ${JSON.stringify(screenshotBytes)}`);
+              await ctx.close();
+            } finally {
+              await browser.close();
+            }
           }
-          await browser.close();})().catch(e=>{console.error(e);process.exit(1)});
+          })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node dashboard-global-cert/capture.js
 
