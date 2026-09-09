@@ -37,9 +37,9 @@ void main() {
     ).readAsStringSync();
 
     expect(section, contains('_dashboardTrendDateLocale'));
-    expect(section, contains("'fr' => 'fr_FR'"));
-    expect(section, contains("'ar' => 'ar_MA'"));
-    expect(section, contains("'en' => 'en_US'"));
+    expect(section, contains("'fr' => 'fr-FR'"));
+    expect(section, contains("'ar' => 'ar-MA'"));
+    expect(section, contains("'en' => 'en-US'"));
     expect(
       section,
       contains('final locale = _dashboardTrendDateLocale(context);'),

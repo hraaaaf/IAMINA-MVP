@@ -77,9 +77,9 @@ void main() {
     ).readAsStringSync();
 
     expect(source, contains('_dashboardDateLocale'));
-    expect(source, contains("'fr' => 'fr_FR'"));
-    expect(source, contains("'ar' => 'ar_MA'"));
-    expect(source, contains("'en' => 'en_US'"));
+    expect(source, contains("'fr' => 'fr-FR'"));
+    expect(source, contains("'ar' => 'ar-MA'"));
+    expect(source, contains("'en' => 'en-US'"));
     expect(source, contains('final locale = _dashboardDateLocale(context);'));
   });
 

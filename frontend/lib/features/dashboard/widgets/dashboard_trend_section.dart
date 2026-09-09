@@ -14,9 +14,9 @@ enum _TrendRange { hours24, days7, days14, days30 }
 String _dashboardTrendDateLocale(BuildContext context) {
   final locale = Localizations.localeOf(context);
   return switch (locale.languageCode) {
-    'fr' => 'fr_FR',
-    'ar' => 'ar_MA',
-    'en' => 'en_US',
+    'fr' => 'fr-FR',
+    'ar' => 'ar-MA',
+    'en' => 'en-US',
     _ => locale.toLanguageTag(),
   };
 }
