@@ -58,8 +58,8 @@ void main() {
     () {
       final module = _read('lib/modules/diabetes_module.dart');
       final shell = _read('lib/features/navigation/main_shell.dart');
-      final dashboard = _read(
-        'lib/features/dashboard/dashboard_convergent_screen.dart',
+      final today = _read(
+        'lib/features/dashboard/widgets/dashboard_today_section.dart',
       );
       final navBlock = module.split('shellRoutes:').first;
 
@@ -75,9 +75,10 @@ void main() {
         isTrue,
       );
       expect(shell, contains("GoRouter.of(context).go('/ajouter')"));
-      expect(dashboard, contains("go('/importer')"));
-      expect(dashboard, contains("ValueKey('dashboard-reminders-action')"));
-      expect(dashboard, contains("GoRouter.of(context).go('/reminders')"));
+      expect(today, contains("ValueKey('dashboard-secondary-import')"));
+      expect(today, contains("context.go('/importer')"));
+      expect(today, contains("ValueKey('dashboard-secondary-companion')"));
+      expect(today, contains("context.go('/companion')"));
     },
   );
 
