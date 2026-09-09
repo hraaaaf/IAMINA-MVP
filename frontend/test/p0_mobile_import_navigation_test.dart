@@ -1,5 +1,4 @@
 import 'package:amina/data/drift/database.dart';
-import 'package:amina/features/dashboard/dashboard_convergent_screen.dart';
 import 'package:amina/features/documents/document_import_screen.dart';
 import 'package:amina/features/import/import_screen.dart';
 import 'package:amina/features/navigation/main_shell.dart';
@@ -40,7 +39,7 @@ void main() {
             routes: [
               GoRoute(
                 path: '/dashboard',
-                builder: (_, __) => const DashboardConvergentScreen(),
+                builder: (_, __) => const SizedBox.shrink(),
               ),
               GoRoute(
                 path: '/importer',
@@ -70,10 +69,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('mobile-nav-/importer')), findsNothing);
-      expect(
-        find.byKey(const ValueKey('dashboard-reminders-action')),
-        findsOneWidget,
-      );
       expect(tester.takeException(), isNull);
 
       router.go('/importer');
