@@ -1,0 +1,64 @@
+name: Dashboard trend locale normalization fix
+
+on:
+  push:
+    branches: [audit/dashboard-global-cert-20260909]
+    paths:
+      - '.github/workflows/dashboard-trend-locale-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Normalize Dashboard trend date locale and add contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('frontend/lib/features/dashboard/widgets/dashboard_trend_section.dart')
+          s=p.read_text()
+          anchor="enum _TrendRange { hours24, days7, days14, days30 }\n\n"
+          helper="""String _dashboardTrendDateLocale(BuildContext context) {\n  final locale = Localizations.localeOf(context);\n  return switch (locale.languageCode) {\n    'fr' => 'fr_FR',\n    'ar' => 'ar_MA',\n    'en' => 'en_US',\n    _ => locale.toLanguageTag(),\n  };\n}\n\n"""
+          if '_dashboardTrendDateLocale' not in s:
+              assert anchor in s, 'trend helper anchor not found'
+              s=s.replace(anchor,anchor+helper,1)
+          old="final locale = Localizations.localeOf(context).toLanguageTag();"
+          assert old in s or 'final locale = _dashboardTrendDateLocale(context);' in s, 'trend locale assignment not found'
+          s=s.replace(old,'final locale = _dashboardTrendDateLocale(context);')
+          p.write_text(s)
+
+          t=Path('frontend/test/features/dashboard_trend_contract_test.dart')
+          ts=t.read_text()
+          marker="  test('Dashboard trend trajectory connects only nearby recorded measurements', () {"
+          contract="""  test('Dashboard trend normalizes locale before Intl date formatting', () {\n    final section = File(\n      'lib/features/dashboard/widgets/dashboard_trend_section.dart',\n    ).readAsStringSync();\n\n    expect(section, contains('_dashboardTrendDateLocale'));\n    expect(section, contains(\"'fr' => 'fr_FR'\"));\n    expect(section, contains(\"'ar' => 'ar_MA'\"));\n    expect(section, contains(\"'en' => 'en_US'\"));\n    expect(section, contains('final locale = _dashboardTrendDateLocale(context);'));\n  });\n\n"""
+          if 'Dashboard trend normalizes locale before Intl date formatting' not in ts:
+              assert marker in ts, 'trend test anchor not found'
+              ts=ts.replace(marker,contract+marker,1)
+          t.write_text(ts)
+          PY
+          cd frontend
+          dart format lib/features/dashboard/widgets/dashboard_trend_section.dart test/features/dashboard_trend_contract_test.dart
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/features/dashboard/widgets/dashboard_trend_section.dart
+          flutter test --no-pub test/features/dashboard_trend_contract_test.dart
+      - name: Commit verified trend locale fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/lib/features/dashboard/widgets/dashboard_trend_section.dart frontend/test/features/dashboard_trend_contract_test.dart
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'fix: normalize dashboard trend date locale for Intl'
+          git push
