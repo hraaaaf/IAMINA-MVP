@@ -48,7 +48,7 @@ jobs:
           from django.test import Client
           from amina.wsgi import application
           assert application is not None
-          response = Client().get('/api/v1/health')
+          response = Client(HTTP_HOST='iamina-certified.vercel.app').get('/api/v1/health')
           print(response.status_code, response.content.decode())
           assert response.status_code == 200
           assert response.json()['db'] == 'ok'
