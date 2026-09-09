@@ -33,7 +33,7 @@ jobs:
           TARGET_URL: https://iamina-review.vercel.app
         run: |
           mkdir -p dashboard-demo-audit
-          cat > /tmp/audit.mjs <<'JS'
+          cat > audit.mjs <<'JS'
           import { chromium, devices } from 'playwright';
           import fs from 'node:fs';
 
@@ -91,7 +91,6 @@ jobs:
             const links = await page.getByRole('link').allInnerTexts().catch(()=>[]);
             fs.writeFileSync(`${out}/ui-summary.json`, JSON.stringify({url: page.url(), title: await page.title(), headings, buttons, links}, null, 2));
 
-            // Capture viewport slices to make dense dashboards readable on mobile.
             const total = await page.evaluate(() => Math.max(document.body.scrollHeight, document.documentElement.scrollHeight));
             const step = 720;
             let idx = 3;
@@ -111,7 +110,7 @@ jobs:
             await browser.close();
           }
           JS
-          node /tmp/audit.mjs
+          node audit.mjs
 
       - name: Upload mobile audit proof
         if: always()
