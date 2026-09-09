@@ -1,0 +1,59 @@
+name: IAMINA dashboard demo surgical fixes
+
+on:
+  push:
+    branches:
+      - audit/dashboard-demo-mobile-20260909
+    paths:
+      - '.github/workflows/dashboard-demo-fix-patch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/dashboard-demo-mobile-20260909
+          fetch-depth: 0
+      - name: Patch demo seed and offline demo backend mirror
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          db = Path('frontend/lib/data/drift/database.dart')
+          text = db.read_text()
+          old = """          final loggedAt = DateTime(\n            date.year,\n            date.month,\n            date.day,\n            hour,\n            minute + rng.nextInt(15),\n          );\n\n          await into(logEntries).insert("""
+          new = """          final loggedAt = DateTime(\n            date.year,\n            date.month,\n            date.day,\n            hour,\n            minute + rng.nextInt(15),\n          );\n\n          // Demo data must never fabricate readings in the future.\n          if (loggedAt.isAfter(now)) continue;\n\n          await into(logEntries).insert("""
+          if old not in text:
+              raise SystemExit('database.dart seed pattern not found')
+          db.write_text(text.replace(old, new, 1))
+
+          login = Path('frontend/lib/features/auth/login_screen.dart')
+          text = login.read_text()
+          old = """        await auth.signInAnonymously();\n        await api.seedDemoData(); // best-effort backend mirror\n        await db.seedDemoData(); // complete local dataset before navigation"""
+          new = """        await auth.signInAnonymously();\n        if (!kOfflineDemo) {\n          await api.seedDemoData(); // best-effort backend mirror\n        }\n        await db.seedDemoData(); // complete local dataset before navigation"""
+          if old not in text:
+              raise SystemExit('login_screen.dart demo pattern not found')
+          login.write_text(text.replace(old, new, 1))
+          PY
+
+          echo '--- changed diff ---'
+          git diff --check
+          git diff -- frontend/lib/data/drift/database.dart frontend/lib/features/auth/login_screen.dart
+
+          echo '--- remaining localhost endpoint definitions/call sites ---'
+          grep -RInE "profile/locale|account/modules|seedDemoData\(" frontend/lib | head -80 || true
+
+      - name: Commit surgical fixes
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/lib/data/drift/database.dart frontend/lib/features/auth/login_screen.dart
+          git commit -m 'fix: keep offline demo data current and local'
+          git push origin HEAD:audit/dashboard-demo-mobile-20260909
