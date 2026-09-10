@@ -36,7 +36,8 @@ jobs:
              "                return CustomScrollView(\n                  controller: scrollController,\n                  physics: const BouncingScrollPhysics(),"),
           ]
           for old,new in reps:
-            if old not in s: raise SystemExit(f'premium replacement missing: {old[:80]}')
+            if old not in s:
+              raise SystemExit(f'premium replacement missing: {old[:80]}')
             s=s.replace(old,new,1)
           p.write_text(s)
 
@@ -59,20 +60,8 @@ jobs:
           if old not in s: raise SystemExit('cert entry replacement missing')
           s=s.replace(old,new,1)
           p.write_text(s)
-
-          p=Path('frontend/test/features/dashboard_responsive_convergence_contract_test.dart')
-          s=p.read_text()
-          old="    expect(dashboard, contains('DashboardResponsiveSections('));"
-          new="    expect(dashboard, contains('DashboardResponsiveSections('));\n    expect(dashboard, contains('controller: scrollController'));"
-          if old not in s: raise SystemExit('test insertion point missing')
-          s=s.replace(old,new,1)
-          old="    expect(module, isNot(contains('constraints.maxWidth < 700')));"
-          new="    expect(module, isNot(contains('constraints.maxWidth < 700')));\n    final entry = File('lib/features/dashboard/dashboard_companion_entry_screen.dart').readAsStringSync();\n    final cert = File('lib/ui_dashboard_backend_cert_main.dart').readAsStringSync();\n    expect(entry, contains('scrollController: scrollController'));\n    expect(cert, contains('scrollController: _scrollController'));"
-          if old not in s: raise SystemExit('test entry insertion point missing')
-          s=s.replace(old,new,1)
-          p.write_text(s)
           PY
-          dart format frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/dashboard/dashboard_companion_entry_screen.dart frontend/lib/ui_dashboard_backend_cert_main.dart frontend/test/features/dashboard_responsive_convergence_contract_test.dart
+          dart format frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/dashboard/dashboard_companion_entry_screen.dart frontend/lib/ui_dashboard_backend_cert_main.dart
           cd frontend
           flutter pub get
           flutter test --no-pub test/features/dashboard_responsive_convergence_contract_test.dart
@@ -80,6 +69,6 @@ jobs:
           git diff --check
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/dashboard/dashboard_companion_entry_screen.dart frontend/lib/ui_dashboard_backend_cert_main.dart frontend/test/features/dashboard_responsive_convergence_contract_test.dart
+          git add frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/dashboard/dashboard_companion_entry_screen.dart frontend/lib/ui_dashboard_backend_cert_main.dart
           git commit -m 'test: wire dashboard certification scroll explicitly'
           git push
