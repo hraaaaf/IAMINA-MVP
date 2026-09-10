@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/motion/amina_motion.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
@@ -126,7 +125,7 @@ class _Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.sizeOf(context).width >= 1100;
-    final user = FirebaseAuth.instance.currentUser;
+    final user = context.watch<AuthService>().firebaseUser;
     final fallbackName = AppLocalizations.of(context)!.profile;
     final displayName = user?.displayName ?? user?.email ?? fallbackName;
 
