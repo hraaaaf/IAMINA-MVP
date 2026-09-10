@@ -21,6 +21,12 @@ import 'services/sync_service.dart';
 const String _certEmail = String.fromEnvironment('IAMINA_CERT_EMAIL');
 const String _certPassword = String.fromEnvironment('IAMINA_CERT_PASSWORD');
 
+double _certScrollOffsetFromUri() {
+  final parsed = double.tryParse(Uri.base.queryParameters['scroll'] ?? '') ?? 0;
+  if (!parsed.isFinite || parsed < 0) return 0;
+  return parsed;
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting();
@@ -70,10 +76,34 @@ Future<void> main() async {
   );
 }
 
-class _DashboardBackendCertApp extends StatelessWidget {
+class _DashboardBackendCertApp extends StatefulWidget {
   final CompanionService companion;
 
   const _DashboardBackendCertApp({required this.companion});
+
+  @override
+  State<_DashboardBackendCertApp> createState() =>
+      _DashboardBackendCertAppState();
+}
+
+class _DashboardBackendCertAppState extends State<_DashboardBackendCertApp> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController(
+      initialScrollOffset: _certScrollOffsetFromUri(),
+      keepScrollOffset: false,
+      debugLabel: 'dashboard-cert-scroll',
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,8 +115,13 @@ class _DashboardBackendCertApp extends StatelessWidget {
           routes: [
             GoRoute(
               path: '/dashboard',
-              builder: (context, state) => DashboardCompanionEntryScreen(
-                companionService: companion,
+              builder: (context, state) => PrimaryScrollController(
+                controller: _scrollController,
+                automaticallyInheritForPlatforms: TargetPlatform.values.toSet(),
+                scrollDirection: Axis.vertical,
+                child: DashboardCompanionEntryScreen(
+                  companionService: widget.companion,
+                ),
               ),
             ),
           ],

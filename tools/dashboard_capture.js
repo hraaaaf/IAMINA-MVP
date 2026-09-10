@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 
 const reportPath = 'dashboard-visual-cert/browser-report.json';
-const persist = (report) => fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+const persist = (report) =>
+  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
 const matrix = [
   ['mobile', 390, 844],
   ['tablet', 768, 1024],
@@ -38,81 +39,73 @@ const minScreenshotBytes = 15000;
         }
       });
       page.on('response', (r) => {
-        if (r.url().includes('/api/')) api.push({ url: r.url(), status: r.status() });
+        if (r.url().includes('/api/')) {
+          api.push({ url: r.url(), status: r.status() });
+        }
       });
 
-      const dashboardReady = page.waitForResponse(
-        (r) => r.url().includes('/api/v1/companion/overview') && r.status() >= 200 && r.status() < 300,
-        { timeout: 45000 },
-      );
-      await page.goto('http://127.0.0.1:7358/', {
-        waitUntil: 'domcontentloaded',
-        timeout: 120000,
-      });
-      await dashboardReady;
-      await page.waitForTimeout(2000);
-
-      const topPath = path.join('dashboard-visual-cert', `${name}-top-${width}x${height}.png`);
-      const top = await page.screenshot({ path: topPath });
-
-      // Flutter Web owns scrolling inside its rendering surface. A browser
-      // wheel event is not a reliable proof that the Flutter Scrollable moved.
-      // Use Chrome's native synthesized touch gesture instead, starting over
-      // the non-interactive left padding of the Dashboard content.
-      const cdp = await page.context().newCDPSession(page);
-      const gestureX = width >= 700 ? 110 : 24;
-      const gestureY = Math.round(height * 0.72);
-      const gestureDistance = -Math.round(height * 0.55);
-      const scrollOnce = async () => {
-        await cdp.send('Input.synthesizeScrollGesture', {
-          x: gestureX,
-          y: gestureY,
-          xDistance: 0,
-          yDistance: gestureDistance,
-          speed: 1000,
-          preventFling: true,
-          gestureSourceType: 'touch',
-        });
-        await page.waitForTimeout(900);
+      const positions = {
+        top: 0,
+        mid: Math.round(height * 0.55),
+        lower: Math.round(height * 1.10),
       };
+      const buffers = {};
+      const screenshotBytes = {};
 
-      await scrollOnce();
-      const midPath = path.join('dashboard-visual-cert', `${name}-mid-${width}x${height}.png`);
-      const mid = await page.screenshot({ path: midPath });
+      for (const [position, offset] of Object.entries(positions)) {
+        const dashboardReady = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/companion/overview') &&
+            r.status() >= 200 &&
+            r.status() < 300,
+          { timeout: 45000 },
+        );
+        await page.goto(`http://127.0.0.1:7358/?scroll=${offset}`, {
+          waitUntil: 'domcontentloaded',
+          timeout: 120000,
+        });
+        await dashboardReady;
+        await page.waitForTimeout(1600);
+        const screenshotPath = path.join(
+          'dashboard-visual-cert',
+          `${name}-${position}-${width}x${height}.png`,
+        );
+        const buffer = await page.screenshot({ path: screenshotPath });
+        buffers[position] = buffer;
+        screenshotBytes[position] = buffer.length;
+      }
 
-      await scrollOnce();
-      const lowerPath = path.join('dashboard-visual-cert', `${name}-lower-${width}x${height}.png`);
-      const lower = await page.screenshot({ path: lowerPath });
-
-      const screenshotBytes = { top: top.length, mid: mid.length, lower: lower.length };
       const byteDuplicateCaptures = {
-        topMid: top.equals(mid),
-        midLower: mid.equals(lower),
-        topLower: top.equals(lower),
+        topMid: buffers.top.equals(buffers.mid),
+        midLower: buffers.mid.equals(buffers.lower),
+        topLower: buffers.top.equals(buffers.lower),
       };
       report[name] = {
         url: page.url(),
         errors,
         consoleErrors,
         api,
-        gesture: {
-          method: 'Input.synthesizeScrollGesture',
-          source: 'touch',
-          x: gestureX,
-          y: gestureY,
-          yDistance: gestureDistance,
-        },
+        requestedScrollOffsets: positions,
         screenshotBytes,
         byteDuplicateCaptures,
       };
       persist(report);
 
-      if (errors.length) throw new Error(`${name}: page errors ${JSON.stringify(errors)}`);
-      if (api.some((x) => x.status >= 500)) throw new Error(`${name}: backend 5xx`);
-      if (Object.values(screenshotBytes).some((bytes) => bytes < minScreenshotBytes)) {
-        throw new Error(`${name}: blank/suspicious capture ${JSON.stringify(screenshotBytes)}`);
+      if (errors.length) {
+        throw new Error(`${name}: page errors ${JSON.stringify(errors)}`);
       }
-      await cdp.detach();
+      if (api.some((x) => x.status >= 500)) {
+        throw new Error(`${name}: backend 5xx`);
+      }
+      if (
+        Object.values(screenshotBytes).some(
+          (bytes) => bytes < minScreenshotBytes,
+        )
+      ) {
+        throw new Error(
+          `${name}: blank/suspicious capture ${JSON.stringify(screenshotBytes)}`,
+        );
+      }
       await ctx.close();
     } finally {
       await browser.close();

@@ -7,7 +7,10 @@ void main() {
     final module = File('lib/modules/diabetes_module.dart').readAsStringSync();
 
     expect(module, contains("path: '/dashboard'"));
-    expect(module, contains('builder: () => const DashboardCompanionEntryScreen()'));
+    expect(
+      module,
+      contains('builder: () => const DashboardCompanionEntryScreen()'),
+    );
     expect(module, isNot(contains('DashboardScreen()')));
     expect(module, isNot(contains("dashboard_screen.dart")));
     expect(module, isNot(contains('constraints.maxWidth < 700')));
@@ -40,5 +43,28 @@ void main() {
     expect(dashboard, contains('DashboardResponsiveSections('));
     expect(dashboard, contains('watchRecentLogs(limit: 1)'));
     expect(dashboard, isNot(contains('Duration(days: 21)')));
+  });
+
+  test('Visual cert sets deterministic scroll without a production UI fork', () {
+    final module = File('lib/modules/diabetes_module.dart').readAsStringSync();
+    final dashboard = File(
+      'lib/features/dashboard/dashboard_premium_screen.dart',
+    ).readAsStringSync();
+    final cert = File('lib/ui_dashboard_backend_cert_main.dart').readAsStringSync();
+
+    expect(module, contains('const DashboardCompanionEntryScreen()'));
+    expect(dashboard, isNot(contains('dashboard-cert-scroll')));
+    expect(cert, contains("Uri.base.queryParameters['scroll']"));
+    expect(cert, contains('PrimaryScrollController('));
+    expect(
+      cert,
+      contains(
+        'automaticallyInheritForPlatforms: TargetPlatform.values.toSet()',
+      ),
+    );
+    expect(cert, contains('initialScrollOffset: _certScrollOffsetFromUri()'));
+    expect(cert, contains('keepScrollOffset: false'));
+    expect(cert, contains("debugLabel: 'dashboard-cert-scroll'"));
+    expect(cert, contains('_scrollController.dispose();'));
   });
 }
