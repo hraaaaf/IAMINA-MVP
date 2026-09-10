@@ -58,7 +58,11 @@ void main() {
     expect(module, contains('const DashboardCompanionEntryScreen()'));
     expect(dashboard, isNot(contains('dashboard-cert-scroll')));
     expect(cert, contains("Uri.base.queryParameters['scroll']"));
-    expect(cert, contains('initialScrollOffset: _certScrollOffsetFromUri()'));
+    expect(cert, contains('_targetScrollOffset = _certScrollOffsetFromUri()'));
+    expect(cert, contains('initialScrollOffset: _targetScrollOffset'));
+    expect(cert, contains('_scrollController.hasClients'));
+    expect(cert, contains('position.maxScrollExtent'));
+    expect(cert, contains('_scrollController.jumpTo('));
     expect(cert, contains('keepScrollOffset: false'));
     expect(cert, contains("debugLabel: 'dashboard-cert-scroll'"));
     expect(cert, contains('scrollController: _scrollController'));
