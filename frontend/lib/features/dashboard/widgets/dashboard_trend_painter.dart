@@ -71,7 +71,6 @@ class DashboardTrendPainter extends CustomPainter {
     _paintTargetBand(canvas, rect, yFor);
     _paintGridAndAxes(canvas, rect, minY, maxY);
     _paintMedicationEvents(canvas, rect, xFor);
-    _paintRecordedTrajectory(canvas, xFor, yFor);
     _paintRecordedPoints(canvas, xFor, yFor);
   }
 
@@ -175,44 +174,6 @@ class DashboardTrendPainter extends CustomPainter {
       final x = xFor(event.takenAt);
       canvas.drawLine(Offset(x, rect.top), Offset(x, rect.top + 10), paint);
       canvas.drawCircle(Offset(x, rect.top + 2), 2.5, paint);
-    }
-  }
-
-  void _paintRecordedTrajectory(
-    Canvas canvas,
-    double Function(DateTime) xFor,
-    double Function(double) yFor,
-  ) {
-    if (logs.length < 2) return;
-
-    final ordered = List<LogEntryData>.from(logs)
-      ..sort((a, b) => _recordedAt(a).compareTo(_recordedAt(b)));
-    final windowMs = end.millisecondsSinceEpoch - start.millisecondsSinceEpoch;
-    if (windowMs <= 0) return;
-
-    // A large temporal hole is shown as a break rather than as invented
-    // continuity. This threshold is visual only: one sixth of the selected
-    // window, never a clinical inference or glucose rule.
-    final maxConnectedGapMs = windowMs ~/ 6;
-    final linePaint = Paint()
-      ..color = AminaVisualLanguage.actionGreen.withValues(alpha: .72)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    for (var i = 1; i < ordered.length; i++) {
-      final previous = ordered[i - 1];
-      final current = ordered[i];
-      final previousAt = _recordedAt(previous);
-      final currentAt = _recordedAt(current);
-      final gapMs = currentAt.millisecondsSinceEpoch - previousAt.millisecondsSinceEpoch;
-      if (gapMs <= 0 || gapMs > maxConnectedGapMs) continue;
-
-      canvas.drawLine(
-        Offset(xFor(previousAt), yFor(previous.bloodSugar)),
-        Offset(xFor(currentAt), yFor(current.bloodSugar)),
-        linePaint,
-      );
     }
   }
 
