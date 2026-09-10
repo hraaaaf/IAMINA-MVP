@@ -172,3 +172,5 @@ jobs:
             /tmp/iamina-dashboard-proxy.log
           if-no-files-found: warn
           retention-days: 7
+
+# recertification trigger: explicit Dashboard scroll controller
