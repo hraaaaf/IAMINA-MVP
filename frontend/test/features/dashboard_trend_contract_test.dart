@@ -22,7 +22,10 @@ void main() {
     expect(queries, contains('row.loggedAt.isBetweenValues(start, end)'));
     expect(queries, contains('row.loggedAt.isNull()'));
     expect(queries, contains('row.createdAt.isBetweenValues(start, end)'));
+    expect(painter, contains('_paintRecordedPoints'));
     expect(painter, contains('canvas.drawCircle'));
+    expect(painter, isNot(contains('_paintRecordedTrajectory')));
+    expect(painter, isNot(contains('maxConnectedGapMs')));
     expect(section + painter, isNot(contains('LineChart')));
     expect(section + painter, isNot(contains('isCurved')));
     expect(section + painter, isNot(contains('ClinicalEngine')));
@@ -47,18 +50,15 @@ void main() {
   });
 
   test(
-    'Dashboard trend trajectory connects only nearby recorded measurements',
+    'Dashboard trend renders discrete observations without inferred trajectory',
     () {
       final painter = File(
         'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
       ).readAsStringSync();
 
-      expect(painter, contains('_paintRecordedTrajectory'));
-      expect(painter, contains('maxConnectedGapMs = windowMs ~/ 6'));
-      expect(painter, contains('gapMs > maxConnectedGapMs'));
-      expect(painter, contains('canvas.drawLine('));
-      expect(painter, contains('visual only'));
-      expect(painter, contains('never a clinical inference or glucose rule'));
+      expect(painter, contains('_paintRecordedPoints'));
+      expect(painter, isNot(contains('_paintRecordedTrajectory')));
+      expect(painter, isNot(contains('maxConnectedGapMs')));
       expect(painter, isNot(contains('spline')));
       expect(painter, isNot(contains('curveTo')));
     },
