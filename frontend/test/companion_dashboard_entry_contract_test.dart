@@ -3,16 +3,13 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('dashboard primary insight opens companion without changing nav', () {
-    final source = File(
-      'lib/features/dashboard/dashboard_convergent_screen.dart',
+  test('dashboard primary companion actions use the canonical Today section', () {
+    final today = File(
+      'lib/features/dashboard/widgets/dashboard_today_section.dart',
     ).readAsStringSync();
 
-    expect(source, contains("ValueKey('dashboard-companion-insight')"));
-    expect(
-      source,
-      contains("onTap: () => GoRouter.of(context).go('/companion')"),
-    );
+    expect(today, contains("ValueKey('dashboard-secondary-companion')"));
+    expect(today, contains("context.go('/companion')"));
   });
 
   test('mobile dashboard exposes a persistent visible IAmina companion entry', () {

@@ -5,23 +5,13 @@ void main() {
   test(
     'UX-11 dashboard actions and mobile nav preserve approved semantics',
     () {
-      final dash = File(
-        'lib/features/dashboard/dashboard_convergent_screen.dart',
+      final today = File(
+        'lib/features/dashboard/widgets/dashboard_today_section.dart',
       ).readAsStringSync();
-      for (final label in [
-        'Journal',
-        'Alimentation',
-        'Activité',
-        'Médicaments',
-        'Rappels',
-      ]) {
-        expect(dash, contains("'$label'"));
-      }
-      expect(dash, contains("'/ajouter?focus=meal'"));
-      expect(dash, contains("'/ajouter?focus=activity'"));
-      expect(dash, contains("'/medications'"));
-      expect(dash, contains("'/reminders'"));
-      expect(dash, contains("go('/importer')"));
+      expect(today, contains("ValueKey('dashboard-secondary-companion')"));
+      expect(today, contains("context.go('/companion')"));
+      expect(today, contains("ValueKey('dashboard-secondary-import')"));
+      expect(today, contains("context.go('/importer')"));
 
       final module = File(
         'lib/modules/diabetes_module.dart',
@@ -31,6 +21,7 @@ void main() {
       expect(module, contains("'Rapports'"));
       expect(navBlock, isNot(contains("route: '/importer'")));
       expect(module, contains("path: '/importer'"));
+      expect(module, contains('const DashboardCompanionEntryScreen()'));
 
       final shell = File(
         'lib/features/navigation/main_shell.dart',

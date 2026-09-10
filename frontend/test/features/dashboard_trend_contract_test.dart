@@ -22,7 +22,10 @@ void main() {
     expect(queries, contains('row.loggedAt.isBetweenValues(start, end)'));
     expect(queries, contains('row.loggedAt.isNull()'));
     expect(queries, contains('row.createdAt.isBetweenValues(start, end)'));
+    expect(painter, contains('_paintRecordedPoints'));
     expect(painter, contains('canvas.drawCircle'));
+    expect(painter, isNot(contains('_paintRecordedTrajectory')));
+    expect(painter, isNot(contains('maxConnectedGapMs')));
     expect(section + painter, isNot(contains('LineChart')));
     expect(section + painter, isNot(contains('isCurved')));
     expect(section + painter, isNot(contains('ClinicalEngine')));
@@ -31,32 +34,50 @@ void main() {
     expect(section + painter, isNot(contains('AGP')));
   });
 
-  test('Dashboard trend trajectory connects only nearby recorded measurements', () {
-    final painter = File(
-      'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
+  test('Dashboard trend normalizes locale before Intl date formatting', () {
+    final section = File(
+      'lib/features/dashboard/widgets/dashboard_trend_section.dart',
     ).readAsStringSync();
 
-    expect(painter, contains('_paintRecordedTrajectory'));
-    expect(painter, contains('maxConnectedGapMs = windowMs ~/ 6'));
-    expect(painter, contains('gapMs > maxConnectedGapMs'));
-    expect(painter, contains('canvas.drawLine('));
-    expect(painter, contains('visual only'));
-    expect(painter, contains('never a clinical inference or glucose rule'));
-    expect(painter, isNot(contains('spline')));
-    expect(painter, isNot(contains('curveTo')));
+    expect(section, contains('_dashboardTrendDateLocale'));
+    expect(section, contains("'fr' => 'fr-FR'"));
+    expect(section, contains("'ar' => 'ar-MA'"));
+    expect(section, contains("'en' => 'en-US'"));
+    expect(
+      section,
+      contains('final locale = _dashboardTrendDateLocale(context);'),
+    );
   });
 
-  test('Dashboard trend emphasizes latest factual reading without prediction', () {
-    final painter = File(
-      'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
-    ).readAsStringSync();
+  test(
+    'Dashboard trend renders discrete observations without inferred trajectory',
+    () {
+      final painter = File(
+        'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
+      ).readAsStringSync();
 
-    expect(painter, contains('final latestId = logs.reduce'));
-    expect(painter, contains('final latest = log.id == latestId'));
-    expect(painter, contains('selected || latest'));
-    expect(painter, isNot(contains('forecast')));
-    expect(painter, isNot(contains('prediction')));
-  });
+      expect(painter, contains('_paintRecordedPoints'));
+      expect(painter, isNot(contains('_paintRecordedTrajectory')));
+      expect(painter, isNot(contains('maxConnectedGapMs')));
+      expect(painter, isNot(contains('spline')));
+      expect(painter, isNot(contains('curveTo')));
+    },
+  );
+
+  test(
+    'Dashboard trend emphasizes latest factual reading without prediction',
+    () {
+      final painter = File(
+        'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
+      ).readAsStringSync();
+
+      expect(painter, contains('final latestId = logs.reduce'));
+      expect(painter, contains('final latest = log.id == latestId'));
+      expect(painter, contains('selected || latest'));
+      expect(painter, isNot(contains('forecast')));
+      expect(painter, isNot(contains('prediction')));
+    },
+  );
 
   test('Dashboard trend never introduces local glucose thresholds', () {
     final section = File(
@@ -92,41 +113,47 @@ void main() {
     expect(source, contains('log.mealType'));
   });
 
-  test('Dashboard trend renders treatment events as separate recorded events', () {
-    final section = File(
-      'lib/features/dashboard/widgets/dashboard_trend_section.dart',
-    ).readAsStringSync();
-    final painter = File(
-      'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
-    ).readAsStringSync();
-    final queries = File(
-      'lib/data/drift/dashboard_trend_queries.dart',
-    ).readAsStringSync();
+  test(
+    'Dashboard trend renders treatment events as separate recorded events',
+    () {
+      final section = File(
+        'lib/features/dashboard/widgets/dashboard_trend_section.dart',
+      ).readAsStringSync();
+      final painter = File(
+        'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
+      ).readAsStringSync();
+      final queries = File(
+        'lib/data/drift/dashboard_trend_queries.dart',
+      ).readAsStringSync();
 
-    expect(section, contains('watchDashboardMedicationEvents(start, end)'));
-    expect(painter, contains('event.takenAt'));
-    expect(queries, contains('row.takenAt.isBetweenValues(start, end)'));
-    expect(section + painter, isNot(contains('treatmentResponse')));
-    expect(section + painter, isNot(contains('causal')));
-  });
+      expect(section, contains('watchDashboardMedicationEvents(start, end)'));
+      expect(painter, contains('event.takenAt'));
+      expect(queries, contains('row.takenAt.isBetweenValues(start, end)'));
+      expect(section + painter, isNot(contains('treatmentResponse')));
+      expect(section + painter, isNot(contains('causal')));
+    },
+  );
 
-  test('Dashboard responsive composition includes factual trend after today summary', () {
-    final dashboard = File(
-      'lib/features/dashboard/dashboard_premium_screen.dart',
-    ).readAsStringSync();
-    final responsive = File(
-      'lib/features/dashboard/widgets/dashboard_responsive_sections.dart',
-    ).readAsStringSync();
+  test(
+    'Dashboard responsive composition includes factual trend after today summary',
+    () {
+      final dashboard = File(
+        'lib/features/dashboard/dashboard_premium_screen.dart',
+      ).readAsStringSync();
+      final responsive = File(
+        'lib/features/dashboard/widgets/dashboard_responsive_sections.dart',
+      ).readAsStringSync();
 
-    final todayIndex = dashboard.indexOf('DashboardTodaySection(');
-    final responsiveIndex = dashboard.indexOf('DashboardResponsiveSections(');
-    final trendIndex = responsive.indexOf('DashboardTrendSection(');
+      final todayIndex = dashboard.indexOf('DashboardTodaySection(');
+      final responsiveIndex = dashboard.indexOf('DashboardResponsiveSections(');
+      final trendIndex = responsive.indexOf('DashboardTrendSection(');
 
-    expect(todayIndex, greaterThanOrEqualTo(0));
-    expect(responsiveIndex, greaterThan(todayIndex));
-    expect(trendIndex, greaterThanOrEqualTo(0));
-    expect(responsive, contains('unit: unit'));
-    expect(responsive, contains('low: low'));
-    expect(responsive, contains('high: high'));
-  });
+      expect(todayIndex, greaterThanOrEqualTo(0));
+      expect(responsiveIndex, greaterThan(todayIndex));
+      expect(trendIndex, greaterThanOrEqualTo(0));
+      expect(responsive, contains('unit: unit'));
+      expect(responsive, contains('low: low'));
+      expect(responsive, contains('high: high'));
+    },
+  );
 }

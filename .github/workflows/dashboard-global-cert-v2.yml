@@ -1,0 +1,269 @@
+name: Dashboard global certification v2
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [audit/dashboard-global-cert-20260909]
+    paths:
+      - '.github/workflows/dashboard-global-cert-v2.yml'
+      - 'backend/diabetes/api/v1/kpis.py'
+      - 'backend/diabetes/models/cgm.py'
+      - 'backend/diabetes/services/clinical/**'
+      - 'backend/diabetes/tests/test_cgm_sufficiency_contract.py'
+      - 'backend/diabetes/tests/test_governed_cgm_promotion.py'
+      - 'backend/diabetes/tests/test_p1_evidence_runtime_authority.py'
+      - 'frontend/lib/ui_dashboard_backend_cert_main.dart'
+      - 'frontend/lib/features/dashboard/**'
+      - 'frontend/lib/features/navigation/main_shell.dart'
+      - 'frontend/test/dashboard_main_shell_auth_contract_test.dart'
+      - 'frontend/test/features/dashboard_latest_reading_contract_test.dart'
+      - 'frontend/test/features/dashboard_trend_contract_test.dart'
+      - 'frontend/test/companion_dashboard_entry_contract_test.dart'
+      - 'frontend/test/p0_mobile_import_navigation_test.dart'
+      - 'frontend/test/p0_real_actions_contract_test.dart'
+      - 'frontend/test/ui_visual_language_contract_test.dart'
+      - 'frontend/test/ux11_action_parity_contract_test.dart'
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iamina_dashboard_cert
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d iamina_dashboard_cert"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: dashboard-cert-nonproduction
+      DEBUG: 'True'
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:7358,http://localhost:7358
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/iamina_dashboard_cert
+      FIREBASE_CREDENTIALS_PATH: ''
+      GEMINI_API_KEY: ''
+      IAMINA_CONVERSATION_NETWORK_AUTHORIZED: 'false'
+      CERT_EMAIL: dashboard-cert-${{ github.run_id }}-${{ github.run_attempt }}@example.invalid
+      CERT_PASSWORD: IAMINA-Dashboard-Cert-2026!Synthetic#42
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Prepare proof and audit Dashboard authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dashboard-global-cert
+          {
+            echo 'Canonical route:'
+            grep -n "DashboardCompanionEntryScreen" frontend/lib/modules/diabetes_module.dart
+            echo
+            echo 'Legacy references:'
+            if grep -RInE 'DashboardConvergentScreen|dashboard_convergent_screen' frontend/lib frontend/test; then
+              echo 'Legacy dashboard references remain.' >&2
+              exit 1
+            else
+              echo 'none'
+            fi
+          } | tee dashboard-global-cert/dashboard-authority.txt
+
+      - name: Start PostgreSQL-backed IAMINA backend
+        working-directory: backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          pip install -r requirements.txt
+          python manage.py migrate --noinput
+          python manage.py runserver 127.0.0.1:8000 >/tmp/iamina-dashboard-backend.log 2>&1 &
+          echo $! >/tmp/iamina-dashboard-backend.pid
+          for _ in $(seq 1 45); do
+            curl -fsS http://127.0.0.1:8000/api/docs >/dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          cat /tmp/iamina-dashboard-backend.log >&2 || true
+          exit 1
+
+      - name: Register and seed synthetic identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >/tmp/register.json
+          import json, os
+          print(json.dumps({'email':os.environ['CERT_EMAIL'],'password':os.environ['CERT_PASSWORD'],'first_name':'Dashboard','last_name':'Certification'}))
+          PY
+          curl -fsS -X POST http://127.0.0.1:8000/api/v1/auth/register -H 'Content-Type: application/json' --data-binary @/tmp/register.json > dashboard-global-cert/auth-register.json
+          python3 - <<'PY'
+          import json
+          p=json.load(open('dashboard-global-cert/auth-register.json'))
+          token=p.get('access_token','')
+          assert token.startswith('iamina.'), p
+          open('/tmp/iamina-dashboard-token','w').write(token)
+          PY
+          TOKEN="$(cat /tmp/iamina-dashboard-token)"
+          curl -fsS -X POST http://127.0.0.1:8000/api/v1/demo/seed -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}' > dashboard-global-cert/backend-demo-seed.json
+
+      - name: Probe Dashboard backend contracts independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(cat /tmp/iamina-dashboard-token)"
+          probe() {
+            name="$1"; method="$2"; url="$3"
+            code=$(curl -sS -o "dashboard-global-cert/${name}.json" -w '%{http_code}' -X "$method" -H "Authorization: Bearer $TOKEN" "$url")
+            printf '%s %s\n' "$name" "$code" | tee -a dashboard-global-cert/backend-statuses.txt
+          }
+          probe profile-locale GET http://127.0.0.1:8000/api/v1/profile/locale
+          probe account-modules GET http://127.0.0.1:8000/api/v1/account/modules
+          probe kpis GET 'http://127.0.0.1:8000/api/v1/kpis/?days=21&target_low=70&target_high=180'
+          probe companion-overview GET http://127.0.0.1:8000/api/v1/companion/overview
+          probe proactive-preview GET http://127.0.0.1:8000/api/v1/proactive-insights/preview/
+          probe next-action POST http://127.0.0.1:8000/api/v1/companion/next-action/evaluate/
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          statuses={}
+          for line in Path('dashboard-global-cert/backend-statuses.txt').read_text().splitlines():
+              name, code=line.split()
+              statuses[name]=int(code)
+          Path('dashboard-global-cert/backend-status-summary.json').write_text(json.dumps(statuses,indent=2))
+          bad={k:v for k,v in statuses.items() if not 200 <= v < 300}
+          assert not bad, f'non-2xx Dashboard contracts: {bad}'
+          for name in statuses:
+              p=Path('dashboard-global-cert')/f'{name}.json'
+              json.loads(p.read_text())
+          print(json.dumps(statuses,indent=2))
+          PY
+
+      - name: Validate governed CGM KPI authority on PostgreSQL
+        working-directory: backend
+        run: |
+          python manage.py test \
+            diabetes.tests.test_cgm_sufficiency_contract \
+            diabetes.tests.test_governed_cgm_promotion \
+            diabetes.tests.test_p1_evidence_runtime_authority \
+            --verbosity 2
+
+      - name: Validate canonical Dashboard frontend contracts
+        working-directory: frontend
+        run: |
+          flutter pub get
+          dart format lib/ui_dashboard_backend_cert_main.dart
+          flutter analyze --no-fatal-infos lib/ui_dashboard_backend_cert_main.dart
+          flutter test --no-pub \
+            test/dashboard_main_shell_auth_contract_test.dart \
+            test/features/dashboard_latest_reading_contract_test.dart \
+            test/features/dashboard_adaptive_kpi_contract_test.dart \
+            test/features/dashboard_trend_contract_test.dart \
+            test/features/dashboard_responsive_convergence_contract_test.dart \
+            test/companion_dashboard_entry_contract_test.dart \
+            test/p0_mobile_import_navigation_test.dart \
+            test/p0_real_actions_contract_test.dart \
+            test/ui_visual_language_contract_test.dart \
+            test/ux11_action_parity_contract_test.dart
+
+      - name: Build canonical Dashboard against isolated backend
+        working-directory: frontend
+        run: |
+          flutter build web --release --source-maps -t lib/ui_dashboard_backend_cert_main.dart --dart-define=API_BASE_URL=http://127.0.0.1:7358 --dart-define=IAMINA_CERT_EMAIL="$CERT_EMAIL" --dart-define=IAMINA_CERT_PASSWORD="$CERT_PASSWORD"
+          cp build/web/main.dart.js.map ../dashboard-global-cert/main.dart.js.map
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Capture mobile tablet desktop with real backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >/tmp/proxy.py <<'PY'
+          import http.client, http.server, os
+          from pathlib import Path
+          root=Path(os.environ['STATIC_ROOT'])
+          class H(http.server.SimpleHTTPRequestHandler):
+              def __init__(self,*a,**kw): super().__init__(*a,directory=str(root),**kw)
+              def proxy(self):
+                  n=int(self.headers.get('content-length','0')); body=self.rfile.read(n) if n else None
+                  headers={k:v for k,v in self.headers.items() if k.lower() not in {'host','content-length','connection'}}
+                  c=http.client.HTTPConnection('127.0.0.1',8000,timeout=45); c.request(self.command,self.path,body=body,headers=headers)
+                  r=c.getresponse(); data=r.read(); self.send_response(r.status)
+                  for k,v in r.getheaders():
+                      if k.lower() not in {'content-length','transfer-encoding','connection'}: self.send_header(k,v)
+                  self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data); c.close()
+              def do_GET(self): return self.proxy() if self.path.startswith('/api/') else super().do_GET()
+              def do_POST(self): return self.proxy() if self.path.startswith('/api/') else self.send_error(404)
+              def do_PATCH(self): return self.proxy() if self.path.startswith('/api/') else self.send_error(404)
+              def do_DELETE(self): return self.proxy() if self.path.startswith('/api/') else self.send_error(404)
+              def log_message(self,*a): pass
+          http.server.ThreadingHTTPServer(('127.0.0.1',7358),H).serve_forever()
+          PY
+          STATIC_ROOT="$GITHUB_WORKSPACE/frontend/build/web" python3 /tmp/proxy.py >/tmp/iamina-dashboard-proxy.log 2>&1 &
+          PROXY_PID=$!
+          trap 'kill $PROXY_PID 2>/dev/null || true; kill $(cat /tmp/iamina-dashboard-backend.pid) 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do curl -fsS http://127.0.0.1:7358/ >/dev/null && break; sleep 1; done
+          cat >dashboard-global-cert/capture.js <<'JS'
+          const { chromium } = require('playwright'); const fs=require('fs'); const path=require('path');
+          const reportPath='dashboard-global-cert/browser-report.json';
+          const persist=report=>fs.writeFileSync(reportPath,JSON.stringify(report,null,2));
+          const matrix=[['mobile',390,844],['tablet',768,1024],['desktop',1280,900]];
+          const minScreenshotBytes=15000;
+          (async()=>{const report={};
+          for(const [name,width,height] of matrix){
+            const browser=await chromium.launch({headless:true});
+            try {
+              const ctx=await browser.newContext({viewport:{width,height},deviceScaleFactor:1,locale:'fr-FR'}); const page=await ctx.newPage(); const errors=[]; const consoleErrors=[]; const api=[];
+              page.on('pageerror',e=>{errors.push({message:String(e),stack:e.stack||null}); report[name]={url:page.url(),errors,consoleErrors,api}; persist(report);});
+              page.on('console',m=>{if(m.type()==='error'){consoleErrors.push(m.text()); report[name]={url:page.url(),errors,consoleErrors,api}; persist(report);}});
+              page.on('response',r=>{if(r.url().includes('/api/')) api.push({url:r.url(),status:r.status()})});
+              const dashboardReady=page.waitForResponse(r=>r.url().includes('/api/v1/companion/overview') && r.status()>=200 && r.status()<300,{timeout:45000});
+              await page.goto('http://127.0.0.1:7358/',{waitUntil:'domcontentloaded',timeout:120000});
+              await dashboardReady; await page.waitForTimeout(2000);
+              const topPath=path.join('dashboard-global-cert',`${name}-top-${width}x${height}.png`); const top=await page.screenshot({path:topPath});
+              await page.mouse.wheel(0,Math.round(height*.7)); await page.waitForTimeout(1000); const midPath=path.join('dashboard-global-cert',`${name}-mid-${width}x${height}.png`); const mid=await page.screenshot({path:midPath});
+              await page.mouse.wheel(0,Math.round(height*.85)); await page.waitForTimeout(1000); const lowerPath=path.join('dashboard-global-cert',`${name}-lower-${width}x${height}.png`); const lower=await page.screenshot({path:lowerPath});
+              const screenshotBytes={top:top.length,mid:mid.length,lower:lower.length};
+              report[name]={url:page.url(),errors,consoleErrors,api,screenshotBytes}; persist(report);
+              if(errors.length) throw new Error(`${name}: ${errors.map(e=>`${e.message}\n${e.stack||''}`).join('\n---\n')}`);
+              if(api.some(x=>x.status>=500)) throw new Error(`${name}: backend 5xx`);
+              if(Object.values(screenshotBytes).some(bytes=>bytes<minScreenshotBytes)) throw new Error(`${name}: blank/suspicious capture ${JSON.stringify(screenshotBytes)}`);
+              await ctx.close();
+            } finally {
+              await browser.close();
+            }
+          }
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node dashboard-global-cert/capture.js
+
+      - name: Upload certification proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-dashboard-global-cert-v2
+          path: |
+            dashboard-global-cert/*
+            /tmp/iamina-dashboard-backend.log
+            /tmp/iamina-dashboard-proxy.log
+          if-no-files-found: warn
+          retention-days: 7
