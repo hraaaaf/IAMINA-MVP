@@ -173,4 +173,4 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-# recertification trigger: explicit Dashboard scroll controller
+# recertification trigger: explicit Dashboard scroll controller on exact branch head
