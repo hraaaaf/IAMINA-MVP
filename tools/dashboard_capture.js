@@ -55,19 +55,32 @@ const minScreenshotBytes = 15000;
       const topPath = path.join('dashboard-visual-cert', `${name}-top-${width}x${height}.png`);
       const top = await page.screenshot({ path: topPath });
 
-      // Keep the wheel over the non-interactive left edge of the Dashboard
-      // CustomScrollView. The trend chart itself owns pointer gestures.
-      const pointerX = width >= 1200 ? 300 : width >= 700 ? 100 : Math.round(width * 0.5);
-      const pointerY = 120;
-      await page.mouse.move(pointerX, pointerY);
-      await page.mouse.wheel(0, Math.round(height * 0.55));
-      await page.waitForTimeout(1000);
+      // Flutter Web owns scrolling inside its rendering surface. A browser
+      // wheel event is not a reliable proof that the Flutter Scrollable moved.
+      // Use Chrome's native synthesized touch gesture instead, starting over
+      // the non-interactive left padding of the Dashboard content.
+      const cdp = await page.context().newCDPSession(page);
+      const gestureX = width >= 700 ? 110 : 24;
+      const gestureY = Math.round(height * 0.72);
+      const gestureDistance = -Math.round(height * 0.55);
+      const scrollOnce = async () => {
+        await cdp.send('Input.synthesizeScrollGesture', {
+          x: gestureX,
+          y: gestureY,
+          xDistance: 0,
+          yDistance: gestureDistance,
+          speed: 1000,
+          preventFling: true,
+          gestureSourceType: 'touch',
+        });
+        await page.waitForTimeout(900);
+      };
+
+      await scrollOnce();
       const midPath = path.join('dashboard-visual-cert', `${name}-mid-${width}x${height}.png`);
       const mid = await page.screenshot({ path: midPath });
 
-      await page.mouse.move(pointerX, pointerY);
-      await page.mouse.wheel(0, Math.round(height * 0.55));
-      await page.waitForTimeout(1000);
+      await scrollOnce();
       const lowerPath = path.join('dashboard-visual-cert', `${name}-lower-${width}x${height}.png`);
       const lower = await page.screenshot({ path: lowerPath });
 
@@ -82,7 +95,13 @@ const minScreenshotBytes = 15000;
         errors,
         consoleErrors,
         api,
-        pointer: { x: pointerX, y: pointerY },
+        gesture: {
+          method: 'Input.synthesizeScrollGesture',
+          source: 'touch',
+          x: gestureX,
+          y: gestureY,
+          yDistance: gestureDistance,
+        },
         screenshotBytes,
         byteDuplicateCaptures,
       };
@@ -93,6 +112,7 @@ const minScreenshotBytes = 15000;
       if (Object.values(screenshotBytes).some((bytes) => bytes < minScreenshotBytes)) {
         throw new Error(`${name}: blank/suspicious capture ${JSON.stringify(screenshotBytes)}`);
       }
+      await cdp.detach();
       await ctx.close();
     } finally {
       await browser.close();
