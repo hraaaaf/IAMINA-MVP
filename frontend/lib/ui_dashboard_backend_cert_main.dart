@@ -21,6 +21,12 @@ import 'services/sync_service.dart';
 const String _certEmail = String.fromEnvironment('IAMINA_CERT_EMAIL');
 const String _certPassword = String.fromEnvironment('IAMINA_CERT_PASSWORD');
 
+double _certScrollOffsetFromUri() {
+  final parsed = double.tryParse(Uri.base.queryParameters['scroll'] ?? '') ?? 0;
+  if (!parsed.isFinite || parsed < 0) return 0;
+  return parsed;
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting();
@@ -42,8 +48,9 @@ Future<void> main() async {
   final modules = ModulesProvider(api);
   await modules.refresh();
   final companion = CompanionService(authService: auth);
-  final profile = await (db.select(db.patientProfiles)..limit(1))
-      .getSingleOrNull();
+  final profile = await (db.select(
+    db.patientProfiles,
+  )..limit(1)).getSingleOrNull();
   final consent = ConsentService()
     ..seedInitialProfile(profile)
     ..attachStream(db.watchProfile());
@@ -61,19 +68,63 @@ Future<void> main() async {
           create: (_) => db.watchProfile(),
           initialData: profile,
         ),
-        ChangeNotifierProvider<TweaksNotifier>(
-          create: (_) => TweaksNotifier(),
-        ),
+        ChangeNotifierProvider<TweaksNotifier>(create: (_) => TweaksNotifier()),
       ],
       child: _DashboardBackendCertApp(companion: companion),
     ),
   );
 }
 
-class _DashboardBackendCertApp extends StatelessWidget {
+class _DashboardBackendCertApp extends StatefulWidget {
   final CompanionService companion;
 
   const _DashboardBackendCertApp({required this.companion});
+
+  @override
+  State<_DashboardBackendCertApp> createState() =>
+      _DashboardBackendCertAppState();
+}
+
+class _DashboardBackendCertAppState extends State<_DashboardBackendCertApp> {
+  late final ScrollController _scrollController;
+  late final double _targetScrollOffset;
+  int _positionAttempts = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _targetScrollOffset = _certScrollOffsetFromUri();
+    _scrollController = ScrollController(
+      initialScrollOffset: _targetScrollOffset,
+      keepScrollOffset: false,
+      debugLabel: 'dashboard-cert-scroll',
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyCertScrollOffset());
+  }
+
+  void _applyCertScrollOffset() {
+    if (!mounted || _targetScrollOffset <= 0) return;
+
+    if (_scrollController.hasClients) {
+      final position = _scrollController.position;
+      final maxExtent = position.maxScrollExtent;
+      if (maxExtent >= _targetScrollOffset || _positionAttempts >= 30) {
+        _scrollController.jumpTo(
+          _targetScrollOffset.clamp(0.0, maxExtent).toDouble(),
+        );
+        return;
+      }
+    }
+
+    _positionAttempts += 1;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyCertScrollOffset());
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +137,8 @@ class _DashboardBackendCertApp extends StatelessWidget {
             GoRoute(
               path: '/dashboard',
               builder: (context, state) => DashboardCompanionEntryScreen(
-                companionService: companion,
+                companionService: widget.companion,
+                scrollController: _scrollController,
               ),
             ),
           ],

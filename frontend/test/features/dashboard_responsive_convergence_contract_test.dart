@@ -7,7 +7,10 @@ void main() {
     final module = File('lib/modules/diabetes_module.dart').readAsStringSync();
 
     expect(module, contains("path: '/dashboard'"));
-    expect(module, contains('builder: () => const DashboardCompanionEntryScreen()'));
+    expect(
+      module,
+      contains('builder: () => const DashboardCompanionEntryScreen()'),
+    );
     expect(module, isNot(contains('DashboardScreen()')));
     expect(module, isNot(contains("dashboard_screen.dart")));
     expect(module, isNot(contains('constraints.maxWidth < 700')));
@@ -40,5 +43,32 @@ void main() {
     expect(dashboard, contains('DashboardResponsiveSections('));
     expect(dashboard, contains('watchRecentLogs(limit: 1)'));
     expect(dashboard, isNot(contains('Duration(days: 21)')));
+  });
+
+  test('Visual cert sets deterministic scroll without a production UI fork', () {
+    final module = File('lib/modules/diabetes_module.dart').readAsStringSync();
+    final dashboard = File(
+      'lib/features/dashboard/dashboard_premium_screen.dart',
+    ).readAsStringSync();
+    final entry = File(
+      'lib/features/dashboard/dashboard_companion_entry_screen.dart',
+    ).readAsStringSync();
+    final cert = File('lib/ui_dashboard_backend_cert_main.dart').readAsStringSync();
+
+    expect(module, contains('const DashboardCompanionEntryScreen()'));
+    expect(dashboard, isNot(contains('dashboard-cert-scroll')));
+    expect(cert, contains("Uri.base.queryParameters['scroll']"));
+    expect(cert, contains('_targetScrollOffset = _certScrollOffsetFromUri()'));
+    expect(cert, contains('initialScrollOffset: _targetScrollOffset'));
+    expect(cert, contains('_scrollController.hasClients'));
+    expect(cert, contains('position.maxScrollExtent'));
+    expect(cert, contains('_scrollController.jumpTo('));
+    expect(cert, contains('keepScrollOffset: false'));
+    expect(cert, contains("debugLabel: 'dashboard-cert-scroll'"));
+    expect(cert, contains('scrollController: _scrollController'));
+    expect(cert, contains('_scrollController.dispose();'));
+    expect(cert, isNot(contains('PrimaryScrollController(')));
+    expect(entry, contains('scrollController: scrollController'));
+    expect(dashboard, contains('controller: scrollController'));
   });
 }

@@ -132,6 +132,34 @@ jobs:
           trap 'kill $PROXY_PID 2>/dev/null || true; kill $(cat /tmp/iamina-dashboard-backend.pid) 2>/dev/null || true' EXIT
           for _ in $(seq 1 30); do curl -fsS http://127.0.0.1:7358/ >/dev/null && break; sleep 1; done
           node tools/dashboard_capture.js
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image, ImageChops
+
+          root = Path('dashboard-visual-cert')
+          report_path = root / 'browser-report.json'
+          report = json.loads(report_path.read_text())
+          sizes = {'mobile': '390x844', 'tablet': '768x1024', 'desktop': '1280x900'}
+          failures = []
+          for name, size in sizes.items():
+              images = {
+                  pos: Image.open(root / f'{name}-{pos}-{size}.png').convert('RGB')
+                  for pos in ('top', 'mid', 'lower')
+              }
+              pixel_dups = {
+                  'topMid': ImageChops.difference(images['top'], images['mid']).getbbox() is None,
+                  'midLower': ImageChops.difference(images['mid'], images['lower']).getbbox() is None,
+                  'topLower': ImageChops.difference(images['top'], images['lower']).getbbox() is None,
+              }
+              report[name]['pixelDuplicateCaptures'] = pixel_dups
+              if any(pixel_dups.values()):
+                  failures.append(f'{name}: {pixel_dups}')
+          report_path.write_text(json.dumps(report, indent=2))
+          if failures:
+              raise SystemExit('pixel-identical responsive captures: ' + '; '.join(failures))
+          print('9/9 responsive captures are pixel-distinct')
+          PY
 
       - name: Upload visual proof
         if: always()
