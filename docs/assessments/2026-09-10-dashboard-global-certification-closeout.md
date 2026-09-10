@@ -43,6 +43,10 @@ Observed AFTER captures were reviewed at the same three target viewports. Hierar
 
 Legacy/temporary workflow names `dashboard-global-cert.yml` and `dashboard-trend-locale-fix.yml` are absent from the audited branch. The maintained regression gates are `dashboard-global-cert-v2.yml` and `dashboard-responsive-visual-cert.yml`.
 
+## Roadmap arithmetic
+
+This certification is Dashboard engineering maintenance over an already-closed Dashboard workstream. It does **not** add a P5 closed lot and does not change the canonical `32/38` MENA arithmetic or `2/9` Pilot Readiness arithmetic by itself.
+
 ## Residual boundaries
 
 - No Vercel deployment is authorized or performed by this closeout.
