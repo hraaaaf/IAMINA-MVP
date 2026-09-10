@@ -72,8 +72,13 @@ String _latestReadingTimestampLabel(
 
 class DashboardPremiumScreen extends StatelessWidget {
   final CompanionService? companionService;
+  final ScrollController? scrollController;
 
-  const DashboardPremiumScreen({super.key, this.companionService});
+  const DashboardPremiumScreen({
+    super.key,
+    this.companionService,
+    this.scrollController,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -135,6 +140,7 @@ class DashboardPremiumScreen extends StatelessWidget {
               low: low,
               high: high,
               companionService: companionService,
+              scrollController: scrollController,
             );
           },
         );
@@ -149,6 +155,7 @@ class _DashboardBody extends StatelessWidget {
   final double? low;
   final double? high;
   final CompanionService? companionService;
+  final ScrollController? scrollController;
 
   const _DashboardBody({
     required this.logs,
@@ -156,6 +163,7 @@ class _DashboardBody extends StatelessWidget {
     required this.low,
     required this.high,
     required this.companionService,
+    required this.scrollController,
   });
 
   String _display(double mg) =>
@@ -194,6 +202,7 @@ class _DashboardBody extends StatelessWidget {
                     ? 32.0
                     : 20.0;
                 return CustomScrollView(
+                  controller: scrollController,
                   physics: const BouncingScrollPhysics(),
                   slivers: [
                     SliverPadding(
