@@ -50,21 +50,21 @@ void main() {
     final dashboard = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
     ).readAsStringSync();
+    final entry = File(
+      'lib/features/dashboard/dashboard_companion_entry_screen.dart',
+    ).readAsStringSync();
     final cert = File('lib/ui_dashboard_backend_cert_main.dart').readAsStringSync();
 
     expect(module, contains('const DashboardCompanionEntryScreen()'));
     expect(dashboard, isNot(contains('dashboard-cert-scroll')));
     expect(cert, contains("Uri.base.queryParameters['scroll']"));
-    expect(cert, contains('PrimaryScrollController('));
-    expect(
-      cert,
-      contains(
-        'automaticallyInheritForPlatforms: TargetPlatform.values.toSet()',
-      ),
-    );
     expect(cert, contains('initialScrollOffset: _certScrollOffsetFromUri()'));
     expect(cert, contains('keepScrollOffset: false'));
     expect(cert, contains("debugLabel: 'dashboard-cert-scroll'"));
+    expect(cert, contains('scrollController: _scrollController'));
     expect(cert, contains('_scrollController.dispose();'));
+    expect(cert, isNot(contains('PrimaryScrollController(')));
+    expect(entry, contains('scrollController: scrollController'));
+    expect(dashboard, contains('controller: scrollController'));
   });
 }
