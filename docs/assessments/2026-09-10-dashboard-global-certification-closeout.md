@@ -2,7 +2,7 @@
 
 ## Status
 
-**BRANCH ENGINEERING CERTIFIED.** This document records synthetic/non-patient engineering evidence only. It is not a real-patient, clinical-human, regulatory, CNDP or deployment approval.
+**BRANCH ENGINEERING CERTIFICATION IN PROGRESS.** Backend, isolated-PostgreSQL, canonical-authority and bounded clinical-KPI engineering evidence are retained. Final responsive visual certification remains open until three genuinely pixel-distinct captures are proven for each target viewport. This document records synthetic/non-patient engineering evidence only. It is not a real-patient, clinical-human, regulatory, CNDP or deployment approval.
 
 ## Goal
 
@@ -11,7 +11,7 @@ Converge IAMINA on one canonical Dashboard implementation and certify its respon
 ## Success criteria
 
 1. One production Dashboard authority; legacy `DashboardConvergentScreen` absent from runtime/tests.
-2. Responsive evidence at 390×844, 768×1024 and 1280×900.
+2. Responsive evidence at 390×844, 768×1024 and 1280×900, with `top`, `mid` and `lower` captures proven pixel-distinct for every viewport.
 3. Real Django backend against isolated PostgreSQL 16 with synthetic non-patient data.
 4. Dashboard API contracts return successfully during browser certification.
 5. Episodic glucose rows cannot be promoted to governed continuous-CGM metrics without verified coverage/provenance.
@@ -20,16 +20,16 @@ Converge IAMINA on one canonical Dashboard implementation and certify its respon
 ## Retained proof
 
 - Audited branch: `audit/dashboard-global-cert-20260909`.
-- Certified branch HEAD before closeout docs: `a19883da787b8a7439ff3baeef44fcd9df7e67b9`.
-- Dashboard global certification run: `34463040563` — **SUCCESS**.
-- Visual proof: 9 distinct screenshots, three each for mobile/tablet/desktop (`top`, `mid`, `lower`); retained report records distinct SHA-256 hashes and `duplicateCaptures=false`.
-- Browser proof: no `pageerror`, no console error, no observed API response >=500.
-- Runtime proof: Django backend + ephemeral PostgreSQL 16 service; synthetic identity/data only; no Supabase.
-- Browser/API probes exercised profile locale, account modules, KPI, Companion overview, proactive-insight preview and next-action evaluation paths.
+- Backend/clinical/browser baseline head: `a19883da787b8a7439ff3baeef44fcd9df7e67b9`.
+- Dashboard responsive visual run `34463040563` — workflow **SUCCESS**, but its byte-level duplicate check was insufficient: decoded-pixel review showed mobile `top/mid/lower` distinct while tablet and desktop `top/mid/lower` were pixel-identical. This run is therefore **not accepted as final responsive visual proof**.
+- Corrective visual-cert head: `f6c92c01c09c800374065f21bebbaff04b593d94`.
+- Corrective run: `34474871142` — final result pending at this document revision.
+- Corrective harness moves wheel input away from the interactive trend-chart region and adds decoded-pixel duplicate rejection with Pillow.
+- Runtime proof already retained: Django backend + ephemeral PostgreSQL 16 service; synthetic identity/data only; no Supabase.
 - Canonical Dashboard route resolves through `DashboardCompanionEntryScreen` to `DashboardPremiumScreen`.
 - `frontend/lib/features/dashboard/dashboard_convergent_screen.dart` removed.
 - Dashboard tests cover latest-reading truthfulness, future-date fail-closed behavior, configured-target behavior, recorded-data KPI semantics, CGM coverage gating, trend factuality, responsive composition, action parity and navigation contracts.
-- Backend governed-CGM promotion tests were extended to protect the advanced-metric authority boundary.
+- Backend governed-CGM promotion tests protect the advanced-metric authority boundary.
 
 ## Clinical truthfulness boundary
 
@@ -37,7 +37,7 @@ The Dashboard distinguishes recorded episodic readings from continuous-CGM metri
 
 ## Visual assessment
 
-Observed AFTER captures were reviewed at the same three target viewports. Hierarchy, density, responsive bounds and clinical labeling were coherent across the retained evidence. Expert visual score recorded for this closeout: **9.3/10** (mobile 9.2, tablet 9.1, desktop 9.5). This score is a visual engineering assessment, not a clinical or regulatory score.
+Final visual score is **not assigned yet**. The prior 9.3/10 score is withdrawn because tablet and desktop scrolling evidence was not actually distinct at decoded-pixel level. A new score may be recorded only after run `34474871142` or a later corrective run proves three distinct visual positions for all three target viewports and those nine captures are manually inspected.
 
 ## Cleanup verification
 
@@ -55,4 +55,4 @@ This certification is Dashboard engineering maintenance over an already-closed D
 
 ## Closeout condition
 
-This branch-level certification becomes repository closeout only after PR review/CI, merge to `main`, and post-merge verification of the merged SHA and absence of legacy Dashboard references.
+This branch-level certification becomes repository closeout only after final responsive visual proof, manual review of all nine captures, PR review/CI, merge to `main`, and post-merge verification of the merged SHA and absence of legacy Dashboard references.
