@@ -87,15 +87,37 @@ class _DashboardBackendCertApp extends StatefulWidget {
 
 class _DashboardBackendCertAppState extends State<_DashboardBackendCertApp> {
   late final ScrollController _scrollController;
+  late final double _targetScrollOffset;
+  int _positionAttempts = 0;
 
   @override
   void initState() {
     super.initState();
+    _targetScrollOffset = _certScrollOffsetFromUri();
     _scrollController = ScrollController(
-      initialScrollOffset: _certScrollOffsetFromUri(),
+      initialScrollOffset: _targetScrollOffset,
       keepScrollOffset: false,
       debugLabel: 'dashboard-cert-scroll',
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyCertScrollOffset());
+  }
+
+  void _applyCertScrollOffset() {
+    if (!mounted || _targetScrollOffset <= 0) return;
+
+    if (_scrollController.hasClients) {
+      final position = _scrollController.position;
+      final maxExtent = position.maxScrollExtent;
+      if (maxExtent >= _targetScrollOffset || _positionAttempts >= 30) {
+        _scrollController.jumpTo(
+          _targetScrollOffset.clamp(0.0, maxExtent).toDouble(),
+        );
+        return;
+      }
+    }
+
+    _positionAttempts += 1;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyCertScrollOffset());
   }
 
   @override
