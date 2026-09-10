@@ -14,6 +14,8 @@ on:
       - 'backend/diabetes/tests/test_p1_evidence_runtime_authority.py'
       - 'frontend/lib/ui_dashboard_backend_cert_main.dart'
       - 'frontend/lib/features/dashboard/**'
+      - 'frontend/lib/features/navigation/main_shell.dart'
+      - 'frontend/test/dashboard_main_shell_auth_contract_test.dart'
       - 'frontend/test/features/dashboard_latest_reading_contract_test.dart'
       - 'frontend/test/features/dashboard_trend_contract_test.dart'
       - 'frontend/test/companion_dashboard_entry_contract_test.dart'
@@ -169,6 +171,7 @@ jobs:
           dart format lib/ui_dashboard_backend_cert_main.dart
           flutter analyze --no-fatal-infos lib/ui_dashboard_backend_cert_main.dart
           flutter test --no-pub \
+            test/dashboard_main_shell_auth_contract_test.dart \
             test/features/dashboard_latest_reading_contract_test.dart \
             test/features/dashboard_adaptive_kpi_contract_test.dart \
             test/features/dashboard_trend_contract_test.dart \
