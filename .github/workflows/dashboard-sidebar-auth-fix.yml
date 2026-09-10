@@ -1,0 +1,56 @@
+name: Dashboard sidebar auth fix
+
+on:
+  push:
+    branches: [audit/dashboard-global-cert-20260909]
+    paths:
+      - '.github/workflows/dashboard-sidebar-auth-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/dashboard-global-cert-20260909
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Remove direct Firebase dependency from adaptive sidebar
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('frontend/lib/features/navigation/main_shell.dart')
+          s=p.read_text()
+          old="import 'package:firebase_auth/firebase_auth.dart';\n"
+          assert old in s, 'Firebase import not found'
+          s=s.replace(old,'')
+          old_line='    final user = FirebaseAuth.instance.currentUser;'
+          new_line='    final user = context.watch<AuthService>().firebaseUser;'
+          assert old_line in s, 'direct FirebaseAuth sidebar access not found'
+          s=s.replace(old_line,new_line)
+          p.write_text(s)
+
+          t=Path('frontend/test/dashboard_main_shell_auth_contract_test.dart')
+          t.write_text("""import 'dart:io';\n\nimport 'package:flutter_test/flutter_test.dart';\n\nvoid main() {\n  test('adaptive sidebar uses injected AuthService instead of raw FirebaseAuth', () {\n    final source = File('lib/features/navigation/main_shell.dart').readAsStringSync();\n    expect(source, contains('context.watch<AuthService>().firebaseUser'));\n    expect(source, isNot(contains('FirebaseAuth.instance.currentUser')));\n    expect(source, isNot(contains(\"package:firebase_auth/firebase_auth.dart\")));\n  });\n}\n""")
+          PY
+          cd frontend
+          dart format lib/features/navigation/main_shell.dart test/dashboard_main_shell_auth_contract_test.dart
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/features/navigation/main_shell.dart
+          flutter test --no-pub test/dashboard_main_shell_auth_contract_test.dart test/features/dashboard_responsive_convergence_contract_test.dart
+          cd ..
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/lib/features/navigation/main_shell.dart frontend/test/dashboard_main_shell_auth_contract_test.dart
+          git diff --cached --check
+          git commit -m 'fix: keep adaptive sidebar on injected auth authority'
+          git push origin HEAD:audit/dashboard-global-cert-20260909
