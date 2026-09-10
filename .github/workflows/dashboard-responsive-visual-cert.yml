@@ -3,7 +3,7 @@ name: Dashboard responsive visual certification
 on:
   workflow_dispatch:
   push:
-    branches: [audit/dashboard-global-cert-20260909]
+    branches: [main]
     paths:
       - '.github/workflows/dashboard-responsive-visual-cert.yml'
       - 'tools/dashboard_capture.js'

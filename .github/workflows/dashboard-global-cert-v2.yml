@@ -3,7 +3,7 @@ name: Dashboard global certification v2
 on:
   workflow_dispatch:
   push:
-    branches: [audit/dashboard-global-cert-20260909]
+    branches: [main]
     paths:
       - '.github/workflows/dashboard-global-cert-v2.yml'
       - 'backend/diabetes/api/v1/kpis.py'
