@@ -23,34 +23,32 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('.github/workflows/dashboard-global-cert-v2.yml')
-          s=p.read_text()
-          old="""              const topPath=path.join('dashboard-global-cert',`${name}-top-${width}x${height}.png`); const top=await page.screenshot({path:topPath});
-              await page.mouse.wheel(0,Math.round(height*.7)); await page.waitForTimeout(1000); const midPath=path.join('dashboard-global-cert',`${name}-mid-${width}x${height}.png`); const mid=await page.screenshot({path:midPath});
-              await page.mouse.wheel(0,Math.round(height*.85)); await page.waitForTimeout(1000); const lowerPath=path.join('dashboard-global-cert',`${name}-lower-${width}x${height}.png`); const lower=await page.screenshot({path:lowerPath});
-              const screenshotBytes={top:top.length,mid:mid.length,lower:lower.length};
-              report[name]={url:page.url(),errors,consoleErrors,api,screenshotBytes}; persist(report);
-"""
-          new="""              const topPath=path.join('dashboard-global-cert',`${name}-top-${width}x${height}.png`); const top=await page.screenshot({path:topPath});
-              await page.mouse.move(Math.max(320,Math.round(width*.62)),Math.round(height*.55));
-              await page.mouse.wheel(0,Math.round(height*.35)); await page.waitForTimeout(1000); const midPath=path.join('dashboard-global-cert',`${name}-mid-${width}x${height}.png`); const mid=await page.screenshot({path:midPath});
-              await page.mouse.wheel(0,Math.round(height*.35)); await page.waitForTimeout(1000); const lowerPath=path.join('dashboard-global-cert',`${name}-lower-${width}x${height}.png`); const lower=await page.screenshot({path:lowerPath});
-              const screenshotBytes={top:top.length,mid:mid.length,lower:lower.length};
-              const duplicateCaptures={topMid:top.equals(mid),midLower:mid.equals(lower),topLower:top.equals(lower)};
-              report[name]={url:page.url(),errors,consoleErrors,api,screenshotBytes,duplicateCaptures}; persist(report);
-"""
-          assert old in s, 'capture scroll block not found'
-          s=s.replace(old,new,1)
-          old2="""              if(Object.values(screenshotBytes).some(bytes=>bytes<minScreenshotBytes)) throw new Error(`${name}: blank/suspicious capture ${JSON.stringify(screenshotBytes)}`);
-"""
-          new2="""              if(Object.values(screenshotBytes).some(bytes=>bytes<minScreenshotBytes)) throw new Error(`${name}: blank/suspicious capture ${JSON.stringify(screenshotBytes)}`);
-              if(Object.values(duplicateCaptures).some(Boolean)) throw new Error(`${name}: duplicate viewport captures ${JSON.stringify(duplicateCaptures)}`);
-"""
-          assert old2 in s, 'capture validation block not found'
-          s=s.replace(old2,new2,1)
+          p = Path('.github/workflows/dashboard-global-cert-v2.yml')
+          s = p.read_text()
+
+          old = "              await page.mouse.wheel(0,Math.round(height*.7)); await page.waitForTimeout(1000); const midPath=path.join('dashboard-global-cert',`${name}-mid-${width}x${height}.png`); const mid=await page.screenshot({path:midPath});"
+          new = "              await page.mouse.move(Math.max(320,Math.round(width*.62)),Math.round(height*.55));\n              await page.mouse.wheel(0,Math.round(height*.35)); await page.waitForTimeout(1000); const midPath=path.join('dashboard-global-cert',`${name}-mid-${width}x${height}.png`); const mid=await page.screenshot({path:midPath});"
+          assert s.count(old) == 1, 'first scroll line not found exactly once'
+          s = s.replace(old, new, 1)
+
+          old = "              await page.mouse.wheel(0,Math.round(height*.85)); await page.waitForTimeout(1000); const lowerPath=path.join('dashboard-global-cert',`${name}-lower-${width}x${height}.png`); const lower=await page.screenshot({path:lowerPath});"
+          new = "              await page.mouse.wheel(0,Math.round(height*.35)); await page.waitForTimeout(1000); const lowerPath=path.join('dashboard-global-cert',`${name}-lower-${width}x${height}.png`); const lower=await page.screenshot({path:lowerPath});"
+          assert s.count(old) == 1, 'second scroll line not found exactly once'
+          s = s.replace(old, new, 1)
+
+          old = "              const screenshotBytes={top:top.length,mid:mid.length,lower:lower.length};\n              report[name]={url:page.url(),errors,consoleErrors,api,screenshotBytes}; persist(report);"
+          new = "              const screenshotBytes={top:top.length,mid:mid.length,lower:lower.length};\n              const duplicateCaptures={topMid:top.equals(mid),midLower:mid.equals(lower),topLower:top.equals(lower)};\n              report[name]={url:page.url(),errors,consoleErrors,api,screenshotBytes,duplicateCaptures}; persist(report);"
+          assert s.count(old) == 1, 'report block not found exactly once'
+          s = s.replace(old, new, 1)
+
+          old = "              if(Object.values(screenshotBytes).some(bytes=>bytes<minScreenshotBytes)) throw new Error(`${name}: blank/suspicious capture ${JSON.stringify(screenshotBytes)}`);"
+          new = old + "\n              if(Object.values(duplicateCaptures).some(Boolean)) throw new Error(`${name}: duplicate viewport captures ${JSON.stringify(duplicateCaptures)}`);"
+          assert s.count(old) == 1, 'capture validation line not found exactly once'
+          s = s.replace(old, new, 1)
+
           p.write_text(s)
-          assert "page.mouse.move(Math.max(320" in s
-          assert "duplicateCaptures" in s
+          assert 'page.mouse.move(Math.max(320' in s
+          assert 'duplicateCaptures' in s
           PY
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
