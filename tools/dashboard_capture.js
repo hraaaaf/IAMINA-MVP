@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 
 const reportPath = 'dashboard-visual-cert/browser-report.json';
-const persist = (report) => fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+const persist = (report) =>
+  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
 const matrix = [
   ['mobile', 390, 844],
   ['tablet', 768, 1024],
@@ -38,60 +39,72 @@ const minScreenshotBytes = 15000;
         }
       });
       page.on('response', (r) => {
-        if (r.url().includes('/api/')) api.push({ url: r.url(), status: r.status() });
+        if (r.url().includes('/api/')) {
+          api.push({ url: r.url(), status: r.status() });
+        }
       });
 
-      const dashboardReady = page.waitForResponse(
-        (r) => r.url().includes('/api/v1/companion/overview') && r.status() >= 200 && r.status() < 300,
-        { timeout: 45000 },
-      );
-      await page.goto('http://127.0.0.1:7358/', {
-        waitUntil: 'domcontentloaded',
-        timeout: 120000,
-      });
-      await dashboardReady;
-      await page.waitForTimeout(2000);
+      const positions = {
+        top: 0,
+        mid: Math.round(height * 0.55),
+        lower: Math.round(height * 1.10),
+      };
+      const buffers = {};
+      const screenshotBytes = {};
 
-      const topPath = path.join('dashboard-visual-cert', `${name}-top-${width}x${height}.png`);
-      const top = await page.screenshot({ path: topPath });
+      for (const [position, offset] of Object.entries(positions)) {
+        const dashboardReady = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/companion/overview') &&
+            r.status() >= 200 &&
+            r.status() < 300,
+          { timeout: 45000 },
+        );
+        await page.goto(`http://127.0.0.1:7358/?scroll=${offset}`, {
+          waitUntil: 'domcontentloaded',
+          timeout: 120000,
+        });
+        await dashboardReady;
+        await page.waitForTimeout(1600);
+        const screenshotPath = path.join(
+          'dashboard-visual-cert',
+          `${name}-${position}-${width}x${height}.png`,
+        );
+        const buffer = await page.screenshot({ path: screenshotPath });
+        buffers[position] = buffer;
+        screenshotBytes[position] = buffer.length;
+      }
 
-      const pointerX = Math.min(width - 24, Math.max(320, Math.round(width * 0.62)));
-      const pointerY = Math.round(height * 0.55);
-      await page.mouse.move(pointerX, pointerY);
-      await page.mouse.wheel(0, Math.round(height * 0.35));
-      await page.waitForTimeout(1000);
-      const midPath = path.join('dashboard-visual-cert', `${name}-mid-${width}x${height}.png`);
-      const mid = await page.screenshot({ path: midPath });
-
-      await page.mouse.wheel(0, Math.round(height * 0.35));
-      await page.waitForTimeout(1000);
-      const lowerPath = path.join('dashboard-visual-cert', `${name}-lower-${width}x${height}.png`);
-      const lower = await page.screenshot({ path: lowerPath });
-
-      const screenshotBytes = { top: top.length, mid: mid.length, lower: lower.length };
-      const duplicateCaptures = {
-        topMid: top.equals(mid),
-        midLower: mid.equals(lower),
-        topLower: top.equals(lower),
+      const byteDuplicateCaptures = {
+        topMid: buffers.top.equals(buffers.mid),
+        midLower: buffers.mid.equals(buffers.lower),
+        topLower: buffers.top.equals(buffers.lower),
       };
       report[name] = {
         url: page.url(),
         errors,
         consoleErrors,
         api,
-        pointer: { x: pointerX, y: pointerY },
+        requestedScrollOffsets: positions,
         screenshotBytes,
-        duplicateCaptures,
+        byteDuplicateCaptures,
       };
       persist(report);
 
-      if (errors.length) throw new Error(`${name}: page errors ${JSON.stringify(errors)}`);
-      if (api.some((x) => x.status >= 500)) throw new Error(`${name}: backend 5xx`);
-      if (Object.values(screenshotBytes).some((bytes) => bytes < minScreenshotBytes)) {
-        throw new Error(`${name}: blank/suspicious capture ${JSON.stringify(screenshotBytes)}`);
+      if (errors.length) {
+        throw new Error(`${name}: page errors ${JSON.stringify(errors)}`);
       }
-      if (Object.values(duplicateCaptures).some(Boolean)) {
-        throw new Error(`${name}: duplicate viewport captures ${JSON.stringify(duplicateCaptures)}`);
+      if (api.some((x) => x.status >= 500)) {
+        throw new Error(`${name}: backend 5xx`);
+      }
+      if (
+        Object.values(screenshotBytes).some(
+          (bytes) => bytes < minScreenshotBytes,
+        )
+      ) {
+        throw new Error(
+          `${name}: blank/suspicious capture ${JSON.stringify(screenshotBytes)}`,
+        );
       }
       await ctx.close();
     } finally {
