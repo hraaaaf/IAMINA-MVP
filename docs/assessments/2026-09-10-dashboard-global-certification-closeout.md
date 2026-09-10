@@ -2,7 +2,7 @@
 
 ## Status
 
-**BRANCH ENGINEERING CERTIFIED.** This document records synthetic/non-patient engineering evidence only. It is not a real-patient, clinical-human, regulatory, CNDP or deployment approval.
+**ENGINEERING CERTIFICATION PARTIALLY RETAINED; FINAL RESPONSIVE VISUAL PROOF OPEN.** Backend, isolated-PostgreSQL, canonical-authority and bounded clinical-KPI evidence remain retained. Final responsive visual certification is open until `top`, `mid` and `lower` are proven pixel-distinct for each target viewport and the nine images are manually reviewed. This document records synthetic/non-patient engineering evidence only. It is not a real-patient, clinical-human, regulatory, CNDP or deployment approval.
 
 ## Goal
 
@@ -11,7 +11,7 @@ Converge IAMINA on one canonical Dashboard implementation and certify its respon
 ## Success criteria
 
 1. One production Dashboard authority; legacy `DashboardConvergentScreen` absent from runtime/tests.
-2. Responsive evidence at 390×844, 768×1024 and 1280×900.
+2. Responsive evidence at 390×844, 768×1024 and 1280×900, with `top`, `mid` and `lower` captures proven pixel-distinct for every viewport.
 3. Real Django backend against isolated PostgreSQL 16 with synthetic non-patient data.
 4. Dashboard API contracts return successfully during browser certification.
 5. Episodic glucose rows cannot be promoted to governed continuous-CGM metrics without verified coverage/provenance.
@@ -19,17 +19,19 @@ Converge IAMINA on one canonical Dashboard implementation and certify its respon
 
 ## Retained proof
 
-- Audited branch: `audit/dashboard-global-cert-20260909`.
-- Certified branch HEAD before closeout docs: `a19883da787b8a7439ff3baeef44fcd9df7e67b9`.
-- Dashboard global certification run: `34463040563` — **SUCCESS**.
-- Visual proof: 9 distinct screenshots, three each for mobile/tablet/desktop (`top`, `mid`, `lower`); retained report records distinct SHA-256 hashes and `duplicateCaptures=false`.
-- Browser proof: no `pageerror`, no console error, no observed API response >=500.
-- Runtime proof: Django backend + ephemeral PostgreSQL 16 service; synthetic identity/data only; no Supabase.
-- Browser/API probes exercised profile locale, account modules, KPI, Companion overview, proactive-insight preview and next-action evaluation paths.
+- Original engineering PR: #547, merge `32e04d3de707257a1a08ff28bf6978c4a0e92bfd`.
+- Dashboard global backend/clinical certification remains retained from the isolated Django + PostgreSQL 16 runs and governed-CGM tests merged in PR #547.
+- Responsive visual run `34463040563` reported workflow **SUCCESS**, but decoded-pixel review later showed the tablet and desktop `top/mid/lower` captures were visually identical. File-level differences were therefore insufficient evidence. This run is **not accepted as final responsive visual proof**.
+- Hardened run `34474871142` correctly failed because decoded-pixel comparison found `top/mid/lower` identical on all three viewports. Backend, responsive contracts and web build had passed before the capture gate.
+- Chromium-touch run `34480403704` also correctly failed the same decoded-pixel gate, showing that synthetic wheel/touch gestures were not a reliable way to drive the Flutter `CustomScrollView` in this harness.
+- Current corrective strategy uses a certification-only `PrimaryScrollController` with deterministic initial offsets from the URL; normal production Dashboard construction remains unchanged.
+- Current deterministic certification head under test: `e0501cc02c880941dfd757f62d36394cd256c367`.
+- Current responsive visual run: `34481354919` — pending at this document revision.
+- Runtime proof already retained: Django backend + ephemeral PostgreSQL 16 service; synthetic identity/data only; no Supabase.
 - Canonical Dashboard route resolves through `DashboardCompanionEntryScreen` to `DashboardPremiumScreen`.
-- `frontend/lib/features/dashboard/dashboard_convergent_screen.dart` removed.
+- `frontend/lib/features/dashboard/dashboard_convergent_screen.dart` is removed.
 - Dashboard tests cover latest-reading truthfulness, future-date fail-closed behavior, configured-target behavior, recorded-data KPI semantics, CGM coverage gating, trend factuality, responsive composition, action parity and navigation contracts.
-- Backend governed-CGM promotion tests were extended to protect the advanced-metric authority boundary.
+- Backend governed-CGM promotion tests protect the advanced-metric authority boundary.
 
 ## Clinical truthfulness boundary
 
@@ -37,15 +39,15 @@ The Dashboard distinguishes recorded episodic readings from continuous-CGM metri
 
 ## Visual assessment
 
-Observed AFTER captures were reviewed at the same three target viewports. Hierarchy, density, responsive bounds and clinical labeling were coherent across the retained evidence. Expert visual score recorded for this closeout: **9.3/10** (mobile 9.2, tablet 9.1, desktop 9.5). This score is a visual engineering assessment, not a clinical or regulatory score.
+Final visual score is **not assigned yet**. The prior 9.3/10 score is withdrawn because the retained responsive scrolling evidence was not actually distinct at decoded-pixel level. A new score may be recorded only after a corrective run proves three distinct positions for all three target viewports and those nine captures are manually inspected.
 
 ## Cleanup verification
 
-Legacy/temporary workflow names `dashboard-global-cert.yml` and `dashboard-trend-locale-fix.yml` are absent from the audited branch. The maintained regression gates are `dashboard-global-cert-v2.yml` and `dashboard-responsive-visual-cert.yml`.
+Legacy/temporary workflow names `dashboard-global-cert.yml` and `dashboard-trend-locale-fix.yml` are absent from the merged Dashboard work. The maintained regression gates are `dashboard-global-cert-v2.yml` and `dashboard-responsive-visual-cert.yml`.
 
 ## Roadmap arithmetic
 
-This certification is Dashboard engineering maintenance over an already-closed Dashboard workstream. It does **not** add a P5 closed lot and does not change the canonical `32/38` MENA arithmetic or `2/9` Pilot Readiness arithmetic by itself.
+This certification is Dashboard engineering maintenance over an already-closed Dashboard workstream. It does **not** add a P5 closed lot and does not change the canonical MENA or Pilot Readiness arithmetic by itself.
 
 ## Residual boundaries
 
@@ -55,4 +57,4 @@ This certification is Dashboard engineering maintenance over an already-closed D
 
 ## Closeout condition
 
-This branch-level certification becomes repository closeout only after PR review/CI, merge to `main`, and post-merge verification of the merged SHA and absence of legacy Dashboard references.
+Repository closeout requires final responsive visual proof, manual review of all nine captures, corrective PR/CI, merge to `main`, and post-merge verification of the merged SHA and absence of legacy Dashboard references.
