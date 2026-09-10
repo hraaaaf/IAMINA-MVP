@@ -82,10 +82,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "CERT_EMAIL=dashboard-visual-${GITHUB_RUN_ID}@example.invalid" >> "$GITHUB_ENV"
-          echo "CERT_PASSWORD=DashboardVisual${GITHUB_RUN_ID}!Aa" >> "$GITHUB_ENV"
           EMAIL="dashboard-visual-${GITHUB_RUN_ID}@example.invalid"
-          PASSWORD="DashboardVisual${GITHUB_RUN_ID}!Aa"
+          PASSWORD='IAMINA-Dashboard-Cert-2026!Synthetic#42'
+          echo "CERT_EMAIL=$EMAIL" >> "$GITHUB_ENV"
+          echo "CERT_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
           python3 - "$EMAIL" "$PASSWORD" <<'PY' >/tmp/register.json
           import json, sys
           print(json.dumps({'email':sys.argv[1],'password':sys.argv[2],'first_name':'Dashboard','last_name':'Visual'}))
