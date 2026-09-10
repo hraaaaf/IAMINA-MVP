@@ -2,7 +2,7 @@
 
 ## Status
 
-**ENGINEERING CERTIFIED on the audited branch.** This document records synthetic/non-patient engineering evidence only. It is not a real-patient, clinical-human, regulatory, CNDP or deployment approval.
+**BRANCH ENGINEERING CERTIFIED.** This document records synthetic/non-patient engineering evidence only. It is not a real-patient, clinical-human, regulatory, CNDP or deployment approval.
 
 ## Goal
 
@@ -20,7 +20,7 @@ Converge IAMINA on one canonical Dashboard implementation and certify its respon
 ## Retained proof
 
 - Audited branch: `audit/dashboard-global-cert-20260909`.
-- Certified branch HEAD before this closeout document: `a19883da787b8a7439ff3baeef44fcd9df7e67b9`.
+- Certified branch HEAD before closeout docs: `a19883da787b8a7439ff3baeef44fcd9df7e67b9`.
 - Dashboard global certification run: `34463040563` — **SUCCESS**.
 - Visual proof: 9 distinct screenshots, three each for mobile/tablet/desktop (`top`, `mid`, `lower`); retained report records distinct SHA-256 hashes and `duplicateCaptures=false`.
 - Browser proof: no `pageerror`, no console error, no observed API response >=500.
@@ -33,11 +33,15 @@ Converge IAMINA on one canonical Dashboard implementation and certify its respon
 
 ## Clinical truthfulness boundary
 
-The dashboard distinguishes recorded episodic readings from continuous-CGM metrics. A synthetic episodic dataset may produce ordinary descriptive values such as count/mean, but advanced CGM metrics remain unavailable when governed coverage is not established. This certification therefore proves the fail-closed engineering behavior; it does **not** claim that synthetic episodic readings constitute valid TIR/TAR/TBR evidence.
+The Dashboard distinguishes recorded episodic readings from continuous-CGM metrics. A synthetic episodic dataset may produce ordinary descriptive values such as count/mean, but advanced CGM metrics remain unavailable when governed coverage is not established. This certification therefore proves fail-closed engineering behavior; it does **not** claim that synthetic episodic readings constitute valid TIR/TAR/TBR evidence.
 
 ## Visual assessment
 
 Observed AFTER captures were reviewed at the same three target viewports. Hierarchy, density, responsive bounds and clinical labeling were coherent across the retained evidence. Expert visual score recorded for this closeout: **9.3/10** (mobile 9.2, tablet 9.1, desktop 9.5). This score is a visual engineering assessment, not a clinical or regulatory score.
+
+## Cleanup verification
+
+Legacy/temporary workflow names `dashboard-global-cert.yml` and `dashboard-trend-locale-fix.yml` are absent from the audited branch. The maintained regression gates are `dashboard-global-cert-v2.yml` and `dashboard-responsive-visual-cert.yml`.
 
 ## Residual boundaries
 
