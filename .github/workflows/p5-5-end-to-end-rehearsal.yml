@@ -1,0 +1,67 @@
+name: P5-5 End-to-End Pilot Rehearsal
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/p5-5-end-to-end-rehearsal.yml"
+      - "scripts/p5_5_end_to_end_rehearsal.sh"
+      - "frontend/lib/data/drift/local_backup.dart"
+      - "frontend/lib/services/local_report_pdf.dart"
+      - "frontend/test/data/drift/local_backup_restore_test.dart"
+      - "frontend/test/services/local_report_pdf_test.dart"
+      - "frontend/test/services/**"
+      - "frontend/test/features/**"
+      - "frontend/test/p0_localized_onboarding*_test.dart"
+      - "frontend/test/document_*_test.dart"
+      - "frontend/test/p0_mobile_import_navigation_test.dart"
+      - "frontend/test/companion_screen_test.dart"
+      - "frontend/test/ux_4_summary_degraded_contract_test.dart"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/p5-5-end-to-end-rehearsal.yml"
+      - "scripts/p5_5_end_to_end_rehearsal.sh"
+      - "frontend/lib/data/drift/local_backup.dart"
+      - "frontend/lib/services/local_report_pdf.dart"
+      - "frontend/test/data/drift/local_backup_restore_test.dart"
+      - "frontend/test/services/local_report_pdf_test.dart"
+      - "frontend/test/services/**"
+      - "frontend/test/features/**"
+      - "frontend/test/p0_localized_onboarding*_test.dart"
+      - "frontend/test/document_*_test.dart"
+      - "frontend/test/p0_mobile_import_navigation_test.dart"
+      - "frontend/test/companion_screen_test.dart"
+      - "frontend/test/ux_4_summary_degraded_contract_test.dart"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p5-5-rehearsal-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  p5-5-rehearsal:
+    name: Synthetic non-patient rehearsal
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.1'
+          channel: stable
+          cache: true
+      - name: Resolve Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+      - name: Run canonical P5-5 rehearsal
+        run: bash scripts/p5_5_end_to_end_rehearsal.sh
+      - name: Upload retained rehearsal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p5-5-end-to-end-pilot-rehearsal
+          path: artifacts/p5-5/
+          if-no-files-found: error
