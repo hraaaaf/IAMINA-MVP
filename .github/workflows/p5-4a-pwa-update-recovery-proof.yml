@@ -1,0 +1,222 @@
+name: P5-4A PWA update and recovery proof
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/web/**'
+      - 'frontend/lib/ui_pwa_persistence_probe_main.dart'
+      - 'frontend/lib/data/drift/**'
+      - 'frontend/pubspec.yaml'
+      - 'frontend/pubspec.lock'
+      - 'scripts/check_pilot_packaging_contract.py'
+      - 'scripts/p5_4a_pwa_update_recovery_probe.py'
+      - '.github/workflows/p5-4a-pwa-update-recovery-proof.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p5-4a-pwa-update-recovery-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chrome-update-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Verify release-atomic PWA contract
+        run: python3 scripts/check_pilot_packaging_contract.py --pwa-ready
+
+      - name: Build self-contained synthetic PWA probe
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn -t lib/ui_pwa_persistence_probe_main.dart
+
+      - name: Prepare healthy v1, broken v2 and forward-fix v3 shells
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p p5-4a-pwa-update/releases p5-4a-pwa-update-proof
+          cp -a frontend/build/web p5-4a-pwa-update/releases/v1
+          cp -a frontend/build/web p5-4a-pwa-update/releases/v2-broken
+          cp -a frontend/build/web p5-4a-pwa-update/releases/v3-fixed
+
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          root = Path('p5-4a-pwa-update/releases')
+          pubspec = Path('frontend/pubspec.yaml').read_text(encoding='utf-8')
+          match = re.search(r'(?m)^version:\s*(\d+\.\d+\.\d+\+\d+)\s*$', pubspec)
+          if not match:
+              raise SystemExit('missing pubspec release id')
+          base_release = match.group(1)
+
+          def append_marker(release: str, marker: str) -> None:
+              path = root / release / 'main.dart.js'
+              path.write_text(
+                  path.read_text(encoding='utf-8') + f'\n/* {marker} */\n',
+                  encoding='utf-8',
+              )
+
+          def set_release(release: str, new: str) -> None:
+              path = root / release / 'iamina_service_worker.js'
+              text = path.read_text(encoding='utf-8')
+              needle = f"const IAMINA_CACHE_SCHEMA = '{base_release}';"
+              replacement = f"const IAMINA_CACHE_SCHEMA = '{new}';"
+              if needle not in text:
+                  raise SystemExit(f'missing release marker in {path}')
+              path.write_text(text.replace(needle, replacement, 1), encoding='utf-8')
+
+          append_marker('v1', 'IAMINA_UPDATE_V1')
+          append_marker('v2-broken', 'IAMINA_UPDATE_V2_BROKEN')
+          append_marker('v3-fixed', 'IAMINA_UPDATE_V3_FIXED')
+          set_release('v2-broken', 'test-v2-broken')
+          set_release('v3-fixed', 'test-v3-fixed')
+
+          broken = root / 'v2-broken' / 'iamina_service_worker.js'
+          text = broken.read_text(encoding='utf-8')
+          needle = "  './drift_worker.js',\n];"
+          replacement = "  './drift_worker.js',\n  './missing-v2.asset',\n];"
+          if needle not in text:
+              raise SystemExit('unable to inject deterministic broken-v2 precache entry')
+          broken.write_text(text.replace(needle, replacement, 1), encoding='utf-8')
+
+          Path('p5-4a-pwa-update/base-release.txt').write_text(
+              base_release, encoding='utf-8'
+          )
+          PY
+
+          # Serve a stable directory path. Releases replace its directory atomically;
+          # the HTTP server therefore resolves the current files on each request.
+          cp -a p5-4a-pwa-update/releases/v1 p5-4a-pwa-update/served
+
+      - name: Rehearse failed update and natural forward-fix activation in Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet websocket-client
+
+          python3 -m http.server 7362 --directory p5-4a-pwa-update/served >/tmp/iamina-pwa-update-http.log 2>&1 &
+          SERVER_PID=$!
+          PROFILE="$(mktemp -d)"
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          CHROME_PID=''
+
+          cleanup_process() {
+            local pid="$1"
+            kill "$pid" 2>/dev/null || true
+            for _ in $(seq 1 30); do
+              if ! kill -0 "$pid" 2>/dev/null; then break; fi
+              sleep 0.2
+            done
+            if kill -0 "$pid" 2>/dev/null; then kill -9 "$pid" 2>/dev/null || true; fi
+            wait "$pid" 2>/dev/null || true
+          }
+
+          stop_chrome() {
+            if [ -n "${CHROME_PID:-}" ]; then
+              cleanup_process "$CHROME_PID"
+              CHROME_PID=''
+            fi
+            for _ in $(seq 1 30); do
+              if ! curl -fsS http://127.0.0.1:9225/json/list >/dev/null 2>&1; then break; fi
+              sleep 0.2
+            done
+          }
+
+          start_chrome() {
+            local phase="$1"
+            "$CHROME" \
+              --headless=new \
+              --no-sandbox \
+              --no-first-run \
+              --disable-session-crashed-bubble \
+              --enable-unsafe-swiftshader \
+              --remote-allow-origins='*' \
+              --remote-debugging-port=9225 \
+              --user-data-dir="$PROFILE" \
+              "http://127.0.0.1:7362/?phase=$phase" \
+              >/tmp/iamina-pwa-update-chrome.log 2>&1 &
+            CHROME_PID=$!
+            for _ in $(seq 1 50); do
+              if curl -fsS http://127.0.0.1:9225/json/list >/dev/null; then return 0; fi
+              sleep 0.2
+            done
+            cat /tmp/iamina-pwa-update-chrome.log >&2 || true
+            return 1
+          }
+
+          publish_release() {
+            local name="$1"
+            local expected="$2"
+            rm -rf p5-4a-pwa-update/served.next p5-4a-pwa-update/served.previous
+            cp -a "p5-4a-pwa-update/releases/$name" p5-4a-pwa-update/served.next
+            mv p5-4a-pwa-update/served p5-4a-pwa-update/served.previous
+            mv p5-4a-pwa-update/served.next p5-4a-pwa-update/served
+            rm -rf p5-4a-pwa-update/served.previous
+            curl -fsS "http://127.0.0.1:7362/iamina_service_worker.js?verify=$(date +%s%N)" | grep -F "$expected" >/dev/null
+          }
+
+          cleanup_all() {
+            stop_chrome || true
+            cleanup_process "$SERVER_PID" || true
+            rm -rf "$PROFILE" 2>/dev/null || true
+          }
+          trap cleanup_all EXIT
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7362/manifest.json >/dev/null; then break; fi
+            sleep 0.2
+          done
+          curl -fsS http://127.0.0.1:7362/iamina_service_worker.js | grep -F "0.1.0+1" >/dev/null
+
+          # Session 1: healthy v1; probe atomically publishes broken v2 itself,
+          # verifies HTTP exposure, then proves it cannot displace v1.
+          start_chrome seed
+          python3 scripts/p5_4a_pwa_update_recovery_probe.py phase1
+          stop_chrome
+
+          # Publish v3 only after the broken-update session is fully closed and prove
+          # the stable HTTP server path now exposes v3 before Chrome sees it.
+          publish_release v3-fixed test-v3-fixed
+
+          # Session 2: v1 remains active while v3 installs into a separate waiting cache.
+          start_chrome verify
+          python3 scripts/p5_4a_pwa_update_recovery_probe.py phase2
+          stop_chrome
+
+          # Session 3: closing the old controlled client permits natural v3 activation.
+          start_chrome verify
+          python3 scripts/p5_4a_pwa_update_recovery_probe.py phase3
+          stop_chrome
+
+          cleanup_process "$SERVER_PID"
+          SERVER_PID=''
+          rm -rf "$PROFILE" 2>/dev/null || true
+          trap - EXIT
+
+      - name: Upload retained update/recovery proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p5-4a-pwa-update-recovery-proof
+          path: p5-4a-pwa-update-proof/pwa-update-recovery-proof.json
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,7 +1,6 @@
 {{flutter_js}}
 {{flutter_build_config}}
 
-// Never make online application startup depend on service-worker readiness.
 _flutter.loader.load();
 
 if ('serviceWorker' in navigator) {
@@ -10,6 +9,11 @@ if ('serviceWorker' in navigator) {
       .register('iamina_service_worker.js', {
         scope: './',
         updateViaCache: 'none',
+      })
+      .then((registration) => {
+        registration.update().catch((error) => {
+          console.warn('IAMINA service worker update check failed', error);
+        });
       })
       .catch((error) => {
         console.warn('IAMINA service worker registration failed', error);
