@@ -1,6 +1,6 @@
 const IAMINA_CACHE_PREFIX = 'iamina-app-shell-';
-const version = new URL(self.location.href).searchParams.get('v') || 'unversioned';
-const CACHE_NAME = `${IAMINA_CACHE_PREFIX}${version}`;
+const IAMINA_CACHE_SCHEMA = 'v1';
+const CACHE_NAME = `${IAMINA_CACHE_PREFIX}${IAMINA_CACHE_SCHEMA}`;
 
 const PRECACHE = [
   './',

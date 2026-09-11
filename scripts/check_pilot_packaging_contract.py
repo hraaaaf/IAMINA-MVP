@@ -208,15 +208,19 @@ def main() -> int:
         )
 
         require(
-            "{{flutter_js}}" in bootstrap
-            and "{{flutter_build_config}}" in bootstrap
-            and "{{flutter_service_worker_version}}" in bootstrap,
+            "{{flutter_js}}" in bootstrap and "{{flutter_build_config}}" in bootstrap,
             "Custom Flutter bootstrap is missing required build template tokens",
             errors,
         )
         require(
+            "_flutter.loader.load();" in bootstrap,
+            "Custom Flutter bootstrap does not start the Flutter loader",
+            errors,
+        )
+        require(
             "iamina_service_worker.js" in bootstrap
-            and "navigator.serviceWorker.register" in bootstrap,
+            and "navigator.serviceWorker" in bootstrap
+            and ".register(" in bootstrap,
             "Custom Flutter bootstrap does not register the IAMINA service worker",
             errors,
         )
@@ -226,15 +230,16 @@ def main() -> int:
             errors,
         )
         require(
-            "_flutter.loader.load()" in bootstrap,
-            "Custom Flutter bootstrap does not start the Flutter loader",
+            "await navigator.serviceWorker.ready" not in bootstrap,
+            "Flutter startup must not block on service-worker readiness",
             errors,
         )
 
         require(
             "IAMINA_CACHE_PREFIX" in service_worker
+            and "IAMINA_CACHE_SCHEMA" in service_worker
             and "iamina-app-shell-" in service_worker,
-            "IAMINA service worker cache is not version-scoped",
+            "IAMINA service worker cache is not explicitly schema-versioned",
             errors,
         )
         require(
