@@ -12,6 +12,7 @@ on:
       - 'frontend/pubspec.lock'
       - 'scripts/check_pilot_packaging_contract.py'
       - 'scripts/p5_4a_pwa_update_recovery_probe.py'
+      - 'scripts/p5_4a_pwa_update_startup_probe.py'
       - '.github/workflows/p5-4a-pwa-update-recovery-proof.yml'
 
 permissions:
@@ -104,7 +105,7 @@ jobs:
 
           cp -a p5-4a-pwa-update/releases/v1 p5-4a-pwa-update/served
 
-      - name: Prove rejected-candidate safety and healthy update activation in Chrome
+      - name: Prove startup-driven failed-update safety and healthy activation in Chrome
         shell: bash
         run: |
           set -euo pipefail
@@ -188,27 +189,30 @@ jobs:
           BASE_RELEASE="$(cat p5-4a-pwa-update/base-release.txt)"
           curl -fsS http://127.0.0.1:7362/iamina_service_worker.js | grep -F "$BASE_RELEASE" >/dev/null
 
-          # Property A: a broken candidate never displaces the last-known-good shell
-          # or the persistent local fixture.
+          # Property A: establish v1, close the app, publish a broken candidate,
+          # then let the next normal startup perform the background update check.
           start_chrome "$PROFILE_BROKEN" seed
-          python3 scripts/p5_4a_pwa_update_recovery_probe.py broken
+          python3 scripts/p5_4a_pwa_update_startup_probe.py broken-seed
+          stop_chrome
+          publish_release v2-broken test-v2-broken
+          start_chrome "$PROFILE_BROKEN" verify
+          python3 scripts/p5_4a_pwa_update_startup_probe.py broken-check
           stop_chrome
 
-          # Reset the served release to v1. A separate persistent Chrome profile is
-          # used for the healthy N -> N+1 update proof so the test does not depend on
-          # Chrome's non-deterministic update scheduling immediately after a rejected
-          # service-worker install.
+          # Property B: on a separate profile establish v1 and close it first.
+          # Publish healthy v3 while the PWA is closed. The next startup must
+          # discover v3 through the production bootstrap, leave it waiting beside
+          # v1, and a subsequent relaunch must activate v3 without data loss.
           publish_release v1 "$BASE_RELEASE"
-
-          # Property B, session 1: v3 installs beside active v1 and waits.
           start_chrome "$PROFILE_HEALTHY" seed
-          python3 scripts/p5_4a_pwa_update_recovery_probe.py healthy-prepare
+          python3 scripts/p5_4a_pwa_update_startup_probe.py healthy-seed
           stop_chrome
-
-          # Property B, session 2: closing v1 permits natural v3 activation; Drift and
-          # offline reopen must remain intact on the same healthy-update profile.
+          publish_release v3-fixed test-v3-fixed
           start_chrome "$PROFILE_HEALTHY" verify
-          python3 scripts/p5_4a_pwa_update_recovery_probe.py healthy-activate
+          python3 scripts/p5_4a_pwa_update_startup_probe.py healthy-prepare
+          stop_chrome
+          start_chrome "$PROFILE_HEALTHY" verify
+          python3 scripts/p5_4a_pwa_update_startup_probe.py healthy-activate
           stop_chrome
 
           cleanup_process "$SERVER_PID"
