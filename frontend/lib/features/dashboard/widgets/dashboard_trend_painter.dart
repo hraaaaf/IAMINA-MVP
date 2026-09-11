@@ -34,12 +34,15 @@ class DashboardTrendPainter extends CustomPainter {
 
   static const double leftInset = 42;
   static const double rightInset = 8;
+  static const Duration _rawPointWindow = Duration(hours: 36);
 
   DateTime _recordedAt(LogEntryData log) => log.loggedAt ?? log.createdAt;
 
   String _valueLabel(double mgDl) => unit == 'mmol/L'
       ? (mgDl / 18.0).toStringAsFixed(1)
       : mgDl.toStringAsFixed(0);
+
+  bool get _useDailyRanges => end.difference(start) > _rawPointWindow;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -71,7 +74,11 @@ class DashboardTrendPainter extends CustomPainter {
     _paintTargetBand(canvas, rect, yFor);
     _paintGridAndAxes(canvas, rect, minY, maxY);
     _paintMedicationEvents(canvas, rect, xFor);
-    _paintRecordedPoints(canvas, xFor, yFor);
+    if (_useDailyRanges) {
+      _paintDailyRanges(canvas, xFor, yFor);
+    } else {
+      _paintRecordedPoints(canvas, xFor, yFor);
+    }
   }
 
   (double, double) _valueBounds() {
@@ -177,17 +184,92 @@ class DashboardTrendPainter extends CustomPainter {
     }
   }
 
+  DateTime _dayKey(DateTime time) => DateTime(time.year, time.month, time.day);
+
+  void _paintDailyRanges(
+    Canvas canvas,
+    double Function(DateTime) xFor,
+    double Function(double) yFor,
+  ) {
+    final groups = <DateTime, List<LogEntryData>>{};
+    for (final log in logs) {
+      groups.putIfAbsent(_dayKey(_recordedAt(log)), () => []).add(log);
+    }
+
+    final selected = logs.firstWhere(
+      (log) => log.id == selectedLogId,
+      orElse: () => logs.last,
+    );
+    final selectedDay = _dayKey(_recordedAt(selected));
+    final latest = logs.reduce(
+      (a, b) => _recordedAt(a).isAfter(_recordedAt(b)) ? a : b,
+    );
+    final latestDay = _dayKey(_recordedAt(latest));
+
+    final normalPaint = Paint()
+      ..color = AminaVisualLanguage.forestDeep.withValues(alpha: .48)
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round;
+    final selectedPaint = Paint()
+      ..color = AminaVisualLanguage.actionGreen
+      ..strokeWidth = 7
+      ..strokeCap = StrokeCap.round;
+
+    final days = groups.keys.toList()..sort();
+    for (final day in days) {
+      final dayLogs = groups[day]!..sort(
+        (a, b) => _recordedAt(a).compareTo(_recordedAt(b)),
+      );
+      final values = dayLogs.map((log) => log.bloodSugar).toList();
+      final minValue = values.reduce(math.min);
+      final maxValue = values.reduce(math.max);
+      final meanMs = dayLogs
+              .map((log) => _recordedAt(log).millisecondsSinceEpoch)
+              .reduce((a, b) => a + b) /
+          dayLogs.length;
+      final x = xFor(DateTime.fromMillisecondsSinceEpoch(meanMs.round()));
+      var top = yFor(maxValue);
+      var bottom = yFor(minValue);
+      if ((bottom - top).abs() < 8) {
+        final center = (top + bottom) / 2;
+        top = center - 4;
+        bottom = center + 4;
+      }
+
+      final highlighted = day == selectedDay || day == latestDay;
+      canvas.drawLine(
+        Offset(x, top),
+        Offset(x, bottom),
+        highlighted ? selectedPaint : normalPaint,
+      );
+
+      if (day == selectedDay) {
+        final point = Offset(x, yFor(selected.bloodSugar));
+        canvas.drawCircle(
+          point,
+          7,
+          Paint()..color = AminaVisualLanguage.mintSurface,
+        );
+        canvas.drawCircle(
+          point,
+          4.5,
+          Paint()..color = AminaVisualLanguage.actionGreen,
+        );
+      }
+    }
+  }
+
   void _paintRecordedPoints(
     Canvas canvas,
     double Function(DateTime) xFor,
     double Function(double) yFor,
   ) {
     final pointPaint = Paint()
-      ..color = AminaVisualLanguage.forestDeep.withValues(alpha: .82);
+      ..color = AminaVisualLanguage.forestDeep.withValues(alpha: .72);
     final selectedPaint = Paint()..color = AminaVisualLanguage.actionGreen;
-    final latestId = logs.reduce((a, b) =>
-            _recordedAt(a).isAfter(_recordedAt(b)) ? a : b)
-        .id;
+    final latestId = logs.reduce(
+      (a, b) => _recordedAt(a).isAfter(_recordedAt(b)) ? a : b,
+    ).id;
 
     for (final log in logs) {
       final point = Offset(xFor(_recordedAt(log)), yFor(log.bloodSugar));
@@ -202,7 +284,7 @@ class DashboardTrendPainter extends CustomPainter {
       }
       canvas.drawCircle(
         point,
-        selected ? 4.8 : latest ? 4.4 : 3.2,
+        selected ? 4.8 : latest ? 4.4 : 3.0,
         selected || latest ? selectedPaint : pointPaint,
       );
     }
