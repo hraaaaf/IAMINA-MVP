@@ -20,8 +20,9 @@ class LiveCGMQualificationResult:
     source: str
     provider_received: int
     provider_inserted: int
+    provider_newest_reading_age_seconds: int
     fresh_persisted_readings: int
-    newest_reading_age_seconds: int
+    newest_persisted_reading_age_seconds: int
     max_age_minutes: int
     minimum_readings: int
 
@@ -32,8 +33,9 @@ class LiveCGMQualificationResult:
             "source": self.source,
             "provider_received": self.provider_received,
             "provider_inserted": self.provider_inserted,
+            "provider_newest_reading_age_seconds": self.provider_newest_reading_age_seconds,
             "fresh_persisted_readings": self.fresh_persisted_readings,
-            "newest_reading_age_seconds": self.newest_reading_age_seconds,
+            "newest_persisted_reading_age_seconds": self.newest_persisted_reading_age_seconds,
             "max_age_minutes": self.max_age_minutes,
             "minimum_readings": self.minimum_readings,
             "physical_sensor_attested": True,
@@ -87,6 +89,20 @@ def qualify_live_cgm(
         raise LiveCGMQualificationError(f"cgm_sync_failed:{exc}") from exc
 
     observed_at = timezone.now()
+    if sync_result.received < minimum_readings:
+        raise LiveCGMQualificationError("provider_readings_below_minimum")
+    if sync_result.last_recorded_at is None:
+        raise LiveCGMQualificationError("provider_latest_reading_unavailable")
+    if sync_result.last_recorded_at > observed_at + timedelta(minutes=5):
+        raise LiveCGMQualificationError("provider_latest_reading_timestamp_in_future")
+
+    provider_age_seconds = max(
+        0,
+        int((observed_at - sync_result.last_recorded_at).total_seconds()),
+    )
+    if provider_age_seconds > max_age_minutes * 60:
+        raise LiveCGMQualificationError("provider_latest_reading_too_old")
+
     cutoff = observed_at - timedelta(minutes=max_age_minutes)
     recent = CGMReadingRecord.objects.filter(
         patient_id=patient_id,
@@ -96,8 +112,6 @@ def qualify_live_cgm(
     fresh_count = recent.count()
     newest = recent.order_by("-recorded_at").values_list("recorded_at", flat=True).first()
 
-    if sync_result.received < minimum_readings:
-        raise LiveCGMQualificationError("provider_readings_below_minimum")
     if fresh_count < minimum_readings:
         raise LiveCGMQualificationError("fresh_persisted_readings_below_minimum")
     if newest is None:
@@ -113,8 +127,9 @@ def qualify_live_cgm(
         source=expected_source,
         provider_received=sync_result.received,
         provider_inserted=sync_result.inserted,
+        provider_newest_reading_age_seconds=provider_age_seconds,
         fresh_persisted_readings=fresh_count,
-        newest_reading_age_seconds=newest_age_seconds,
+        newest_persisted_reading_age_seconds=newest_age_seconds,
         max_age_minutes=max_age_minutes,
         minimum_readings=minimum_readings,
     )
