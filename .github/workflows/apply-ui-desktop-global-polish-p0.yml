@@ -26,6 +26,27 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Repair wrapper punctuation from first applicator attempt
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/apply_ui_desktop_global_polish_p0.py')
+          text = path.read_text(encoding='utf-8')
+          for label in (
+              'importer desktop header rail',
+              'medication desktop rail',
+              'reminders desktop rail',
+              'companion state rail',
+              'companion overview rail',
+          ):
+              old = "    ')),',\n    '" + label + "',"
+              new = "    '))',\n    '" + label + "',"
+              if old not in text:
+                  raise SystemExit(f'missing wrapper target: {label}')
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Apply deterministic desktop P0 patch
         run: python3 scripts/apply_ui_desktop_global_polish_p0.py
 
@@ -33,6 +54,10 @@ jobs:
         run: |
           rm scripts/apply_ui_desktop_global_polish_p0.py
           rm .github/workflows/apply-ui-desktop-global-polish-p0.yml
+
+      - name: Get dependencies
+        working-directory: frontend
+        run: flutter pub get
 
       - name: Format touched Dart files
         working-directory: frontend
@@ -46,10 +71,6 @@ jobs:
             lib/features/reminders/reminders_screen.dart \
             lib/features/companion/companion_premium_screen.dart \
             test/features/ui_desktop_global_polish_contract_test.dart
-
-      - name: Get dependencies
-        working-directory: frontend
-        run: flutter pub get
 
       - name: Analyze touched production surfaces
         working-directory: frontend
