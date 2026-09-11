@@ -1,42 +1,18 @@
 # Morocco pilot data residency and foreign transfers
 
-**Status:** executable engineering gate prepared; production deployment manifest and approvals remain external.
+**Status:** candidate-bound engineering gate prepared; deployment manifest and approvals remain external.
 
-**Policy version:** `2026-08-04.1`
+**Policy version:** `2026-09-11.1`
+
+Canonical release gate: `docs/P5_6_REAL_PATIENT_RELEASE_GATE.md`.
 
 ## 1. No inference from source code
 
 The repository does not establish production geography.
 
-- `DATABASE_URL` identifies a connection target at runtime, but its presence does not prove the processor, country, region, contract or CNDP authorization.
-- `REDIS_URL` behaves the same way.
-- the Django e-mail backend and its processing locations are deployment facts;
-- Firebase is a temporary migration bridge whose exact project/account configuration must be recorded;
-- AI providers are configurable and remain separately evidence-gated;
-- frontend/CDN and application-host locations are deployment facts, not repository defaults.
+Database, cache, e-mail, migration bridge, export staging, application hosting and provider locations are deployment facts. A real-patient pilot therefore requires a restricted deployment manifest tied to one exact frozen candidate SHA and the actual topology.
 
-A real-patient pilot therefore requires a restricted deployment manifest tied to the exact deployed Git SHA.
-
-## 2. Morocco regulatory baseline
-
-Official CNDP guidance reviewed on 2026-08-04 states that:
-
-- health-data processing requires prior authorization;
-- purposes must be precise and disclosed, and data must be necessary and proportionate;
-- processors must be controlled through contracts and audits;
-- foreign transfers require one of the allowed bases or express CNDP authorization;
-- a transfer authorization is granted only after the underlying treatment has itself been declared or authorized.
-
-Official references:
-
-- `https://www.cndp.ma/conditions/`
-- `https://www.cndp.ma/notifier-une-demande-dautorisation-prealable/`
-- `https://www.cndp.ma/transfert-de-donnees-a-letranger/`
-- `https://www.cndp.ma/procedures-de-notification-process/`
-
-These sources define the engineering evidence requirements. They do not prove that IAMINA has received any authorization.
-
-## 3. Required deployment flows
+## 2. Required deployment flows
 
 The manifest must contain exactly one record for each known flow:
 
@@ -48,106 +24,74 @@ The manifest must contain exactly one record for each known flow:
 6. `patient_export_staging`
 7. one `ai_provider:<provider>` record for every external provider registered in `ai_processor_policy.py`
 
-A new runtime AI provider automatically creates manifest drift until its residency flow is reviewed.
+A new runtime provider automatically creates manifest drift. Required flows must be enabled. Optional flows may be disabled only with an explicit rationale.
 
-The application runtime, primary database and password-reset e-mail flow must be enabled for the pilot. Optional flows may be disabled only with an explicit rationale.
+## 3. Location evidence
 
-## 4. Location evidence
+Each enabled flow records processor/service, personal-data categories, storage and processing countries/regions, cross-border status, applicable CNDP evidence, contract/retention references, accountable owner and review dates.
 
-Each enabled flow records:
+The validator derives foreign destinations from recorded country codes and rejects inconsistent cross-border flags.
 
-- processor and exact service;
-- personal-data categories;
-- whether data is stored at rest;
-- exact storage countries and provider region identifiers;
-- exact processing countries and provider region identifiers;
-- whether the flow is cross-border from Morocco;
-- CNDP health-processing reference when health data is involved;
-- CNDP foreign-transfer reference when any country is outside Morocco;
-- contract and retention references;
-- accountable owner;
-- review and expiry dates.
+## 4. Restricted manifest
 
-The validator derives foreign destinations from the recorded country codes and rejects an inconsistent cross-border flag.
-
-## 5. Provider-specific notes
-
-Public provider pages are only review inputs:
-
-- Google Cloud data residency: `https://cloud.google.com/terms/data-residency`
-- Google Cloud subprocessors: `https://cloud.google.com/terms/subprocessors`
-- OpenAI subprocessors, for a future candidate only: `https://openai.com/policies/sub-processor-list/`
-
-Public terms cannot establish the actual IAMINA account, selected region, model behavior, optional features, support access, retention configuration or signed contract. Those facts belong in restricted evidence.
-
-## 6. Restricted manifest
-
-The real manifest must remain outside Git and be mounted read-only at runtime or during the release gate.
-
-Configure only its path:
+The real manifest remains outside Git and is mounted read-only during the release gate.
 
 ```bash
 export PILOT_RESIDENCY_MANIFEST_PATH=/restricted/iamina/pilot-residency.json
 ```
 
-Do not place in the manifest:
-
-- connection URLs;
-- API keys or tokens;
-- passwords;
-- private keys;
-- patient identifiers;
-- signed contracts or private regulator correspondence.
-
-Use opaque references into the approved private compliance repository.
-
 A non-operational schema example is stored at:
 
 `docs/examples/pilot-residency-manifest.example.json`
 
-It deliberately contains placeholders and is not approval evidence.
+The manifest uses opaque references only and must not contain operational secrets, private documents or direct personal data.
 
-## 7. Commands
+## 5. Exact-candidate binding
 
-Preparation audit, expected to report a missing manifest in ordinary development:
+The release operator supplies the immutable candidate SHA:
+
+```bash
+export PILOT_RELEASE_SOURCE_SHA=<exact-40-char-git-sha>
+```
+
+The approved residency audit compares that explicit SHA with manifest `source_commit_sha`. A manifest from another candidate is rejected even when otherwise valid.
+
+Any code/configuration change after freeze invalidates the candidate approval package.
+
+## 6. Commands
+
+Preparation audit:
 
 ```bash
 cd backend
 python manage.py audit_pilot_data_residency
 ```
 
-Real-patient release gate:
+Candidate-bound real-patient gate:
 
 ```bash
 cd backend
 python manage.py audit_pilot_data_residency \
   --manifest /restricted/iamina/pilot-residency.json \
+  --expected-source-sha "$PILOT_RELEASE_SOURCE_SHA" \
   --require-approved
 ```
 
-The second command fails when:
+The approved command fails when the expected SHA is missing/malformed, manifest SHA differs, evidence is missing/stale/incomplete, topology coverage drifts, required CNDP evidence is absent, or provider enablement conflicts with runtime approval.
 
-- the manifest is missing or stale;
-- any known flow is absent or duplicated;
-- a required flow is disabled;
-- a country or region is missing;
-- a foreign destination lacks transfer evidence;
-- a health-data flow lacks treatment authorization evidence;
-- an unapproved external AI provider is enabled;
-- an approved external AI provider is omitted or disabled;
-- secret-like material appears in the manifest.
+## 7. Approval checklist
 
-## 8. Approval checklist
+The gate can close only when:
 
-The roadmap gate can close only when:
-
-- [ ] the exact production architecture is deployed;
-- [ ] the manifest references the exact deployed Git SHA;
-- [ ] database, cache, runtime, e-mail and export locations are verified;
-- [ ] Firebase is disabled or its exact migration flow is approved;
-- [ ] every external AI flow is disabled or fully approved;
-- [ ] all health-data processing references are recorded;
-- [ ] all foreign-transfer references are recorded;
+- [ ] candidate SHA frozen after exact-main CI;
+- [ ] actual architecture/topology captured;
+- [ ] manifest references that exact SHA;
+- [ ] database, cache, runtime, e-mail and export locations verified;
+- [ ] Firebase disabled or its exact migration flow approved;
+- [ ] every external AI flow disabled or fully approved;
+- [ ] health-data processing and foreign-transfer references recorded where applicable;
 - [ ] privacy and security owners approve the manifest;
-- [ ] evidence is current on launch day;
-- [ ] `audit_pilot_data_residency --require-approved` passes.
+- [ ] evidence current on launch day;
+- [ ] candidate-bound residency audit passes.
+
+This contract does not prove CNDP authorization or production geography by itself.

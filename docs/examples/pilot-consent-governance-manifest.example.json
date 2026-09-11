@@ -1,0 +1,15 @@
+{
+  "schema_version": "2026-09-11.1",
+  "pilot_country": "MA",
+  "source_commit_sha": "REPLACE_WITH_EXACT_40_CHAR_GIT_SHA",
+  "controller_reference": "REPLACE-WITH-OPAQUE-CONTROLLER-REFERENCE",
+  "patient_notice_reference": "REPLACE-WITH-OPAQUE-PATIENT-NOTICE-REFERENCE",
+  "base_ai_consent_reference": "REPLACE-WITH-OPAQUE-BASE-AI-CONSENT-REFERENCE",
+  "raw_media_consent_reference": "REPLACE-WITH-OPAQUE-RAW-MEDIA-CONSENT-REFERENCE",
+  "health_data_authorization_reference": "REPLACE-WITH-OPAQUE-HEALTH-AUTHORIZATION-REFERENCE",
+  "privacy_approval_reference": "REPLACE-WITH-OPAQUE-PRIVACY-APPROVAL-REFERENCE",
+  "security_approval_reference": "REPLACE-WITH-OPAQUE-SECURITY-APPROVAL-REFERENCE",
+  "reviewed_on": "YYYY-MM-DD",
+  "review_due_on": "YYYY-MM-DD",
+  "external_processor_approvals": []
+}
