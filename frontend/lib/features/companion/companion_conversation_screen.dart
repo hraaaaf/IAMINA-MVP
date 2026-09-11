@@ -81,56 +81,62 @@ class _CompanionConversationScreenState
     return Scaffold(
       backgroundColor: dark ? AminaTheme.bg(context) : const Color(0xFFF4FBF9),
       body: SafeArea(
-        child: Column(
-          children: [
-            _ConversationHeader(
-              onClose: () => Navigator.of(context).maybePop(),
-            ),
-            Expanded(
-              child: _messages.isEmpty
-                  ? const _EmptyConversation()
-                  : ListView.separated(
-                      key: const Key('companion-chat-message-list'),
-                      controller: _scrollController,
-                      padding: const EdgeInsetsDirectional.fromSTEB(
-                        18,
-                        18,
-                        18,
-                        20,
-                      ),
-                      itemCount: _messages.length + (_sending ? 1 : 0),
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        if (_sending && index == _messages.length) {
-                          return const _TypingBubble();
-                        }
-                        return _MessageBubble(message: _messages[index]);
-                      },
-                    ),
-            ),
-            if (_failed)
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(18, 0, 18, 8),
-                child: Text(
-                  _chatText(
-                    context,
-                    'La réponse n’a pas pu être chargée. Réessaie sans modifier ton message.',
-                    'The reply could not be loaded. Try again without changing your message.',
-                    'تعذر تحميل الرد. حاول مجددًا بدون تغيير رسالتك.',
-                  ),
-                  style: const TextStyle(
-                    color: Color(0xFF9B3C35),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 960),
+            child: Column(
+              children: [
+                _ConversationHeader(
+                  onClose: () => Navigator.of(context).maybePop(),
                 ),
-              ),
-            _Composer(
-              controller: _controller,
-              sending: _sending,
-              onSend: _send,
+                Expanded(
+                  child: _messages.isEmpty
+                      ? const _EmptyConversation()
+                      : ListView.separated(
+                          key: const Key('companion-chat-message-list'),
+                          controller: _scrollController,
+                          padding: const EdgeInsetsDirectional.fromSTEB(
+                            24,
+                            22,
+                            24,
+                            24,
+                          ),
+                          itemCount: _messages.length + (_sending ? 1 : 0),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            if (_sending && index == _messages.length) {
+                              return const _TypingBubble();
+                            }
+                            return _MessageBubble(message: _messages[index]);
+                          },
+                        ),
+                ),
+                if (_failed)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 8),
+                    child: Text(
+                      _chatText(
+                        context,
+                        'La réponse n’a pas pu être chargée. Réessaie sans modifier ton message.',
+                        'The reply could not be loaded. Try again without changing your message.',
+                        'تعذر تحميل الرد. حاول مجددًا بدون تغيير رسالتك.',
+                      ),
+                      style: const TextStyle(
+                        color: Color(0xFF9B3C35),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                _Composer(
+                  controller: _controller,
+                  sending: _sending,
+                  onSend: _send,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -139,6 +145,7 @@ class _CompanionConversationScreenState
 
 class _ConversationHeader extends StatelessWidget {
   final VoidCallback onClose;
+
   const _ConversationHeader({required this.onClose});
 
   @override
@@ -226,51 +233,54 @@ class _EmptyConversation extends StatelessWidget {
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(26),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 68,
-              height: 68,
-              decoration: AminaVisualLanguage.mintIconDecoration(context),
-              child: const Icon(
-                Icons.forum_outlined,
-                color: AminaVisualLanguage.actionGreen,
-                size: 30,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 68,
+                height: 68,
+                decoration: AminaVisualLanguage.mintIconDecoration(context),
+                child: const Icon(
+                  Icons.forum_outlined,
+                  color: AminaVisualLanguage.actionGreen,
+                  size: 30,
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              _chatText(
-                context,
-                'Parler avec IAmina',
-                'Talk with IAmina',
-                'تحدث مع IAmina',
+              const SizedBox(height: 18),
+              Text(
+                _chatText(
+                  context,
+                  'Parler avec IAmina',
+                  'Talk with IAmina',
+                  'تحدث مع IAmina',
+                ),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Georgia',
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: AminaVisualLanguage.primaryText(context),
+                ),
               ),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Georgia',
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: AminaVisualLanguage.primaryText(context),
+              const SizedBox(height: 9),
+              Text(
+                _chatText(
+                  context,
+                  'Pose une question avec tes mots. IAmina peut organiser et reformuler, mais ne remplace pas ton professionnel de santé.',
+                  'Ask in your own words. IAmina can organize and rephrase, but does not replace your clinician.',
+                  'اكتب سؤالك بطريقتك. يمكن لـ IAmina التنظيم وإعادة الصياغة، لكنها لا تستبدل طبيبك.',
+                ),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  height: 1.45,
+                  fontSize: 13,
+                  color: AminaVisualLanguage.secondary(context),
+                ),
               ),
-            ),
-            const SizedBox(height: 9),
-            Text(
-              _chatText(
-                context,
-                'Pose une question avec tes mots. IAmina peut organiser et reformuler, mais ne remplace pas ton professionnel de santé.',
-                'Ask in your own words. IAmina can organize and rephrase, but does not replace your clinician.',
-                'اكتب سؤالك بطريقتك. يمكن لـ IAmina التنظيم وإعادة الصياغة، لكنها لا تستبدل طبيبك.',
-              ),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                height: 1.45,
-                fontSize: 13,
-                color: AminaVisualLanguage.secondary(context),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -367,17 +377,19 @@ class _Composer extends StatelessWidget {
 
 class _MessageBubble extends StatelessWidget {
   final _ConversationMessage message;
+
   const _MessageBubble({required this.message});
 
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == _ConversationRole.user;
+    final desktop = MediaQuery.sizeOf(context).width >= 900;
     return Align(
       alignment: isUser
           ? AlignmentDirectional.centerEnd
           : AlignmentDirectional.centerStart,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 310),
+        constraints: BoxConstraints(maxWidth: desktop ? 520 : 310),
         child: Container(
           key: Key(
             isUser ? 'companion-user-bubble' : 'companion-assistant-bubble',
