@@ -76,13 +76,31 @@ jobs:
               )
 
           def set_release(release: str, new: str) -> None:
-              path = root / release / 'iamina_service_worker.js'
-              text = path.read_text(encoding='utf-8')
-              needle = f"const IAMINA_CACHE_SCHEMA = '{base_release}';"
-              replacement = f"const IAMINA_CACHE_SCHEMA = '{new}';"
-              if needle not in text:
-                  raise SystemExit(f'missing release marker in {path}')
-              path.write_text(text.replace(needle, replacement, 1), encoding='utf-8')
+              worker = root / release / 'iamina_service_worker.js'
+              worker_text = worker.read_text(encoding='utf-8')
+              worker_needle = f"const IAMINA_CACHE_SCHEMA = '{base_release}';"
+              worker_replacement = f"const IAMINA_CACHE_SCHEMA = '{new}';"
+              if worker_needle not in worker_text:
+                  raise SystemExit(f'missing release marker in {worker}')
+              worker.write_text(
+                  worker_text.replace(worker_needle, worker_replacement, 1),
+                  encoding='utf-8',
+              )
+
+              bootstrap = root / release / 'flutter_bootstrap.js'
+              bootstrap_text = bootstrap.read_text(encoding='utf-8')
+              bootstrap_needle = f"const IAMINA_FALLBACK_RELEASE = '{base_release}';"
+              bootstrap_replacement = f"const IAMINA_FALLBACK_RELEASE = '{new}';"
+              if bootstrap_needle not in bootstrap_text:
+                  raise SystemExit(f'missing fallback release marker in {bootstrap}')
+              bootstrap.write_text(
+                  bootstrap_text.replace(
+                      bootstrap_needle,
+                      bootstrap_replacement,
+                      1,
+                  ),
+                  encoding='utf-8',
+              )
 
           append_marker('v1', 'IAMINA_UPDATE_V1')
           append_marker('v2-broken', 'IAMINA_UPDATE_V2_BROKEN')
@@ -190,7 +208,8 @@ jobs:
           curl -fsS http://127.0.0.1:7362/iamina_service_worker.js | grep -F "$BASE_RELEASE" >/dev/null
 
           # Property A: establish v1, close the app, publish a broken candidate,
-          # then let the next normal startup perform the background update check.
+          # then let the next normal startup discover the candidate release and
+          # update the registration through its release-versioned script URL.
           start_chrome "$PROFILE_BROKEN" seed
           python3 scripts/p5_4a_pwa_update_startup_probe.py broken-seed
           stop_chrome
