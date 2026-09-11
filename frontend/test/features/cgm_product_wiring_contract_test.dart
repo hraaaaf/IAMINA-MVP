@@ -3,13 +3,25 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('Importer mounts the live CGM connections section', () {
-    final source = File('lib/features/import/import_screen.dart').readAsStringSync();
+  test('Importer routes to the dedicated live CGM connections page', () {
+    final importSource = File(
+      'lib/features/import/import_screen.dart',
+    ).readAsStringSync();
+    final cgmSource = File(
+      'lib/features/import/cgm_screen.dart',
+    ).readAsStringSync();
+    final moduleSource = File(
+      'lib/modules/diabetes_module.dart',
+    ).readAsStringSync();
 
-    expect(source, contains("import 'cgm_connections_section.dart';"));
-    expect(source, contains('const CgmConnectionsSection()'));
-    expect(source, isNot(contains('const _UnavailableAction()')));
-    expect(source, isNot(contains("title: 'Abbott LibreLink'")));
+    expect(importSource, contains("context.push('/cgm')"));
+    expect(importSource, isNot(contains('const CgmConnectionsSection()')));
+    expect(cgmSource, contains("import 'cgm_connections_section.dart';"));
+    expect(cgmSource, contains('CgmConnectionsSection(service: service)'));
+    expect(moduleSource, contains("path: '/cgm'"));
+    expect(moduleSource, contains('builder: (s) => const CgmScreen()'));
+    expect(importSource, isNot(contains('const _UnavailableAction()')));
+    expect(importSource, isNot(contains("title: 'Abbott LibreLink'")));
   });
 
   test('CGM UI states vendor path truthfully and avoids clinical interpretation', () {
