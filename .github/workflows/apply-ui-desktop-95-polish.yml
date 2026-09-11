@@ -1,7 +1,10 @@
 name: Apply UI desktop 9.5 polish
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [polish/ui-desktop-global-20260911]
+    paths:
+      - 'scripts/ui_desktop_95.trigger'
 
 permissions:
   contents: write
@@ -31,6 +34,7 @@ jobs:
       - name: Remove one-shot patch machinery
         run: |
           rm scripts/ui_desktop_95.patch
+          rm scripts/ui_desktop_95.trigger
           rm scripts/apply_ui_desktop_95_polish.py
           rm .github/workflows/apply-ui-desktop-95-polish.yml
 
