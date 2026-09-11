@@ -58,8 +58,11 @@ async function loginDemo(page) {
       );
       const dashboardBuffer = await page.screenshot({ path: dashboardPath });
 
-      const reportsNav = page.getByText('Rapports', { exact: true }).first();
-      await reportsNav.click();
+      // Use a hash-only navigation so the in-memory offline demo session remains
+      // authenticated even when the desktop sidebar has collapsed to icon-only mode.
+      await page.evaluate(() => {
+        window.location.hash = '#/summary';
+      });
       await page.waitForURL(/#\/summary/, { timeout: 30000 });
       const reportsHeading = page.getByText('Rapport de vos mesures', {
         exact: true,
