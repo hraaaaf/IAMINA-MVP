@@ -1,11 +1,7 @@
 name: Apply UI desktop 9.5 polish
 
 on:
-  push:
-    branches: [polish/ui-desktop-global-20260911]
-    paths:
-      - 'scripts/apply_ui_desktop_95_polish.py'
-      - '.github/workflows/apply-ui-desktop-95-polish.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -26,11 +22,15 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Apply exact desktop polish
-        run: python3 scripts/apply_ui_desktop_95_polish.py
+      - name: Verify patch contexts
+        run: patch --dry-run --fuzz=0 -p1 < scripts/ui_desktop_95.patch
+
+      - name: Apply deterministic desktop patch
+        run: patch --fuzz=0 -p1 < scripts/ui_desktop_95.patch
 
       - name: Remove one-shot patch machinery
         run: |
+          rm scripts/ui_desktop_95.patch
           rm scripts/apply_ui_desktop_95_polish.py
           rm .github/workflows/apply-ui-desktop-95-polish.yml
 
@@ -44,10 +44,7 @@ jobs:
           dart format \
             lib/features/documents/document_import_screen.dart \
             lib/features/dashboard/widgets/add_log_sheet.dart \
-            lib/features/companion/companion_premium_screen.dart \
-            lib/features/auth/onboarding_chat_screen.dart \
-            lib/features/companion/companion_conversation_screen.dart \
-            lib/features/journal/edit_log_screen.dart
+            lib/features/companion/companion_premium_screen.dart
 
       - name: Analyze touched production surfaces
         working-directory: frontend
@@ -55,10 +52,7 @@ jobs:
           flutter analyze --no-fatal-infos \
             lib/features/documents/document_import_screen.dart \
             lib/features/dashboard/widgets/add_log_sheet.dart \
-            lib/features/companion/companion_premium_screen.dart \
-            lib/features/auth/onboarding_chat_screen.dart \
-            lib/features/companion/companion_conversation_screen.dart \
-            lib/features/journal/edit_log_screen.dart
+            lib/features/companion/companion_premium_screen.dart
 
       - name: Run full Flutter test suite
         working-directory: frontend
@@ -74,5 +68,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git diff --cached --quiet && { echo 'No changes to commit'; exit 1; }
-          git commit -m 'polish(ui): raise desktop workspaces toward 9.5'
+          git commit -m 'polish(ui): compact desktop primary actions'
           git push origin HEAD:polish/ui-desktop-global-20260911
