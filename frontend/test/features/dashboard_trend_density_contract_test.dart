@@ -3,23 +3,38 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('multi-day trend uses daily observed ranges instead of dot clouds', () {
+  test('multi-day trend summarizes daily data without dot clouds', () {
+    final section = File(
+      'lib/features/dashboard/widgets/dashboard_trend_section.dart',
+    ).readAsStringSync();
     final painter = File(
       'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
     ).readAsStringSync();
-    final copy = File(
-      'lib/core/localization/dashboard_trend_localized_copy.dart',
+
+    expect(section, contains('bool get useDailySummary'));
+    expect(section, contains('dailySummary: range.useDailySummary'));
+    expect(painter, contains('_paintDailySummary'));
+    expect(painter, contains('_dailySummaries'));
+    expect(painter, contains('final median = values.length.isOdd'));
+    expect(painter, contains('min: values.first'));
+    expect(painter, contains('max: values.last'));
+    expect(painter, contains('path.cubicTo'));
+    expect(painter, isNot(contains('_paintRecordedTrajectory')));
+  });
+
+  test('premium trend retains target, min-max and selected-reading semantics', () {
+    final section = File(
+      'lib/features/dashboard/widgets/dashboard_trend_section.dart',
+    ).readAsStringSync();
+    final painter = File(
+      'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
     ).readAsStringSync();
 
-    expect(painter, contains("static const Duration _rawPointWindow = Duration(hours: 36)"));
-    expect(painter, contains('bool get _useDailyRanges'));
-    expect(painter, contains('_paintDailyRanges'));
-    expect(painter, contains('_paintRecordedPoints'));
-    expect(painter, contains('final minValue = values.reduce(math.min)'));
-    expect(painter, contains('final maxValue = values.reduce(math.max)'));
-    expect(painter, isNot(contains('_paintRecordedTrajectory')));
-    expect(painter, isNot(contains('curveTo')));
-    expect(copy, contains('plage minimale–maximale observée'));
-    expect(copy, contains('Aucune ligne ni valeur manquante n’est inventée'));
+    expect(section, contains("'Médiane journalière'"));
+    expect(section, contains("'Min – Max (observé)'"));
+    expect(section, contains('Plage cible'));
+    expect(section, contains('_TrendSelectionCard'));
+    expect(painter, contains('_paintTargetBand'));
+    expect(painter, contains('summary.logIds.contains(selectedLogId)'));
   });
 }
