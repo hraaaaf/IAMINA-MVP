@@ -149,6 +149,17 @@ class ChromePage:
             )
         )
 
+    def cache_contains_marker(self, cache_name: str, marker: str) -> bool:
+        expression = (
+            "caches.open("
+            + json.dumps(cache_name)
+            + ").then(c => c.match('main.dart.js')).then(r => "
+            + "r ? r.text() : '').then(t => t.includes("
+            + json.dumps(marker)
+            + "))"
+        )
+        return bool(self.evaluate(expression, True))
+
     def set_network(self, offline: bool) -> None:
         self.call("Network.setCacheDisabled", {"cacheDisabled": True})
         self.call(
@@ -332,6 +343,8 @@ def healthy_prepare() -> None:
             raise RuntimeError("v3 install removed active v1 before activation")
         if not page.shell_marker("IAMINA_UPDATE_V1"):
             raise RuntimeError("waiting v3 altered the active v1 shell")
+        if not page.cache_contains_marker(v3_cache, "IAMINA_UPDATE_V3_FIXED"):
+            raise RuntimeError("v3 cache does not contain the expected v3 bundle")
 
         state.update(
             {
@@ -339,6 +352,7 @@ def healthy_prepare() -> None:
                 "server_exposed_v3": True,
                 "waiting_state": waiting_state,
                 "pre_activation_cache_names": caches,
+                "v3_cache_bundle_verified": True,
                 "origin_storage_cleared": False,
                 "result": "PASS",
             }
@@ -361,6 +375,9 @@ def healthy_activate() -> None:
             forbidden=(v1_cache, v2_cache),
             timeout=30,
         )
+        if not page.cache_contains_marker(v3_cache, "IAMINA_UPDATE_V3_FIXED"):
+            raise RuntimeError("Active v3 cache does not contain the expected v3 bundle")
+
         page.call("Page.reload", {"ignoreCache": True})
         restored = page.wait_title("IAMINA_PWA_RESTORED:")
         if restored.split(":", 1)[1] != healthy["storage_implementation"]:
@@ -373,8 +390,8 @@ def healthy_activate() -> None:
         offline_restore = page.wait_title("IAMINA_PWA_RESTORED:", timeout=30)
         if offline_restore.split(":", 1)[1] != healthy["storage_implementation"]:
             raise RuntimeError("Drift storage changed on v3 offline reopen")
-        if not page.shell_marker("IAMINA_UPDATE_V3_FIXED"):
-            raise RuntimeError("Healthy v3 shell is not served offline")
+        if not page.cache_contains_marker(v3_cache, "IAMINA_UPDATE_V3_FIXED"):
+            raise RuntimeError("Offline v3 cache lost the expected v3 bundle")
 
         result = {
             "evidence_class": "synthetic-non-patient-browser",
@@ -385,7 +402,8 @@ def healthy_activate() -> None:
                 "final_cache_names": final_caches,
                 "restore_title": restored,
                 "offline_restore_title": offline_restore,
-                "v3_shell_verified": True,
+                "v3_cache_bundle_verified_after_activation": True,
+                "v3_cache_bundle_verified_offline": True,
             },
             "release_policy": (
                 "preserve-last-known-good-after-rejected-candidate; "
