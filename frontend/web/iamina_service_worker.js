@@ -25,10 +25,24 @@ const STATIC_FILES = new Set([
 ]);
 const STATIC_PREFIXES = ['/assets/', '/canvaskit/', '/icons/'];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE)),
+async function precacheRelease() {
+  const cache = await caches.open(CACHE_NAME);
+  await Promise.all(
+    PRECACHE.map(async (path) => {
+      const request = new Request(new URL(path, self.registration.scope), {
+        cache: 'reload',
+      });
+      const response = await fetch(request);
+      if (!response.ok) {
+        throw new Error(`IAMINA precache failed for ${path}: HTTP ${response.status}`);
+      }
+      await cache.put(request, response);
+    }),
   );
+}
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(precacheRelease());
 });
 
 self.addEventListener('activate', (event) => {

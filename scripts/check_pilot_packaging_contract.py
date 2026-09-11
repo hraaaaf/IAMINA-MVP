@@ -226,6 +226,13 @@ def main() -> int:
             errors,
         )
         require(
+            "release_probe=" in bootstrap
+            and "cache: 'no-store'" in bootstrap
+            and "encodeURIComponent(release)" in bootstrap,
+            "IAMINA bootstrap does not discover and register the canonical release deterministically",
+            errors,
+        )
+        require(
             "updateViaCache: 'none'" in bootstrap and "registration.update()" in bootstrap,
             "IAMINA service-worker updates are not checked in the background with HTTP-cache bypass",
             errors,
@@ -249,6 +256,13 @@ def main() -> int:
                 "IAMINA app-shell cache identity does not match canonical pubspec version/build",
                 errors,
             )
+        require(
+            "async function precacheRelease" in service_worker
+            and "cache: 'reload'" in service_worker
+            and "cache.addAll(PRECACHE)" not in service_worker,
+            "IAMINA release precache does not bypass stale browser HTTP-cache entries",
+            errors,
+        )
         require(
             "self.skipWaiting()" not in service_worker,
             "IAMINA service worker must not force a mid-session update takeover",
