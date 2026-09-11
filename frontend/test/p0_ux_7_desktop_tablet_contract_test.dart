@@ -39,12 +39,21 @@ void main() {
     expect(journal, contains('viewportWidth >= 700'));
   });
 
-  test('importer uses a desktop two-column CGM connection layout', () {
+  test('dedicated CGM guide uses a desktop three-column connection layout', () {
     final importer = _read('lib/features/import/import_screen.dart');
+    final cgmScreen = _read('lib/features/import/cgm_screen.dart');
     final cgm = _read('lib/features/import/cgm_connections_section.dart');
     expect(importer, contains('ResponsiveContentSurface('));
     expect(importer, contains('maxWidth: 1160'));
-    expect(importer, contains('const CgmConnectionsSection()'));
+    expect(
+      importer,
+      contains("_CgmGuideEntryCard(onTap: () => context.push('/cgm'))"),
+    );
+    expect(cgmScreen, contains('ResponsiveContentSurface('));
+    expect(cgmScreen, contains('maxWidth: 1080'));
+    expect(cgmScreen, contains('CgmConnectionsSection(service: service)'));
+    expect(cgmScreen, contains('constraints.maxWidth >= 900'));
+    expect(cgmScreen, contains('Expanded(child: guides[i])'));
     expect(cgm, contains('constraints.maxWidth >= 900'));
     expect(cgm, contains('Expanded(child: cards[i])'));
   });

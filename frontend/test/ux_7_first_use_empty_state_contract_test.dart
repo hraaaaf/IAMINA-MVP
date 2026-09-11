@@ -56,19 +56,25 @@ void main() {
   });
 
   test(
-    'importer first-use leads to document review and exposes real CGM connectors',
+    'importer first-use leads to document review and exposes the guided CGM flow',
     () {
       final importer = _read('lib/features/import/import_screen.dart');
+      final cgmScreen = _read('lib/features/import/cgm_screen.dart');
       final cgm = _read('lib/features/import/cgm_connections_section.dart');
       expect(importer, contains('if (_totalLogs == 0)'));
       expect(importer, contains("ValueKey('import-first-use')"));
       expect(importer, contains('.documentIntro'));
       expect(importer, contains('.chooseDocument'));
       expect(importer, contains("context.push('/pulper')"));
-      expect(importer, contains('const CgmConnectionsSection()'));
-      expect(cgm, contains('Dexcom G6/G7'));
-      expect(cgm, contains('FreeStyle Libre'));
-      expect(cgm, contains('LinX / AiDEX X'));
+      expect(
+        importer,
+        contains("_CgmGuideEntryCard(onTap: () => context.push('/cgm'))"),
+      );
+      expect(cgmScreen, contains('class CgmScreen'));
+      expect(cgmScreen, contains('CgmConnectionsSection(service: service)'));
+      expect(cgmScreen, contains('Dexcom G6/G7'));
+      expect(cgmScreen, contains('FreeStyle Libre'));
+      expect(cgmScreen, contains('LinX / AiDEX X'));
       expect(cgm, contains('OutlinedButton('));
       expect(cgm, isNot(contains('const _UnavailableAction()')));
     },

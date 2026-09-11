@@ -84,10 +84,16 @@ void main() {
 
   test('CGM integrations expose real governed actions without fake availability', () {
     final importer = _read('lib/features/import/import_screen.dart');
+    final cgmScreen = _read('lib/features/import/cgm_screen.dart');
     final cgm = _read('lib/features/import/cgm_connections_section.dart');
     final service = _read('lib/services/cgm_service.dart');
 
-    expect(importer, contains('const CgmConnectionsSection()'));
+    expect(
+      importer,
+      contains("_CgmGuideEntryCard(onTap: () => context.push('/cgm'))"),
+    );
+    expect(cgmScreen, contains('class CgmScreen'));
+    expect(cgmScreen, contains('CgmConnectionsSection(service: service)'));
     expect(cgm, contains("id: 'dexcom'"));
     expect(cgm, contains("id: 'libre'"));
     expect(cgm, contains("id: 'linx'"));

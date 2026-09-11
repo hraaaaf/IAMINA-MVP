@@ -25,7 +25,7 @@ class CgmScreen extends StatelessWidget {
               child: ResponsiveContentSurface(
                 maxWidth: 1080,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                  padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 28),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -133,7 +133,7 @@ class _CgmHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(8, 10, 16, 12),
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 10, 16, 12),
       decoration: const BoxDecoration(
         color: AminaTheme.cardBg,
         border: Border(bottom: BorderSide(color: AminaTheme.ink100)),
@@ -257,7 +257,7 @@ class _SourceGuideCard extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        childrenPadding: const EdgeInsetsDirectional.fromSTEB(14, 0, 14, 14),
         leading: Container(
           width: 36,
           height: 36,

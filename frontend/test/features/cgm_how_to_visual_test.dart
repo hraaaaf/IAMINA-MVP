@@ -69,11 +69,16 @@ void main() {
 
     await tester.tap(find.text('Mode d’emploi').first);
     await tester.pumpAndSettle();
+    final dialog = find.byType(Dialog);
+    expect(dialog, findsOneWidget);
     expect(find.text('Connecter Dexcom G6/G7'), findsOneWidget);
     expect(find.textContaining('Dexcom Share'), findsWidgets);
     expect(find.textContaining('Nightscout'), findsWidgets);
     expect(find.textContaining('IAMINA'), findsWidgets);
-    expect(find.text('Configurer'), findsOneWidget);
+    expect(
+      find.descendant(of: dialog, matching: find.text('Configurer')),
+      findsOneWidget,
+    );
 
     await expectLater(
       find.byKey(captureKey),

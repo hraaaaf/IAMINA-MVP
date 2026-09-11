@@ -64,6 +64,11 @@ const _screenRegistry = <_RtlScreenEntry>[
     source: 'lib/features/import/import_screen.dart',
   ),
   _RtlScreenEntry(
+    route: '/cgm',
+    widget: 'CgmScreen',
+    source: 'lib/features/import/cgm_screen.dart',
+  ),
+  _RtlScreenEntry(
     route: '/companion',
     widget: 'CompanionScreen',
     source: 'lib/features/companion/companion_screen.dart',
