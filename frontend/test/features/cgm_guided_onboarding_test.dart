@@ -83,6 +83,46 @@ void main() {
     }
   });
 
+  testWidgets('desktop intro uses the wide grid while tablet keeps the guided order', (
+    tester,
+  ) async {
+    await _pumpGuide(tester, size: const Size(1280, 900));
+
+    final header = find.byKey(const ValueKey('cgm-header-content'));
+    final journey = find.byKey(const ValueKey('cgm-journey-panel'));
+    final nightscout = find.byKey(const ValueKey('cgm-nightscout-panel'));
+
+    expect(header, findsOneWidget);
+    expect(journey, findsOneWidget);
+    expect(nightscout, findsOneWidget);
+    expect(tester.getSize(header).width, lessThanOrEqualTo(1080));
+    expect(tester.getSize(header).width, greaterThan(1000));
+    expect(
+      tester.getTopLeft(journey).dy,
+      closeTo(tester.getTopLeft(nightscout).dy, 1),
+    );
+    expect(
+      tester.getSize(journey).width,
+      greaterThan(tester.getSize(nightscout).width * 1.8),
+    );
+
+    await _pumpGuide(tester, size: const Size(768, 1024));
+
+    final tabletJourneyTop = tester
+        .getTopLeft(find.byKey(const ValueKey('cgm-journey-panel')))
+        .dy;
+    final tabletChooseTop = tester
+        .getTopLeft(find.text('Choisissez votre capteur et suivez le chemin conseillé'))
+        .dy;
+    final tabletNightscoutTop = tester
+        .getTopLeft(find.byKey(const ValueKey('cgm-nightscout-panel')))
+        .dy;
+
+    expect(tabletJourneyTop, lessThan(tabletChooseTop));
+    expect(tabletChooseTop, lessThan(tabletNightscoutTop));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('guided CGM page keeps English and Arabic copy parity', (tester) async {
     await _pumpGuide(
       tester,

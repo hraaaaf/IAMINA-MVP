@@ -24,50 +24,82 @@ class CgmScreen extends StatelessWidget {
             Expanded(
               child: ResponsiveContentSurface(
                 maxWidth: 1080,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _JourneyCard(copy: copy),
-                      const SizedBox(height: 16),
-                      Text(
-                        copy.chooseSensor,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AminaTheme.ink900,
-                        ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isDesktop = constraints.maxWidth >= 900;
+                    final guides = [
+                      _SourceGuideCard(
+                        key: const ValueKey('cgm-guide-dexcom'),
+                        icon: Icons.bluetooth_rounded,
+                        title: 'Dexcom G6/G7',
+                        path: copy.dexcomPath,
+                        steps: copy.dexcomSteps,
                       ),
-                      const SizedBox(height: 10),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final guides = [
-                            _SourceGuideCard(
-                              key: const ValueKey('cgm-guide-dexcom'),
-                              icon: Icons.bluetooth_rounded,
-                              title: 'Dexcom G6/G7',
-                              path: copy.dexcomPath,
-                              steps: copy.dexcomSteps,
-                            ),
-                            _SourceGuideCard(
-                              key: const ValueKey('cgm-guide-libre'),
-                              icon: Icons.sensors_rounded,
-                              title: 'FreeStyle Libre',
-                              path: copy.librePath,
-                              steps: copy.libreSteps,
-                            ),
-                            _SourceGuideCard(
-                              key: const ValueKey('cgm-guide-linx'),
-                              icon: Icons.monitor_heart_outlined,
-                              title: 'LinX / AiDEX X',
-                              path: copy.linxPath,
-                              steps: copy.linxSteps,
-                            ),
-                          ];
+                      _SourceGuideCard(
+                        key: const ValueKey('cgm-guide-libre'),
+                        icon: Icons.sensors_rounded,
+                        title: 'FreeStyle Libre',
+                        path: copy.librePath,
+                        steps: copy.libreSteps,
+                      ),
+                      _SourceGuideCard(
+                        key: const ValueKey('cgm-guide-linx'),
+                        icon: Icons.monitor_heart_outlined,
+                        title: 'LinX / AiDEX X',
+                        path: copy.linxPath,
+                        steps: copy.linxSteps,
+                      ),
+                    ];
 
-                          if (constraints.maxWidth >= 900) {
-                            return Row(
+                    return SingleChildScrollView(
+                      padding: EdgeInsetsDirectional.fromSTEB(
+                        isDesktop ? 20 : 16,
+                        isDesktop ? 18 : 16,
+                        isDesktop ? 20 : 16,
+                        28,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (isDesktop)
+                            IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    flex: 2,
+                                    child: KeyedSubtree(
+                                      key: const ValueKey('cgm-journey-panel'),
+                                      child: _JourneyCard(copy: copy, desktop: true),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: KeyedSubtree(
+                                      key: const ValueKey('cgm-nightscout-panel'),
+                                      child: _NightscoutHelpCard(copy: copy, desktop: true),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            KeyedSubtree(
+                              key: const ValueKey('cgm-journey-panel'),
+                              child: _JourneyCard(copy: copy),
+                            ),
+                          SizedBox(height: isDesktop ? 20 : 16),
+                          Text(
+                            copy.chooseSensor,
+                            style: TextStyle(
+                              fontSize: isDesktop ? 17 : 16,
+                              fontWeight: FontWeight.w800,
+                              color: AminaTheme.ink900,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          if (isDesktop)
+                            Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 for (var i = 0; i < guides.length; i++) ...[
@@ -75,45 +107,62 @@ class CgmScreen extends StatelessWidget {
                                   Expanded(child: guides[i]),
                                 ],
                               ],
-                            );
-                          }
-
-                          return Column(
-                            children: [
-                              for (var i = 0; i < guides.length; i++) ...[
-                                if (i > 0) const SizedBox(height: 10),
-                                guides[i],
+                            )
+                          else
+                            Column(
+                              children: [
+                                for (var i = 0; i < guides.length; i++) ...[
+                                  if (i > 0) const SizedBox(height: 10),
+                                  guides[i],
+                                ],
                               ],
-                            ],
-                          );
-                        },
+                            ),
+                          if (!isDesktop) ...[
+                            const SizedBox(height: 16),
+                            KeyedSubtree(
+                              key: const ValueKey('cgm-nightscout-panel'),
+                              child: _NightscoutHelpCard(copy: copy),
+                            ),
+                          ],
+                          SizedBox(height: isDesktop ? 24 : 22),
+                          Text(
+                            copy.connectTitle,
+                            style: TextStyle(
+                              fontSize: isDesktop ? 17 : 16,
+                              fontWeight: FontWeight.w800,
+                              color: AminaTheme.ink900,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          if (isDesktop)
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 820),
+                              child: Text(
+                                copy.connectIntro,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  height: 1.45,
+                                  color: AminaTheme.ink600,
+                                ),
+                              ),
+                            )
+                          else
+                            Text(
+                              copy.connectIntro,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                height: 1.45,
+                                color: AminaTheme.ink600,
+                              ),
+                            ),
+                          const SizedBox(height: 12),
+                          CgmConnectionsSection(service: service),
+                          const SizedBox(height: 14),
+                          _TroubleshootingCard(copy: copy),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      _NightscoutHelpCard(copy: copy),
-                      const SizedBox(height: 22),
-                      Text(
-                        copy.connectTitle,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AminaTheme.ink900,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        copy.connectIntro,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          height: 1.45,
-                          color: AminaTheme.ink600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      CgmConnectionsSection(service: service),
-                      const SizedBox(height: 14),
-                      _TroubleshootingCard(copy: copy),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -131,42 +180,60 @@ class _CgmHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 900;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 10, 16, 12),
       decoration: const BoxDecoration(
         color: AminaTheme.cardBg,
         border: Border(bottom: BorderSide(color: AminaTheme.ink100)),
       ),
-      child: Row(
-        children: [
-          IconButton(
-            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-            onPressed: Navigator.of(context).canPop() ? () => Navigator.of(context).pop() : null,
-            icon: const Icon(Icons.arrow_back_rounded),
-          ),
-          const SizedBox(width: 2),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Center(
+        child: ConstrainedBox(
+          key: const ValueKey('cgm-header-content'),
+          constraints: const BoxConstraints(maxWidth: 1080),
+          child: Padding(
+            padding: EdgeInsetsDirectional.fromSTEB(
+              isDesktop ? 20 : 8,
+              isDesktop ? 12 : 10,
+              isDesktop ? 20 : 16,
+              isDesktop ? 14 : 12,
+            ),
+            child: Row(
               children: [
-                Text(
-                  copy.title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: AminaTheme.ink900,
-                  ),
+                IconButton(
+                  tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                  onPressed: Navigator.of(context).canPop() ? () => Navigator.of(context).pop() : null,
+                  icon: const Icon(Icons.arrow_back_rounded),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  copy.subtitle,
-                  style: const TextStyle(fontSize: 11.5, color: AminaTheme.ink500),
+                const SizedBox(width: 2),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        copy.title,
+                        style: TextStyle(
+                          fontSize: isDesktop ? 20 : 18,
+                          fontWeight: FontWeight.w800,
+                          color: AminaTheme.ink900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        copy.subtitle,
+                        style: TextStyle(
+                          fontSize: isDesktop ? 12 : 11.5,
+                          color: AminaTheme.ink500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -174,33 +241,38 @@ class _CgmHeader extends StatelessWidget {
 
 class _JourneyCard extends StatelessWidget {
   final _CgmGuideCopy copy;
+  final bool desktop;
 
-  const _JourneyCard({required this.copy});
+  const _JourneyCard({required this.copy, this.desktop = false});
 
   @override
   Widget build(BuildContext context) {
     return ClinicalCard(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(desktop ? 18 : 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: desktop ? 42 : 38,
+                height: desktop ? 42 : 38,
                 decoration: BoxDecoration(
                   color: AminaTheme.teal50,
-                  borderRadius: BorderRadius.circular(11),
+                  borderRadius: BorderRadius.circular(desktop ? 12 : 11),
                 ),
-                child: const Icon(Icons.route_rounded, color: AminaTheme.teal700, size: 20),
+                child: Icon(
+                  Icons.route_rounded,
+                  color: AminaTheme.teal700,
+                  size: desktop ? 21 : 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   copy.journeyTitle,
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: desktop ? 15 : 14,
                     fontWeight: FontWeight.w800,
                     color: AminaTheme.ink900,
                   ),
@@ -211,7 +283,10 @@ class _JourneyCard extends StatelessWidget {
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            padding: EdgeInsets.symmetric(
+              horizontal: desktop ? 14 : 12,
+              vertical: desktop ? 12 : 11,
+            ),
             decoration: BoxDecoration(
               color: AminaTheme.teal50,
               borderRadius: BorderRadius.circular(12),
@@ -219,14 +294,14 @@ class _JourneyCard extends StatelessWidget {
             child: Text(
               copy.journeyPath,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
+              style: TextStyle(
+                fontSize: desktop ? 12.5 : 12,
                 fontWeight: FontWeight.w800,
                 color: AminaTheme.teal800,
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: desktop ? 12 : 10),
           Text(
             copy.credentialSafety,
             style: const TextStyle(fontSize: 11.5, height: 1.4, color: AminaTheme.ink600),
@@ -332,32 +407,49 @@ class _GuideStep extends StatelessWidget {
 
 class _NightscoutHelpCard extends StatelessWidget {
   final _CgmGuideCopy copy;
+  final bool desktop;
 
-  const _NightscoutHelpCard({required this.copy});
+  const _NightscoutHelpCard({required this.copy, this.desktop = false});
 
   @override
   Widget build(BuildContext context) {
+    final helpIcon = desktop
+        ? Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AminaTheme.teal50,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.help_outline_rounded,
+              size: 21,
+              color: AminaTheme.teal700,
+            ),
+          )
+        : const Icon(Icons.help_outline_rounded, size: 21, color: AminaTheme.ink600);
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(desktop ? 18 : 16),
       decoration: BoxDecoration(
         color: AminaTheme.ink50,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(desktop ? 24 : 16),
         border: Border.all(color: AminaTheme.ink200),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.help_outline_rounded, size: 21, color: AminaTheme.ink600),
-          const SizedBox(width: 11),
+          helpIcon,
+          SizedBox(width: desktop ? 12 : 11),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   copy.noNightscoutTitle,
-                  style: const TextStyle(
-                    fontSize: 13,
+                  style: TextStyle(
+                    fontSize: desktop ? 14 : 13,
                     fontWeight: FontWeight.w800,
                     color: AminaTheme.ink900,
                   ),
