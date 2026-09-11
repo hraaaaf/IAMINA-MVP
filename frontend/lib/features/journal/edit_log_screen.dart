@@ -78,6 +78,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
     final l10n = AppLocalizations.of(context)!;
     final profile = context.watch<PatientProfileData?>();
     final unit = profile?.unitPreference ?? 'mg/dL';
+    final desktop = MediaQuery.sizeOf(context).width >= 900;
 
     return Scaffold(
       appBar: AppBar(
@@ -94,7 +95,9 @@ class _EditLogScreenState extends State<EditLogScreen> {
                 padding: const EdgeInsetsDirectional.fromSTEB(20, 12, 20, 32),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 680),
+                    constraints: BoxConstraints(
+                      maxWidth: desktop ? 920 : 680,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
@@ -107,9 +110,20 @@ class _EditLogScreenState extends State<EditLogScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        _glucoseCard(l10n, unit),
-                        const SizedBox(height: 18),
-                        _insulinCard(l10n),
+                        if (desktop)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: _glucoseCard(l10n, unit)),
+                              const SizedBox(width: 18),
+                              Expanded(child: _insulinCard(l10n)),
+                            ],
+                          )
+                        else ...[
+                          _glucoseCard(l10n, unit),
+                          const SizedBox(height: 18),
+                          _insulinCard(l10n),
+                        ],
                         const SizedBox(height: 14),
                         _contextCard(l10n),
                         const SizedBox(height: 24),
