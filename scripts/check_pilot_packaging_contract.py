@@ -2,7 +2,7 @@
 """Static P5-4 pilot packaging contract.
 
 Default mode validates retained repository-side packaging foundations.
-``--pwa-ready`` adds the PWA installability/identity/offline-shell floor for the
+``--pwa-ready`` adds the PWA installability/identity/offline/update floor for the
 current PWA-first pilot path. ``--release-ready`` adds the deferred native iOS
 permanent-identity floor required before signed native pilot artifacts are
 accepted.
@@ -106,8 +106,9 @@ def main() -> int:
     )
 
     pubspec = read("frontend/pubspec.yaml")
+    version_match = re.search(r"(?m)^version: (\d+\.\d+\.\d+\+\d+)$", pubspec)
     require(
-        re.search(r"(?m)^version: \d+\.\d+\.\d+\+\d+$", pubspec) is not None,
+        version_match is not None,
         "pubspec version must remain SemVer+integer build number",
         errors,
     )
@@ -225,8 +226,15 @@ def main() -> int:
             errors,
         )
         require(
-            "updateViaCache: 'none'" in bootstrap,
-            "IAMINA service-worker script updates are not configured to bypass HTTP cache",
+            "release_probe=" in bootstrap
+            and "cache: 'no-store'" in bootstrap
+            and "encodeURIComponent(release)" in bootstrap,
+            "IAMINA bootstrap does not discover and register the canonical release deterministically",
+            errors,
+        )
+        require(
+            "updateViaCache: 'none'" in bootstrap and "registration.update()" in bootstrap,
+            "IAMINA service-worker updates are not checked in the background with HTTP-cache bypass",
             errors,
         )
         require(
@@ -239,13 +247,36 @@ def main() -> int:
             "IAMINA_CACHE_PREFIX" in service_worker
             and "IAMINA_CACHE_SCHEMA" in service_worker
             and "iamina-app-shell-" in service_worker,
-            "IAMINA service worker cache is not explicitly schema-versioned",
+            "IAMINA service worker cache is not explicitly release-versioned",
+            errors,
+        )
+        if version_match is not None:
+            require(
+                f"const IAMINA_CACHE_SCHEMA = '{version_match.group(1)}';" in service_worker,
+                "IAMINA app-shell cache identity does not match canonical pubspec version/build",
+                errors,
+            )
+        require(
+            "async function precacheRelease" in service_worker
+            and "cache: 'reload'" in service_worker
+            and "cache.addAll(PRECACHE)" not in service_worker,
+            "IAMINA release precache does not bypass stale browser HTTP-cache entries",
             errors,
         )
         require(
-            "self.skipWaiting()" in service_worker
-            and "self.clients.claim()" in service_worker,
-            "IAMINA service worker does not activate/claim deterministically",
+            "self.skipWaiting()" not in service_worker,
+            "IAMINA service worker must not force a mid-session update takeover",
+            errors,
+        )
+        require(
+            "self.clients.claim()" in service_worker,
+            "IAMINA service worker does not claim clients after safe activation",
+            errors,
+        )
+        require(
+            "async function cacheFirstStatic" in service_worker
+            and "async function cacheFirstNavigation" in service_worker,
+            "IAMINA app shell is not release-coherent/cache-first",
             errors,
         )
         require(

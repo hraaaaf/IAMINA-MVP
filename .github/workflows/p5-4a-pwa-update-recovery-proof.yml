@@ -1,0 +1,249 @@
+name: P5-4A PWA update and recovery proof
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/web/**'
+      - 'frontend/lib/ui_pwa_persistence_probe_main.dart'
+      - 'frontend/lib/data/drift/**'
+      - 'frontend/pubspec.yaml'
+      - 'frontend/pubspec.lock'
+      - 'scripts/check_pilot_packaging_contract.py'
+      - 'scripts/p5_4a_pwa_update_recovery_probe.py'
+      - 'scripts/p5_4a_pwa_update_startup_probe.py'
+      - '.github/workflows/p5-4a-pwa-update-recovery-proof.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p5-4a-pwa-update-recovery-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chrome-update-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Verify release-atomic PWA contract
+        run: python3 scripts/check_pilot_packaging_contract.py --pwa-ready
+
+      - name: Build self-contained synthetic PWA probe
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn -t lib/ui_pwa_persistence_probe_main.dart
+
+      - name: Prepare healthy v1, broken v2 and healthy v3 shells
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p p5-4a-pwa-update/releases p5-4a-pwa-update-proof
+          cp -a frontend/build/web p5-4a-pwa-update/releases/v1
+          cp -a frontend/build/web p5-4a-pwa-update/releases/v2-broken
+          cp -a frontend/build/web p5-4a-pwa-update/releases/v3-fixed
+
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          root = Path('p5-4a-pwa-update/releases')
+          pubspec = Path('frontend/pubspec.yaml').read_text(encoding='utf-8')
+          match = re.search(r'(?m)^version:\s*(\d+\.\d+\.\d+\+\d+)\s*$', pubspec)
+          if not match:
+              raise SystemExit('missing pubspec release id')
+          base_release = match.group(1)
+
+          def append_marker(release: str, marker: str) -> None:
+              path = root / release / 'main.dart.js'
+              path.write_text(
+                  path.read_text(encoding='utf-8') + f'\n/* {marker} */\n',
+                  encoding='utf-8',
+              )
+
+          def set_release(release: str, new: str) -> None:
+              worker = root / release / 'iamina_service_worker.js'
+              worker_text = worker.read_text(encoding='utf-8')
+              worker_needle = f"const IAMINA_CACHE_SCHEMA = '{base_release}';"
+              worker_replacement = f"const IAMINA_CACHE_SCHEMA = '{new}';"
+              if worker_needle not in worker_text:
+                  raise SystemExit(f'missing release marker in {worker}')
+              worker.write_text(
+                  worker_text.replace(worker_needle, worker_replacement, 1),
+                  encoding='utf-8',
+              )
+
+              bootstrap = root / release / 'flutter_bootstrap.js'
+              bootstrap_text = bootstrap.read_text(encoding='utf-8')
+              bootstrap_needle = f"const IAMINA_FALLBACK_RELEASE = '{base_release}';"
+              bootstrap_replacement = f"const IAMINA_FALLBACK_RELEASE = '{new}';"
+              if bootstrap_needle not in bootstrap_text:
+                  raise SystemExit(f'missing fallback release marker in {bootstrap}')
+              bootstrap.write_text(
+                  bootstrap_text.replace(
+                      bootstrap_needle,
+                      bootstrap_replacement,
+                      1,
+                  ),
+                  encoding='utf-8',
+              )
+
+          append_marker('v1', 'IAMINA_UPDATE_V1')
+          append_marker('v2-broken', 'IAMINA_UPDATE_V2_BROKEN')
+          append_marker('v3-fixed', 'IAMINA_UPDATE_V3_FIXED')
+          set_release('v2-broken', 'test-v2-broken')
+          set_release('v3-fixed', 'test-v3-fixed')
+
+          broken = root / 'v2-broken' / 'iamina_service_worker.js'
+          text = broken.read_text(encoding='utf-8')
+          needle = "  './drift_worker.js',\n];"
+          replacement = "  './drift_worker.js',\n  './missing-v2.asset',\n];"
+          if needle not in text:
+              raise SystemExit('unable to inject deterministic broken-v2 precache entry')
+          broken.write_text(text.replace(needle, replacement, 1), encoding='utf-8')
+
+          Path('p5-4a-pwa-update/base-release.txt').write_text(
+              base_release, encoding='utf-8'
+          )
+          PY
+
+          cp -a p5-4a-pwa-update/releases/v1 p5-4a-pwa-update/served
+
+      - name: Prove startup-driven failed-update safety and healthy activation in Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet websocket-client
+
+          python3 -m http.server 7362 --directory p5-4a-pwa-update/served >/tmp/iamina-pwa-update-http.log 2>&1 &
+          SERVER_PID=$!
+          PROFILE_BROKEN="$(mktemp -d)"
+          PROFILE_HEALTHY="$(mktemp -d)"
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          CHROME_PID=''
+
+          cleanup_process() {
+            local pid="$1"
+            kill "$pid" 2>/dev/null || true
+            for _ in $(seq 1 30); do
+              if ! kill -0 "$pid" 2>/dev/null; then break; fi
+              sleep 0.2
+            done
+            if kill -0 "$pid" 2>/dev/null; then kill -9 "$pid" 2>/dev/null || true; fi
+            wait "$pid" 2>/dev/null || true
+          }
+
+          stop_chrome() {
+            if [ -n "${CHROME_PID:-}" ]; then
+              cleanup_process "$CHROME_PID"
+              CHROME_PID=''
+            fi
+            for _ in $(seq 1 30); do
+              if ! curl -fsS http://127.0.0.1:9225/json/list >/dev/null 2>&1; then break; fi
+              sleep 0.2
+            done
+          }
+
+          start_chrome() {
+            local profile="$1"
+            local phase="$2"
+            "$CHROME" \
+              --headless=new \
+              --no-sandbox \
+              --no-first-run \
+              --disable-session-crashed-bubble \
+              --enable-unsafe-swiftshader \
+              --remote-allow-origins='*' \
+              --remote-debugging-port=9225 \
+              --user-data-dir="$profile" \
+              "http://127.0.0.1:7362/?phase=$phase" \
+              >/tmp/iamina-pwa-update-chrome.log 2>&1 &
+            CHROME_PID=$!
+            for _ in $(seq 1 50); do
+              if curl -fsS http://127.0.0.1:9225/json/list >/dev/null; then return 0; fi
+              sleep 0.2
+            done
+            cat /tmp/iamina-pwa-update-chrome.log >&2 || true
+            return 1
+          }
+
+          publish_release() {
+            local name="$1"
+            local expected="$2"
+            rm -rf p5-4a-pwa-update/served.next p5-4a-pwa-update/served.previous
+            cp -a "p5-4a-pwa-update/releases/$name" p5-4a-pwa-update/served.next
+            mv p5-4a-pwa-update/served p5-4a-pwa-update/served.previous
+            mv p5-4a-pwa-update/served.next p5-4a-pwa-update/served
+            rm -rf p5-4a-pwa-update/served.previous
+            curl -fsS "http://127.0.0.1:7362/iamina_service_worker.js?verify=$(date +%s%N)" | grep -F "$expected" >/dev/null
+          }
+
+          cleanup_all() {
+            stop_chrome || true
+            cleanup_process "$SERVER_PID" || true
+            rm -rf "$PROFILE_BROKEN" "$PROFILE_HEALTHY" 2>/dev/null || true
+          }
+          trap cleanup_all EXIT
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7362/manifest.json >/dev/null; then break; fi
+            sleep 0.2
+          done
+          BASE_RELEASE="$(cat p5-4a-pwa-update/base-release.txt)"
+          curl -fsS http://127.0.0.1:7362/iamina_service_worker.js | grep -F "$BASE_RELEASE" >/dev/null
+
+          # Property A: establish v1, close the app, publish a broken candidate,
+          # then let the next normal startup discover the candidate release and
+          # update the registration through its release-versioned script URL.
+          start_chrome "$PROFILE_BROKEN" seed
+          python3 scripts/p5_4a_pwa_update_startup_probe.py broken-seed
+          stop_chrome
+          publish_release v2-broken test-v2-broken
+          start_chrome "$PROFILE_BROKEN" verify
+          python3 scripts/p5_4a_pwa_update_startup_probe.py broken-check
+          stop_chrome
+
+          # Property B: on a separate profile establish v1 and close it first.
+          # Publish healthy v3 while the PWA is closed. The next startup must
+          # discover v3 through the production bootstrap, leave it waiting beside
+          # v1, and a subsequent relaunch must activate v3 without data loss.
+          publish_release v1 "$BASE_RELEASE"
+          start_chrome "$PROFILE_HEALTHY" seed
+          python3 scripts/p5_4a_pwa_update_startup_probe.py healthy-seed
+          stop_chrome
+          publish_release v3-fixed test-v3-fixed
+          start_chrome "$PROFILE_HEALTHY" verify
+          python3 scripts/p5_4a_pwa_update_startup_probe.py healthy-prepare
+          stop_chrome
+          start_chrome "$PROFILE_HEALTHY" verify
+          python3 scripts/p5_4a_pwa_update_startup_probe.py healthy-activate
+          stop_chrome
+
+          cleanup_process "$SERVER_PID"
+          SERVER_PID=''
+          rm -rf "$PROFILE_BROKEN" "$PROFILE_HEALTHY" 2>/dev/null || true
+          trap - EXIT
+
+      - name: Upload retained update/recovery proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p5-4a-pwa-update-recovery-proof
+          path: p5-4a-pwa-update-proof/pwa-update-recovery-proof.json
+          if-no-files-found: warn
+          retention-days: 14
