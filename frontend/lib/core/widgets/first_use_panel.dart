@@ -42,7 +42,9 @@ class AminaFirstUsePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shortViewport = MediaQuery.sizeOf(context).height <= 600;
+    final media = MediaQuery.sizeOf(context);
+    final shortViewport = media.height <= 600;
+    final desktopViewport = media.width >= 900;
     final dense = compact || shortViewport;
 
     return LayoutBuilder(
@@ -244,7 +246,13 @@ class AminaFirstUsePanel extends StatelessWidget {
                       intro,
                       if (actions != null) ...[
                         SizedBox(height: dense ? 16 : 20),
-                        actions,
+                        if (desktopViewport)
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: SizedBox(width: 260, child: actions),
+                          )
+                        else
+                          actions,
                       ],
                       if (noteWidget != null) ...[
                         SizedBox(height: dense ? 12 : 16),

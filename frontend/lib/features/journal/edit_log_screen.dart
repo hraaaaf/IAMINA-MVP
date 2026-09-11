@@ -78,6 +78,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
     final l10n = AppLocalizations.of(context)!;
     final profile = context.watch<PatientProfileData?>();
     final unit = profile?.unitPreference ?? 'mg/dL';
+    final desktop = MediaQuery.sizeOf(context).width >= 900;
 
     return Scaffold(
       appBar: AppBar(
@@ -91,85 +92,129 @@ class _EditLogScreenState extends State<EditLogScreen> {
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsetsDirectional.fromSTEB(20, 12, 20, 32),
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  20,
+                  desktop ? 28 : 12,
+                  20,
+                  32,
+                ),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 680),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        Text(
-                          l10n.journalEditSubtitle,
-                          style: TextStyle(
-                            color: AminaTheme.textSecondary(context),
-                            fontSize: 13,
-                            height: 1.45,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        _glucoseCard(l10n, unit),
-                        const SizedBox(height: 18),
-                        _insulinCard(l10n),
-                        const SizedBox(height: 14),
-                        _contextCard(l10n),
-                        const SizedBox(height: 24),
-                        FilledButton.icon(
-                          key: const Key('save-edit-log-button'),
-                          onPressed: _saving || _deleting
-                              ? null
-                              : () => _saveChanges(unit, l10n),
-                          icon: _saving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.check_rounded),
-                          label: Text(_saving ? l10n.journalSaving : l10n.save),
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(54),
-                            backgroundColor: AminaTheme.teal600,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                    constraints: BoxConstraints(
+                      maxWidth: desktop ? 960 : 680,
+                    ),
+                    child: Container(
+                      padding: desktop
+                          ? const EdgeInsets.all(24)
+                          : EdgeInsets.zero,
+                      decoration: desktop
+                          ? BoxDecoration(
+                              color: AminaTheme.surface(context),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: AminaTheme.divider(context),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 28,
+                                  offset: const Offset(0, 12),
+                                ),
+                              ],
+                            )
+                          : null,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Text(
+                            l10n.journalEditSubtitle,
+                            style: TextStyle(
+                              color: AminaTheme.textSecondary(context),
+                              fontSize: 13,
+                              height: 1.45,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          key: const Key('delete-edit-log-button'),
-                          onPressed: _saving || _deleting
-                              ? null
-                              : () => _deleteLog(l10n),
-                          icon: _deleting
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.delete_outline_rounded),
-                          label: Text(l10n.delete),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(50),
-                            foregroundColor: AminaTheme.dangerRed,
-                            side: BorderSide(
-                              color: AminaTheme.dangerRed.withValues(alpha: 0.35),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                        ),
-                      ],
+                          const SizedBox(height: 20),
+                          if (desktop)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: _glucoseCard(l10n, unit)),
+                                const SizedBox(width: 18),
+                                Expanded(child: _insulinCard(l10n)),
+                              ],
+                            )
+                          else ...[
+                            _glucoseCard(l10n, unit),
+                            const SizedBox(height: 18),
+                            _insulinCard(l10n),
+                          ],
+                          const SizedBox(height: 14),
+                          _contextCard(l10n),
+                          const SizedBox(height: 24),
+                          _actionButtons(unit, l10n),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _actionButtons(String unit, AppLocalizations l10n) {
+    final save = FilledButton.icon(
+      key: const Key('save-edit-log-button'),
+      onPressed: _saving || _deleting ? null : () => _saveChanges(unit, l10n),
+      icon: _saving
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.check_rounded),
+      label: Text(_saving ? l10n.journalSaving : l10n.save),
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(54),
+        backgroundColor: AminaTheme.teal600,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+
+    final delete = OutlinedButton.icon(
+      key: const Key('delete-edit-log-button'),
+      onPressed: _saving || _deleting ? null : () => _deleteLog(l10n),
+      icon: _deleting
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.delete_outline_rounded),
+      label: Text(l10n.delete),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(50),
+        foregroundColor: AminaTheme.dangerRed,
+        side: BorderSide(color: AminaTheme.dangerRed.withValues(alpha: 0.35)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+
+    if (MediaQuery.sizeOf(context).width < 900) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [save, const SizedBox(height: 12), delete],
+      );
+    }
+
+    return Row(
+      children: [
+        SizedBox(width: 220, child: save),
+        const SizedBox(width: 12),
+        SizedBox(width: 180, child: delete),
+      ],
     );
   }
 

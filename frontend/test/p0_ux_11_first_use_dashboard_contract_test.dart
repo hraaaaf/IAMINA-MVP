@@ -44,11 +44,11 @@ void main() {
     expect(source, contains('BoxConstraints('));
     expect(source, contains('maxWidth: 900'));
     expect(firstUse, contains('constraints.maxWidth >= 720'));
-    expect(
-      firstUse,
-      contains('shortViewport = MediaQuery.sizeOf(context).height <= 600'),
-    );
+    expect(firstUse, contains('final media = MediaQuery.sizeOf(context);'));
+    expect(firstUse, contains('final shortViewport = media.height <= 600;'));
+    expect(firstUse, contains('final desktopViewport = media.width >= 900;'));
     expect(firstUse, contains('final dense = compact || shortViewport'));
+    expect(firstUse, contains('SizedBox(width: 260, child: actions)'));
     expect(firstUse, contains('EdgeInsetsDirectional.fromSTEB'));
   });
 }

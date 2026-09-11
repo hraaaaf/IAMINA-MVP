@@ -11,10 +11,10 @@ void main() {
     expect(source, contains('EdgeInsetsDirectional.fromSTEB'));
     expect(source, contains('Semantics('));
     expect(source, contains('minimumSize: const Size.fromHeight(48)'));
-    expect(
-      source,
-      contains('shortViewport = MediaQuery.sizeOf(context).height <= 600'),
-    );
+    expect(source, contains('final media = MediaQuery.sizeOf(context);'));
+    expect(source, contains('final shortViewport = media.height <= 600;'));
+    expect(source, contains('final desktopViewport = media.width >= 900;'));
+    expect(source, contains('SizedBox(width: 260, child: actions)'));
     expect(source, isNot(contains('mg/dL')));
     expect(source, isNot(contains('mmol/L')));
     expect(source, isNot(contains('GMI')));
@@ -61,7 +61,7 @@ void main() {
       final importer = _read('lib/features/import/import_screen.dart');
       final cgmScreen = _read('lib/features/import/cgm_screen.dart');
       final cgm = _read('lib/features/import/cgm_connections_section.dart');
-      expect(importer, contains('if (_totalLogs == 0)'));
+      expect(importer, contains('final documentSurface = _totalLogs == 0'));
       expect(importer, contains("ValueKey('import-first-use')"));
       expect(importer, contains('.documentIntro'));
       expect(importer, contains('.chooseDocument'));

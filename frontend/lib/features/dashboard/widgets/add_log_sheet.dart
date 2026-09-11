@@ -698,41 +698,53 @@ class _AddLogSheetState extends State<AddLogSheet> {
     });
   }
 
-  Widget _saveBar(AppDatabase db, String unit, AppLocalizations l10n) =>
-      Container(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-        decoration: BoxDecoration(
-          color: AminaTheme.bg(context),
-          border: Border(top: BorderSide(color: AminaTheme.divider(context))),
-        ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1080),
-            child: FilledButton.icon(
-              key: const Key('save-log-button'),
-              onPressed: _saving || !_hasValidGlucose
-                  ? null
-                  : () => _saveLog(db, unit, l10n),
-              icon: _saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.check_rounded),
-              label: Text(_saving ? l10n.journalSaving : l10n.journalSave),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(54),
-                backgroundColor: AminaTheme.teal600,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+  Widget _saveBar(AppDatabase db, String unit, AppLocalizations l10n) {
+    final desktop = MediaQuery.sizeOf(context).width >= 1000;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+      decoration: BoxDecoration(
+        color: AminaTheme.bg(context),
+        border: Border(top: BorderSide(color: AminaTheme.divider(context))),
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1080),
+          child: Align(
+            alignment: desktop
+                ? AlignmentDirectional.centerEnd
+                : AlignmentDirectional.center,
+            child: SizedBox(
+              width: desktop ? 280 : double.infinity,
+              child: FilledButton.icon(
+                key: const Key('save-log-button'),
+                onPressed: _saving || !_hasValidGlucose
+                    ? null
+                    : () => _saveLog(db, unit, l10n),
+                icon: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.check_rounded),
+                label: Text(
+                  _saving ? l10n.journalSaving : l10n.journalSave,
+                ),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(54),
+                  backgroundColor: AminaTheme.teal600,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 
   Future<bool> _confirmLowGlucose(double mgdl, AppLocalizations l10n) async {
     final level = classifyGlucoseEntrySafety(mgdl);

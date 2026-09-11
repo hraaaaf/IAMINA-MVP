@@ -73,10 +73,10 @@ void main() {
     expect(header, contains('minHeight: 96'));
     expect(header, contains('decoration: TextDecoration.none'));
     expect(header, contains('if (bottom == null) return chrome'));
-    expect(
-      header,
-      contains('padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 14)'),
-    );
+    expect(header, contains('final desktopInset'));
+    expect(header, contains('(surfaceWidth - 1120) / 2'));
+    expect(header, contains('padding: EdgeInsetsDirectional.fromSTEB('));
+    expect(header, contains('desktopInset'));
     expect(bridge, contains('AminaMobilePageHeader'));
     expect(bridge, contains('contentTopInset'));
     expect(addLog, contains('AminaLegacyPageHeaderBridge'));
