@@ -240,40 +240,47 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
 
             return SingleChildScrollView(
               padding: const EdgeInsetsDirectional.fromSTEB(28, 28, 28, 40),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 980),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 4,
-                        child: _DesktopWelcomePanel(
-                          title: 'IAmina',
-                          subtitle: l10n.onboardingAssistantLabel,
-                          body: l10n.onboardingWelcome,
-                        ),
-                      ),
-                      const SizedBox(width: 24),
-                      Expanded(
-                        flex: 6,
-                        child: Container(
-                          padding: const EdgeInsetsDirectional.fromSTEB(
-                            28,
-                            26,
-                            28,
-                            28,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight > 68
+                      ? constraints.maxHeight - 68
+                      : 0,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1040),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          flex: 4,
+                          child: _DesktopWelcomePanel(
+                            title: 'IAmina',
+                            subtitle: l10n.onboardingAssistantLabel,
+                            body: l10n.onboardingWelcome,
                           ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: AminaTheme.ink100),
-                            boxShadow: AminaTheme.shadowClinicalLg,
-                          ),
-                          child: questions,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 28),
+                        Expanded(
+                          flex: 6,
+                          child: Container(
+                            padding: const EdgeInsetsDirectional.fromSTEB(
+                              30,
+                              28,
+                              30,
+                              30,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: AminaTheme.ink100),
+                              boxShadow: AminaTheme.shadowClinicalLg,
+                            ),
+                            child: questions,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
