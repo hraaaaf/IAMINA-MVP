@@ -20,9 +20,10 @@ A physical-device run is successful only when all of the following are simultane
 3. the configured IAMINA CGM connection source exactly matches the requested source;
 4. IAMINA executes the real `sync_patient_cgm` provider/network path;
 5. the provider returns at least the configured minimum number of readings;
-6. IAMINA contains at least the same minimum number of recent persisted readings from that source;
-7. the newest persisted timestamp is recent and not materially in the future;
-8. the evidence output contains no glucose value, credential, bridge URL, patient identifier, or device identifier.
+6. the newest reading returned by that provider call is recent and not materially in the future;
+7. IAMINA contains at least the same minimum number of recent persisted readings from that source;
+8. the newest persisted timestamp is recent and not materially in the future;
+9. the evidence output contains no glucose value, credential, bridge URL, patient identifier, or device identifier.
 
 Default acceptance window: at least **2 readings within 15 minutes**. Both thresholds are configurable for legitimate sensor cadence differences.
 
@@ -48,7 +49,7 @@ Runtime prerequisites already enforced by IAMINA:
 
 ## Retained output boundary
 
-The command emits only qualification metadata such as source, counts and reading age. It intentionally does **not** emit:
+The command emits only qualification metadata such as source, counts and reading ages. It intentionally does **not** emit:
 
 - glucose values;
 - credentials or tokens;
@@ -62,7 +63,8 @@ A `PASS` therefore proves the engineering transport/storage path under the opera
 
 - command refuses to run without both explicit attestations;
 - source mismatch fails closed before any provider call;
-- stale persisted readings fail closed;
+- stale provider readings fail closed even if the database already contains fresh rows;
+- stale persisted readings fail closed even if the current provider result is fresh;
 - successful evidence is non-clinical and secret-free;
 - canonical CI remains green on the exact implementation head.
 
