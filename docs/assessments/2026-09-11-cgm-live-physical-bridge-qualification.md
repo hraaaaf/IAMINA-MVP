@@ -1,7 +1,7 @@
 # CGM-LIVE-1 — Physical bridge qualification harness
 
 **Date:** 2026-09-11  
-**Status:** ENGINEERING_READY / EXTERNAL_DEVICE_GATE
+**Status:** ENGINEERING_CLOSED / EXTERNAL_DEVICE_GATE
 
 ## Goal
 
@@ -59,17 +59,30 @@ The command emits only qualification metadata such as source, counts and reading
 
 A `PASS` therefore proves the engineering transport/storage path under the operator attestations. It does **not** prove regulatory approval, clinical safety, real-patient release authorization, CNDP compliance, or production deployment readiness.
 
-## Automated proof required before physical run
+## Automated proof retained
+
+Implementation candidate: `796aae03581c8b4caa9f8bd8c86068474d729aba`.
+
+- PR #563 pre-merge CI #3896 / run `34621157895`: **SUCCESS** on the exact candidate head;
+- PR #563 pre-merge Django migration drift #3661 / run `34621157886`: **SUCCESS** on the exact candidate head;
+- PR #563 merged to `main` as `bb5d735d7a676ea2bcb551649f594a50997c0b82`;
+- post-merge Django migration drift #3662 / run `34621793504`: **SUCCESS** on the merge commit;
+- post-merge CI #3897 / run `34621793542`: **CANCELLED** after `main` advanced to a direct descendant;
+- current descendant `main@6bc6d22e5280104f62ef0846b87de27aaf6dbc91` has parent `bb5d735d7a676ea2bcb551649f594a50997c0b82` and CI #3898 / run `34621834334`: **SUCCESS**.
+
+The engineering gate is therefore retained on `main` with passing exact-head pre-merge proof, passing migration proof after merge, and a passing CI on the immediate descendant that contains the merge unchanged.
+
+Automated behaviors covered by the gate:
 
 - command refuses to run without both explicit attestations;
 - source mismatch fails closed before any provider call;
 - stale provider readings fail closed even if the database already contains fresh rows;
 - stale persisted readings fail closed even if the current provider result is fresh;
-- successful evidence is non-clinical and secret-free;
-- canonical CI remains green on the exact implementation head.
+- successful evidence is non-clinical and secret-free.
 
 ## Remaining external gate
 
 No software-only test can truthfully prove that a specific physical sensor is attached upstream. Final closure therefore requires one controlled physical LinX run with an authorized non-patient test subject and retained command output.
 
-**Closure state:** OPEN until that physical evidence exists.
+**Engineering closure:** CLOSED.  
+**Physical-device closure:** OPEN until retained LinX physical evidence exists.
