@@ -18,6 +18,7 @@ import 'services/consent_service.dart';
 import 'services/firebase_migration_policy.dart';
 import 'services/locale_preference_service.dart';
 import 'services/modules_provider.dart';
+import 'services/offline_demo_audit_seed.dart';
 import 'services/sync_service.dart';
 
 Future<void> main() async {
@@ -45,10 +46,12 @@ Future<void> main() async {
   await authService.initialize();
   if (auditAllowed) {
     authService.enterAuditSession();
-    if (kOfflineDemo) {
-      await db.seedDemoData();
-    }
   }
+  await seedOfflineDemoAuditData(
+    db,
+    auditAllowed: auditAllowed,
+    offlineDemo: kOfflineDemo,
+  );
 
   final apiClient = ApiClient(authService: authService);
   final syncService = SyncService(db, apiClient)..init();
