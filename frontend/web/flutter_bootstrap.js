@@ -11,9 +11,14 @@ if ('serviceWorker' in navigator) {
         updateViaCache: 'none',
       })
       .then((registration) => {
-        registration.update().catch((error) => {
-          console.warn('IAMINA service worker update check failed', error);
-        });
+        // A navigation may already trigger a service-worker update check.
+        // Defer our explicit check so it is not coalesced with registration/navigation.
+        // This never blocks Flutter startup and never forces activation.
+        window.setTimeout(() => {
+          registration.update().catch((error) => {
+            console.warn('IAMINA service worker update check failed', error);
+          });
+        }, 3000);
       })
       .catch((error) => {
         console.warn('IAMINA service worker registration failed', error);
