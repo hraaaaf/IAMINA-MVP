@@ -18,11 +18,36 @@ This document describes the tools required to develop and launch IAMINA locally.
 | Dependency | Required version / role | Windows | macOS |
 | --- | --- | --- | --- |
 | Git | Current supported release | Required | Required |
-| Python | 3.12 | Required | Required |
-| Flutter | 3.41.7 | Required for frontend | Required for frontend |
+| Python | `.tool-versions` | Required | Required |
+| Flutter | `.tool-versions` | Required for frontend | Required for frontend |
 | Browser | Chromium/Chrome-class browser for Flutter web | Required | Required |
 
-Python and Flutter versions are pinned in `.tool-versions`.
+Python and Flutter versions are pinned only in `.tool-versions`; `IAMINA.py` reads the expected versions from that file instead of maintaining duplicate constants.
+
+Docker Desktop is optional for the convenience host launcher but required for the canonical PostgreSQL + Redis integration path before merge.
+
+## Developer-machine doctor
+
+Run the diagnostic before first launch or when a new machine behaves differently:
+
+```bash
+# Windows
+python IAMINA.py --doctor
+
+# macOS
+python3 IAMINA.py --doctor
+```
+
+The doctor reports PASS/WARN/FAIL for:
+
+- supported host OS (Windows/macOS)
+- pinned Python version
+- Git availability
+- pinned Flutter version
+- Docker CLI + Docker engine state
+- backend/frontend ports `8008` and `8009`
+
+Missing host toolchains are not installed silently. Python, Flutter, Git and Docker Desktop can require administrator approval or interactive installers, so the launcher prints platform-specific remediation commands instead. Project dependencies themselves are still installed automatically by the launcher.
 
 ## Reproducibility boundary
 
@@ -40,7 +65,7 @@ There is one versioned host launcher for Windows and macOS:
 IAMINA.py
 ```
 
-Run it with the pinned Python 3.12 interpreter:
+Run it with the pinned Python interpreter:
 
 ```bash
 # Windows
@@ -56,16 +81,19 @@ It performs the same orchestration on both platforms:
 - installs backend requirements
 - creates `.env` from `.env.example` when missing
 - applies Django migrations and attempts demo setup
-- validates Flutter 3.41.7
+- validates the Flutter version pinned in `.tool-versions`
 - runs `flutter pub get`
-- starts Redis through Docker when Docker is available, otherwise degrades gracefully with bounded cache connection/read timeouts
+- starts Redis through Docker when Docker is available
+- verifies Redis readiness with `redis-cli ping` → `PONG`
+- distinguishes Docker missing from Docker installed-but-not-running
+- degrades gracefully with bounded backend cache connection/read timeouts when Redis is unavailable
 - starts backend on `http://127.0.0.1:8008`
 - starts frontend on `http://localhost:8009`
 - probes localhost directly without ambient HTTP(S) proxies
 - waits for both services to respond before opening the browser
-- stops child process trees on exit
+- stops child process trees and launcher-owned Redis on exit
 
-No `.bat`, `.ps1`, `.sh` or `.command` launcher is canonical anymore.
+No `.bat`, `.ps1`, `.sh` or `.command` launcher is canonical anymore. `IAMINA.bat` and `IAMINA.command` remain thin native wrappers only.
 
 ### Double-click boundary
 
@@ -118,12 +146,13 @@ Xcode is required only for iOS simulator/device/build work. It is not required f
 The launcher exposes deterministic validation modes used by CI:
 
 ```bash
+python IAMINA.py --doctor
 python IAMINA.py --check
 python IAMINA.py --smoke --no-browser --no-redis
 python IAMINA.py --check
 ```
 
-The smoke deliberately exercises the full bootstrap path and must prove that backend `8008` and frontend `8009` are both reachable, then cleanly stop them and release both ports.
+`--doctor` validates/report host prerequisites without launching the application. `--check` is strict for required launcher prerequisites. The smoke deliberately exercises the full bootstrap path and must prove that backend `8008` and frontend `8009` are both reachable, then cleanly stop them and release both ports.
 
 ## Validation after dependency changes
 
