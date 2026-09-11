@@ -81,10 +81,10 @@ class _CompanionConversationScreenState
     return Scaffold(
       backgroundColor: dark ? AminaTheme.bg(context) : const Color(0xFFF4FBF9),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 960),
-            child: Column(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final desktop = constraints.maxWidth >= 900;
+            final conversation = Column(
               children: [
                 _ConversationHeader(
                   onClose: () => Navigator.of(context).maybePop(),
@@ -135,8 +135,44 @@ class _CompanionConversationScreenState
                   onSend: _send,
                 ),
               ],
-            ),
-          ),
+            );
+
+            if (!desktop) {
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 960),
+                  child: conversation,
+                ),
+              );
+            }
+
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 960),
+                  child: SizedBox(
+                    height: constraints.maxHeight > 48
+                        ? constraints.maxHeight - 48
+                        : constraints.maxHeight,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AminaVisualLanguage.controlSurface(context),
+                          border: Border.all(
+                            color: AminaVisualLanguage.controlBorder(context),
+                          ),
+                          boxShadow: AminaVisualLanguage.cardShadowLight,
+                        ),
+                        child: conversation,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
