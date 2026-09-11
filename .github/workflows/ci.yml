@@ -58,7 +58,7 @@ jobs:
             BACKEND=true
           fi
 
-          if grep -Eq '^(frontend/|\.github/workflows/ci\.yml$)' /tmp/iamina-changed-files.txt; then
+          if grep -Eq '^(frontend/|scripts/check_pilot_packaging_contract\.py$|\.github/workflows/ci\.yml$)' /tmp/iamina-changed-files.txt; then
             FRONTEND=true
           fi
 
@@ -79,8 +79,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Reject tracked credentials and local secret files
         run: python scripts/check_secrets.py
-      - name: Pilot packaging foundation contract
-        run: python scripts/check_pilot_packaging_contract.py
+      - name: Pilot packaging PWA-first contract
+        run: python scripts/check_pilot_packaging_contract.py --pwa-ready
 
   backend:
     name: Backend — ruff + pytest
@@ -207,7 +207,7 @@ jobs:
         run: pytest --tb=short -q
 
   frontend:
-    name: Frontend — analyze + tests
+    name: Frontend — analyze + tests + PWA build
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
@@ -234,6 +234,26 @@ jobs:
 
       - name: Run Flutter tests
         run: flutter test --no-pub
+
+      - name: Build PWA release bundle
+        run: flutter build web --release
+
+      - name: Verify PWA build outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in \
+            build/web/index.html \
+            build/web/manifest.json \
+            build/web/flutter_bootstrap.js \
+            build/web/main.dart.js \
+            build/web/sqlite3.wasm \
+            build/web/drift_worker.js; do
+            if [ ! -f "$path" ]; then
+              echo "::error::Missing PWA build output: $path"
+              exit 1
+            fi
+          done
 
   pr-size:
     name: PR size (advisory)

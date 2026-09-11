@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 """Static P5-4 pilot packaging contract.
 
-Default mode validates repository-side preparation that can be proven without
-private signing material or external Apple provisioning. ``--release-ready``
-adds the remaining iOS permanent-identity floor required before signed pilot
-artifacts are accepted.
+Default mode validates retained repository-side packaging foundations.
+``--pwa-ready`` adds the PWA installability/identity floor for the current
+PWA-first pilot path. ``--release-ready`` adds the deferred native iOS
+permanent-identity floor required before signed native pilot artifacts are
+accepted.
 """
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_APP_ID = "ma.iamina.app"
+CANONICAL_PWA_NAME = "IAMINA"
 
 
 def read(path: str) -> str:
@@ -28,6 +31,7 @@ def require(condition: bool, message: str, errors: list[str]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--pwa-ready", action="store_true")
     parser.add_argument("--release-ready", action="store_true")
     args = parser.parse_args()
 
@@ -108,6 +112,99 @@ def main() -> int:
         errors,
     )
 
+    if args.pwa_ready:
+        manifest = json.loads(read("frontend/web/manifest.json"))
+        index = read("frontend/web/index.html")
+
+        require(
+            manifest.get("name") == CANONICAL_PWA_NAME,
+            "PWA manifest name is not IAMINA",
+            errors,
+        )
+        require(
+            manifest.get("short_name") == CANONICAL_PWA_NAME,
+            "PWA manifest short_name is not IAMINA",
+            errors,
+        )
+        require(
+            manifest.get("id") == ".",
+            "PWA manifest must retain a stable relative id",
+            errors,
+        )
+        require(
+            manifest.get("start_url") == ".",
+            "PWA manifest start_url must remain deployment-path portable",
+            errors,
+        )
+        require(
+            manifest.get("display") == "standalone",
+            "PWA manifest display mode is not standalone",
+            errors,
+        )
+        require(
+            manifest.get("prefer_related_applications") is False,
+            "PWA manifest must not prefer a native application on the PWA-first path",
+            errors,
+        )
+        require(
+            "A new Flutter project." not in manifest.get("description", ""),
+            "PWA manifest still contains Flutter placeholder description",
+            errors,
+        )
+
+        icon_contract = {
+            ("icons/Icon-192.png", "192x192", None),
+            ("icons/Icon-512.png", "512x512", None),
+            ("icons/Icon-maskable-192.png", "192x192", "maskable"),
+            ("icons/Icon-maskable-512.png", "512x512", "maskable"),
+        }
+        icons = {
+            (icon.get("src"), icon.get("sizes"), icon.get("purpose"))
+            for icon in manifest.get("icons", [])
+        }
+        require(
+            icon_contract.issubset(icons),
+            "PWA manifest is missing required 192/512 regular or maskable icons",
+            errors,
+        )
+        for src, _, _ in icon_contract:
+            require(
+                (ROOT / "frontend/web" / src).is_file(),
+                f"PWA icon file is missing: {src}",
+                errors,
+            )
+
+        require(
+            '<link rel="manifest" href="manifest.json">' in index,
+            "Web index does not link the PWA manifest",
+            errors,
+        )
+        require(
+            '<meta name="mobile-web-app-capable" content="yes">' in index,
+            "Web index is missing mobile-web-app-capable metadata",
+            errors,
+        )
+        require(
+            '<meta name="apple-mobile-web-app-capable" content="yes">' in index,
+            "Web index is missing Apple PWA-capable metadata",
+            errors,
+        )
+        require(
+            '<meta name="apple-mobile-web-app-title" content="IAMINA">' in index,
+            "Web index Apple title is not IAMINA",
+            errors,
+        )
+        require(
+            "<title>IAMINA</title>" in index,
+            "Web document title is not IAMINA",
+            errors,
+        )
+        require(
+            "A new Flutter project." not in index,
+            "Web index still contains Flutter placeholder description",
+            errors,
+        )
+
     if args.release_ready:
         ios_project = read("frontend/ios/Runner.xcodeproj/project.pbxproj")
         require(
@@ -126,8 +223,12 @@ def main() -> int:
             print(f"ERROR: {error}")
         return 1
 
-    mode = "release-ready" if args.release_ready else "foundation"
-    print(f"P5-4 packaging {mode} contract: PASS")
+    modes = ["foundation"]
+    if args.pwa_ready:
+        modes.append("pwa-ready")
+    if args.release_ready:
+        modes.append("native-release-ready")
+    print(f"P5-4 packaging {' + '.join(modes)} contract: PASS")
     return 0
 
 
