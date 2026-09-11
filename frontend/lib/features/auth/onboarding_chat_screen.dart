@@ -42,8 +42,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         _country == null ||
         _tone == null ||
         _diabetesType == null ||
-        _treatment == null)
+        _treatment == null) {
       return;
+    }
     setState(() => _saving = true);
     final localeService = context.read<LocalePreferenceService>();
     await localeService.setExperience(
@@ -200,6 +201,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         _tone != null &&
         _diabetesType != null &&
         _treatment != null;
+
     return Scaffold(
       backgroundColor: AminaTheme.surfaceMuted,
       appBar: AppBar(
@@ -215,30 +217,195 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         ),
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              l10n.onboardingWelcome,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 20),
-            ...steps,
-            if (ready) ...[
-              const SizedBox(height: 12),
-              Text(l10n.onboardingReady),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _saving ? null : _finish,
-                child: Text(
-                  _saving ? l10n.onboardingSaving : l10n.onboardingStart,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final desktop = constraints.maxWidth >= 900;
+            final questions = _OnboardingQuestions(
+              welcome: l10n.onboardingWelcome,
+              steps: steps,
+              ready: ready,
+              readyLabel: l10n.onboardingReady,
+              saving: _saving,
+              savingLabel: l10n.onboardingSaving,
+              startLabel: l10n.onboardingStart,
+              onFinish: _finish,
+            );
+
+            if (!desktop) {
+              return ListView(
+                padding: const EdgeInsets.all(20),
+                children: [questions],
+              );
+            }
+
+            return SingleChildScrollView(
+              padding: const EdgeInsetsDirectional.fromSTEB(28, 28, 28, 40),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 980),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 4,
+                        child: _DesktopWelcomePanel(
+                          title: 'IAmina',
+                          subtitle: l10n.onboardingAssistantLabel,
+                          body: l10n.onboardingWelcome,
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      Expanded(
+                        flex: 6,
+                        child: Container(
+                          padding: const EdgeInsetsDirectional.fromSTEB(
+                            28,
+                            26,
+                            28,
+                            28,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: AminaTheme.ink100),
+                            boxShadow: AminaTheme.shadowClinicalLg,
+                          ),
+                          child: questions,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ],
+            );
+          },
         ),
+      ),
+    );
+  }
+}
+
+class _OnboardingQuestions extends StatelessWidget {
+  final String welcome;
+  final List<Widget> steps;
+  final bool ready;
+  final String readyLabel;
+  final bool saving;
+  final String savingLabel;
+  final String startLabel;
+  final VoidCallback onFinish;
+
+  const _OnboardingQuestions({
+    required this.welcome,
+    required this.steps,
+    required this.ready,
+    required this.readyLabel,
+    required this.saving,
+    required this.savingLabel,
+    required this.startLabel,
+    required this.onFinish,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          welcome,
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 20),
+        ...steps,
+        if (ready) ...[
+          const SizedBox(height: 4),
+          Text(readyLabel),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final desktop = MediaQuery.sizeOf(context).width >= 900;
+              return SizedBox(
+                width: desktop ? 240 : constraints.maxWidth,
+                child: FilledButton(
+                  onPressed: saving ? null : onFinish,
+                  child: Text(saving ? savingLabel : startLabel),
+                ),
+              );
+            },
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _DesktopWelcomePanel extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final String body;
+
+  const _DesktopWelcomePanel({
+    required this.title,
+    required this.subtitle,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(28, 30, 28, 30),
+      decoration: BoxDecoration(
+        gradient: AminaTheme.heroGradient,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: AminaTheme.shadowClinicalLg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .16),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.favorite_outline_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
+          ),
+          const SizedBox(height: 28),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: .78),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            body,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: .94),
+              fontSize: 16,
+              height: 1.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -247,7 +414,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
 class _Question extends StatelessWidget {
   final String title;
   final List<Widget> children;
+
   const _Question({required this.title, required this.children});
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 20),
@@ -269,11 +438,13 @@ class _Choice extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
+
   const _Choice({
     required this.label,
     required this.selected,
     required this.onTap,
   });
+
   @override
   Widget build(BuildContext context) => ChoiceChip(
     label: Text(label),
