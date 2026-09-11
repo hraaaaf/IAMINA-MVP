@@ -8,6 +8,7 @@ import '../features/journal/ai_summary_screen.dart';
 import '../features/journal/add_log_screen.dart';
 import '../features/journal/edit_log_screen.dart';
 import '../features/import/import_screen.dart';
+import '../features/import/cgm_screen.dart';
 import '../features/documents/document_import_premium_screen.dart';
 import '../features/medications/medication_screen.dart';
 import '../features/reminders/reminders_screen.dart';
@@ -82,6 +83,10 @@ final ModuleConfig diabetesModule = ModuleConfig(
     ModuleFullScreenRoute(
       path: '/importer',
       builder: (s) => const ImportScreen(),
+    ),
+    ModuleFullScreenRoute(
+      path: '/cgm',
+      builder: (s) => const CgmScreen(),
     ),
     ModuleFullScreenRoute(
       path: '/medications',

@@ -56,9 +56,16 @@ void main() {
 
   test('P0 desktop density contracts remain intact', () {
     final importer = _read('lib/features/import/import_screen.dart');
+    final cgmScreen = _read('lib/features/import/cgm_screen.dart');
     final cgm = _read('lib/features/import/cgm_connections_section.dart');
     expect(importer, contains('maxWidth: 1160'));
-    expect(importer, contains('const CgmConnectionsSection()'));
+    expect(
+      importer,
+      contains("_CgmGuideEntryCard(onTap: () => context.push('/cgm'))"),
+    );
+    expect(cgmScreen, contains('maxWidth: 1080'));
+    expect(cgmScreen, contains('constraints.maxWidth >= 900'));
+    expect(cgmScreen, contains('Expanded(child: guides[i])'));
     expect(cgm, contains('constraints.maxWidth >= 900'));
     expect(cgm, contains('Expanded(child: cards[i])'));
   });
