@@ -133,4 +133,8 @@ This is a presentation/responsive UX lane. It does not change Pilot Readiness or
 
 ## Merge gate
 
-All implementation gates are green, exact-head browser evidence is retained, the visual target is accepted, and PR #571 is mergeable. The lot is READY_TO_MERGE.
+All implementation gates are green, exact-head browser evidence is retained, the visual target is accepted, and PR #571 is mergeable.
+
+Closeout documentation head: `3522f94443260c380407dbaa9f39ca02987be77a` was docs-only over the green implementation head. The current branch head may contain this documentation refinement only; no product code changed after `88a0c54fd0eec8c0a14e657638167448cead4a63`.
+
+The lot is READY_TO_MERGE.
