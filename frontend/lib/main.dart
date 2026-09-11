@@ -45,6 +45,9 @@ Future<void> main() async {
   await authService.initialize();
   if (auditAllowed) {
     authService.enterAuditSession();
+    if (kOfflineDemo) {
+      await db.seedDemoData();
+    }
   }
 
   final apiClient = ApiClient(authService: authService);
