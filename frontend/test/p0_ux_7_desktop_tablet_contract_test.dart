@@ -70,7 +70,11 @@ void main() {
       );
       final surface = _read('lib/core/widgets/responsive_content_surface.dart');
       expect(profile, contains('maxWidth: 1040'));
-      expect(pulper, contains('maxWidth: 980'));
+      expect(
+        pulper,
+        contains('maxWidth: MediaQuery.sizeOf(context).width >= 900 ? 760 : 980'),
+      );
+      expect(pulper, contains('width: desktop ? 260 : double.infinity'));
       expect(surface, contains('math.min(constraints.maxWidth, maxWidth)'));
       expect(surface, contains('AlignmentDirectional.topCenter'));
     },

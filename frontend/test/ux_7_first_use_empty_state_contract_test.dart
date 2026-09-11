@@ -11,10 +11,10 @@ void main() {
     expect(source, contains('EdgeInsetsDirectional.fromSTEB'));
     expect(source, contains('Semantics('));
     expect(source, contains('minimumSize: const Size.fromHeight(48)'));
-    expect(
-      source,
-      contains('shortViewport = MediaQuery.sizeOf(context).height <= 600'),
-    );
+    expect(source, contains('final media = MediaQuery.sizeOf(context);'));
+    expect(source, contains('final shortViewport = media.height <= 600;'));
+    expect(source, contains('final desktopViewport = media.width >= 900;'));
+    expect(source, contains('SizedBox(width: 260, child: actions)'));
     expect(source, isNot(contains('mg/dL')));
     expect(source, isNot(contains('mmol/L')));
     expect(source, isNot(contains('GMI')));

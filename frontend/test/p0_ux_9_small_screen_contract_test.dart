@@ -15,10 +15,8 @@ void main() {
     );
     expect(source, contains('emptyDashboardTitle'));
     expect(source, contains('emptyDashboardBody'));
-    expect(
-      firstUse,
-      contains('shortViewport = MediaQuery.sizeOf(context).height <= 600'),
-    );
+    expect(firstUse, contains('final media = MediaQuery.sizeOf(context);'));
+    expect(firstUse, contains('final shortViewport = media.height <= 600;'));
     expect(firstUse, contains('minimumSize: const Size.fromHeight(48)'));
     expect(source, isNot(contains("'Commencez votre suivi'")));
     expect(source, isNot(contains("'Ajouter ma première mesure'")));
