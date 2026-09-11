@@ -11,7 +11,6 @@ import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
-import 'cgm_connections_section.dart';
 
 class ImportScreen extends StatefulWidget {
   const ImportScreen({super.key});
@@ -177,7 +176,7 @@ class _ImportScreenState extends State<ImportScreen> {
                       ),
                       const SizedBox(height: 12),
                     ],
-                    const CgmConnectionsSection(),
+                    _CgmGuideEntryCard(onTap: () => context.push('/cgm')),
                   ],
                 ),
               ),
@@ -433,6 +432,105 @@ class _DocumentFormatChip extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _CgmGuideEntryCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _CgmGuideEntryCard({required this.onTap});
+
+  String _pick(BuildContext context, {required String fr, required String en, required String ar}) {
+    final code = Localizations.localeOf(context).languageCode;
+    return code == 'ar' ? ar : code == 'en' ? en : fr;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = _pick(
+      context,
+      fr: 'Capteur CGM',
+      en: 'CGM sensor',
+      ar: 'مستشعر CGM',
+    );
+    final subtitle = _pick(
+      context,
+      fr: 'Connectez Dexcom, FreeStyle Libre ou LinX avec un guide étape par étape.',
+      en: 'Connect Dexcom, FreeStyle Libre or LinX with a step-by-step guide.',
+      ar: 'اربط Dexcom أو FreeStyle Libre أو LinX عبر دليل خطوة بخطوة.',
+    );
+    final action = _pick(
+      context,
+      fr: 'Ouvrir le guide CGM',
+      en: 'Open CGM guide',
+      ar: 'فتح دليل CGM',
+    );
+
+    return ClinicalCard(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AminaTheme.teal50,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.sensors_rounded, size: 21, color: AminaTheme.teal700),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AminaTheme.ink900,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AminaTheme.teal50,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: const Text(
+                        'GUIDÉ',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: AminaTheme.teal700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 12, height: 1.4, color: AminaTheme.ink500),
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: onTap,
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                  label: Text(action),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ImportOption extends StatelessWidget {
