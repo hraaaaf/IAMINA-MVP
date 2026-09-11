@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import platform
 import re
 import shutil
 import signal
@@ -25,11 +26,12 @@ ROOT = Path(__file__).resolve().parent
 BACKEND_DIR = ROOT / "backend"
 FRONTEND_DIR = ROOT / "frontend"
 VENV_DIR = ROOT / "venv"
+TOOL_VERSIONS = ROOT / ".tool-versions"
 BACKEND_PORT = 8008
 FRONTEND_PORT = 8009
+REDIS_PORT = 6379
 BACKEND_URL = f"http://127.0.0.1:{BACKEND_PORT}"
 FRONTEND_URL = f"http://localhost:{FRONTEND_PORT}"
-FLUTTER_VERSION = "3.41.7"
 BACKEND_STARTUP_TIMEOUT = 300 if os.name == "nt" else 120
 
 
@@ -42,6 +44,66 @@ def run(command: list[str], *, cwd: Path = ROOT, quiet: bool = False) -> None:
     if quiet:
         kwargs.update(stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(command, **kwargs)
+
+
+def expected_tool_version(tool: str) -> str:
+    if not TOOL_VERSIONS.exists():
+        raise RuntimeError("Missing .tool-versions; cannot determine pinned toolchain versions.")
+    for raw_line in TOOL_VERSIONS.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        if len(parts) >= 2 and parts[0] == tool:
+            return parts[1]
+    raise RuntimeError(f"Missing {tool} version in .tool-versions.")
+
+
+def platform_name() -> str:
+    if sys.platform == "win32":
+        return "Windows"
+    if sys.platform == "darwin":
+        return "macOS"
+    return platform.system() or sys.platform
+
+
+def ensure_supported_platform() -> None:
+    if sys.platform not in {"win32", "darwin"}:
+        raise RuntimeError(
+            f"IAMINA host launcher supports Windows and macOS; detected {platform_name()}."
+        )
+
+
+def install_hint(tool: str) -> str:
+    expected_python = expected_tool_version("python")
+    expected_flutter = expected_tool_version("flutter")
+    if sys.platform == "win32":
+        hints = {
+            "python": (
+                f"Install Python {expected_python}: "
+                f"winget install -e --id Python.Python.{expected_python}"
+            ),
+            "flutter": (
+                f"Install Flutter {expected_flutter} and add its bin directory to PATH: "
+                "https://docs.flutter.dev/get-started/install/windows"
+            ),
+            "docker": (
+                "Install/start Docker Desktop: "
+                "winget install -e --id Docker.DockerDesktop"
+            ),
+            "git": "Install Git: winget install -e --id Git.Git",
+        }
+    else:
+        hints = {
+            "python": f"Install Python {expected_python}: brew install python@{expected_python}",
+            "flutter": (
+                f"Install Flutter {expected_flutter} and add it to PATH: "
+                "https://docs.flutter.dev/get-started/install/macos"
+            ),
+            "docker": "Install/start Docker Desktop: brew install --cask docker",
+            "git": "Install Git: xcode-select --install (or brew install git)",
+        }
+    return hints[tool]
 
 
 def venv_python() -> Path:
@@ -92,9 +154,12 @@ def wait_for_http(url: str, process: subprocess.Popen[bytes], timeout: int = 120
 
 
 def ensure_python_version() -> None:
-    if sys.version_info[:2] != (3, 12):
+    expected = expected_tool_version("python")
+    current = f"{sys.version_info.major}.{sys.version_info.minor}"
+    if current != expected:
         raise RuntimeError(
-            f"IAMINA requires Python 3.12; current interpreter is {sys.version.split()[0]}."
+            f"IAMINA requires Python {expected}; current interpreter is "
+            f"{sys.version.split()[0]}. {install_hint('python')}"
         )
 
 
@@ -104,6 +169,7 @@ def ensure_required_files() -> None:
         BACKEND_DIR / "requirements.txt",
         FRONTEND_DIR / "pubspec.yaml",
         ROOT / ".env.example",
+        TOOL_VERSIONS,
     ]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
     if missing:
@@ -124,12 +190,105 @@ def flutter_command() -> str:
             return str(candidate)
 
     raise RuntimeError(
-        f"Flutter {FLUTTER_VERSION} is required and was not found on PATH. "
-        "Install the pinned version from .tool-versions."
+        f"Flutter {expected_tool_version('flutter')} was not found on PATH. "
+        f"{install_hint('flutter')}"
     )
 
 
+def docker_status() -> tuple[str, str | None]:
+    docker = shutil.which("docker")
+    if not docker:
+        return "missing", None
+    try:
+        subprocess.run(
+            [docker, "info"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+        )
+        return "ready", docker
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return "stopped", docker
+
+
+def environment_report(*, require_flutter: bool) -> int:
+    ensure_supported_platform()
+    ensure_required_files()
+
+    failures: list[str] = []
+    warnings: list[str] = []
+
+    expected_python = expected_tool_version("python")
+    current_python = f"{sys.version_info.major}.{sys.version_info.minor}"
+    if current_python == expected_python:
+        log(f"[PASS] Python {sys.version.split()[0]} (expected {expected_python})")
+    else:
+        failures.append(
+            f"Python {expected_python} required; detected {sys.version.split()[0]}. "
+            f"{install_hint('python')}"
+        )
+
+    git = shutil.which("git")
+    if git:
+        log(f"[PASS] Git found: {git}")
+    else:
+        warnings.append(f"Git not found. {install_hint('git')}")
+
+    try:
+        flutter = flutter_command()
+        version = detected_flutter_version(flutter)
+        expected_flutter = expected_tool_version("flutter")
+        if version == expected_flutter:
+            log(f"[PASS] Flutter {version} (expected {expected_flutter})")
+        else:
+            message = (
+                f"Flutter {expected_flutter} required; detected {version}. "
+                f"{install_hint('flutter')}"
+            )
+            if require_flutter:
+                failures.append(message)
+            else:
+                warnings.append(message)
+    except (RuntimeError, subprocess.CalledProcessError) as exc:
+        if require_flutter:
+            failures.append(str(exc))
+        else:
+            warnings.append(str(exc))
+
+    docker_state, docker = docker_status()
+    if docker_state == "ready":
+        log(f"[PASS] Docker engine ready: {docker}")
+    elif docker_state == "stopped":
+        warnings.append(
+            "Docker CLI is installed but the Docker engine is not running. "
+            f"{install_hint('docker')}"
+        )
+    else:
+        warnings.append(
+            "Docker is not installed; Redis will use the backend fallback. "
+            f"{install_hint('docker')}"
+        )
+
+    for port in (BACKEND_PORT, FRONTEND_PORT):
+        if port_is_free(port):
+            log(f"[PASS] Port {port} available")
+        else:
+            failures.append(f"Port {port} is already in use.")
+
+    for message in warnings:
+        log(f"[WARN] {message}")
+    for message in failures:
+        log(f"[FAIL] {message}")
+
+    if failures:
+        return 1
+    log(f"CHECK PASS: platform={platform_name()} backend={BACKEND_PORT} frontend={FRONTEND_PORT}")
+    return 0
+
+
 def bootstrap() -> tuple[Path, str]:
+    ensure_supported_platform()
     ensure_python_version()
     ensure_required_files()
 
@@ -168,10 +327,38 @@ def bootstrap() -> tuple[Path, str]:
     return python, flutter
 
 
+def redis_ping(docker: str, timeout: int = 20) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            result = subprocess.run(
+                [docker, "exec", "iamina_redis", "redis-cli", "ping"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=3,
+            )
+            if result.returncode == 0 and result.stdout.strip() == "PONG":
+                return True
+        except subprocess.TimeoutExpired:
+            pass
+        time.sleep(0.5)
+    return False
+
+
 def start_redis() -> bool:
-    docker = shutil.which("docker")
-    if not docker:
-        log("[WARN] Docker not found; Redis will be unavailable.")
+    docker_state, docker = docker_status()
+    if docker_state == "missing":
+        log(
+            "[WARN] Docker not found; Redis will be unavailable. "
+            + install_hint("docker")
+        )
+        return False
+    if docker_state == "stopped" or docker is None:
+        log(
+            "[WARN] Docker is installed but its engine is not running; "
+            "Redis will be unavailable. " + install_hint("docker")
+        )
         return False
 
     try:
@@ -182,7 +369,10 @@ def start_redis() -> bool:
             text=True,
         ).stdout.strip()
         if existing == "iamina_redis":
-            log("==> Redis already running")
+            if redis_ping(docker):
+                log("==> Redis already running and healthy (PONG)")
+                return False
+            log("[WARN] Existing iamina_redis container did not answer PING.")
             return False
 
         subprocess.run(
@@ -194,14 +384,24 @@ def start_redis() -> bool:
                 "--name",
                 "iamina_redis",
                 "-p",
-                "6379:6379",
+                f"{REDIS_PORT}:6379",
                 "redis:7-alpine",
             ],
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        log("==> Redis started on localhost:6379")
+        if not redis_ping(docker):
+            subprocess.run(
+                [docker, "stop", "iamina_redis"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+            log("[WARN] Redis container started but failed readiness PING; continuing without it.")
+            return False
+
+        log(f"==> Redis ready on localhost:{REDIS_PORT} (PONG)")
         return True
     except subprocess.CalledProcessError:
         log("[WARN] Redis could not be started; continuing without it.")
@@ -327,31 +527,29 @@ def detected_flutter_version(flutter: str) -> str:
 
 
 def ensure_flutter_version(flutter: str) -> None:
+    expected = expected_tool_version("flutter")
     version = detected_flutter_version(flutter)
-    if version != FLUTTER_VERSION:
-        raise RuntimeError(f"Expected Flutter {FLUTTER_VERSION}; detected: {version}")
+    if version != expected:
+        raise RuntimeError(
+            f"Expected Flutter {expected}; detected {version}. {install_hint('flutter')}"
+        )
 
 
 def preflight(require_flutter: bool = True) -> int:
-    ensure_python_version()
-    ensure_required_files()
-    if not port_is_free(BACKEND_PORT):
-        raise RuntimeError(f"Port {BACKEND_PORT} is already in use.")
-    if not port_is_free(FRONTEND_PORT):
-        raise RuntimeError(f"Port {FRONTEND_PORT} is already in use.")
-    if require_flutter:
-        flutter = flutter_command()
-        ensure_flutter_version(flutter)
-    log(
-        f"CHECK PASS: platform={sys.platform} python={sys.version.split()[0]} "
-        f"backend={BACKEND_PORT} frontend={FRONTEND_PORT}"
-    )
+    result = environment_report(require_flutter=require_flutter)
+    if result != 0:
+        raise RuntimeError("Developer prerequisite check failed; see [FAIL] entries above.")
     return 0
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Launch IAMINA locally on Windows or macOS.")
-    parser.add_argument("--check", action="store_true", help="Validate launcher prerequisites only.")
+    parser.add_argument("--check", action="store_true", help="Validate required launcher prerequisites.")
+    parser.add_argument(
+        "--doctor",
+        action="store_true",
+        help="Print developer-machine prerequisite diagnostics without launching IAMINA.",
+    )
     parser.add_argument("--smoke", action="store_true", help="Start both services, probe them, then exit.")
     parser.add_argument(
         "--skip-bootstrap",
@@ -366,16 +564,20 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     try:
+        if args.doctor:
+            return environment_report(require_flutter=True)
         if args.check:
             return preflight()
 
         if args.skip_bootstrap:
+            ensure_supported_platform()
             ensure_python_version()
             ensure_required_files()
             python: Path | str = sys.executable
             flutter = flutter_command()
             ensure_flutter_version(flutter)
         else:
+            preflight()
             python, flutter = bootstrap()
 
         return launch(
