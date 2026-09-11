@@ -1,8 +1,10 @@
 # IAMINA Pilot Release Contract
 
-Status: P5-4 **PWA-first** engineering contract. This document does not authorize real-patient use, a production deployment, or native Android/iOS release readiness.
+Status: P5-4 **PWA-first** engineering contract. P5-4A engineering is `CLOSED_WITH_BOUNDARIES`; P5-4B native alignment remains deferred. This document does not authorize real-patient use, a production deployment, or native Android/iOS release readiness.
 
 Canonical product direction: `docs/P5_PWA_FIRST_RELEASE_STRATEGY.md`.
+Canonical PWA runbook: `docs/P5_PWA_PILOT_RUNBOOK.md`.
+Canonical P5-4A closeout: `docs/assessments/2026-09-11-p5-4a-pwa-pilot-packaging-closeout.md`.
 
 ## Goal
 
@@ -10,21 +12,22 @@ Distribute the immediate IAMINA pilot through an installable, traceable PWA with
 
 ## P5-4 split
 
-### P5-4A — PWA pilot packaging — current critical path
+### P5-4A — PWA pilot packaging — engineering closed with boundaries
 
-The PWA candidate must provide retained evidence for:
+Retained engineering evidence covers:
 
-1. reproducible web build from one exact Git SHA;
+1. reproducible web build from exact Git SHA;
 2. stable IAMINA PWA identity and application version;
 3. browser installability without repository/developer access;
 4. persistent local Drift storage, never silently accepted as in-memory;
-5. local-data preservation across navigation, reload and supported PWA updates;
-6. offline app-shell behavior on supported target browsers;
-7. deterministic cache/update behavior and safe forward recovery;
+5. local-data preservation across navigation, reload, offline reopen and supported PWA updates;
+6. true offline app-shell behavior;
+7. deterministic release discovery, cache rollover, failed-candidate preservation and forward recovery;
 8. no development secret, repository access or patient/API response stored in the app-shell cache;
-9. exact-SHA retained build/install/update evidence.
+9. retained exact-SHA build/install/update evidence;
+10. pilot install/update/recovery instructions requiring no repository/developer tooling.
 
-P5-4A may close independently of native signing. P5-6 remains mandatory before any real-patient release.
+P5-6 remains mandatory before any real-patient release. A controlled pilot URL and physical target-browser/device installation remain external evidence and are not implied by engineering closure.
 
 ### P5-4B — Native Android/iOS alignment — deferred
 
@@ -97,7 +100,7 @@ The service worker may cache only explicitly approved same-origin static applica
 
 Offline qualification requires real-browser proof with normal HTTP cache disabled and network forced offline. A hard reload must still start the app and reopen the retained synthetic local fixture.
 
-Service-worker/cache changes must be versioned so a later app-shell can replace the previous cache deterministically. Old IAMINA app-shell caches must not accumulate indefinitely.
+Service-worker/cache changes are release-versioned so a later app-shell can replace the previous cache deterministically. Obsolete IAMINA app-shell caches are removed only after healthy new activation.
 
 ## PWA update and compatibility contract
 
@@ -108,14 +111,20 @@ The public `/api/v1/app-compatibility` contract remains authoritative for backen
 - missing version metadata is `version_unknown`, never falsely compatible;
 - invalid server compatibility configuration fails closed.
 
-PWA update qualification additionally requires a same-origin N -> N+1 browser rehearsal showing:
+PWA update qualification additionally requires the certified same-origin model:
 
-1. old app-shell/cache active on N;
-2. new candidate becomes active without clearing origin storage;
-3. retained Drift data remains intact;
-4. obsolete IAMINA app-shell cache is removed/replaced deterministically;
-5. offline reopen still succeeds after the update;
-6. failed rollout recovery uses a forward fix, not routine storage clearing.
+1. the currently active release keeps serving its release-coherent cache-first shell;
+2. after page load, the bootstrap performs a network-only `no-store` probe of `iamina_service_worker.js` and extracts canonical `IAMINA_CACHE_SCHEMA`;
+3. the bootstrap registers `iamina_service_worker.js?release=<schema>` with `updateViaCache: 'none'`, so a canonical release change changes the script URL and starts browser update discovery even when the old cached bootstrap is running;
+4. explicit `registration.update()` remains a non-blocking same-release fallback and is not the release-promotion mechanism;
+5. each candidate installs into a separate release cache;
+6. every precached shell resource is fetched with `cache: 'reload'` before storage, preventing stale HTTP-cache bytes from contaminating the new release cache;
+7. no production `skipWaiting()` forces a mid-session takeover;
+8. a healthy candidate may remain `waiting` while the old controlled client is open and activate naturally after close/reopen;
+9. retained Drift data remains intact and origin storage is never cleared;
+10. after healthy activation, obsolete IAMINA app-shell caches are purged;
+11. offline reopen succeeds from the activated new release;
+12. a rejected candidate must preserve the last-known-good shell and local data.
 
 ## Recovery / forward-fix rule
 
@@ -125,10 +134,15 @@ Recovery hierarchy:
 
 1. stop further rollout;
 2. keep local browser/origin storage intact;
-3. restore service only with a compatible cached shell when that shell remains safe;
-4. otherwise ship a forward-fix candidate with a higher build number/cache schema as appropriate;
-5. use verified backup/export recovery only when such an artifact exists and the user-approved recovery flow applies;
-6. never instruct pilot users to clear browser/site/application storage as routine rollback.
+3. retain the last-known-good cached shell when the rejected candidate never becomes active;
+4. prepare a compatible forward-fix candidate with a higher canonical version/build;
+5. let a later normal startup discover that higher release through the production network-only service-worker probe and release-versioned registration URL;
+6. do not force or certify an immediate second same-profile update seconds after a rejected worker install because Chrome post-failure scheduling is browser-controlled;
+7. verify the forward-fix release cache contains the new release bytes themselves;
+8. let the healthy worker activate across a normal close/reopen boundary;
+9. verify Drift persistence, offline reopen and obsolete-cache purge;
+10. use verified backup/export recovery only when such an artifact exists and the user-approved recovery flow applies;
+11. never instruct pilot users to clear browser/site/application storage as routine rollback.
 
 ## Firebase migration compatibility
 
@@ -146,32 +160,24 @@ Release builds use external signing material only. `key.properties`, JKS and key
 
 The final Runner bundle identifier remains `ma.iamina.app`. Apple signing/provisioning remains external and is required before any native iOS/TestFlight readiness claim.
 
-## Current retained P5-4A evidence boundary
+## Retained P5-4A closure evidence
 
 As of 2026-09-11:
 
-- PWA packaging foundation is merged via #557 with exact-head and exact-main CI green;
-- real Chrome installability + persistent Drift storage evidence is merged via #558;
-- retained Chrome evidence selected `sharedIndexedDb`, returned zero installability errors, and preserved the synthetic fixture across navigation and hard reload;
-- true offline app-shell proof remains an active gate under #559 until its strict offline AFTER evidence is green;
-- PWA update/cache-rollover rehearsal remains required after offline qualification.
+- #557 packaging foundation merged with exact-head and exact-main CI green;
+- #558 Chrome installability + persistent Drift proof merged; artifact #10262996477 retained `sharedIndexedDb`, zero installability errors and zero manifest errors;
+- #559 strict offline app-shell proof merged; artifact #10265358161 proved hard reload with normal HTTP cache disabled and browser network forced offline;
+- #560 aligned the PWA-first release contract;
+- #561 accepted exact head `0204d858da2370b6d66c2a5fb56aaa66ad378153` with 5/5 exact-head gates green: CI #34630798331, packaging #34630798336, persistence #34630798330, offline #34630798385, update/recovery #34630798429;
+- update/recovery artifact #10275967534, digest `sha256:d8999113e4c82771062bbb97163e6f821adc8ad53ee7e4974c079070e09eeb65`, retained top-level PASS, `sharedIndexedDb`, observed rejected-candidate install request, correct v3 bundle bytes before/after activation and offline, obsolete-cache purge, and `origin_storage_cleared=false`;
+- #561 merged as `main@d2df37fc14b3c9fb1087d7629460b5c240d7ff2d`; exact-main CI #34634309275 SUCCESS;
+- #569 added `docs/P5_PWA_PILOT_RUNBOOK.md` on exact head `894fdc79cd9bf06fbf9bff242a566eef677b3740`; CI #34634845390 SUCCESS;
+- #569 merged as `main@35ab9c5cd70fa1f7e7f41978c8e1e5e1e1388387`; exact-main CI #34634913387 SUCCESS.
 
-No real-patient, CNDP/legal, Vercel, Android signing or iOS signing claim follows from this evidence.
+## P5-4A closure state
 
-## P5-4A closure evidence
+P5-4A engineering evidence is retained and closed with explicit boundaries. P5-4B stays deferred and open for native Android/iOS alignment.
 
-P5-4A may close only when all are retained:
-
-- exact-SHA reproducible self-contained PWA build;
-- browser installability proof;
-- persistent Drift browser storage proof;
-- N-1 -> N local data-preservation evidence;
-- true offline hard-reload app-shell proof;
-- same-origin PWA update/cache-rollover rehearsal;
-- documented and rehearsed forward-recovery behavior;
-- pilot installation/update instructions that require no repository/developer tooling;
-- explicit boundary that P5-6 is still required before real-patient use.
-
-P5-4B stays deferred and open for native Android/iOS alignment.
+No real-patient, CNDP/legal, controlled pilot URL, physical target-device install, Vercel, Android signing or iOS signing claim follows from P5-4A closure.
 
 No Vercel deployment is authorized by this contract.
