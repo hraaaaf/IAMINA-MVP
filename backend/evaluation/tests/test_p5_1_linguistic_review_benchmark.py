@@ -45,6 +45,7 @@ def test_batch_schema_requires_every_lane_once():
     assert schema["additionalProperties"] is False
     payload = batch_payload()
     assert all(case.case_id in payload for case in CASES)
+    assert "never mix Latin and Arabic characters inside the same token" in payload
 
 
 def test_human_review_rubric_matches_issue_contract():
@@ -86,6 +87,10 @@ def test_machine_review_checks_script_and_advice_boundaries():
             "غدا restart بهدوء، petit à petit.",
         ).values()
     )
+    assert machine_review(
+        _case("code_switch_fr_darija"),
+        "Demain, tقدر ترجع، بسيط.",
+    )["no_intra_token_script_mixing"] is False
     assert machine_review(_case("fr"), "Prends 2 unités demain.")["no_digits"] is False
     assert machine_review(_case("fr"), "Prends une dose demain.")["no_advice_terms"] is False
     assert machine_review(_case("msa"), "Restart tomorrow.")["script"] is False

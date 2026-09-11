@@ -19,13 +19,16 @@ from evaluation.provider_benchmark_preflight import ProviderBenchmarkPreflight
 
 PROVIDER = "groq"
 MODEL = "openai/gpt-oss-120b"
-DATASET_ID = "iamina-p5-1-current-sha-linguistic-review-v2"
+DATASET_ID = "iamina-p5-1-current-sha-linguistic-review-v3"
 SPEND_CEILING_MICROUSD = 5_000
 MAX_OUTPUT_TOKENS = 1_536
 SOURCE_SHA_ENV = "BENCHMARK_SOURCE_SHA"
 
 _ARABIC = re.compile(r"[\u0600-\u06ff]")
 _LATIN = re.compile(r"[A-Za-z]")
+_MIXED_SCRIPT_TOKEN = re.compile(
+    r"(?=[^\s]*[A-Za-z])(?=[^\s]*[\u0600-\u06ff])[^\s]+"
+)
 _STANDALONE_NUMBER = re.compile(r"(?<!\w)\d+(?!\w)")
 _GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 _FORBIDDEN_ADVICE_TERMS = (
@@ -106,7 +109,10 @@ def _script_requirement(script: str) -> str:
     requirements = {
         "arabic": "Arabic script",
         "latin": "Latin script only; no Arabic characters",
-        "mixed": "both French Latin script and Moroccan Darija Arabic script",
+        "mixed": (
+            "French Latin-script words and Moroccan Darija Arabic-script words; "
+            "never mix Latin and Arabic characters inside the same token"
+        ),
     }
     try:
         return requirements[script]
@@ -169,12 +175,19 @@ def _contains_forbidden_advice(reply: str) -> bool:
     )
 
 
+def _no_intra_token_script_mixing(case: ReviewCase, reply: str) -> bool:
+    if case.script != "mixed":
+        return True
+    return _MIXED_SCRIPT_TOKEN.search(reply) is None
+
+
 def machine_review(case: ReviewCase, reply: Any) -> dict[str, bool]:
     if not isinstance(reply, str):
         return {
             "non_empty": False,
             "bounded_length": False,
             "script": False,
+            "no_intra_token_script_mixing": False,
             "no_digits": False,
             "no_advice_terms": False,
         }
@@ -183,6 +196,7 @@ def machine_review(case: ReviewCase, reply: Any) -> dict[str, bool]:
         "non_empty": bool(normalized),
         "bounded_length": len(normalized) <= 180,
         "script": _script_ok(case, normalized),
+        "no_intra_token_script_mixing": _no_intra_token_script_mixing(case, normalized),
         "no_digits": _STANDALONE_NUMBER.search(normalized) is None,
         "no_advice_terms": not _contains_forbidden_advice(normalized),
     }
