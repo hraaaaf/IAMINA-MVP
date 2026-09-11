@@ -90,7 +90,8 @@ jobs:
           width = int(sys.argv[2])
           height = int(sys.argv[3])
           mobile = sys.argv[4].lower() == 'true'
-          pages = json.load(urllib.request.urlopen('http://127.0.0.1:9223/json/list'))
+          port = int(sys.argv[5])
+          pages = json.load(urllib.request.urlopen(f'http://127.0.0.1:{port}/json/list'))
           page = next(item for item in pages if item.get('type') == 'page')
           ws = create_connection(page['webSocketDebuggerUrl'], timeout=20)
           counter = 0
@@ -130,6 +131,7 @@ jobs:
             width="$1"
             height="$2"
             mobile="$3"
+            port="$4"
             target="$OUT/cgm-guide-${width}x${height}.png"
             profile_dir="$(mktemp -d)"
             "$CHROME" \
@@ -138,7 +140,7 @@ jobs:
               --enable-unsafe-swiftshader \
               --hide-scrollbars \
               --remote-allow-origins='*' \
-              --remote-debugging-port=9223 \
+              --remote-debugging-port="$port" \
               --user-data-dir="$profile_dir" \
               --window-size=${width},${height} \
               http://127.0.0.1:7359/ \
@@ -147,7 +149,7 @@ jobs:
 
             DEVTOOLS=0
             for _ in $(seq 1 30); do
-              if curl -fsS http://127.0.0.1:9223/json/list >/dev/null; then
+              if curl -fsS "http://127.0.0.1:${port}/json/list" >/dev/null; then
                 DEVTOOLS=1
                 break
               fi
@@ -155,10 +157,9 @@ jobs:
             done
             test "$DEVTOOLS" = "1"
 
-            python3 /tmp/capture_cgm.py "$target" "$width" "$height" "$mobile"
+            python3 /tmp/capture_cgm.py "$target" "$width" "$height" "$mobile" "$port"
             kill "$CHROME_PID" 2>/dev/null || true
             wait "$CHROME_PID" 2>/dev/null || true
-            rm -rf "$profile_dir"
 
             test -s "$target"
             bytes="$(stat -c%s "$target")"
@@ -168,9 +169,9 @@ jobs:
             fi
           }
 
-          capture 390 844 true
-          capture 768 1024 false
-          capture 1280 900 false
+          capture 390 844 true 9223
+          capture 768 1024 false 9224
+          capture 1280 900 false 9225
 
           count="$(find "$OUT" -name '*.png' -type f | wc -l)"
           test "$count" -eq 3
