@@ -55,11 +55,12 @@ jobs:
         working-directory: frontend
         run: flutter analyze --no-fatal-infos
 
-      - name: Build canonical app in offline demo mode
+      - name: Build canonical app in offline demo audit mode
         working-directory: frontend
         run: |
           flutter build web --release \
             --dart-define=IAMINA_OFFLINE_DEMO=true \
+            --dart-define=IAMINA_AUDIT_ACCESS=true \
             --dart-define=API_BASE_URL=http://127.0.0.1:65530
 
       - name: Install Playwright Chromium
