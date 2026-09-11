@@ -492,6 +492,7 @@ def launch(
                 "localhost",
                 "--dart-define=DEMO_EMAIL=dev@iamina.app",
                 "--dart-define=DEMO_PASSWORD=IAmina2026!",
+                "--dart-define=IAMINA_OFFLINE_DEMO=true",
                 f"--dart-define=API_BASE_URL={BACKEND_URL}",
             ],
             cwd=FRONTEND_DIR,

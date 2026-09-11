@@ -36,6 +36,14 @@ python IAMINA.py --doctor
 
 The doctor reports PASS/WARN/FAIL for the supported host platform, Python, Git, Flutter, Docker engine state and ports 8008/8009. Docker remains optional for the convenience host path, but missing or stopped Docker is reported explicitly.
 
+## Local demo behavior
+
+The canonical host launcher starts Flutter with `--dart-define=IAMINA_OFFLINE_DEMO=true`.
+
+This enables the existing local demo authentication path without Firebase. The login screen's demo action can therefore enter the local audit/demo session when Firebase migration is disabled, instead of failing through `signInAnonymously()`.
+
+This define is a local developer-launcher behavior only. It does not enable offline demo mode in deployment or production builds.
+
 ## Redis behavior
 
 When Docker is available, the launcher starts the local `redis:7-alpine` container and now requires a real `redis-cli ping` → `PONG` readiness proof before reporting Redis as ready.

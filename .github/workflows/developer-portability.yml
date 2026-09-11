@@ -66,6 +66,10 @@ jobs:
         run: >-
           python -c "from pathlib import Path; files=[Path('IAMINA.bat'),Path('IAMINA.command')]; forbidden=('8008','8009','flutter','manage.py','venv'); texts=[p.read_text(encoding='utf-8') for p in files]; assert all(p.exists() for p in files); assert all('IAMINA.py' in t for t in texts); assert all(len(t.encode()) < 1024 for t in texts); assert all(token not in t.lower() for t in texts for token in forbidden); print('OK: native wrappers delegate only to IAMINA.py')"
 
+      - name: Guard local offline-demo contract
+        run: >-
+          python -c "from pathlib import Path; text=Path('IAMINA.py').read_text(encoding='utf-8'); assert '--dart-define=IAMINA_OFFLINE_DEMO=true' in text; print('OK: local launcher enables offline demo')"
+
       - name: Developer-machine doctor
         run: python IAMINA.py --doctor
 
