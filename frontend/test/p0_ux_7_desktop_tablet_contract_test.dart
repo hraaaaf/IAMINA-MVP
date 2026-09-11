@@ -44,7 +44,10 @@ void main() {
     final cgmScreen = _read('lib/features/import/cgm_screen.dart');
     final cgm = _read('lib/features/import/cgm_connections_section.dart');
     expect(importer, contains('ResponsiveContentSurface('));
-    expect(importer, contains('maxWidth: 1160'));
+    expect(importer, contains('maxWidth: 1040'));
+    expect(importer, contains('constraints.maxWidth < 900'));
+    expect(importer, contains('Expanded(flex: 6, child: documentSurface)'));
+    expect(importer, contains('Expanded(flex: 4, child: connectionsSurface)'));
     expect(
       importer,
       contains("_CgmGuideEntryCard(onTap: () => context.push('/cgm'))"),
