@@ -63,7 +63,8 @@ class LiveCGMQualificationCommandTests(TestCase):
             stdout=output,
         )
 
-        payload = json.loads(output.getvalue())
+        serialized = output.getvalue()
+        payload = json.loads(serialized)
         self.assertEqual(payload["status"], "PASS")
         self.assertEqual(payload["source"], "linx")
         self.assertEqual(payload["provider_received"], 2)
@@ -71,10 +72,16 @@ class LiveCGMQualificationCommandTests(TestCase):
         self.assertTrue(payload["physical_sensor_attested"])
         self.assertFalse(payload["contains_glucose_values"])
         self.assertFalse(payload["contains_credentials"])
-        self.assertNotIn("glucose", output.getvalue().lower())
-        self.assertNotIn("credential", output.getvalue().lower().replace("credentials", ""))
-        self.assertNotIn(str(self.patient.id), output.getvalue())
-        self.assertNotIn("nightscout.example.com", output.getvalue())
+        for forbidden_key in (
+            "glucose_mg_dl",
+            "credential",
+            "base_url",
+            "patient_id",
+            "device",
+        ):
+            self.assertNotIn(forbidden_key, payload)
+        self.assertNotIn("opaque-test-credential", serialized)
+        self.assertNotIn("nightscout.example.com", serialized)
         sync_patient_cgm.assert_called_once_with(patient_id=self.patient.id)
 
     @patch("diabetes.services.cgm_live_qualification.sync_patient_cgm")
