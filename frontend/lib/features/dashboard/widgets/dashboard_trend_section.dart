@@ -29,6 +29,15 @@ extension on _TrendRange {
     _TrendRange.days30 => const Duration(days: 30),
   };
 
+  bool get useDailySummary => this != _TrendRange.hours24;
+
+  int get dayCount => switch (this) {
+    _TrendRange.hours24 => 1,
+    _TrendRange.days7 => 7,
+    _TrendRange.days14 => 14,
+    _TrendRange.days30 => 30,
+  };
+
   String label(AppLocalizations l10n) => switch (this) {
     _TrendRange.hours24 => l10n.dashboardTrendRangeHours(24),
     _TrendRange.days7 => l10n.dashboardTrendRangeDays(7),
@@ -77,19 +86,10 @@ class _DashboardTrendSectionState extends State<DashboardTrendSection> {
 
         return _TrendShell(
           count: logs.isEmpty ? null : logs.length,
+          range: _range,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _RangeSelector(
-                selected: _range,
-                onChanged: (value) {
-                  setState(() {
-                    _range = value;
-                    _selectedLogId = null;
-                  });
-                },
-              ),
-              const SizedBox(height: 14),
               if (snapshot.hasError)
                 _TrendState(
                   icon: Icons.cloud_off_outlined,
@@ -99,13 +99,23 @@ class _DashboardTrendSectionState extends State<DashboardTrendSection> {
                   logs.isEmpty)
                 _TrendState(loading: true, text: l10n.dashboardTrendLoading)
               else if (logs.isEmpty)
-                _TrendState(
-                  icon: Icons.scatter_plot_outlined,
-                  text: l10n.dashboardTrendEmpty,
+                Column(
+                  children: [
+                    _RangeSelector(
+                      selected: _range,
+                      onChanged: _setRange,
+                    ),
+                    const SizedBox(height: 16),
+                    _TrendState(
+                      icon: Icons.insights_outlined,
+                      text: l10n.dashboardTrendEmpty,
+                    ),
+                  ],
                 )
               else
                 _TrendContent(
                   logs: logs,
+                  range: _range,
                   start: start,
                   end: now,
                   low: hasTarget ? widget.low : null,
@@ -113,6 +123,7 @@ class _DashboardTrendSectionState extends State<DashboardTrendSection> {
                   unit: widget.unit,
                   selectedLogId: _selectedLogId,
                   onSelect: (id) => setState(() => _selectedLogId = id),
+                  onRangeChanged: _setRange,
                 ),
             ],
           ),
@@ -120,10 +131,18 @@ class _DashboardTrendSectionState extends State<DashboardTrendSection> {
       },
     );
   }
+
+  void _setRange(_TrendRange value) {
+    setState(() {
+      _range = value;
+      _selectedLogId = null;
+    });
+  }
 }
 
 class _TrendContent extends StatelessWidget {
   final List<LogEntryData> logs;
+  final _TrendRange range;
   final DateTime start;
   final DateTime end;
   final double? low;
@@ -131,9 +150,11 @@ class _TrendContent extends StatelessWidget {
   final String unit;
   final int? selectedLogId;
   final ValueChanged<int> onSelect;
+  final ValueChanged<_TrendRange> onRangeChanged;
 
   const _TrendContent({
     required this.logs,
+    required this.range,
     required this.start,
     required this.end,
     required this.low,
@@ -141,6 +162,7 @@ class _TrendContent extends StatelessWidget {
     required this.unit,
     required this.selectedLogId,
     required this.onSelect,
+    required this.onRangeChanged,
   });
 
   LogEntryData get _selected => selectedLogId == null
@@ -149,6 +171,10 @@ class _TrendContent extends StatelessWidget {
           (log) => log.id == selectedLogId,
           orElse: () => logs.last,
         );
+
+  String _displayValue(double mgDl) => unit == 'mmol/L'
+      ? (mgDl / 18.0).toStringAsFixed(1)
+      : mgDl.toStringAsFixed(0);
 
   @override
   Widget build(BuildContext context) {
@@ -163,38 +189,96 @@ class _TrendContent extends StatelessWidget {
               );
         final locale = _dashboardTrendDateLocale(context);
         final selected = _selected;
+        final average = logs.fold<double>(
+              0,
+              (sum, log) => sum + log.bloodSugar,
+            ) /
+            logs.length;
+        final targetConfigured = low != null && high != null && low! < high!;
+        final inTarget = targetConfigured
+            ? logs
+                .where(
+                  (log) => log.bloodSugar >= low! && log.bloodSugar <= high!,
+                )
+                .length
+            : null;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              height: 220,
-              child: _TrendPlot(
-                logs: logs,
-                medications: medications,
-                start: start,
-                end: end,
-                low: low,
-                high: high,
-                selectedLogId: selected.id,
-                unit: unit,
-                locale: locale,
-                onSelect: onSelect,
+            _TrendSummary(
+              recent: logs.last,
+              average: average,
+              inTarget: inTarget,
+              count: logs.length,
+              unit: unit,
+            ),
+            const SizedBox(height: 14),
+            _RangeSelector(selected: range, onChanged: onRangeChanged),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsetsDirectional.fromSTEB(10, 12, 10, 10),
+              decoration: BoxDecoration(
+                color: AminaVisualLanguage.controlSurface(context),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: AminaVisualLanguage.controlBorder(context),
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            _TrendLegend(
-              logCount: logs.length,
-              medicationCount: medications.length,
-              targetConfigured: low != null && high != null,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              AppLocalizations.of(context)!.dashboardTrendNoInterpolation,
-              style: TextStyle(
-                fontSize: 10.8,
-                height: 1.35,
-                color: AminaVisualLanguage.secondary(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 4),
+                    child: Text(
+                      unit,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: AminaVisualLanguage.secondary(context),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  SizedBox(
+                    height: 250,
+                    child: _TrendPlot(
+                      logs: logs,
+                      medications: medications,
+                      start: start,
+                      end: end,
+                      low: low,
+                      high: high,
+                      selectedLogId: selected.id,
+                      unit: unit,
+                      locale: locale,
+                      dailySummary: range.useDailySummary,
+                      onSelect: onSelect,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _TrendLegend(
+                    unit: unit,
+                    low: low,
+                    high: high,
+                    dailySummary: range.useDailySummary,
+                    medicationCount: medications.length,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    range.useDailySummary
+                        ? _dailySummaryNote(context)
+                        : AppLocalizations.of(
+                            context,
+                          )!.dashboardTrendNoInterpolation,
+                    style: TextStyle(
+                      fontSize: 10.6,
+                      height: 1.35,
+                      color: AminaVisualLanguage.secondary(context),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 12),
@@ -204,13 +288,25 @@ class _TrendContent extends StatelessWidget {
       },
     );
   }
+
+  String _dailySummaryNote(BuildContext context) {
+    final code = Localizations.localeOf(context).languageCode;
+    if (code == 'ar') {
+      return 'كل نقطة تمثل الوسيط اليومي للقياسات. الأشرطة العمودية تمثل القيم الدنيا والعليا المسجلة.';
+    }
+    if (code == 'en') {
+      return 'Each point is the daily median of recorded measurements. Vertical bars show the observed minimum and maximum.';
+    }
+    return 'Chaque point représente la médiane des mesures du jour. Les barres verticales indiquent la valeur minimale et maximale observée.';
+  }
 }
 
 class _TrendShell extends StatelessWidget {
   final int? count;
+  final _TrendRange range;
   final Widget child;
 
-  const _TrendShell({required this.count, required this.child});
+  const _TrendShell({required this.count, required this.range, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -233,16 +329,16 @@ class _TrendShell extends StatelessWidget {
                       l10n.dashboardTrendHeading,
                       style: TextStyle(
                         fontFamily: 'Georgia',
-                        fontSize: 21,
-                        height: 1.05,
+                        fontSize: 23,
+                        height: 1.02,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: -.35,
+                        letterSpacing: -.45,
                         color: AminaVisualLanguage.primaryText(context),
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      l10n.dashboardTrendSubheading,
+                      _subtitle(context, range),
                       style: TextStyle(
                         fontSize: 11.5,
                         height: 1.3,
@@ -260,6 +356,199 @@ class _TrendShell extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           child,
+        ],
+      ),
+    );
+  }
+
+  String _subtitle(BuildContext context, _TrendRange range) {
+    final code = Localizations.localeOf(context).languageCode;
+    final period = switch (range) {
+      _TrendRange.hours24 => code == 'fr' ? '24 dernières heures' : '24 hours',
+      _TrendRange.days7 => code == 'fr' ? '7 derniers jours' : 'last 7 days',
+      _TrendRange.days14 => code == 'fr' ? '14 derniers jours' : 'last 14 days',
+      _TrendRange.days30 => code == 'fr' ? '30 derniers jours' : 'last 30 days',
+    };
+    if (code == 'ar') return 'تطور سكر الدم · الفترة المحددة';
+    if (code == 'fr') return 'Évolution de votre glycémie · Données des $period';
+    return 'Your glucose trend · Data from the $period';
+  }
+}
+
+class _TrendSummary extends StatelessWidget {
+  final LogEntryData recent;
+  final double average;
+  final int? inTarget;
+  final int count;
+  final String unit;
+
+  const _TrendSummary({
+    required this.recent,
+    required this.average,
+    required this.inTarget,
+    required this.count,
+    required this.unit,
+  });
+
+  String _display(double mgDl) => unit == 'mmol/L'
+      ? (mgDl / 18.0).toStringAsFixed(1)
+      : mgDl.toStringAsFixed(0);
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = <Widget>[
+      _SummaryMetric(
+        icon: Icons.water_drop_outlined,
+        value: _display(recent.bloodSugar),
+        unit: unit,
+        label: _pick(context, 'Récent', 'Recent', 'الأحدث'),
+      ),
+      _SummaryMetric(
+        icon: Icons.show_chart_rounded,
+        value: _display(average),
+        unit: unit,
+        label: _pick(context, 'Moyenne', 'Average', 'المتوسط'),
+      ),
+      _SummaryMetric(
+        icon: Icons.adjust_rounded,
+        value: inTarget == null ? '—' : '$inTarget / $count',
+        label: _pick(context, 'Dans la cible', 'In range', 'ضمن النطاق'),
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 650) {
+          return Row(
+            children: [
+              for (var i = 0; i < cards.length; i++) ...[
+                Expanded(child: cards[i]),
+                if (i != cards.length - 1) const SizedBox(width: 10),
+              ],
+            ],
+          );
+        }
+        return Column(
+          children: [
+            for (var i = 0; i < cards.length; i++) ...[
+              cards[i],
+              if (i != cards.length - 1) const SizedBox(height: 8),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  String _pick(BuildContext context, String fr, String en, String ar) {
+    return switch (Localizations.localeOf(context).languageCode) {
+      'fr' => fr,
+      'ar' => ar,
+      _ => en,
+    };
+  }
+}
+
+class _SummaryMetric extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String? unit;
+  final String label;
+
+  const _SummaryMetric({
+    required this.icon,
+    required this.value,
+    this.unit,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 94),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AminaVisualLanguage.mintSurface.withValues(alpha: .32),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AminaVisualLanguage.mintSurface,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 23, color: AminaVisualLanguage.actionGreen),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Georgia',
+                          fontSize: 26,
+                          height: 1,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -.5,
+                          color: AminaVisualLanguage.primaryText(context),
+                        ),
+                      ),
+                    ),
+                    if (unit != null) ...[
+                      const SizedBox(width: 6),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Text(
+                          unit!,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: AminaVisualLanguage.secondary(context),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: AminaVisualLanguage.secondary(context),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 14,
+                      color: AminaVisualLanguage.secondary(context),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -292,7 +581,7 @@ class _RangeSelector extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 160),
-                      height: 38,
+                      height: 42,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: active
@@ -336,6 +625,7 @@ class _TrendPlot extends StatelessWidget {
   final int selectedLogId;
   final String unit;
   final String locale;
+  final bool dailySummary;
   final ValueChanged<int> onSelect;
 
   const _TrendPlot({
@@ -348,6 +638,7 @@ class _TrendPlot extends StatelessWidget {
     required this.selectedLogId,
     required this.unit,
     required this.locale,
+    required this.dailySummary,
     required this.onSelect,
   });
 
@@ -411,6 +702,7 @@ class _TrendPlot extends StatelessWidget {
                 unit: unit,
                 locale: locale,
                 isDark: Theme.of(context).brightness == Brightness.dark,
+                dailySummary: dailySummary,
               ),
               child: const SizedBox.expand(),
             ),
@@ -422,35 +714,62 @@ class _TrendPlot extends StatelessWidget {
 }
 
 class _TrendLegend extends StatelessWidget {
-  final int logCount;
+  final String unit;
+  final double? low;
+  final double? high;
+  final bool dailySummary;
   final int medicationCount;
-  final bool targetConfigured;
 
   const _TrendLegend({
-    required this.logCount,
+    required this.unit,
+    required this.low,
+    required this.high,
+    required this.dailySummary,
     required this.medicationCount,
-    required this.targetConfigured,
   });
+
+  String _display(double mgDl) => unit == 'mmol/L'
+      ? (mgDl / 18.0).toStringAsFixed(1)
+      : mgDl.toStringAsFixed(0);
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final targetConfigured = low != null && high != null && low! < high!;
+    final code = Localizations.localeOf(context).languageCode;
+    final medianLabel = code == 'fr'
+        ? 'Médiane journalière'
+        : code == 'ar'
+        ? 'الوسيط اليومي'
+        : 'Daily median';
+    final minMaxLabel = code == 'fr'
+        ? 'Min – Max (observé)'
+        : code == 'ar'
+        ? 'الأدنى – الأعلى (مسجل)'
+        : 'Min – Max (observed)';
+
     return Wrap(
-      spacing: 10,
-      runSpacing: 6,
+      spacing: 14,
+      runSpacing: 7,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         _LegendDot(
           color: AminaVisualLanguage.forestDeep,
-          label: l10n.dashboardTrendPointCount(logCount),
+          label: dailySummary ? medianLabel : l10n.dashboardTrendPointCount(1),
         ),
         if (targetConfigured)
-          _LegendBand(label: l10n.dashboardTrendTargetBand)
+          _LegendBand(
+            label: code == 'fr'
+                ? 'Plage cible (${_display(low!)} – ${_display(high!)} $unit)'
+                : '${l10n.dashboardTrendTargetBand} (${_display(low!)} – ${_display(high!)} $unit)',
+          )
         else
           _LegendIcon(
             icon: Icons.tune_rounded,
             label: l10n.dashboardTrendTargetMissing,
           ),
+        if (dailySummary)
+          _LegendWhisker(label: minMaxLabel),
         if (medicationCount > 0)
           _LegendDot(
             color: const Color(0xFFC9852B),
@@ -497,46 +816,120 @@ class _TrendSelectionCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       decoration: BoxDecoration(
         color: AminaVisualLanguage.controlSurface(context),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                _value(),
-                style: TextStyle(
-                  fontFamily: 'Georgia',
-                  fontSize: 26,
-                  height: 1,
-                  fontWeight: FontWeight.w700,
-                  color: AminaVisualLanguage.primaryText(context),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text(
-                  unit,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 660;
+          final value = _SelectionValue(value: _value(), unit: unit);
+          final date = _SelectionDate(at: at, locale: locale);
+          final contextTags = tags.isEmpty
+              ? Text(
+                  l10n.dashboardTrendNoContext,
                   style: TextStyle(
                     fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
                     color: AminaVisualLanguage.secondary(context),
                   ),
-                ),
-              ),
-              const Spacer(),
-              _SourcePill(label: l10n.dashboardTrendSourceLabel(log.source)),
+                )
+              : Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: tags
+                      .map((tag) => _ContextPill(label: tag))
+                      .toList(growable: false),
+                );
+          final source = _SourcePill(
+            label: l10n.dashboardTrendSourceLabel(log.source),
+          );
+
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [Expanded(child: value), source]),
+                const SizedBox(height: 10),
+                date,
+                const SizedBox(height: 10),
+                contextTags,
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              SizedBox(width: 150, child: value),
+              _VerticalDivider(),
+              Expanded(flex: 2, child: date),
+              _VerticalDivider(),
+              Expanded(flex: 3, child: contextTags),
+              _VerticalDivider(),
+              source,
             ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SelectionValue extends StatelessWidget {
+  final String value;
+  final String unit;
+  const _SelectionValue({required this.value, required this.unit});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontFamily: 'Georgia',
+            fontSize: 29,
+            height: 1,
+            fontWeight: FontWeight.w700,
+            color: AminaVisualLanguage.primaryText(context),
           ),
-          const SizedBox(height: 7),
-          Text(
+        ),
+        const SizedBox(width: 6),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Text(
+            unit,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: AminaVisualLanguage.secondary(context),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SelectionDate extends StatelessWidget {
+  final DateTime at;
+  final String locale;
+  const _SelectionDate({required this.at, required this.locale});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(
+          Icons.calendar_month_outlined,
+          size: 18,
+          color: AminaVisualLanguage.secondary(context),
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
             DateFormat('d MMM · HH:mm', locale).format(at),
             style: TextStyle(
               fontSize: 11.5,
@@ -544,26 +937,20 @@ class _TrendSelectionCard extends StatelessWidget {
               color: AminaVisualLanguage.secondary(context),
             ),
           ),
-          const SizedBox(height: 9),
-          if (tags.isEmpty)
-            Text(
-              l10n.dashboardTrendNoContext,
-              style: TextStyle(
-                fontSize: 11.5,
-                height: 1.35,
-                color: AminaVisualLanguage.secondary(context),
-              ),
-            )
-          else
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: tags
-                  .map((tag) => _ContextPill(label: tag))
-                  .toList(growable: false),
-            ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+}
+
+class _VerticalDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 36,
+      margin: const EdgeInsets.symmetric(horizontal: 14),
+      color: AminaVisualLanguage.controlBorder(context),
     );
   }
 }
@@ -619,22 +1006,34 @@ class _CountPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 132),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      constraints: const BoxConstraints(maxWidth: 152),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AminaVisualLanguage.mintSurface,
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(
-        text,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: AminaVisualLanguage.actionGreen,
-          fontSize: 9.8,
-          fontWeight: FontWeight.w800,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.bar_chart_rounded,
+            size: 13,
+            color: AminaVisualLanguage.actionGreen,
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AminaVisualLanguage.actionGreen,
+                fontSize: 9.8,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -647,7 +1046,7 @@ class _SourcePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
         color: AminaVisualLanguage.mintSurface,
         borderRadius: BorderRadius.circular(999),
@@ -656,7 +1055,7 @@ class _SourcePill extends StatelessWidget {
         label,
         style: const TextStyle(
           color: AminaVisualLanguage.actionGreen,
-          fontSize: 9.8,
+          fontSize: 10.2,
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -671,7 +1070,7 @@ class _ContextPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AminaVisualLanguage.mintSurface.withValues(alpha: .68),
         borderRadius: BorderRadius.circular(999),
@@ -680,7 +1079,7 @@ class _ContextPill extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 10.2,
+          fontSize: 10.4,
           fontWeight: FontWeight.w700,
           color: AminaVisualLanguage.secondary(context),
         ),
@@ -700,19 +1099,16 @@ class _LegendDot extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 7,
-          height: 7,
+          width: 8,
+          height: 8,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 5),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 220),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 10.2,
-              color: AminaVisualLanguage.secondary(context),
-            ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10.2,
+            color: AminaVisualLanguage.secondary(context),
           ),
         ),
       ],
@@ -730,15 +1126,45 @@ class _LegendBand extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 14,
-          height: 7,
+          width: 19,
+          height: 9,
           decoration: BoxDecoration(
             color: AminaVisualLanguage.mintSurface,
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(4),
             border: Border.all(color: AminaVisualLanguage.mintBorder),
           ),
         ),
-        const SizedBox(width: 5),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10.2,
+            color: AminaVisualLanguage.secondary(context),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LegendWhisker extends StatelessWidget {
+  final String label;
+  const _LegendWhisker({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 2,
+          height: 15,
+          decoration: BoxDecoration(
+            color: AminaVisualLanguage.forestDeep.withValues(alpha: .65),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 6),
         Text(
           label,
           style: TextStyle(
