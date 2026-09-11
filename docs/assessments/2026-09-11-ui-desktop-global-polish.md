@@ -1,28 +1,52 @@
 # UI-DESKTOP-GLOBAL-POLISH — Global desktop density and action polish
 
 **Date:** 2026-09-11  
-**Status:** ACTIVE
+**Status:** READY_TO_MERGE
 
 ## Goal
 
-Polish the entire IAMINA patient-facing application for desktop so every product page uses the available canvas intentionally, avoids under-filled wide layouts, and avoids unnecessarily full-width primary actions, without degrading the certified mobile/tablet experience or changing clinical, persistence, authentication, CGM, or release behavior.
+Polish the entire IAMINA patient-facing application for desktop so every real patient route uses the available canvas intentionally, avoids under-filled wide layouts and unnecessarily full-width primary actions, while preserving mobile/tablet behavior and clinical/data/security boundaries.
 
 ## Success criteria
 
-1. Every real patient-facing route is present in retained browser evidence at 390x844, 768x1024 and 1280x900.
-2. Desktop pages no longer look like stretched mobile screens: content width, grid, secondary rail, empty states and action placement are intentional per page.
-3. Primary desktop actions are content-sized or column-sized by default; full-width actions are retained only when the interaction itself legitimately owns the full region.
-4. Forms that have meaningful secondary/context content use two-column desktop composition where appropriate.
-5. Empty/error states use a bounded focal width instead of spanning the full desktop canvas.
-6. Existing Dashboard, Journal and Trend density is not regressed.
-7. Mobile/tablet information architecture and interaction order remain intact unless evidence shows a defect.
-8. FR/EN/AR, RTL, accessibility, clinical boundaries, data flows and route behavior remain unchanged.
-9. Analyze/tests and real Chrome evidence are green on the exact implementation head.
-10. Same-viewport BEFORE/AFTER review supports a desktop visual score >= 9.0/10 for every audited real product page before closeout.
+1. All 17 real patient-facing routes have retained browser evidence at 390x844, 768x1024 and 1280x900.
+2. Desktop composition is intentional: bounded rails, useful two-column layouts where truthful, compact actions, bounded empty/error states.
+3. Dashboard, Journal and Trend are not regressed.
+4. Mobile/tablet information architecture and interaction order are preserved.
+5. FR/EN/AR, RTL, accessibility, clinical boundaries, persistence, authentication, CGM and route behavior are unchanged.
+6. Analyze/tests and real Chrome evidence are green on the exact implementation head.
+7. Same-viewport BEFORE/AFTER review plus explicit user acceptance supports the strict visual target: all 17 real routes accepted at >= 9.5/10 before merge.
 
-## BEFORE evidence already retained
+## Route scope — 17 real routes
 
-Canonical global browser run before this lot:
+Global browser routes:
+
+- Dashboard;
+- Companion;
+- Reports / Summary;
+- Profile;
+- Journal;
+- New Reading;
+- Importer;
+- Document Import / Pulper;
+- Medications;
+- Reminders.
+
+Dedicated missing-route certification:
+
+- Login;
+- Reset password;
+- Consent;
+- Onboarding;
+- Companion Chat;
+- CGM;
+- Edit Reading.
+
+The four extra global captures — Trend, KPI, Insight and Next Action — are Dashboard regression surfaces, not extra patient routes.
+
+## BEFORE evidence
+
+### Global routes
 
 - workflow: `UI browser screenshot certification`;
 - run: `34629126600` / #392 — **SUCCESS**;
@@ -30,79 +54,83 @@ Canonical global browser run before this lot:
 - artifact: `iamina-ui-browser-cert-multi-viewport`;
 - artifact id: `10276350839`;
 - digest: `sha256:8d0d47000db5e16e4afcceeebdcc1d57e2e9ab49088f41ce59a9bf607f369335`;
-- 42 retained PNGs: 14 surfaces x 390/768/1280.
+- 42 PNGs: 14 surfaces x 390/768/1280.
 
-The existing global run covers these real product pages: Dashboard, Journal, Reports/Summary, Profile, Importer, Document Import/Pulper, New Reading, Medications, Reminders and Companion. It also covers four isolated Dashboard surfaces: Trend, KPI, Insight and Next Action.
+### Missing-route baseline
 
-## Coverage gap found before implementation
+- workflow: `UI global missing routes certification`;
+- run: `34634831910` / #1 — **SUCCESS**;
+- exact head: `2e6be93a2a320c89460c3d007f56f0b58ef58d33`;
+- artifact: `iamina-ui-global-missing-routes-cert`;
+- artifact id: `10278080077`;
+- digest: `sha256:a14654abe9b76ffb0a24c196281dee2946a1d6b72e2136f2e9aa687d6382e7ee`;
+- 21 PNGs: 7 routes x 390/768/1280.
 
-The production router contains additional real patient-facing routes not present in the 42-image global artifact:
+## Verified implementation
 
-- `/login`;
-- `/reset-password`;
-- `/consent`;
-- `/onboarding`;
-- `/companion/chat`;
-- `/cgm`;
-- `/journal/:id/edit`.
+The polish was applied only to responsive/presentation behavior. Main changes include:
 
-A dedicated missing-route browser certification is therefore required before claiming a whole-application desktop audit.
+- bounded desktop content rails and shared header/body alignment;
+- compact desktop CTA widths instead of stretched mobile actions;
+- two-column desktop layouts for Importer, Medications, Reminders and appropriate forms;
+- focal desktop states for Pulper, Companion and Companion Chat;
+- improved Onboarding desktop composition;
+- compact New Reading and Edit Reading actions;
+- final premium desktop framing for Edit Reading;
+- compact Consent action;
+- shared first-use desktop action sizing;
+- no fabricated statistics, patient data, recommendations or decorative filler.
 
-## Verified baseline observations from the 1280x900 contact review
+Temporary one-shot patch/applicator machinery was removed. No Vercel deployment is part of this lot.
 
-Strong reference surfaces:
+## AFTER evidence — exact implementation head
 
-- Dashboard;
-- Journal;
-- Trend.
+**Implementation head:** `88a0c54fd0eec8c0a14e657638167448cead4a63`
 
-Systemic desktop weaknesses visible across the current application:
+All required checks on this exact head are **SUCCESS**:
 
-- multiple full-screen flows retain a mobile-first single-column composition on wide canvases;
-- several forms place one primary card near the top and leave a large inactive lower canvas;
-- several `FilledButton` / `OutlinedButton` actions inherit the full width of their parent despite short labels and low information density;
-- some empty/error states span almost the full content width despite containing only a small amount of copy;
-- headers and body grids are not always aligned to the same desktop content rail;
-- page-specific max widths vary enough to make the application feel assembled rather than governed by one desktop system.
+- CI `34655949381` / #4013 ✅
+- UI browser screenshot certification `34655949515` / #435 ✅
+- UI global missing routes certification `34655949471` / #38 ✅
+- UI geometry golden audit `34655949761` / #432 ✅
+- P7 responsive Dashboard certification `34655949419` / #89 ✅
+- CGM onboarding browser certification `34655949398` / #46 ✅
+- Companion real chat E2E screenshots `34655949375` / #87 ✅
+- Offline demo UI certification `34655949820` / #35 ✅
 
-## Locked desktop design rules
+### Global AFTER artifact
 
-These rules are the implementation reference for this lot:
+- artifact: `iamina-ui-browser-cert-multi-viewport`;
+- artifact id: `10285787143`;
+- digest: `sha256:32870b50f8670769ec3b1b2e067cffdb1f2f5d8a1ff263bf0a063f29fb593e0f`;
+- exact head: `88a0c54fd0eec8c0a14e657638167448cead4a63`.
 
-1. **Desktop content rail:** use a consistent bounded central canvas, normally 1040–1120 px depending on the page's information density.
-2. **Action width:** primary/secondary buttons on desktop should size to content or to the owning column. A full-width button is allowed only for a genuine full-region action such as a drop zone or a bottom save bar whose purpose is deliberately page-wide.
-3. **Forms:** prefer 7/5, 8/4 or equivalent two-column desktop composition when a contextual/detail/history panel already exists or can truthfully reuse existing information.
-4. **Empty/error states:** focal content max width roughly 560–680 px, centered or intentionally anchored.
-5. **Information pages:** use two-column composition when existing content can be grouped without inventing data or features.
-6. **Headers:** align header content with the body content rail.
-7. **No decorative filler:** do not invent statistics, recommendations, patient data or fake cards merely to occupy space.
-8. **Responsive preservation:** below the desktop breakpoint, preserve the current mobile/tablet reading and action order unless the audit proves an existing defect.
+### Missing-route AFTER artifact
 
-## Initial page-level priority
+- artifact: `iamina-ui-global-missing-routes-cert`;
+- artifact id: `10285456459`;
+- digest: `sha256:81114914c8391a7aeadcf8113deae863e57d007ba543bf2978c07cf2d5e9bf54`;
+- exact head: `88a0c54fd0eec8c0a14e657638167448cead4a63`.
 
-P0 desktop polish based on retained evidence:
+## Visual validation
 
-- New Reading;
-- Document Import/Pulper;
-- Importer;
-- Medications;
-- Reminders;
-- Companion;
-- Reports/Summary;
-- Next Action.
+Same-viewpoint BEFORE/AFTER review was performed at 390x844, 768x1024 and 1280x900 across all 17 real patient routes.
 
-P1 polish after the full-route baseline is complete:
+Observed result:
 
-- Profile;
-- KPI;
-- Insight;
-- CGM;
-- Companion Chat;
-- Edit Reading;
-- authentication/consent/onboarding pages if their retained 1280 evidence scores below 9.0.
+- desktop layouts no longer present the systemic stretched-mobile pattern that initiated the lot;
+- primary desktop actions are compact or column-owned;
+- mobile/tablet captures remain coherent;
+- no route required fabricated content to fill space;
+- Edit Reading received a final desktop-only framing pass before certification;
+- all 17 AFTER routes were shown to the user from the exact implementation-head artifacts and explicitly validated by the user on 2026-09-12.
 
-Dashboard, Journal and Trend are reference surfaces and should receive only regression-safe micro-polish if needed.
+**Strict visual acceptance gate: PASS — 17/17 routes accepted at the >=9.5 target.**
 
-## Scope boundary
+## Roadmap and deployment boundary
 
-This lot is presentation/responsive UX only. It does not authorize Vercel deployment, change Pilot Readiness or MENA arithmetic, or change clinical/data/security behavior.
+This is a presentation/responsive UX lane. It does not change Pilot Readiness or MENA arithmetic and therefore does not require a roadmap percentage change. No Vercel deployment is authorized or included.
+
+## Merge gate
+
+All implementation gates are green, exact-head browser evidence is retained, the visual target is accepted, and PR #571 is mergeable. The lot is READY_TO_MERGE.
