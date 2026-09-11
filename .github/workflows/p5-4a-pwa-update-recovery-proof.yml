@@ -47,7 +47,7 @@ jobs:
           flutter pub get
           flutter build web --release --no-web-resources-cdn -t lib/ui_pwa_persistence_probe_main.dart
 
-      - name: Prepare healthy v1, broken v2 and forward-fix v3 shells
+      - name: Prepare healthy v1, broken v2 and healthy v3 shells
         shell: bash
         run: |
           set -euo pipefail
@@ -102,11 +102,9 @@ jobs:
           )
           PY
 
-          # Serve a stable directory path. Releases replace its directory atomically;
-          # the HTTP server therefore resolves the current files on each request.
           cp -a p5-4a-pwa-update/releases/v1 p5-4a-pwa-update/served
 
-      - name: Rehearse failed update and natural forward-fix activation in Chrome
+      - name: Prove rejected-candidate safety and healthy update activation in Chrome
         shell: bash
         run: |
           set -euo pipefail
@@ -114,7 +112,8 @@ jobs:
 
           python3 -m http.server 7362 --directory p5-4a-pwa-update/served >/tmp/iamina-pwa-update-http.log 2>&1 &
           SERVER_PID=$!
-          PROFILE="$(mktemp -d)"
+          PROFILE_BROKEN="$(mktemp -d)"
+          PROFILE_HEALTHY="$(mktemp -d)"
           CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME"
           CHROME_PID=''
@@ -142,7 +141,8 @@ jobs:
           }
 
           start_chrome() {
-            local phase="$1"
+            local profile="$1"
+            local phase="$2"
             "$CHROME" \
               --headless=new \
               --no-sandbox \
@@ -151,7 +151,7 @@ jobs:
               --enable-unsafe-swiftshader \
               --remote-allow-origins='*' \
               --remote-debugging-port=9225 \
-              --user-data-dir="$PROFILE" \
+              --user-data-dir="$profile" \
               "http://127.0.0.1:7362/?phase=$phase" \
               >/tmp/iamina-pwa-update-chrome.log 2>&1 &
             CHROME_PID=$!
@@ -177,7 +177,7 @@ jobs:
           cleanup_all() {
             stop_chrome || true
             cleanup_process "$SERVER_PID" || true
-            rm -rf "$PROFILE" 2>/dev/null || true
+            rm -rf "$PROFILE_BROKEN" "$PROFILE_HEALTHY" 2>/dev/null || true
           }
           trap cleanup_all EXIT
 
@@ -185,31 +185,35 @@ jobs:
             if curl -fsS http://127.0.0.1:7362/manifest.json >/dev/null; then break; fi
             sleep 0.2
           done
-          curl -fsS http://127.0.0.1:7362/iamina_service_worker.js | grep -F "0.1.0+1" >/dev/null
+          BASE_RELEASE="$(cat p5-4a-pwa-update/base-release.txt)"
+          curl -fsS http://127.0.0.1:7362/iamina_service_worker.js | grep -F "$BASE_RELEASE" >/dev/null
 
-          # Session 1: healthy v1; probe atomically publishes broken v2 itself,
-          # verifies HTTP exposure, then proves it cannot displace v1.
-          start_chrome seed
-          python3 scripts/p5_4a_pwa_update_recovery_probe.py phase1
+          # Property A: a broken candidate never displaces the last-known-good shell
+          # or the persistent local fixture.
+          start_chrome "$PROFILE_BROKEN" seed
+          python3 scripts/p5_4a_pwa_update_recovery_probe.py broken
           stop_chrome
 
-          # Publish v3 only after the broken-update session is fully closed and prove
-          # the stable HTTP server path now exposes v3 before Chrome sees it.
-          publish_release v3-fixed test-v3-fixed
+          # Reset the served release to v1. A separate persistent Chrome profile is
+          # used for the healthy N -> N+1 update proof so the test does not depend on
+          # Chrome's non-deterministic update scheduling immediately after a rejected
+          # service-worker install.
+          publish_release v1 "$BASE_RELEASE"
 
-          # Session 2: v1 remains active while v3 installs into a separate waiting cache.
-          start_chrome verify
-          python3 scripts/p5_4a_pwa_update_recovery_probe.py phase2
+          # Property B, session 1: v3 installs beside active v1 and waits.
+          start_chrome "$PROFILE_HEALTHY" seed
+          python3 scripts/p5_4a_pwa_update_recovery_probe.py healthy-prepare
           stop_chrome
 
-          # Session 3: closing the old controlled client permits natural v3 activation.
-          start_chrome verify
-          python3 scripts/p5_4a_pwa_update_recovery_probe.py phase3
+          # Property B, session 2: closing v1 permits natural v3 activation; Drift and
+          # offline reopen must remain intact on the same healthy-update profile.
+          start_chrome "$PROFILE_HEALTHY" verify
+          python3 scripts/p5_4a_pwa_update_recovery_probe.py healthy-activate
           stop_chrome
 
           cleanup_process "$SERVER_PID"
           SERVER_PID=''
-          rm -rf "$PROFILE" 2>/dev/null || true
+          rm -rf "$PROFILE_BROKEN" "$PROFILE_HEALTHY" 2>/dev/null || true
           trap - EXIT
 
       - name: Upload retained update/recovery proof

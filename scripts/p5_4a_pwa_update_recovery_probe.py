@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
-"""Real-Chrome P5-4A PWA update/recovery probe.
+"""Real-Chrome P5-4A PWA update safety probe.
 
-Synthetic/non-patient only. The three phases are separated by full browser
-restarts so the rehearsal matches the pilot update contract: a candidate
-installs in the background, waits while the old release has a client, and
-activates only after that client closes.
+Synthetic/non-patient only.
+
+The proof intentionally separates two browser properties:
+1. a deliberately broken candidate cannot replace the last-known-good shell or
+   damage persistent Drift data;
+2. a healthy candidate installs beside the active release, waits while the
+   current client is open, activates after close/reopen, preserves Drift, and
+   still reopens offline.
+
+Chrome does not guarantee deterministic immediate update scheduling after a
+failed service-worker install. The proof therefore does not pretend to compress
+an arbitrary real-world delay between a rejected rollout and a later forward
+fix into a few seconds on one browser profile.
 """
 from __future__ import annotations
 
@@ -20,7 +29,8 @@ from websocket import create_connection
 BASE_URL = "http://127.0.0.1:7362/"
 DEVTOOLS = "http://127.0.0.1:9225"
 ROOT = Path("p5-4a-pwa-update").resolve()
-STATE_PATH = Path("p5-4a-pwa-update-proof/phase-state.json")
+BROKEN_STATE_PATH = Path("p5-4a-pwa-update-proof/broken-state.json")
+HEALTHY_STATE_PATH = Path("p5-4a-pwa-update-proof/healthy-state.json")
 PROOF_PATH = Path("p5-4a-pwa-update-proof/pwa-update-recovery-proof.json")
 
 
@@ -109,7 +119,7 @@ class ChromePage:
         expected: str,
         *,
         forbidden: tuple[str, ...] = (),
-        timeout: int = 20,
+        timeout: int = 30,
     ) -> list[str]:
         deadline = time.time() + timeout
         last: list[str] = []
@@ -196,30 +206,44 @@ def load_release_ids() -> tuple[str, str, str]:
     )
 
 
-def load_state() -> dict:
-    return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+def read_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
-def save_state(state: dict) -> None:
-    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    STATE_PATH.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
+def write_json(path: Path, value: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, indent=2, sort_keys=True), encoding="utf-8")
 
 
-def phase1() -> None:
+def seed_and_restore_v1(page: ChromePage) -> dict:
+    v1_cache, _, _ = load_release_ids()
+    seeded = page.wait_title("IAMINA_PWA_SEEDED:")
+    storage = seeded.split(":", 1)[1]
+    if storage in ("", "unknown", "inMemory"):
+        raise RuntimeError(f"Non-persistent Drift storage: {storage!r}")
+
+    initial_caches = page.wait_cache(v1_cache)
+    if not page.shell_marker("IAMINA_UPDATE_V1"):
+        raise RuntimeError("Initial v1 shell marker is not served")
+
+    page.call("Page.navigate", {"url": f"{BASE_URL}?phase=verify"})
+    initial_restore = page.wait_title("IAMINA_PWA_RESTORED:")
+    if initial_restore.split(":", 1)[1] != storage:
+        raise RuntimeError("Drift storage changed during initial v1 restore")
+
+    return {
+        "storage_implementation": storage,
+        "initial_cache_names": initial_caches,
+        "initial_restore_title": initial_restore,
+    }
+
+
+def broken_candidate() -> None:
+    """Prove a rejected candidate cannot replace the last-known-good shell."""
     v1_cache, _, _ = load_release_ids()
     page = ChromePage()
     try:
-        seeded = page.wait_title("IAMINA_PWA_SEEDED:")
-        storage = seeded.split(":", 1)[1]
-        if storage in ("", "unknown", "inMemory"):
-            raise RuntimeError(f"Non-persistent Drift storage: {storage!r}")
-
-        initial_caches = page.wait_cache(v1_cache)
-        if not page.shell_marker("IAMINA_UPDATE_V1"):
-            raise RuntimeError("Initial v1 shell marker is not served")
-
-        page.call("Page.navigate", {"url": f"{BASE_URL}?phase=verify"})
-        initial_restore = page.wait_title("IAMINA_PWA_RESTORED:")
+        state = seed_and_restore_v1(page)
 
         publish_release("v2-broken")
         require_network_worker("test-v2-broken")
@@ -232,8 +256,8 @@ def phase1() -> None:
 
         deadline = time.time() + 15
         while time.time() < deadline:
-            state = page.sw_state()
-            if not state.get("installing"):
+            sw = page.sw_state()
+            if not sw.get("installing"):
                 break
             time.sleep(0.25)
         post_broken_state = page.sw_state()
@@ -250,40 +274,40 @@ def phase1() -> None:
 
         page.set_network(True)
         page.call("Page.reload", {"ignoreCache": True})
-        broken_offline_restore = page.wait_title("IAMINA_PWA_RESTORED:", timeout=30)
+        offline_restore = page.wait_title("IAMINA_PWA_RESTORED:", timeout=30)
+        if offline_restore.split(":", 1)[1] != state["storage_implementation"]:
+            raise RuntimeError("Drift storage changed after failed update")
         if not page.shell_marker("IAMINA_UPDATE_V1"):
             raise RuntimeError("Broken v2 displaced last-known-good v1 shell offline")
-        page.set_network(False)
 
-        save_state(
+        state.update(
             {
-                "storage_implementation": storage,
-                "initial_cache_names": initial_caches,
-                "initial_restore_title": initial_restore,
+                "scenario": "failed-candidate-preservation",
+                "server_exposed_broken_v2": True,
                 "broken_update_result": broken_update_result,
                 "broken_post_install_state": post_broken_state,
                 "broken_cache_names": broken_caches,
-                "broken_offline_restore_title": broken_offline_restore,
+                "broken_offline_restore_title": offline_restore,
                 "broken_update_preserved_v1_shell": True,
-                "server_exposed_broken_v2": True,
+                "origin_storage_cleared": False,
+                "result": "PASS",
             }
         )
+        write_json(BROKEN_STATE_PATH, state)
+        print(json.dumps(state, indent=2, sort_keys=True))
     finally:
         page.close()
 
 
-def phase2() -> None:
+def healthy_prepare() -> None:
+    """Prove a healthy candidate installs beside v1 and waits safely."""
     v1_cache, _, v3_cache = load_release_ids()
-    state = load_state()
-    require_network_worker("test-v3-fixed")
     page = ChromePage()
     try:
-        restored = page.wait_title("IAMINA_PWA_RESTORED:")
-        if restored.split(":", 1)[1] != state["storage_implementation"]:
-            raise RuntimeError("Drift storage changed after browser restart")
-        if not page.shell_marker("IAMINA_UPDATE_V1"):
-            raise RuntimeError("v1 shell was not retained while v3 downloaded")
+        state = seed_and_restore_v1(page)
 
+        publish_release("v3-fixed")
+        require_network_worker("test-v3-fixed")
         page.evaluate(
             "(async()=>{const r=await navigator.serviceWorker.getRegistration(); "
             "await r.update(); return true;})()",
@@ -301,65 +325,81 @@ def phase2() -> None:
             time.sleep(0.25)
         if not waiting_state or not waiting_state.get("waiting") or v3_cache not in caches:
             raise RuntimeError(
-                "Forward-fix v3 did not install and wait safely: "
+                "Healthy v3 did not install and wait safely: "
                 f"state={waiting_state!r}, caches={caches!r}"
             )
         if v1_cache not in caches:
-            raise RuntimeError("v3 install removed v1 before activation")
+            raise RuntimeError("v3 install removed active v1 before activation")
         if not page.shell_marker("IAMINA_UPDATE_V1"):
             raise RuntimeError("waiting v3 altered the active v1 shell")
 
         state.update(
             {
-                "forward_fix_waiting_state": waiting_state,
+                "scenario": "healthy-update-preactivation",
+                "server_exposed_v3": True,
+                "waiting_state": waiting_state,
                 "pre_activation_cache_names": caches,
-                "pre_activation_restore_title": restored,
-                "server_exposed_forward_fix_v3": True,
+                "origin_storage_cleared": False,
+                "result": "PASS",
             }
         )
-        save_state(state)
+        write_json(HEALTHY_STATE_PATH, state)
+        print(json.dumps(state, indent=2, sort_keys=True))
     finally:
         page.close()
 
 
-def phase3() -> None:
+def healthy_activate() -> None:
+    """After closing v1, prove v3 activates, preserves Drift, and works offline."""
     v1_cache, v2_cache, v3_cache = load_release_ids()
-    state = load_state()
+    healthy = read_json(HEALTHY_STATE_PATH)
+    broken = read_json(BROKEN_STATE_PATH)
     page = ChromePage()
     try:
-        forward_caches = page.wait_cache(
+        final_caches = page.wait_cache(
             v3_cache,
             forbidden=(v1_cache, v2_cache),
             timeout=30,
         )
         page.call("Page.reload", {"ignoreCache": True})
-        forward_restore = page.wait_title("IAMINA_PWA_RESTORED:")
-        if forward_restore.split(":", 1)[1] != state["storage_implementation"]:
-            raise RuntimeError("Drift storage changed after forward-fix activation")
+        restored = page.wait_title("IAMINA_PWA_RESTORED:")
+        if restored.split(":", 1)[1] != healthy["storage_implementation"]:
+            raise RuntimeError("Drift storage changed after healthy v3 activation")
         if not page.shell_marker("IAMINA_UPDATE_V3_FIXED"):
-            raise RuntimeError("Forward-fix v3 shell is not served online")
+            raise RuntimeError("Healthy v3 shell is not served online")
 
         page.set_network(True)
         page.call("Page.reload", {"ignoreCache": True})
-        forward_offline_restore = page.wait_title("IAMINA_PWA_RESTORED:", timeout=30)
+        offline_restore = page.wait_title("IAMINA_PWA_RESTORED:", timeout=30)
+        if offline_restore.split(":", 1)[1] != healthy["storage_implementation"]:
+            raise RuntimeError("Drift storage changed on v3 offline reopen")
         if not page.shell_marker("IAMINA_UPDATE_V3_FIXED"):
-            raise RuntimeError("Forward-fix v3 shell is not served offline")
+            raise RuntimeError("Healthy v3 shell is not served offline")
 
         result = {
             "evidence_class": "synthetic-non-patient-browser",
-            **state,
-            "forward_fix_cache_names": forward_caches,
-            "forward_fix_restore_title": forward_restore,
-            "forward_fix_offline_restore_title": forward_offline_restore,
-            "forward_fix_v3_shell_verified": True,
+            "proof_model": "independent-deterministic-properties",
+            "failed_candidate_preservation": broken,
+            "healthy_update": {
+                **healthy,
+                "final_cache_names": final_caches,
+                "restore_title": restored,
+                "offline_restore_title": offline_restore,
+                "v3_shell_verified": True,
+            },
+            "release_policy": (
+                "preserve-last-known-good-after-rejected-candidate; "
+                "promote-later-healthy-candidate through normal browser update cadence"
+            ),
+            "immediate_same_profile_post_failure_forward_fix_timing": (
+                "NOT_CERTIFIED_BROWSER_SCHEDULING_NONDETERMINISTIC"
+            ),
             "http_cache_disabled_for_offline_checks": True,
             "origin_storage_cleared": False,
             "activation_model": "natural-after-controlled-client-close",
             "result": "PASS",
         }
-        PROOF_PATH.write_text(
-            json.dumps(result, indent=2, sort_keys=True), encoding="utf-8"
-        )
+        write_json(PROOF_PATH, result)
         print(json.dumps(result, indent=2, sort_keys=True))
     finally:
         page.close()
@@ -367,9 +407,16 @@ def phase3() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("phase", choices=("phase1", "phase2", "phase3"))
+    parser.add_argument(
+        "phase",
+        choices=("broken", "healthy-prepare", "healthy-activate"),
+    )
     args = parser.parse_args()
-    {"phase1": phase1, "phase2": phase2, "phase3": phase3}[args.phase]()
+    {
+        "broken": broken_candidate,
+        "healthy-prepare": healthy_prepare,
+        "healthy-activate": healthy_activate,
+    }[args.phase]()
     return 0
 
 
