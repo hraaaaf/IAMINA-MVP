@@ -30,6 +30,8 @@ class AminaMobilePageHeader extends StatelessWidget {
     final top = includeSafeArea ? MediaQuery.paddingOf(context).top : 0.0;
     final hasSubtitle = subtitle != null && subtitle!.trim().isNotEmpty;
     final dark = AminaTheme.isDark(context);
+    final surfaceWidth = MediaQuery.sizeOf(context).width;
+    final desktopInset = surfaceWidth >= 1160 ? (surfaceWidth - 1120) / 2 : 20.0;
 
     final chrome = Container(
       constraints: const BoxConstraints(minHeight: 96),
@@ -48,7 +50,12 @@ class AminaMobilePageHeader extends StatelessWidget {
                 end: AlignmentDirectional.bottomEnd,
               ),
       ),
-      padding: EdgeInsetsDirectional.fromSTEB(20, top + 14, 20, 18),
+      padding: EdgeInsetsDirectional.fromSTEB(
+        desktopInset,
+        top + 14,
+        desktopInset,
+        18,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -145,7 +152,12 @@ class AminaMobilePageHeader extends StatelessWidget {
         ColoredBox(
           color: AminaTheme.bg(context),
           child: Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 14),
+            padding: EdgeInsetsDirectional.fromSTEB(
+              desktopInset,
+              0,
+              desktopInset,
+              14,
+            ),
             child: bottom!,
           ),
         ),
