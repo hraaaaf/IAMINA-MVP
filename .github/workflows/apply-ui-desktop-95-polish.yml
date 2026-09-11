@@ -1,0 +1,78 @@
+name: Apply UI desktop 9.5 polish
+
+on:
+  push:
+    branches: [polish/ui-desktop-global-20260911]
+    paths:
+      - 'scripts/apply_ui_desktop_95_polish.py'
+      - '.github/workflows/apply-ui-desktop-95-polish.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-verify-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: polish/ui-desktop-global-20260911
+          fetch-depth: 0
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Apply exact desktop polish
+        run: python3 scripts/apply_ui_desktop_95_polish.py
+
+      - name: Remove one-shot patch machinery
+        run: |
+          rm scripts/apply_ui_desktop_95_polish.py
+          rm .github/workflows/apply-ui-desktop-95-polish.yml
+
+      - name: Get dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Format touched Dart files
+        working-directory: frontend
+        run: |
+          dart format \
+            lib/features/documents/document_import_screen.dart \
+            lib/features/dashboard/widgets/add_log_sheet.dart \
+            lib/features/companion/companion_premium_screen.dart \
+            lib/features/auth/onboarding_chat_screen.dart \
+            lib/features/companion/companion_conversation_screen.dart \
+            lib/features/journal/edit_log_screen.dart
+
+      - name: Analyze touched production surfaces
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos \
+            lib/features/documents/document_import_screen.dart \
+            lib/features/dashboard/widgets/add_log_sheet.dart \
+            lib/features/companion/companion_premium_screen.dart \
+            lib/features/auth/onboarding_chat_screen.dart \
+            lib/features/companion/companion_conversation_screen.dart \
+            lib/features/journal/edit_log_screen.dart
+
+      - name: Run full Flutter test suite
+        working-directory: frontend
+        run: flutter test --reporter expanded
+
+      - name: Verify diff
+        run: git diff --check
+
+      - name: Commit verified desktop polish
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && { echo 'No changes to commit'; exit 1; }
+          git commit -m 'polish(ui): raise desktop workspaces toward 9.5'
+          git push origin HEAD:polish/ui-desktop-global-20260911
