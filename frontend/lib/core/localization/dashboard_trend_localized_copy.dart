@@ -18,9 +18,9 @@ extension DashboardTrendLocalizedCopy on AppLocalizations {
       );
 
   String get dashboardTrendSubheading => _trendPick(
-        en: 'Recorded measurements · no invented continuity',
-        fr: 'Mesures enregistrées · aucun continu inventé',
-        ar: 'قياسات مسجلة · دون استمرارية مختلقة',
+        en: 'Recorded measurements · governed summaries',
+        fr: 'Mesures enregistrées · résumés gouvernés',
+        ar: 'قياسات مسجلة · ملخصات منضبطة',
       );
 
   String dashboardTrendRangeHours(int hours) => _trendPick(
@@ -72,9 +72,9 @@ extension DashboardTrendLocalizedCopy on AppLocalizations {
       );
 
   String get dashboardTrendNoInterpolation => _trendPick(
-        en: 'Short periods show recorded measurements. Longer periods summarize each day by its observed minimum–maximum range. No line or missing value is invented.',
-        fr: 'Les périodes courtes montrent les mesures enregistrées. Les périodes longues résument chaque jour par sa plage minimale–maximale observée. Aucune ligne ni valeur manquante n’est inventée.',
-        ar: 'تعرض الفترات القصيرة القياسات المسجلة، بينما تلخص الفترات الأطول كل يوم بنطاقه الأدنى–الأقصى المرصود. لا يتم اختلاق أي خط أو قيمة مفقودة.',
+        en: 'Each point is a recorded measurement. Empty spaces remain missing data.',
+        fr: 'Chaque point est une mesure enregistrée. Les espaces vides restent des données manquantes.',
+        ar: 'كل نقطة تمثل قياساً مسجلاً. تبقى المساحات الفارغة بيانات مفقودة.',
       );
 
   String get dashboardTrendNoContext => _trendPick(
