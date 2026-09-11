@@ -81,7 +81,7 @@ def install_hint(tool: str) -> str:
         hints = {
             "python": (
                 f"Install Python {expected_python}: "
-                "winget install -e --id Python.Python.3.12"
+                f"winget install -e --id Python.Python.{expected_python}"
             ),
             "flutter": (
                 f"Install Flutter {expected_flutter} and add its bin directory to PATH: "
@@ -95,7 +95,7 @@ def install_hint(tool: str) -> str:
         }
     else:
         hints = {
-            "python": f"Install Python {expected_python}: brew install python@3.12",
+            "python": f"Install Python {expected_python}: brew install python@{expected_python}",
             "flutter": (
                 f"Install Flutter {expected_flutter} and add it to PATH: "
                 "https://docs.flutter.dev/get-started/install/macos"
@@ -565,7 +565,7 @@ def main() -> int:
     args = parse_args()
     try:
         if args.doctor:
-            return environment_report(require_flutter=False)
+            return environment_report(require_flutter=True)
         if args.check:
             return preflight()
 
@@ -577,6 +577,7 @@ def main() -> int:
             flutter = flutter_command()
             ensure_flutter_version(flutter)
         else:
+            preflight()
             python, flutter = bootstrap()
 
         return launch(
