@@ -4,7 +4,7 @@ import '../features/companion/companion_premium_screen.dart';
 import '../features/dashboard/dashboard_companion_entry_screen.dart';
 import '../features/dashboard/widgets/add_log_sheet.dart';
 import '../features/journal/journal_screen.dart';
-import '../features/journal/ai_summary_screen.dart';
+import '../features/journal/reports_screen.dart';
 import '../features/journal/add_log_screen.dart';
 import '../features/journal/edit_log_screen.dart';
 import '../features/import/import_screen.dart';
@@ -61,7 +61,7 @@ final ModuleConfig diabetesModule = ModuleConfig(
       builder: () => const DashboardCompanionEntryScreen(),
     ),
     ModuleShellRoute(path: '/journal', builder: () => const JournalScreen()),
-    ModuleShellRoute(path: '/summary', builder: () => const AISummaryScreen()),
+    ModuleShellRoute(path: '/summary', builder: () => const ReportsScreen()),
   ],
   fullScreenRoutes: [
     ModuleFullScreenRoute(

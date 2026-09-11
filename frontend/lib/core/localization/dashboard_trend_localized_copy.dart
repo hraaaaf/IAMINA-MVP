@@ -18,9 +18,9 @@ extension DashboardTrendLocalizedCopy on AppLocalizations {
       );
 
   String get dashboardTrendSubheading => _trendPick(
-        en: 'Recorded measurements · no invented continuity',
-        fr: 'Mesures enregistrées · aucun continu inventé',
-        ar: 'قياسات مسجلة · دون استمرارية مختلقة',
+        en: 'Recorded measurements · governed summaries',
+        fr: 'Mesures enregistrées · résumés gouvernés',
+        ar: 'قياسات مسجلة · ملخصات منضبطة',
       );
 
   String dashboardTrendRangeHours(int hours) => _trendPick(

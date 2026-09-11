@@ -38,29 +38,28 @@ class DashboardResponsiveSections extends StatelessWidget {
           );
         }
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        // Desktop hierarchy: trend first, metrics second, interpretation/actions last.
+        // This keeps the primary clinical signal large enough to read instead of
+        // compressing it into a half-width technical card.
+        return Column(
           children: [
-            Expanded(
-              flex: 6,
-              child: Column(
-                children: [
-                  DashboardTrendSection(unit: unit, low: low, high: high),
-                  const SizedBox(height: 18),
-                  DashboardInsightSection(service: companionService),
-                ],
-              ),
-            ),
-            const SizedBox(width: 18),
-            Expanded(
-              flex: 5,
-              child: Column(
-                children: [
-                  DashboardAdaptiveKpiSection(unit: unit, low: low, high: high),
-                  const SizedBox(height: 18),
-                  DashboardNextActionSection(service: companionService),
-                ],
-              ),
+            DashboardTrendSection(unit: unit, low: low, high: high),
+            const SizedBox(height: 18),
+            DashboardAdaptiveKpiSection(unit: unit, low: low, high: high),
+            const SizedBox(height: 18),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: DashboardInsightSection(service: companionService),
+                ),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: DashboardNextActionSection(
+                    service: companionService,
+                  ),
+                ),
+              ],
             ),
           ],
         );

@@ -1,0 +1,93 @@
+name: Offline demo UI certification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/offline-demo-ui-cert.yml'
+      - 'tools/offline_demo_ui_capture.js'
+      - 'frontend/lib/main.dart'
+      - 'frontend/lib/modules/diabetes_module.dart'
+      - 'frontend/lib/features/dashboard/**'
+      - 'frontend/lib/features/journal/reports_screen.dart'
+      - 'frontend/lib/features/journal/ai_summary_screen.dart'
+      - 'frontend/lib/features/navigation/main_shell.dart'
+      - 'frontend/test/reports_offline_demo_contract_test.dart'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offline-demo-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  certify-offline-demo-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.7'
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate capture harness
+        run: node --check tools/offline_demo_ui_capture.js
+
+      - name: Install frontend dependencies and run focused contracts
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter test --no-pub \
+            test/reports_offline_demo_contract_test.dart \
+            test/features/dashboard_trend_contract_test.dart \
+            test/features/dashboard_responsive_convergence_contract_test.dart
+
+      - name: Analyze changed UI surfaces
+        working-directory: frontend
+        run: flutter analyze --no-fatal-infos
+
+      - name: Build canonical app in offline demo audit mode
+        working-directory: frontend
+        run: |
+          flutter build web --release \
+            --dart-define=IAMINA_OFFLINE_DEMO=true \
+            --dart-define=IAMINA_AUDIT_ACCESS=true \
+            --dart-define=API_BASE_URL=http://127.0.0.1:65530
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Capture Dashboard trend and Reports at canonical viewports
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 7359 --bind 127.0.0.1 --directory frontend/build/web >/tmp/iamina-offline-demo-web.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:7359/ >/dev/null && break
+            sleep 1
+          done
+          node tools/offline_demo_ui_capture.js
+
+      - name: Upload AFTER visual proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-offline-demo-dashboard-reports-after
+          path: |
+            offline-demo-ui-cert/*
+            /tmp/iamina-offline-demo-web.log
+          if-no-files-found: warn
+          retention-days: 7
