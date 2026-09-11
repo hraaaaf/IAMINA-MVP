@@ -31,13 +31,6 @@ extension on _TrendRange {
 
   bool get useDailySummary => this != _TrendRange.hours24;
 
-  int get dayCount => switch (this) {
-    _TrendRange.hours24 => 1,
-    _TrendRange.days7 => 7,
-    _TrendRange.days14 => 14,
-    _TrendRange.days30 => 30,
-  };
-
   String label(AppLocalizations l10n) => switch (this) {
     _TrendRange.hours24 => l10n.dashboardTrendRangeHours(24),
     _TrendRange.days7 => l10n.dashboardTrendRangeDays(7),
@@ -172,10 +165,6 @@ class _TrendContent extends StatelessWidget {
           orElse: () => logs.last,
         );
 
-  String _displayValue(double mgDl) => unit == 'mmol/L'
-      ? (mgDl / 18.0).toStringAsFixed(1)
-      : mgDl.toStringAsFixed(0);
-
   @override
   Widget build(BuildContext context) {
     final db = context.read<AppDatabase>();
@@ -306,7 +295,11 @@ class _TrendShell extends StatelessWidget {
   final _TrendRange range;
   final Widget child;
 
-  const _TrendShell({required this.count, required this.range, required this.child});
+  const _TrendShell({
+    required this.count,
+    required this.range,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -768,8 +761,7 @@ class _TrendLegend extends StatelessWidget {
             icon: Icons.tune_rounded,
             label: l10n.dashboardTrendTargetMissing,
           ),
-        if (dailySummary)
-          _LegendWhisker(label: minMaxLabel),
+        if (dailySummary) _LegendWhisker(label: minMaxLabel),
         if (medicationCount > 0)
           _LegendDot(
             color: const Color(0xFFC9852B),
@@ -1088,6 +1080,40 @@ class _ContextPill extends StatelessWidget {
   }
 }
 
+class _LegendItem extends StatelessWidget {
+  final Widget leading;
+  final String label;
+
+  const _LegendItem({required this.leading, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 220),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          leading,
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10.2,
+                height: 1.25,
+                color: AminaVisualLanguage.secondary(context),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _LegendDot extends StatelessWidget {
   final Color color;
   final String label;
@@ -1095,23 +1121,13 @@ class _LegendDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10.2,
-            color: AminaVisualLanguage.secondary(context),
-          ),
-        ),
-      ],
+    return _LegendItem(
+      label: label,
+      leading: Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
     );
   }
 }
@@ -1122,27 +1138,17 @@ class _LegendBand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 19,
-          height: 9,
-          decoration: BoxDecoration(
-            color: AminaVisualLanguage.mintSurface,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: AminaVisualLanguage.mintBorder),
-          ),
+    return _LegendItem(
+      label: label,
+      leading: Container(
+        width: 19,
+        height: 9,
+        decoration: BoxDecoration(
+          color: AminaVisualLanguage.mintSurface,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: AminaVisualLanguage.mintBorder),
         ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10.2,
-            color: AminaVisualLanguage.secondary(context),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -1153,26 +1159,16 @@ class _LegendWhisker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 2,
-          height: 15,
-          decoration: BoxDecoration(
-            color: AminaVisualLanguage.forestDeep.withValues(alpha: .65),
-            borderRadius: BorderRadius.circular(2),
-          ),
+    return _LegendItem(
+      label: label,
+      leading: Container(
+        width: 2,
+        height: 15,
+        decoration: BoxDecoration(
+          color: AminaVisualLanguage.forestDeep.withValues(alpha: .65),
+          borderRadius: BorderRadius.circular(2),
         ),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10.2,
-            color: AminaVisualLanguage.secondary(context),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -1184,19 +1180,9 @@ class _LegendIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: AminaVisualLanguage.actionGreen),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10.2,
-            color: AminaVisualLanguage.secondary(context),
-          ),
-        ),
-      ],
+    return _LegendItem(
+      label: label,
+      leading: Icon(icon, size: 13, color: AminaVisualLanguage.actionGreen),
     );
   }
 }
