@@ -113,63 +113,68 @@ class _EditLogScreenState extends State<EditLogScreen> {
                         const SizedBox(height: 14),
                         _contextCard(l10n),
                         const SizedBox(height: 24),
-                        FilledButton.icon(
-                          key: const Key('save-edit-log-button'),
-                          onPressed: _saving || _deleting
-                              ? null
-                              : () => _saveChanges(unit, l10n),
-                          icon: _saving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.check_rounded),
-                          label: Text(_saving ? l10n.journalSaving : l10n.save),
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(54),
-                            backgroundColor: AminaTheme.teal600,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          key: const Key('delete-edit-log-button'),
-                          onPressed: _saving || _deleting
-                              ? null
-                              : () => _deleteLog(l10n),
-                          icon: _deleting
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.delete_outline_rounded),
-                          label: Text(l10n.delete),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(50),
-                            foregroundColor: AminaTheme.dangerRed,
-                            side: BorderSide(
-                              color: AminaTheme.dangerRed.withValues(alpha: 0.35),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                        ),
+                        _actionButtons(unit, l10n),
                       ],
                     ),
                   ),
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _actionButtons(String unit, AppLocalizations l10n) {
+    final save = FilledButton.icon(
+      key: const Key('save-edit-log-button'),
+      onPressed: _saving || _deleting ? null : () => _saveChanges(unit, l10n),
+      icon: _saving
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.check_rounded),
+      label: Text(_saving ? l10n.journalSaving : l10n.save),
+      style: FilledButton.styleFrom(
+        minimumSize: const Size.fromHeight(54),
+        backgroundColor: AminaTheme.teal600,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+
+    final delete = OutlinedButton.icon(
+      key: const Key('delete-edit-log-button'),
+      onPressed: _saving || _deleting ? null : () => _deleteLog(l10n),
+      icon: _deleting
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.delete_outline_rounded),
+      label: Text(l10n.delete),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(50),
+        foregroundColor: AminaTheme.dangerRed,
+        side: BorderSide(color: AminaTheme.dangerRed.withValues(alpha: 0.35)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+
+    if (MediaQuery.sizeOf(context).width < 900) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [save, const SizedBox(height: 12), delete],
+      );
+    }
+
+    return Row(
+      children: [
+        SizedBox(width: 220, child: save),
+        const SizedBox(width: 12),
+        SizedBox(width: 180, child: delete),
+      ],
     );
   }
 
