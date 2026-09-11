@@ -61,7 +61,7 @@ void main() {
       final importer = _read('lib/features/import/import_screen.dart');
       final cgmScreen = _read('lib/features/import/cgm_screen.dart');
       final cgm = _read('lib/features/import/cgm_connections_section.dart');
-      expect(importer, contains('if (_totalLogs == 0)'));
+      expect(importer, contains('final documentSurface = _totalLogs == 0'));
       expect(importer, contains("ValueKey('import-first-use')"));
       expect(importer, contains('.documentIntro'));
       expect(importer, contains('.chooseDocument'));
