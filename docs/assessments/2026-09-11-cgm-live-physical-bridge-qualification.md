@@ -1,7 +1,7 @@
 # CGM-LIVE-1 — Physical bridge qualification harness
 
 **Date:** 2026-09-11  
-**Status:** ENGINEERING_CLOSED / EXTERNAL_DEVICE_GATE
+**Status:** ENGINEERING_CLOSED / BLOCKED_EXTERNAL_NO_LINX_DEVICE
 
 ## Goal
 
@@ -68,9 +68,12 @@ Implementation candidate: `796aae03581c8b4caa9f8bd8c86068474d729aba`.
 - PR #563 merged to `main` as `bb5d735d7a676ea2bcb551649f594a50997c0b82`;
 - post-merge Django migration drift #3662 / run `34621793504`: **SUCCESS** on the merge commit;
 - post-merge CI #3897 / run `34621793542`: **CANCELLED** after `main` advanced to a direct descendant;
-- current descendant `main@6bc6d22e5280104f62ef0846b87de27aaf6dbc91` has parent `bb5d735d7a676ea2bcb551649f594a50997c0b82` and CI #3898 / run `34621834334`: **SUCCESS**.
+- descendant `main@6bc6d22e5280104f62ef0846b87de27aaf6dbc91` contains the merge and CI #3898 / run `34621834334`: **SUCCESS**;
+- closeout PR #564 CI #3899 / run `34622441580`: **SUCCESS**;
+- closeout merged as `ee688310c08eaf5fcac36afc3d295f44afa7558c`;
+- final post-merge CI #3900 / run `34622939026`: **SUCCESS** on `main@ee688310c08eaf5fcac36afc3d295f44afa7558c`.
 
-The engineering gate is therefore retained on `main` with passing exact-head pre-merge proof, passing migration proof after merge, and a passing CI on the immediate descendant that contains the merge unchanged.
+The engineering gate is therefore retained on `main` with passing exact-head pre-merge proof, passing migration proof after merge, and passing final post-merge CI.
 
 Automated behaviors covered by the gate:
 
@@ -84,5 +87,7 @@ Automated behaviors covered by the gate:
 
 No software-only test can truthfully prove that a specific physical sensor is attached upstream. Final closure therefore requires one controlled physical LinX run with an authorized non-patient test subject and retained command output.
 
+Current blocker recorded on 2026-09-11: **no physical LinX sensor is currently available for this qualification run**. This is an external equipment dependency, not an IAMINA software defect. The physical gate is therefore deferred until a LinX sensor is available. It does not block unrelated IAMINA pilot-readiness work.
+
 **Engineering closure:** CLOSED.  
-**Physical-device closure:** OPEN until retained LinX physical evidence exists.
+**Physical-device closure:** BLOCKED_EXTERNAL until a LinX sensor is available and retained physical evidence exists.
