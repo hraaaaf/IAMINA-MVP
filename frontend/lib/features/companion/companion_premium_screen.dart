@@ -81,7 +81,12 @@ class _CompanionPremiumScreenState extends State<CompanionPremiumScreen> {
                   );
                 }
 
-                return _Overview(overview: overview);
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1080),
+                    child: _Overview(overview: overview),
+                  ),
+                );
               },
             ),
           ),
@@ -97,20 +102,25 @@ class _Shell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 20, 40),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate([
-              const _BrandHeader(),
-              const SizedBox(height: 24),
-              child,
-            ]),
-          ),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsetsDirectional.fromSTEB(24, 24, 24, 40),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  const _BrandHeader(),
+                  const SizedBox(height: 28),
+                  child,
+                ]),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -685,6 +695,7 @@ class _StateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final desktop = MediaQuery.sizeOf(context).width >= 900;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
@@ -729,7 +740,7 @@ class _StateCard extends StatelessWidget {
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: 20),
             SizedBox(
-              width: double.infinity,
+              width: desktop ? 220 : double.infinity,
               height: 46,
               child: FilledButton.icon(
                 onPressed: onAction,
