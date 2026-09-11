@@ -313,17 +313,40 @@ class _RemindersScreenState extends State<RemindersScreen> {
           builder: (context, snapshot) {
             final reminders = snapshot.data ?? const <ReminderData>[];
             if (reminders.isEmpty) {
+              final desktop = MediaQuery.sizeOf(context).width >= 900;
               return Container(
+                constraints: BoxConstraints(minHeight: desktop ? 350 : 0),
                 padding: const EdgeInsets.all(18),
                 decoration: AminaVisualLanguage.cardDecoration(context),
-                child: Text(
-                  _rt(
-                    context,
-                    'Aucun rappel enregistré.',
-                    'No reminder saved.',
-                    'لا توجد تذكيرات محفوظة.',
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: AminaVisualLanguage.mintIconDecoration(context),
+                        child: const Icon(
+                          Icons.notifications_none_rounded,
+                          color: AminaVisualLanguage.actionGreen,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        _rt(
+                          context,
+                          'Aucun rappel enregistré.',
+                          'No reminder saved.',
+                          'لا توجد تذكيرات محفوظة.',
+                        ),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AminaVisualLanguage.secondary(context),
+                        ),
+                      ),
+                    ],
                   ),
-                  style: TextStyle(color: AminaVisualLanguage.secondary(context)),
                 ),
               );
             }
