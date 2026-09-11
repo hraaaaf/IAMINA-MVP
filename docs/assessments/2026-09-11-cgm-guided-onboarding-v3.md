@@ -21,13 +21,25 @@ Make CGM onboarding understandable to a non-technical patient without changing t
 
 ## BEFORE
 
-Current main baseline:
+Baseline UX:
 
 - CGM lives inside `Importer > Connexions directes`, not on a dedicated page.
 - Each card has `Mode d’emploi` and a three-step dialog.
 - LinX names Juggluco explicitly.
 - Dexcom and Libre only say to send readings to a Nightscout-compatible bridge, without telling a novice which path/app to use or how to proceed when Nightscout does not yet exist.
-- The existing visual contract only certifies the how-to dialog at 390x844.
+- The configuration cards expose `VIA NIGHTSCOUT`, `Mode d’emploi` and `Configurer`, but the first screen does not explain the end-to-end path.
+
+Exact retained BEFORE visual evidence:
+
+- workflow: `UI browser screenshot certification`;
+- run: `34537140657` / #370 — **SUCCESS**;
+- exact head: `22baebdeb57e11be9bea362197ac4c54629dfd5a`;
+- artifact: `iamina-ui-browser-cert-multi-viewport`;
+- artifact id: `10176176127`;
+- digest: `sha256:c2aa3026df9b4d13485013c046993a27059bdf91df8d97a4ab50297ce815c906`;
+- manually inspected: `importer-390x844.png`, `importer-768x1024.png`, `importer-1280x900.png`.
+
+Observed BEFORE at all three viewports: document import dominates the page; CGM appears as three technical connection cards below `Connexions directes`; there is no dedicated CGM onboarding surface, no visible explanation for users without Nightscout, and no end-to-end sensor -> source app -> Nightscout -> IAMINA model.
 
 Baseline UX score from audit: **6.8/10**.
 
@@ -73,13 +85,25 @@ CONNECTED state:
 [Synchroniser] [Aucune donnée ?] [Déconnecter]
 ```
 
+## Candidate implementation
+
+- branch: `feat/cgm-guided-onboarding-v3`;
+- PR: #567;
+- dedicated route: `/cgm`;
+- Importer now exposes one guided CGM entry card instead of embedding the three configuration cards directly;
+- dedicated page contains a plain-language journey model, source-specific expandable guides, Nightscout prerequisite help, the existing real configuration component, and ordered troubleshooting;
+- existing per-source `Mode d’emploi` copy is also made concrete so the old generic wording cannot reappear inside the new page;
+- dedicated browser certification workflow captures 390x844, 768x1024 and 1280x900.
+
+No backend CGM provider, persistence, credential or clinical-authority code is changed.
+
 ## AFTER requirements
 
-After implementation, this document must be updated with:
+Before closeout this document must retain:
 
-- exact branch/head/PR;
+- exact final branch/head/PR;
 - test results;
-- 390x844 / 768x1024 / 1280x900 evidence;
-- before/after comparison;
+- 390x844 / 768x1024 / 1280x900 AFTER evidence;
+- manual before/after comparison;
 - final visual/UX score;
 - any remaining external limitation.
