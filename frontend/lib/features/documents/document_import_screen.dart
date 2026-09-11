@@ -150,7 +150,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
         ),
       ),
       body: ResponsiveContentSurface(
-        maxWidth: 980,
+        maxWidth: MediaQuery.sizeOf(context).width >= 900 ? 760 : 980,
         child: SafeArea(
           child: _loading
               ? _buildLoading()
@@ -165,7 +165,9 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
   }
 
   Widget _buildPick() {
-    final compactHeight = MediaQuery.sizeOf(context).height <= 600;
+    final size = MediaQuery.sizeOf(context);
+    final compactHeight = size.height <= 600;
+    final desktop = size.width >= 900;
     final verticalPadding = compactHeight ? 12.0 : 24.0;
     return LayoutBuilder(
       builder: (context, constraints) => SingleChildScrollView(
@@ -216,7 +218,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
               const _PrivacyGateNotice(),
               SizedBox(height: compactHeight ? 14 : 24),
               SizedBox(
-                width: double.infinity,
+                width: desktop ? 260 : double.infinity,
                 child: ElevatedButton.icon(
                   key: const ValueKey('choose-document-button'),
                   onPressed: _pickFile,
