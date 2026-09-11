@@ -41,6 +41,16 @@ class LiveCGMQualificationCommandTests(TestCase):
             dedupe_key=dedupe_key,
         )
 
+    def _run(self, **overrides):
+        options = {
+            "patient_id": self.patient.id,
+            "source": "linx",
+            "confirm_authorized_non_patient_test_subject": True,
+            "confirm_physical_sensor": True,
+        }
+        options.update(overrides)
+        return call_command("audit_cgm_live_bridge", **options)
+
     @patch("diabetes.services.cgm_live_qualification.sync_patient_cgm")
     def test_live_gate_emits_only_non_clinical_pass_metadata(self, sync_patient_cgm):
         self._reading(minutes_ago=1, dedupe_key="live-1")
@@ -52,22 +62,14 @@ class LiveCGMQualificationCommandTests(TestCase):
         )
         output = io.StringIO()
 
-        call_command(
-            "audit_cgm_live_bridge",
-            patient_id=self.patient.id,
-            source="linx",
-            max_age_minutes=15,
-            minimum_readings=2,
-            confirm_authorized_non_patient_test_subject=True,
-            confirm_physical_sensor=True,
-            stdout=output,
-        )
+        self._run(max_age_minutes=15, minimum_readings=2, stdout=output)
 
         serialized = output.getvalue()
         payload = json.loads(serialized)
         self.assertEqual(payload["status"], "PASS")
         self.assertEqual(payload["source"], "linx")
         self.assertEqual(payload["provider_received"], 2)
+        self.assertLessEqual(payload["provider_newest_reading_age_seconds"], 1)
         self.assertEqual(payload["fresh_persisted_readings"], 2)
         self.assertTrue(payload["physical_sensor_attested"])
         self.assertFalse(payload["contains_glucose_values"])
@@ -85,26 +87,33 @@ class LiveCGMQualificationCommandTests(TestCase):
         sync_patient_cgm.assert_called_once_with(patient_id=self.patient.id)
 
     @patch("diabetes.services.cgm_live_qualification.sync_patient_cgm")
-    def test_live_gate_fails_when_persisted_readings_are_stale(self, sync_patient_cgm):
-        self._reading(minutes_ago=60, dedupe_key="stale-1")
-        self._reading(minutes_ago=90, dedupe_key="stale-2")
+    def test_live_gate_fails_when_provider_reading_is_stale(self, sync_patient_cgm):
+        self._reading(minutes_ago=1, dedupe_key="fresh-1")
+        self._reading(minutes_ago=6, dedupe_key="fresh-2")
         sync_patient_cgm.return_value = CGMSyncResult(
             received=2,
             inserted=0,
             last_recorded_at=timezone.now() - timedelta(hours=1),
         )
 
+        with self.assertRaisesMessage(CommandError, "provider_latest_reading_too_old"):
+            self._run()
+
+    @patch("diabetes.services.cgm_live_qualification.sync_patient_cgm")
+    def test_live_gate_fails_when_persisted_readings_are_stale(self, sync_patient_cgm):
+        self._reading(minutes_ago=60, dedupe_key="stale-1")
+        self._reading(minutes_ago=90, dedupe_key="stale-2")
+        sync_patient_cgm.return_value = CGMSyncResult(
+            received=2,
+            inserted=0,
+            last_recorded_at=timezone.now(),
+        )
+
         with self.assertRaisesMessage(
             CommandError,
             "fresh_persisted_readings_below_minimum",
         ):
-            call_command(
-                "audit_cgm_live_bridge",
-                patient_id=self.patient.id,
-                source="linx",
-                confirm_authorized_non_patient_test_subject=True,
-                confirm_physical_sensor=True,
-            )
+            self._run()
 
     @patch("diabetes.services.cgm_live_qualification.sync_patient_cgm")
     def test_live_gate_requires_both_operator_attestations(self, sync_patient_cgm):
@@ -131,11 +140,5 @@ class LiveCGMQualificationCommandTests(TestCase):
     @patch("diabetes.services.cgm_live_qualification.sync_patient_cgm")
     def test_live_gate_fails_closed_on_source_mismatch(self, sync_patient_cgm):
         with self.assertRaisesMessage(CommandError, "cgm_source_mismatch"):
-            call_command(
-                "audit_cgm_live_bridge",
-                patient_id=self.patient.id,
-                source="dexcom",
-                confirm_authorized_non_patient_test_subject=True,
-                confirm_physical_sensor=True,
-            )
+            self._run(source="dexcom")
         sync_patient_cgm.assert_not_called()
