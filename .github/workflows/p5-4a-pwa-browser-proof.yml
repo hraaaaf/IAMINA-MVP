@@ -1,0 +1,217 @@
+name: P5-4A PWA browser persistence proof
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/web/**'
+      - 'frontend/lib/data/drift/**'
+      - 'frontend/lib/ui_pwa_persistence_probe_main.dart'
+      - 'frontend/pubspec.yaml'
+      - 'frontend/pubspec.lock'
+      - '.github/workflows/p5-4a-pwa-browser-proof.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p5-4a-pwa-browser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  chrome-persistence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Build CI-only PWA persistence probe
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/ui_pwa_persistence_probe_main.dart lib/data/drift/database.dart
+          flutter build web --release -t lib/ui_pwa_persistence_probe_main.dart
+
+      - name: Run real Chrome installability and Drift persistence proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p p5-4a-pwa-proof
+          python3 -m pip install --quiet websocket-client
+
+          python3 -m http.server 7360 --directory frontend/build/web >/tmp/iamina-pwa-http.log 2>&1 &
+          SERVER_PID=$!
+
+          cleanup_process() {
+            local pid="$1"
+            kill "$pid" 2>/dev/null || true
+            for _ in $(seq 1 10); do
+              if ! kill -0 "$pid" 2>/dev/null; then
+                break
+              fi
+              sleep 0.2
+            done
+            kill -9 "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+          }
+
+          cleanup_all() {
+            if [ -n "${CHROME_PID:-}" ]; then cleanup_process "$CHROME_PID"; fi
+            if [ -n "${SERVER_PID:-}" ]; then cleanup_process "$SERVER_PID"; fi
+          }
+          trap cleanup_all EXIT
+
+          READY=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7360/manifest.json >/dev/null; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$READY" != '1' ]; then
+            cat /tmp/iamina-pwa-http.log >&2 || true
+            exit 1
+          fi
+
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          PROFILE="$(mktemp -d)"
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --enable-unsafe-swiftshader \
+            --remote-allow-origins='*' \
+            --remote-debugging-port=9223 \
+            --user-data-dir="$PROFILE" \
+            http://127.0.0.1:7360/?phase=seed \
+            >/tmp/iamina-pwa-chrome.log 2>&1 &
+          CHROME_PID=$!
+
+          DEVTOOLS=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9223/json/list >/dev/null; then
+              DEVTOOLS=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$DEVTOOLS" != '1' ]; then
+            cat /tmp/iamina-pwa-chrome.log >&2 || true
+            exit 1
+          fi
+
+          cat > /tmp/pwa_cdp.py <<'PY'
+          import json
+          import time
+          import urllib.request
+          from pathlib import Path
+          from websocket import create_connection
+
+          proof = Path('p5-4a-pwa-proof')
+          pages = json.load(urllib.request.urlopen('http://127.0.0.1:9223/json/list'))
+          page = next(item for item in pages if item.get('type') == 'page')
+          ws = create_connection(page['webSocketDebuggerUrl'], timeout=20)
+          counter = 0
+
+          def call(method, params=None):
+              global counter
+              counter += 1
+              ws.send(json.dumps({'id': counter, 'method': method, 'params': params or {}}))
+              while True:
+                  response = json.loads(ws.recv())
+                  if response.get('id') == counter:
+                      if 'error' in response:
+                          raise RuntimeError(f"{method}: {response['error']}")
+                      return response.get('result', {})
+
+          def title():
+              result = call('Runtime.evaluate', {
+                  'expression': 'document.title',
+                  'returnByValue': True,
+              })
+              return result['result'].get('value', '')
+
+          def wait_title(prefix, timeout=30):
+              deadline = time.time() + timeout
+              last = ''
+              while time.time() < deadline:
+                  last = title()
+                  if last.startswith(prefix):
+                      return last
+                  if last.startswith('IAMINA_PWA_ERROR:'):
+                      raise RuntimeError(last)
+                  time.sleep(0.25)
+              raise RuntimeError(f'Expected title {prefix!r}, got {last!r}')
+
+          call('Page.enable')
+          call('Runtime.enable')
+
+          seeded = wait_title('IAMINA_PWA_SEEDED:')
+          storage = seeded.split(':', 1)[1]
+          if storage in ('', 'unknown', 'inMemory'):
+              raise RuntimeError(f'Non-persistent Drift web storage selected: {storage!r}')
+
+          manifest = call('Page.getAppManifest')
+          installability = call('Page.getInstallabilityErrors')
+          errors = installability.get('installabilityErrors', [])
+          if errors:
+              raise RuntimeError(f'Chrome installability errors: {errors}')
+
+          call('Page.navigate', {'url': 'http://127.0.0.1:7360/?phase=verify'})
+          restored = wait_title('IAMINA_PWA_RESTORED:')
+          if restored.split(':', 1)[1] != storage:
+              raise RuntimeError(f'Storage implementation changed: {seeded!r} -> {restored!r}')
+
+          call('Page.reload', {'ignoreCache': True})
+          restored_after_reload = wait_title('IAMINA_PWA_RESTORED:')
+          if restored_after_reload.split(':', 1)[1] != storage:
+              raise RuntimeError('Storage implementation changed after hard reload')
+
+          result = {
+              'evidence_class': 'synthetic-non-patient-browser',
+              'storage_implementation': storage,
+              'seed_title': seeded,
+              'restore_title': restored,
+              'hard_reload_title': restored_after_reload,
+              'installability_errors': errors,
+              'manifest_url': manifest.get('url'),
+              'manifest_errors': manifest.get('errors', []),
+              'result': 'PASS',
+          }
+          proof.joinpath('pwa-browser-proof.json').write_text(
+              json.dumps(result, indent=2, sort_keys=True),
+              encoding='utf-8',
+          )
+          print(json.dumps(result, indent=2, sort_keys=True))
+          ws.close()
+          PY
+
+          python3 /tmp/pwa_cdp.py
+
+          cleanup_process "$CHROME_PID"
+          CHROME_PID=''
+          rm -rf "$PROFILE" 2>/dev/null || true
+          cleanup_process "$SERVER_PID"
+          SERVER_PID=''
+          trap - EXIT
+
+      - name: Upload retained synthetic browser proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p5-4a-pwa-browser-proof
+          path: p5-4a-pwa-proof/pwa-browser-proof.json
+          if-no-files-found: warn
+          retention-days: 14
