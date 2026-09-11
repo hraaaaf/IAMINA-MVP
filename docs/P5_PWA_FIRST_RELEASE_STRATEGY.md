@@ -1,40 +1,45 @@
 # P5 — PWA-first release strategy
 
-> **Status:** CANONICAL PRODUCT DIRECTION
+> **Status:** CANONICAL PRODUCT DIRECTION — P5-4A ENGINEERING CLOSED_WITH_BOUNDARIES
 > **Effective:** 2026-09-11
-> **Baseline:** `main@2a6408cc953ec46b0e7632e4fb113432198bddef`
+> **Certified PWA baseline:** `main@35ab9c5cd70fa1f7e7f41978c8e1e5e1e1388387`
 > **Pilot Readiness arithmetic:** unchanged at 3/9 = 33.3%
 > **MENA arithmetic:** unchanged at 32/38 = 84.2%
 > **Deployment:** this strategy does not authorize a Vercel deployment.
 
 ## Goal
 
-Use the PWA as the immediate pilot delivery surface. Align native Android and iOS later, after the PWA pilot path is stable and the real-patient release gates are satisfied.
+Use the PWA as the immediate pilot delivery surface. Align native Android and iOS later, after the PWA pilot engineering path is stable and the real-patient release gates are satisfied.
 
 ## Product decision
 
-The current critical path is **PWA-first**.
+The delivery strategy remains **PWA-first**.
 
-- PWA packaging, installability, offline/update behavior and release traceability are the immediate pilot-delivery concerns.
-- Android APK/AAB signing, permanent JKS identity, Apple Developer provisioning, TestFlight/App Store distribution and native real-device upgrade evidence are **deferred native alignment work**.
+- PWA packaging, installability, offline/update behavior and release traceability have completed the P5-4A engineering lane with retained exact-SHA browser evidence.
+- Android APK/AAB signing, permanent JKS identity, Apple Developer provisioning, TestFlight/App Store distribution and native real-device upgrade evidence remain **deferred native alignment work**.
 - Deferred native work remains mandatory before claiming native Android/iOS release readiness, but it must not block the PWA pilot solely because native signing is incomplete.
 - P5-6 real-patient legal/CNDP/processor/residency/clinical-human gates remain mandatory regardless of delivery surface.
+- A controlled pilot URL and physical target-browser/device installation remain external/human evidence, not implied by engineering closure.
 
 ## P5-4 split
 
-### P5-4A — PWA pilot packaging — CURRENT CRITICAL PATH
+### P5-4A — PWA pilot packaging — ENGINEERING CLOSED_WITH_BOUNDARIES
 
-Success requires evidence that the PWA candidate:
+Retained engineering evidence now proves that the PWA candidate:
 
-1. is buildable reproducibly from one exact Git SHA;
+1. is buildable reproducibly from an exact Git SHA;
 2. has a stable production identity/version;
-3. can be installed as a PWA on supported mobile browsers without repository or developer access;
-4. preserves local/offline data across normal PWA updates within the supported compatibility window;
-5. has deterministic recovery/forward-fix guidance if an update fails;
-6. exposes no development secrets or repository access to pilot users;
-7. has retained exact-SHA build/install/update evidence on the target PWA environments.
+3. has browser installability evidence without repository or developer access;
+4. preserves persistent `sharedIndexedDb` Drift data across navigation, offline reopen and supported updates;
+5. has a strict offline app-shell proof with normal HTTP cache disabled;
+6. discovers canonical releases deterministically through a network-only service-worker probe and release-versioned registration URL;
+7. precaches each release with HTTP-cache bypass so new release caches cannot inherit stale old-release bytes;
+8. preserves the last-known-good shell when a deliberately broken candidate is rejected;
+9. promotes a later healthy candidate only across the safe waiting/close/reopen lifecycle without clearing origin storage;
+10. has a merged pilot operating runbook requiring no Git/repository/developer tooling.
 
-This lane may close independently of native signing.
+Canonical closeout: `docs/assessments/2026-09-11-p5-4a-pwa-pilot-packaging-closeout.md`.
+Canonical runbook: `docs/P5_PWA_PILOT_RUNBOOK.md`.
 
 ### P5-4B — Native Android/iOS alignment — DEFERRED / NON-BLOCKING FOR PWA PILOT
 
@@ -65,8 +70,8 @@ Until then the release posture remains `NOT_RELEASE_AUTHORIZED`.
 
 ## Non-claims
 
-This strategy does not claim that the current PWA is already pilot-ready, does not close P5-4A, does not close P5-6, does not waive Android/iOS future gates, and does not authorize Vercel or real-patient deployment.
+P5-4A engineering closure does not claim that a production/pilot URL exists, does not prove physical target-device installation, does not close P5-4B, does not close P5-6, does not waive Android/iOS future gates, and does not authorize Vercel or real-patient deployment.
 
 ## Next exact action
 
-Audit the current PWA against the P5-4A success criteria, retain exact-SHA evidence, and fix only observed gaps. Native signing work remains deferred until the native lane is intentionally activated.
+Advance the remaining pilot human/external evidence gates that actually block release. P5-6 is the primary release blocker; P5-1/P5-3 evidence remains applicable where the selected pilot scope requires those lanes. Native signing work stays deferred until the native lane is intentionally activated.
