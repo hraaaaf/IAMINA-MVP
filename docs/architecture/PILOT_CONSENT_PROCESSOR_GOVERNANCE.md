@@ -1,129 +1,140 @@
 # Pilot consent and processor governance
 
-**Status:** engineering preparation complete only after CI; legal/privacy/processor approval remains external.
+**Status:** candidate-bound engineering gate prepared; legal/privacy/processor approval remains external.
 
-**Policy version:** `2026-08-04.1`
+**Policy version:** `2026-09-11.1`
 
 **Pilot country:** Morocco
+
+Canonical release gate: `docs/P5_6_REAL_PATIENT_RELEASE_GATE.md`.
 
 ## 1. Invariant
 
 No single fact authorizes patient-data egress.
 
-The following gates are independent and all must be satisfied where applicable:
+Independent gates include, where applicable:
 
-1. the patient received the approved notice;
-2. the patient gave base AI consent;
-3. raw audio, image or document use has an exact purpose/modality grant;
-4. the health-data treatment has the required CNDP authorization;
-5. any foreign transfer has the required CNDP authorization or an approved documented basis;
-6. the exact processor, account, product, model and deployment region are approved;
-7. the current DPA, processor terms and subprocessor evidence are approved;
-8. retention, deletion and training-use terms are approved;
-9. security and privacy owners approved the deployment.
+1. approved patient notice;
+2. base AI consent;
+3. purpose/modality-specific raw audio, image or document consent;
+4. health-data processing authorization;
+5. foreign-transfer authorization or approved basis;
+6. exact processor/account/product/model/region approval;
+7. DPA, service terms and subprocessor evidence;
+8. retention, deletion and training-use evidence;
+9. security and privacy owner approval;
+10. exact candidate SHA binding.
 
 Patient consent does not replace CNDP authorization, contractual evidence, security review or processor approval.
 
-## 2. Morocco source baseline
+## 2. Runtime fail-closed policy
 
-Official CNDP material reviewed on 2026-08-04 states that:
+`backend/core/ai_processor_policy.py` remains authoritative for patient-data egress.
 
-- health data is sensitive and its processing is subject to prior authorization;
-- processing must have a precise disclosed purpose and use necessary, proportionate data;
-- the controller must contractually and operationally ensure processors comply with Law 09-08;
-- a foreign transfer requires a separate transfer procedure or applicable approved basis;
-- the underlying treatment must itself have been notified/authorized before a foreign-transfer authorization is granted;
-- notification files require the applicable patient notice/consent basis and processor confidentiality clauses.
+At the current policy baseline:
 
-Official references:
+- `gemini`, `kimi`, `claude`, `deepseek`, `qwen` and `groq` are network providers with status `PENDING`;
+- `fallback` and `quota-exhausted` are local-only and `APPROVED`;
+- configuration alone cannot convert a pending network provider into an approved patient-data processor.
 
-- `https://www.cndp.ma/conditions/`
-- `https://www.cndp.ma/notifier-une-demande-dautorisation-prealable/`
-- `https://www.cndp.ma/transfert-de-donnees-a-letranger/`
-- `https://www.cndp.ma/procedures-de-notification-process/`
+The restricted approval manifest does **not** bypass runtime policy. It must contain approval rows for every external provider whose runtime policy is already `APPROVED`, and it must contain no extra provider rows.
 
-These references are an engineering evidence baseline, not legal advice or proof that IAMINA has received an authorization.
+## 3. Executable consent matrix
 
-## 3. Executable matrix
-
-`backend/core/pilot_consent_governance.py` derives its matrix from every purpose/modality currently registered in `ai_processor_policy.py`.
+`backend/core/pilot_consent_governance.py` derives its matrix from every registered purpose/modality.
 
 Permanent invariants:
 
-- a new runtime purpose or modality creates matrix drift until explicitly covered;
-- every audio, image and document path requires granular consent;
-- every external processor path requires base AI consent, health-data authorization, foreign-transfer clearance and processor approval;
-- a provider cannot become runtime `approved` while the governance registry has blockers;
-- local fallback paths are explicitly no-external-egress and cannot be reused to authorize network calls.
+- a new runtime purpose or modality creates matrix drift until covered;
+- audio, image and document paths require granular raw-media consent;
+- external processor paths require base AI consent, health-data authorization, transfer clearance and processor approval;
+- a runtime-approved external provider with unresolved governance blockers is rejected;
+- local fallback paths cannot authorize network egress.
 
-## 4. Processor evidence registry
+## 4. Restricted candidate approval manifest
 
-The registry covers every runtime processor identifier:
+The real release approval manifest remains outside Git.
 
-- `gemini` — pending deployment-specific Google contracting, subprocessor, region, retention, training, security, privacy and CNDP evidence;
-- `claude` — pending deployment-specific Anthropic evidence;
-- `kimi` — pending processor identity and all deployment-specific evidence;
-- `fallback` and `quota-exhausted` — approved local-only identities with all foreign-processor fields explicitly not applicable.
+Configure its path:
 
-Official provider pages are pointers for review, not approval:
+```bash
+export PILOT_CONSENT_GOVERNANCE_MANIFEST_PATH=/restricted/iamina/pilot-consent-governance.json
+```
 
-- Google Cloud data residency: `https://cloud.google.com/terms/data-residency`
-- Google Cloud subprocessors: `https://cloud.google.com/terms/subprocessors`
-- OpenAI subprocessors, for future candidate evaluation only: `https://openai.com/policies/sub-processor-list/`
+A non-operational schema example is stored at:
 
-The approved ledger must record the exact account and product terms actually used. A generic public webpage cannot prove account-specific retention, no-training configuration, selected region or contractual acceptance.
+`docs/examples/pilot-consent-governance-manifest.example.json`
 
-## 5. Commands
+The real manifest records only opaque evidence references and must include:
 
-Structural audit, expected to report pending external approvals:
+- schema version and pilot country;
+- exact `source_commit_sha`;
+- controller reference;
+- patient notice reference;
+- base AI consent reference;
+- raw-media consent reference;
+- health-data authorization reference;
+- privacy and security approval references;
+- review and expiry dates;
+- exact account-specific approval rows for every runtime-approved external provider.
+
+It must not contain credentials, patient records, signed contracts, private regulator correspondence or reviewer contact details.
+
+## 5. Exact-candidate binding
+
+The release operator must supply the frozen candidate SHA explicitly:
+
+```bash
+export PILOT_RELEASE_SOURCE_SHA=<exact-40-char-git-sha>
+```
+
+A manifest whose `source_commit_sha` differs from this value is rejected. A syntactically valid old SHA is not enough.
+
+Any code/configuration change after candidate freeze invalidates the approval package.
+
+## 6. Commands
+
+Structural audit:
 
 ```bash
 cd backend
 python manage.py audit_pilot_consent_governance
 ```
 
-Fail-closed real-pilot gate:
+Candidate-bound real-patient gate:
 
 ```bash
 cd backend
-python manage.py audit_pilot_consent_governance --require-approved
+python manage.py audit_pilot_consent_governance \
+  --manifest /restricted/iamina/pilot-consent-governance.json \
+  --expected-source-sha "$PILOT_RELEASE_SOURCE_SHA" \
+  --require-approved
 ```
 
-The second command must fail until all external evidence is current and approved.
+The approved gate fails when the manifest is missing, malformed, stale, SHA-mismatched, has missing/extra runtime-approved external processors, or contains invalid evidence references.
 
-## 6. Evidence handling
+## 7. Evidence handling
 
-Source control may contain:
+Git may contain public policy references, status, accountable roles, schema examples and opaque references.
 
-- public policy references;
-- evidence status;
-- accountable role;
-- review and expiry dates;
-- opaque approval references.
+Git must not contain signed contracts, patient consent records, CNDP private correspondence, credentials, private processor audit reports or personal contact details.
 
-Source control must not contain:
+Restricted evidence belongs in the approved private compliance repository.
 
-- signed contracts;
-- patient consent records;
-- CNDP private correspondence;
-- credentials;
-- private processor audit reports;
-- personal contact details.
+## 8. Approval checklist
 
-Restricted evidence must be held in the approved private compliance repository and referenced by opaque identifier only.
+The real-patient gate remains open until:
 
-## 7. Approval checklist
+- [ ] frozen candidate SHA recorded;
+- [ ] final patient notice approved;
+- [ ] consent wording approved;
+- [ ] health-data processing authorization evidence recorded;
+- [ ] transfer evidence recorded for every actual destination;
+- [ ] every runtime-approved external processor/account/product/region approved;
+- [ ] subprocessors, DPA, retention, deletion and training-use evidence approved;
+- [ ] security and privacy approval current;
+- [ ] restricted consent manifest references the frozen SHA;
+- [ ] `audit_pilot_consent_governance --expected-source-sha "$PILOT_RELEASE_SOURCE_SHA" --require-approved` passes;
+- [ ] evidence is current on launch day.
 
-The roadmap gate remains open until all of the following are true:
-
-- [ ] final patient notice and consent wording approved;
-- [ ] CNDP health-data processing authorization reference recorded;
-- [ ] foreign-transfer authorization/basis recorded for every destination;
-- [ ] exact processors and subprocessors approved;
-- [ ] exact deployment regions approved;
-- [ ] DPA and service terms approved;
-- [ ] retention, deletion and no-training behavior approved;
-- [ ] security review approved;
-- [ ] privacy review approved;
-- [ ] `audit_pilot_consent_governance --require-approved` passes;
-- [ ] approval evidence is current on pilot launch day.
+This contract is engineering governance, not legal advice or release authorization.
