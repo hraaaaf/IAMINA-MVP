@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from pathlib import Path
 
 from p5_4a_pwa_update_recovery_probe import (
     BASE_URL,
@@ -24,6 +25,20 @@ from p5_4a_pwa_update_recovery_probe import (
     healthy_activate,
 )
 
+HTTP_LOG_PATH = Path("/tmp/iamina-pwa-update-http.log")
+
+
+def wait_http_request(path_fragment: str, timeout: int = 20) -> bool:
+    """Return once the local HTTP server has durably observed a request."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if HTTP_LOG_PATH.exists():
+            text = HTTP_LOG_PATH.read_text(encoding="utf-8", errors="replace")
+            if path_fragment in text:
+                return True
+        time.sleep(0.1)
+    return False
+
 
 def seed(path, scenario: str) -> None:
     page = ChromePage()
@@ -37,7 +52,7 @@ def seed(path, scenario: str) -> None:
 
 
 def broken_check() -> None:
-    v1_cache, v2_cache, _ = load_release_ids()
+    v1_cache, _, _ = load_release_ids()
     state = read_json(BROKEN_STATE_PATH)
     require_network_worker("test-v2-broken")
     page = ChromePage()
@@ -46,26 +61,27 @@ def broken_check() -> None:
         if restored.split(":", 1)[1] != state["storage_implementation"]:
             raise RuntimeError("Drift storage changed after failed-candidate startup")
 
-        deadline = time.time() + 20
-        saw_candidate_attempt = False
-        last_state = None
-        caches: list[str] = []
-        while time.time() < deadline:
+        # A failed service-worker install can be shorter-lived than CDP polling.
+        # The intentionally missing precache request is durable server-side proof
+        # that Chrome fetched and attempted to install the broken candidate.
+        saw_candidate_attempt = wait_http_request("/missing-v2.asset", timeout=20)
+
+        deadline = time.time() + 10
+        last_state = page.sw_state()
+        caches: list[str] = page.cache_names()
+        while last_state.get("installing") and time.time() < deadline:
+            time.sleep(0.1)
             last_state = page.sw_state()
             caches = page.cache_names()
-            saw_candidate_attempt = saw_candidate_attempt or v2_cache in caches or bool(
-                last_state.get("installing")
-            )
-            if saw_candidate_attempt and not last_state.get("installing"):
-                break
-            time.sleep(0.25)
 
         if not saw_candidate_attempt:
             raise RuntimeError(
-                "Broken candidate was published but startup produced no observable update attempt: "
+                "Broken candidate was published but startup produced no install request: "
                 f"state={last_state!r}, caches={caches!r}"
             )
-        if last_state and last_state.get("waiting"):
+        if last_state.get("installing"):
+            raise RuntimeError(f"Broken candidate install did not settle: {last_state!r}")
+        if last_state.get("waiting"):
             raise RuntimeError(f"Broken candidate unexpectedly reached waiting: {last_state!r}")
         if v1_cache not in caches:
             raise RuntimeError(f"Broken candidate removed last-known-good v1: {caches!r}")
@@ -82,6 +98,8 @@ def broken_check() -> None:
             {
                 "scenario": "failed-candidate-preservation",
                 "server_exposed_broken_v2": True,
+                "broken_candidate_install_request_observed": True,
+                "broken_candidate_install_request": "/missing-v2.asset",
                 "broken_post_install_state": last_state,
                 "broken_cache_names": caches,
                 "broken_offline_restore_title": offline_restore,
