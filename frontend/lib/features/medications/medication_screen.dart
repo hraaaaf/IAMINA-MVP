@@ -424,17 +424,40 @@ class _MedicationScreenState extends State<MedicationScreen> {
           builder: (context, snapshot) {
             final items = snapshot.data ?? const <MedicationEventData>[];
             if (items.isEmpty) {
+              final desktop = MediaQuery.sizeOf(context).width >= 900;
               return Container(
+                constraints: BoxConstraints(minHeight: desktop ? 350 : 0),
                 padding: const EdgeInsets.all(18),
                 decoration: AminaVisualLanguage.cardDecoration(context),
-                child: Text(
-                  _mt(
-                    context,
-                    'Aucune prise enregistrée.',
-                    'No intake recorded.',
-                    'لا توجد جرعات مسجلة.',
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: AminaVisualLanguage.mintIconDecoration(context),
+                        child: const Icon(
+                          Icons.history_rounded,
+                          color: AminaVisualLanguage.actionGreen,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        _mt(
+                          context,
+                          'Aucune prise enregistrée.',
+                          'No intake recorded.',
+                          'لا توجد جرعات مسجلة.',
+                        ),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AminaVisualLanguage.secondary(context),
+                        ),
+                      ),
+                    ],
                   ),
-                  style: TextStyle(color: AminaVisualLanguage.secondary(context)),
                 ),
               );
             }
