@@ -26,18 +26,13 @@ class _ConsentScreenState extends State<ConsentScreen> {
 
   Future<void> _accept() async {
     setState(() => _isLoading = true);
-    // Capture before any async gaps (use_build_context_synchronously)
     final api = context.read<ApiClient>();
     final db = context.read<AppDatabase>();
     try {
-      // Store on backend first (source of truth for audit)
       await api.giveConsent();
-      // Mirror locally for offline-first consent check
       await db.setAiConsent(granted: true);
       if (mounted) context.go('/dashboard');
     } catch (_) {
-      // Even on network error, store locally — consent was given.
-      // The backend will sync when connectivity is restored.
       await db.setAiConsent(granted: true);
       if (mounted) context.go('/dashboard');
     } finally {
@@ -46,7 +41,6 @@ class _ConsentScreenState extends State<ConsentScreen> {
   }
 
   void _declineWithoutAI() {
-    // Mark declined in-memory so the consent gate doesn't re-show this session.
     context.read<ConsentService>().declineLocally();
     context.go('/dashboard');
   }
@@ -62,6 +56,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final compactHeight = constraints.maxHeight <= 600;
+            final desktop = constraints.maxWidth >= 900;
             final iconSize = compactHeight ? 48.0 : 72.0;
 
             return Center(
@@ -75,7 +70,6 @@ class _ConsentScreenState extends State<ConsentScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // ── Brand header ────────────────────────────────────────
                       Center(
                         child: Container(
                           width: iconSize,
@@ -126,8 +120,6 @@ class _ConsentScreenState extends State<ConsentScreen> {
                         textAlign: TextAlign.center,
                       ),
                       SizedBox(height: compactHeight ? 14 : 32),
-
-                      // ── Data points card ────────────────────────────────────
                       Container(
                         padding: EdgeInsets.all(compactHeight ? 12 : 20),
                         decoration: BoxDecoration(
@@ -158,8 +150,6 @@ class _ConsentScreenState extends State<ConsentScreen> {
                         ),
                       ),
                       SizedBox(height: compactHeight ? 12 : 20),
-
-                      // ── Body text ────────────────────────────────────────────
                       Text(
                         l10n.consentBody,
                         style: TextStyle(
@@ -169,41 +159,43 @@ class _ConsentScreenState extends State<ConsentScreen> {
                         ),
                       ),
                       SizedBox(height: compactHeight ? 14 : 36),
-
-                      // ── Accept button ────────────────────────────────────────
-                      FilledButton(
-                        onPressed: _isLoading ? null : _accept,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AminaTheme.teal500,
-                          padding: EdgeInsets.symmetric(
-                            vertical: compactHeight ? 12 : 16,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                              AminaTheme.radiusXL,
-                            ),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                l10n.consentAccept,
-                                style: TextStyle(
-                                  fontSize: compactHeight ? 13.5 : 15,
-                                  fontWeight: FontWeight.w700,
+                      Align(
+                        alignment: Alignment.center,
+                        child: SizedBox(
+                          width: desktop ? 300 : double.infinity,
+                          child: FilledButton(
+                            onPressed: _isLoading ? null : _accept,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AminaTheme.teal500,
+                              padding: EdgeInsets.symmetric(
+                                vertical: compactHeight ? 12 : 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AminaTheme.radiusXL,
                                 ),
                               ),
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    l10n.consentAccept,
+                                    style: TextStyle(
+                                      fontSize: compactHeight ? 13.5 : 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                          ),
+                        ),
                       ),
                       SizedBox(height: compactHeight ? 4 : 12),
-
-                      // ── Decline (no AI) button ───────────────────────────────
                       TextButton(
                         onPressed: _isLoading ? null : _declineWithoutAI,
                         style: TextButton.styleFrom(
@@ -222,9 +214,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                           ),
                         ),
                       ),
-
                       SizedBox(height: compactHeight ? 10 : 24),
-                      // ── Legal footnote ───────────────────────────────────────
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
