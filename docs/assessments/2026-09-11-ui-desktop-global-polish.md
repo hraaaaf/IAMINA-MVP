@@ -1,7 +1,7 @@
 # UI-DESKTOP-GLOBAL-POLISH — Global desktop density and action polish
 
 **Date:** 2026-09-11  
-**Status:** READY_TO_MERGE
+**Status:** CLOSED
 
 ## Goal
 
@@ -81,7 +81,7 @@ The polish was applied only to responsive/presentation behavior. Main changes in
 - shared first-use desktop action sizing;
 - no fabricated statistics, patient data, recommendations or decorative filler.
 
-Temporary one-shot patch/applicator machinery was removed. No Vercel deployment is part of this lot.
+Temporary one-shot patch/applicator machinery was removed.
 
 ## AFTER evidence — exact implementation head
 
@@ -127,14 +127,24 @@ Observed result:
 
 **Strict visual acceptance gate: PASS — 17/17 routes accepted at the >=9.5 target.**
 
-## Roadmap and deployment boundary
+## Merge and post-merge proof
 
-This is a presentation/responsive UX lane. It does not change Pilot Readiness or MENA arithmetic and therefore does not require a roadmap percentage change. No Vercel deployment is authorized or included.
-
-## Merge gate
-
-All implementation gates are green, exact-head browser evidence is retained, the visual target is accepted, and PR #571 is mergeable.
+- PR #571 merged successfully;
+- merge commit on `main`: `4c4542a46dd15d426f90baeb857194807521482f`;
+- post-merge push workflows on that SHA: **7/7 SUCCESS**;
+- final UI browser screenshot certification: run `34657774561` / #439 — **SUCCESS**;
+- final Chrome capture and artifact upload steps: **SUCCESS**.
 
 Closeout documentation commits after the implementation head are docs-only. No product code changed after `88a0c54fd0eec8c0a14e657638167448cead4a63`.
 
-The lot is READY_TO_MERGE.
+## Roadmap and deployment boundary
+
+This is a presentation/responsive UX lane. It does not change Pilot Readiness or MENA arithmetic and therefore does not require a roadmap percentage change.
+
+A Vercel production deployment was not part of the acceptance gate. It was explicitly authorized by the user after this lot had passed merge and post-merge certification and is handled as the next operational action.
+
+## Closeout
+
+Goal achieved with retained evidence, user visual acceptance, merge and post-merge validation.
+
+**Lot status: CLOSED.**
