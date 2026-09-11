@@ -1,0 +1,187 @@
+name: CGM onboarding browser certification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/import/**'
+      - 'frontend/lib/services/cgm_service.dart'
+      - 'frontend/lib/core/**'
+      - 'frontend/lib/l10n/**'
+      - 'frontend/lib/ui_cgm_onboarding_audit_main.dart'
+      - 'frontend/test/features/cgm_guided_onboarding_test.dart'
+      - '.github/workflows/cgm-onboarding-browser-cert.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/lib/features/import/**'
+      - 'frontend/lib/services/cgm_service.dart'
+      - 'frontend/lib/core/**'
+      - 'frontend/lib/l10n/**'
+      - 'frontend/lib/ui_cgm_onboarding_audit_main.dart'
+      - 'frontend/test/features/cgm_guided_onboarding_test.dart'
+      - '.github/workflows/cgm-onboarding-browser-cert.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  browser-cert:
+    name: CGM guide 390 + 768 + 1280
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze and test guided CGM surface
+        run: |
+          flutter analyze --no-fatal-infos lib/ui_cgm_onboarding_audit_main.dart lib/features/import/cgm_screen.dart
+          flutter test --reporter expanded test/features/cgm_guided_onboarding_test.dart test/features/cgm_how_to_use_contract_test.dart
+
+      - name: Build isolated browser surface
+        run: flutter build web --release -t lib/ui_cgm_onboarding_audit_main.dart
+
+      - name: Capture real Chrome at certified viewports
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/cgm-onboarding-browser-cert"
+          mkdir -p "$OUT"
+          python3 -m pip install --quiet websocket-client
+          python3 -m http.server 7359 --directory build/web >/tmp/iamina-cgm-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          READY=0
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7359 >/dev/null; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+          test "$READY" = "1"
+
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+
+          cat > /tmp/capture_cgm.py <<'PY'
+          import base64
+          import json
+          import sys
+          import time
+          import urllib.request
+          from websocket import create_connection
+
+          target = sys.argv[1]
+          width = int(sys.argv[2])
+          height = int(sys.argv[3])
+          mobile = sys.argv[4].lower() == 'true'
+          pages = json.load(urllib.request.urlopen('http://127.0.0.1:9223/json/list'))
+          page = next(item for item in pages if item.get('type') == 'page')
+          ws = create_connection(page['webSocketDebuggerUrl'], timeout=20)
+          counter = 0
+
+          def call(method, params=None):
+              global counter
+              counter += 1
+              ws.send(json.dumps({'id': counter, 'method': method, 'params': params or {}}))
+              while True:
+                  response = json.loads(ws.recv())
+                  if response.get('id') == counter:
+                      return response
+
+          call('Page.enable')
+          call('Emulation.setDeviceMetricsOverride', {
+              'width': width,
+              'height': height,
+              'deviceScaleFactor': 1,
+              'mobile': mobile,
+          })
+          call('Page.reload', {'ignoreCache': True})
+          time.sleep(10)
+          shot = call('Page.captureScreenshot', {
+              'format': 'png',
+              'captureBeyondViewport': False,
+              'fromSurface': True,
+          })
+          data = shot.get('result', {}).get('data')
+          if not data:
+              raise RuntimeError(f'No screenshot payload: {shot}')
+          with open(target, 'wb') as fh:
+              fh.write(base64.b64decode(data))
+          ws.close()
+          PY
+
+          capture() {
+            width="$1"
+            height="$2"
+            mobile="$3"
+            target="$OUT/cgm-guide-${width}x${height}.png"
+            profile_dir="$(mktemp -d)"
+            "$CHROME" \
+              --headless=new \
+              --no-sandbox \
+              --enable-unsafe-swiftshader \
+              --hide-scrollbars \
+              --remote-allow-origins='*' \
+              --remote-debugging-port=9223 \
+              --user-data-dir="$profile_dir" \
+              --window-size=${width},${height} \
+              http://127.0.0.1:7359/ \
+              >/tmp/iamina-cgm-chrome-${width}x${height}.log 2>&1 &
+            CHROME_PID=$!
+
+            DEVTOOLS=0
+            for _ in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:9223/json/list >/dev/null; then
+                DEVTOOLS=1
+                break
+              fi
+              sleep 1
+            done
+            test "$DEVTOOLS" = "1"
+
+            python3 /tmp/capture_cgm.py "$target" "$width" "$height" "$mobile"
+            kill "$CHROME_PID" 2>/dev/null || true
+            wait "$CHROME_PID" 2>/dev/null || true
+            rm -rf "$profile_dir"
+
+            test -s "$target"
+            bytes="$(stat -c%s "$target")"
+            if [ "$bytes" -lt 10000 ]; then
+              echo "CGM capture ${width}x${height} suspiciously small: ${bytes}" >&2
+              exit 1
+            fi
+          }
+
+          capture 390 844 true
+          capture 768 1024 false
+          capture 1280 900 false
+
+          count="$(find "$OUT" -name '*.png' -type f | wc -l)"
+          test "$count" -eq 3
+          unique="$(sha256sum "$OUT"/*.png | awk '{print $1}' | sort -u | wc -l)"
+          test "$unique" -eq 3
+
+      - name: Upload CGM browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-cgm-guided-onboarding-browser-cert
+          path: cgm-onboarding-browser-cert/*.png
+          if-no-files-found: warn
+          retention-days: 14
