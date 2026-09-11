@@ -138,14 +138,14 @@ extension ImportLocalizedCopy on AppLocalizations {
         ar: 'ربط $source',
       );
   String get cgmHowToBridgeTitle => _pick(
-        en: 'Prepare your bridge',
-        fr: 'Préparer votre bridge',
-        ar: 'جهّز الجسر',
+        en: 'Send readings to Nightscout',
+        fr: 'Envoyer les mesures vers Nightscout',
+        ar: 'إرسال القراءات إلى Nightscout',
       );
   String get cgmHowToAccessTitle => _pick(
-        en: 'Get secure access',
-        fr: 'Récupérer l’accès sécurisé',
-        ar: 'احصل على وصول آمن',
+        en: 'Prepare Nightscout access',
+        fr: 'Préparer l’accès Nightscout',
+        ar: 'إعداد وصول Nightscout',
       );
   String get cgmHowToConnectTitle => _pick(
         en: 'Connect IAMINA',
@@ -153,14 +153,14 @@ extension ImportLocalizedCopy on AppLocalizations {
         ar: 'اربط IAMINA',
       );
   String get cgmHowToDexcomBridge => _pick(
-        en: 'Send your Dexcom readings to a Nightscout-compatible bridge that you control.',
-        fr: 'Envoyez les mesures Dexcom vers un bridge compatible Nightscout que vous contrôlez.',
-        ar: 'أرسل قراءات Dexcom إلى جسر متوافق مع Nightscout وتتحكم فيه.',
+        en: 'In the Dexcom app, enable Share with at least one follower, then configure Dexcom Share/Connect in your Nightscout site.',
+        fr: 'Dans l’app Dexcom, activez Partage/Share avec au moins un follower, puis configurez Dexcom Share/Connect dans votre site Nightscout.',
+        ar: 'في تطبيق Dexcom فعّل Share مع متابع واحد على الأقل، ثم اضبط Dexcom Share/Connect في موقع Nightscout الخاص بك.',
       );
   String get cgmHowToLibreBridge => _pick(
-        en: 'Send your FreeStyle Libre readings to a Nightscout-compatible bridge that you control.',
-        fr: 'Envoyez les mesures FreeStyle Libre vers un bridge compatible Nightscout que vous contrôlez.',
-        ar: 'أرسل قراءات FreeStyle Libre إلى جسر متوافق مع Nightscout وتتحكم فيه.',
+        en: 'Use Juggluco on compatible Android Libre sensors, or a compatible xDrip/xDrip4iOS path, then enable Nightscout upload.',
+        fr: 'Utilisez Juggluco sur les capteurs Libre Android compatibles, ou un chemin xDrip/xDrip4iOS compatible, puis activez l’envoi Nightscout.',
+        ar: 'استخدم Juggluco مع مستشعرات Libre المتوافقة على Android، أو مسار xDrip/xDrip4iOS متوافق، ثم فعّل الرفع إلى Nightscout.',
       );
   String get cgmHowToLinxBridge => _pick(
         en: 'In Juggluco, enable Nightscout upload for your LinX / AiDEX X readings.',
@@ -168,19 +168,19 @@ extension ImportLocalizedCopy on AppLocalizations {
         ar: 'في Juggluco، فعّل إرسال قراءات LinX / AiDEX X إلى Nightscout.',
       );
   String get cgmHowToAccessBody => _pick(
-        en: 'Copy the HTTPS Nightscout URL and the bearer token or API secret created for this bridge.',
-        fr: 'Copiez l’URL HTTPS Nightscout et le token Bearer ou secret API créé pour ce bridge.',
-        ar: 'انسخ رابط Nightscout الآمن HTTPS ورمز Bearer أو سر API المخصص لهذا الجسر.',
+        en: 'First verify that Nightscout shows a recent reading, then copy its HTTPS URL and a dedicated bearer token or API secret.',
+        fr: 'Vérifiez d’abord qu’une mesure récente apparaît dans Nightscout, puis copiez son URL HTTPS et un token Bearer ou secret API dédié.',
+        ar: 'تحقق أولًا من ظهور قراءة حديثة في Nightscout، ثم انسخ رابط HTTPS ورمز Bearer أو API secret مخصص.',
       );
   String get cgmHowToConnectBody => _pick(
-        en: 'Tap Configure, save the bridge, then run Sync. IAMINA will store factual CGM readings for your account.',
-        fr: 'Touchez Configurer, enregistrez le bridge puis lancez Synchroniser. IAMINA enregistrera les mesures CGM factuelles de votre compte.',
-        ar: 'اضغط على إعداد، احفظ الجسر ثم شغّل المزامنة. ستخزن IAMINA قراءات CGM الفعلية لحسابك.',
+        en: 'Tap Configure, save the Nightscout access, then run Sync. A successful connection shows a recent reading and the last sync time.',
+        fr: 'Touchez Configurer, enregistrez l’accès Nightscout puis lancez Synchroniser. Une connexion réussie affiche une mesure récente et l’heure de la dernière synchro.',
+        ar: 'اضغط على إعداد واحفظ وصول Nightscout ثم شغّل المزامنة. يعرض الاتصال الناجح قراءة حديثة ووقت آخر مزامنة.',
       );
   String get cgmHowToSafety => _pick(
-        en: 'IAMINA reads the Nightscout-compatible bridge. It does not sign in directly to the sensor manufacturer and this setup does not change treatment.',
-        fr: 'IAMINA lit le bridge compatible Nightscout. Elle ne se connecte pas directement au fabricant du capteur et cette configuration ne modifie aucun traitement.',
-        ar: 'تقرأ IAMINA الجسر المتوافق مع Nightscout ولا تسجل الدخول مباشرة لدى الشركة المصنعة للمستشعر، ولا يغيّر هذا الإعداد أي علاج.',
+        en: 'IAMINA reads Nightscout only. Never enter your Dexcom, Abbott or MicroTech password in IAMINA, and this setup does not change treatment.',
+        fr: 'IAMINA lit uniquement Nightscout. Ne saisissez jamais votre mot de passe Dexcom, Abbott ou MicroTech dans IAMINA, et cette configuration ne modifie aucun traitement.',
+        ar: 'تقرأ IAMINA بيانات Nightscout فقط. لا تدخل أبدًا كلمة مرور Dexcom أو Abbott أو MicroTech في IAMINA، ولا يغيّر هذا الإعداد أي علاج.',
       );
   String get cgmDisconnectConfirm => _pick(
         en: 'Disconnect this CGM bridge? Stored readings remain in IAMINA.',
