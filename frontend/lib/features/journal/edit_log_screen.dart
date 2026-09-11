@@ -92,43 +92,69 @@ class _EditLogScreenState extends State<EditLogScreen> {
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsetsDirectional.fromSTEB(20, 12, 20, 32),
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  20,
+                  desktop ? 28 : 12,
+                  20,
+                  32,
+                ),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxWidth: desktop ? 920 : 680,
+                      maxWidth: desktop ? 960 : 680,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        Text(
-                          l10n.journalEditSubtitle,
-                          style: TextStyle(
-                            color: AminaTheme.textSecondary(context),
-                            fontSize: 13,
-                            height: 1.45,
+                    child: Container(
+                      padding: desktop
+                          ? const EdgeInsets.all(24)
+                          : EdgeInsets.zero,
+                      decoration: desktop
+                          ? BoxDecoration(
+                              color: AminaTheme.surface(context),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: AminaTheme.divider(context),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 28,
+                                  offset: const Offset(0, 12),
+                                ),
+                              ],
+                            )
+                          : null,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          Text(
+                            l10n.journalEditSubtitle,
+                            style: TextStyle(
+                              color: AminaTheme.textSecondary(context),
+                              fontSize: 13,
+                              height: 1.45,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        if (desktop)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: _glucoseCard(l10n, unit)),
-                              const SizedBox(width: 18),
-                              Expanded(child: _insulinCard(l10n)),
-                            ],
-                          )
-                        else ...[
-                          _glucoseCard(l10n, unit),
-                          const SizedBox(height: 18),
-                          _insulinCard(l10n),
+                          const SizedBox(height: 20),
+                          if (desktop)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: _glucoseCard(l10n, unit)),
+                                const SizedBox(width: 18),
+                                Expanded(child: _insulinCard(l10n)),
+                              ],
+                            )
+                          else ...[
+                            _glucoseCard(l10n, unit),
+                            const SizedBox(height: 18),
+                            _insulinCard(l10n),
+                          ],
+                          const SizedBox(height: 14),
+                          _contextCard(l10n),
+                          const SizedBox(height: 24),
+                          _actionButtons(unit, l10n),
                         ],
-                        const SizedBox(height: 14),
-                        _contextCard(l10n),
-                        const SizedBox(height: 24),
-                        _actionButtons(unit, l10n),
-                      ],
+                      ),
                     ),
                   ),
                 ),
