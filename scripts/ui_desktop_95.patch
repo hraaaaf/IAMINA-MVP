@@ -1,0 +1,166 @@
+--- a/frontend/lib/features/documents/document_import_screen.dart
++++ b/frontend/lib/features/documents/document_import_screen.dart
+@@ -1,3 +1,3 @@
+       body: ResponsiveContentSurface(
+-        maxWidth: 980,
++        maxWidth: MediaQuery.sizeOf(context).width >= 900 ? 760 : 980,
+         child: SafeArea(
+--- a/frontend/lib/features/documents/document_import_screen.dart
++++ b/frontend/lib/features/documents/document_import_screen.dart
+@@ -1,3 +1,5 @@
+   Widget _buildPick() {
+-    final compactHeight = MediaQuery.sizeOf(context).height <= 600;
++    final size = MediaQuery.sizeOf(context);
++    final compactHeight = size.height <= 600;
++    final desktop = size.width >= 900;
+     final verticalPadding = compactHeight ? 12.0 : 24.0;
+--- a/frontend/lib/features/documents/document_import_screen.dart
++++ b/frontend/lib/features/documents/document_import_screen.dart
+@@ -1,4 +1,4 @@
+               SizedBox(
+-                width: double.infinity,
++                width: desktop ? 260 : double.infinity,
+                 child: ElevatedButton.icon(
+                   key: const ValueKey('choose-document-button'),
+--- a/frontend/lib/features/dashboard/widgets/add_log_sheet.dart
++++ b/frontend/lib/features/dashboard/widgets/add_log_sheet.dart
+@@ -1,36 +1,48 @@
+-  Widget _saveBar(AppDatabase db, String unit, AppLocalizations l10n) =>
+-      Container(
+-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+-        decoration: BoxDecoration(
+-          color: AminaTheme.bg(context),
+-          border: Border(top: BorderSide(color: AminaTheme.divider(context))),
+-        ),
+-        child: Center(
+-          child: ConstrainedBox(
+-            constraints: const BoxConstraints(maxWidth: 1080),
+-            child: FilledButton.icon(
+-              key: const Key('save-log-button'),
+-              onPressed: _saving || !_hasValidGlucose
+-                  ? null
+-                  : () => _saveLog(db, unit, l10n),
+-              icon: _saving
+-                  ? const SizedBox(
+-                      width: 18,
+-                      height: 18,
+-                      child: CircularProgressIndicator(strokeWidth: 2),
+-                    )
+-                  : const Icon(Icons.check_rounded),
+-              label: Text(_saving ? l10n.journalSaving : l10n.journalSave),
+-              style: FilledButton.styleFrom(
+-                minimumSize: const Size.fromHeight(54),
+-                backgroundColor: AminaTheme.teal600,
+-                foregroundColor: Colors.white,
+-                shape: RoundedRectangleBorder(
+-                  borderRadius: BorderRadius.circular(16),
++  Widget _saveBar(AppDatabase db, String unit, AppLocalizations l10n) {
++    final desktop = MediaQuery.sizeOf(context).width >= 1000;
++    return Container(
++      padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
++      decoration: BoxDecoration(
++        color: AminaTheme.bg(context),
++        border: Border(top: BorderSide(color: AminaTheme.divider(context))),
++      ),
++      child: Center(
++        child: ConstrainedBox(
++          constraints: const BoxConstraints(maxWidth: 1080),
++          child: Align(
++            alignment: desktop
++                ? AlignmentDirectional.centerEnd
++                : AlignmentDirectional.center,
++            child: SizedBox(
++              width: desktop ? 280 : double.infinity,
++              child: FilledButton.icon(
++                key: const Key('save-log-button'),
++                onPressed: _saving || !_hasValidGlucose
++                    ? null
++                    : () => _saveLog(db, unit, l10n),
++                icon: _saving
++                    ? const SizedBox(
++                        width: 18,
++                        height: 18,
++                        child: CircularProgressIndicator(strokeWidth: 2),
++                      )
++                    : const Icon(Icons.check_rounded),
++                label: Text(
++                  _saving ? l10n.journalSaving : l10n.journalSave,
++                ),
++                style: FilledButton.styleFrom(
++                  minimumSize: const Size.fromHeight(54),
++                  backgroundColor: AminaTheme.teal600,
++                  foregroundColor: Colors.white,
++                  shape: RoundedRectangleBorder(
++                    borderRadius: BorderRadius.circular(16),
++                  ),
+                 ),
+               ),
+             ),
+           ),
+         ),
+-      );
++      ),
++    );
++  }
+ 
+--- a/frontend/lib/features/companion/companion_premium_screen.dart
++++ b/frontend/lib/features/companion/companion_premium_screen.dart
+@@ -1 +1,6 @@
+-                return _Overview(overview: overview);
++                return Center(
++                  child: ConstrainedBox(
++                    constraints: const BoxConstraints(maxWidth: 1080),
++                    child: _Overview(overview: overview),
++                  ),
++                );
+--- a/frontend/lib/features/companion/companion_premium_screen.dart
++++ b/frontend/lib/features/companion/companion_premium_screen.dart
+@@ -4,20 +4,25 @@
+ 
+   @override
+   Widget build(BuildContext context) {
+-    return CustomScrollView(
+-      physics: const BouncingScrollPhysics(),
+-      slivers: [
+-        SliverPadding(
+-          padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 20, 40),
+-          sliver: SliverList(
+-            delegate: SliverChildListDelegate([
+-              const _BrandHeader(),
+-              const SizedBox(height: 24),
+-              child,
+-            ]),
+-          ),
++    return Center(
++      child: ConstrainedBox(
++        constraints: const BoxConstraints(maxWidth: 760),
++        child: CustomScrollView(
++          physics: const BouncingScrollPhysics(),
++          slivers: [
++            SliverPadding(
++              padding: const EdgeInsetsDirectional.fromSTEB(24, 24, 24, 40),
++              sliver: SliverList(
++                delegate: SliverChildListDelegate([
++                  const _BrandHeader(),
++                  const SizedBox(height: 28),
++                  child,
++                ]),
++              ),
++            ),
++          ],
+         ),
+-      ],
++      ),
+     );
+   }
+ }
+--- a/frontend/lib/features/companion/companion_premium_screen.dart
++++ b/frontend/lib/features/companion/companion_premium_screen.dart
+@@ -1,4 +1,6 @@
+             SizedBox(
+-              width: double.infinity,
++              width: MediaQuery.sizeOf(context).width >= 900
++                  ? 220
++                  : double.infinity,
+               height: 46,
+               child: FilledButton.icon(
