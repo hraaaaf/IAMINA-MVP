@@ -5,7 +5,11 @@ on:
     branches: [main]
     paths:
       - "backend/evaluation/p5_1_linguistic_review_benchmark.py"
+      - "backend/evaluation/p5_1_linguistic_review_benchmark_v6.py"
+      - "backend/evaluation/p5_1_linguistic_review_benchmark_v7.py"
       - "backend/evaluation/tests/test_p5_1_linguistic_review_benchmark.py"
+      - "backend/evaluation/tests/test_p5_1_linguistic_review_benchmark_v6.py"
+      - "backend/evaluation/tests/test_p5_1_linguistic_review_benchmark_v7.py"
       - "backend/evaluation/fixtures/frug7_groq_text_price.json"
       - "backend/evaluation/provider_benchmark_preflight.py"
       - ".github/workflows/p5-1-linguistic-review.yml"
@@ -45,10 +49,14 @@ jobs:
       - name: Install backend dependencies
         run: pip install -r requirements.txt
       - name: Validate P5-1 packet contracts before network
-        run: pytest -q evaluation/tests/test_p5_1_linguistic_review_benchmark.py
+        run: >-
+          pytest -q
+          evaluation/tests/test_p5_1_linguistic_review_benchmark.py
+          evaluation/tests/test_p5_1_linguistic_review_benchmark_v6.py
+          evaluation/tests/test_p5_1_linguistic_review_benchmark_v7.py
       - name: Run one bounded 10-lane batch
         run: >-
-          python -m evaluation.p5_1_linguistic_review_benchmark
+          python -m evaluation.p5_1_linguistic_review_benchmark_v7
           --output ../artifacts/p5-1-linguistic-review.json
       - name: Upload native-review packet
         if: always()

@@ -1,46 +1,22 @@
-# P5-1 Morocco linguistic pre-human remediation
+# P5-1 Morocco linguistic remediation
 
-Status: PRE_HUMAN_REMEDIATION_REQUIRED
+## Trigger
+Exact-main v3 run #34654142883 on `db7531d8ee862eb9a3b0249fbee8abecd31ea27c` was machine-green but produced Morocco-lane wording unsuitable for final retained human certification. v4 remained too permissive. v5 correctly rejected `بسهولة / b sahla` and exposed ambiguous “simple/easy” semantics in the synthetic prompts. v6 corrected those prompts and made 4/5 Morocco lanes pass, but the MSA lane still reintroduced `بسهولة` despite a no-pressure/no-blame request.
 
-Frozen packet candidate reviewed: `db7531d8ee862eb9a3b0249fbee8abecd31ea27c`
-Exact-main packet run: `#34654142883`
-Artifact: `#10284573280`
-Digest: `sha256:811b99c22216b49a727e81c38d792bc86bfd1bf32928c5d5e382c2a01ae6ad88`
+## Retained evidence
+- v3 artifact #10284573280, digest `sha256:811b99c22216b49a727e81c38d792bc86bfd1bf32928c5d5e382c2a01ae6ad88`
+- v4 artifact #10285243803, digest `sha256:91a56923bdc0f4f26c4305176c000a6004e657c5668fd3a223657531ed6870a3`
+- v5 failed artifact #10285505607, digest `sha256:1643808915ef56cd482e6649973a861547adaaced0199402538e4dd288998ab6`
+- v6 failed run #34655996828, artifact #10285670650, digest `sha256:d954b4aa262528ef52bccee0f2b5f39afa9043608b0f5be5fcebb337b16e271d`
+- all synthetic only, no patient data
 
-## Goal
-Remove obvious linguistic defects before spending a retained native/competent human review on the five Morocco pilot lanes.
+## v7 targeted policy
+Before native/competent human review:
+- retain the v6 Morocco prompts using “sans pression / بلا ضغط / bla daght” instead of ambiguous “simple/easy” semantics;
+- retain gender-neutral/non-patronizing current-Morocco checks;
+- retain Moroccan register checks for Darija Arabic/Latin and phrase-level FR↔Darija;
+- add an explicit MSA requirement preserving “without pressure or blame” semantics and forbidding `سهل/سهلة/سهولة/بسهولة` or equivalent easy/easily wording;
+- Gulf lanes remain deferred expansion lanes and do not inherit current-Morocco tone gates;
+- exact-SHA binding, one bounded provider call, and retained human review remain mandatory.
 
-## Observed outputs
-
-1. French: `Demain, tu peux le faire, tu es capable.`
-   - Pre-audit: acceptable candidate; no hard failure identified.
-
-2. MSA: `غداً تستطيع ذلك، أنت قوي.`
-   - Pre-audit: needs revision before certification because `قوي` is masculine-gendered and the product has no user-gender basis for selecting it.
-
-3. Moroccan Darija, Arabic script: `غدا تقدر تديرها، راه ساهلة.`
-   - Pre-audit: needs revision because `راه ساهلة` can trivialize the user's difficulty and conflicts with the non-patronizing review dimension.
-
-4. Moroccan Darija, Latin/Arabizi: `Ghdda t9dar, nti qawi.`
-   - Pre-audit: FAIL candidate. `nti` is feminine while `qawi` is masculine; the phrase is internally inconsistent and gender-selective.
-
-5. FR↔Darija code-switching: `Demain t9dar, tu es قوي.`
-   - Pre-audit: FAIL candidate. The code-switch is unnatural and combines French, Arabizi and Arabic-script Darija in one short sentence despite the intended French-Latin + Darija-Arabic lane contract.
-
-## Required remediation contract
-
-Before retained human certification:
-
-- avoid gender-selective pronouns/adjectives unless user gender is explicitly and lawfully available for that purpose;
-- avoid strength/capability clichés that become gendered in Arabic/Darija;
-- avoid claims that the task is easy/simple when the user expressed difficulty;
-- for FR↔Darija, use phrase-level natural code-switching with French in Latin script and Darija in Arabic script;
-- reject Arabizi digits in the FR↔Darija lane;
-- require at least two French-script words and at least two Arabic-script words in that mixed lane;
-- retain deterministic medical/safety boundaries unchanged;
-- keep the human reviewer as final linguistic authority.
-
-## Success
-A new exact-SHA packet must pass machine checks and no longer reproduce the defects above. Only then should the five Morocco lanes be sent to retained native/competent human scoring.
-
-This document is engineering pre-audit evidence only. It is not native-speaker certification, clinical approval, CNDP/legal approval, or release authorization.
+This document records engineering rationale only. It is not linguistic, clinical, CNDP, legal, provider, deployment, or real-patient approval.
