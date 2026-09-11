@@ -5,32 +5,32 @@ const path = require('path');
 const outputDir = 'offline-demo-ui-cert';
 const reportPath = path.join(outputDir, 'browser-report.json');
 const matrix = [
-  ['mobile', 390, 844],
-  ['tablet', 768, 1024],
-  ['desktop', 1280, 900],
+  ['mobile', 390, 844, 620],
+  ['tablet', 768, 1024, 500],
+  ['desktop', 1280, 900, 360],
 ];
 const minScreenshotBytes = 15000;
+const auditBase = 'http://127.0.0.1:7359/?audit=visual-cert&lang=fr';
 
 fs.mkdirSync(outputDir, { recursive: true });
 
 const persist = (report) =>
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
-async function loginDemo(page) {
-  await page.goto('http://127.0.0.1:7359/#/login', {
+async function openAuditRoute(page, route) {
+  await page.goto(`${auditBase}#${route}`, {
     waitUntil: 'domcontentloaded',
     timeout: 120000,
   });
-  const demo = page.getByText('Accès démo', { exact: true });
-  await demo.waitFor({ state: 'visible', timeout: 60000 });
-  await demo.click();
-  await page.waitForURL(/#\/dashboard/, { timeout: 60000 });
-  await page.waitForTimeout(1400);
+  await page.waitForURL(new RegExp(`#${route.replace('/', '\\/')}$`), {
+    timeout: 60000,
+  });
+  await page.waitForTimeout(1800);
 }
 
 (async () => {
   const report = {};
-  for (const [name, width, height] of matrix) {
+  for (const [name, width, height, trendScroll] of matrix) {
     const browser = await chromium.launch({ headless: true });
     try {
       const ctx = await browser.newContext({
@@ -46,29 +46,20 @@ async function loginDemo(page) {
         if (message.type() === 'error') consoleErrors.push(message.text());
       });
 
-      await loginDemo(page);
-
-      const trendHeading = page.getByText('Tendance', { exact: true }).first();
-      await trendHeading.waitFor({ state: 'visible', timeout: 30000 });
-      await trendHeading.scrollIntoViewIfNeeded();
-      await page.waitForTimeout(500);
+      await openAuditRoute(page, '/dashboard');
+      await page.mouse.wheel(0, trendScroll);
+      await page.waitForTimeout(700);
       const dashboardPath = path.join(
         outputDir,
         `dashboard-trend-${name}-${width}x${height}.png`,
       );
       const dashboardBuffer = await page.screenshot({ path: dashboardPath });
 
-      // Use a hash-only navigation so the in-memory offline demo session remains
-      // authenticated even when the desktop sidebar has collapsed to icon-only mode.
       await page.evaluate(() => {
         window.location.hash = '#/summary';
       });
-      await page.waitForURL(/#\/summary/, { timeout: 30000 });
-      const reportsHeading = page.getByText('Rapport de vos mesures', {
-        exact: true,
-      });
-      await reportsHeading.waitFor({ state: 'visible', timeout: 30000 });
-      await page.waitForTimeout(500);
+      await page.waitForURL(/#\/summary$/, { timeout: 30000 });
+      await page.waitForTimeout(1400);
       const reportsPath = path.join(
         outputDir,
         `reports-${name}-${width}x${height}.png`,
