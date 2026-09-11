@@ -113,34 +113,24 @@ jobs:
           cache-dependency-path: backend/requirements.txt
 
       - name: Install dependencies
-        # Pin linters so a new upstream release can't turn CI red without a code change.
         run: pip install -r requirements.txt ruff==0.15.17 bandit[toml] import-linter
 
       - name: Lint (ruff)
         run: ruff check .
 
       - name: Architecture boundaries (import-linter)
-        # Enforces the chassis/module/companion seams (.importlinter). Pre-existing
-        # core→diabetes leaks are allow-listed there as tracked debt.
         run: lint-imports
 
       - name: LLM gateway anti-bypass
-        # Dependency-free tracked-file gate. Fails closed if Git/file enumeration
-        # itself is unavailable; no missing search binary can silently turn this green.
         run: python ../scripts/check_ai_egress_boundaries.py --check gateway
 
       - name: AI egress authorization anti-bypass
-        # Any network-capable model callsite outside provider adapters must prove it
-        # passes through the central patient/purpose/modality authorization boundary.
         run: python ../scripts/check_ai_egress_boundaries.py --check egress
 
       - name: SAST (bandit)
-        # HIGH severity only — skip B101 (assert) and B311 (random) which are dev-only patterns
         run: bandit -r . -ll -ii --skip B101,B311 -x ./tracking/tests,./amina/tests
 
       - name: OpenAPI schema is current
-        # docs/api/openapi.json must match `manage.py export_openapi`. If this fails,
-        # regenerate: `python backend/manage.py export_openapi > docs/api/openapi.json`
         run: |
           python manage.py export_openapi > /tmp/openapi.json
           if ! diff -q /tmp/openapi.json ../docs/api/openapi.json > /dev/null; then
@@ -235,8 +225,8 @@ jobs:
       - name: Run Flutter tests
         run: flutter test --no-pub
 
-      - name: Build PWA release bundle
-        run: flutter build web --release
+      - name: Build self-contained PWA release bundle
+        run: flutter build web --release --no-web-resources-cdn
 
       - name: Verify PWA build outputs
         shell: bash
@@ -246,6 +236,7 @@ jobs:
             build/web/index.html \
             build/web/manifest.json \
             build/web/flutter_bootstrap.js \
+            build/web/iamina_service_worker.js \
             build/web/main.dart.js \
             build/web/sqlite3.wasm \
             build/web/drift_worker.js; do
@@ -259,8 +250,6 @@ jobs:
     name: PR size (advisory)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Non-blocking: surfaces large/multi-unit PRs to the human dev without
-    # stopping agent auto-merge. One PR should map to one ROADMAP unit.
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4

@@ -2,8 +2,8 @@
 """Static P5-4 pilot packaging contract.
 
 Default mode validates retained repository-side packaging foundations.
-``--pwa-ready`` adds the PWA installability/identity floor for the current
-PWA-first pilot path. ``--release-ready`` adds the deferred native iOS
+``--pwa-ready`` adds the PWA installability/identity/offline-shell floor for the
+current PWA-first pilot path. ``--release-ready`` adds the deferred native iOS
 permanent-identity floor required before signed native pilot artifacts are
 accepted.
 """
@@ -115,6 +115,8 @@ def main() -> int:
     if args.pwa_ready:
         manifest = json.loads(read("frontend/web/manifest.json"))
         index = read("frontend/web/index.html")
+        bootstrap = read("frontend/web/flutter_bootstrap.js")
+        service_worker = read("frontend/web/iamina_service_worker.js")
 
         require(
             manifest.get("name") == CANONICAL_PWA_NAME,
@@ -202,6 +204,60 @@ def main() -> int:
         require(
             "A new Flutter project." not in index,
             "Web index still contains Flutter placeholder description",
+            errors,
+        )
+
+        require(
+            "{{flutter_js}}" in bootstrap
+            and "{{flutter_build_config}}" in bootstrap
+            and "{{flutter_service_worker_version}}" in bootstrap,
+            "Custom Flutter bootstrap is missing required build template tokens",
+            errors,
+        )
+        require(
+            "iamina_service_worker.js" in bootstrap
+            and "navigator.serviceWorker.register" in bootstrap,
+            "Custom Flutter bootstrap does not register the IAMINA service worker",
+            errors,
+        )
+        require(
+            "updateViaCache: 'none'" in bootstrap,
+            "IAMINA service-worker script updates are not configured to bypass HTTP cache",
+            errors,
+        )
+        require(
+            "_flutter.loader.load()" in bootstrap,
+            "Custom Flutter bootstrap does not start the Flutter loader",
+            errors,
+        )
+
+        require(
+            "IAMINA_CACHE_PREFIX" in service_worker
+            and "iamina-app-shell-" in service_worker,
+            "IAMINA service worker cache is not version-scoped",
+            errors,
+        )
+        require(
+            "self.skipWaiting()" in service_worker
+            and "self.clients.claim()" in service_worker,
+            "IAMINA service worker does not activate/claim deterministically",
+            errors,
+        )
+        require(
+            "url.pathname.startsWith('/api/')" in service_worker,
+            "IAMINA service worker lacks an explicit API cache exclusion",
+            errors,
+        )
+        require(
+            "STATIC_FILES" in service_worker
+            and "STATIC_PREFIXES" in service_worker
+            and "isCacheableStaticPath" in service_worker,
+            "IAMINA service worker does not use a static-resource allowlist",
+            errors,
+        )
+        require(
+            "request.method !== 'GET'" in service_worker,
+            "IAMINA service worker does not exclude mutating requests from caching",
             errors,
         )
 
