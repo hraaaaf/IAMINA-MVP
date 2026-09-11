@@ -15,7 +15,7 @@ String _t(BuildContext context, String fr, String en, String ar) {
   return fr;
 }
 
-String _locale(BuildContext context) => switch (
+String _dateLocale(BuildContext context) => switch (
       Localizations.localeOf(context).languageCode,
     ) {
       'fr' => 'fr-FR',
@@ -56,12 +56,12 @@ class _OfflineReportsScreenState extends State<_OfflineReportsScreen> {
           : const Color(0xFFF4FBF9),
       body: StreamBuilder<PatientProfileData?>(
         stream: db.watchProfile(),
-        builder: (context, profileSnap) {
+        builder: (context, profileSnapshot) {
           return StreamBuilder<List<LogEntryData>>(
             stream: db.watchLogsInRange(start, end),
-            builder: (context, logsSnap) {
-              if (profileSnap.hasError || logsSnap.hasError) {
-                return _ReportState(
+            builder: (context, logsSnapshot) {
+              if (profileSnapshot.hasError || logsSnapshot.hasError) {
+                return _StatePanel(
                   icon: Icons.cloud_off_outlined,
                   title: _t(
                     context,
@@ -77,9 +77,9 @@ class _OfflineReportsScreenState extends State<_OfflineReportsScreen> {
                   ),
                 );
               }
-              if (logsSnap.connectionState == ConnectionState.waiting &&
-                  (logsSnap.data?.isEmpty ?? true)) {
-                return _ReportState(
+              if (logsSnapshot.connectionState == ConnectionState.waiting &&
+                  (logsSnapshot.data?.isEmpty ?? true)) {
+                return _StatePanel(
                   loading: true,
                   title: _t(
                     context,
@@ -97,12 +97,14 @@ class _OfflineReportsScreenState extends State<_OfflineReportsScreen> {
               }
 
               final logs = List<LogEntryData>.from(
-                logsSnap.data ?? const <LogEntryData>[],
-              )..sort(
-                  (a, b) => _at(a).compareTo(_at(b)),
-                );
-              final stats = _Stats.from(logs, profileSnap.data);
-              return _buildReport(context, stats);
+                logsSnapshot.data ?? const <LogEntryData>[],
+              )..sort((a, b) => _at(a).compareTo(_at(b)));
+              final stats = _Stats.from(logs, profileSnapshot.data);
+              return _ReportView(
+                stats: stats,
+                days: _days,
+                onDaysChanged: (value) => setState(() => _days = value),
+              );
             },
           );
         },
@@ -110,17 +112,37 @@ class _OfflineReportsScreenState extends State<_OfflineReportsScreen> {
     );
   }
 
-  Widget _buildReport(BuildContext context, _Stats stats) {
+  static DateTime _at(LogEntryData log) => log.loggedAt ?? log.createdAt;
+}
+
+class _ReportView extends StatelessWidget {
+  final _Stats stats;
+  final int days;
+  final ValueChanged<int> onDaysChanged;
+
+  const _ReportView({
+    required this.stats,
+    required this.days,
+    required this.onDaysChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 900;
-        final pad = constraints.maxWidth >= 1200
+        final padding = constraints.maxWidth >= 1200
             ? 36.0
             : constraints.maxWidth >= 700
                 ? 26.0
                 : 18.0;
         return SingleChildScrollView(
-          padding: EdgeInsetsDirectional.fromSTEB(pad, 22, pad, 96),
+          padding: EdgeInsetsDirectional.fromSTEB(
+            padding,
+            22,
+            padding,
+            96,
+          ),
           child: Align(
             alignment: AlignmentDirectional.topCenter,
             child: ConstrainedBox(
@@ -128,21 +150,21 @@ class _OfflineReportsScreenState extends State<_OfflineReportsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Header(
-                    days: _days,
-                    onChanged: (value) => setState(() => _days = value),
-                  ),
+                  _Header(days: days, onDaysChanged: onDaysChanged),
                   const SizedBox(height: 18),
                   if (stats.logs.isEmpty)
-                    _Empty(days: _days)
+                    _EmptyReport(days: days)
                   else ...[
-                    _MetricGrid(stats: stats),
+                    _Metrics(stats: stats),
                     const SizedBox(height: 18),
                     if (wide)
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(flex: 7, child: _Distribution(stats: stats)),
+                          Expanded(
+                            flex: 7,
+                            child: _Distribution(stats: stats),
+                          ),
                           const SizedBox(width: 18),
                           Expanded(flex: 5, child: _Latest(stats: stats)),
                         ],
@@ -163,20 +185,17 @@ class _OfflineReportsScreenState extends State<_OfflineReportsScreen> {
       },
     );
   }
-
-  static DateTime _at(LogEntryData log) => log.loggedAt ?? log.createdAt;
 }
 
 class _Header extends StatelessWidget {
   final int days;
-  final ValueChanged<int> onChanged;
+  final ValueChanged<int> onDaysChanged;
 
-  const _Header({required this.days, required this.onChanged});
+  const _Header({required this.days, required this.onDaysChanged});
 
   @override
   Widget build(BuildContext context) {
     return _Surface(
-      padding: 22,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 720;
@@ -184,7 +203,10 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AminaVisualLanguage.mintSurface,
                   borderRadius: BorderRadius.circular(999),
@@ -238,7 +260,10 @@ class _Header extends StatelessWidget {
               ),
             ],
           );
-          final selector = _Period(days: days, onChanged: onChanged);
+          final selector = _PeriodSelector(
+            days: days,
+            onChanged: onDaysChanged,
+          );
           if (compact) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,11 +284,11 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _Period extends StatelessWidget {
+class _PeriodSelector extends StatelessWidget {
   final int days;
   final ValueChanged<int> onChanged;
 
-  const _Period({required this.days, required this.onChanged});
+  const _PeriodSelector({required this.days, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -306,10 +331,10 @@ class _Period extends StatelessWidget {
   }
 }
 
-class _MetricGrid extends StatelessWidget {
+class _Metrics extends StatelessWidget {
   final _Stats stats;
 
-  const _MetricGrid({required this.stats});
+  const _Metrics({required this.stats});
 
   @override
   Widget build(BuildContext context) {
@@ -331,24 +356,51 @@ class _MetricGrid extends StatelessWidget {
             _Metric(
               icon: Icons.fact_check_outlined,
               value: '${stats.logs.length}',
-              label: _t(context, 'Mesures enregistrées', 'Recorded measurements', 'القياسات المسجلة'),
+              label: _t(
+                context,
+                'Mesures enregistrées',
+                'Recorded measurements',
+                'القياسات المسجلة',
+              ),
             ),
             _Metric(
               icon: Icons.analytics_outlined,
               value: '${stats.display(stats.average)} ${stats.unit}',
-              label: _t(context, 'Moyenne enregistrée', 'Recorded average', 'المتوسط المسجل'),
+              label: _t(
+                context,
+                'Moyenne enregistrée',
+                'Recorded average',
+                'المتوسط المسجل',
+              ),
             ),
             _Metric(
               icon: Icons.calendar_month_outlined,
               value: '${stats.daysCovered}',
-              label: _t(context, 'Jours renseignés', 'Days with data', 'أيام بها بيانات'),
+              label: _t(
+                context,
+                'Jours renseignés',
+                'Days with data',
+                'أيام بها بيانات',
+              ),
             ),
             _Metric(
               icon: Icons.adjust_rounded,
-              value: stats.hasTarget ? '${stats.inside}/${stats.logs.length}' : '—',
+              value: stats.hasTarget
+                  ? '${stats.inside}/${stats.logs.length}'
+                  : '—',
               label: stats.hasTarget
-                  ? _t(context, 'Mesures dans la cible', 'Measurements in range', 'قياسات ضمن النطاق')
-                  : _t(context, 'Cible non configurée', 'Target not configured', 'النطاق غير مضبوط'),
+                  ? _t(
+                      context,
+                      'Mesures dans la cible',
+                      'Measurements in range',
+                      'قياسات ضمن النطاق',
+                    )
+                  : _t(
+                      context,
+                      'Cible non configurée',
+                      'Target not configured',
+                      'النطاق غير مضبوط',
+                    ),
             ),
           ],
         );
@@ -362,7 +414,11 @@ class _Metric extends StatelessWidget {
   final String value;
   final String label;
 
-  const _Metric({required this.icon, required this.value, required this.label});
+  const _Metric({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -415,17 +471,38 @@ class _Distribution extends StatelessWidget {
         ? stats.inside / stats.logs.length
         : 0.0;
     return _Surface(
-      padding: 22,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle(context, _t(context, 'Répartition des mesures', 'Measurement distribution', 'توزيع القياسات')),
+          _title(
+            context,
+            _t(
+              context,
+              'Répartition des mesures',
+              'Measurement distribution',
+              'توزيع القياسات',
+            ),
+          ),
           const SizedBox(height: 6),
           Text(
             stats.hasTarget
-                ? _t(context, 'Lecture descriptive par rapport à votre cible configurée.', 'Descriptive view against your configured target range.', 'عرض وصفي مقارنة بالنطاق المحدد لديك.')
-                : _t(context, 'Configurez une cible pour obtenir la répartition sous / dans / au-dessus.', 'Configure a target to see below / in-range / above distribution.', 'اضبط نطاقاً لعرض القياسات أسفل / داخل / أعلى النطاق.'),
-            style: TextStyle(fontSize: 12.5, height: 1.4, color: AminaVisualLanguage.secondary(context)),
+                ? _t(
+                    context,
+                    'Lecture descriptive par rapport à votre cible configurée.',
+                    'Descriptive view against your configured target range.',
+                    'عرض وصفي مقارنة بالنطاق المحدد لديك.',
+                  )
+                : _t(
+                    context,
+                    'Configurez une cible pour obtenir la répartition sous / dans / au-dessus.',
+                    'Configure a target to see below / in-range / above distribution.',
+                    'اضبط نطاقاً لعرض القياسات أسفل / داخل / أعلى النطاق.',
+                  ),
+            style: TextStyle(
+              fontSize: 12.5,
+              height: 1.4,
+              color: AminaVisualLanguage.secondary(context),
+            ),
           ),
           const SizedBox(height: 22),
           if (stats.hasTarget) ...[
@@ -447,7 +524,11 @@ class _Distribution extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 3),
                   child: Text(
                     _t(context, 'dans la cible', 'in range', 'ضمن النطاق'),
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AminaVisualLanguage.secondary(context)),
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: AminaVisualLanguage.secondary(context),
+                    ),
                   ),
                 ),
               ],
@@ -459,15 +540,37 @@ class _Distribution extends StatelessWidget {
                 value: ratio.clamp(0.0, 1.0).toDouble(),
                 minHeight: 12,
                 backgroundColor: AminaVisualLanguage.controlSurface(context),
-                valueColor: const AlwaysStoppedAnimation<Color>(AminaVisualLanguage.actionGreen),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AminaVisualLanguage.actionGreen,
+                ),
               ),
             ),
             const SizedBox(height: 18),
             Row(
               children: [
-                Expanded(child: _SmallStat(value: stats.below, label: _t(context, 'Sous', 'Below', 'أدنى'))),
-                Expanded(child: _SmallStat(value: stats.inside, label: _t(context, 'Dans cible', 'In range', 'ضمن النطاق'))),
-                Expanded(child: _SmallStat(value: stats.above, label: _t(context, 'Au-dessus', 'Above', 'أعلى'))),
+                Expanded(
+                  child: _SmallStat(
+                    value: stats.below,
+                    label: _t(context, 'Sous', 'Below', 'أدنى'),
+                  ),
+                ),
+                Expanded(
+                  child: _SmallStat(
+                    value: stats.inside,
+                    label: _t(
+                      context,
+                      'Dans cible',
+                      'In range',
+                      'ضمن النطاق',
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: _SmallStat(
+                    value: stats.above,
+                    label: _t(context, 'Au-dessus', 'Above', 'أعلى'),
+                  ),
+                ),
               ],
             ),
           ] else
@@ -476,11 +579,22 @@ class _Distribution extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AminaVisualLanguage.controlSurface(context),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
+                border: Border.all(
+                  color: AminaVisualLanguage.controlBorder(context),
+                ),
               ),
               child: Text(
-                _t(context, 'Aucune classification n’est inventée tant que la cible personnelle n’est pas configurée.', 'No classification is invented until a personal target range is configured.', 'لا يتم اختراع أي تصنيف قبل ضبط النطاق الشخصي.'),
-                style: TextStyle(fontSize: 12.5, height: 1.4, color: AminaVisualLanguage.secondary(context)),
+                _t(
+                  context,
+                  'Aucune classification n’est inventée tant que la cible personnelle n’est pas configurée.',
+                  'No classification is invented until a personal target range is configured.',
+                  'لا يتم اختراع أي تصنيف قبل ضبط النطاق الشخصي.',
+                ),
+                style: TextStyle(
+                  fontSize: 12.5,
+                  height: 1.4,
+                  color: AminaVisualLanguage.secondary(context),
+                ),
               ),
             ),
         ],
@@ -500,9 +614,22 @@ class _SmallStat extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$value', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AminaVisualLanguage.primaryText(context))),
+        Text(
+          '$value',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: AminaVisualLanguage.primaryText(context),
+          ),
+        ),
         const SizedBox(height: 3),
-        Text(label, style: TextStyle(fontSize: 11.5, color: AminaVisualLanguage.secondary(context))),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11.5,
+            color: AminaVisualLanguage.secondary(context),
+          ),
+        ),
       ],
     );
   }
@@ -530,8 +657,17 @@ class _Latest extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _t(context, 'Dernière mesure enregistrée', 'Latest recorded measurement', 'آخر قياس مسجل'),
-            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: .78)),
+            _t(
+              context,
+              'Dernière mesure enregistrée',
+              'Latest recorded measurement',
+              'آخر قياس مسجل',
+            ),
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: Colors.white.withValues(alpha: .78),
+            ),
           ),
           const SizedBox(height: 18),
           Row(
@@ -539,25 +675,46 @@ class _Latest extends StatelessWidget {
             children: [
               Text(
                 stats.display(latest.bloodSugar),
-                style: const TextStyle(fontFamily: 'Georgia', fontSize: 46, height: .9, fontWeight: FontWeight.w700, color: Colors.white),
+                style: const TextStyle(
+                  fontFamily: 'Georgia',
+                  fontSize: 46,
+                  height: .9,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(width: 7),
               Padding(
                 padding: const EdgeInsets.only(bottom: 3),
-                child: Text(stats.unit, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: .75))),
+                child: Text(
+                  stats.unit,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white.withValues(alpha: .75),
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          Text(DateFormat('d MMM · HH:mm', _locale(context)).format(at), style: TextStyle(fontSize: 12.5, color: Colors.white.withValues(alpha: .78))),
+          Text(
+            DateFormat('d MMM · HH:mm', _dateLocale(context)).format(at),
+            style: TextStyle(
+              fontSize: 12.5,
+              color: Colors.white.withValues(alpha: .78),
+            ),
+          ),
           if (latest.glycemicContext != null || latest.mealType != null) ...[
             const SizedBox(height: 16),
             Wrap(
               spacing: 7,
               runSpacing: 7,
               children: [
-                if (latest.glycemicContext != null) _Tag(_context(context, latest.glycemicContext!)),
-                if (latest.mealType != null) _Tag(_context(context, latest.mealType!)),
+                if (latest.glycemicContext != null)
+                  _Tag(_contextLabel(context, latest.glycemicContext!)),
+                if (latest.mealType != null)
+                  _Tag(_contextLabel(context, latest.mealType!)),
               ],
             ),
           ],
@@ -580,7 +737,14 @@ class _Tag extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: Colors.white.withValues(alpha: .16)),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Colors.white)),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
     );
   }
 }
@@ -602,20 +766,42 @@ class _TruthBoundary extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.verified_user_outlined, size: 22, color: AminaVisualLanguage.actionGreen),
+          const Icon(
+            Icons.verified_user_outlined,
+            size: 22,
+            color: AminaVisualLanguage.actionGreen,
+          ),
           const SizedBox(width: 13),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _t(context, 'Ce rapport reste descriptif', 'This report stays descriptive', 'هذا التقرير وصفي فقط'),
-                  style: const TextStyle(color: AminaVisualLanguage.forestDeep, fontSize: 14, fontWeight: FontWeight.w800),
+                  _t(
+                    context,
+                    'Ce rapport reste descriptif',
+                    'This report stays descriptive',
+                    'هذا التقرير وصفي فقط',
+                  ),
+                  style: const TextStyle(
+                    color: AminaVisualLanguage.forestDeep,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  _t(context, 'En mode démo hors ligne, IAmina calcule uniquement des statistiques sur $count mesures locales. Elle n’invente ni cause, ni diagnostic, ni analyse IA avancée.', 'In offline demo mode, IAmina only calculates statistics from $count local measurements. It does not invent causes, diagnoses, or advanced AI analysis.', 'في الوضع التجريبي دون اتصال، تحسب IAmina إحصاءات فقط من $count قياساً محلياً ولا تختلق أسباباً أو تشخيصاً أو تحليلاً متقدماً بالذكاء الاصطناعي.'),
-                  style: const TextStyle(color: AminaVisualLanguage.forestDeep, fontSize: 12.5, height: 1.45),
+                  _t(
+                    context,
+                    'En mode démo hors ligne, IAmina calcule uniquement des statistiques sur $count mesures locales. Elle n’invente ni cause, ni diagnostic, ni analyse IA avancée.',
+                    'In offline demo mode, IAmina only calculates statistics from $count local measurements. It does not invent causes, diagnoses, or advanced AI analysis.',
+                    'في الوضع التجريبي دون اتصال، تحسب IAmina إحصاءات فقط من $count قياساً محلياً ولا تختلق أسباباً أو تشخيصاً أو تحليلاً متقدماً بالذكاء الاصطناعي.',
+                  ),
+                  style: const TextStyle(
+                    color: AminaVisualLanguage.forestDeep,
+                    fontSize: 12.5,
+                    height: 1.45,
+                  ),
                 ),
               ],
             ),
@@ -626,9 +812,9 @@ class _TruthBoundary extends StatelessWidget {
   }
 }
 
-class _Empty extends StatelessWidget {
+class _EmptyReport extends StatelessWidget {
   final int days;
-  const _Empty({required this.days});
+  const _EmptyReport({required this.days});
 
   @override
   Widget build(BuildContext context) {
@@ -636,12 +822,26 @@ class _Empty extends StatelessWidget {
       padding: 42,
       child: Column(
         children: [
-          const Icon(Icons.analytics_outlined, size: 38, color: AminaVisualLanguage.actionGreen),
+          const Icon(
+            Icons.analytics_outlined,
+            size: 38,
+            color: AminaVisualLanguage.actionGreen,
+          ),
           const SizedBox(height: 14),
           Text(
-            _t(context, 'Aucune mesure sur $days jours', 'No measurements in the last $days days', 'لا توجد قياسات خلال آخر $days يوماً'),
+            _t(
+              context,
+              'Aucune mesure sur $days jours',
+              'No measurements in the last $days days',
+              'لا توجد قياسات خلال آخر $days يوماً',
+            ),
             textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: 'Georgia', fontSize: 22, fontWeight: FontWeight.w700, color: AminaVisualLanguage.primaryText(context)),
+            style: TextStyle(
+              fontFamily: 'Georgia',
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: AminaVisualLanguage.primaryText(context),
+            ),
           ),
         ],
       ),
@@ -652,7 +852,8 @@ class _Empty extends StatelessWidget {
 class _Surface extends StatelessWidget {
   final Widget child;
   final double padding;
-  const _Surface({required this.child, required this.padding});
+
+  const _Surface({required this.child, this.padding = 22});
 
   @override
   Widget build(BuildContext context) {
@@ -665,13 +866,18 @@ class _Surface extends StatelessWidget {
   }
 }
 
-class _ReportState extends StatelessWidget {
+class _StatePanel extends StatelessWidget {
   final IconData? icon;
   final bool loading;
   final String title;
   final String body;
 
-  const _ReportState({this.icon, this.loading = false, required this.title, required this.body});
+  const _StatePanel({
+    this.icon,
+    this.loading = false,
+    required this.title,
+    required this.body,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -681,11 +887,35 @@ class _ReportState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (loading) const CircularProgressIndicator() else Icon(icon ?? Icons.info_outline, size: 40, color: AminaVisualLanguage.actionGreen),
+            if (loading)
+              const CircularProgressIndicator()
+            else
+              Icon(
+                icon ?? Icons.info_outline,
+                size: 40,
+                color: AminaVisualLanguage.actionGreen,
+              ),
             const SizedBox(height: 16),
-            Text(title, textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Georgia', fontSize: 22, fontWeight: FontWeight.w700, color: AminaVisualLanguage.primaryText(context))),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Georgia',
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: AminaVisualLanguage.primaryText(context),
+              ),
+            ),
             const SizedBox(height: 7),
-            Text(body, textAlign: TextAlign.center, style: TextStyle(fontSize: 12.5, height: 1.4, color: AminaVisualLanguage.secondary(context))),
+            Text(
+              body,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.4,
+                color: AminaVisualLanguage.secondary(context),
+              ),
+            ),
           ],
         ),
       ),
@@ -726,35 +956,35 @@ class _Stats {
     final unit = profile?.unitPreference ?? 'mg/dL';
     final low = profile?.targetRangeLow;
     final high = profile?.targetRangeHigh;
-    final targetReady = low != null && high != null && low < high;
     final average = logs.isEmpty
         ? 0.0
-        : logs.fold<double>(0.0, (sum, log) => sum + log.bloodSugar) / logs.length;
-    final covered = logs.map((log) {
+        : logs.fold<double>(0.0, (sum, log) => sum + log.bloodSugar) /
+              logs.length;
+    final daysCovered = logs.map((log) {
       final at = log.loggedAt ?? log.createdAt;
       return '${at.year}-${at.month}-${at.day}';
     }).toSet().length;
+
     var below = 0;
     var inside = 0;
     var above = 0;
-    if (targetReady) {
-      final targetLow = low;
-      final targetHigh = high;
+    if (low != null && high != null && low < high) {
       for (final log in logs) {
-        if (log.bloodSugar < targetLow) {
+        if (log.bloodSugar < low) {
           below++;
-        } else if (log.bloodSugar > targetHigh) {
+        } else if (log.bloodSugar > high) {
           above++;
         } else {
           inside++;
         }
       }
     }
+
     return _Stats(
       logs: logs,
       unit: unit,
       average: average,
-      daysCovered: covered,
+      daysCovered: daysCovered,
       low: low,
       high: high,
       below: below,
@@ -764,8 +994,8 @@ class _Stats {
   }
 }
 
-Widget _sectionTitle(BuildContext context, String title) => Text(
-      title,
+Text _title(BuildContext context, String value) => Text(
+      value,
       style: TextStyle(
         fontFamily: 'Georgia',
         fontSize: 21,
@@ -774,7 +1004,8 @@ Widget _sectionTitle(BuildContext context, String title) => Text(
       ),
     );
 
-String _context(BuildContext context, String key) => switch (key.trim().toLowerCase()) {
+String _contextLabel(BuildContext context, String key) =>
+    switch (key.trim().toLowerCase()) {
       'fasting' => _t(context, 'À jeun', 'Fasting', 'صائم'),
       'pre_meal' => _t(context, 'Avant repas', 'Before meal', 'قبل الوجبة'),
       'post_meal' => _t(context, 'Après repas', 'After meal', 'بعد الوجبة'),
