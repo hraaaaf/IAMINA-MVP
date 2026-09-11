@@ -15,7 +15,7 @@ void main() {
     expect(reports, contains('if (kOfflineDemo)'));
     expect(reports, contains('const AISummaryScreen()'));
     expect(reports, contains('db.watchLogsInRange('));
-    expect(reports, contains('_LocalReportStats.from('));
+    expect(reports, contains('_Stats.from('));
     expect(reports, isNot(contains('ApiClient')));
     expect(reports, isNot(contains('getAiSummary(')));
     expect(reports, isNot(contains('getKpis(')));
@@ -28,8 +28,8 @@ void main() {
 
     expect(reports, contains('Ce rapport reste descriptif'));
     expect(reports, contains('ni cause, ni diagnostic, ni analyse IA avancée'));
-    expect(reports, contains('belowTarget'));
-    expect(reports, contains('inTarget'));
-    expect(reports, contains('aboveTarget'));
+    expect(reports, contains('final int below;'));
+    expect(reports, contains('final int inside;'));
+    expect(reports, contains('final int above;'));
   });
 }
