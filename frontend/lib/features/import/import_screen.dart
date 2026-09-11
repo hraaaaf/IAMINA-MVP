@@ -69,6 +69,97 @@ class _ImportScreenState extends State<ImportScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final documentSurface = _totalLogs == 0
+        ? AminaFirstUsePanel(
+            key: const ValueKey('import-first-use'),
+            icon: Icons.upload_file_rounded,
+            title: AuditedPageCopy.of(context).documentTitle,
+            body: AuditedPageCopy.of(context).documentIntro,
+            primaryActionLabel: AuditedPageCopy.of(context).chooseDocument,
+            onPrimaryAction: () => context.push('/pulper'),
+            compact: true,
+          )
+        : _DocumentImportCard(
+            key: const ValueKey('import-document-cta'),
+            onTap: () => context.push('/pulper'),
+          );
+
+    final connectionsSurface = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Text(
+            AuditedPageCopy.of(context).directConnections,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AminaTheme.ink900,
+            ),
+          ),
+        ),
+        if (kDebugMode) ...[
+          _ImportOption(
+            icon: Icons.science_outlined,
+            title: l10n.demoDataTitle,
+            subtitle: l10n.demoDataSubtitle,
+            badge: 'DEV',
+            badgeBg: AminaTheme.ink100,
+            badgeFg: AminaTheme.ink500,
+            action: _seeding
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AminaTheme.teal500,
+                    ),
+                  )
+                : _done
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.check,
+                        size: 16,
+                        color: AminaTheme.goodFg,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        l10n.loaded,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AminaTheme.goodFg,
+                        ),
+                      ),
+                    ],
+                  )
+                : FilledButton(
+                    onPressed: _seedDemo,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AminaTheme.teal500,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      minimumSize: Size.zero,
+                    ),
+                    child: Text(
+                      l10n.load,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        _CgmGuideEntryCard(onTap: () => context.push('/cgm')),
+      ],
+    );
+
     return Scaffold(
       backgroundColor: AminaTheme.paper,
       body: Column(
@@ -76,7 +167,7 @@ class _ImportScreenState extends State<ImportScreen> {
           _TopBar(),
           Expanded(
             child: ResponsiveContentSurface(
-              maxWidth: 1160,
+              maxWidth: 1040,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -89,94 +180,28 @@ class _ImportScreenState extends State<ImportScreen> {
                       ),
                       const SizedBox(height: 16),
                     ],
-                    if (_totalLogs == 0)
-                      AminaFirstUsePanel(
-                        key: const ValueKey('import-first-use'),
-                        icon: Icons.upload_file_rounded,
-                        title: AuditedPageCopy.of(context).documentTitle,
-                        body: AuditedPageCopy.of(context).documentIntro,
-                        primaryActionLabel: AuditedPageCopy.of(
-                          context,
-                        ).chooseDocument,
-                        onPrimaryAction: () => context.push('/pulper'),
-                        compact: true,
-                      )
-                    else
-                      _DocumentImportCard(
-                        key: const ValueKey('import-document-cta'),
-                        onTap: () => context.push('/pulper'),
-                      ),
-                    const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Text(
-                        AuditedPageCopy.of(context).directConnections,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AminaTheme.ink900,
-                        ),
-                      ),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth < 900) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              documentSurface,
+                              const SizedBox(height: 20),
+                              connectionsSurface,
+                            ],
+                          );
+                        }
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 6, child: documentSurface),
+                            const SizedBox(width: 24),
+                            Expanded(flex: 4, child: connectionsSurface),
+                          ],
+                        );
+                      },
                     ),
-                    if (kDebugMode) ...[
-                      _ImportOption(
-                        icon: Icons.science_outlined,
-                        title: l10n.demoDataTitle,
-                        subtitle: l10n.demoDataSubtitle,
-                        badge: 'DEV',
-                        badgeBg: AminaTheme.ink100,
-                        badgeFg: AminaTheme.ink500,
-                        action: _seeding
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AminaTheme.teal500,
-                                ),
-                              )
-                            : _done
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.check,
-                                    size: 16,
-                                    color: AminaTheme.goodFg,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    l10n.loaded,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: AminaTheme.goodFg,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : FilledButton(
-                                onPressed: _seedDemo,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: AminaTheme.teal500,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 8,
-                                  ),
-                                  minimumSize: Size.zero,
-                                ),
-                                child: Text(
-                                  l10n.load,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    _CgmGuideEntryCard(onTap: () => context.push('/cgm')),
                   ],
                 ),
               ),
@@ -192,47 +217,9 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final copy = AuditedPageCopy.of(context);
-    if (MediaQuery.sizeOf(context).width < 700) {
-      return AminaMobilePageHeader(
-        title: copy.importTitle,
-        subtitle: copy.importSubtitle,
-      );
-    }
-
-    return Container(
-      padding: EdgeInsetsDirectional.fromSTEB(
-        16,
-        MediaQuery.paddingOf(context).top + 12,
-        16,
-        12,
-      ),
-      decoration: const BoxDecoration(
-        color: AminaTheme.cardBg,
-        border: Border(bottom: BorderSide(color: AminaTheme.ink100)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  copy.importTitle,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AminaTheme.ink900,
-                  ),
-                ),
-                Text(
-                  copy.importSubtitle,
-                  style: const TextStyle(fontSize: 12, color: AminaTheme.ink500),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return AminaMobilePageHeader(
+      title: copy.importTitle,
+      subtitle: copy.importSubtitle,
     );
   }
 }
