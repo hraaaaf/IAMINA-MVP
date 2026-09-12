@@ -163,7 +163,7 @@ void main() {
     },
   );
 
-  testWidgets('search result row selects food with one tap and can clear query', (
+  testWidgets('search result selects food and collapses active results', (
     tester,
   ) async {
     var selected = <String>[];
@@ -182,11 +182,10 @@ void main() {
     expect(result, findsOneWidget);
     await tester.tap(result);
     await tester.pump();
-    expect(selected, contains('egg'));
 
-    await tester.tap(find.byKey(const Key('meal-food-search-clear')));
-    await tester.pump();
+    expect(selected, contains('egg'));
     expect(find.byKey(const Key('meal-search-egg')), findsNothing);
+    expect(find.byKey(const Key('meal-food-search-clear')), findsNothing);
     final field = tester.widget<TextField>(
       find.byKey(const Key('meal-food-search')),
     );
