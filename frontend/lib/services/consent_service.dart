@@ -1,58 +1,74 @@
-// IAmina — ConsentService
-// Tracks whether the current user has given explicit AI processing consent.
-// Backed by the local Drift PatientProfile (synchronous, offline-first).
-// Notifies GoRouter's refreshListenable so redirects fire immediately when
-// consent status changes.
+// ConsentService — local UI gate for externally processed AI features.
+// A Drift timestamp alone is never sufficient: it must be paired with current,
+// verified notice evidence held in secure storage. Server egress remains the
+// authoritative fail-closed boundary.
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../data/drift/database.dart';
 
 class ConsentService extends ChangeNotifier {
-  // tri-state: null = not yet initialised (stream hasn't emitted)
   bool? _hasConsent;
+  bool _hasVerifiedEvidence;
+  bool _profileHasTimestamp = false;
   StreamSubscription<PatientProfileData?>? _sub;
 
-  /// True once the first profile stream event has been processed.
+  ConsentService({bool hasVerifiedEvidence = false})
+    : _hasVerifiedEvidence = hasVerifiedEvidence;
+
+  /// True once the first profile stream event has been processed or seeded.
   bool get isInitialized => _hasConsent != null;
 
-  /// Whether the user has given explicit AI consent.
-  /// Returns false if not yet initialized (safe default — no consent).
+  /// Safe default is false. Both local timestamp and verified evidence required.
   bool get hasConsent => _hasConsent ?? false;
 
-  /// Attach to the profile watcher stream from Drift.
-  /// Called once from main() after the AppDatabase is ready.
-  void attachStream(Stream<PatientProfileData?> profileStream) {
-    _sub?.cancel();
-    _sub = profileStream.listen((profile) {
-      final newVal = profile?.aiConsentGivenAt != null;
-      if (newVal != _hasConsent) {
-        _hasConsent = newVal;
-        notifyListeners();
-      } else if (_hasConsent == null) {
-        // First emission — mark as initialized even if value unchanged
-        _hasConsent = newVal;
-        notifyListeners();
-      }
-    });
+  void _applyProfile(PatientProfileData? profile) {
+    _profileHasTimestamp = profile?.aiConsentGivenAt != null;
+    final next = _profileHasTimestamp && _hasVerifiedEvidence;
+    if (next != _hasConsent) {
+      _hasConsent = next;
+      notifyListeners();
+    } else if (_hasConsent == null) {
+      _hasConsent = next;
+      notifyListeners();
+    }
   }
 
-  /// Seed with a synchronously-available initial value (from a one-time DB
-  /// query in main) to avoid a redirect flicker on app start.
+  /// Attach to local profile changes. Legacy timestamps without secure evidence
+  /// remain denied after upgrade.
+  void attachStream(Stream<PatientProfileData?> profileStream) {
+    _sub?.cancel();
+    _sub = profileStream.listen(_applyProfile);
+  }
+
+  /// Seed synchronously to avoid a redirect flicker on app start.
   void seedInitialProfile(PatientProfileData? profile) {
-    _hasConsent = profile?.aiConsentGivenAt != null;
+    _profileHasTimestamp = profile?.aiConsentGivenAt != null;
+    _hasConsent = _profileHasTimestamp && _hasVerifiedEvidence;
+  }
+
+  /// Called only after server acceptance, exact response verification, secure
+  /// evidence persistence and local timestamp persistence all succeeded.
+  void markVerifiedConsent() {
+    _hasVerifiedEvidence = true;
+    _profileHasTimestamp = true;
+    _hasConsent = true;
+    _hasDeclinedLocally = false;
+    notifyListeners();
+  }
+
+  /// Clear the local gate immediately after withdrawal or evidence invalidation.
+  void clearVerifiedConsent() {
+    _hasVerifiedEvidence = false;
+    _profileHasTimestamp = false;
+    _hasConsent = false;
+    notifyListeners();
   }
 
   // ── Decline (session-only) ────────────────────────────────────────────────
-  /// True if the user tapped "Continue without AI" during this session.
-  /// Resets on app restart. Prevents the consent gate from re-showing after
-  /// the user has explicitly chosen not to consent.
   bool _hasDeclinedLocally = false;
 
-  /// Whether the user has declined AI consent in this session (in-memory only).
   bool get hasDeclinedLocally => _hasDeclinedLocally;
 
-  /// Mark that the user explicitly chose "Continue without AI".
-  /// Called from ConsentScreen before navigating away.
   void declineLocally() {
     _hasDeclinedLocally = true;
     notifyListeners();

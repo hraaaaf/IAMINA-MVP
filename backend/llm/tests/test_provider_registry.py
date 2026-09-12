@@ -5,7 +5,6 @@ from unittest.mock import MagicMock
 import pytest
 from django.contrib.auth.models import User
 from django.test import override_settings
-from django.utils import timezone
 
 from core.ai_egress import ai_egress_scope
 from core.ai_processor_policy import (
@@ -14,7 +13,7 @@ from core.ai_processor_policy import (
     authorize_processor_policy,
     get_processor_policy,
 )
-from core.models import BasePatientProfile
+from core.tests.consent_helpers import grant_current_ai_consent
 from llm.factory import _enforce_text_payload_policy, _provider_policy_name
 from llm.provider_registry import (
     build_openai_compatible_provider,
@@ -63,10 +62,7 @@ def test_groq_candidate_builds_from_registry_without_network_call():
 )
 def test_groq_pending_processor_policy_denies_before_network():
     user = User.objects.create_user(username="groq-policy-patient")
-    BasePatientProfile.objects.create(
-        patient=user,
-        ai_consent_given_at=timezone.now(),
-    )
+    grant_current_ai_consent(user)
     provider = build_openai_compatible_provider("groq")
     network_call = MagicMock()
     provider.client.chat.completions.create = network_call

@@ -21,6 +21,7 @@ from core.ai_egress import (
     patient_ai_egress_scope,
     revoke_media_consent,
 )
+from core.consent_notice import expected_notice_claim
 from core.models import BasePatientProfile
 
 
@@ -36,8 +37,19 @@ def patient(db):
 
 def _grant_global_consent(patient):
     profile = patient.base_profile
+    claim = expected_notice_claim("fr")
     profile.ai_consent_given_at = timezone.now()
-    profile.save(update_fields=["ai_consent_given_at"])
+    profile.ai_consent_notice_version = claim.version
+    profile.ai_consent_notice_hash = claim.notice_hash
+    profile.ai_consent_notice_locale = claim.locale
+    profile.save(
+        update_fields=[
+            "ai_consent_given_at",
+            "ai_consent_notice_version",
+            "ai_consent_notice_hash",
+            "ai_consent_notice_locale",
+        ]
+    )
 
 
 def test_no_scope_is_default_deny(db):
@@ -52,7 +64,17 @@ def test_scope_is_lazy_and_does_not_block_deterministic_paths(patient):
 
 def test_real_egress_requires_server_side_consent(patient):
     with ai_egress_scope(patient.id, "companion_chat", TEXT):
-        with pytest.raises(AIConsentRequired, match="Explicit patient AI consent"):
+        with pytest.raises(AIConsentRequired, match="AI consent"):
+            assert_ai_egress_allowed(TEXT)
+
+
+def test_legacy_timestamp_without_notice_evidence_is_denied(patient):
+    profile = patient.base_profile
+    profile.ai_consent_given_at = timezone.now()
+    profile.save(update_fields=["ai_consent_given_at"])
+
+    with ai_egress_scope(patient.id, "companion_chat", TEXT):
+        with pytest.raises(AIConsentRequired, match="current patient AI consent"):
             assert_ai_egress_allowed(TEXT)
 
 
@@ -129,6 +151,11 @@ def test_invalid_grant_pair_is_denied(patient):
         grant_media_consent(patient.id, "companion_chat", IMAGE)
     with pytest.raises(AIEgressDenied, match="not a raw-media"):
         grant_media_consent(patient.id, "companion_chat", TEXT)
+
+
+def test_media_grant_requires_current_global_consent(patient):
+    with pytest.raises(AIConsentRequired, match="AI consent"):
+        grant_media_consent(patient.id, "meal_vision", IMAGE)
 
 
 def test_modality_cannot_escape_declared_purpose(patient):

@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from ninja.errors import HttpError
 
+from core.consent_notice import expected_notice_claim
 from core.models import AIMediaConsentGrant, BasePatientProfile
 from diabetes.api.v1.profile import (
     grant_ai_media_consent,
@@ -28,8 +29,19 @@ def _request(user):
 
 def _enable_global_ai_consent(user):
     profile = user.base_profile
+    claim = expected_notice_claim("fr")
     profile.ai_consent_given_at = timezone.now()
-    profile.save(update_fields=["ai_consent_given_at"])
+    profile.ai_consent_notice_version = claim.version
+    profile.ai_consent_notice_hash = claim.notice_hash
+    profile.ai_consent_notice_locale = claim.locale
+    profile.save(
+        update_fields=[
+            "ai_consent_given_at",
+            "ai_consent_notice_version",
+            "ai_consent_notice_hash",
+            "ai_consent_notice_locale",
+        ]
+    )
 
 
 def test_list_returns_complete_supported_matrix_as_inactive(patient):
@@ -52,6 +64,16 @@ def test_grant_requires_global_ai_consent(patient):
         grant_ai_media_consent(_request(patient), "meal_vision", "image")
 
     assert exc_info.value.status_code == 409
+    assert AIMediaConsentGrant.objects.count() == 0
+
+
+def test_timestamp_only_legacy_consent_cannot_grant_media(patient):
+    profile = patient.base_profile
+    profile.ai_consent_given_at = timezone.now()
+    profile.save(update_fields=["ai_consent_given_at"])
+
+    with pytest.raises(Exception):
+        grant_ai_media_consent(_request(patient), "meal_vision", "image")
     assert AIMediaConsentGrant.objects.count() == 0
 
 

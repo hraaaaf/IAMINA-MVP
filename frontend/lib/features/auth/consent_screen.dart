@@ -1,10 +1,9 @@
 // IAmina — ConsentScreen
-// RGPD Art. 7 — Explicit AI processing consent gate.
+// Explicit AI processing consent gate bound to one exact notice version/hash/locale.
 //
-// Shown once after first login when no consent record exists.
 // Routes:
-//   Accept  → POST /api/v1/account/consent → local Drift update → /dashboard
-//   Decline → /dashboard (AI features unavailable until consent given)
+//   Accept  → exact server receipt → secure local evidence → Drift gate → dashboard
+//   Decline → dashboard (external AI features remain unavailable)
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +11,9 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../services/api_client.dart';
+import '../../services/consent_api_extension.dart';
+import '../../services/consent_evidence_store.dart';
+import '../../services/consent_notice_contract.dart';
 import '../../services/consent_service.dart';
 
 class ConsentScreen extends StatefulWidget {
@@ -28,13 +30,23 @@ class _ConsentScreenState extends State<ConsentScreen> {
     setState(() => _isLoading = true);
     final api = context.read<ApiClient>();
     final db = context.read<AppDatabase>();
+    final evidenceStore = context.read<ConsentEvidenceStore>();
+    final consent = context.read<ConsentService>();
+    final claim = ConsentNoticeContract.forLocale(
+      Localizations.localeOf(context).toLanguageTag(),
+    );
     try {
-      await api.giveConsent();
+      final accepted = await api.giveVersionedConsent(claim);
+      if (!accepted) return;
+
+      // The UI gate only opens after the exact server response is verified and
+      // the same evidence is durably persisted locally.
+      await evidenceStore.write(claim);
       await db.setAiConsent(granted: true);
+      consent.markVerifiedConsent();
       if (mounted) context.go('/dashboard');
     } catch (_) {
-      await db.setAiConsent(granted: true);
-      if (mounted) context.go('/dashboard');
+      // Fail closed. The explicit "Continue without AI" route remains usable.
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

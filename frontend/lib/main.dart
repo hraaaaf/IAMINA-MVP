@@ -14,6 +14,7 @@ import 'routes/app_router.dart';
 import 'services/api_client.dart';
 import 'services/audit_access_policy.dart';
 import 'services/auth_service.dart';
+import 'services/consent_evidence_store.dart';
 import 'services/consent_service.dart';
 import 'services/firebase_migration_policy.dart';
 import 'services/locale_preference_service.dart';
@@ -35,9 +36,19 @@ Future<void> main() async {
   }
 
   final db = AppDatabase.defaults();
+  final consentEvidenceStore = ConsentEvidenceStore();
+  var hasVerifiedConsentEvidence = false;
+  try {
+    hasVerifiedConsentEvidence = await consentEvidenceStore.hasCurrentEvidence();
+  } catch (e) {
+    // Fail closed: storage failure must never turn a timestamp into consent.
+    debugPrint('Consent evidence read failed: $e');
+  }
   final initialProfile =
       await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull();
-  final consentService = ConsentService()
+  final consentService = ConsentService(
+    hasVerifiedEvidence: hasVerifiedConsentEvidence,
+  )
     ..seedInitialProfile(initialProfile)
     ..attachStream(db.watchProfile());
 
@@ -74,6 +85,7 @@ Future<void> main() async {
         ChangeNotifierProvider<AuthService>.value(value: authService),
         Provider<ApiClient>.value(value: apiClient),
         Provider<SyncService>.value(value: syncService),
+        Provider<ConsentEvidenceStore>.value(value: consentEvidenceStore),
         ChangeNotifierProvider<ConsentService>.value(value: consentService),
         ChangeNotifierProvider<LocalePreferenceService>.value(
           value: localePreferenceService,

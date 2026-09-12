@@ -5,7 +5,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from django.contrib.auth.models import User
-from django.utils import timezone
 
 from core.ai_egress import (
     TEXT,
@@ -15,6 +14,7 @@ from core.ai_egress import (
     authorize_text_payload,
 )
 from core.models import BasePatientProfile
+from core.tests.consent_helpers import grant_current_ai_consent
 from llm.factory import _enforce_text_payload_policy
 
 
@@ -26,10 +26,9 @@ def consenting_patient(db):
         last_name="El Mansouri",
         email="amina@example.ma",
     )
-    BasePatientProfile.objects.create(
-        patient=user,
+    grant_current_ai_consent(
+        user,
         date_of_birth=date(1990, 1, 1),
-        ai_consent_given_at=timezone.now(),
     )
     return user
 
