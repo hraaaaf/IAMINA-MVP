@@ -36,10 +36,14 @@ class MealCapturePanel extends StatefulWidget {
 }
 
 class _MealCapturePanelState extends State<MealCapturePanel> {
+  static const int _pageSize = 24;
+
   final _searchController = TextEditingController();
   late final MealFoodFavoritesRepository _favoritesRepository;
   String _query = '';
   MealFoodCategory? _category;
+  bool _browseAll = false;
+  int _browseLimit = _pageSize;
   bool _recognizing = false;
   List<MealFoodItem> _photoCandidates = const <MealFoodItem>[];
   final Set<String> _proposalSelection = <String>{};
@@ -100,6 +104,8 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
       setState(() {
         _query = '';
         _category = null;
+        _browseAll = false;
+        _browseLimit = _pageSize;
       });
     }
   }
@@ -167,7 +173,18 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
 
   void _clearSearch() {
     _searchController.clear();
-    setState(() => _query = '');
+    setState(() {
+      _query = '';
+      _browseLimit = _pageSize;
+    });
+  }
+
+  void _changeCategory(MealFoodCategory? value) {
+    setState(() {
+      _category = value;
+      _browseAll = value == null;
+      _browseLimit = _pageSize;
+    });
   }
 
   @override
@@ -179,14 +196,18 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
         .whereType<MealFoodItem>()
         .toList(growable: false);
     final queryReady = foldMealText(_query).length >= 2;
-    final browsingCategory = _category != null;
-    final browseResults = queryMealFoods(
+    final browsing = _browseAll || _category != null;
+    final allBrowseResults = queryMealFoods(
       MealFoodQuery(
         text: _query,
         category: _category,
-        limit: 24,
+        limit: mealFoodCatalog.length,
       ),
     );
+    final browseResults = allBrowseResults
+        .take(_browseLimit)
+        .toList(growable: false);
+    final hasMore = browseResults.length < allBrowseResults.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -221,7 +242,10 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
                   (item) => InputChip(
                     key: Key('meal-selected-${item.id}'),
                     avatar: ExcludeSemantics(
-                      child: Text(item.visual, style: const TextStyle(fontSize: 15)),
+                      child: Text(
+                        item.visual,
+                        style: const TextStyle(fontSize: 15),
+                      ),
                     ),
                     label: Text(item.plainLabelFor(locale)),
                     onDeleted: () => _toggleItem(item.id),
@@ -234,7 +258,10 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
         TextField(
           key: const Key('meal-food-search'),
           controller: _searchController,
-          onChanged: (value) => setState(() => _query = value),
+          onChanged: (value) => setState(() {
+            _query = value;
+            _browseLimit = _pageSize;
+          }),
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
             labelText: l10n.journalMealSearch,
@@ -264,7 +291,8 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
           const SizedBox(height: 10),
           FoodCategoryRail(
             selected: _category,
-            onChanged: (value) => setState(() => _category = value),
+            allSelected: _browseAll,
+            onChanged: _changeCategory,
           ),
         ],
         const SizedBox(height: 10),
@@ -276,11 +304,12 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
               fontSize: 11,
             ),
           )
-        else if (queryReady || browsingCategory)
+        else if (queryReady || browsing)
           _searchResults(
             results: browseResults,
             locale: locale,
             l10n: l10n,
+            hasMore: hasMore,
           )
         else if (selected.isEmpty)
           FutureBuilder<List<LogEntryData>>(
@@ -435,6 +464,7 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
     required List<MealFoodItem> results,
     required Locale locale,
     required AppLocalizations l10n,
+    required bool hasMore,
   }) {
     if (results.isEmpty) {
       return Container(
@@ -454,10 +484,24 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
       );
     }
 
-    return _responsiveFoodList(
-      items: results,
-      locale: locale,
-      rowKeyPrefix: 'meal-search',
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _responsiveFoodList(
+          items: results,
+          locale: locale,
+          rowKeyPrefix: 'meal-search',
+        ),
+        if (hasMore) ...<Widget>[
+          const SizedBox(height: 10),
+          TextButton.icon(
+            key: const Key('meal-results-more'),
+            onPressed: () => setState(() => _browseLimit += _pageSize),
+            icon: const Icon(Icons.expand_more_rounded, size: 19),
+            label: Text(_moreResultsLabel(locale)),
+          ),
+        ],
+      ],
     );
   }
 
@@ -670,6 +714,14 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
       'ar' => 'المفضلة',
       'en' => 'Favorites',
       _ => 'Favoris',
+    };
+  }
+
+  String _moreResultsLabel(Locale locale) {
+    return switch (locale.languageCode) {
+      'ar' => 'عرض المزيد',
+      'en' => 'Show more',
+      _ => 'Voir plus',
     };
   }
 
