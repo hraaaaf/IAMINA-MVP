@@ -1,9 +1,10 @@
 # P5-6 — Real-patient release gate
 
-> **Status:** ACTIVE / BLOCKED_EXTERNAL / READY_FOR_CANDIDATE_FREEZE  
+> **Status:** ACTIVE / BLOCKED_EXTERNAL / CANDIDATE_FROZEN  
 > **Release posture:** `NOT_RELEASE_AUTHORIZED`  
 > **P5-1 prerequisite:** CLOSED / HUMAN_APPROVED / exact-main v8 retained  
-> **Candidate freeze:** freeze the resulting `main` SHA after this documentation closeout merges and exact-main CI is green  
+> **Frozen candidate SHA:** `b560d97763a1a944d4a1a4cdf0e9f73467bfa78a`  
+> **Freeze proof:** canonical closeout PR #580 merged + exact-main CI #34683568116 SUCCESS  
 > **Pilot Readiness arithmetic:** 4/9 = 44.4%  
 > **MENA arithmetic:** 32/38 = 84.2% retained pending separate arithmetic reconciliation  
 > **Deployment:** no Vercel deployment is authorized by this gate.
@@ -14,16 +15,33 @@ Permit real-patient pilot enablement only after one exact candidate release SHA 
 
 ## Success
 
-P5-6 may move to `CLOSED` only when all of the following are true for one exact candidate release SHA:
+P5-6 may move to `CLOSED` only when all of the following are true for the frozen candidate SHA `b560d97763a1a944d4a1a4cdf0e9f73467bfa78a`:
 
 1. issue #318 qualified clinical-human review requirements are satisfied;
 2. issue #320 CNDP/legal/processor/residency requirements are satisfied with deployment-specific evidence;
-3. the three repository fail-closed release audits pass with `--require-approved` and the same `--expected-source-commit-sha <40-char SHA>`;
-4. residency and safety restricted manifests carry the same `source_commit_sha` as the candidate SHA;
-5. retained approved outputs contain `audited_source_commit_sha` equal to that candidate SHA;
+3. the three repository fail-closed release audits pass with `--require-approved` and `--expected-source-commit-sha b560d97763a1a944d4a1a4cdf0e9f73467bfa78a`;
+4. residency and safety restricted manifests carry `source_commit_sha = b560d97763a1a944d4a1a4cdf0e9f73467bfa78a`;
+5. retained approved outputs contain `audited_source_commit_sha = b560d97763a1a944d4a1a4cdf0e9f73467bfa78a`;
 6. a human release decision explicitly authorizes the real-patient pilot.
 
 Anything less remains `NOT_RELEASE_AUTHORIZED`.
+
+## Candidate freeze retained
+
+The P5-6 candidate is frozen at:
+
+`b560d97763a1a944d4a1a4cdf0e9f73467bfa78a`
+
+Freeze evidence:
+
+- P5-1 Morocco linguistic certification CLOSED via issue #515;
+- canonical P5-1 closeout PR #580 merged;
+- resulting `main@b560d97763a1a944d4a1a4cdf0e9f73467bfa78a`;
+- exact-main post-merge CI #34683568116 — SUCCESS;
+- issue #318 records `BLOCKED_EXTERNAL_HUMAN / CANDIDATE_FROZEN`;
+- issue #320 records `BLOCKED_EXTERNAL_RELEASE / CANDIDATE_FROZEN`.
+
+A later code, documentation or runtime change does not silently move this freeze. Any candidate change requires an explicit re-freeze and re-binding of all approval evidence.
 
 ## P5-1 prerequisite closed
 
@@ -40,7 +58,7 @@ Retained prerequisite evidence:
 - digest `sha256:496d2aae06ab3f9cea934f93d37a461a228433aca91dff9f67cad04e040a751b`;
 - retained human approval of all five Morocco lanes recorded in #515.
 
-This removes the P5-1 freeze suspension. It does **not** satisfy #318, #320 or authorize real-patient processing.
+This prerequisite closure does **not** satisfy #318, #320 or authorize real-patient processing.
 
 ## Engineering gate proof retained
 
@@ -59,22 +77,22 @@ This proves the SHA-binding mechanism and its repository integration. It does **
 
 ## Exact-SHA release audit contract
 
-Approved release audits must be executed with the same candidate SHA:
+Approved release audits for the frozen candidate must be executed exactly as follows:
 
 ```bash
 python manage.py audit_pilot_consent_governance \
   --require-approved \
-  --expected-source-commit-sha <CANDIDATE_SHA>
+  --expected-source-commit-sha b560d97763a1a944d4a1a4cdf0e9f73467bfa78a
 
 python manage.py audit_pilot_data_residency \
   --manifest /restricted/iamina/pilot-residency.json \
   --require-approved \
-  --expected-source-commit-sha <CANDIDATE_SHA>
+  --expected-source-commit-sha b560d97763a1a944d4a1a4cdf0e9f73467bfa78a
 
 python manage.py audit_safety_corpus_review \
   --manifest /restricted/iamina/safety-review-manifest.json \
   --require-approved \
-  --expected-source-commit-sha <CANDIDATE_SHA>
+  --expected-source-commit-sha b560d97763a1a944d4a1a4cdf0e9f73467bfa78a
 ```
 
 Fail-closed behavior:
@@ -84,41 +102,42 @@ Fail-closed behavior:
 - residency/safety fail when restricted-manifest `source_commit_sha` differs from the candidate SHA;
 - successful approved output carries `audited_source_commit_sha`.
 
-## Reopened external gates
+## External gates
 
 ### #318 — Qualified clinical review
 
-Current state: `OPEN / BLOCKED_EXTERNAL_HUMAN`.
+Current state: `OPEN / BLOCKED_EXTERNAL_HUMAN / CANDIDATE_FROZEN`.
 
 Required retained evidence:
 
 - qualified clinical-human verdict over the exact fingerprinted enabled corpus;
 - safety-owner approval;
 - final parity approval across text, voice transcript, mixed-language and transliteration rows;
-- explicit decision for rejected/staged variants;
-- restricted safety manifest tied to the exact candidate release SHA.
+- explicit decision for the 21 rejected variants and 4 staged replacements;
+- restricted safety manifest with `source_commit_sha = b560d97763a1a944d4a1a4cdf0e9f73467bfa78a`.
 
 ### #320 — CNDP, processor and Morocco residency approval gate
 
-Current state: `OPEN / BLOCKED_EXTERNAL_RELEASE`.
+Current state: `OPEN / BLOCKED_EXTERNAL_RELEASE / CANDIDATE_FROZEN`.
 
 Required retained evidence:
 
-- exact candidate release/deployed Git SHA;
+- exact candidate release/deployed Git SHA `b560d97763a1a944d4a1a4cdf0e9f73467bfa78a`;
 - exact runtime/database/cache/email/export/provider topology and countries/regions;
 - approved patient notice and consent wording;
 - applicable CNDP health-data processing evidence for the actual pilot;
 - applicable foreign-transfer evidence/basis for every actual external destination;
 - account-specific processor evidence for every enabled external provider;
-- restricted residency manifest tied to the exact deployed SHA.
+- restricted residency manifest with `source_commit_sha = b560d97763a1a944d4a1a4cdf0e9f73467bfa78a`.
 
-The issue is the repository contract for this evidence. This document does not replace legal review or infer authorization from public provider documentation.
+The issues are the repository contracts for this evidence. This document does not replace legal or clinical review and does not infer authorization from public provider documentation.
 
 ## Current decision matrix
 
 | Dimension | State | Evidence |
 |---|---|---|
 | P5-1 Morocco linguistic gate | CLOSED | #515 + exact-main v8 packet #34683056185 |
+| P5-6 candidate SHA | FROZEN | `b560d97763a1a944d4a1a4cdf0e9f73467bfa78a` + CI #34683568116 |
 | Fail-closed audit commands present | VERIFIED | repository commands under `backend/core/management/commands/` |
 | Exact-SHA binding implementation | VERIFIED | PR #574 + exact-head/post-merge green runs above |
 | Synthetic/non-patient engineering rehearsal | VERIFIED | P5-5 retained closeout |
@@ -137,7 +156,7 @@ Real-patient enablement must stop if any of these is true:
 - #320 is not satisfied;
 - any `--require-approved` audit exits non-zero;
 - approved audit output lacks the exact candidate `audited_source_commit_sha`;
-- residency/safety manifest SHA differs from the candidate release SHA;
+- residency/safety manifest SHA differs from `b560d97763a1a944d4a1a4cdf0e9f73467bfa78a`;
 - deployment topology differs from the reviewed manifest;
 - required human/legal release decision is absent.
 
@@ -149,4 +168,4 @@ Closing P5-1 changes Pilot Readiness arithmetic to 4/9 = 44.4%. It does not by i
 
 ## Next exact action
 
-After this documentation-only closeout lands and its exact-main CI is green, freeze that resulting `main` SHA in issues #318 and #320 as the candidate for external review. Then collect the restricted human/deployment evidence and execute all three approved audits against that same SHA. Until those external gates are satisfied, P5-6 remains `ACTIVE / BLOCKED_EXTERNAL` and release posture remains `NOT_RELEASE_AUTHORIZED`.
+Collect the external evidence required by #318 and #320 for frozen candidate `b560d97763a1a944d4a1a4cdf0e9f73467bfa78a`. Only after those approvals and restricted manifests exist may the three approved exact-SHA audits be executed. Until then, P5-6 remains `ACTIVE / BLOCKED_EXTERNAL / CANDIDATE_FROZEN` and release posture remains `NOT_RELEASE_AUTHORIZED`.
