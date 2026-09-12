@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import urlparse
 
 import dj_database_url
 
@@ -13,6 +14,10 @@ if DEBUG:  # noqa: F405
 _database_url = os.environ.get("DATABASE_URL", "").strip()
 if not _database_url:
     raise ValueError("DATABASE_URL is required on Vercel; SQLite fallback is forbidden")
+
+_database_scheme = urlparse(_database_url).scheme.lower()
+if _database_scheme not in {"postgres", "postgresql"}:
+    raise ValueError("IAMINA Vercel backend requires PostgreSQL DATABASE_URL")
 
 DATABASES = {  # noqa: F405
     "default": dj_database_url.parse(
