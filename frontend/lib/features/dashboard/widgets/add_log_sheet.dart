@@ -173,8 +173,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
-                        _header(l10n),
-                        const SizedBox(height: 22),
+                        if (!widget.isPage) ...<Widget>[
+                          _header(l10n),
+                          const SizedBox(height: 22),
+                        ],
                         if (isDesktop)
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
