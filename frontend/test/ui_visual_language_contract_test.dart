@@ -114,6 +114,8 @@ void main() {
     expect(browserMain, contains('await db.seedDemoData()'));
     expect(browserMain, contains("queryParameters['surface']"));
     expect(browserMain, contains('DocumentImportPremiumScreen'));
+    expect(browserMain, contains('AminaMobilePageHeader'));
+    expect(browserMain, contains("title: 'Nouvelle mesure'"));
     expect(browserMain, contains('Firebase.initializeApp'));
     expect(browserMain, contains('DefaultFirebaseOptions.currentPlatform'));
     expect(browserMain, isNot(contains("import 'main.dart'")));
