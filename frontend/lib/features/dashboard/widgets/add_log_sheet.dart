@@ -346,11 +346,24 @@ class _AddLogSheetState extends State<AddLogSheet> {
                     ),
                     decoration: InputDecoration(
                       hintText: '—',
-                      suffixText: unit,
-                      suffixStyle: TextStyle(
-                        color: AminaTheme.textSecondary(context),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                      suffixIcon: Padding(
+                        padding: const EdgeInsetsDirectional.only(end: 16),
+                        child: Center(
+                          widthFactor: 1,
+                          child: Text(
+                            unit,
+                            key: const Key('glucose-unit'),
+                            style: TextStyle(
+                              color: AminaTheme.textSecondary(context),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                      suffixIconConstraints: const BoxConstraints(
+                        minWidth: 0,
+                        minHeight: 0,
                       ),
                       filled: true,
                       fillColor: isLow
