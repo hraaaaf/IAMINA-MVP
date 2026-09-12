@@ -120,6 +120,23 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('wide page keeps save action attached to the form', (tester) async {
+    _viewport(tester, const Size(768, 1024));
+    await tester.pumpWidget(_screen(db));
+    await tester.pumpAndSettle();
+
+    final details = find.byKey(const Key('journal-details-button'));
+    final save = find.byKey(const Key('save-log-button'));
+    expect(details, findsOneWidget);
+    expect(save, findsOneWidget);
+
+    final detailsBottom = tester.getBottomLeft(details).dy;
+    final saveTop = tester.getTopLeft(save).dy;
+    expect(saveTop - detailsBottom, lessThan(180));
+    expect(saveTop, lessThan(700));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('compact frosted entry stays overflow-free on harsh small screen', (
     tester,
   ) async {
