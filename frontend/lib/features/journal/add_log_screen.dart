@@ -24,10 +24,10 @@ class AddLogScreen extends StatelessWidget {
         ? AddLogFocus.activity
         : focus;
     final legacyTopExtent = desktop
-        ? 230.0
+        ? 310.0
         : tablet
-        ? 260.0
-        : 170.0;
+        ? 360.0
+        : 270.0;
 
     return Scaffold(
       body: AminaLegacyPageHeaderBridge(
