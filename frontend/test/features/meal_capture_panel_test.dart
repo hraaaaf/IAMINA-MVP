@@ -1,3 +1,4 @@
+import 'package:amina/core/data/meal_food_catalog.dart';
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/models/ai_models.dart';
 import 'package:amina/features/journal/widgets/meal_capture_panel.dart';
@@ -58,6 +59,24 @@ void main() {
     );
   }
 
+  test('every food has a non-generic visual cue and keeps a text label', () {
+    for (final item in mealFoodCatalog) {
+      expect(item.visual, isNot('🍽️'), reason: 'Missing visual for ${item.id}');
+      expect(item.visual.trim(), isNotEmpty, reason: 'Empty visual for ${item.id}');
+      for (final locale in const <Locale>[
+        Locale('fr'),
+        Locale('en'),
+        Locale('ar'),
+      ]) {
+        final plain = item.plainLabelFor(locale);
+        final visual = item.labelFor(locale);
+        expect(plain.trim(), isNotEmpty, reason: 'Missing text for ${item.id}');
+        expect(visual, startsWith('${item.visual} '));
+        expect(visual, contains(plain));
+      }
+    }
+  });
+
   testWidgets(
     'photo proposal never becomes meal data before explicit confirmation',
     (tester) async {
@@ -111,6 +130,7 @@ void main() {
     final result = find.byKey(const Key('meal-search-egg'));
     expect(result, findsOneWidget);
     expect(Directionality.of(tester.element(result)), TextDirection.rtl);
+    expect(find.text('🥚 بيض'), findsOneWidget);
     expect(find.text('Œuf'), findsNothing);
   });
 
@@ -158,8 +178,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Récents'), findsOneWidget);
       expect(find.text('Habituels'), findsOneWidget);
-      expect(find.text('Œuf'), findsWidgets);
-      expect(find.text('Pain marocain'), findsWidgets);
+      expect(find.text('🥚 Œuf'), findsWidgets);
+      expect(find.text('🫓 Pain marocain'), findsWidgets);
     },
   );
 
@@ -180,6 +200,7 @@ void main() {
     await tester.pump();
     final result = find.byKey(const Key('meal-search-egg'));
     expect(result, findsOneWidget);
+    expect(find.text('🥚 Œuf'), findsOneWidget);
     await tester.tap(result);
     await tester.pump();
 
