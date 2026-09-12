@@ -86,8 +86,14 @@ void main() {
     expect(searchMealFoods('machboos').first.id, startsWith('machboos_'));
     expect(searchMealFoods('بيض').first.id, 'egg');
     expect(searchMealFoods('oeuf').first.id, 'egg');
-    expect(searchMealFoods('kabsa').map((item) => item.id), contains('kabsa_chicken'));
-    expect(searchMealFoods('شاورما').map((item) => item.id), contains('shawarma_chicken'));
+    expect(
+      searchMealFoods('kabsa').map((item) => item.id),
+      contains('kabsa_chicken'),
+    );
+    expect(
+      searchMealFoods('شاورما').map((item) => item.id),
+      contains('shawarma_chicken'),
+    );
   });
 
   test('every food has a non-generic visual cue and keeps a text label', () {
@@ -162,7 +168,7 @@ void main() {
     final result = find.byKey(const Key('meal-search-egg'));
     expect(result, findsOneWidget);
     expect(Directionality.of(tester.element(result)), TextDirection.rtl);
-    expect(find.text('🥚 بيض'), findsOneWidget);
+    expect(find.text('بيض'), findsOneWidget);
     expect(find.text('Œuf'), findsNothing);
   });
 
@@ -180,9 +186,33 @@ void main() {
       expect(find.text('Récents'), findsNothing);
       expect(find.text('Habituels'), findsNothing);
       expect(find.byKey(const Key('meal-food-search')), findsOneWidget);
+      expect(find.byKey(const Key('meal-category-rail')), findsOneWidget);
       expect(find.byKey(const Key('meal-photo-button')), findsOneWidget);
     },
   );
+
+  testWidgets('Gulf category browses regional dishes without typing', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      harness(
+        selected: const <String>[],
+        onChanged: (_) {},
+        favoritesRepository: _MemoryFavoritesRepository(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final rail = find.byKey(const Key('meal-category-rail'));
+    await tester.drag(rail, const Offset(-500, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('meal-category-gulfDish')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Harees'), findsWidgets);
+    expect(find.text('Cuisine du Golfe'), findsWidgets);
+    expect(find.byKey(const Key('meal-search-rfissa')), findsNothing);
+  });
 
   testWidgets(
     'recent and habitual foods come only from confirmed structured history',
@@ -210,8 +240,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Récents'), findsOneWidget);
       expect(find.text('Habituels'), findsOneWidget);
-      expect(find.text('🥚 Œuf'), findsWidgets);
-      expect(find.text('🫓 Pain marocain'), findsWidgets);
+      expect(find.text('Œuf'), findsWidgets);
+      expect(find.text('Pain marocain'), findsWidgets);
     },
   );
 
@@ -232,13 +262,14 @@ void main() {
     await tester.pump();
     final result = find.byKey(const Key('meal-search-egg'));
     expect(result, findsOneWidget);
-    expect(find.text('🥚 Œuf'), findsOneWidget);
+    expect(find.text('Œuf'), findsOneWidget);
     await tester.tap(result);
     await tester.pump();
 
     expect(selected, contains('egg'));
     expect(find.byKey(const Key('meal-search-egg')), findsNothing);
     expect(find.byKey(const Key('meal-food-search-clear')), findsNothing);
+    expect(find.byKey(const Key('meal-category-rail')), findsNothing);
     final field = tester.widget<TextField>(
       find.byKey(const Key('meal-food-search')),
     );
