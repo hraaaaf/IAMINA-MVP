@@ -23,11 +23,6 @@ class AddLogScreen extends StatelessWidget {
     final effectiveFocus = desktop && focus == AddLogFocus.none
         ? AddLogFocus.activity
         : focus;
-    final legacyTopExtent = desktop
-        ? 310.0
-        : tablet
-        ? 360.0
-        : 270.0;
 
     return Scaffold(
       body: AminaLegacyPageHeaderBridge(
@@ -43,7 +38,7 @@ class AddLogScreen extends StatelessWidget {
           'Simply record what just happened.',
           'سجّل ببساطة ما حدث للتو.',
         ),
-        legacyTopExtent: legacyTopExtent,
+        legacyTopExtent: 0,
         contentTopInset: 12,
         child: Center(
           child: ConstrainedBox(
