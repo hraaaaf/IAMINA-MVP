@@ -47,80 +47,31 @@ class FoodPictogramPainter extends CustomPainter {
     canvas.scale(side / 100, side / 100);
 
     switch (foodId) {
-      case 'egg':
-        _egg(canvas);
-        break;
-      case 'whole_grain_bread':
-        _wholeGrainBread(canvas);
-        break;
-      case 'chicken':
-        _chicken(canvas, grilled: false);
-        break;
-      case 'grilled_chicken':
-        _chicken(canvas, grilled: true);
-        break;
-      case 'beef':
-        _beef(canvas);
-        break;
-      case 'sardines':
-        _sardines(canvas);
-        break;
-      case 'salmon':
-        _salmon(canvas);
-        break;
-      case 'milk':
-        _milk(canvas);
-        break;
-      case 'plain_yogurt':
-        _yogurt(canvas);
-        break;
-      case 'apple':
-        _apple(canvas);
-        break;
-      case 'banana':
-        _banana(canvas);
-        break;
-      case 'orange':
-        _orange(canvas);
-        break;
-      case 'tomato':
-        _tomato(canvas);
-        break;
-      case 'potato':
-        _potato(canvas);
-        break;
-      case 'lentils':
-        _bowl(canvas, soup: const Color(0xFF7D5033), lentils: true);
-        break;
-      case 'chickpeas':
-        _bowl(canvas, soup: const Color(0xFFD9B06A), chickpeas: true);
-        break;
-      case 'olive_oil':
-        _oliveOil(canvas);
-        break;
-      case 'pizza':
-        _pizza(canvas);
-        break;
-      case 'burger':
-        _burger(canvas);
-        break;
-      case 'moroccan_bread':
-        _moroccanBread(canvas);
-        break;
-      case 'msemen':
-        _msemen(canvas);
-        break;
-      case 'baghrir':
-        _baghrir(canvas);
-        break;
-      case 'couscous_7_vegetables':
-        _couscous(canvas);
-        break;
-      case 'harira':
-        _bowl(canvas, soup: const Color(0xFFA84430), harira: true);
-        break;
-      default:
-        break;
+      case 'egg': _egg(canvas); break;
+      case 'whole_grain_bread': _wholeGrainBread(canvas); break;
+      case 'chicken': _chicken(canvas, grilled: false); break;
+      case 'grilled_chicken': _chicken(canvas, grilled: true); break;
+      case 'beef': _beef(canvas); break;
+      case 'sardines': _sardines(canvas); break;
+      case 'salmon': _salmon(canvas); break;
+      case 'milk': _milk(canvas); break;
+      case 'plain_yogurt': _yogurt(canvas); break;
+      case 'apple': _apple(canvas); break;
+      case 'banana': _banana(canvas); break;
+      case 'orange': _orange(canvas); break;
+      case 'tomato': _tomato(canvas); break;
+      case 'potato': _potato(canvas); break;
+      case 'lentils': _bowl(canvas, soup: const Color(0xFF7D5033), lentils: true); break;
+      case 'chickpeas': _bowl(canvas, soup: const Color(0xFFD9B06A), chickpeas: true); break;
+      case 'olive_oil': _oliveOil(canvas); break;
+      case 'pizza': _pizza(canvas); break;
+      case 'burger': _burger(canvas); break;
+      case 'moroccan_bread': _moroccanBread(canvas); break;
+      case 'msemen': _msemen(canvas); break;
+      case 'baghrir': _baghrir(canvas); break;
+      case 'couscous_7_vegetables': _couscous(canvas); break;
+      case 'harira': _bowl(canvas, soup: const Color(0xFFA84430), harira: true); break;
+      default: break;
     }
 
     canvas.restore();
@@ -154,8 +105,12 @@ class FoodPictogramPainter extends CustomPainter {
     ).createShader(bounds);
 
   void _shadow(Canvas canvas, Rect rect, {double alpha = .18}) {
-    final path = Path()..addOval(rect);
-    canvas.drawShadow(path, Colors.black.withValues(alpha: alpha), 4, false);
+    canvas.drawShadow(
+      Path()..addOval(rect),
+      Colors.black.withValues(alpha: alpha),
+      4,
+      false,
+    );
   }
 
   void _egg(Canvas canvas) {
@@ -178,8 +133,7 @@ class FoodPictogramPainter extends CustomPainter {
     canvas.drawRRect(r, _linear(const Rect.fromLTWH(17, 26, 66, 48), const <Color>[Color(0xFFDCA867), Color(0xFF9E5D2B)]));
     canvas.drawRRect(r, _stroke(const Color(0xFF75431F), 1.8));
     for (final x in <double>[33, 49, 65]) {
-      final path = Path()..moveTo(x - 7, 35)..quadraticBezierTo(x, 49, x + 9, 60);
-      canvas.drawPath(path, _stroke(const Color(0xFFF2D59A), 3));
+      canvas.drawPath(Path()..moveTo(x - 7, 35)..quadraticBezierTo(x, 49, x + 9, 60), _stroke(const Color(0xFFF2D59A), 3));
     }
   }
 
@@ -211,8 +165,7 @@ class FoodPictogramPainter extends CustomPainter {
 
   void _fish(Canvas canvas, double x, double y, Color color) {
     canvas.drawOval(Rect.fromLTWH(x - 16, y, 42, 15), _fill(color));
-    final tail = Path()..moveTo(x + 24, y + 7.5)..lineTo(x + 39, y - 2)..lineTo(x + 38, y + 17)..close();
-    canvas.drawPath(tail, _fill(color.withValues(alpha: .9)));
+    canvas.drawPath(Path()..moveTo(x + 24, y + 7.5)..lineTo(x + 39, y - 2)..lineTo(x + 38, y + 17)..close(), _fill(color.withValues(alpha: .9)));
     canvas.drawCircle(Offset(x - 7, y + 6), 1.5, _fill(const Color(0xFF0C1B25)));
     canvas.drawLine(Offset(x - 1, y + 6), Offset(x + 19, y + 6), _stroke(Colors.white.withValues(alpha: .45), 1));
   }
@@ -249,7 +202,7 @@ class FoodPictogramPainter extends CustomPainter {
 
   void _apple(Canvas canvas) {
     _shadow(canvas, const Rect.fromLTWH(23, 73, 54, 11));
-    final b = const Rect.fromLTWH(25, 23, 52, 54);
+    const b = Rect.fromLTWH(25, 23, 52, 54);
     canvas.drawOval(b, _radial(b, const Color(0xFFFF5A52), const Color(0xFFB81325)));
     canvas.drawLine(const Offset(52, 25), const Offset(57, 11), _stroke(const Color(0xFF6D4428), 3));
     canvas.drawOval(const Rect.fromLTWH(56, 11, 20, 9), _fill(const Color(0xFF2D8B55)));
@@ -266,22 +219,21 @@ class FoodPictogramPainter extends CustomPainter {
 
   void _orange(Canvas canvas) {
     _shadow(canvas, const Rect.fromLTWH(23, 73, 54, 11));
-    final b = const Rect.fromLTWH(25, 22, 52, 55);
+    const b = Rect.fromLTWH(25, 22, 52, 55);
     canvas.drawOval(b, _radial(b, const Color(0xFFFFB442), const Color(0xFFE27400)));
     canvas.drawOval(const Rect.fromLTWH(50, 18, 18, 9), _fill(const Color(0xFF31905A)));
   }
 
   void _tomato(Canvas canvas) {
     _shadow(canvas, const Rect.fromLTWH(23, 73, 54, 11));
-    final b = const Rect.fromLTWH(25, 25, 52, 52);
+    const b = Rect.fromLTWH(25, 25, 52, 52);
     canvas.drawOval(b, _radial(b, const Color(0xFFFF5B50), const Color(0xFFB81720)));
-    final p = Path()..moveTo(51, 22)..lineTo(44, 34)..lineTo(34, 29)..lineTo(40, 40)..lineTo(29, 40)..lineTo(44, 46)..lineTo(51, 58)..lineTo(56, 45)..lineTo(72, 48)..lineTo(62, 38)..lineTo(72, 31)..lineTo(58, 34)..close();
-    canvas.drawPath(p, _fill(const Color(0xFF2E8B4F)));
+    canvas.drawPath(Path()..moveTo(51, 22)..lineTo(44, 34)..lineTo(34, 29)..lineTo(40, 40)..lineTo(29, 40)..lineTo(44, 46)..lineTo(51, 58)..lineTo(56, 45)..lineTo(72, 48)..lineTo(62, 38)..lineTo(72, 31)..lineTo(58, 34)..close(), _fill(const Color(0xFF2E8B4F)));
   }
 
   void _potato(Canvas canvas) {
     _shadow(canvas, const Rect.fromLTWH(21, 73, 58, 10));
-    final b = const Rect.fromLTWH(23, 25, 55, 50);
+    const b = Rect.fromLTWH(23, 25, 55, 50);
     canvas.drawOval(b, _radial(b, const Color(0xFFD2A066), const Color(0xFF9A6237)));
     for (final p in <Offset>[const Offset(38,43), const Offset(55,37), const Offset(65,50), const Offset(46,61), const Offset(62,65)]) {
       canvas.drawCircle(p, 1.6, _fill(const Color(0xFF754928)));
@@ -317,8 +269,7 @@ class FoodPictogramPainter extends CustomPainter {
 
   void _pizza(Canvas canvas) {
     _shadow(canvas, const Rect.fromLTWH(16, 73, 68, 10));
-    final p = Path()..moveTo(28, 15)..lineTo(84, 63)..lineTo(27, 77)..close();
-    canvas.drawPath(p, _fill(const Color(0xFFF1B84A)));
+    canvas.drawPath(Path()..moveTo(28, 15)..lineTo(84, 63)..lineTo(27, 77)..close(), _fill(const Color(0xFFF1B84A)));
     canvas.drawLine(const Offset(28,16), const Offset(27,77), _stroke(const Color(0xFFC27C2D), 7));
     for (final c in <Offset>[const Offset(47,35), const Offset(61,48), const Offset(43,60), const Offset(69,61)]) {
       canvas.drawCircle(c, 5, _fill(const Color(0xFFB73034)));
@@ -330,8 +281,7 @@ class FoodPictogramPainter extends CustomPainter {
     canvas.drawOval(const Rect.fromLTWH(22,21,56,25), _linear(const Rect.fromLTWH(22,21,56,25), const <Color>[Color(0xFFF1B65E), Color(0xFFCA7E32)]));
     canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(25,45,50,10), const Radius.circular(4)), _fill(const Color(0xFF4B954F)));
     canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(24,53,52,13), const Radius.circular(5)), _fill(const Color(0xFF6B3829)));
-    final cheese = Path()..moveTo(24,65)..lineTo(76,65)..lineTo(70,73)..lineTo(29,73)..close();
-    canvas.drawPath(cheese, _fill(const Color(0xFFF2C33D)));
+    canvas.drawPath(Path()..moveTo(24,65)..lineTo(76,65)..lineTo(70,73)..lineTo(29,73)..close(), _fill(const Color(0xFFF2C33D)));
     canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(22,72,56,11), const Radius.circular(5)), _fill(const Color(0xFFCF8738)));
   }
 
@@ -361,7 +311,8 @@ class FoodPictogramPainter extends CustomPainter {
     canvas.drawOval(b, _linear(b, const <Color>[Color(0xFFF3CD80), Color(0xFFC88A40)]));
     canvas.drawOval(b, _stroke(const Color(0xFF9F642C), 1.4));
     for (var i=0;i<32;i++) {
-      final a=i*2.4; final r=8+(i%7)*2.6;
+      final a=i*2.4;
+      final r=8+(i%7)*2.6;
       canvas.drawCircle(Offset(50+math.cos(a)*r,51+math.sin(a)*r*.7),1.2+(i%3)*.2,_fill(const Color(0xFF9D642F).withValues(alpha:.68)));
     }
   }
