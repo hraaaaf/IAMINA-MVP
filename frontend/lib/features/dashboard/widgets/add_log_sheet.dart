@@ -126,6 +126,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
     final unit = profile?.unitPreference ?? 'mg/dL';
     final l10n = AppLocalizations.of(context)!;
     final isDesktop = MediaQuery.sizeOf(context).width >= 1000;
+    final isDark = AminaTheme.isDark(context);
 
     final savedReceipt = _savedReceipt;
     if (savedReceipt != null) {
@@ -144,8 +145,23 @@ class _AddLogSheetState extends State<AddLogSheet> {
         if (didPop) return;
         if (await _confirmLeave(l10n) && mounted) _close();
       },
-      child: ColoredBox(
-        color: AminaTheme.bg(context),
+      child: DecoratedBox(
+        key: const Key('add-log-ambient-backdrop'),
+        decoration: BoxDecoration(
+          color: AminaTheme.bg(context),
+          gradient: isDark
+              ? null
+              : const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[
+                    Color(0xFFF8FBFA),
+                    Color(0xFFF0F7F5),
+                    Color(0xFFF7FAF9),
+                  ],
+                  stops: <double>[0, 0.62, 1],
+                ),
+        ),
         child: SafeArea(
           child: Stack(
             children: <Widget>[
@@ -277,118 +293,123 @@ class _AddLogSheetState extends State<AddLogSheet> {
     return Semantics(
       container: true,
       label: l10n.journalGlucose,
-      child: ClipRRect(
-        borderRadius: radius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            key: const Key('glucose-glass-card'),
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 15),
-            decoration: BoxDecoration(
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          boxShadow: <BoxShadow>[
+            BoxShadow(
               color: isLow
-                  ? const Color(0xFFFFF7ED).withValues(alpha: 0.94)
-                  : glassSurface,
-              borderRadius: radius,
-              border: Border.all(
-                color: isLow ? const Color(0xFFF97316) : glassBorder,
-              ),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: isLow
-                      ? const Color(0xFFF97316).withValues(alpha: 0.08)
-                      : AminaTheme.teal900.withValues(
-                          alpha: isDark ? 0.16 : 0.07,
-                        ),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+                  ? const Color(0xFFF97316).withValues(alpha: 0.12)
+                  : AminaTheme.teal900.withValues(
+                      alpha: isDark ? 0.16 : 0.10,
+                    ),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                _sectionLabel(l10n.journalGlucose),
-                const SizedBox(height: 10),
-                TextField(
-                  key: const Key('glucose-input'),
-                  controller: _glucoseController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: <TextInputFormatter>[
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
-                  ],
-                  style: TextStyle(
-                    color: AminaTheme.textPrimary(context),
-                    fontSize: 44,
-                    fontWeight: FontWeight.w800,
-                    height: 1.0,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: '—',
-                    suffixText: unit,
-                    suffixStyle: TextStyle(
-                      color: AminaTheme.textSecondary(context),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    filled: true,
-                    fillColor: isLow
-                        ? Colors.white.withValues(alpha: 0.82)
-                        : fieldSurface,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 13,
-                    ),
-                    isDense: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(
-                        color: AminaTheme.divider(context),
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(
-                        color: isLow
-                            ? const Color(0xFFF97316).withValues(alpha: 0.48)
-                            : AminaTheme.divider(context),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(
-                        color: isLow
-                            ? const Color(0xFFF97316)
-                            : AminaTheme.accent(context),
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
-                  onChanged: (_) => setState(() {}),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              key: const Key('glucose-glass-card'),
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 15),
+              decoration: BoxDecoration(
+                color: isLow
+                    ? const Color(0xFFFFF7ED).withValues(alpha: 0.94)
+                    : glassSurface,
+                borderRadius: radius,
+                border: Border.all(
+                  color: isLow ? const Color(0xFFF97316) : glassBorder,
                 ),
-                const SizedBox(height: 9),
-                if (mgdl == null)
-                  Text(
-                    l10n.journalNoGlucoseAssumption,
-                    style: _glucoseHelperStyle(),
-                  )
-                else if (isLow)
-                  Text(
-                    l10n.journalLowGlucoseDetected,
-                    style: const TextStyle(
-                      color: Color(0xFFC2410C),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      height: 1.4,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  _sectionLabel(l10n.journalGlucose),
+                  const SizedBox(height: 10),
+                  TextField(
+                    key: const Key('glucose-input'),
+                    controller: _glucoseController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
                     ),
-                  )
-                else
-                  Text(
-                    l10n.journalTargetNotInferred,
-                    style: _glucoseHelperStyle(),
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
+                    ],
+                    style: TextStyle(
+                      color: AminaTheme.textPrimary(context),
+                      fontSize: 44,
+                      fontWeight: FontWeight.w800,
+                      height: 1.0,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: '—',
+                      suffixText: unit,
+                      suffixStyle: TextStyle(
+                        color: AminaTheme.textSecondary(context),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      filled: true,
+                      fillColor: isLow
+                          ? Colors.white.withValues(alpha: 0.82)
+                          : fieldSurface,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 13,
+                      ),
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: AminaTheme.divider(context),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: isLow
+                              ? const Color(0xFFF97316).withValues(alpha: 0.48)
+                              : AminaTheme.divider(context),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: isLow
+                              ? const Color(0xFFF97316)
+                              : AminaTheme.accent(context),
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                    onChanged: (_) => setState(() {}),
                   ),
-              ],
+                  const SizedBox(height: 9),
+                  if (mgdl == null)
+                    Text(
+                      l10n.journalNoGlucoseAssumption,
+                      style: _glucoseHelperStyle(),
+                    )
+                  else if (isLow)
+                    Text(
+                      l10n.journalLowGlucoseDetected,
+                      style: const TextStyle(
+                        color: Color(0xFFC2410C),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                      ),
+                    )
+                  else
+                    Text(
+                      l10n.journalTargetNotInferred,
+                      style: _glucoseHelperStyle(),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
