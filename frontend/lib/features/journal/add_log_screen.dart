@@ -17,6 +17,13 @@ class AddLogScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final tablet = width >= 600 && width < 1000;
+    final desktop = width >= 1000;
+    final effectiveFocus = desktop && focus == AddLogFocus.none
+        ? AddLogFocus.activity
+        : focus;
+
     return Scaffold(
       body: AminaLegacyPageHeaderBridge(
         title: _addLogCopy(
@@ -33,7 +40,15 @@ class AddLogScreen extends StatelessWidget {
         ),
         legacyTopExtent: 82,
         contentTopInset: 12,
-        child: AddLogSheet(isPage: true, focus: focus),
+        child: Center(
+          child: ConstrainedBox(
+            key: const Key('add-log-responsive-column'),
+            constraints: BoxConstraints(
+              maxWidth: tablet ? 640 : double.infinity,
+            ),
+            child: AddLogSheet(isPage: true, focus: effectiveFocus),
+          ),
+        ),
       ),
     );
   }
