@@ -1,10 +1,11 @@
 # P5-6 — Real-patient release gate
 
-> **Status:** ACTIVE / BLOCKED_EXTERNAL  
+> **Status:** ACTIVE / BLOCKED_EXTERNAL / READY_FOR_CANDIDATE_FREEZE  
 > **Release posture:** `NOT_RELEASE_AUTHORIZED`  
-> **Engineering gate baseline verified:** `main@b27a71f4c337265e4351bb49b5c727c2b9b78dc5`  
-> **Pilot Readiness arithmetic:** 3/9 = 33.3%  
-> **MENA arithmetic:** 32/38 = 84.2%  
+> **P5-1 prerequisite:** CLOSED / HUMAN_APPROVED / exact-main v8 retained  
+> **Candidate freeze:** freeze the resulting `main` SHA after this documentation closeout merges and exact-main CI is green  
+> **Pilot Readiness arithmetic:** 4/9 = 44.4%  
+> **MENA arithmetic:** 32/38 = 84.2% retained pending separate arithmetic reconciliation  
 > **Deployment:** no Vercel deployment is authorized by this gate.
 
 ## Goal
@@ -23,6 +24,23 @@ P5-6 may move to `CLOSED` only when all of the following are true for one exact 
 6. a human release decision explicitly authorizes the real-patient pilot.
 
 Anything less remains `NOT_RELEASE_AUTHORIZED`.
+
+## P5-1 prerequisite closed
+
+P5-1 Morocco linguistic certification is closed via issue #515 and canonical closeout `docs/assessments/2026-09-12-p5-1-mena-linguistic-certification-closeout.md`.
+
+Retained prerequisite evidence:
+
+- PR #579 merged;
+- exact-main linguistic evidence SHA `2d18428a0c59a18c82a1c0dfb410469f17f81e04`;
+- post-merge CI #34682380854 — SUCCESS;
+- post-merge Django migration drift #34682380897 — SUCCESS;
+- exact-main workflow-dispatch packet #34683056185 — SUCCESS;
+- artifact #10295285314;
+- digest `sha256:496d2aae06ab3f9cea934f93d37a461a228433aca91dff9f67cad04e040a751b`;
+- retained human approval of all five Morocco lanes recorded in #515.
+
+This removes the P5-1 freeze suspension. It does **not** satisfy #318, #320 or authorize real-patient processing.
 
 ## Engineering gate proof retained
 
@@ -100,6 +118,7 @@ The issue is the repository contract for this evidence. This document does not r
 
 | Dimension | State | Evidence |
 |---|---|---|
+| P5-1 Morocco linguistic gate | CLOSED | #515 + exact-main v8 packet #34683056185 |
 | Fail-closed audit commands present | VERIFIED | repository commands under `backend/core/management/commands/` |
 | Exact-SHA binding implementation | VERIFIED | PR #574 + exact-head/post-merge green runs above |
 | Synthetic/non-patient engineering rehearsal | VERIFIED | P5-5 retained closeout |
@@ -126,8 +145,8 @@ Real-patient enablement must stop if any of these is true:
 
 P5-6 does **not** claim legal advice, CNDP authorization, processor approval, production geography, clinical-human approval, real-device packaging approval, production deployment approval or permission to process real patient data.
 
-The retained MENA arithmetic and Pilot Readiness arithmetic remain unchanged by this gate-hardening work.
+Closing P5-1 changes Pilot Readiness arithmetic to 4/9 = 44.4%. It does not by itself change the retained MENA 32/38 arithmetic.
 
 ## Next exact action
 
-After this documentation-only closeout lands and its exact-main CI is green, freeze that resulting main SHA in issues #318 and #320 as the candidate for external review. Then collect the restricted human/deployment evidence and execute all three approved audits against that same SHA. Until those external gates are satisfied, P5-6 remains `ACTIVE / BLOCKED_EXTERNAL` and Pilot Readiness remains **3/9 = 33.3%**.
+After this documentation-only closeout lands and its exact-main CI is green, freeze that resulting `main` SHA in issues #318 and #320 as the candidate for external review. Then collect the restricted human/deployment evidence and execute all three approved audits against that same SHA. Until those external gates are satisfied, P5-6 remains `ACTIVE / BLOCKED_EXTERNAL` and release posture remains `NOT_RELEASE_AUTHORIZED`.
