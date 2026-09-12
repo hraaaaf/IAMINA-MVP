@@ -81,6 +81,7 @@ void main() {
       find.byKey(const Key('add-meal-button')),
     );
     expect(meal.style?.minimumSize?.resolve(<WidgetState>{})?.height, 48);
+    expect(meal.style?.alignment?.resolve(<WidgetState>{}), Alignment.center);
 
     final details = tester.widget<OutlinedButton>(
       find.byKey(const Key('journal-details-button')),
