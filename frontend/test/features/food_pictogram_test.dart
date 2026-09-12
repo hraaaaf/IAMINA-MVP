@@ -19,9 +19,10 @@ void main() {
     'long-tail food keeps deterministic asset path and safe emoji fallback',
     (tester) async {
       final item = mealFoodById('tanjia')!;
+      const locale = Locale('fr');
       await tester.pumpWidget(
         MaterialApp(
-          locale: const Locale('fr'),
+          locale: locale,
           home: Scaffold(body: FoodPictogram(item: item)),
         ),
       );
@@ -33,7 +34,7 @@ void main() {
       expect(_foodArtwork(), findsNothing);
 
       final semantics = tester.getSemantics(find.byType(FoodPictogram));
-      expect(semantics.label, contains('Tanjia'));
+      expect(semantics.label, contains(item.plainLabelFor(locale)));
     },
   );
 
