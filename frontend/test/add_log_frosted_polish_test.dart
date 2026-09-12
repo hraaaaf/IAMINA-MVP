@@ -58,7 +58,9 @@ void main() {
     final glucose = tester.widget<TextField>(
       find.byKey(const Key('glucose-input')),
     );
-    expect(glucose.decoration?.suffixText, 'mg/dL');
+    expect(glucose.decoration?.suffixIcon, isNotNull);
+    expect(find.byKey(const Key('glucose-unit')), findsOneWidget);
+    expect(find.text('mg/dL'), findsOneWidget);
     expect(glucose.style?.fontSize, 44);
 
     final meal = tester.widget<OutlinedButton>(
@@ -81,6 +83,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('glucose-input')), findsOneWidget);
+    expect(find.byKey(const Key('glucose-unit')), findsOneWidget);
     expect(find.byKey(const Key('save-log-button')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
