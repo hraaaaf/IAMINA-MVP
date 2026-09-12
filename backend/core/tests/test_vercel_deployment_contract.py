@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
@@ -16,11 +16,11 @@ def _import_vercel_settings(database_url: str | None) -> subprocess.CompletedPro
         {
             "SECRET_KEY": "test-only-secret-key",
             "DEBUG": "False",
-            "ALLOWED_HOSTS": "iamina-backend.vercel.app",
+            "ALLOWED_HOSTS": "iamina-certified.vercel.app",
             "CORS_ALLOWED_ORIGINS": "https://iamina-review.vercel.app",
             "CSRF_TRUSTED_ORIGINS": "https://iamina-review.vercel.app",
             "VERCEL": "1",
-            "VERCEL_URL": "iamina-backend.vercel.app",
+            "VERCEL_URL": "iamina-certified.vercel.app",
         }
     )
     if database_url is None:
@@ -65,7 +65,7 @@ def test_vercel_settings_accept_postgres_without_connecting():
 
     assert result.returncode == 0, result.stderr
     assert "django.db.backends.postgresql" in result.stdout
-    assert "iamina-backend.vercel.app" in result.stdout
+    assert "iamina-certified.vercel.app" in result.stdout
 
 
 def test_vercel_config_keeps_deployments_manual_and_targets_wsgi():
