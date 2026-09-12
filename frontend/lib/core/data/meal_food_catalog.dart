@@ -16,14 +16,70 @@ class MealFoodItem {
     this.aliases = const [],
   ]);
 
-  String labelFor(Locale locale) {
+  String plainLabelFor(Locale locale) {
     if (locale.languageCode == 'ar') return ar;
     if (locale.languageCode == 'en') return en;
     return fr;
   }
 
+  String get visual => _mealFoodVisualById[id] ?? '🍽️';
+
+  String labelFor(Locale locale) => '$visual ${plainLabelFor(locale)}';
+
   String get searchable => <String>[id, fr, en, ar, ...aliases].join(' ');
 }
+
+const Map<String, String> _mealFoodVisualById = <String, String>{
+  'moroccan_bread': '🫓',
+  'whole_grain_bread': '🍞',
+  'msemen': '🫓',
+  'baghrir': '🥞',
+  'harcha': '🥯',
+  'couscous': '🍛',
+  'tajine': '🍲',
+  'harira': '🥣',
+  'bissara': '🥣',
+  'lentils': '🫘',
+  'chickpeas': '🫘',
+  'white_beans': '🫘',
+  'rice': '🍚',
+  'pasta': '🍝',
+  'potato': '🥔',
+  'vegetables': '🥦',
+  'salad': '🥗',
+  'tomato': '🍅',
+  'carrot': '🥕',
+  'zucchini': '🥒',
+  'egg': '🥚',
+  'chicken': '🍗',
+  'beef': '🥩',
+  'lamb': '🍖',
+  'fish': '🐟',
+  'sardines': '🐟',
+  'tuna': '🐟',
+  'yogurt': '🥣',
+  'cheese': '🧀',
+  'milk': '🥛',
+  'oats': '🌾',
+  'cereal': '🥣',
+  'dates': '🌴',
+  'apple': '🍎',
+  'banana': '🍌',
+  'orange': '🍊',
+  'pear': '🍐',
+  'avocado': '🥑',
+  'almonds': '🌰',
+  'olives': '🫒',
+  'amlou': '🥜',
+  'mint_tea': '🍵',
+  'coffee': '☕',
+  'water': '💧',
+  'juice': '🧃',
+  'soup': '🍲',
+  'sandwich': '🥪',
+  'pizza': '🍕',
+  'croissant': '🥐',
+};
 
 const List<MealFoodItem> mealFoodCatalog = <MealFoodItem>[
   MealFoodItem(
