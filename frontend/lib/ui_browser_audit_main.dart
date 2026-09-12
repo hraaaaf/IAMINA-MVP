@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'core/theme/amina_visual_language.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/mobile_page_header.dart';
 import 'data/drift/database.dart';
 import 'data/models/companion_models.dart';
 import 'data/models/proactive_preview_models.dart';
@@ -336,46 +337,19 @@ class _BrowserMealPickerSurfaceState extends State<_BrowserMealPickerSurface> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AminaTheme.bg(context),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1080),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              'Nouvelle mesure',
-                              style: TextStyle(
-                                color: AminaTheme.textPrimary(context),
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              'Ajoutez un aliment au repas.',
-                              style: TextStyle(
-                                color: AminaTheme.textSecondary(context),
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-                  Container(
+      body: Column(
+        children: <Widget>[
+          const AminaMobilePageHeader(
+            title: 'Nouvelle mesure',
+            subtitle: 'Notez simplement ce qui vient de se passer.',
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1080),
+                  child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: AminaTheme.subtleBg(context),
@@ -393,11 +367,11 @@ class _BrowserMealPickerSurfaceState extends State<_BrowserMealPickerSurface> {
                       }),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
