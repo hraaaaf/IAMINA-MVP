@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'core/theme/amina_visual_language.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/mobile_page_header.dart';
 import 'data/drift/database.dart';
 import 'data/models/companion_models.dart';
 import 'data/models/proactive_preview_models.dart';
@@ -20,6 +21,7 @@ import 'features/import/import_screen.dart';
 import 'features/journal/add_log_screen.dart';
 import 'features/journal/ai_summary_screen.dart';
 import 'features/journal/journal_screen.dart';
+import 'features/journal/widgets/meal_capture_panel.dart';
 import 'features/medications/medication_screen.dart';
 import 'features/navigation/main_shell.dart';
 import 'features/profile/profile_screen.dart';
@@ -30,6 +32,7 @@ import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/companion_service.dart';
 import 'services/consent_service.dart';
+import 'services/meal_food_favorites_repository.dart';
 import 'services/modules_provider.dart';
 import 'services/sync_service.dart';
 
@@ -99,6 +102,18 @@ class _BrowserAuditCompanionService extends CompanionService {
       ),
     ),
   );
+}
+
+class _BrowserMealFavoritesRepository implements MealFoodFavoritesRepository {
+  Set<String> _ids = <String>{'whole_grain_bread'};
+
+  @override
+  Future<Set<String>> load() async => Set<String>.from(_ids);
+
+  @override
+  Future<void> save(Set<String> ids) async {
+    _ids = Set<String>.from(ids);
+  }
 }
 
 Future<void> main() async {
@@ -197,6 +212,10 @@ class _BrowserAuditApp extends StatelessWidget {
           builder: (context, state) => const AddLogScreen(),
         ),
         GoRoute(
+          path: '/meal-picker',
+          builder: (context, state) => const _BrowserMealPickerSurface(),
+        ),
+        GoRoute(
           path: '/medications',
           builder: (context, state) => const MedicationScreen(),
         ),
@@ -257,6 +276,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'importer' => '/importer',
   'document-import' => '/document-import',
   'add-log' => '/add-log',
+  'meal-picker' => '/meal-picker',
   'medications' => '/medications',
   'reminders' => '/reminders',
   'companion' => '/companion',
@@ -266,6 +286,96 @@ String _pathForSurface(String surface) => switch (surface) {
   'next-action' => '/next-action',
   _ => '/dashboard',
 };
+
+class _BrowserMealPickerSurface extends StatefulWidget {
+  const _BrowserMealPickerSurface();
+
+  @override
+  State<_BrowserMealPickerSurface> createState() =>
+      _BrowserMealPickerSurfaceState();
+}
+
+class _BrowserMealPickerSurfaceState extends State<_BrowserMealPickerSurface> {
+  final _favorites = _BrowserMealFavoritesRepository();
+  final List<String> _selectedIds = <String>[];
+  bool _searchSeeded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _seedSearch());
+  }
+
+  void _seedSearch() {
+    if (!mounted || _searchSeeded) return;
+    Element? target;
+
+    void visit(Element element) {
+      if (target != null) return;
+      final widget = element.widget;
+      if (widget is TextField &&
+          widget.key == const Key('meal-food-search')) {
+        target = element;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    context.visitChildElements(visit);
+    final textField = target?.widget;
+    if (textField is TextField) {
+      const query = 'pain';
+      textField.controller?.text = query;
+      textField.onChanged?.call(query);
+      _searchSeeded = true;
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _seedSearch());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AminaTheme.bg(context),
+      body: Column(
+        children: <Widget>[
+          const AminaMobilePageHeader(
+            title: 'Nouvelle mesure',
+            subtitle: 'Notez simplement ce qui vient de se passer.',
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1080),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AminaTheme.subtleBg(context),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AminaTheme.divider(context)),
+                    ),
+                    child: MealCapturePanel(
+                      selectedIds: _selectedIds,
+                      canUsePhotoRecognition: false,
+                      favoritesRepository: _favorites,
+                      onChanged: (ids) => setState(() {
+                        _selectedIds
+                          ..clear()
+                          ..addAll(ids);
+                      }),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _BrowserTrendSurface extends StatelessWidget {
   const _BrowserTrendSurface();

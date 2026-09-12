@@ -114,6 +114,8 @@ void main() {
     expect(browserMain, contains('await db.seedDemoData()'));
     expect(browserMain, contains("queryParameters['surface']"));
     expect(browserMain, contains('DocumentImportPremiumScreen'));
+    expect(browserMain, contains('AminaMobilePageHeader'));
+    expect(browserMain, contains("title: 'Nouvelle mesure'"));
     expect(browserMain, contains('Firebase.initializeApp'));
     expect(browserMain, contains('DefaultFirebaseOptions.currentPlatform'));
     expect(browserMain, isNot(contains("import 'main.dart'")));
@@ -129,7 +131,7 @@ void main() {
     expect(browserWorkflow, contains('"1280 900 false"'));
     expect(
       browserWorkflow,
-      contains(r'test "$total" -eq 42'.replaceAll(r'\"', '"')),
+      contains(r'test "$total" -eq 45'.replaceAll(r'\"', '"')),
     );
   });
 }
