@@ -3,12 +3,18 @@ import 'package:flutter/material.dart';
 import '../../../core/data/food_pictogram_registry.dart';
 import '../../../core/data/meal_food_catalog.dart';
 import '../../../core/theme/app_theme.dart';
+import 'food_pictogram_painter.dart';
 
 /// Runtime surface for IAMINA food artwork.
 ///
-/// Only assets listed in [certifiedFoodPictogramIds] are read from the bundle.
-/// This avoids hundreds of failed asset lookups while visual batches are still
-/// being produced. The local fallback keeps food selection fully offline.
+/// Rendering priority:
+/// 1. certified bundled artwork when a reviewed asset exists;
+/// 2. native IAMINA vector pictogram for the coded launch set;
+/// 3. deterministic emoji fallback for the remaining long tail.
+///
+/// This keeps food selection fully offline and gives the first launch batch a
+/// premium, platform-independent visual identity without waiting for binary
+/// artwork production.
 class FoodPictogram extends StatelessWidget {
   final MealFoodItem item;
   final double size;
@@ -23,10 +29,17 @@ class FoodPictogram extends StatelessWidget {
 
   String get assetPath => certifiedFoodPictogramPath(item.pictogramKey);
 
-  Widget _fallback() => ExcludeSemantics(
+  Widget _emojiFallback() => ExcludeSemantics(
     child: Text(
       item.visual,
       style: TextStyle(fontSize: size * .48, height: 1),
+    ),
+  );
+
+  Widget _nativePictogram() => ExcludeSemantics(
+    child: CustomPaint(
+      size: Size.square(size),
+      painter: FoodPictogramPainter(item.pictogramKey),
     ),
   );
 
@@ -34,6 +47,7 @@ class FoodPictogram extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = AminaTheme.accent(context);
     final certified = hasCertifiedFoodPictogram(item.pictogramKey);
+    final native = hasCodeFoodPictogram(item.pictogramKey);
 
     return Semantics(
       image: true,
@@ -61,9 +75,12 @@ class FoodPictogram extends StatelessWidget {
                 height: size,
                 fit: BoxFit.contain,
                 excludeFromSemantics: true,
-                errorBuilder: (context, error, stackTrace) => _fallback(),
+                errorBuilder: (context, error, stackTrace) =>
+                    native ? _nativePictogram() : _emojiFallback(),
               )
-            : _fallback(),
+            : native
+            ? _nativePictogram()
+            : _emojiFallback(),
       ),
     );
   }
