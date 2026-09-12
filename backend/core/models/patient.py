@@ -69,6 +69,24 @@ class BasePatientProfile(models.Model):
         blank=True,
         help_text="Timestamp when the patient explicitly consented to AI analysis. NULL = no consent.",
     )
+    ai_consent_notice_version = models.CharField(
+        max_length=32,
+        null=True,
+        blank=True,
+        help_text="Version of the exact patient notice accepted for AI processing.",
+    )
+    ai_consent_notice_hash = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        help_text="SHA-256 fingerprint of the exact rendered patient consent notice.",
+    )
+    ai_consent_notice_locale = models.CharField(
+        max_length=8,
+        null=True,
+        blank=True,
+        help_text="Locale of the exact patient consent notice accepted.",
+    )
 
     premium_valid_until = models.DateTimeField(
         null=True,
