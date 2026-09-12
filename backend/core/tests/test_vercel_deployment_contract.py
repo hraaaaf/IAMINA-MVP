@@ -1,11 +1,11 @@
 import json
 import os
-import pathlib
 import subprocess
 import sys
+from pathlib import Path
 
 
-BACKEND_ROOT = pathlib.Path(__file__).resolve().parents[2]
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _import_vercel_settings(database_url: str | None) -> subprocess.CompletedProcess[str]:
