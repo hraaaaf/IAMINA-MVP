@@ -2,11 +2,27 @@ import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/models/ai_models.dart';
 import 'package:amina/features/journal/widgets/meal_capture_panel.dart';
 import 'package:amina/l10n/app_localizations.dart';
+import 'package:amina/services/meal_food_favorites_repository.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+
+class _MemoryFavoritesRepository implements MealFoodFavoritesRepository {
+  Set<String> ids;
+
+  _MemoryFavoritesRepository([Set<String>? initial])
+    : ids = <String>{...?initial};
+
+  @override
+  Future<Set<String>> load() async => Set<String>.from(ids);
+
+  @override
+  Future<void> save(Set<String> ids) async {
+    this.ids = Set<String>.from(ids);
+  }
+}
 
 void main() {
   late AppDatabase db;
@@ -19,6 +35,7 @@ void main() {
     required ValueChanged<List<String>> onChanged,
     MealPhotoRecognition? photoRecognition,
     bool canUsePhoto = true,
+    MealFoodFavoritesRepository? favoritesRepository,
   }) {
     return MaterialApp(
       locale: locale,
@@ -33,6 +50,7 @@ void main() {
               onChanged: onChanged,
               canUsePhotoRecognition: canUsePhoto,
               photoRecognition: photoRecognition,
+              favoritesRepository: favoritesRepository,
             ),
           ),
         ),
@@ -56,6 +74,7 @@ void main() {
           selected: selected,
           onChanged: (value) => selected = value,
           photoRecognition: recognition,
+          favoritesRepository: _MemoryFavoritesRepository(),
         ),
       );
       await tester.pumpAndSettle();
@@ -83,6 +102,7 @@ void main() {
         locale: const Locale('ar'),
         selected: selected,
         onChanged: (value) => selected = value,
+        favoritesRepository: _MemoryFavoritesRepository(),
       ),
     );
     await tester.pumpAndSettle();
@@ -98,7 +118,11 @@ void main() {
     'first use hides empty history and keeps capture actions immediately available',
     (tester) async {
       await tester.pumpWidget(
-        harness(selected: const <String>[], onChanged: (_) {}),
+        harness(
+          selected: const <String>[],
+          onChanged: (_) {},
+          favoritesRepository: _MemoryFavoritesRepository(),
+        ),
       );
       await tester.pumpAndSettle();
       expect(find.text('Récents'), findsNothing);
@@ -125,7 +149,11 @@ void main() {
             );
       }
       await tester.pumpWidget(
-        harness(selected: const <String>[], onChanged: (_) {}),
+        harness(
+          selected: const <String>[],
+          onChanged: (_) {},
+          favoritesRepository: _MemoryFavoritesRepository(),
+        ),
       );
       await tester.pumpAndSettle();
       expect(find.text('Récents'), findsOneWidget);
@@ -134,4 +162,85 @@ void main() {
       expect(find.text('Pain marocain'), findsWidgets);
     },
   );
+
+  testWidgets('search result row selects food with one tap and can clear query', (
+    tester,
+  ) async {
+    var selected = <String>[];
+    await tester.pumpWidget(
+      harness(
+        selected: selected,
+        onChanged: (value) => selected = value,
+        favoritesRepository: _MemoryFavoritesRepository(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('meal-food-search')), 'oeuf');
+    await tester.pump();
+    final result = find.byKey(const Key('meal-search-egg'));
+    expect(result, findsOneWidget);
+    await tester.tap(result);
+    await tester.pump();
+    expect(selected, contains('egg'));
+
+    await tester.tap(find.byKey(const Key('meal-food-search-clear')));
+    await tester.pump();
+    expect(find.byKey(const Key('meal-search-egg')), findsNothing);
+    final field = tester.widget<TextField>(
+      find.byKey(const Key('meal-food-search')),
+    );
+    expect(field.controller?.text, isEmpty);
+  });
+
+  testWidgets('favorite can be added from search and surfaces in quick access', (
+    tester,
+  ) async {
+    final favorites = _MemoryFavoritesRepository();
+    await tester.pumpWidget(
+      harness(
+        selected: const <String>[],
+        onChanged: (_) {},
+        favoritesRepository: favorites,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('meal-food-search')), 'oeuf');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('meal-favorite-egg')));
+    await tester.pumpAndSettle();
+    expect(favorites.ids, contains('egg'));
+
+    await tester.tap(find.byKey(const Key('meal-food-search-clear')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('meal-favorites-section')), findsOneWidget);
+    expect(find.byKey(const Key('meal-favorite-row-egg')), findsOneWidget);
+  });
+
+  testWidgets('favorite quick access can remove a stored favorite', (
+    tester,
+  ) async {
+    final favorites = _MemoryFavoritesRepository(<String>{'whole_grain_bread'});
+    await tester.pumpWidget(
+      harness(
+        selected: const <String>[],
+        onChanged: (_) {},
+        favoritesRepository: favorites,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('meal-favorites-section')), findsOneWidget);
+    expect(
+      find.byKey(const Key('meal-favorite-row-whole_grain_bread')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('meal-favorite-whole_grain_bread')),
+    );
+    await tester.pumpAndSettle();
+    expect(favorites.ids, isNot(contains('whole_grain_bread')));
+    expect(find.byKey(const Key('meal-favorites-section')), findsNothing);
+  });
 }
