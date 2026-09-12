@@ -5,11 +5,13 @@ import '../../../core/theme/app_theme.dart';
 
 class FoodCategoryRail extends StatelessWidget {
   final MealFoodCategory? selected;
+  final bool allSelected;
   final ValueChanged<MealFoodCategory?> onChanged;
 
   const FoodCategoryRail({
     super.key,
     required this.selected,
+    this.allSelected = false,
     required this.onChanged,
   });
 
@@ -73,7 +75,7 @@ class FoodCategoryRail extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final category = index == 0 ? null : primaryCategories[index - 1];
-          final active = selected == category;
+          final active = category == null ? allSelected : selected == category;
           final label = category == null
               ? _allLabel(locale)
               : mealFoodCategoryLabel(category, locale);
@@ -84,9 +86,7 @@ class FoodCategoryRail extends StatelessWidget {
             selected: active,
             label: label,
             child: Material(
-              color: active
-                  ? accent
-                  : AminaTheme.surface(context),
+              color: active ? accent : AminaTheme.surface(context),
               shape: StadiumBorder(
                 side: BorderSide(
                   color: active ? accent : AminaTheme.divider(context),
@@ -106,7 +106,10 @@ class FoodCategoryRail extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
                       ExcludeSemantics(
-                        child: Text(visual, style: const TextStyle(fontSize: 15)),
+                        child: Text(
+                          visual,
+                          style: const TextStyle(fontSize: 15),
+                        ),
                       ),
                       const SizedBox(width: 7),
                       Text(
@@ -116,7 +119,9 @@ class FoodCategoryRail extends StatelessWidget {
                               ? Colors.white
                               : AminaTheme.textPrimary(context),
                           fontSize: 12,
-                          fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                          fontWeight: active
+                              ? FontWeight.w700
+                              : FontWeight.w600,
                         ),
                       ),
                     ],
