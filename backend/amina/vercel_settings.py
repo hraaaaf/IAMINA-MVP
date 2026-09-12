@@ -26,6 +26,22 @@ DATABASES = {  # noqa: F405
     )
 }
 
+
+def _require_https_origins(name: str, origins: list[str]) -> None:
+    if not origins:
+        raise ValueError(f"{name} is required on Vercel")
+    invalid = [
+        origin
+        for origin in origins
+        if (parsed := urlparse(origin)).scheme != "https" or not parsed.netloc
+    ]
+    if invalid:
+        raise ValueError(f"{name} must contain only valid HTTPS origins on Vercel")
+
+
+_require_https_origins("CORS_ALLOWED_ORIGINS", CORS_ALLOWED_ORIGINS)  # noqa: F405
+_require_https_origins("CSRF_TRUSTED_ORIGINS", CSRF_TRUSTED_ORIGINS)  # noqa: F405
+
 # Vercel terminates TLS before invoking the Django function.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
