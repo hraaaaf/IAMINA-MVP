@@ -8,7 +8,7 @@ import 'package:provider/provider.dart';
 
 AppDatabase _openDb() => AppDatabase(NativeDatabase.memory());
 
-Widget _sheet(AppDatabase db) {
+Widget _sheet(AppDatabase db, {bool isPage = false}) {
   return MaterialApp(
     locale: const Locale('fr'),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -19,7 +19,7 @@ Widget _sheet(AppDatabase db) {
           Provider<AppDatabase>.value(value: db),
           Provider<PatientProfileData?>.value(value: null),
         ],
-        child: const AddLogSheet(),
+        child: AddLogSheet(isPage: isPage),
       ),
     ),
   );
@@ -72,6 +72,17 @@ void main() {
       find.byKey(const Key('journal-details-button')),
     );
     expect(details.style?.minimumSize?.resolve(<WidgetState>{})?.height, 48);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('page mode suppresses the legacy internal header', (tester) async {
+    _viewport(tester, const Size(390, 844));
+    await tester.pumpWidget(_sheet(db, isPage: true));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nouvelle mesure'), findsNothing);
+    expect(find.byKey(const Key('glucose-glass-card')), findsOneWidget);
+    expect(find.byKey(const Key('glucose-unit')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
