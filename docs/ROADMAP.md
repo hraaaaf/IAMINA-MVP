@@ -4,6 +4,8 @@
 >
 > **Global audit:** 2026-09-12, re-bound after PR #591 against frozen candidate `main@fd3e4a53543e515100b493acc63c99cc9e8464ce`, open GitHub trackers, `AGENTS.md` and `docs/TECHDEBT.md`.
 >
+> **Canonical global progress:** **6/12 atomic roadmap lots CLOSED = 50.0%**. Atomic denominator: P5-0, P5-1, P5-2, P5-3, P5-4A, P5-4B, P5-5, P5-6 consent evidence engineering, P5-6A, P5-6B, P5-7, P5-8. Closed atoms: P5-0, P5-1, P5-2, P5-4A, P5-5 and P5-6 consent evidence engineering. This is the canonical portfolio completion metric; the legacy macro P5 whole-lot metric remains 4/9 = 44.4% and the retained MENA metric remains 32/38 = 84.2% for their narrower purposes.
+>
 > **Release posture:** `NOT_RELEASE_AUTHORIZED`. No Vercel deployment is authorized by this roadmap.
 
 ## North star
@@ -26,6 +28,7 @@ Ship one safe, measurable Morocco/MENA diabetes-companion PWA pilot, collect rea
 
 | Area | Canonical status | Forward consequence |
 |---|---|---|
+| **Global canonical roadmap** | **🟡 6/12 = 50.0%** | authoritative portfolio completion metric |
 | Gate A Secure Core | ✅ CLOSED / certified 10.0/10 | maintenance only |
 | Historical P0 foundations / product truthfulness / agent governance | ✅ CLOSED | no reopening without new defect/evidence |
 | Global UX / Dashboard / Journal | ✅ CLOSED | regressions only; new UX work must be a new scoped lot |
@@ -33,10 +36,20 @@ Ship one safe, measurable Morocco/MENA diabetes-companion PWA pilot, collect rea
 | Companion intelligence / proactive lifecycle | ✅ CLOSED through current convergence | issue hygiene may remain, but no active forward feature lot |
 | CGM gateway V1 / V1.1 / V2 / V2.1 | ✅ CLOSED | real physical-sensor evidence remains external if later claimed |
 | P4-FRUGAL PRE-PILOT | ✅ CLOSED 10/10 | real pilot economics belong to P5-7 |
-| MENA retained tracker | 🟡 32/38 = 84.2% retained | do not use as release authorization |
-| P5 Pilot Readiness | 🟡 4/9 = 44.4% | active program |
+| MENA retained tracker | 🟡 32/38 = 84.2% retained | informational only; do not use as release authorization |
+| P5 Pilot Readiness whole-lot tracker | 🟡 4/9 = 44.4% | macro P5 metric; active program |
 | P5-6 consent evidence engineering | ✅ MERGED / REFROZEN | candidate `fd3e4a5…`; external evidence still blocks release |
 | Real-patient release | 🟠 BLOCKED_EXTERNAL | current critical path |
+
+### Progress arithmetic
+
+The roadmap uses three deliberately separate metrics:
+
+1. **Canonical global progress — 6/12 = 50.0%.** Equal-weight atomic forward lots. This is the number to use for overall project advancement.
+2. **P5 Pilot Readiness — 4/9 = 44.4%.** Historical whole-lot P5 accounting. P5-4 and P5-6 remain open as macro lots despite closed sublots.
+3. **Retained MENA — 32/38 = 84.2%.** Historical/rebased MENA scope only; informational and not a release gate.
+
+No partial credit is assigned inside an atomic lot. A lot contributes only when its stated success proof is retained.
 
 ---
 
@@ -217,7 +230,9 @@ Synthetic evidence cannot be promoted to P5-7 proof.
 
 Decision gate on continued investment/expansion. No second disease capsule before this gate passes.
 
-**Pilot Readiness:** **4/9 = 44.4%**. Closed whole lots: P5-0, P5-1, P5-2, P5-5.
+**Pilot Readiness whole-lot tracker:** **4/9 = 44.4%**. Closed whole lots: P5-0, P5-1, P5-2, P5-5.
+
+**Canonical global atomic tracker:** **6/12 = 50.0%**. Closed atomic lots: P5-0, P5-1, P5-2, P5-4A, P5-5, P5-6 consent evidence engineering.
 
 ---
 
@@ -315,7 +330,8 @@ The following are considered closed unless a new reproduced regression opens a n
 - CGM gateway V1, V1.1, V2, V2.1;
 - P4-FRUGAL PRE-PILOT;
 - P5-0, P5-1, P5-2, P5-5;
-- P5-4A PWA packaging engineering.
+- P5-4A PWA packaging engineering;
+- P5-6 consent evidence engineering.
 
 Closed does not imply legal/CNDP authorization, real-device proof, real-patient authorization or broader production approval unless that exact evidence is explicitly retained.
 
@@ -339,6 +355,7 @@ Parallel work allowed only when it cannot perturb or delay the frozen release ca
 # 10. Canonical governance
 
 - `docs/ROADMAP.md` owns **all forward status, priority, sequencing and completion percentages**.
+- **Overall progress is the atomic 12-lot metric.** The denominator changes only through an explicit roadmap governance change, never because an issue/PR is opened or closed.
 - `docs/TECHDEBT.md` owns unresolved compromises only; it is not a competing roadmap.
 - `AGENTS.md` owns execution rules only; any embedded status list is subordinate to this roadmap.
 - Issues and PRs are execution/evidence containers, not canonical portfolio status.
@@ -352,7 +369,9 @@ Parallel work allowed only when it cannot perturb or delay the frozen release ca
 - frozen P5-6 candidate: `fd3e4a53543e515100b493acc63c99cc9e8464ce`
 - candidate proof: PR #591; exact-head #4145/#3719; post-merge #4148/#3722; signed merge
 - active program: P5 Pilot Readiness
-- progress: **4/9 = 44.4%**
+- **canonical global progress: 6/12 = 50.0%**
+- P5 whole-lot progress: 4/9 = 44.4%
+- retained MENA metric: 32/38 = 84.2%
 - current blocker: **P5-6A #318 + P5-6B #320 external restricted/deployment evidence**
 - release posture: **NOT_RELEASE_AUTHORIZED**
 - next exact action: obtain/retain real restricted evidence for #318 and deployment-specific compliance evidence for #320, bind both manifests to `fd3e4a53543e515100b493acc63c99cc9e8464ce`, then run the three exact-SHA approved audits.
