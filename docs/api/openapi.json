@@ -1458,10 +1458,20 @@
             }
           }
         },
-        "description": "Record explicit AI processing consent without inventing patient facts.",
+        "description": "Bind explicit AI consent to the exact rendered notice the patient accepted.",
         "tags": [
           "account"
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentGrantSchema"
+              }
+            }
+          },
+          "required": true
+        },
         "security": [
           {
             "HybridBearerAuth": []
@@ -1487,7 +1497,7 @@
             }
           }
         },
-        "description": "Withdraw AI processing consent. AI features remain suspended until re-consent.",
+        "description": "Withdraw AI processing consent and every grant derived from that epoch.",
         "tags": [
           "account"
         ],
@@ -4856,6 +4866,39 @@
               }
             ],
             "title": "Ai Consent Given At"
+          },
+          "notice_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice Version"
+          },
+          "notice_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice Hash"
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
           }
         },
         "required": [
@@ -4863,6 +4906,29 @@
           "ai_consent_given_at"
         ],
         "title": "ConsentStatusSchema",
+        "type": "object"
+      },
+      "ConsentGrantSchema": {
+        "properties": {
+          "notice_version": {
+            "title": "Notice Version",
+            "type": "string"
+          },
+          "notice_hash": {
+            "title": "Notice Hash",
+            "type": "string"
+          },
+          "locale": {
+            "title": "Locale",
+            "type": "string"
+          }
+        },
+        "required": [
+          "notice_version",
+          "notice_hash",
+          "locale"
+        ],
+        "title": "ConsentGrantSchema",
         "type": "object"
       },
       "DeleteConfirmSchema": {
