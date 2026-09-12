@@ -1,6 +1,5 @@
 import pytest
 from django.contrib.auth.models import User
-from django.utils import timezone
 
 from core.ai_egress import ai_egress_scope
 from core.ai_processor_policy import (
@@ -11,7 +10,7 @@ from core.ai_processor_policy import (
     authorize_processor_policy,
     get_processor_policy,
 )
-from core.models import BasePatientProfile
+from core.tests.consent_helpers import grant_current_ai_consent
 from llm.base import BaseLLMProvider, LLMResponse
 from llm.factory import _enforce_text_payload_policy
 
@@ -28,10 +27,7 @@ class RecordingProvider(BaseLLMProvider):
 @pytest.fixture
 def consented_user(db):
     user = User.objects.create_user(username="processor-policy-patient")
-    BasePatientProfile.objects.create(
-        patient=user,
-        ai_consent_given_at=timezone.now(),
-    )
+    grant_current_ai_consent(user)
     return user
 
 
