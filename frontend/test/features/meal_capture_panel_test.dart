@@ -4,7 +4,7 @@ import 'package:amina/data/models/ai_models.dart';
 import 'package:amina/features/journal/widgets/meal_capture_panel.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/meal_food_favorites_repository.dart';
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
