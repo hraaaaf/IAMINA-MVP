@@ -88,8 +88,10 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
 
   void _toggleItem(String id) {
     final next = widget.selectedIds.toSet();
-    if (!next.add(id)) next.remove(id);
+    final added = next.add(id);
+    if (!added) next.remove(id);
     widget.onChanged(next.toList(growable: false));
+    if (added && _query.isNotEmpty) _clearSearch();
   }
 
   Future<MealAnalysisResult?> _pickAndRecognize() async {
@@ -249,7 +251,7 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
           )
         else if (queryReady)
           _searchResults(results: results, locale: locale, l10n: l10n)
-        else
+        else if (selected.isEmpty)
           FutureBuilder<List<LogEntryData>>(
             future: _historyFuture,
             builder: (context, snapshot) {
