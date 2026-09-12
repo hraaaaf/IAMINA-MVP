@@ -23,12 +23,15 @@ def _runtime_inventory():
     }
 
 
-def test_native_review_packet_exactly_matches_current_ar_ma_high_severity_inventory():
+def test_historical_native_review_packet_remains_exact_and_immutable():
     packet = {(row["input_form"], row["text"]) for row in _packet_rows()}
-    runtime = _runtime_inventory()
+    outcomes = {(row["input_form"], row["text"]) for row in _outcome_rows()}
 
+    # The 36-row packet is retained as provenance of the earlier native review.
+    # It must not be rewritten to pretend it described the post-review runtime.
     assert len(packet) == 36
-    assert packet == runtime
+    assert len(outcomes) == 36
+    assert packet == outcomes
 
 
 def test_native_review_packet_is_fail_closed_for_restricted_approval():
@@ -54,19 +57,27 @@ def test_prior_exact_native_evidence_is_limited_to_recorded_batch_evidence():
     assert prior == {"غادي يغمى عليا", "كنترعد", "كنرجف"}
 
 
-def test_completed_native_review_outcomes_exactly_cover_runtime_inventory():
+def test_completed_native_review_outcomes_remain_historical_after_cutover():
     rows = _outcome_rows()
     outcomes = {(row["input_form"], row["text"]) for row in rows}
+    runtime = _runtime_inventory()
 
     assert len(rows) == 36
     assert len(outcomes) == 36
-    assert outcomes == _runtime_inventory()
     assert all(
         row["native_evidence_status"]
         in {"accepted_exact_native_evidence", "rejected_exact_native_evidence"}
         for row in rows
     )
     assert all(row["restricted_approval"] is False for row in rows)
+
+    # A qualified-human follow-up review on 2026-09-12 deliberately changed the
+    # runtime, so historical outcomes must no longer be forced to equal it.
+    assert outcomes != runtime
+    assert ("latin_transliteration", "dekht") in runtime
+    assert ("latin_transliteration", "fiya doukha") in runtime
+    assert ("latin_transliteration", "kantra33ad") in runtime
+    assert ("latin_transliteration", "ghadi ntah") not in runtime
 
 
 def test_completed_native_review_outcomes_preserve_recorded_decisions():
