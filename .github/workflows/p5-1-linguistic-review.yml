@@ -7,9 +7,11 @@ on:
       - "backend/evaluation/p5_1_linguistic_review_benchmark.py"
       - "backend/evaluation/p5_1_linguistic_review_benchmark_v6.py"
       - "backend/evaluation/p5_1_linguistic_review_benchmark_v7.py"
+      - "backend/evaluation/p5_1_linguistic_review_benchmark_v8.py"
       - "backend/evaluation/tests/test_p5_1_linguistic_review_benchmark.py"
       - "backend/evaluation/tests/test_p5_1_linguistic_review_benchmark_v6.py"
       - "backend/evaluation/tests/test_p5_1_linguistic_review_benchmark_v7.py"
+      - "backend/evaluation/tests/test_p5_1_linguistic_review_benchmark_v8.py"
       - "backend/evaluation/fixtures/frug7_groq_text_price.json"
       - "backend/evaluation/provider_benchmark_preflight.py"
       - ".github/workflows/p5-1-linguistic-review.yml"
@@ -54,9 +56,10 @@ jobs:
           evaluation/tests/test_p5_1_linguistic_review_benchmark.py
           evaluation/tests/test_p5_1_linguistic_review_benchmark_v6.py
           evaluation/tests/test_p5_1_linguistic_review_benchmark_v7.py
+          evaluation/tests/test_p5_1_linguistic_review_benchmark_v8.py
       - name: Run one bounded 10-lane batch
         run: >-
-          python -m evaluation.p5_1_linguistic_review_benchmark_v7
+          python -m evaluation.p5_1_linguistic_review_benchmark_v8
           --output ../artifacts/p5-1-linguistic-review.json
       - name: Upload native-review packet
         if: always()
