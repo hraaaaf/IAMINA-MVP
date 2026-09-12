@@ -2,7 +2,7 @@
 
 > **Authority:** this is the single canonical forward tracker for IAMINA. If an issue, PR body, handover, assessment, AGENTS note, architecture note or historical phase document conflicts with this file on current status, priority or next work, **this file wins**. Historical documents remain evidence only.
 >
-> **Global audit:** 2026-09-12, against `main@3e04c1d1423a4a39ab9ccc85b4b9a75b2dfb27ac`, all currently open GitHub issues/PRs, the previous roadmap, `AGENTS.md` and `docs/TECHDEBT.md`.
+> **Global audit:** 2026-09-12, re-bound after PR #591 against frozen candidate `main@fd3e4a53543e515100b493acc63c99cc9e8464ce`, open GitHub trackers, `AGENTS.md` and `docs/TECHDEBT.md`.
 >
 > **Release posture:** `NOT_RELEASE_AUTHORIZED`. No Vercel deployment is authorized by this roadmap.
 
@@ -35,6 +35,7 @@ Ship one safe, measurable Morocco/MENA diabetes-companion PWA pilot, collect rea
 | P4-FRUGAL PRE-PILOT | ✅ CLOSED 10/10 | real pilot economics belong to P5-7 |
 | MENA retained tracker | 🟡 32/38 = 84.2% retained | do not use as release authorization |
 | P5 Pilot Readiness | 🟡 4/9 = 44.4% | active program |
+| P5-6 consent evidence engineering | ✅ MERGED / REFROZEN | candidate `fd3e4a5…`; external evidence still blocks release |
 | Real-patient release | 🟠 BLOCKED_EXTERNAL | current critical path |
 
 ---
@@ -123,12 +124,37 @@ Synthetic/non-patient engineering proof only. Physical-device, live-sensor, prod
 
 **Status:** 🟠 ACTIVE / BLOCKED_EXTERNAL / HIGHEST PRIORITY.
 
-Frozen safety candidate:
-- runtime safety SHA: `a25ec4dd1118784c8968588bab035dca4d0f71b6`;
+Frozen candidate:
+- release SHA: `fd3e4a53543e515100b493acc63c99cc9e8464ce`;
 - safety corpus: 59 exact cases;
 - parity coverage: 10 technical tuples;
-- fingerprint: `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`;
-- exact-head and post-merge CI/migration evidence from #585 is green.
+- safety fingerprint: `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`;
+- consent notice version: `2026-09-12.1`;
+- PR #591 exact head `b018f724aeaa7b34217cd2810c35e95881332ee1`;
+- exact-head CI #4145 / workflow `34708902735` SUCCESS;
+- exact-head migration drift #3719 / workflow `34708902710` SUCCESS;
+- merge `main@fd3e4a53543e515100b493acc63c99cc9e8464ce`, GitHub signature verified/valid;
+- post-merge CI #4148 / workflow `34709544750` SUCCESS;
+- post-merge migration drift #3722 / workflow `34709544765` SUCCESS.
+
+PR #591 changed runtime consent/release behavior, so candidate `a25ec4dd1118784c8968588bab035dca4d0f71b6` is explicitly superseded. Its 32-file diff did not modify the safety corpus, so the 59-case/10-tuple fingerprint is retained unchanged.
+
+### P5-6 consent evidence engineering
+
+**Status:** ✅ MERGED / GREEN / CANDIDATE_REFROZEN.
+
+Verified behavior now includes:
+- exact notice version/hash/locale evidence;
+- legacy timestamp-only consent invalidation and re-consent;
+- server acceptance receipts;
+- withdrawal clearing active proof and granular media grants;
+- central outbound-AI egress verification of current notice evidence;
+- media grant epoch isolation;
+- Flutter fail-closed when server acceptance fails;
+- local UI gate requiring Drift timestamp + verified Secure Storage evidence;
+- local-only release scope still retaining global CNDP health-processing blockers.
+
+This closes the consent-evidence **engineering sublot only**. It does not close P5-6 or authorize real-patient processing.
 
 ### P5-6A — Safety qualification manifest
 
@@ -138,12 +164,13 @@ Already verified:
 - qualified-human review is owner-attested;
 - challenged Darija runtime rows were adjudicated;
 - runtime cutover merged;
-- safety owner/parity approval is attested.
+- safety owner/parity approval is attested;
+- exact safety corpus remained unchanged by #591.
 
 Still missing:
 - real restricted qualification/evidence references;
 - real locale-review qualification references for required locales;
-- approved safety manifest bound to the exact candidate SHA/fingerprint and full 59-case/10-tuple coverage.
+- approved safety manifest bound to `fd3e4a53543e515100b493acc63c99cc9e8464ce` and the exact fingerprint/full 59-case/10-tuple coverage.
 
 ### P5-6B — CNDP / consent / processor / residency
 
@@ -151,20 +178,20 @@ Still missing:
 
 Still missing for the actual pilot deployment:
 - exact runtime/database/cache/email/export/provider topology and countries/regions;
-- approved patient notice and consent;
+- approved deployment-specific patient notice and consent;
 - applicable CNDP health-data processing evidence;
 - foreign-transfer basis/evidence for every actual destination;
 - account-specific processor/DPA/subprocessor/retention/deletion/no-training/privacy/security evidence;
-- restricted residency manifest bound to the exact release SHA.
+- restricted residency manifest bound to `fd3e4a53543e515100b493acc63c99cc9e8464ce`.
 
 ### P5-6 success proof
 
 All three fail-closed audits must PASS against the same approved candidate SHA:
 
 ```bash
-python manage.py audit_pilot_consent_governance --require-approved --expected-source-commit-sha <candidate_sha>
-python manage.py audit_pilot_data_residency --manifest /restricted/iamina/pilot-residency.json --require-approved --expected-source-commit-sha <candidate_sha>
-python manage.py audit_safety_corpus_review --manifest /restricted/iamina/safety-review-manifest.json --require-approved --expected-source-commit-sha <candidate_sha>
+python manage.py audit_pilot_consent_governance --require-approved --expected-source-commit-sha fd3e4a53543e515100b493acc63c99cc9e8464ce
+python manage.py audit_pilot_data_residency --manifest /restricted/iamina/pilot-residency.json --require-approved --expected-source-commit-sha fd3e4a53543e515100b493acc63c99cc9e8464ce
+python manage.py audit_safety_corpus_review --manifest /restricted/iamina/safety-review-manifest.json --require-approved --expected-source-commit-sha fd3e4a53543e515100b493acc63c99cc9e8464ce
 ```
 
 Then and only then: explicit human release decision.
@@ -296,8 +323,8 @@ Closed does not imply legal/CNDP authorization, real-device proof, real-patient 
 
 # 9. Execution order
 
-1. **P5-6A #318:** obtain real restricted qualification references + exact-SHA safety manifest.
-2. **P5-6B #320:** freeze actual deployment topology and collect CNDP/consent/processor/residency evidence.
+1. **P5-6A #318:** obtain real restricted qualification references + exact-SHA safety manifest for `fd3e4a53543e515100b493acc63c99cc9e8464ce`.
+2. **P5-6B #320:** freeze actual deployment topology and collect CNDP/consent/processor/residency evidence for the same candidate.
 3. Run the three exact-SHA fail-closed audits.
 4. Human release decision.
 5. Controlled PWA pilot.
@@ -322,9 +349,10 @@ Parallel work allowed only when it cannot perturb or delay the frozen release ca
 ## Current canonical snapshot
 
 - repo: `hraaaaf/IAMINA-MVP`
-- audited base: `main@3e04c1d1423a4a39ab9ccc85b4b9a75b2dfb27ac`
+- frozen P5-6 candidate: `fd3e4a53543e515100b493acc63c99cc9e8464ce`
+- candidate proof: PR #591; exact-head #4145/#3719; post-merge #4148/#3722; signed merge
 - active program: P5 Pilot Readiness
 - progress: **4/9 = 44.4%**
-- current blocker: **P5-6A #318 + P5-6B #320**
+- current blocker: **P5-6A #318 + P5-6B #320 external restricted/deployment evidence**
 - release posture: **NOT_RELEASE_AUTHORIZED**
-- next exact action: obtain/retain real restricted evidence for #318 and deployment-specific compliance evidence for #320, then run the three exact-SHA approved audits.
+- next exact action: obtain/retain real restricted evidence for #318 and deployment-specific compliance evidence for #320, bind both manifests to `fd3e4a53543e515100b493acc63c99cc9e8464ce`, then run the three exact-SHA approved audits.
