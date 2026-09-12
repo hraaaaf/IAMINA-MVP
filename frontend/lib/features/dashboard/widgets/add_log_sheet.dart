@@ -479,7 +479,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
         label: Text('${l10n.journalAddMeal} · ${l10n.journalOptional}'),
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(48),
-          alignment: AlignmentDirectional.centerStart,
+          alignment: AlignmentDirectional.center,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
