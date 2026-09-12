@@ -1,5 +1,6 @@
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
+import 'package:amina/features/journal/add_log_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -8,20 +9,33 @@ import 'package:provider/provider.dart';
 
 AppDatabase _openDb() => AppDatabase(NativeDatabase.memory());
 
+Widget _providers(AppDatabase db, Widget child) {
+  return MultiProvider(
+    providers: [
+      Provider<AppDatabase>.value(value: db),
+      Provider<PatientProfileData?>.value(value: null),
+    ],
+    child: child,
+  );
+}
+
 Widget _sheet(AppDatabase db, {bool isPage = false}) {
   return MaterialApp(
     locale: const Locale('fr'),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: Scaffold(
-      body: MultiProvider(
-        providers: [
-          Provider<AppDatabase>.value(value: db),
-          Provider<PatientProfileData?>.value(value: null),
-        ],
-        child: AddLogSheet(isPage: isPage),
-      ),
+      body: _providers(db, AddLogSheet(isPage: isPage)),
     ),
+  );
+}
+
+Widget _screen(AppDatabase db) {
+  return MaterialApp(
+    locale: const Locale('fr'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: _providers(db, const AddLogScreen()),
   );
 }
 
@@ -83,6 +97,26 @@ void main() {
     expect(find.text('Nouvelle mesure'), findsNothing);
     expect(find.byKey(const Key('glucose-glass-card')), findsOneWidget);
     expect(find.byKey(const Key('glucose-unit')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('page content stays close beneath the canonical header', (
+    tester,
+  ) async {
+    _viewport(tester, const Size(390, 844));
+    await tester.pumpWidget(_screen(db));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nouvelle mesure'), findsOneWidget);
+    final subtitle = find.text('Notez simplement ce qui vient de se passer.');
+    expect(subtitle, findsOneWidget);
+
+    final subtitleBottom = tester.getBottomLeft(subtitle).dy;
+    final glucoseTop = tester
+        .getTopLeft(find.byKey(const Key('glucose-glass-card')))
+        .dy;
+    expect(glucoseTop - subtitleBottom, lessThan(90));
+    expect(glucoseTop, lessThan(210));
     expect(tester.takeException(), isNull);
   });
 
