@@ -1,116 +1,330 @@
-# IAmina — Roadmap
+# IAmina — Canonical Roadmap
 
-> **Last updated:** 2026-09-12 — Gate A Secure Core remains certified at 10.0/10. P4-FRUGAL PRE-PILOT is closed 10/10. **P5-1 Morocco linguistic certification is CLOSED** via #579/#515 with retained exact-main v8 packet #34683056185 on `2d18428a0c59a18c82a1c0dfb410469f17f81e04`, artifact #10295285314 and explicit human approval of the five Morocco lanes. P5-2 real-camera Arabic OCR evidence is closed via #517 with a negative qualification result: Tesseract `ara` 2/6 Arabic normalized exact and 2/6 numeric exact; no local Arabic full-document primary qualifies. P5-3 native TTS real-device evidence remains a human-device gate and is non-blocking for the PWA packaging engineering lane unless the selected pilot scope requires that acoustic lane. P5-4 remains split: **P5-4A PWA pilot packaging engineering is CLOSED_WITH_BOUNDARIES** via #561/#569 and `docs/assessments/2026-09-11-p5-4a-pwa-pilot-packaging-closeout.md`; **P5-4B native Android/iOS signing/device alignment remains deferred**. The P5-4A evidence retains persistent `sharedIndexedDb`, strict offline reopen, deterministic release discovery/cache rollover, rejected-candidate last-known-good preservation, healthy waiting/activation, correct new-release bundle bytes and no origin-storage clearing. Controlled pilot URL and physical target-browser/device installation remain external/human boundaries. P5-5 retained synthetic/non-patient end-to-end rehearsal is CLOSED via #552/#553 with exact-main post-merge rehearsal #34573137446 and CI #34573137452 green on `88b78e036ce3494dfe37921e70e064fbfdabd6bb`; artifact #10188573954 retained `PASS_WITH_BOUNDARIES`. **P5-6 is ACTIVE / BLOCKED_EXTERNAL / CANDIDATE_REFROZEN** at `a25ec4dd1118784c8968588bab035dca4d0f71b6` after the 2026-09-12 qualified-human safety review and runtime cutover #585; post-merge CI #4110 and migration drift #3693 are green. The exact enabled safety corpus is 59 cases / 10 technical parity tuples with fingerprint `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`. #318 still lacks real restricted qualification/evidence references and an approved exact-SHA manifest; #320 remains blocked on CNDP/processor/residency evidence. No real-patient authorization is claimed. Dashboard global responsive recertification has clean exact-head visual proof in run #34535253185: 9/9 required captures are decoded-pixel distinct and manually reviewed, with model UX/UI score 9.1/10. **Pilot Readiness is 4/9 = 44.4%**; retained MENA arithmetic remains 32/38 pending separate reconciliation. No Vercel deployment is authorized by this roadmap.
+> **Authority:** this is the single canonical forward tracker for IAMINA. If an issue, PR body, handover, assessment, AGENTS note, architecture note or historical phase document conflicts with this file on current status, priority or next work, **this file wins**. Historical documents remain evidence only.
 >
-> **Authority:** this file is the single **forward** tracker. Detailed implementation history belongs in git, merged PRs, ADRs, assessments and architecture documents.
+> **Global audit:** 2026-09-12, against `main@3e04c1d1423a4a39ab9ccc85b4b9a75b2dfb27ac`, all currently open GitHub issues/PRs, the previous roadmap, `AGENTS.md` and `docs/TECHDEBT.md`.
+>
+> **Release posture:** `NOT_RELEASE_AUTHORIZED`. No Vercel deployment is authorized by this roadmap.
 
 ## North star
 
-Ship a **safe, measurable MENA diabetes companion** to one founder-selected pilot cohort, then use retention, safety and payer evidence to decide whether IAmina deserves expansion.
+Ship one safe, measurable Morocco/MENA diabetes-companion PWA pilot, collect real evidence, then make an explicit go/no-go decision before broader rollout or a second disease capsule.
 
-IAmina's intended product moat is **evidence-qualified longitudinal companion intelligence and proactive follow-up**, not a generic chatbot, not a virtual doctor and not autonomous treatment optimization.
+## Non-negotiable product boundaries
 
-## Product constraints
-
-- One live condition: diabetes.
-- MENA rollout is country-by-country and locale-by-locale.
-- French, Modern Standard Arabic and English are baseline languages.
-- Dialects require explicit selection, native review and safety parity.
-- Location may suggest settings; it never silently determines language, consent, emergency resources or clinical behavior.
-- IAmina is a **patient companion**, not a physician, diagnostic system, prescribing system or medical-consultation replacement.
-- IAmina may observe, compare, explain and propose only bounded non-prescriptive next steps; the qualified clinician remains the medical decision authority.
-- Deterministic clinical and safety logic decides; generative models may narrate only approved structured output.
-- No diagnosis, differential diagnosis, prescription, dose calculation, treatment optimization/change or autonomous medical instruction.
-- No second disease module before the retention gate passes.
-- **Pilot delivery is PWA-first.** Native Android/iOS signing, provisioning and native device-update certification are deferred alignment work and do not block the PWA pilot unless the native lane is explicitly activated.
-
-Canonical companion authority: `docs/COMPANION_INTELLIGENCE_CONTRACT.md`.
-Canonical PWA-first release strategy: `docs/P5_PWA_FIRST_RELEASE_STRATEGY.md`.
+- Diabetes is the only live condition.
+- IAMINA is a patient companion, not a physician replacement.
+- Deterministic clinical/safety logic is authoritative; generative models may only narrate approved bounded output.
+- No diagnosis, prescription, dose calculation, treatment optimization/change or autonomous medical instruction.
+- Language/dialect enablement requires explicit safety parity; location never silently determines language or emergency jurisdiction.
+- Pilot delivery is **PWA-first**. Native Android/iOS is deferred unless explicitly activated.
+- Engineering proof, human approval, legal/CNDP approval and real-patient authorization are separate gates.
 
 ---
 
-# Progress dashboard
+# 1. Executive status
 
-| Workstream | Progress | Status | Evidence |
-|---|---:|---|---|
-| Gate A — Secure Core engineering certification | 10.0/10 | ✅ Certified | Original rubric: `docs/assessments/2026-08-14-gate-a-secure-core-certification.md`; issue #30 remediation: `docs/assessments/2026-08-14-security-30-history-rewrite-certification.md`; legacy #8 reconciled/closed 2026-08-26 |
-| P0 historical foundations | 100% | ✅ Merged | P0-A, P0-B, P0-C and migration drift |
-| P0 product truthfulness | 100% | ✅ Closed | PRs #39–#43 |
-| P0 agent governance | 100% | ✅ Closed | PR #63; Builder → Reviewer → Release Certifier protocol |
-| P0 visual UX remediation | 100% | ✅ Closed | P0-UX-6 through P2-UX-14; PRs #53–#66 |
-| UX visual rebase | 100% | ✅ Closed | UX-0–11; UX-11 reference parity 9.8/10; PR #110 |
-| Dashboard P7 — responsive convergence | 100% | ✅ Closed | PR #306; exact head `0775b9fd…`; CI #2751 + drift #2563 + UI #312 + P7 cert #7 + Chrome #289 green; merge `446c2763…`; P7 closeout `docs/assessments/2026-08-17-dashboard-p7-responsive-convergence-closeout.md`. Global responsive recertification 2026-09-10: run #34535253185 SUCCESS on exact visual head `38e23b3…`, 9/9 decoded-pixel-distinct captures manually reviewed at 390×844 / 768×1024 / 1280×900, model UX/UI score 9.1/10; evidence `docs/assessments/2026-09-10-dashboard-global-certification-closeout.md`. |
-| Journal metabolic-event redesign | 100% | ✅ Closed | P0-JOURNAL-1/2 + P1-JOURNAL-3/4/5/6/7 + P2-JOURNAL-8/9; PRs #67–#77 |
-| P0-MENA-1 — outbound AI/data-egress contract | 100% | ✅ Merged | PRs #10–#15 |
-| Canonical Clinical Data Layer & Privacy v1 | Runtime merged | ✅ Parallel maintenance foundation | PR #481 merge `bd84d147…`; exact-head CI #3424 + drift #3237 + Pulper #17 rerun green; residual universal free-form/raw-media de-identification remains TD-001; no MENA arithmetic change |
-| P0-MENA-2 — locale + safety contract | 63% | 🟡 Human review attested; restricted exact-SHA evidence pending | English baseline 16/16 certified; P5-1/#515 Morocco linguistic gate CLOSED; #318 records qualified-clinical review attestation, merged Darija runtime cutover #585, owner safety/parity approval, 59-case exact corpus and 10 technical parity tuples. Remaining blocker is the real restricted qualification/evidence references + approved exact-SHA manifest; no reviewer qualification is inferred from attestation. |
-| P0-MENA-3 — sovereign authentication migration | 100% | ✅ Merged | PR #17 |
-| P0-MENA-4 — multimodal provider benchmark | 29% | 🟡 BLOCKED_EXTERNAL / HUMAN EVIDENCE | #319: Groq GPT-OSS primary conversational candidate frozen; P5-2/#517 real-camera bounded Tesseract `ara` evidence FAIL (2/6 Arabic, 2/6 numeric); no local Arabic full-document primary qualifies; native TTS/device evidence remains a human gate |
-| P4-FRUGAL PRE-PILOT | 100% | ✅ 10/10 closed | #422 closed; FRUG-0…9 pre-pilot evidence boundary retained; no real-pilot economics claim |
-| P5-PILOT — Pilot Readiness | 4/9 = 44.4% | 🟡 Active / PWA-first | #514; P5-0 CLOSED; **P5-1 CLOSED via #579/#515 with exact-main v8 packet #34683056185 and closeout `docs/assessments/2026-09-12-p5-1-mena-linguistic-certification-closeout.md`**; P5-2 CLOSED; P5-5 CLOSED; P5-3/#518 remains a human-device gate; **P5-4A engineering is CLOSED_WITH_BOUNDARIES via #561/#569**, while P5-4B native Android/iOS alignment remains deferred; **P5-6 candidate is explicitly re-frozen at `a25ec4dd…` after #585 with post-merge #4110/#3693 green, but remains BLOCKED_EXTERNAL on #318 restricted evidence and #320 CNDP/processor/residency**. No real-patient authorization. P5-4 remains open because its deferred native sub-lot is not closed. |
-| Pilot safety/compliance active scope | Human safety cutover merged; external release approval pending | 🟠 BLOCKED_EXTERNAL | P5-1 linguistic prerequisite is closed. P5-6 frozen candidate `a25ec4dd…` has exact safety corpus fingerprint `823d109b…7e5`; #318 still needs real restricted qualification/evidence references + approved manifest, and #320 still needs CNDP/processor/residency release evidence. This does not change the retained MENA numerator and is not real-patient approval. |
-| Companion intelligence / proactivity | P0 foundation + Clinical Twin + proactive lifecycle + P2-COMPANION-0..8 + P3/P4 convergence | ✅ Closed through current convergence closeout | PR #507 current Companion controlled synthetic audit 9.3/10; these lanes do not alter MENA arithmetic |
-| CGM-GW-V1 — Dexcom + Libre ingestion gateway | 100% | ✅ Closed | Runtime PR #276 exact head `706225a4…`; exact-head CI #2568 + drift #2380 green; merge `f8a4ce7f…`; post-merge CI #2569 + drift #2381 green; closeout `docs/assessments/2026-08-16-cgm-gateway-v1-closeout.md` |
-| CGM-GW-V1.1 — LinX provenance via external bridge | 100% | ✅ Closed | Runtime PR #281 exact head `da7b2079…`; exact-head CI #2589 + drift #2401 green; merge `8eaadc36…`; post-merge CI #2590 + drift #2402 green; qualification `docs/assessments/2026-08-16-cgm-gateway-v1-1-linx-qualification.md` |
-| CGM-GW-V2 — Product Wiring | 100% | ✅ Closed | Runtime PR #285 merge `8231be71…`; exact-head CI #2652 + drift #2464 + UI #265 + Chrome #230 green; post-merge CI #2653 + drift #2465 + UI #266 + Chrome #231 green; closeout `docs/assessments/2026-08-16-cgm-gateway-v2-closeout.md`; real-device proof remains a separate external gate |
-| CGM-GW-V2.1 — Premium How to use | 100% | ✅ Closed | Runtime PR #294 merge `d6318790…`; exact-head CI #2684 + drift #2496 + UI #289 + Chrome #254 green; post-merge CI #2685 + Chrome #255 green; final dialog score 9.6/10; closeout `docs/assessments/2026-08-17-cgm-v2-1-how-to-use.md`; live physical-sensor proof remains a separate external gate |
-
-**MENA critical-path completion (rebased active scope): 32 of 38 retained explicit MENA tasks closed, approximately 84.2%.**
-
-Rebaseline arithmetic: the prior canonical denominator was 41 with 32 closed. The active roadmap removed exactly three unresolved external tasks from the denominator: one independent qualified-clinical-human gate (#318) and two release-compliance outcomes grouped under #320. No task is added to the MENA numerator by closing P5-1 in the separate Pilot Readiness tracker. Therefore the retained metric remains `32/38 ≈ 84.2%` until a dedicated MENA arithmetic reconciliation is performed.
-
-`CLOSED_GRAY` means **not pursued in the active engineering roadmap**. It does not mean clinically approved, CNDP-authorized, legally compliant, processor-approved, residency-approved, or cleared for real-patient production. P5-6 explicitly reopens whatever real-patient release requirements are actually necessary before a patient pilot. Reopening those gates under P5-6 does not retroactively add them to the retained 32/38 MENA denominator.
-
-Gate A is an engineering certification over already-counted foundations and therefore does **not** change the MENA critical-path numerator. Canonical Clinical Data Layer & Privacy v1, clinical-intelligence, Dashboard, Journal, UX quality, P4-FRUGAL and the closed CGM gateway integration lanes are tracked separately unless a retained pilot gate explicitly depends on them.
+| Area | Canonical status | Forward consequence |
+|---|---|---|
+| Gate A Secure Core | ✅ CLOSED / certified 10.0/10 | maintenance only |
+| Historical P0 foundations / product truthfulness / agent governance | ✅ CLOSED | no reopening without new defect/evidence |
+| Global UX / Dashboard / Journal | ✅ CLOSED | regressions only; new UX work must be a new scoped lot |
+| Clinical Data Layer & Privacy foundation | ✅ MERGED | residual privacy debt remains under TD-001 |
+| Companion intelligence / proactive lifecycle | ✅ CLOSED through current convergence | issue hygiene may remain, but no active forward feature lot |
+| CGM gateway V1 / V1.1 / V2 / V2.1 | ✅ CLOSED | real physical-sensor evidence remains external if later claimed |
+| P4-FRUGAL PRE-PILOT | ✅ CLOSED 10/10 | real pilot economics belong to P5-7 |
+| MENA retained tracker | 🟡 32/38 = 84.2% retained | do not use as release authorization |
+| P5 Pilot Readiness | 🟡 4/9 = 44.4% | active program |
+| Real-patient release | 🟠 BLOCKED_EXTERNAL | current critical path |
 
 ---
 
-# P5-PILOT — Pilot Readiness — ACTIVE / PWA-FIRST
+# 2. One critical path
 
-Canonical tracker: #514.
-Canonical delivery strategy: `docs/P5_PWA_FIRST_RELEASE_STRATEGY.md`.
+There is only one current release-critical sequence:
 
-## Goal
+**P5-6 restricted safety/compliance evidence → three exact-SHA approved audits → explicit human release decision → controlled PWA pilot → P5-7 observed evidence → P5-8 go/no-go.**
 
-Move IAMINA from certified pre-pilot engineering to one safe, measurable founder-selected MENA pilot cohort using the PWA as the immediate delivery surface, with hard separation between engineering proof, human evidence and real-patient authorization. Native Android/iOS alignment follows later and does not block the PWA pilot unless explicitly activated.
-
-## Lots
-
-1. **P5-0 — Security reconciliation — CLOSED.** Reconcile stale security bookkeeping with #30 reachable-history certification; legacy #8 closed on 2026-08-26 with the owner-attestation boundary preserved.
-2. **P5-1 — MENA linguistic certification — CLOSED / HUMAN_APPROVED / EXACT_MAIN_V8_PACKET_RETAINED.** #579 merged the final v8 contract. Exact-main `2d18428a0c59a18c82a1c0dfb410469f17f81e04` retained post-merge CI #34682380854, migration #34682380897, exact-main packet #34683056185, artifact #10295285314, digest `sha256:496d2aae06ab3f9cea934f93d37a461a228433aca91dff9f67cad04e040a751b`, machine PASS 10/10 and explicit human approval of all five Morocco lanes in closed issue #515. Closeout: `docs/assessments/2026-09-12-p5-1-mena-linguistic-certification-closeout.md`.
-3. **P5-2 — Arabic OCR real-world evidence — CLOSED.** #517 closed 2026-08-27 after controlled non-patient real-camera evidence returned Tesseract `ara` FAIL: 2/6 Arabic normalized exact and 2/6 numeric exact. Numeric floor unchanged; local full-document Arabic remains `UNQUALIFIED`. Closeout: `docs/assessments/2026-08-27-p5-2-arabic-real-camera-ocr-closeout.md`.
-4. **P5-3 — Native TTS real-device evidence — ACTIVE / HUMAN_DEVICE_GATE / NON-BLOCKING FOR PWA PACKAGING.** Engineering listening packet merged via #525; current iOS + Android acoustic listening evidence remains required under #518 for any claimed native TTS adequacy. This gate does not force native app packaging into the immediate PWA-first delivery path unless the PWA pilot explicitly depends on that acoustic lane.
-5. **P5-4 — Pilot packaging — ACTIVE / PWA_FIRST SPLIT.** **P5-4A PWA pilot packaging engineering is CLOSED_WITH_BOUNDARIES.** #561 accepted exact head `0204d858…` with CI #34630798331, packaging #34630798336, persistence #34630798330, offline #34630798385 and update/recovery #34630798429 all green; retained artifact #10275967534 (`sha256:d8999113e4c82771062bbb97163e6f821adc8ad53ee7e4974c079070e09eeb65`) recorded PASS with `sharedIndexedDb`, rejected-candidate preservation, correct v3 bundle bytes, offline recovery and no origin-storage clearing. #561 merged as `main@d2df37fc…` with exact-main CI #34634309275 green. #569 merged the canonical runbook as `main@35ab9c5c…`; exact-main CI #34634913387 green. Closeout: `docs/assessments/2026-09-11-p5-4a-pwa-pilot-packaging-closeout.md`. **P5-4B native Android/iOS alignment** remains deferred and non-blocking for the PWA pilot; controlled pilot URL and physical target-browser/device install evidence remain external boundaries.
-6. **P5-5 — End-to-end pilot rehearsal — CLOSED.** Clean current-main replay merged via #552. Exact-main post-merge proof: `88b78e036ce3494dfe37921e70e064fbfdabd6bb`, rehearsal #34573137446 SUCCESS, CI #34573137452 SUCCESS, artifact #10188573954, digest `sha256:4e2b923ea948d99702bac4b37d65e9d9f1f471ca0bfdb1022bab2a9deb317139`, retained result `PASS_WITH_BOUNDARIES`. Machine PASS lanes: onboarding, data/import, Companion, CGM, deterministic local report PDF, offline/sync, backup/restore and degraded modes. Arabic local full-document OCR primary remains `QUALIFIED_NEGATIVE`; update/physical install, physical Android device, live physical CGM sensor and production signing/distribution remain explicit `EXTERNAL` boundaries. Canonical closeout: `docs/assessments/2026-09-11-p5-5-end-to-end-pilot-rehearsal-closeout.md` merged via #553.
-7. **P5-6 — Real-patient release gate — ACTIVE / BLOCKED_EXTERNAL / CANDIDATE_REFROZEN.** Candidate `a25ec4dd1118784c8968588bab035dca4d0f71b6` is deliberately re-frozen after qualified-human safety review and runtime cutover #585. Exact-head #4108/#3692 and post-merge #4110/#3693 are green; merge signature verified. Exact enabled safety corpus: 59 cases / 10 technical parity tuples / fingerprint `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`. #318 records clinical-human review attestation, merged runtime decisions, owner safety/parity approval and English-lane validation, but remains open because real restricted qualification/evidence references and an approved exact-SHA safety manifest are still missing. #320 remains blocked on deployment-specific CNDP/legal/processor/residency evidence. The fail-closed commands `audit_pilot_consent_governance --require-approved`, `audit_pilot_data_residency --require-approved` and `audit_safety_corpus_review --require-approved` must all pass against the frozen SHA before any release decision. Release posture remains `NOT_RELEASE_AUTHORIZED`. Canonical gate: `docs/P5_6_REAL_PATIENT_RELEASE_GATE.md`.
-8. **P5-7 — Observed pilot evidence.** Real MAU, retention, safety incidents, reliability, LLM route/cost, storage/egress, satisfaction and support burden. Synthetic evidence must remain labelled synthetic.
-9. **P5-8 — Go / No-Go.** Decide whether IAMINA merits continued investment/expansion. No second disease capsule before this gate passes.
-
-Current critical path:
-
-`#318 real restricted qualification/evidence references + exact-SHA safety manifest + #320 CNDP/processor/residency approval for a25ec4dd… → 3 exact-SHA approved audits → explicit human release decision → P5-7 observed pilot evidence → P5-8 go/no-go`
-
-P5-3 human-device evidence remains required only if the selected pilot scope activates native TTS/acoustic claims.
-
-Completed PWA engineering lane:
-
-`P5-4A PWA packaging/update/recovery — CLOSED_WITH_BOUNDARIES`
-
-Deferred native alignment lane:
-
-`P5-4B Android/iOS signing + provisioning + native real-device install/update evidence` before any native pilot or public native release claim.
-
-CI-FRUGAL #442 is parallel infrastructure work and must not delay this path.
-
-**Pilot Readiness progress: 4/9 = 44.4%.** Closed whole lots are P5-0, P5-1, P5-2 and P5-5. P5-4A is a closed sub-lot, but P5-4 remains split/open because P5-4B is deferred; therefore the P5 numerator does not include P5-4. P5-6 remains blocked on restricted/external release evidence. This metric is separate from the retained 32/38 MENA numerator.
+Everything else is either closed, deferred, parallel non-blocking work, technical debt, or repository hygiene.
 
 ---
 
-# Gate A — Secure Core — CERTIFIED 10.0/10
+# 3. P5 Pilot Readiness
 
-Gate A uses ten equally weighted, independently checkable secure-core dimensions. All ten now pass: API/session safety; deterministic clinical authority; high-risk refusal parity; emergency truthfulness; governed AI/data egress; minimization/DLP/raw-media consent; sovereign authentication; PostgreSQL/migration integrity; current-tree SAST/anti-bypass/secret hygiene; and reachable Git-history hygiene. Issue #30 removed `.claude/settings.local.json` from all reachable branch history and was fresh-clone verified after the force-update.
+## P5-0 — Security reconciliation
 
-**Engineering certification:** **10.0/10**.  
-**Reachable-history security blocker:** **CLOSED** by issue #30 remediation. Gate A still does not waive requirements that remain in active scope.
+**Status:** ✅ CLOSED.
 
-Canonical evidence: `docs/assessments/2026-08-14-gate-a-secure-core-certification.md`.
+Legacy security bookkeeping was reconciled with the reachable-history certification. Do not reopen absent new evidence.
+
+## P5-1 — Morocco linguistic certification
+
+**Status:** ✅ CLOSED / HUMAN_APPROVED / retained exact-main evidence.
+
+Verified retained evidence:
+- PR #579 merged;
+- exact-main evidence SHA `2d18428a0c59a18c82a1c0dfb410469f17f81e04`;
+- post-merge CI #34682380854 SUCCESS;
+- migration #34682380897 SUCCESS;
+- packet #34683056185 SUCCESS;
+- artifact #10295285314;
+- human approval recorded in closed issue #515.
+
+## P5-2 — Arabic OCR real-world evidence
+
+**Status:** ✅ CLOSED with negative qualification result.
+
+Real-camera Tesseract `ara` evidence failed the required quality floor. No local Arabic full-document primary is qualified. This is a valid closed result, not an unfinished engineering task.
+
+## P5-3 — Native TTS real-device evidence
+
+**Status:** 🟡 DEFERRED / HUMAN_DEVICE_GATE.
+
+Issue: #518.
+
+Required only before a native Android/iOS pilot, public native distribution, or an explicit native-TTS adequacy claim. It **does not block the current PWA pilot**.
+
+## P5-4 — Pilot packaging
+
+**Status:** 🟡 SPLIT.
+
+### P5-4A — PWA packaging engineering
+
+**Status:** ✅ CLOSED_WITH_BOUNDARIES.
+
+Verified engineering evidence includes persistence, strict offline reopen, release discovery, rejected-candidate last-known-good preservation, healthy update activation, correct new bundle bytes and no origin-storage clearing. Closeout is retained in the repository.
+
+External boundaries still not claimed by P5-4A: controlled pilot URL, physical target-browser installation, production deployment and real-patient authorization.
+
+### P5-4B — Native Android/iOS alignment
+
+**Status:** 🟡 DEFERRED.
+
+Future native-only work:
+- Android permanent signing identity/artifacts;
+- Apple signing/provisioning/distribution;
+- physical native-device clean install/update/recovery evidence.
+
+Not blocking PWA-first pilot.
+
+## P5-5 — End-to-end pilot rehearsal
+
+**Status:** ✅ CLOSED / `PASS_WITH_BOUNDARIES`.
+
+Verified retained evidence:
+- main `88b78e036ce3494dfe37921e70e064fbfdabd6bb`;
+- rehearsal #34573137446 SUCCESS;
+- CI #34573137452 SUCCESS;
+- artifact #10188573954.
+
+Synthetic/non-patient engineering proof only. Physical-device, live-sensor, production-signing and real-patient claims remain external.
+
+## P5-6 — Real-patient release gate
+
+**Status:** 🟠 ACTIVE / BLOCKED_EXTERNAL / HIGHEST PRIORITY.
+
+Frozen safety candidate:
+- runtime safety SHA: `a25ec4dd1118784c8968588bab035dca4d0f71b6`;
+- safety corpus: 59 exact cases;
+- parity coverage: 10 technical tuples;
+- fingerprint: `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`;
+- exact-head and post-merge CI/migration evidence from #585 is green.
+
+### P5-6A — Safety qualification manifest
+
+**Tracker:** #318.
+
+Already verified:
+- qualified-human review is owner-attested;
+- challenged Darija runtime rows were adjudicated;
+- runtime cutover merged;
+- safety owner/parity approval is attested.
+
+Still missing:
+- real restricted qualification/evidence references;
+- real locale-review qualification references for required locales;
+- approved safety manifest bound to the exact candidate SHA/fingerprint and full 59-case/10-tuple coverage.
+
+### P5-6B — CNDP / consent / processor / residency
+
+**Tracker:** #320.
+
+Still missing for the actual pilot deployment:
+- exact runtime/database/cache/email/export/provider topology and countries/regions;
+- approved patient notice and consent;
+- applicable CNDP health-data processing evidence;
+- foreign-transfer basis/evidence for every actual destination;
+- account-specific processor/DPA/subprocessor/retention/deletion/no-training/privacy/security evidence;
+- restricted residency manifest bound to the exact release SHA.
+
+### P5-6 success proof
+
+All three fail-closed audits must PASS against the same approved candidate SHA:
+
+```bash
+python manage.py audit_pilot_consent_governance --require-approved --expected-source-commit-sha <candidate_sha>
+python manage.py audit_pilot_data_residency --manifest /restricted/iamina/pilot-residency.json --require-approved --expected-source-commit-sha <candidate_sha>
+python manage.py audit_safety_corpus_review --manifest /restricted/iamina/safety-review-manifest.json --require-approved --expected-source-commit-sha <candidate_sha>
+```
+
+Then and only then: explicit human release decision.
+
+## P5-7 — Observed pilot evidence
+
+**Status:** ⚪ PENDING P5-6.
+
+Collect real, clearly labelled pilot evidence:
+- MAU/activation/retention;
+- safety incidents and escalation behavior;
+- reliability/offline/update failures;
+- LLM route/cost and zero-model rate;
+- storage/egress cost;
+- satisfaction and support burden;
+- product engagement and clinically safe usefulness signals.
+
+Synthetic evidence cannot be promoted to P5-7 proof.
+
+## P5-8 — Go / No-Go
+
+**Status:** ⚪ PENDING P5-7.
+
+Decision gate on continued investment/expansion. No second disease capsule before this gate passes.
+
+**Pilot Readiness:** **4/9 = 44.4%**. Closed whole lots: P5-0, P5-1, P5-2, P5-5.
+
+---
+
+# 4. MENA / multimodal residuals
+
+## P0-MENA-2 — Locale + safety contract
+
+**Status:** 🟡 PARTIALLY OPEN only through P5-6A restricted qualification evidence.
+
+Do not run a separate parallel chantier for this. Its remaining release-relevant work is absorbed into #318/P5-6A.
+
+## P0-MENA-4 — Multimodal provider benchmark
+
+**Status:** 🟡 DEFERRED / EXTERNAL-HUMAN EVIDENCE, issue #319.
+
+Current retained conclusions:
+- Groq + `openai/gpt-oss-120b` remains the conversational candidate;
+- no local Arabic full-document OCR primary qualifies under the current strict floor;
+- native TTS real-device evidence is deferred to P5-3;
+- STT remains deferred by owner decision.
+
+This is **not** on the current PWA pilot critical path unless a specific modality is reintroduced into pilot scope.
+
+**Retained MENA metric:** 32/38 = 84.2%. This historical/rebased metric is informational and must not be treated as a release gate.
+
+---
+
+# 5. Parallel engineering debt
+
+These are real unresolved compromises from `docs/TECHDEBT.md`, but they are **not automatically allowed to pre-empt P5-6**.
+
+| Debt | Priority | Canonical disposition |
+|---|---|---|
+| TD-001 free-form/raw-media de-identification not universal | Critical if external unstructured patient documents are enabled | keep patient-document cloud OCR fail-closed; qualify local OCR/de-ID before widening |
+| TD-002 Firebase legacy auth | Critical target architecture | reconcile against actual current runtime before starting a migration lot; previous roadmap says P0-MENA-3 merged, so this debt text may be stale |
+| TD-003 provider timeout/circuit-breaker/failure UX | High before relevant pilot exposure | audit current outbound boundary; open focused lot only for reproduced gaps |
+| TD-004 stale CI/SAST exclusions | Medium-high | verify and remove only reproduced stale paths |
+| TD-005 coarse locale/safety model | Critical historically | largely superseded by P5-1/P5-6; reconcile/remove stale remainder |
+| TD-006 safety orthographic variants | Critical historically | reconcile against current 59-case reviewed corpus before any new work |
+| TD-007 monitored emergency operational routing | Critical before pilot if operational routing is claimed/required | must be explicitly resolved or dispositioned inside P5-6 operating model |
+| TD-008 frontend integration/accessibility | Medium/high before broader release | parallel quality lot after release blockers unless pilot-critical defect reproduced |
+| TD-009 privileged-role MFA | High before staff/professional scale | deferred unless pilot includes privileged staff surface |
+| TD-010 observability retention lifecycle | High before broader production | include in P5-6B if pilot observability stores patient-linked data; otherwise later |
+| TD-011 stale demo seed data | Low-medium | post-critical-path maintenance |
+| TD-012 large Flutter surfaces/silent catches | Medium | opportunistic focused refactors after pilot-critical work |
+
+**Required cleanup:** `docs/TECHDEBT.md` must later be reconciled so resolved/superseded items do not masquerade as active debt.
+
+---
+
+# 6. CI / cost optimization
+
+## CI-FRUGAL-2 — Chrome certification runner time
+
+**Status:** 🟢 PARALLEL / NON-BLOCKING, issue #442.
+
+Goal: reduce runner time without reducing the 42 real-Chrome visual proofs. This may proceed only if it does not delay P5-6 or weaken visual certification.
+
+---
+
+# 7. Repository hygiene audit
+
+Open GitHub items are **not** automatically active roadmap work.
+
+The 2026-09-12 audit found open items that are clearly historical, superseded, evidence-only or inconsistent with current roadmap state. They must be reconciled separately, not counted as active chantiers:
+
+- old Companion certification result issues (#333, #334, #353, #356, #357): evidence records, not forward work;
+- old OCR benchmark result issues (#372, #385, #386): evidence records, not forward work;
+- #137 P2-PROACTIVE: roadmap says current Companion/proactivity convergence is closed; verify merge/evidence then close or rewrite as a new defect;
+- #125 UX-12: roadmap says global UX remediation/rebase is closed; verify whether any acceptance criterion truly remains before retaining it open;
+- #201 LOGIN-8C logo decode fix: verify current main behavior; close if already integrated/superseded;
+- #203 Companion localhost/AuthService integration: reproduce on current architecture before treating as active; old Vercel-review context alone is insufficient;
+- PR #551 P5-5 replay: superseded by merged #552/#553 closeout;
+- PR #573 P5-6 exact-SHA binding: current main already contains later P5-6 candidate/refreeze work; reconcile and close if superseded;
+- PR #302 and older open PRs (#182, #207, #221, #222, #223, #138, #171): verify against merged current truth; none may be treated as active merely because GitHub still says open.
+
+**Rule:** stale issue/PR hygiene never changes product status without code + tests + retained evidence.
+
+---
+
+# 8. Closed workstreams retained as history, not backlog
+
+The following are considered closed unless a new reproduced regression opens a new scoped lot:
+
+- Gate A Secure Core;
+- P0 foundations;
+- product truthfulness;
+- agent governance;
+- global visual remediation / UX rebase;
+- Dashboard responsive convergence and global responsive recertification;
+- Journal metabolic-event redesign;
+- outbound AI/data-egress foundation;
+- sovereign-auth migration work already recorded as merged in prior roadmap;
+- Companion intelligence / clinical twin / proactive lifecycle / current convergence;
+- CGM gateway V1, V1.1, V2, V2.1;
+- P4-FRUGAL PRE-PILOT;
+- P5-0, P5-1, P5-2, P5-5;
+- P5-4A PWA packaging engineering.
+
+Closed does not imply legal/CNDP authorization, real-device proof, real-patient authorization or broader production approval unless that exact evidence is explicitly retained.
+
+---
+
+# 9. Execution order
+
+1. **P5-6A #318:** obtain real restricted qualification references + exact-SHA safety manifest.
+2. **P5-6B #320:** freeze actual deployment topology and collect CNDP/consent/processor/residency evidence.
+3. Run the three exact-SHA fail-closed audits.
+4. Human release decision.
+5. Controlled PWA pilot.
+6. P5-7 real observed pilot evidence.
+7. P5-8 go/no-go.
+8. Only then promote deferred native/modality/scale work according to evidence.
+
+Parallel work allowed only when it cannot perturb or delay the frozen release candidate and its evidence chain.
+
+---
+
+# 10. Canonical governance
+
+- `docs/ROADMAP.md` owns **all forward status, priority, sequencing and completion percentages**.
+- `docs/TECHDEBT.md` owns unresolved compromises only; it is not a competing roadmap.
+- `AGENTS.md` owns execution rules only; any embedded status list is subordinate to this roadmap.
+- Issues and PRs are execution/evidence containers, not canonical portfolio status.
+- Assessments, handovers and ADRs are evidence/history, not forward authority.
+- Never declare a lot closed from an issue title, branch name, PR state or old score alone. Require observable retained evidence.
+- No Vercel deployment without explicit owner authorization.
+
+## Current canonical snapshot
+
+- repo: `hraaaaf/IAMINA-MVP`
+- audited base: `main@3e04c1d1423a4a39ab9ccc85b4b9a75b2dfb27ac`
+- active program: P5 Pilot Readiness
+- progress: **4/9 = 44.4%**
+- current blocker: **P5-6A #318 + P5-6B #320**
+- release posture: **NOT_RELEASE_AUTHORIZED**
+- next exact action: obtain/retain real restricted evidence for #318 and deployment-specific compliance evidence for #320, then run the three exact-SHA approved audits.
