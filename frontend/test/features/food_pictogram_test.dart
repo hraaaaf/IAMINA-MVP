@@ -34,6 +34,7 @@ void main() {
       expect(_foodArtwork(), findsNothing);
 
       final semantics = tester.getSemantics(find.byType(FoodPictogram));
+      // Bind the assertion to the catalog label so spelling/localization stays canonical.
       expect(semantics.label, contains(item.plainLabelFor(locale)));
     },
   );
