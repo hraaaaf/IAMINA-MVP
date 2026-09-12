@@ -49,6 +49,12 @@ void main() {
     expect(find.byKey(const Key('save-log-glass-bar')), findsOneWidget);
     expect(find.byType(BackdropFilter), findsNWidgets(2));
 
+    final ambientBackdrop = tester.widget<DecoratedBox>(
+      find.byKey(const Key('add-log-ambient-backdrop')),
+    );
+    final ambientDecoration = ambientBackdrop.decoration as BoxDecoration;
+    expect(ambientDecoration.gradient, isA<LinearGradient>());
+
     final glucose = tester.widget<TextField>(
       find.byKey(const Key('glucose-input')),
     );
