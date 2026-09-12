@@ -1,22 +1,27 @@
 # P5-1 Morocco linguistic remediation
 
 ## Trigger
-Exact-main v3 run #34654142883 on `db7531d8ee862eb9a3b0249fbee8abecd31ea27c` was machine-green but produced Morocco-lane wording unsuitable for final retained human certification. v4 remained too permissive. v5 correctly rejected `بسهولة / b sahla` and exposed ambiguous “simple/easy” semantics in the synthetic prompts. v6 corrected those prompts and made 4/5 Morocco lanes pass, but the MSA lane still reintroduced `بسهولة` despite a no-pressure/no-blame request.
+Exact-main v7 packet reached retained human review. The human reviewer accepted the overall direction but corrected two Morocco Darija formulations.
 
-## Retained evidence
-- v3 artifact #10284573280, digest `sha256:811b99c22216b49a727e81c38d792bc86bfd1bf32928c5d5e382c2a01ae6ad88`
-- v4 artifact #10285243803, digest `sha256:91a56923bdc0f4f26c4305176c000a6004e657c5668fd3a223657531ed6870a3`
-- v5 failed artifact #10285505607, digest `sha256:1643808915ef56cd482e6649973a861547adaaced0199402538e4dd288998ab6`
-- v6 failed run #34655996828, artifact #10285670650, digest `sha256:d954b4aa262528ef52bccee0f2b5f39afa9043608b0f5be5fcebb337b16e271d`
-- all synthetic only, no patient data
+## Retained exact-main v7 evidence
+- run #34659978472 SUCCESS on `de5faf68e2139a9842b3b6bead20e0a1a78e4b87`
+- artifact #10287096700
+- digest `sha256:348763fdcfbb2d3b39440a9bdcf3c5cf088f3ee62b51550941e662e561e23cf7`
+- synthetic only, no patient data
 
-## v7 targeted policy
-Before native/competent human review:
-- retain the v6 Morocco prompts using “sans pression / بلا ضغط / bla daght” instead of ambiguous “simple/easy” semantics;
-- retain gender-neutral/non-patronizing current-Morocco checks;
-- retain Moroccan register checks for Darija Arabic/Latin and phrase-level FR↔Darija;
-- add an explicit MSA requirement preserving “without pressure or blame” semantics and forbidding `سهل/سهلة/سهولة/بسهولة` or equivalent easy/easily wording;
-- Gulf lanes remain deferred expansion lanes and do not inherit current-Morocco tone gates;
-- exact-SHA binding, one bounded provider call, and retained human review remain mandatory.
+## Retained human findings
+- Darija Arabic: prefer `ما تقلقش، غدا تقدر ترجع بلا ضغط.` over `ما تشدش، غدا تقدر ترجع بلا ضغط.`
+- Darija Latin: prefer direct second-person wording such as `Mashi mouchkil, ghdda t9der terja3 bla daght.` over first-person-plural `...nrj3...`
 
-This document records engineering rationale only. It is not linguistic, clinical, CNDP, legal, provider, deployment, or real-patient approval.
+## v8 remediation
+- keep the v7 MSA/no-pressure/safety constraints;
+- reject `ما تشدش` in the Darija Arabic lane;
+- reject `nrj3` in the Darija Latin lane;
+- require explicit second-person ability-to-resume wording (`t9der/t9dar` + return verb) in Darija Latin;
+- remove `nrje3` from the Darija Latin synthetic source prompt so the benchmark no longer seeds the rejected form;
+- bind the retained report identity explicitly to dataset `iamina-p5-1-current-sha-linguistic-review-v8`;
+- keep exact-SHA binding and one bounded provider call.
+
+The first v8 exact-head run #34660826264 failed only the Darija Latin retained-human-feedback check and also exposed a report identity bug (`dataset_id` still v7). CI and migration on that SHA were green. Both root causes are corrected in the next exact-head attempt.
+
+This document records engineering rationale and retained human feedback only. It is not clinical, CNDP, legal, provider, deployment, or real-patient approval.
