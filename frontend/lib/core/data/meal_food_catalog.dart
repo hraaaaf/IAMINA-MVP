@@ -16,15 +16,13 @@ class MealFoodItem {
     this.aliases = const [],
   ]);
 
-  String plainLabelFor(Locale locale) {
+  String labelFor(Locale locale) {
     if (locale.languageCode == 'ar') return ar;
     if (locale.languageCode == 'en') return en;
     return fr;
   }
 
   String get visual => _mealFoodVisualById[id] ?? '🍽️';
-
-  String labelFor(Locale locale) => '$visual ${plainLabelFor(locale)}';
 
   String get searchable => <String>[id, fr, en, ar, ...aliases].join(' ');
 }
