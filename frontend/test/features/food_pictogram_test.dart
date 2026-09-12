@@ -5,6 +5,11 @@ import 'package:amina/features/journal/widgets/food_pictogram_painter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+Finder _foodArtwork() => find.byWidgetPredicate(
+  (widget) => widget is CustomPaint && widget.painter is FoodPictogramPainter,
+  description: 'FoodPictogram CustomPaint',
+);
+
 void main() {
   testWidgets(
     'long-tail food keeps deterministic asset path and safe emoji fallback',
@@ -21,7 +26,7 @@ void main() {
       final widget = tester.widget<FoodPictogram>(find.byType(FoodPictogram));
       expect(widget.assetPath, 'assets/food/pictograms/v1/rfissa.webp');
       expect(find.text(item.visual), findsOneWidget);
-      expect(find.byType(CustomPaint), findsNothing);
+      expect(_foodArtwork(), findsNothing);
 
       final semantics = tester.getSemantics(find.byType(FoodPictogram));
       expect(semantics.label, contains('Rfissa'));
@@ -42,8 +47,8 @@ void main() {
 
     expect(hasCodeFoodPictogram('harira'), isTrue);
     expect(find.text(item.visual), findsNothing);
-    expect(find.byType(CustomPaint), findsOneWidget);
-    final painter = tester.widget<CustomPaint>(find.byType(CustomPaint)).painter;
+    expect(_foodArtwork(), findsOneWidget);
+    final painter = tester.widget<CustomPaint>(_foodArtwork()).painter;
     expect(painter, isA<FoodPictogramPainter>());
 
     final semantics = tester.getSemantics(find.byType(FoodPictogram));
