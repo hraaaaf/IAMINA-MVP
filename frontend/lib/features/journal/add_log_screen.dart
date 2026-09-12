@@ -18,6 +18,7 @@ class AddLogScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 600;
     final tablet = width >= 600 && width < 1000;
     final desktop = width >= 1000;
     final effectiveFocus = desktop && focus == AddLogFocus.none
@@ -43,11 +44,16 @@ class AddLogScreen extends StatelessWidget {
         child: SizedBox.expand(
           child: Align(
             alignment: Alignment.topCenter,
-            child: SizedBox(
+            child: ConstrainedBox(
               key: const Key('add-log-responsive-column'),
-              width: tablet ? 640 : double.infinity,
-              height: double.infinity,
-              child: AddLogSheet(isPage: true, focus: effectiveFocus),
+              constraints: BoxConstraints(
+                maxWidth: tablet ? 640 : (desktop ? 1120 : double.infinity),
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: compact ? double.infinity : null,
+                child: AddLogSheet(isPage: true, focus: effectiveFocus),
+              ),
             ),
           ),
         ),
