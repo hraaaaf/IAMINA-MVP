@@ -2,6 +2,7 @@
 //
 // Verifies the versioned consent gate renders correctly and responds to user actions.
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/auth/consent_screen.dart';
@@ -16,53 +17,39 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:mocktail/mocktail.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
-
-import '../../mocks.dart';
 
 AppDatabase _openDb() => AppDatabase(NativeDatabase.memory());
 
-class _MockChopperClient extends Mock implements ChopperClient {}
+final class _TestApiClient extends ApiClient {
+  _TestApiClient(this._testClient) : super(baseUrl: 'http://localhost:8000');
 
-class _MockResponse extends Mock implements Response<dynamic> {}
+  final ChopperClient _testClient;
 
-class _FakeConsentEvidenceStore extends Fake implements ConsentEvidenceStore {
+  @override
+  ChopperClient get client => _testClient;
+}
+
+class _FakeConsentEvidenceStore extends ConsentEvidenceStore {
   ConsentNoticeClaim? written;
+
+  @override
+  Future<ConsentNoticeClaim?> readCurrent() async => written;
+
+  @override
+  Future<bool> hasCurrentEvidence() async => written != null;
 
   @override
   Future<void> write(ConsentNoticeClaim claim) async {
     written = claim;
   }
-}
-
-class _FakeConsentService extends Fake implements ConsentService {
-  bool _declined = false;
-  bool _verified = false;
 
   @override
-  bool get hasConsent => _verified;
-
-  @override
-  bool get hasDeclinedLocally => _declined;
-
-  @override
-  void declineLocally() => _declined = true;
-
-  @override
-  void markVerifiedConsent() {
-    _verified = true;
-    _declined = false;
+  Future<void> clear() async {
+    written = null;
   }
-
-  @override
-  void addListener(VoidCallback listener) {}
-
-  @override
-  void removeListener(VoidCallback listener) {}
-
-  @override
-  void dispose() {}
 }
 
 Widget _makeApp({
@@ -108,48 +95,64 @@ Widget _makeApp({
 
 void main() {
   late AppDatabase db;
-  late MockApiClient mockApi;
-  late _MockChopperClient mockChopper;
-  late _MockResponse mockResponse;
-  late _FakeConsentService consentService;
+  late ChopperClient chopper;
+  late _TestApiClient apiClient;
+  late ConsentService consentService;
   late _FakeConsentEvidenceStore evidenceStore;
+  late ConsentNoticeClaim claim;
+  late http.Request? capturedRequest;
+  late bool responseSuccess;
+  Completer<http.Response>? responseCompleter;
 
-  setUpAll(() {
-    registerFallbackValue(Uri());
-  });
-
-  setUp(() {
-    db = _openDb();
-    mockApi = MockApiClient();
-    mockChopper = _MockChopperClient();
-    mockResponse = _MockResponse();
-    consentService = _FakeConsentService();
-    evidenceStore = _FakeConsentEvidenceStore();
-
-    final claim = ConsentNoticeContract.forLocale('fr');
-    when(() => mockApi.client).thenReturn(mockChopper);
-    when(() => mockResponse.isSuccessful).thenReturn(true);
-    when(() => mockResponse.body).thenReturn({
+  http.Response successResponse() => http.Response(
+    jsonEncode({
       'ai_consent_given': true,
       'notice_version': claim.version,
       'notice_hash': claim.noticeHash,
       'locale': claim.locale,
-    });
-    when(
-      () => mockChopper.post(
-        any(),
-        body: any(named: 'body'),
-      ),
-    ).thenAnswer((_) async => mockResponse);
+    }),
+    200,
+    headers: const {'content-type': 'application/json'},
+  );
+
+  setUp(() {
+    db = _openDb();
+    claim = ConsentNoticeContract.forLocale('fr');
+    capturedRequest = null;
+    responseSuccess = true;
+    responseCompleter = null;
+    consentService = ConsentService();
+    evidenceStore = _FakeConsentEvidenceStore();
+
+    chopper = ChopperClient(
+      baseUrl: Uri.parse('http://localhost:8000'),
+      client: MockClient((request) async {
+        capturedRequest = request;
+        final pending = responseCompleter;
+        if (pending != null) return pending.future;
+        if (!responseSuccess) {
+          return http.Response(
+            jsonEncode({'detail': 'rejected'}),
+            422,
+            headers: const {'content-type': 'application/json'},
+          );
+        }
+        return successResponse();
+      }),
+      converter: const JsonConverter(),
+    );
+    apiClient = _TestApiClient(chopper);
   });
 
   tearDown(() async {
+    consentService.dispose();
+    chopper.dispose();
     await db.close();
   });
 
   Widget app() => _makeApp(
     db: db,
-    apiClient: mockApi,
+    apiClient: apiClient,
     consentService: consentService,
     evidenceStore: evidenceStore,
   );
@@ -213,25 +216,27 @@ void main() {
     await tester.tap(acceptBtn);
     await tester.pumpAndSettle();
 
-    verify(
-      () => mockChopper.post(
-        Uri.parse('/api/v1/account/consent'),
-        body: any(named: 'body'),
-      ),
-    ).called(1);
-    expect(evidenceStore.written?.locale, 'fr');
+    expect(capturedRequest, isNotNull);
+    expect(capturedRequest!.method, 'POST');
+    expect(capturedRequest!.url.path, '/api/v1/account/consent');
+    expect(
+      jsonDecode(capturedRequest!.body),
+      {
+        'notice_version': claim.version,
+        'notice_hash': claim.noticeHash,
+        'locale': claim.locale,
+      },
+    );
+    expect(evidenceStore.written?.version, claim.version);
+    expect(evidenceStore.written?.noticeHash, claim.noticeHash);
+    expect(evidenceStore.written?.locale, claim.locale);
     expect(consentService.hasConsent, isTrue);
     expect(find.text('Dashboard'), findsOneWidget);
   });
 
   testWidgets('loading indicator shown while accepting', (tester) async {
-    final completer = Completer<Response<dynamic>>();
-    when(
-      () => mockChopper.post(
-        any(),
-        body: any(named: 'body'),
-      ),
-    ).thenAnswer((_) => completer.future);
+    final completer = Completer<http.Response>();
+    responseCompleter = completer;
 
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
@@ -243,13 +248,13 @@ void main() {
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    completer.complete(mockResponse);
+    completer.complete(successResponse());
     await tester.pumpAndSettle();
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
   testWidgets('failed consent response stays fail-closed', (tester) async {
-    when(() => mockResponse.isSuccessful).thenReturn(false);
+    responseSuccess = false;
 
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();

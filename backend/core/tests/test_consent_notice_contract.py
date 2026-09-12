@@ -9,8 +9,8 @@ from ninja.errors import HttpError
 
 from core.api.v1.account import (
     ConsentGrantSchema,
-    give_consent,
     get_consent_status,
+    give_consent,
     withdraw_consent,
 )
 from core.consent_notice import (
