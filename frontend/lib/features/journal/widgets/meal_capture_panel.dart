@@ -270,13 +270,7 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
                   .toList(growable: false);
 
               if (favorites.isEmpty && recent.isEmpty && habitual.isEmpty) {
-                return Text(
-                  l10n.journalMealSearchEmpty,
-                  style: TextStyle(
-                    color: AminaTheme.textSecondary(context),
-                    fontSize: 11,
-                  ),
-                );
+                return const SizedBox.shrink();
               }
 
               return Column(
