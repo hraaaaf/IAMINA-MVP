@@ -4,6 +4,7 @@ import 'package:amina/features/journal/widgets/food_pictogram.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch2.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Finder _foodArtwork() => find.byWidgetPredicate(
@@ -24,6 +25,7 @@ void main() {
         MaterialApp(
           locale: locale,
           supportedLocales: const <Locale>[locale],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
           home: Scaffold(body: FoodPictogram(item: item)),
         ),
       );
