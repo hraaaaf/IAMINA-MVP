@@ -172,7 +172,29 @@ Map<String, Object> _entry(MealFoodItem item, int index) => <String, Object>{
   ].join(' '),
 };
 
-void main() {
+int? _requestedBatch(List<String> args, int batchCount) {
+  final batchArgs = args.where((arg) => arg.startsWith('--batch=')).toList();
+  if (batchArgs.length > 1) {
+    throw ArgumentError('Use at most one --batch=N selector.');
+  }
+  if (batchArgs.isEmpty) return null;
+
+  final raw = batchArgs.single.substring('--batch='.length);
+  final batch = int.tryParse(raw);
+  if (batch == null || batch < 1 || batch > batchCount) {
+    throw ArgumentError.value(raw, '--batch', 'Expected 1..$batchCount');
+  }
+  return batch;
+}
+
+void main(List<String> args) {
+  final unsupported = args
+      .where((arg) => !arg.startsWith('--batch='))
+      .toList(growable: false);
+  if (unsupported.isNotEmpty) {
+    throw ArgumentError('Unsupported arguments: ${unsupported.join(', ')}');
+  }
+
   final ids = mealFoodCatalog.map((item) => item.id).toSet();
   if (ids.length != mealFoodCatalog.length) {
     throw StateError(
@@ -186,16 +208,29 @@ void main() {
   }
 
   final ordered = _orderedItems();
-  final manifest = <String, Object>{
+  final batchCount = (ordered.length / _batchSize).ceil();
+  final requestedBatch = _requestedBatch(args, batchCount);
+  final indexed = <({int index, MealFoodItem item})>[
+    for (var index = 0; index < ordered.length; index++)
+      (index: index, item: ordered[index]),
+  ];
+  final selected = requestedBatch == null
+      ? indexed
+      : indexed
+          .where((entry) => (entry.index ~/ _batchSize) + 1 == requestedBatch)
+          .toList(growable: false);
+
+  final manifest = <String, Object?>{
     'style': _style,
     'catalog_version': mealFoodCatalogVersion,
-    'count': mealFoodCatalog.length,
+    'catalog_count': mealFoodCatalog.length,
+    'selected_count': selected.length,
     'batch_size': _batchSize,
     'launch_count': _launchPriorityIds.length,
-    'batch_count': (mealFoodCatalog.length / _batchSize).ceil(),
+    'batch_count': batchCount,
+    'selected_batch': requestedBatch,
     'items': <Map<String, Object>>[
-      for (var index = 0; index < ordered.length; index++)
-        _entry(ordered[index], index),
+      for (final entry in selected) _entry(entry.item, entry.index),
     ],
   };
   print(const JsonEncoder.withIndent('  ').convert(manifest));
