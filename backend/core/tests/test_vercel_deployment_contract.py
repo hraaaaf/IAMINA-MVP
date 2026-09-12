@@ -7,15 +7,20 @@ from pathlib import Path
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
 
-def _import_vercel_settings(database_url: str | None) -> subprocess.CompletedProcess[str]:
+def _import_vercel_settings(
+    database_url: str | None,
+    *,
+    cors_origins: str = "https://iamina-review.vercel.app",
+    csrf_origins: str = "https://iamina-review.vercel.app",
+) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env.update(
         {
             "SECRET_KEY": "test-only-secret-key",
             "DEBUG": "False",
             "ALLOWED_HOSTS": "iamina-certified.vercel.app",
-            "CORS_ALLOWED_ORIGINS": "https://iamina-review.vercel.app",
-            "CSRF_TRUSTED_ORIGINS": "https://iamina-review.vercel.app",
+            "CORS_ALLOWED_ORIGINS": cors_origins,
+            "CSRF_TRUSTED_ORIGINS": csrf_origins,
             "VERCEL": "1",
             "VERCEL_URL": "iamina-certified.vercel.app",
         }
@@ -55,6 +60,26 @@ def test_vercel_settings_reject_sqlite_database_url():
 
     assert result.returncode != 0
     assert "requires PostgreSQL DATABASE_URL" in result.stderr
+
+
+def test_vercel_settings_reject_non_https_cors_origin():
+    result = _import_vercel_settings(
+        "postgresql://user:pass@127.0.0.1:5432/iamina",
+        cors_origins="http://iamina-review.vercel.app",
+    )
+
+    assert result.returncode != 0
+    assert "CORS_ALLOWED_ORIGINS must contain only valid HTTPS origins" in result.stderr
+
+
+def test_vercel_settings_reject_non_https_csrf_origin():
+    result = _import_vercel_settings(
+        "postgresql://user:pass@127.0.0.1:5432/iamina",
+        csrf_origins="http://localhost:8000",
+    )
+
+    assert result.returncode != 0
+    assert "CSRF_TRUSTED_ORIGINS must contain only valid HTTPS origins" in result.stderr
 
 
 def test_vercel_settings_accept_postgres_without_connecting():
