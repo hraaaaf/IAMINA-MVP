@@ -23,7 +23,6 @@ from core.consent_notice import (
 )
 from core.models import AIConsentReceipt, BasePatientProfile
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
