@@ -59,10 +59,42 @@ void main() {
     );
   }
 
+  test('catalog v3 is broad, unique and Morocco + GCC aware', () {
+    expect(mealFoodCatalogVersion, '3.0.0-morocco-gcc');
+    expect(mealFoodCatalog.length, greaterThanOrEqualTo(300));
+
+    final ids = mealFoodCatalog.map((item) => item.id).toSet();
+    expect(ids.length, mealFoodCatalog.length, reason: 'Duplicate food IDs');
+
+    final morocco = mealFoodsForRegion(MealFoodRegion.morocco);
+    final gulf = mealFoodsForRegion(MealFoodRegion.gulf);
+    final universal = mealFoodsForRegion(MealFoodRegion.universal);
+    expect(morocco.length, greaterThanOrEqualTo(40));
+    expect(gulf.length, greaterThanOrEqualTo(60));
+    expect(universal.length, greaterThanOrEqualTo(180));
+
+    expect(mealFoodById('couscous_7_vegetables'), isNotNull);
+    expect(mealFoodById('rfissa'), isNotNull);
+    expect(mealFoodById('machboos_chicken'), isNotNull);
+    expect(mealFoodById('harees'), isNotNull);
+    expect(mealFoodById('balaleet'), isNotNull);
+    expect(mealFoodById('karak_tea'), isNotNull);
+  });
+
+  test('regional and multilingual search ranks exact concepts first', () {
+    expect(searchMealFoods('rfissa').first.id, 'rfissa');
+    expect(searchMealFoods('machboos').first.id, startsWith('machboos_'));
+    expect(searchMealFoods('بيض').first.id, 'egg');
+    expect(searchMealFoods('oeuf').first.id, 'egg');
+    expect(searchMealFoods('kabsa').map((item) => item.id), contains('kabsa_chicken'));
+    expect(searchMealFoods('شاورما').map((item) => item.id), contains('shawarma_chicken'));
+  });
+
   test('every food has a non-generic visual cue and keeps a text label', () {
     for (final item in mealFoodCatalog) {
       expect(item.visual, isNot('🍽️'), reason: 'Missing visual for ${item.id}');
       expect(item.visual.trim(), isNotEmpty, reason: 'Empty visual for ${item.id}');
+      expect(item.pictogramKey, item.id);
       for (final locale in const <Locale>[
         Locale('fr'),
         Locale('en'),
