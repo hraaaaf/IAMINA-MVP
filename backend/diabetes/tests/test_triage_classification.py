@@ -97,8 +97,9 @@ def test_ideation_classee_classe2(msg):
 GLYCEMIC_MESSAGES = [
     "7assfiya b3da ghadi ntih",
     "rani ghadi ntih",
-    "ydiya kayrj fou w ma kan7ml",
-    "fqdt l3ql",
+    "ydiya kantra33ad w ma kan7mlch",
+    "fiya doukha",
+    "dekht",
     "je vais m'evanouir",
     "j'ai des convulsions",
     "غادي نطيح",
