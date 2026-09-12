@@ -40,12 +40,12 @@ class AddLogScreen extends StatelessWidget {
         ),
         legacyTopExtent: 0,
         contentTopInset: 12,
-        child: Center(
-          child: ConstrainedBox(
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: SizedBox(
             key: const Key('add-log-responsive-column'),
-            constraints: BoxConstraints(
-              maxWidth: tablet ? 640 : double.infinity,
-            ),
+            width: tablet ? 640 : double.infinity,
+            height: double.infinity,
             child: AddLogSheet(isPage: true, focus: effectiveFocus),
           ),
         ),
