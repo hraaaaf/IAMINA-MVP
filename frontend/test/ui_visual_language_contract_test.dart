@@ -129,7 +129,7 @@ void main() {
     expect(browserWorkflow, contains('"1280 900 false"'));
     expect(
       browserWorkflow,
-      contains(r'test "$total" -eq 42'.replaceAll(r'\"', '"')),
+      contains(r'test "$total" -eq 45'.replaceAll(r'\"', '"')),
     );
   });
 }
