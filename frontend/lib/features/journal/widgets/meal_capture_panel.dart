@@ -3,12 +3,15 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/data/meal_food_catalog.dart';
+import '../../../core/data/meal_food_query.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/drift/database.dart';
 import '../../../data/models/ai_models.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/api_client.dart';
 import '../../../services/meal_food_favorites_repository.dart';
+import 'food_category_rail.dart';
+import 'food_pictogram.dart';
 
 typedef MealPhotoRecognition = Future<MealAnalysisResult?> Function();
 
@@ -36,6 +39,7 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
   final _searchController = TextEditingController();
   late final MealFoodFavoritesRepository _favoritesRepository;
   String _query = '';
+  MealFoodCategory? _category;
   bool _recognizing = false;
   List<MealFoodItem> _photoCandidates = const <MealFoodItem>[];
   final Set<String> _proposalSelection = <String>{};
@@ -91,7 +95,13 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
     final added = next.add(id);
     if (!added) next.remove(id);
     widget.onChanged(next.toList(growable: false));
-    if (added && _query.isNotEmpty) _clearSearch();
+    if (added) {
+      _searchController.clear();
+      setState(() {
+        _query = '';
+        _category = null;
+      });
+    }
   }
 
   Future<MealAnalysisResult?> _pickAndRecognize() async {
@@ -169,7 +179,14 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
         .whereType<MealFoodItem>()
         .toList(growable: false);
     final queryReady = foldMealText(_query).length >= 2;
-    final results = queryReady ? searchMealFoods(_query) : const <MealFoodItem>[];
+    final browsingCategory = _category != null;
+    final browseResults = queryMealFoods(
+      MealFoodQuery(
+        text: _query,
+        category: _category,
+        limit: 24,
+      ),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -203,7 +220,10 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
                 .map(
                   (item) => InputChip(
                     key: Key('meal-selected-${item.id}'),
-                    label: Text(item.labelFor(locale)),
+                    avatar: ExcludeSemantics(
+                      child: Text(item.visual, style: const TextStyle(fontSize: 15)),
+                    ),
+                    label: Text(item.plainLabelFor(locale)),
                     onDeleted: () => _toggleItem(item.id),
                   ),
                 )
@@ -240,6 +260,13 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
             ),
           ),
         ),
+        if (selected.isEmpty) ...<Widget>[
+          const SizedBox(height: 10),
+          FoodCategoryRail(
+            selected: _category,
+            onChanged: (value) => setState(() => _category = value),
+          ),
+        ],
         const SizedBox(height: 10),
         if (_query.isNotEmpty && !queryReady)
           Text(
@@ -249,8 +276,12 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
               fontSize: 11,
             ),
           )
-        else if (queryReady)
-          _searchResults(results: results, locale: locale, l10n: l10n)
+        else if (queryReady || browsingCategory)
+          _searchResults(
+            results: browseResults,
+            locale: locale,
+            l10n: l10n,
+          )
         else if (selected.isEmpty)
           FutureBuilder<List<LogEntryData>>(
             future: _historyFuture,
@@ -368,7 +399,10 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
                       .map(
                         (item) => FilterChip(
                           key: Key('meal-photo-candidate-${item.id}'),
-                          label: Text(item.labelFor(locale)),
+                          avatar: ExcludeSemantics(
+                            child: Text(item.visual),
+                          ),
+                          label: Text(item.plainLabelFor(locale)),
                           selected: _proposalSelection.contains(item.id),
                           onSelected: (value) => setState(() {
                             if (value) {
@@ -525,42 +559,54 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
       child: InkWell(
         onTap: () => _toggleItem(item.id),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 58),
+          constraints: const BoxConstraints(minHeight: 64),
           child: Padding(
             padding: const EdgeInsetsDirectional.only(
-              start: 12,
+              start: 10,
               end: 6,
               top: 7,
               bottom: 7,
             ),
             child: Row(
               children: <Widget>[
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AminaTheme.subtleBg(context),
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.restaurant_rounded,
-                    size: 18,
-                    color: selected ? accent : AminaTheme.textSecondary(context),
+                ExcludeSemantics(
+                  child: FoodPictogram(
+                    item: item,
+                    size: 44,
+                    selected: selected,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    item.labelFor(locale),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AminaTheme.textPrimary(context),
-                      fontSize: 13,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                      height: 1.25,
-                    ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        item.plainLabelFor(locale),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AminaTheme.textPrimary(context),
+                          fontSize: 13,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                          height: 1.25,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        mealFoodCategoryLabel(item.category, locale),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AminaTheme.textSecondary(context),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
