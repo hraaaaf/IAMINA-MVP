@@ -24,11 +24,11 @@ NOTICE_FIELD_ORDER = (
 )
 
 NOTICE_HASHES = {
-    "fr": "6da07cc7cb585b7690e181563984806163ceb667682203afa39575b3221e5cbd",
-    "en": "111609419beaef233463bc8d91a691468ab16ffe80b8f817ba51e8d0667cc65c",
-    "ar": "dc7978b3b20548e1327c03110adb9fb092a9af27b0eab35151143f89897b897",
+    "fr": "2fc950fc5dadb4add4dc8ad344c48126f2b81bbfa18654762d3bc879f15459cb",
+    "en": "2673ef01615fff6fde9fb88bbeb33dec87da3a0c417d4bb854c7fa34867bd706",
+    "ar": "2351b0e1ea0930ba874d9f2242d3fc22fc38da9c43adc571942a0f94d0a57b0d",
     # The current Darija UI renders the same Arabic consent copy.
-    "ar-MA": "dc7978b3b20548e1327c03110adb9fb092a9af27b0eab35151143f89897b897",
+    "ar-MA": "2351b0e1ea0930ba874d9f2242d3fc22fc38da9c43adc571942a0f94d0a57b0d",
 }
 
 
