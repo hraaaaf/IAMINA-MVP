@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -124,6 +126,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
     final unit = profile?.unitPreference ?? 'mg/dL';
     final l10n = AppLocalizations.of(context)!;
     final isDesktop = MediaQuery.sizeOf(context).width >= 1000;
+    final isDark = AminaTheme.isDark(context);
 
     final savedReceipt = _savedReceipt;
     if (savedReceipt != null) {
@@ -142,8 +145,23 @@ class _AddLogSheetState extends State<AddLogSheet> {
         if (didPop) return;
         if (await _confirmLeave(l10n) && mounted) _close();
       },
-      child: ColoredBox(
-        color: AminaTheme.bg(context),
+      child: DecoratedBox(
+        key: const Key('add-log-ambient-backdrop'),
+        decoration: BoxDecoration(
+          color: AminaTheme.bg(context),
+          gradient: isDark
+              ? null
+              : const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[
+                    Color(0xFFF8FBFA),
+                    Color(0xFFF0F7F5),
+                    Color(0xFFF7FAF9),
+                  ],
+                  stops: <double>[0, 0.62, 1],
+                ),
+        ),
         child: SafeArea(
           child: Stack(
             children: <Widget>[
@@ -155,8 +173,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
-                        _header(l10n),
-                        const SizedBox(height: 22),
+                        if (!widget.isPage) ...<Widget>[
+                          _header(l10n),
+                          const SizedBox(height: 22),
+                        ],
                         if (isDesktop)
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,9 +270,9 @@ class _AddLogSheetState extends State<AddLogSheet> {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: <Widget>[
       _glucoseCard(l10n, unit),
-      const SizedBox(height: 22),
+      const SizedBox(height: 18),
       _measurementContext(l10n),
-      const SizedBox(height: 22),
+      const SizedBox(height: 18),
       _mealCapture(l10n, canUsePhotoRecognition, profile),
     ],
   );
@@ -260,31 +280,58 @@ class _AddLogSheetState extends State<AddLogSheet> {
   Widget _glucoseCard(AppLocalizations l10n, String unit) {
     final mgdl = _mgdlGlucose(unit);
     final isLow = mgdl != null && mgdl < 70;
+    final isDark = AminaTheme.isDark(context);
+    final radius = BorderRadius.circular(22);
+    final glassSurface = isDark
+        ? AminaTheme.darkCardElevated.withValues(alpha: 0.78)
+        : Colors.white.withValues(alpha: 0.68);
+    final glassBorder = isDark
+        ? AminaTheme.dark400.withValues(alpha: 0.22)
+        : Colors.white.withValues(alpha: 0.92);
+    final fieldSurface = isDark
+        ? AminaTheme.dark700.withValues(alpha: 0.54)
+        : Colors.white.withValues(alpha: 0.78);
 
     return Semantics(
       container: true,
       label: l10n.journalGlucose,
       child: Container(
-        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: isLow ? const Color(0xFFFFF7ED) : AminaTheme.subtleBg(context),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: isLow
-                ? const Color(0xFFF97316)
-                : AminaTheme.divider(context),
-          ),
+          borderRadius: radius,
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: isLow
+                  ? const Color(0xFFF97316).withValues(alpha: 0.12)
+                  : AminaTheme.teal900.withValues(
+                      alpha: isDark ? 0.16 : 0.10,
+                    ),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            _sectionLabel(l10n.journalGlucose),
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: <Widget>[
-                Expanded(
-                  child: TextField(
+        child: ClipRRect(
+          borderRadius: radius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              key: const Key('glucose-glass-card'),
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 15),
+              decoration: BoxDecoration(
+                color: isLow
+                    ? const Color(0xFFFFF7ED).withValues(alpha: 0.94)
+                    : glassSurface,
+                borderRadius: radius,
+                border: Border.all(
+                  color: isLow ? const Color(0xFFF97316) : glassBorder,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  _sectionLabel(l10n.journalGlucose),
+                  const SizedBox(height: 10),
+                  TextField(
                     key: const Key('glucose-input'),
                     controller: _glucoseController,
                     keyboardType: const TextInputType.numberWithOptions(
@@ -295,44 +342,91 @@ class _AddLogSheetState extends State<AddLogSheet> {
                     ],
                     style: TextStyle(
                       color: AminaTheme.textPrimary(context),
-                      fontSize: 48,
+                      fontSize: 44,
                       fontWeight: FontWeight.w800,
+                      height: 1.0,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: '—',
-                      border: InputBorder.none,
+                      suffixIcon: Padding(
+                        padding: const EdgeInsetsDirectional.only(end: 16),
+                        child: Center(
+                          widthFactor: 1,
+                          child: Text(
+                            unit,
+                            key: const Key('glucose-unit'),
+                            style: TextStyle(
+                              color: AminaTheme.textSecondary(context),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                      suffixIconConstraints: const BoxConstraints(
+                        minWidth: 0,
+                        minHeight: 0,
+                      ),
+                      filled: true,
+                      fillColor: isLow
+                          ? Colors.white.withValues(alpha: 0.82)
+                          : fieldSurface,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 13,
+                      ),
                       isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: AminaTheme.divider(context),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: isLow
+                              ? const Color(0xFFF97316).withValues(alpha: 0.48)
+                              : AminaTheme.divider(context),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: isLow
+                              ? const Color(0xFFF97316)
+                              : AminaTheme.accent(context),
+                          width: 1.5,
+                        ),
+                      ),
                     ),
                     onChanged: (_) => setState(() {}),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Text(
-                    unit,
-                    style: TextStyle(
-                      color: AminaTheme.textSecondary(context),
-                      fontWeight: FontWeight.w600,
+                  const SizedBox(height: 9),
+                  if (mgdl == null)
+                    Text(
+                      l10n.journalNoGlucoseAssumption,
+                      style: _glucoseHelperStyle(),
+                    )
+                  else if (isLow)
+                    Text(
+                      l10n.journalLowGlucoseDetected,
+                      style: const TextStyle(
+                        color: Color(0xFFC2410C),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                      ),
+                    )
+                  else
+                    Text(
+                      l10n.journalTargetNotInferred,
+                      style: _glucoseHelperStyle(),
                     ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-            if (mgdl == null)
-              Text(l10n.journalNoGlucoseAssumption, style: _helperStyle())
-            else if (isLow)
-              Text(
-                l10n.journalLowGlucoseDetected,
-                style: const TextStyle(
-                  color: Color(0xFFC2410C),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  height: 1.4,
-                ),
-              )
-            else
-              Text(l10n.journalTargetNotInferred, style: _helperStyle()),
-          ],
+          ),
         ),
       ),
     );
@@ -384,7 +478,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
         icon: const Icon(Icons.restaurant_outlined, size: 18),
         label: Text('${l10n.journalAddMeal} · ${l10n.journalOptional}'),
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(52),
+          minimumSize: const Size.fromHeight(48),
           alignment: AlignmentDirectional.centerStart,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -490,7 +584,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
     icon: const Icon(Icons.tune_rounded, size: 18),
     label: Text(_detailsLabel()),
     style: OutlinedButton.styleFrom(
-      minimumSize: const Size.fromHeight(50),
+      minimumSize: const Size.fromHeight(48),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
   );
@@ -634,6 +728,12 @@ class _AddLogSheetState extends State<AddLogSheet> {
     height: 1.4,
   );
 
+  TextStyle _glucoseHelperStyle() => TextStyle(
+    color: AminaTheme.textSecondary(context),
+    fontSize: 11.5,
+    height: 1.35,
+  );
+
   String _contextLabel(AppLocalizations l10n, String value) => switch (value) {
     'fasting' => l10n.journalContextFasting,
     'pre_meal' => l10n.journalContextPreMeal,
@@ -700,42 +800,74 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
   Widget _saveBar(AppDatabase db, String unit, AppLocalizations l10n) {
     final desktop = MediaQuery.sizeOf(context).width >= 1000;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-      decoration: BoxDecoration(
-        color: AminaTheme.bg(context),
-        border: Border(top: BorderSide(color: AminaTheme.divider(context))),
-      ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1080),
-          child: Align(
-            alignment: desktop
-                ? AlignmentDirectional.centerEnd
-                : AlignmentDirectional.center,
-            child: SizedBox(
-              width: desktop ? 280 : double.infinity,
-              child: FilledButton.icon(
-                key: const Key('save-log-button'),
-                onPressed: _saving || !_hasValidGlucose
-                    ? null
-                    : () => _saveLog(db, unit, l10n),
-                icon: _saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check_rounded),
-                label: Text(
-                  _saving ? l10n.journalSaving : l10n.journalSave,
+    final isDark = AminaTheme.isDark(context);
+    final surface = (isDark ? AminaTheme.darkPaper : Colors.white).withValues(
+      alpha: isDark ? 0.84 : 0.74,
+    );
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          key: const Key('save-log-glass-bar'),
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+          decoration: BoxDecoration(
+            color: surface,
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? AminaTheme.dark600.withValues(alpha: 0.58)
+                    : Colors.white.withValues(alpha: 0.92),
+              ),
+            ),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: AminaTheme.teal900.withValues(
+                  alpha: isDark ? 0.18 : 0.06,
                 ),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(54),
-                  backgroundColor: AminaTheme.teal600,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                blurRadius: 24,
+                offset: const Offset(0, -8),
+              ),
+            ],
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1080),
+              child: Align(
+                alignment: desktop
+                    ? AlignmentDirectional.centerEnd
+                    : AlignmentDirectional.center,
+                child: SizedBox(
+                  width: desktop ? 280 : double.infinity,
+                  child: FilledButton.icon(
+                    key: const Key('save-log-button'),
+                    onPressed: _saving || !_hasValidGlucose
+                        ? null
+                        : () => _saveLog(db, unit, l10n),
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check_rounded),
+                    label: Text(
+                      _saving ? l10n.journalSaving : l10n.journalSave,
+                    ),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(54),
+                      backgroundColor: AminaTheme.teal600,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: isDark
+                          ? AminaTheme.dark600
+                          : AminaTheme.ink200,
+                      disabledForegroundColor: isDark
+                          ? AminaTheme.dark300
+                          : AminaTheme.ink500,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
                   ),
                 ),
               ),
