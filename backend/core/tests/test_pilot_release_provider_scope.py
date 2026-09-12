@@ -1,3 +1,4 @@
+import json
 from datetime import date
 
 import pytest
@@ -70,13 +71,13 @@ def test_release_scope_rejects_unknown_or_local_provider_as_external():
 
 def test_local_only_audit_command_reports_only_release_applicable_blocker(capsys):
     call_command("audit_pilot_consent_governance", "--local-only")
-    output = capsys.readouterr().out
+    payload = json.loads(capsys.readouterr().out)
 
-    assert '"release_mode": "local_only"' in output
-    assert GLOBAL_HEALTH_PROCESSING_BLOCKER in output
-    # Full provider evidence remains visible for audit, but it is not a release blocker.
-    blockers_section = output.split('"blockers":', 1)[1]
-    assert "gemini.contract_dpa" not in blockers_section.split('"non_claim"', 1)[0]
+    assert payload["release_mode"] == "local_only"
+    assert payload["blockers"] == [GLOBAL_HEALTH_PROCESSING_BLOCKER]
+    gemini = next(row for row in payload["processors"] if row["provider"] == "gemini")
+    assert gemini["release_enabled"] is False
+    assert any("gemini.contract_dpa" in item for item in gemini["blockers"])
 
 
 def test_local_only_audit_require_approved_remains_fail_closed():
