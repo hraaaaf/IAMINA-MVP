@@ -3,7 +3,7 @@
 > **Status:** ACTIVE / BLOCKED_EXTERNAL / CANDIDATE_REFROZEN  
 > **Release posture:** `NOT_RELEASE_AUTHORIZED`  
 > **P5-1 prerequisite:** CLOSED / HUMAN_APPROVED / exact-main v8 retained  
-> **Frozen candidate SHA:** `a25ec4dd1118784c8968588bab035dca4d0f71b6`  
+> **Frozen candidate SHA:** `fd3e4a53543e515100b493acc63c99cc9e8464ce`  
 > **Safety corpus:** 59 exact cases / 10 technical parity tuples  
 > **Safety fingerprint:** `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`  
 > **Pilot Readiness arithmetic:** 4/9 = 44.4%  
@@ -16,38 +16,57 @@ Permit real-patient pilot enablement only after one exact frozen release SHA is 
 
 ## Success
 
-P5-6 may move to `CLOSED` only when all of the following are true for frozen candidate `a25ec4dd1118784c8968588bab035dca4d0f71b6`:
+P5-6 may move to `CLOSED` only when all of the following are true for frozen candidate `fd3e4a53543e515100b493acc63c99cc9e8464ce`:
 
 1. #318 has a valid restricted safety-review manifest covering the exact 59-case fingerprint and all 10 parity tuples;
 2. #320 CNDP/legal/processor/residency requirements are satisfied with deployment-specific evidence;
-3. the three fail-closed release audits pass with `--require-approved` and `--expected-source-commit-sha a25ec4dd1118784c8968588bab035dca4d0f71b6`;
-4. residency and safety restricted manifests carry `source_commit_sha = a25ec4dd1118784c8968588bab035dca4d0f71b6`;
-5. retained approved outputs carry `audited_source_commit_sha = a25ec4dd1118784c8968588bab035dca4d0f71b6`;
+3. the three fail-closed release audits pass with `--require-approved` and `--expected-source-commit-sha fd3e4a53543e515100b493acc63c99cc9e8464ce`;
+4. residency and safety restricted manifests carry `source_commit_sha = fd3e4a53543e515100b493acc63c99cc9e8464ce`;
+5. retained approved outputs carry `audited_source_commit_sha = fd3e4a53543e515100b493acc63c99cc9e8464ce`;
 6. a human release decision explicitly authorizes the real-patient pilot.
 
 Anything less remains `NOT_RELEASE_AUTHORIZED`.
 
-## Deliberate candidate re-freeze
+## Deliberate candidate re-freeze after consent-evidence contract
 
-The prior frozen candidate `b560d97763a1a944d4a1a4cdf0e9f73467bfa78a` is superseded. The 2026-09-12 qualified-human review produced explicit Darija safety decisions that required a runtime cutover, so retaining the old SHA would have bound approval to code the reviewer had rejected.
+The prior frozen candidate `a25ec4dd1118784c8968588bab035dca4d0f71b6` is superseded for P5-6 because PR #591 changed runtime consent/release behavior. The freeze is therefore moved explicitly rather than silently drifting with `main`.
 
 The new candidate is:
 
-`a25ec4dd1118784c8968588bab035dca4d0f71b6`
+`fd3e4a53543e515100b493acc63c99cc9e8464ce`
 
 Re-freeze proof:
 
-- runtime review cutover PR #585;
-- PR exact head `2c0ae8e77fd543772c96b283e9e42707f805d49f`;
-- exact-head CI #34697161294 / run #4108 — SUCCESS;
-- exact-head Django migration drift #34697161296 / run #3692 — SUCCESS;
-- merge `main@a25ec4dd1118784c8968588bab035dca4d0f71b6`;
+- PR #591 `P5-6: bind AI consent to exact notice evidence`;
+- exact PR head `b018f724aeaa7b34217cd2810c35e95881332ee1`;
+- exact-head CI run #4145 / workflow run `34708902735` — SUCCESS;
+- exact-head Django migration drift run #3719 / workflow run `34708902710` — SUCCESS;
+- merge `main@fd3e4a53543e515100b493acc63c99cc9e8464ce`;
 - GitHub merge signature — verified/valid;
-- merge tree `7815cda29ce134ab55023c3169f563699debcdd5`;
-- post-merge CI #34697367011 / run #4110 — SUCCESS;
-- post-merge Django migration drift #34697367009 / run #3693 — SUCCESS.
+- merge tree `b206837824cd67f05b541efd59336cb358851f21`;
+- post-merge CI run #4148 / workflow run `34709544750` — SUCCESS;
+- post-merge Django migration drift run #3722 / workflow run `34709544765` — SUCCESS;
+- post-merge P5-5 rehearsal #101, UI geometry #522, UI missing-routes #58 and UI browser screenshot #525 — SUCCESS.
+
+PR #591 changed consent evidence, account consent API, egress/provider release checks, migration/model state, Flutter consent storage/gating, tests and OpenAPI. Its 32-file diff did **not** modify the safety corpus. Therefore the retained safety corpus remains **59 exact cases / 10 parity tuples** with fingerprint `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`.
 
 A later code or runtime change does not silently move this freeze. A documentation-only closeout may move repository `main` without moving the frozen candidate. Any future candidate change requires another explicit re-freeze and re-binding of approval/manifests.
+
+## Consent evidence contract now retained in the frozen candidate
+
+Candidate `fd3e4a53543e515100b493acc63c99cc9e8464ce` now enforces:
+
+- exact consent notice version/hash/locale evidence;
+- legacy timestamp-only consent invalidation and re-consent;
+- server receipt creation for acceptance;
+- withdrawal clearing active proof and revoking granular media grants;
+- central outbound-AI egress verification against current notice proof;
+- consent epoch separation for media grants;
+- Flutter fail-closed behavior when server acceptance fails;
+- local UI gating requiring both Drift consent timestamp and current Secure Storage evidence;
+- local-only release scope excluding disabled external providers while retaining global CNDP health-processing blockers.
+
+Notice version retained by this candidate: `2026-09-12.1`.
 
 ## Qualified-human safety review outcome
 
@@ -60,7 +79,7 @@ The project owner attests that a qualified clinical reviewer completed the 2026-
 - English lane explicitly validated by the user during the same review session;
 - safety-owner/parity behavior explicitly approved by project-owner attestation.
 
-The exact enabled corpus now contains **59 cases** with **10 technical `(locale, channel, input_form)` parity tuples**. The earlier human-summary count of 9 grouped two Arabic-script lanes; the executable schema correctly requires 10.
+The exact enabled corpus contains **59 cases** with **10 technical `(locale, channel, input_form)` parity tuples**.
 
 Exact fingerprint:
 
@@ -68,7 +87,7 @@ Exact fingerprint:
 
 ### Evidence boundary
 
-GitHub does not independently verify reviewer identity or qualifications. The attestation is therefore not a substitute for the manifest's required real opaque evidence and qualification references. Repository issue history contains no manifest-compatible qualification reference that can honestly be invented or inferred.
+GitHub does not independently verify reviewer identity or qualifications. The attestation is not a substitute for the manifest's required real opaque evidence and qualification references.
 
 #318 remains open until the restricted manifest can be populated with real references and passes the exact-SHA audit.
 
@@ -94,17 +113,17 @@ This prerequisite does not satisfy #318 or #320 and does not authorize real-pati
 ```bash
 python manage.py audit_pilot_consent_governance \
   --require-approved \
-  --expected-source-commit-sha a25ec4dd1118784c8968588bab035dca4d0f71b6
+  --expected-source-commit-sha fd3e4a53543e515100b493acc63c99cc9e8464ce
 
 python manage.py audit_pilot_data_residency \
   --manifest /restricted/iamina/pilot-residency.json \
   --require-approved \
-  --expected-source-commit-sha a25ec4dd1118784c8968588bab035dca4d0f71b6
+  --expected-source-commit-sha fd3e4a53543e515100b493acc63c99cc9e8464ce
 
 python manage.py audit_safety_corpus_review \
   --manifest /restricted/iamina/safety-review-manifest.json \
   --require-approved \
-  --expected-source-commit-sha a25ec4dd1118784c8968588bab035dca4d0f71b6
+  --expected-source-commit-sha fd3e4a53543e515100b493acc63c99cc9e8464ce
 ```
 
 Fail-closed behavior retained:
@@ -143,10 +162,10 @@ Still required:
 
 Current state: `OPEN / BLOCKED_EXTERNAL_RELEASE / CANDIDATE_REFROZEN`.
 
-Still required for `a25ec4dd1118784c8968588bab035dca4d0f71b6`:
+Still required for `fd3e4a53543e515100b493acc63c99cc9e8464ce`:
 
 - actual runtime/database/cache/email/export/provider topology and countries/regions;
-- approved patient notice and consent wording;
+- approved patient notice and consent wording for the actual pilot;
 - applicable CNDP health-data processing evidence;
 - applicable foreign-transfer basis/evidence for every actual external destination;
 - account-specific processor/DPA/subprocessor/retention/deletion/no-training/privacy/security evidence;
@@ -160,11 +179,11 @@ No public provider documentation is sufficient by itself to claim these account/
 | Dimension | State | Evidence |
 |---|---|---|
 | P5-1 Morocco linguistic gate | CLOSED | #515 + exact-main v8 packet #34683056185 |
-| P5-6 candidate | REFROZEN | `a25ec4dd1118784c8968588bab035dca4d0f71b6` + #4110/#3693 |
-| Safety corpus fingerprint | VERIFIED | `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5` |
-| Safety corpus / parity | VERIFIED | 59 cases / 10 tuples |
+| P5-6 candidate | REFROZEN | `fd3e4a53543e515100b493acc63c99cc9e8464ce` + #4145/#3719 + #4148/#3722 |
+| Consent-evidence runtime contract | MERGED / GREEN | #591 |
+| Safety corpus fingerprint | VERIFIED / unchanged | `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5` |
+| Safety corpus / parity | VERIFIED / unchanged | 59 cases / 10 tuples |
 | Human clinical review | ATTESTED_COMPLETE | #318 + 2026-09-12 retained session |
-| Human-review runtime cutover | MERGED / GREEN | #585 + #4108/#3692 + #4110/#3693 |
 | Restricted qualification/evidence references | MISSING | #318 remains open |
 | Deployment-specific CNDP/legal evidence | BLOCKED_EXTERNAL | #320 |
 | Processor/account-specific approvals | BLOCKED_EXTERNAL | #320 |
@@ -180,7 +199,7 @@ Real-patient enablement must stop if any of these is true:
 - #320 is not satisfied;
 - any `--require-approved` audit exits non-zero;
 - approved audit output lacks exact `audited_source_commit_sha`;
-- residency/safety manifest SHA differs from `a25ec4dd1118784c8968588bab035dca4d0f71b6`;
+- residency/safety manifest SHA differs from `fd3e4a53543e515100b493acc63c99cc9e8464ce`;
 - safety manifest fingerprint differs from `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`;
 - deployment topology differs from reviewed restricted evidence;
 - explicit human release decision is absent.
@@ -193,4 +212,4 @@ Pilot Readiness remains 4/9 = 44.4%. Retained MENA arithmetic remains 32/38 = 84
 
 ## Next exact action
 
-Obtain the real restricted qualification/evidence references required by #318 and the deployment/legal evidence required by #320 for frozen candidate `a25ec4dd1118784c8968588bab035dca4d0f71b6`. Then create the restricted manifests and execute the three exact-SHA approved audits. Until all three pass and an explicit human release decision exists, P5-6 remains `ACTIVE / BLOCKED_EXTERNAL / CANDIDATE_REFROZEN` and release posture remains `NOT_RELEASE_AUTHORIZED`.
+Obtain the real restricted qualification/evidence references required by #318 and the deployment/legal evidence required by #320 for frozen candidate `fd3e4a53543e515100b493acc63c99cc9e8464ce`. Then create the restricted manifests and execute the three exact-SHA approved audits. Until all three pass and an explicit human release decision exists, P5-6 remains `ACTIVE / BLOCKED_EXTERNAL / CANDIDATE_REFROZEN` and release posture remains `NOT_RELEASE_AUTHORIZED`.
