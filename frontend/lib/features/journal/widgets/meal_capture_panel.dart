@@ -8,6 +8,7 @@ import '../../../data/drift/database.dart';
 import '../../../data/models/ai_models.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/api_client.dart';
+import '../../../services/meal_food_favorites_repository.dart';
 
 typedef MealPhotoRecognition = Future<MealAnalysisResult?> Function();
 
@@ -16,6 +17,7 @@ class MealCapturePanel extends StatefulWidget {
   final ValueChanged<List<String>> onChanged;
   final bool canUsePhotoRecognition;
   final MealPhotoRecognition? photoRecognition;
+  final MealFoodFavoritesRepository? favoritesRepository;
 
   const MealCapturePanel({
     super.key,
@@ -23,6 +25,7 @@ class MealCapturePanel extends StatefulWidget {
     required this.onChanged,
     required this.canUsePhotoRecognition,
     this.photoRecognition,
+    this.favoritesRepository,
   });
 
   @override
@@ -31,11 +34,22 @@ class MealCapturePanel extends StatefulWidget {
 
 class _MealCapturePanelState extends State<MealCapturePanel> {
   final _searchController = TextEditingController();
+  late final MealFoodFavoritesRepository _favoritesRepository;
   String _query = '';
   bool _recognizing = false;
   List<MealFoodItem> _photoCandidates = const <MealFoodItem>[];
   final Set<String> _proposalSelection = <String>{};
+  Set<String> _favoriteIds = <String>{};
   Future<List<LogEntryData>>? _historyFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _favoritesRepository =
+        widget.favoritesRepository ??
+        const SecureMealFoodFavoritesRepository();
+    _loadFavorites();
+  }
 
   @override
   void didChangeDependencies() {
@@ -47,6 +61,29 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadFavorites() async {
+    try {
+      final ids = await _favoritesRepository.load();
+      if (!mounted) return;
+      setState(() => _favoriteIds = ids);
+    } catch (_) {
+      // Favorites are a convenience layer. Capture must remain usable if local
+      // preference storage is temporarily unavailable.
+    }
+  }
+
+  Future<void> _toggleFavorite(String id) async {
+    final previous = Set<String>.from(_favoriteIds);
+    final next = Set<String>.from(_favoriteIds);
+    if (!next.add(id)) next.remove(id);
+    setState(() => _favoriteIds = next);
+    try {
+      await _favoritesRepository.save(next);
+    } catch (_) {
+      if (mounted) setState(() => _favoriteIds = previous);
+    }
   }
 
   void _toggleItem(String id) {
@@ -116,6 +153,11 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
     );
   }
 
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() => _query = '');
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -124,7 +166,8 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
         .map(mealFoodById)
         .whereType<MealFoodItem>()
         .toList(growable: false);
-    final results = searchMealFoods(_query);
+    final queryReady = foldMealText(_query).length >= 2;
+    final results = queryReady ? searchMealFoods(_query) : const <MealFoodItem>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -166,52 +209,37 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
           ),
         ],
         const SizedBox(height: 14),
-        FutureBuilder<List<LogEntryData>>(
-          future: _historyFuture,
-          builder: (context, snapshot) {
-            final logs = snapshot.data ?? const <LogEntryData>[];
-            final recent = _recentItems(logs);
-            final habitual = _habitualItems(logs);
-            if (recent.isEmpty && habitual.isEmpty) {
-              return const SizedBox.shrink();
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                if (recent.isNotEmpty)
-                  _historySection(
-                    title: l10n.journalMealRecent,
-                    empty: l10n.journalMealNoRecent,
-                    items: recent,
-                    locale: locale,
-                  ),
-                if (recent.isNotEmpty && habitual.isNotEmpty)
-                  const SizedBox(height: 12),
-                if (habitual.isNotEmpty)
-                  _historySection(
-                    title: l10n.journalMealHabitual,
-                    empty: l10n.journalMealNoHabitual,
-                    items: habitual,
-                    locale: locale,
-                  ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 14),
         TextField(
           key: const Key('meal-food-search'),
           controller: _searchController,
           onChanged: (value) => setState(() => _query = value),
+          textInputAction: TextInputAction.search,
           decoration: InputDecoration(
             labelText: l10n.journalMealSearch,
             hintText: l10n.journalMealSearchHint,
             prefixIcon: const Icon(Icons.search_rounded),
-            border: const OutlineInputBorder(),
+            suffixIcon: _query.isEmpty
+                ? null
+                : IconButton(
+                    key: const Key('meal-food-search-clear'),
+                    tooltip: l10n.cancel,
+                    onPressed: _clearSearch,
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+            filled: true,
+            fillColor: AminaTheme.subtleBg(context),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
+              borderSide: BorderSide(color: AminaTheme.divider(context)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
+              borderSide: BorderSide(color: AminaTheme.divider(context)),
+            ),
           ),
         ),
-        const SizedBox(height: 8),
-        if (foldMealText(_query).length < 2)
+        const SizedBox(height: 10),
+        if (_query.isNotEmpty && !queryReady)
           Text(
             l10n.journalMealSearchEmpty,
             style: TextStyle(
@@ -219,20 +247,74 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
               fontSize: 11,
             ),
           )
+        else if (queryReady)
+          _searchResults(results: results, locale: locale, l10n: l10n)
         else
-          Wrap(
-            spacing: 7,
-            runSpacing: 7,
-            children: results
-                .map(
-                  (item) => FilterChip(
-                    key: Key('meal-search-${item.id}'),
-                    label: Text(item.labelFor(locale)),
-                    selected: widget.selectedIds.contains(item.id),
-                    onSelected: (_) => _toggleItem(item.id),
+          FutureBuilder<List<LogEntryData>>(
+            future: _historyFuture,
+            builder: (context, snapshot) {
+              final logs = snapshot.data ?? const <LogEntryData>[];
+              final favorites = _favoriteItems();
+              final favoriteIds = favorites.map((item) => item.id).toSet();
+              final recent = _recentItems(logs)
+                  .where((item) => !favoriteIds.contains(item.id))
+                  .take(5)
+                  .toList(growable: false);
+              final hidden = <String>{
+                ...favoriteIds,
+                ...recent.map((item) => item.id),
+              };
+              final habitual = _habitualItems(logs)
+                  .where((item) => !hidden.contains(item.id))
+                  .take(5)
+                  .toList(growable: false);
+
+              if (favorites.isEmpty && recent.isEmpty && habitual.isEmpty) {
+                return Text(
+                  l10n.journalMealSearchEmpty,
+                  style: TextStyle(
+                    color: AminaTheme.textSecondary(context),
+                    fontSize: 11,
                   ),
-                )
-                .toList(),
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  if (favorites.isNotEmpty)
+                    _foodListSection(
+                      key: const Key('meal-favorites-section'),
+                      title: _favoritesLabel(locale),
+                      icon: Icons.star_rounded,
+                      items: favorites,
+                      locale: locale,
+                      rowKeyPrefix: 'meal-favorite-row',
+                    ),
+                  if (favorites.isNotEmpty && recent.isNotEmpty)
+                    const SizedBox(height: 14),
+                  if (recent.isNotEmpty)
+                    _foodListSection(
+                      title: l10n.journalMealRecent,
+                      icon: Icons.history_rounded,
+                      items: recent,
+                      locale: locale,
+                      rowKeyPrefix: 'meal-history',
+                    ),
+                  if ((favorites.isNotEmpty || recent.isNotEmpty) &&
+                      habitual.isNotEmpty)
+                    const SizedBox(height: 14),
+                  if (habitual.isNotEmpty)
+                    _foodListSection(
+                      title: l10n.journalMealHabitual,
+                      icon: Icons.repeat_rounded,
+                      items: habitual,
+                      locale: locale,
+                      rowKeyPrefix: 'meal-habitual',
+                    ),
+                ],
+              );
+            },
           ),
         const SizedBox(height: 16),
         OutlinedButton.icon(
@@ -319,6 +401,213 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
     );
   }
 
+  Widget _searchResults({
+    required List<MealFoodItem> results,
+    required Locale locale,
+    required AppLocalizations l10n,
+  }) {
+    if (results.isEmpty) {
+      return Container(
+        key: const Key('meal-search-empty'),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          color: AminaTheme.subtleBg(context),
+          borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
+        ),
+        child: Text(
+          l10n.noData,
+          style: TextStyle(
+            color: AminaTheme.textSecondary(context),
+            fontSize: 12,
+          ),
+        ),
+      );
+    }
+
+    return _responsiveFoodList(
+      items: results,
+      locale: locale,
+      rowKeyPrefix: 'meal-search',
+    );
+  }
+
+  Widget _foodListSection({
+    Key? key,
+    required String title,
+    required IconData icon,
+    required List<MealFoodItem> items,
+    required Locale locale,
+    required String rowKeyPrefix,
+  }) {
+    return Column(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Icon(icon, size: 16, color: AminaTheme.accent(context)),
+            const SizedBox(width: 6),
+            _subhead(title),
+          ],
+        ),
+        const SizedBox(height: 7),
+        _responsiveFoodList(
+          items: items,
+          locale: locale,
+          rowKeyPrefix: rowKeyPrefix,
+        ),
+      ],
+    );
+  }
+
+  Widget _responsiveFoodList({
+    required List<MealFoodItem> items,
+    required Locale locale,
+    required String rowKeyPrefix,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final twoColumns = constraints.maxWidth >= 720 && items.length > 1;
+        if (!twoColumns) {
+          return Column(
+            children: <Widget>[
+              for (var index = 0; index < items.length; index++) ...<Widget>[
+                _foodRow(
+                  item: items[index],
+                  locale: locale,
+                  key: Key('$rowKeyPrefix-${items[index].id}'),
+                ),
+                if (index != items.length - 1) const SizedBox(height: 7),
+              ],
+            ],
+          );
+        }
+
+        const gap = 8.0;
+        final width = (constraints.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: items
+              .map(
+                (item) => SizedBox(
+                  width: width,
+                  child: _foodRow(
+                    item: item,
+                    locale: locale,
+                    key: Key('$rowKeyPrefix-${item.id}'),
+                  ),
+                ),
+              )
+              .toList(growable: false),
+        );
+      },
+    );
+  }
+
+  Widget _foodRow({
+    required MealFoodItem item,
+    required Locale locale,
+    required Key key,
+  }) {
+    final selected = widget.selectedIds.contains(item.id);
+    final favorite = _favoriteIds.contains(item.id);
+    final accent = AminaTheme.accent(context);
+
+    return Material(
+      key: key,
+      color: selected
+          ? accent.withValues(alpha: AminaTheme.isDark(context) ? .16 : .08)
+          : AminaTheme.surface(context),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AminaTheme.radiusXL),
+        side: BorderSide(
+          color: selected ? accent : AminaTheme.divider(context),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _toggleItem(item.id),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 58),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(
+              start: 12,
+              end: 6,
+              top: 7,
+              bottom: 7,
+            ),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AminaTheme.subtleBg(context),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.restaurant_rounded,
+                    size: 18,
+                    color: selected ? accent : AminaTheme.textSecondary(context),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    item.labelFor(locale),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AminaTheme.textPrimary(context),
+                      fontSize: 13,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                      height: 1.25,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  key: Key('meal-favorite-${item.id}'),
+                  tooltip: _favoriteTooltip(locale, favorite),
+                  onPressed: () => _toggleFavorite(item.id),
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    favorite ? Icons.star_rounded : Icons.star_border_rounded,
+                    color: favorite
+                        ? AminaTheme.accentAmber
+                        : AminaTheme.textSecondary(context),
+                    size: 21,
+                  ),
+                ),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: selected ? accent : Colors.transparent,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected ? accent : AminaTheme.divider(context),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    selected ? Icons.check_rounded : Icons.add_rounded,
+                    size: 17,
+                    color: selected
+                        ? Colors.white
+                        : AminaTheme.textSecondary(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _subhead(String text) => Text(
     text,
     style: TextStyle(
@@ -328,42 +617,26 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
     ),
   );
 
-  Widget _historySection({
-    required String title,
-    required String empty,
-    required List<MealFoodItem> items,
-    required Locale locale,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        _subhead(title),
-        const SizedBox(height: 6),
-        if (items.isEmpty)
-          Text(
-            empty,
-            style: TextStyle(
-              color: AminaTheme.textSecondary(context),
-              fontSize: 11,
-            ),
-          )
-        else
-          Wrap(
-            spacing: 7,
-            runSpacing: 7,
-            children: items
-                .map(
-                  (item) => FilterChip(
-                    key: Key('meal-history-${item.id}'),
-                    label: Text(item.labelFor(locale)),
-                    selected: widget.selectedIds.contains(item.id),
-                    onSelected: (_) => _toggleItem(item.id),
-                  ),
-                )
-                .toList(),
-          ),
-      ],
-    );
+  List<MealFoodItem> _favoriteItems() => _favoriteIds
+      .map(mealFoodById)
+      .whereType<MealFoodItem>()
+      .toList(growable: false)
+    ..sort((a, b) => a.fr.compareTo(b.fr));
+
+  String _favoritesLabel(Locale locale) {
+    return switch (locale.languageCode) {
+      'ar' => 'المفضلة',
+      'en' => 'Favorites',
+      _ => 'Favoris',
+    };
+  }
+
+  String _favoriteTooltip(Locale locale, bool favorite) {
+    return switch (locale.languageCode) {
+      'ar' => favorite ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة',
+      'en' => favorite ? 'Remove from favorites' : 'Add to favorites',
+      _ => favorite ? 'Retirer des favoris' : 'Ajouter aux favoris',
+    };
   }
 
   List<MealFoodItem> _recentItems(List<LogEntryData> logs) {
