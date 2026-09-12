@@ -7,6 +7,7 @@ Endpoints under test:
   DELETE /api/v1/account/consent
   DELETE /api/v1/account
 """
+import json
 from datetime import date
 from unittest.mock import patch
 
@@ -14,7 +15,9 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
+from core.consent_notice import expected_notice_claim
 from core.models import BasePatientProfile
+from core.tests.consent_helpers import grant_current_ai_consent
 from diabetes.models import AuditLog, DiabetesProfile
 
 
@@ -30,6 +33,23 @@ def _make_user(username: str) -> User:
         treatment_type="insulin",
     )
     return user
+
+
+def _current_consent_payload(locale: str = "fr") -> dict[str, str]:
+    claim = expected_notice_claim(locale)
+    return {
+        "notice_version": claim.version,
+        "notice_hash": claim.notice_hash,
+        "locale": claim.locale,
+    }
+
+
+def _post_current_consent(client, locale: str = "fr"):
+    return client.post(
+        "/api/v1/account/consent",
+        data=json.dumps(_current_consent_payload(locale)),
+        content_type="application/json",
+    )
 
 
 # ── GET /api/v1/account/consent ───────────────────────────────────────────────
@@ -48,9 +68,7 @@ class GetConsentStatusTest(TestCase):
         self.assertIsNone(data["ai_consent_given_at"])
 
     def test_with_consent_returns_true(self):
-        base = BasePatientProfile.objects.get(patient=self.user)
-        base.ai_consent_given_at = timezone.now()
-        base.save(update_fields=["ai_consent_given_at"])
+        grant_current_ai_consent(self.user)
 
         resp = self.client.get("/api/v1/account/consent")
         data = resp.json()
@@ -81,30 +99,33 @@ class GiveConsentTest(TestCase):
         self.client.force_login(self.user)
 
     def test_post_sets_consent_timestamp(self):
-        resp = self.client.post("/api/v1/account/consent", content_type="application/json")
+        resp = _post_current_consent(self.client)
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertTrue(data["ai_consent_given"])
         self.assertIsNotNone(data["ai_consent_given_at"])
 
     def test_post_persists_to_db(self):
-        self.client.post("/api/v1/account/consent", content_type="application/json")
+        _post_current_consent(self.client)
         base = BasePatientProfile.objects.get(patient=self.user)
+        claim = expected_notice_claim("fr")
         self.assertIsNotNone(base.ai_consent_given_at)
+        self.assertEqual(base.ai_consent_notice_version, claim.version)
+        self.assertEqual(base.ai_consent_notice_hash, claim.notice_hash)
+        self.assertEqual(base.ai_consent_notice_locale, claim.locale)
 
     def test_post_is_idempotent(self):
-        """Second POST must not reset the existing timestamp."""
-        self.client.post("/api/v1/account/consent", content_type="application/json")
+        """Second POST of the same exact claim must not reset the timestamp."""
+        _post_current_consent(self.client)
         base_after_first = BasePatientProfile.objects.get(patient=self.user)
         ts_first = base_after_first.ai_consent_given_at
 
-        self.client.post("/api/v1/account/consent", content_type="application/json")
+        _post_current_consent(self.client)
         base_after_second = BasePatientProfile.objects.get(patient=self.user)
-        # Timestamp must be unchanged
         self.assertEqual(base_after_second.ai_consent_given_at, ts_first)
 
     def test_post_creates_audit_log(self):
-        self.client.post("/api/v1/account/consent", content_type="application/json")
+        _post_current_consent(self.client)
         self.assertTrue(
             AuditLog.objects.filter(patient=self.user, action="consent_given").exists()
         )
@@ -117,10 +138,7 @@ class WithdrawConsentTest(TestCase):
     def setUp(self):
         self.user = _make_user("consent_delete")
         self.client.force_login(self.user)
-        # Pre-grant consent
-        base = BasePatientProfile.objects.get(patient=self.user)
-        base.ai_consent_given_at = timezone.now()
-        base.save(update_fields=["ai_consent_given_at"])
+        grant_current_ai_consent(self.user)
 
     def test_delete_clears_consent(self):
         resp = self.client.delete("/api/v1/account/consent")
@@ -133,6 +151,9 @@ class WithdrawConsentTest(TestCase):
         self.client.delete("/api/v1/account/consent")
         base = BasePatientProfile.objects.get(patient=self.user)
         self.assertIsNone(base.ai_consent_given_at)
+        self.assertIsNone(base.ai_consent_notice_version)
+        self.assertIsNone(base.ai_consent_notice_hash)
+        self.assertIsNone(base.ai_consent_notice_locale)
 
     def test_delete_creates_audit_log(self):
         self.client.delete("/api/v1/account/consent")
@@ -144,7 +165,17 @@ class WithdrawConsentTest(TestCase):
         """DELETE when no consent exists must not crash (idempotent)."""
         base = BasePatientProfile.objects.get(patient=self.user)
         base.ai_consent_given_at = None
-        base.save(update_fields=["ai_consent_given_at"])
+        base.ai_consent_notice_version = None
+        base.ai_consent_notice_hash = None
+        base.ai_consent_notice_locale = None
+        base.save(
+            update_fields=[
+                "ai_consent_given_at",
+                "ai_consent_notice_version",
+                "ai_consent_notice_hash",
+                "ai_consent_notice_locale",
+            ]
+        )
 
         resp = self.client.delete("/api/v1/account/consent")
         self.assertEqual(resp.status_code, 200)
@@ -171,7 +202,6 @@ class DeleteAccountTest(TestCase):
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 400)
-        # User must still exist
         self.assertTrue(User.objects.filter(username="erasure_user").exists())
 
     def test_correct_confirm_deletes_user(self):
@@ -193,7 +223,6 @@ class DeleteAccountTest(TestCase):
             data='{"confirm": "DELETE MY ACCOUNT"}',
             content_type="application/json",
         )
-        # CASCADE must have removed the log entry
         self.assertEqual(LogEntry.objects.filter(patient_id=self.user.id).count(), 0)
 
     def test_correct_confirm_cascades_retained_lab_report_raw_text(self):
@@ -250,7 +279,6 @@ class DeleteAccountTest(TestCase):
             data='{"confirm": "DELETE MY ACCOUNT"}',
             content_type="application/json",
         )
-        # At minimum the account_deleted event must exist with patient=NULL
         self.assertTrue(
             AuditLog.objects.filter(patient=None, action="account_deleted").exists()
         )
