@@ -21,6 +21,7 @@ from typing import Callable, Iterator, get_type_hints
 
 from django.utils import timezone
 
+from core.consent_notice import profile_has_current_consent
 from core.models import AIMediaConsentGrant, BasePatientProfile
 
 logger = logging.getLogger(__name__)
@@ -165,6 +166,21 @@ def _validate_raw_media_grant(purpose: str, modality: str) -> None:
     _validate_scope(purpose, frozenset({modality}))
 
 
+def _load_current_consent_profile(patient_id: int) -> BasePatientProfile:
+    try:
+        profile = BasePatientProfile.objects.only(
+            "ai_consent_given_at",
+            "ai_consent_notice_version",
+            "ai_consent_notice_hash",
+            "ai_consent_notice_locale",
+        ).get(patient_id=patient_id)
+    except BasePatientProfile.DoesNotExist as exc:
+        raise AIConsentRequired("Patient AI consent record is missing") from exc
+    if not profile_has_current_consent(profile):
+        raise AIConsentRequired("Explicit current patient AI consent is required")
+    return profile
+
+
 def grant_media_consent(
     patient_id: int,
     purpose: str,
@@ -174,6 +190,7 @@ def grant_media_consent(
     if not isinstance(patient_id, int) or patient_id <= 0:
         raise AIEgressDenied("A valid patient id is required for media consent")
     _validate_raw_media_grant(purpose, modality)
+    _load_current_consent_profile(patient_id)
     now = timezone.now()
     grant, _ = AIMediaConsentGrant.objects.update_or_create(
         patient_id=patient_id,
@@ -232,15 +249,7 @@ def assert_ai_egress_allowed(modality: str) -> AIEgressContext:
             f"Modality {modality} is not authorized for purpose {context.purpose}"
         )
 
-    try:
-        profile = BasePatientProfile.objects.only("ai_consent_given_at").get(
-            patient_id=context.patient_id
-        )
-    except BasePatientProfile.DoesNotExist as exc:
-        raise AIConsentRequired("Patient AI consent record is missing") from exc
-
-    if profile.ai_consent_given_at is None:
-        raise AIConsentRequired("Explicit patient AI consent is required")
+    profile = _load_current_consent_profile(context.patient_id)
 
     if modality in _RAW_MEDIA_MODALITIES:
         has_grant = AIMediaConsentGrant.objects.filter(
@@ -248,6 +257,7 @@ def assert_ai_egress_allowed(modality: str) -> AIEgressContext:
             purpose=context.purpose,
             modality=modality,
             revoked_at__isnull=True,
+            granted_at__gte=profile.ai_consent_given_at,
         ).exists()
         if not has_grant:
             raise AIConsentRequired(
