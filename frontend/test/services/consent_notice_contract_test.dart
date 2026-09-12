@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:amina/services/consent_notice_contract.dart';
 
 void main() {
+  final modifiedHash = List.filled(64, '0').join();
+
   test('known locales resolve to current exact claims', () {
     final fr = ConsentNoticeContract.forLocale('fr-FR');
     final en = ConsentNoticeContract.forLocale('en-US');
@@ -29,7 +31,7 @@ void main() {
     expect(
       ConsentNoticeContract.isCurrent(
         versionValue: claim.version,
-        noticeHash: '0' * 64,
+        noticeHash: modifiedHash,
         locale: claim.locale,
       ),
       isFalse,
@@ -52,7 +54,7 @@ void main() {
     expect(
       ConsentNoticeContract.isCurrent(
         versionValue: ConsentNoticeContract.version,
-        noticeHash: '0' * 64,
+        noticeHash: modifiedHash,
         locale: 'xx',
       ),
       isFalse,
