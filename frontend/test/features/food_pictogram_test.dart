@@ -23,6 +23,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           locale: locale,
+          supportedLocales: const <Locale>[locale],
           home: Scaffold(body: FoodPictogram(item: item)),
         ),
       );
@@ -34,7 +35,6 @@ void main() {
       expect(_foodArtwork(), findsNothing);
 
       final semantics = tester.getSemantics(find.byType(FoodPictogram));
-      // Bind the assertion to the catalog label so spelling/localization stays canonical.
       expect(semantics.label, contains(item.plainLabelFor(locale)));
     },
   );
