@@ -168,7 +168,10 @@ void main() {
     final result = find.byKey(const Key('meal-search-egg'));
     expect(result, findsOneWidget);
     expect(Directionality.of(tester.element(result)), TextDirection.rtl);
-    expect(find.text('بيض'), findsOneWidget);
+    expect(
+      find.descendant(of: result, matching: find.text('بيض')),
+      findsWidgets,
+    );
     expect(find.text('Œuf'), findsNothing);
   });
 
@@ -215,7 +218,7 @@ void main() {
   });
 
   testWidgets(
-    'recent and habitual foods come only from confirmed structured history',
+    'recent foods come from structured history and habitual duplicates are suppressed',
     (tester) async {
       for (var i = 0; i < 3; i++) {
         await db
@@ -239,7 +242,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Récents'), findsOneWidget);
-      expect(find.text('Habituels'), findsOneWidget);
+      expect(find.text('Habituels'), findsNothing);
       expect(find.text('Œuf'), findsWidgets);
       expect(find.text('Pain marocain'), findsWidgets);
     },
@@ -249,11 +252,14 @@ void main() {
     tester,
   ) async {
     var selected = <String>[];
+    final favorites = _MemoryFavoritesRepository();
+    void onChanged(List<String> value) => selected = value;
+
     await tester.pumpWidget(
       harness(
         selected: selected,
-        onChanged: (value) => selected = value,
-        favoritesRepository: _MemoryFavoritesRepository(),
+        onChanged: onChanged,
+        favoritesRepository: favorites,
       ),
     );
     await tester.pumpAndSettle();
@@ -267,6 +273,18 @@ void main() {
     await tester.pump();
 
     expect(selected, contains('egg'));
+
+    // MealCapturePanel is controlled: mirror the production parent rebuild so
+    // the selectedIds input reflects the callback before asserting collapsed UI.
+    await tester.pumpWidget(
+      harness(
+        selected: selected,
+        onChanged: onChanged,
+        favoritesRepository: favorites,
+      ),
+    );
+    await tester.pumpAndSettle();
+
     expect(find.byKey(const Key('meal-search-egg')), findsNothing);
     expect(find.byKey(const Key('meal-food-search-clear')), findsNothing);
     expect(find.byKey(const Key('meal-category-rail')), findsNothing);
