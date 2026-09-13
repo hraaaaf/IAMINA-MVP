@@ -52,9 +52,16 @@ _email_port = os.environ.get("EMAIL_PORT", "").strip()
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "").strip()
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "").strip()
-PASSWORD_RESET_FRONTEND_URL = os.environ.get("PASSWORD_RESET_FRONTEND_URL", "").strip()
-EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").strip().lower() == "true"
-EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False").strip().lower() == "true"
+PASSWORD_RESET_FRONTEND_URL = os.environ.get(
+    "PASSWORD_RESET_FRONTEND_URL",
+    "",
+).strip()
+EMAIL_USE_TLS = (
+    os.environ.get("EMAIL_USE_TLS", "True").strip().lower() == "true"
+)
+EMAIL_USE_SSL = (
+    os.environ.get("EMAIL_USE_SSL", "False").strip().lower() == "true"
+)
 EMAIL_TIMEOUT = 10
 
 if EMAIL_BACKEND != "django.core.mail.backends.smtp.EmailBackend":
@@ -91,7 +98,9 @@ if "@" not in DEFAULT_FROM_EMAIL:
     raise ValueError("DEFAULT_FROM_EMAIL must be a valid email-like address")
 
 _reset_url = urlparse(PASSWORD_RESET_FRONTEND_URL)
-if _reset_url.scheme not in {"https", "iamina"} or not (_reset_url.netloc or _reset_url.path):
+if _reset_url.scheme not in {"https", "iamina"} or not (
+    _reset_url.netloc or _reset_url.path
+):
     raise ValueError("PASSWORD_RESET_FRONTEND_URL must use https:// or iamina://")
 
 # Vercel terminates TLS before invoking the Django function.
