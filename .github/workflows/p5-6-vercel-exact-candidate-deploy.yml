@@ -1,4 +1,4 @@
-name: P5-6 exact Vercel candidate deploy
+name: P5-6 Vercel exact-source probe
 
 on:
   push:
@@ -13,7 +13,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  TARGET_SHA: 52c0238fede74a1ba85fd3df32b1e89268bbe8f7
+  TARGET_SHA: 0abf507018e3929b61a3aa4e8fe2119b201eae72
+  TARGET_REF: fix/p5-6-vercel-django-entrypoint
   VERCEL_ORG_ID: team_NNhXPDOIfjGNBcn253btpyk0
   VERCEL_PROJECT_ID: prj_Pn9FnyconF3h2w9gOU74iV98kJoU
   VERCEL_PROJECT_NAME: iamina-certified
@@ -22,47 +23,34 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact frozen candidate
+      - name: Checkout exact source
         uses: actions/checkout@v4
         with:
           ref: ${{ env.TARGET_SHA }}
           fetch-depth: 1
 
-      - name: Verify exact candidate
+      - name: Verify exact source
         shell: bash
         run: |
           set -euo pipefail
           actual="$(git rev-parse HEAD)"
           test "$actual" = "$TARGET_SHA"
-          echo "exact_candidate=$actual"
+          echo "exact_source=$actual"
 
-      - name: Verify deployment credential exists
+      - name: Verify deployment credential and project access
         shell: bash
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
-          test -n "$VERCEL_TOKEN" || { echo "VERCEL_TOKEN repository secret is missing" >&2; exit 78; }
-
-      - name: Verify token can read exact project
-        shell: bash
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          set -euo pipefail
+          test -n "$VERCEL_TOKEN"
           code="$(curl -sS -o /tmp/project.json -w '%{http_code}' \
             -H "Authorization: Bearer $VERCEL_TOKEN" \
             "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID")"
           echo "vercel_project_read_http=$code"
           test "$code" = "200"
-          python - <<'PY'
-          import json
-          data = json.load(open('/tmp/project.json'))
-          print('vercel_project_name=' + str(data.get('name')))
-          print('vercel_project_id=' + str(data.get('id')))
-          PY
 
-      - name: Create exact production deployment through Vercel API
+      - name: Create exact preview deployment through Vercel API
         id: deploy
         shell: bash
         env:
@@ -72,20 +60,20 @@ jobs:
           python - <<'PY'
           import json, os
           sha = os.environ['TARGET_SHA']
+          ref = os.environ['TARGET_REF']
           payload = {
               'name': os.environ['VERCEL_PROJECT_NAME'],
               'project': os.environ['VERCEL_PROJECT_ID'],
-              'target': 'production',
               'gitSource': {
                   'type': 'github',
                   'org': 'hraaaaf',
                   'repo': 'IAMINA-MVP',
-                  'ref': 'main',
+                  'ref': ref,
                   'sha': sha,
               },
               'gitMetadata': {
                   'remoteUrl': 'https://github.com/hraaaaf/IAMINA-MVP',
-                  'commitRef': 'main',
+                  'commitRef': ref,
                   'commitSha': sha,
                   'dirty': False,
                   'ci': True,
@@ -114,21 +102,10 @@ jobs:
           print('vercel_create_response=' + json.dumps(safe, separators=(',', ':')))
           if not data.get('id'):
               raise SystemExit(1)
-          with open('/tmp/deployment-id', 'w') as f:
-              f.write(data['id'])
-          with open('/tmp/deployment-url', 'w') as f:
-              f.write('https://' + data['url'])
+          print('deployment_id=' + data['id'])
+          print('deployment_url=https://' + data['url'])
           PY
           case "$code" in
             200|201) ;;
             *) exit 1 ;;
           esac
-          echo "deployment_id=$(cat /tmp/deployment-id)" >> "$GITHUB_OUTPUT"
-          echo "deployment_url=$(cat /tmp/deployment-url)" >> "$GITHUB_OUTPUT"
-
-      - name: Deployment evidence
-        shell: bash
-        run: |
-          echo "candidate_sha=$TARGET_SHA"
-          echo "deployment_id=${{ steps.deploy.outputs.deployment_id }}"
-          echo "deployment_url=${{ steps.deploy.outputs.deployment_url }}"
