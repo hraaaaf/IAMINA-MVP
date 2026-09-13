@@ -134,8 +134,11 @@ Public provider/CNDP documentation may define requirements but is not account-sp
 
 ## Exact-SHA release audit contract
 
+The frozen P5-6 release scope is **local-only for external AI egress**: every network provider remains runtime-denied by the processor policy. The consent audit must therefore use `--local-only`; this scopes out disabled network-provider evidence but deliberately keeps the global CNDP health-processing authorization blocker fail-closed.
+
 ```bash
 python manage.py audit_pilot_consent_governance \
+  --local-only \
   --require-approved \
   --expected-source-commit-sha 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6
 
