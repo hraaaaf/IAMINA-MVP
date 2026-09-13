@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  TARGET_SHA: 2fb0eabd8c2be4ada0a6377e257bb5f2a692db85
-  TARGET_REF: fix/p5-6-vercel-django-entrypoint
+  TARGET_SHA: 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6
+  TARGET_REF: main
   VERCEL_ORG_ID: team_NNhXPDOIfjGNBcn253btpyk0
   VERCEL_PROJECT_ID: prj_Pn9FnyconF3h2w9gOU74iV98kJoU
   VERCEL_PROJECT_NAME: iamina-certified
