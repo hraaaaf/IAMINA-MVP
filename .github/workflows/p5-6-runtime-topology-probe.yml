@@ -1,0 +1,68 @@
+name: P5-6 runtime topology probe
+
+on:
+  push:
+    branches:
+      - ops/p5-6-runtime-topology-probe-20260913
+
+permissions:
+  contents: read
+
+env:
+  VERCEL_ORG_ID: team_NNhXPDOIfjGNBcn253btpyk0
+  VERCEL_PROJECT_ID: prj_Pn9FnyconF3h2w9gOU74iV98kJoU
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect Vercel environment metadata only
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$VERCEL_TOKEN"
+          code="$(curl -sS -o /tmp/envs.json -w '%{http_code}' \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID")"
+          echo "vercel_env_list_http=$code"
+          test "$code" = "200"
+          python - <<'PY'
+          import json
+
+          keys = [
+              'DATABASE_URL',
+              'REDIS_URL',
+              'ENABLE_FIREBASE_MIGRATION',
+              'FIREBASE_CREDENTIALS_PATH',
+              'FIREBASE_STORAGE_BUCKET',
+              'FIREBASE_CREDENTIALS_JSON',
+              'EMAIL_BACKEND',
+              'EMAIL_HOST',
+              'EMAIL_PORT',
+              'EMAIL_HOST_USER',
+              'EMAIL_HOST_PASSWORD',
+              'DEFAULT_FROM_EMAIL',
+          ]
+          envs = json.load(open('/tmp/envs.json')).get('envs', [])
+          by_key = {}
+          for item in envs:
+              key = item.get('key')
+              if key not in keys:
+                  continue
+              target = item.get('target', [])
+              targets = [target] if isinstance(target, str) else list(target or [])
+              record = by_key.setdefault(key, {'targets': set(), 'types': set()})
+              record['targets'].update(targets)
+              if item.get('type'):
+                  record['types'].add(item['type'])
+          for key in keys:
+              record = by_key.get(key)
+              if not record:
+                  print(f'{key}=absent')
+                  continue
+              targets = ','.join(sorted(record['targets'])) or 'none'
+              types = ','.join(sorted(record['types'])) or 'unknown'
+              print(f'{key}=present targets={targets} type={types}')
+          PY
