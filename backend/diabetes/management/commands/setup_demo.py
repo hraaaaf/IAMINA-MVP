@@ -2,7 +2,7 @@
 Management command to set up demo data for local development.
 
 Usage:
-    python manage.py setup_demo          # Creates everything
+    python manage.py setup_demo          # Creates or refreshes stale demo data
     python manage.py setup_demo --reset  # Wipes and recreates
 """
 import random
@@ -15,6 +15,8 @@ from django.utils import timezone
 
 from core.models import BasePatientProfile
 from diabetes.models import AISummary, DiabetesProfile, LogEntry
+
+DEMO_FRESHNESS_MAX_AGE = timedelta(days=7)
 
 MEALS = {
     'fasting': {
@@ -144,12 +146,21 @@ class Command(BaseCommand):
             self.stdout.write('Profil existe déjà')
 
         # --- Log entries (3 weeks) ---
-        existing = LogEntry.objects.filter(patient=patient).count()
-        if existing > 0 and not reset:
-            self.stdout.write(f'{existing} entrées existent déjà (utilisez --reset pour recréer)')
-            return
-
         now = timezone.now()
+        patient_entries = LogEntry.objects.filter(patient=patient)
+        existing = patient_entries.count()
+        if existing > 0 and not reset:
+            latest_entry = patient_entries.order_by('-logged_at').first()
+            if latest_entry and latest_entry.logged_at >= now - DEMO_FRESHNESS_MAX_AGE:
+                self.stdout.write(f'{existing} entrées de démo encore fraîches')
+                return
+
+            patient_entries.delete()
+            AISummary.objects.filter(patient=patient).delete()
+            self.stdout.write(self.style.WARNING(
+                'Données de démo périmées : historique régénéré autour de la date courante'
+            ))
+
         random.seed(42)
         entries_created = 0
 
