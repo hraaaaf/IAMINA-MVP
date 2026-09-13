@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from core.data_portability import build_patient_export
 from core.models import AuditLog
+from core.observability.events import ObservabilityEvent
 
 _GRACE_DAYS = 30
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -100,10 +101,14 @@ class Command(BaseCommand):
                     "record_manifest": export["manifest"],
                 },
             )
+            observability_deleted_count, _ = ObservabilityEvent.objects.filter(
+                patient_id=user_id
+            ).delete()
             deleted_count, deleted_by_model = user.delete()
 
         result = {
             **plan,
+            "observability_events_deleted": observability_deleted_count,
             "deleted_count": deleted_count,
             "deleted_by_model": deleted_by_model,
         }
