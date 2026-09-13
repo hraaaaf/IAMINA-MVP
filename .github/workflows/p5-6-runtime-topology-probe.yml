@@ -31,21 +31,7 @@ jobs:
           test "$code" = "200"
           python - <<'PY'
           import json
-
-          keys = [
-              'DATABASE_URL',
-              'REDIS_URL',
-              'ENABLE_FIREBASE_MIGRATION',
-              'FIREBASE_CREDENTIALS_PATH',
-              'FIREBASE_STORAGE_BUCKET',
-              'FIREBASE_CREDENTIALS_JSON',
-              'EMAIL_BACKEND',
-              'EMAIL_HOST',
-              'EMAIL_PORT',
-              'EMAIL_HOST_USER',
-              'EMAIL_HOST_PASSWORD',
-              'DEFAULT_FROM_EMAIL',
-          ]
+          keys = ['DATABASE_URL','REDIS_URL','ENABLE_FIREBASE_MIGRATION','FIREBASE_CREDENTIALS_PATH','FIREBASE_STORAGE_BUCKET','FIREBASE_CREDENTIALS_JSON','EMAIL_BACKEND','EMAIL_HOST','EMAIL_PORT','EMAIL_HOST_USER','EMAIL_HOST_PASSWORD','DEFAULT_FROM_EMAIL']
           envs = json.load(open('/tmp/envs.json')).get('envs', [])
           by_key = {}
           for item in envs:
@@ -58,16 +44,15 @@ jobs:
               record['targets'].update(targets)
               if item.get('type'):
                   record['types'].add(item['type'])
-
           lines = []
           for key in keys:
               record = by_key.get(key)
               if not record:
                   lines.append(f'- `{key}`: absent')
-                  continue
-              targets = ','.join(sorted(record['targets'])) or 'none'
-              types = ','.join(sorted(record['types'])) or 'unknown'
-              lines.append(f'- `{key}`: present; targets={targets}; type={types}')
+              else:
+                  targets = ','.join(sorted(record['targets'])) or 'none'
+                  types = ','.join(sorted(record['types'])) or 'unknown'
+                  lines.append(f'- `{key}`: present; targets={targets}; type={types}')
           open('/tmp/topology.txt', 'w').write('\n'.join(lines) + '\n')
           print('\n'.join(lines))
           PY
@@ -81,14 +66,7 @@ jobs:
           python - <<'PY'
           import json, os
           lines = open('/tmp/topology.txt').read().rstrip()
-          body = f'''P5-6B runtime environment metadata probe — sanitized, values never emitted.
-
-Frozen runtime candidate: `{os.environ["FROZEN_RUNTIME_SHA"]}`
-Probe control commit: `{os.environ["GITHUB_SHA"]}`
-
-{lines}
-
-Interpretation limits: this proves only Vercel environment-key presence/targets, not vendor contract, legal basis, data residency, processor approval, or functional delivery. Real-patient release remains unauthorized.'''
+          body = '\n'.join(['P5-6B runtime environment metadata probe - sanitized, values never emitted.', '', f'Frozen runtime candidate: `{os.environ["FROZEN_RUNTIME_SHA"]}`', f'Probe control commit: `{os.environ["GITHUB_SHA"]}`', '', lines, '', 'Interpretation limits: this proves only Vercel environment-key presence/targets, not vendor contract, legal basis, data residency, processor approval, or functional delivery. Real-patient release remains unauthorized.'])
           open('/tmp/comment.json', 'w').write(json.dumps({'body': body}))
           PY
           code="$(curl -sS -o /tmp/comment-response.json -w '%{http_code}' \
