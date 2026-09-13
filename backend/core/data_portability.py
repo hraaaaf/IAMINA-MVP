@@ -2,7 +2,8 @@
 
 The export walks only reverse ownership relations from the authenticated Django
 user through IAmina-owned apps. It never follows forward relations into shared
-catalogues or other users' records.
+catalogues or other users' records. Patient-linked telemetry without a relational
+foreign key is added explicitly by subject ID.
 """
 
 from __future__ import annotations
@@ -21,6 +22,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Model
 from django.db.models.fields.files import FieldFile
 from django.utils import timezone
+
+from core.observability.events import ObservabilityEvent
 
 EXPORT_SCHEMA_VERSION = "1.0"
 _ALLOWED_APP_LABELS = frozenset({"ai", "core", "diabetes"})
@@ -127,9 +130,16 @@ def _collect_owned_records(user) -> dict[str, list[dict[str, Any]]]:
             grouped[related._meta.label_lower].append(_serialize_model(related))
             queue.append(related)
 
+    telemetry_model = ObservabilityEvent._meta.label_lower
+    grouped[telemetry_model].extend(
+        _serialize_model(event)
+        for event in ObservabilityEvent.objects.filter(patient_id=user.pk).order_by("pk").iterator()
+    )
+
     return {
         model: sorted(records, key=lambda record: str(record.get("id", "")))
         for model, records in sorted(grouped.items())
+        if records
     }
 
 
