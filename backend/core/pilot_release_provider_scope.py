@@ -1,9 +1,10 @@
 """Release-scoped processor governance for P5-6.
 
-The full provider registry remains fail-closed and auditable.  A concrete pilot
+The full provider registry remains fail-closed and auditable. A concrete pilot
 release may explicitly enable only a subset of external processors; disabled
-processors do not become release blockers.  Morocco health-data authorization
-remains a global blocker even for a local-only release.
+processors do not become release blockers. Morocco health-data authorization
+remains a global blocker even for a local-only release until validated restricted
+evidence is supplied by the audit command.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ GLOBAL_HEALTH_PROCESSING_BLOCKER = "cndp_health_processing_authorization:pending
 def release_scoped_consent_governance_payload(
     *,
     enabled_external_providers: Iterable[str],
+    global_health_processing_references: Iterable[str] = (),
     today: date | None = None,
     require_approved: bool = False,
 ) -> dict[str, object]:
@@ -37,8 +39,16 @@ def release_scoped_consent_governance_payload(
             f"{non_external}"
         )
 
+    health_references = sorted(
+        {
+            reference.strip()
+            for reference in global_health_processing_references
+            if reference.strip()
+        }
+    )
+
     payload = consent_governance_payload(today=today, require_approved=False)
-    scoped_blockers = [GLOBAL_HEALTH_PROCESSING_BLOCKER]
+    scoped_blockers = [] if health_references else [GLOBAL_HEALTH_PROCESSING_BLOCKER]
     processor_rows = []
     for row in payload["processors"]:
         release_enabled = bool(row["external_egress"] and row["provider"] in enabled)
@@ -64,6 +74,7 @@ def release_scoped_consent_governance_payload(
         "status": "approved" if not blockers else "pending_external_approval",
         "release_mode": "local_only" if not enabled else "external_processors_enabled",
         "enabled_external_providers": sorted(enabled),
+        "global_health_processing_references": health_references,
         "processors": processor_rows,
         "blockers": blockers,
         "non_claim": (
