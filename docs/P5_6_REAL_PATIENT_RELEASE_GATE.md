@@ -8,7 +8,7 @@
 > **Safety fingerprint:** `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`  
 > **Consent notice version:** `2026-09-12.1`  
 > **Pilot Readiness arithmetic:** 4/9 = 44.4%  
-> **Deployment:** Vercel Python runtime packaging is preview-proven in `cdg1`; the exact frozen candidate is not yet healthy/deployed for pilot use because dedicated PostgreSQL / `DATABASE_URL` is still absent.
+> **Deployment:** exact frozen candidate is deployed successfully to Vercel production in `cdg1`, backed by dedicated Neon PostgreSQL 16 in `aws-eu-central-1`; `/api/v1/health` returns HTTP 200 with `db=ok`. Real-patient release remains blocked on restricted safety/compliance evidence and explicit human release authorization.
 
 ## Goal
 
@@ -31,7 +31,7 @@ Anything less remains `NOT_RELEASE_AUTHORIZED`.
 
 The former candidate `52c0238fede74a1ba85fd3df32b1e89268bbe8f7` remains retained as the PR #590 backend-infrastructure proof, but it is superseded as the forward P5-6 candidate because an exact Vercel deployment attempt exposed an incompatible function-path contract.
 
-The new frozen candidate is:
+The frozen candidate is:
 
 `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`
 
@@ -48,13 +48,13 @@ Re-freeze proof:
 
 PR #597 changes exactly three files: `backend/api/index.py`, `backend/vercel.json`, and `backend/core/tests/test_vercel_deployment_contract.py`.
 
-It does **not** modify the reviewed safety corpus or the consent-evidence contract. Therefore the retained safety corpus remains 59 exact cases / 10 tuples with fingerprint `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`, and consent notice version `2026-09-12.1` remains unchanged.
+It does **not** modify the reviewed safety corpus or the consent-evidence contract. The retained safety corpus remains 59 exact cases / 10 tuples with fingerprint `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`, and consent notice version `2026-09-12.1` remains unchanged.
 
-A documentation-only closeout may advance repository `main` without moving the frozen candidate. Any later runtime/code change requires another explicit re-freeze.
+Documentation-only closeout commits may advance repository `main` without moving the frozen candidate. Any later runtime/code change requires another explicit re-freeze.
 
 ## Retained consent-evidence contract
 
-The new candidate inherits the merged #591 behavior:
+The candidate inherits the merged #591 behavior:
 
 - exact consent notice version/hash/locale evidence;
 - legacy timestamp-only consent invalidation and re-consent;
@@ -84,9 +84,9 @@ This is an owner attestation. GitHub does not independently verify identity, dip
 
 Current state: `OPEN / REVIEW_ATTESTED / OWNER_QUALIFICATION_ATTESTATION_RETAINED / MANIFEST_PENDING / CANDIDATE_REFROZEN`.
 
-Retained provenance includes clinical-review, safety-owner, English-locale and parity attestations in #318 plus runtime cutover PR #585. Still required:
+Still required:
 
-- restricted review evidence references required by the manifest, using `issue-318:owner-attestation:professionnels-qualifies` as the retained qualification reference where applicable;
+- restricted review evidence references required by the manifest, using `issue-318:owner-attestation:professionnels-qualifies` where applicable;
 - complete approved `case_reviews` for all 59 current case IDs;
 - complete approved `parity_reviews` for all 10 tuples;
 - restricted safety manifest bound to `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` and the exact fingerprint;
@@ -96,30 +96,34 @@ No individual reviewer credential, registration or diploma is claimed by the own
 
 ## #320 — CNDP, processor and residency approval gate
 
-Current state: `OPEN / BLOCKED_EXTERNAL_RELEASE / PREVIEW_RUNTIME_PROVEN / DATABASE_TOPOLOGY_INCOMPLETE`.
+Current state: `OPEN / BLOCKED_EXTERNAL_RELEASE / EXACT_PRODUCTION_HEALTHY / COMPLIANCE_EVIDENCE_PENDING`.
 
 The owner explicitly authorized Vercel deployment for evidence collection on 2026-09-13. This technical deployment authorization is **not** real-patient release authorization.
 
-Verified Vercel topology evidence:
+### Exact deployed topology now verified
 
-- project `iamina-certified`, project id `prj_Pn9FnyconF3h2w9gOU74iV98kJoU`;
-- GitHub source repository `hraaaaf/IAMINA-MVP`;
-- exact preview source `2fb0eabd8c2be4ada0a6377e257bb5f2a692db85` produced deployment `dpl_67XyJnauqp427XPrQhGtn9rAiKfE`;
-- deployment state READY with one Python serverless function and configured runtime region `cdg1`;
-- `backend/api/index.py` routes into Django WSGI and `/api/health/` reaches the Django function;
-- `SECRET_KEY` is stored as sensitive Vercel configuration and its value was never logged;
-- `DEBUG=False`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS` are configured;
-- `DATABASE_URL` is absent for preview and production, so runtime correctly fails closed with `DATABASE_URL is required on Vercel; SQLite fallback is forbidden`;
-- connected Neon contains only the unrelated `tasdis` project; connected Supabase contains only the unrelated `AqarFinder` project; neither was reused for IAMINA.
+- frozen source SHA: `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`;
+- GitHub Actions production run `34752706286`, successful rerun job `103717805309`;
+- dedicated Neon project `IAMINA`, project id `square-sun-82359137`;
+- Neon PostgreSQL 16, region `aws-eu-central-1`;
+- Neon default branch `production`, branch id `br-fragrant-frost-b1lbdfzs`;
+- Django migrations applied successfully, `migrate --check` clean, `db_connectivity=ok`, `django_migrations=applied_and_current`;
+- Vercel project `iamina-certified`, project id `prj_Pn9FnyconF3h2w9gOU74iV98kJoU`;
+- exact production deployment `dpl_8ex2k82KaozE6Fxc8wQBYJuRU43y`;
+- deployment state `READY`, target `production`, runtime region `cdg1`, one Python serverless function;
+- stable alias `iamina-certified.vercel.app` resolves to that exact deployment;
+- Vercel deployment metadata reports exact source SHA `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`;
+- `GET https://iamina-certified.vercel.app/api/v1/health` returns HTTP 200 with `{"status":"ok","db":"ok","cache":"unavailable"}`;
+- runtime log for the health request is HTTP 200;
+- cache unavailability is non-fatal under the existing health contract and currently falls back to DB behavior;
+- no AqarFinder/Supabase database and no unrelated Neon database was reused.
 
-The preview proves the corrected runtime packaging, but it is not the exact frozen merge SHA and is not a healthy pilot deployment. No successful production candidate is claimed.
+The database/runtime portion of the technical deployment gate is therefore proven. This does not prove legal/CNDP or processor approval.
 
-Still required for candidate `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`:
+### Still required for real-patient release
 
-- provision a dedicated IAMINA PostgreSQL topology and bind `DATABASE_URL` without reusing another project's database;
-- validate migrations/connectivity and obtain `/api/health/` success on the exact candidate;
-- deploy/freeze the exact runtime/database/cache/email/export/provider topology and exact countries/regions;
-- approved deployment-specific patient notice/consent;
+- freeze the complete actual runtime/database/cache/email/export/provider topology with exact countries/regions in restricted evidence;
+- approved deployment-specific patient notice/consent evidence;
 - applicable CNDP health-data processing evidence;
 - foreign-transfer basis/evidence for each actual external destination, where applicable;
 - account-specific processor/DPA/subprocessor/retention/deletion/no-training/privacy/security evidence;
@@ -155,8 +159,8 @@ Fail-closed behavior remains authoritative: missing expected SHA, malformed SHA,
 | P5-1 Morocco linguistic gate | CLOSED | #515 + retained v8 packet |
 | P5-6 frozen candidate | REFROZEN | `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` + #597 exact-head/post-merge CI/drift |
 | Consent-evidence contract | MERGED / GREEN | #591, inherited unchanged |
-| Backend deployment infrastructure | MERGED / PREVIEW-PROVEN | #597 + `dpl_67XyJnauqp427XPrQhGtn9rAiKfE` |
-| Exact frozen candidate healthy deployment | **NO** | dedicated PostgreSQL / `DATABASE_URL` still missing |
+| Backend deployment infrastructure | **EXACT_PRODUCTION_HEALTHY** | `dpl_8ex2k82KaozE6Fxc8wQBYJuRU43y`, `cdg1`, health 200 |
+| Dedicated PostgreSQL | **READY / MIGRATED** | Neon `square-sun-82359137`, PG16, `aws-eu-central-1`, migrations current |
 | Safety fingerprint/corpus | VERIFIED / unchanged | fingerprint + 59 cases / 10 tuples |
 | Human safety review | ATTESTED_COMPLETE | #318 retained provenance |
 | Qualification wording | OWNER_ATTESTATION_RETAINED | `professionnels qualifiés` / #318 |
@@ -169,14 +173,14 @@ Fail-closed behavior remains authoritative: missing expected SHA, malformed SHA,
 
 ## Stop conditions
 
-Real-patient enablement must stop while any #318/#320 evidence is incomplete, while the exact frozen candidate lacks a healthy reviewed deployment, if any approved audit fails, if any manifest/audit SHA differs from the frozen candidate, if the safety fingerprint differs, if deployment topology differs from reviewed evidence, or if explicit human release authorization is absent.
+Real-patient enablement must stop while any #318/#320 evidence is incomplete, if any approved audit fails, if any manifest/audit SHA differs from the frozen candidate, if the safety fingerprint differs, if deployment topology differs from reviewed evidence, or if explicit human release authorization is absent.
 
 ## Non-claims
 
-P5-6 does **not** claim legal advice, CNDP authorization, processor approval, independently verified reviewer credentials, healthy production deployment, approved production geography, or permission to process real patient data.
+P5-6 does **not** claim legal advice, CNDP authorization, processor approval, independently verified reviewer credentials, approved production geography for health-data processing, or permission to process real patient data.
 
 Canonical global progress remains 6/12 = 50.0%. P5 whole-lot progress remains 4/9 = 44.4%.
 
 ## Next exact action
 
-Provision a **dedicated IAMINA PostgreSQL** topology, bind it to `iamina-certified` as `DATABASE_URL`, validate migrations/connectivity, then deploy and prove `/api/health/` on exact frozen candidate `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`. After the actual topology and restricted evidence exist, bind both manifests to this SHA, run the three exact-SHA approved audits, then require an explicit human real-patient release decision.
+Build the restricted P5-6 evidence packet against the now-proven exact deployment: complete #318's 59-case/10-parity safety manifest and #320's deployment-specific residency/processor/CNDP evidence for the actual Vercel `cdg1` + Neon `aws-eu-central-1` topology. Then bind both manifests to `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`, run the three exact-SHA `--require-approved` audits, and require an explicit human real-patient release decision.
