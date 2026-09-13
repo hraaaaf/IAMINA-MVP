@@ -34,22 +34,6 @@ Rules:
 - **Risk:** hanging requests, inconsistent streaming failure, poor patient UX.
 - **Resolution:** enforce timeout/failure/fallback policy at the outbound boundary and add frontend typed error UX.
 
-## TD-005 — Locale/safety model is still too coarse for MENA rollout
-
-- **Area:** Internationalization / safety
-- **Priority:** Critical before pilot locale enablement
-- **Current compromise:** legacy language handling does not yet fully separate country, UI language, response language, dialect, script/transliteration, units, time zone, and emergency jurisdiction.
-- **Risk:** unsafe assumptions from geolocation/language coupling and unequal safety coverage across dialects.
-- **Resolution:** P0-MENA-2 locale contract + native-reviewed parity corpus + deterministic fallback + validated emergency resources.
-
-## TD-006 — High-severity language-variant coverage has a known gap
-
-- **Area:** Safety
-- **Priority:** Critical before real-patient pilot
-- **Current compromise:** exact/curated lexical safety matching does not yet cover all common high-severity orthographic variants for the pilot dialect.
-- **Risk:** delayed deterministic interception.
-- **Resolution:** curated native-reviewed variant corpus with positive/negative tests; do not use overly loose fuzzy matching that creates unsafe false positives.
-
 ## TD-007 — Emergency events are not yet proven to reach a monitored operational channel
 
 - **Area:** Safety operations
