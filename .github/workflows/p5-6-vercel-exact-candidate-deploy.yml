@@ -60,15 +60,24 @@ jobs:
           import json
           envs = json.load(open('/tmp/envs.json')).get('envs', [])
           targets = set()
+          db_ids = []
           for item in envs:
               if item.get('key') != 'DATABASE_URL':
                   continue
               target = item.get('target', [])
-              targets.update([target] if isinstance(target, str) else (target or []))
+              target = {target} if isinstance(target, str) else set(target or [])
+              targets.update(target)
+              if item.get('id') and ('production' in target or 'preview' in target):
+                  db_ids.append(item['id'])
           print('database_url_preview=' + str('preview' in targets).lower())
           print('database_url_production=' + str('production' in targets).lower())
           if not {'preview', 'production'}.issubset(targets):
               raise SystemExit('DATABASE_URL must target preview and production')
+          if not db_ids:
+              raise SystemExit('DATABASE_URL id unavailable')
+          with open('/tmp/database-env-id', 'w') as f:
+              f.write(db_ids[0])
+          print('database_url_id_ready=true')
           PY
 
       - name: Retrieve DATABASE_URL securely for migration
@@ -77,26 +86,20 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
-          code="$(curl -sS -o /tmp/envs-decrypted.json -w '%{http_code}' \
+          ENV_ID="$(cat /tmp/database-env-id)"
+          code="$(curl -sS -o /tmp/database-env.json -w '%{http_code}' \
             -H "Authorization: Bearer $VERCEL_TOKEN" \
-            "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID&decrypt=true")"
+            "https://api.vercel.com/v1/projects/$VERCEL_PROJECT_ID/env/$ENV_ID?teamId=$VERCEL_ORG_ID")"
           echo "vercel_env_decrypt_http=$code"
           test "$code" = "200"
           python - <<'PY'
           import json
-          from urllib.parse import urlsplit, urlunsplit
+          from urllib.parse import quote, urlsplit, urlunsplit
 
-          envs = json.load(open('/tmp/envs-decrypted.json')).get('envs', [])
-          candidates = []
-          for item in envs:
-              if item.get('key') == 'DATABASE_URL' and item.get('value'):
-                  target = item.get('target', [])
-                  target = {target} if isinstance(target, str) else set(target or [])
-                  if 'production' in target or 'preview' in target:
-                      candidates.append(item['value'])
-          if not candidates:
+          item = json.load(open('/tmp/database-env.json'))
+          value = (item.get('value') or '').strip()
+          if not value:
               raise SystemExit('DATABASE_URL decrypted value unavailable')
-          value = candidates[0].strip()
           parts = urlsplit(value)
           if parts.scheme not in {'postgres', 'postgresql'} or not parts.hostname:
               raise SystemExit('DATABASE_URL is not PostgreSQL')
@@ -104,7 +107,6 @@ jobs:
           direct_host = parts.hostname.replace('-pooler', '')
           netloc = ''
           if parts.username:
-              from urllib.parse import quote
               netloc += quote(parts.username, safe='')
               if parts.password is not None:
                   netloc += ':' + quote(parts.password, safe='')
