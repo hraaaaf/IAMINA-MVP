@@ -10,6 +10,7 @@ from django.core.management.base import CommandError
 from django.utils import timezone as django_timezone
 
 from core.models import AuditLog
+from core.observability.events import ObservabilityEvent
 from core.retention_policy import (
     NOT_PERSISTED,
     retention_schedule_payload,
@@ -31,6 +32,11 @@ def test_retention_schedule_is_current_unique_and_machine_readable():
 @pytest.mark.django_db
 def test_deletion_is_dry_run_by_default():
     user = User.objects.create_user(username="dry-run", password="not-exported")
+    event = ObservabilityEvent.objects.create(
+        event_type="session_start",
+        patient_id=user.id,
+        props={},
+    )
     output = StringIO()
 
     call_command(
@@ -44,6 +50,7 @@ def test_deletion_is_dry_run_by_default():
     )
 
     assert User.objects.filter(pk=user.id).exists()
+    assert ObservabilityEvent.objects.filter(pk=event.pk).exists()
     assert json.loads(output.getvalue())["action"] == "DRY_RUN"
 
 
@@ -88,6 +95,17 @@ def test_execute_requires_exact_confirmation_and_retains_anonymous_audit():
         resource_type="Synthetic",
         resource_id="owned-record",
     )
+    own_event = ObservabilityEvent.objects.create(
+        event_type="session_start",
+        patient_id=user.id,
+        props={"count": 1},
+    )
+    other = User.objects.create_user(username="keep-me", password="not-exported")
+    other_event = ObservabilityEvent.objects.create(
+        event_type="session_start",
+        patient_id=other.id,
+        props={"count": 2},
+    )
     command_options = {
         "user_id": user.id,
         "requested_at": django_timezone.localdate() - timedelta(days=31),
@@ -100,6 +118,8 @@ def test_execute_requires_exact_confirmation_and_retains_anonymous_audit():
     with pytest.raises(CommandError, match="requires --confirm"):
         call_command("delete_patient_data", confirm="wrong", **command_options)
 
+    assert ObservabilityEvent.objects.filter(pk=own_event.pk).exists()
+
     output = StringIO()
     call_command(
         "delete_patient_data",
@@ -109,6 +129,8 @@ def test_execute_requires_exact_confirmation_and_retains_anonymous_audit():
     )
 
     assert not User.objects.filter(pk=user.id).exists()
+    assert not ObservabilityEvent.objects.filter(pk=own_event.pk).exists()
+    assert ObservabilityEvent.objects.filter(pk=other_event.pk).exists()
     deletion_log = AuditLog.objects.get(
         actor=None,
         action="delete",
@@ -117,7 +139,9 @@ def test_execute_requires_exact_confirmation_and_retains_anonymous_audit():
     )
     assert deletion_log.metadata["approval_reference"] == "REQ-APPROVED"
     assert AuditLog.objects.filter(resource_id="owned-record", actor=None).exists()
-    assert json.loads(output.getvalue())["action"] == "EXECUTE"
+    result = json.loads(output.getvalue())
+    assert result["action"] == "EXECUTE"
+    assert result["observability_events_deleted"] == 1
 
 
 def test_export_staging_purge_is_dry_run_then_execute(tmp_path):
