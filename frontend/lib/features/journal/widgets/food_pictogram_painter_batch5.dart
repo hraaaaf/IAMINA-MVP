@@ -224,8 +224,30 @@ class FoodPictogramPainterBatch5 extends CustomPainter {
 
   void _salad(Canvas c) {
     _bowl(c, const Color(0xFFE9E7CF));
-    for (final p in const <Offset>[Offset(34, 46), Offset(44, 42), Offset(54, 49), Offset(64, 42), Offset(68, 52), Offset(42, 54)]) {
-      c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: p, width: 8, height: 6), const Radius.circular(2)), _fill(p.dx.isEven ? const Color(0xFF69A05A) : const Color(0xFFD4664E)));
+    const spots = <Offset>[
+      Offset(34, 46),
+      Offset(44, 42),
+      Offset(54, 49),
+      Offset(64, 42),
+      Offset(68, 52),
+      Offset(42, 54),
+    ];
+    const colors = <Color>[
+      Color(0xFF69A05A),
+      Color(0xFFD4664E),
+      Color(0xFF69A05A),
+      Color(0xFFE2B74B),
+      Color(0xFFD4664E),
+      Color(0xFF69A05A),
+    ];
+    for (var i = 0; i < spots.length; i++) {
+      c.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: spots[i], width: 8, height: 6),
+          const Radius.circular(2),
+        ),
+        _fill(colors[i]),
+      );
     }
     c.drawLine(const Offset(34, 55), const Offset(63, 43), _stroke(const Color(0xFFE4C58A), 2));
   }
