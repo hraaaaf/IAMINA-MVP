@@ -34,14 +34,6 @@ Rules:
 - **Risk:** hanging requests, inconsistent streaming failure, poor patient UX.
 - **Resolution:** enforce timeout/failure/fallback policy at the outbound boundary and add frontend typed error UX.
 
-## TD-007 — Emergency events are not yet proven to reach a monitored operational channel
-
-- **Area:** Safety operations
-- **Priority:** Critical before real-patient pilot
-- **Current compromise:** detection/logging alone does not guarantee human operational visibility.
-- **Risk:** a safety event may be recorded without actionable escalation.
-- **Resolution:** implement monitored routing or explicitly approve/document a different operating model before pilot.
-
 ## TD-008 — Frontend integration/accessibility coverage is incomplete
 
 - **Area:** Quality / accessibility
