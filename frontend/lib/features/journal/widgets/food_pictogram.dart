@@ -5,12 +5,13 @@ import '../../../core/data/meal_food_catalog.dart';
 import '../../../core/theme/app_theme.dart';
 import 'food_pictogram_painter.dart';
 import 'food_pictogram_painter_batch2.dart';
+import 'food_pictogram_painter_batch3.dart';
 
 /// Runtime surface for IAMINA food artwork.
 ///
 /// Rendering priority:
 /// 1. certified bundled artwork when a reviewed asset exists;
-/// 2. native IAMINA vector pictogram for the coded launch set;
+/// 2. native IAMINA vector pictogram for the coded launch/catalog set;
 /// 3. deterministic emoji fallback for the remaining long tail.
 ///
 /// This keeps food selection fully offline and gives the launch vocabulary a
@@ -38,9 +39,15 @@ class FoodPictogram extends StatelessWidget {
   );
 
   Widget _nativePictogram() {
-    final painter = hasCodeFoodPictogramBatch2(item.pictogramKey)
-        ? FoodPictogramPainterBatch2(item.pictogramKey)
-        : FoodPictogramPainter(item.pictogramKey);
+    final key = item.pictogramKey;
+    final CustomPainter painter;
+    if (hasCodeFoodPictogramBatch3(key)) {
+      painter = FoodPictogramPainterBatch3(key);
+    } else if (hasCodeFoodPictogramBatch2(key)) {
+      painter = FoodPictogramPainterBatch2(key);
+    } else {
+      painter = FoodPictogramPainter(key);
+    }
     return ExcludeSemantics(
       child: CustomPaint(size: Size.square(size), painter: painter),
     );
@@ -51,7 +58,8 @@ class FoodPictogram extends StatelessWidget {
     final accent = AminaTheme.accent(context);
     final certified = hasCertifiedFoodPictogram(item.pictogramKey);
     final native = hasCodeFoodPictogram(item.pictogramKey) ||
-        hasCodeFoodPictogramBatch2(item.pictogramKey);
+        hasCodeFoodPictogramBatch2(item.pictogramKey) ||
+        hasCodeFoodPictogramBatch3(item.pictogramKey);
 
     return Semantics(
       image: true,
