@@ -16,7 +16,7 @@ env:
   TARGET_SHA: 52c0238fede74a1ba85fd3df32b1e89268bbe8f7
   VERCEL_ORG_ID: team_NNhXPDOIfjGNBcn253btpyk0
   VERCEL_PROJECT_ID: prj_Pn9FnyconF3h2w9gOU74iV98kJoU
-  VERCEL_SCOPE: achraf-benmoussa-s-projects
+  VERCEL_PROJECT_NAME: iamina-certified
 
 jobs:
   deploy:
@@ -62,34 +62,73 @@ jobs:
           print('vercel_project_id=' + str(data.get('id')))
           PY
 
-      - name: Link exact Vercel project
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p backend/.vercel
-          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > backend/.vercel/project.json
-
-      - name: Pull production configuration
-        shell: bash
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          set -euo pipefail
-          npx --yes vercel@59.15.1 pull --yes --environment=production --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN" --cwd=backend
-
-      - name: Deploy exact candidate to production
+      - name: Create exact production deployment through Vercel API
         id: deploy
         shell: bash
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
-          url="$(npx --yes vercel@59.15.1 deploy --prod --yes --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN" --cwd=backend)"
-          echo "deployment_url=$url" >> "$GITHUB_OUTPUT"
-          echo "deployment_url=$url"
+          python - <<'PY'
+          import json, os
+          sha = os.environ['TARGET_SHA']
+          payload = {
+              'name': os.environ['VERCEL_PROJECT_NAME'],
+              'project': os.environ['VERCEL_PROJECT_ID'],
+              'target': 'production',
+              'gitSource': {
+                  'type': 'github',
+                  'org': 'hraaaaf',
+                  'repo': 'IAMINA-MVP',
+                  'ref': 'main',
+                  'sha': sha,
+              },
+              'gitMetadata': {
+                  'remoteUrl': 'https://github.com/hraaaaf/IAMINA-MVP',
+                  'commitRef': 'main',
+                  'commitSha': sha,
+                  'dirty': False,
+                  'ci': True,
+                  'ciType': 'github-actions',
+                  'rootDirectory': 'backend',
+              },
+              'projectSettings': {
+                  'rootDirectory': 'backend',
+                  'serverlessFunctionRegion': 'cdg1',
+              },
+          }
+          with open('/tmp/deploy-payload.json', 'w') as f:
+              json.dump(payload, f, separators=(',', ':'))
+          PY
+          code="$(curl -sS -o /tmp/deploy.json -w '%{http_code}' \
+            -X POST \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/deploy-payload.json \
+            "https://api.vercel.com/v13/deployments?teamId=$VERCEL_ORG_ID&forceNew=1")"
+          echo "vercel_create_http=$code"
+          python - <<'PY'
+          import json
+          data = json.load(open('/tmp/deploy.json'))
+          safe = {k: data.get(k) for k in ('id','name','url','status','readyState','errorCode','errorMessage') if k in data}
+          print('vercel_create_response=' + json.dumps(safe, separators=(',', ':')))
+          if not data.get('id'):
+              raise SystemExit(1)
+          with open('/tmp/deployment-id', 'w') as f:
+              f.write(data['id'])
+          with open('/tmp/deployment-url', 'w') as f:
+              f.write('https://' + data['url'])
+          PY
+          case "$code" in
+            200|201) ;;
+            *) exit 1 ;;
+          esac
+          echo "deployment_id=$(cat /tmp/deployment-id)" >> "$GITHUB_OUTPUT"
+          echo "deployment_url=$(cat /tmp/deployment-url)" >> "$GITHUB_OUTPUT"
 
       - name: Deployment evidence
         shell: bash
         run: |
           echo "candidate_sha=$TARGET_SHA"
+          echo "deployment_id=${{ steps.deploy.outputs.deployment_id }}"
           echo "deployment_url=${{ steps.deploy.outputs.deployment_url }}"
