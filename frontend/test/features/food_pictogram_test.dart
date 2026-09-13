@@ -5,6 +5,7 @@ import 'package:amina/features/journal/widgets/food_pictogram_painter.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch2.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch3.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch4.dart';
+import 'package:amina/features/journal/widgets/food_pictogram_painter_batch5.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,7 +16,8 @@ Finder _foodArtwork() => find.byWidgetPredicate(
       (widget.painter is FoodPictogramPainter ||
           widget.painter is FoodPictogramPainterBatch2 ||
           widget.painter is FoodPictogramPainterBatch3 ||
-          widget.painter is FoodPictogramPainterBatch4),
+          widget.painter is FoodPictogramPainterBatch4 ||
+          widget.painter is FoodPictogramPainterBatch5),
   description: 'IAMINA FoodPictogram CustomPaint',
 );
 
@@ -121,6 +123,25 @@ void main() {
     expect(painter, isA<FoodPictogramPainterBatch4>());
   });
 
+  testWidgets('batch 5 renders Gulf catalog art instead of emoji', (
+    tester,
+  ) async {
+    final item = mealFoodById('machboos_fish')!;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('fr'),
+        home: Scaffold(body: FoodPictogram(item: item, size: 48)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(hasCodeFoodPictogramBatch5('machboos_fish'), isTrue);
+    expect(find.text(item.visual), findsNothing);
+    expect(_foodArtwork(), findsOneWidget);
+    final painter = tester.widget<CustomPaint>(_foodArtwork()).painter;
+    expect(painter, isA<FoodPictogramPainterBatch5>());
+  });
+
   test('batch 1 code artwork covers exactly the first 24 launch concepts', () {
     expect(codeFoodPictogramIds.length, 24);
     const expected = <String>{
@@ -167,21 +188,31 @@ void main() {
       'tajine', 'lamb_prune_tagine', 'tanjia', 'zammita', 'aseeda',
     };
     expect(codeFoodPictogramBatch4Ids, expected);
-    expect(codeFoodPictogramBatch4Ids.intersection(codeFoodPictogramIds), isEmpty);
-    expect(codeFoodPictogramBatch4Ids.intersection(codeFoodPictogramBatch2Ids), isEmpty);
-    expect(codeFoodPictogramBatch4Ids.intersection(codeFoodPictogramBatch3Ids), isEmpty);
-    for (final id in codeFoodPictogramBatch4Ids) {
+  });
+
+  test('batch 5 covers the exact manifest-derived catalog batch', () {
+    expect(codeFoodPictogramBatch5Ids.length, 24);
+    const expected = <String>{
+      'fish_biryani', 'chicken_biryani', 'lamb_biryani', 'falafel',
+      'fattoush', 'foul_medames', 'kabsa_lamb', 'khabeesa',
+      'machboos_fish', 'majboos_shrimp', 'machboos_lamb', 'madrooba',
+      'manakish_cheese', 'manakish_zaatar', 'mandi_lamb', 'margoog',
+      'moutabal', 'mutabbaq', 'muhammar_rice', 'saleeg', 'saloona',
+      'samboosa_cheese', 'samboosa_meat', 'shakshuka',
+    };
+    expect(codeFoodPictogramBatch5Ids, expected);
+
+    final previous = <String>{
+      ...codeFoodPictogramIds,
+      ...codeFoodPictogramBatch2Ids,
+      ...codeFoodPictogramBatch3Ids,
+      ...codeFoodPictogramBatch4Ids,
+    };
+    expect(codeFoodPictogramBatch5Ids.intersection(previous), isEmpty);
+    for (final id in codeFoodPictogramBatch5Ids) {
       expect(mealFoodById(id), isNotNull, reason: 'Missing catalog food: $id');
     }
-    expect(
-      <String>{
-        ...codeFoodPictogramIds,
-        ...codeFoodPictogramBatch2Ids,
-        ...codeFoodPictogramBatch3Ids,
-        ...codeFoodPictogramBatch4Ids,
-      }.length,
-      96,
-    );
+    expect(<String>{...previous, ...codeFoodPictogramBatch5Ids}.length, 120);
   });
 
   test('every catalog concept resolves to a unique pictogram path', () {
