@@ -3,6 +3,9 @@
 ## Goal
 Étendre de 24 à 48 pictogrammes natifs IAMINA sans modifier la logique nutritionnelle ni la structure du FoodPicker.
 
+## État
+CLOSED / MERGED.
+
 ## BEFORE
 Référence retenue : captures exact-head du batch 1 (PR #584), certifiées par `UI browser screenshot certification` aux viewports 390×844, 768×1024 et 1280×900.
 
@@ -22,5 +25,15 @@ Même langage que le batch 1 : illustration alimentaire compacte, locale/offline
 - aucune régression de layout ;
 - le surface `meal-picker` expose volontairement plusieurs concepts batch 2 via la requête de certification `ta`.
 
-## Preuve attendue
-Tests unitaires/widget + workflow Chrome exact-head + inspection AFTER 390/768/1280 avant merge.
+## Preuve retenue
+Exact-head final `5116306e1038ef25aef7540a3ad0924625d94649` :
+- CI #34726793044 — SUCCESS ;
+- UI geometry #34726793036 — SUCCESS ;
+- P5-5 E2E #34726793035 — SUCCESS ;
+- P7 responsive #34726793058 — SUCCESS ;
+- UI browser screenshot #34726793095 — SUCCESS ;
+- AFTER inspecté aux 390×844 / 768×1024 / 1280×900, sans clipping/overflow observé ;
+- PR #587 squash-merge confirmée ;
+- merge `main@f8e28d5d2a23e7f802f5e62bcbd1db84ec55d31e`.
+
+Aucun déploiement Vercel n’a été demandé ni effectué pour ce lot.
