@@ -7,10 +7,12 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 env:
   VERCEL_ORG_ID: team_NNhXPDOIfjGNBcn253btpyk0
   VERCEL_PROJECT_ID: prj_Pn9FnyconF3h2w9gOU74iV98kJoU
+  FROZEN_RUNTIME_SHA: 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6
 
 jobs:
   probe:
@@ -26,7 +28,6 @@ jobs:
           code="$(curl -sS -o /tmp/envs.json -w '%{http_code}' \
             -H "Authorization: Bearer $VERCEL_TOKEN" \
             "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID")"
-          echo "vercel_env_list_http=$code"
           test "$code" = "200"
           python - <<'PY'
           import json
@@ -57,12 +58,45 @@ jobs:
               record['targets'].update(targets)
               if item.get('type'):
                   record['types'].add(item['type'])
+
+          lines = []
           for key in keys:
               record = by_key.get(key)
               if not record:
-                  print(f'{key}=absent')
+                  lines.append(f'- `{key}`: absent')
                   continue
               targets = ','.join(sorted(record['targets'])) or 'none'
               types = ','.join(sorted(record['types'])) or 'unknown'
-              print(f'{key}=present targets={targets} type={types}')
+              lines.append(f'- `{key}`: present; targets={targets}; type={types}')
+          open('/tmp/topology.txt', 'w').write('\n'.join(lines) + '\n')
+          print('\n'.join(lines))
           PY
+
+      - name: Retain sanitized topology evidence on issue 320
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          lines = open('/tmp/topology.txt').read().rstrip()
+          body = f'''P5-6B runtime environment metadata probe — sanitized, values never emitted.
+
+Frozen runtime candidate: `{os.environ["FROZEN_RUNTIME_SHA"]}`
+Probe control commit: `{os.environ["GITHUB_SHA"]}`
+
+{lines}
+
+Interpretation limits: this proves only Vercel environment-key presence/targets, not vendor contract, legal basis, data residency, processor approval, or functional delivery. Real-patient release remains unauthorized.'''
+          open('/tmp/comment.json', 'w').write(json.dumps({'body': body}))
+          PY
+          code="$(curl -sS -o /tmp/comment-response.json -w '%{http_code}' \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            --data-binary @/tmp/comment.json \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/320/comments")"
+          echo "issue_comment_http=$code"
+          test "$code" = "201"
