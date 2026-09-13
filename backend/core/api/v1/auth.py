@@ -215,7 +215,7 @@ def set_native_password(request, data: SetPasswordRequest):
 
 @router.post("/auth/password/reset/request")
 def request_password_reset(request, data: PasswordResetRequest):
-    """Accept a native recovery request without disclosing account existence."""
+    """Send a native recovery link without disclosing account existence."""
     users = list(User.objects.filter(email__iexact=data.email, is_active=True)[:2])
     if len(users) == 1 and users[0].has_usable_password():
         user = users[0]
