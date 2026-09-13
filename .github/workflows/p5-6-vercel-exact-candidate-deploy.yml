@@ -1,0 +1,76 @@
+name: P5-6 exact Vercel candidate deploy
+
+on:
+  push:
+    branches:
+      - ops/p5-6-vercel-deploy-52c0238
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p5-6-vercel-exact-candidate-deploy
+  cancel-in-progress: false
+
+env:
+  TARGET_SHA: 52c0238fede74a1ba85fd3df32b1e89268bbe8f7
+  VERCEL_ORG_ID: team_NNhXPDOIfjGNBcn253btpyk0
+  VERCEL_PROJECT_ID: prj_Pn9FnyconF3h2w9gOU74iV98kJoU
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact frozen candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_SHA }}
+          fetch-depth: 1
+
+      - name: Verify exact candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$TARGET_SHA"
+          echo "exact_candidate=$actual"
+
+      - name: Verify deployment credential exists
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$VERCEL_TOKEN" || { echo "VERCEL_TOKEN repository secret is missing" >&2; exit 78; }
+
+      - name: Link exact Vercel project
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backend/.vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > backend/.vercel/project.json
+
+      - name: Pull production configuration
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          npx --yes vercel@59.15.1 pull --yes --environment=production --token="$VERCEL_TOKEN" --cwd=backend
+
+      - name: Deploy exact candidate to production
+        id: deploy
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          url="$(npx --yes vercel@59.15.1 deploy --prod --yes --token="$VERCEL_TOKEN" --cwd=backend)"
+          echo "deployment_url=$url" >> "$GITHUB_OUTPUT"
+          echo "deployment_url=$url"
+
+      - name: Deployment evidence
+        shell: bash
+        run: |
+          echo "candidate_sha=$TARGET_SHA"
+          echo "deployment_url=${{ steps.deploy.outputs.deployment_url }}"
