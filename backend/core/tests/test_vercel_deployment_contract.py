@@ -90,9 +90,16 @@ def test_vercel_settings_accept_postgres_without_connecting():
     assert "iamina-certified.vercel.app" in result.stdout
 
 
-def test_vercel_config_keeps_deployments_manual_and_targets_wsgi():
+def test_vercel_config_keeps_deployments_manual_and_targets_python_bridge():
     config = json.loads((BACKEND_ROOT / "vercel.json").read_text(encoding="utf-8"))
 
     assert config["git"]["deploymentEnabled"] is False
-    assert config["functions"]["amina/wsgi.py"]["maxDuration"] == 60
+    assert config["regions"] == ["cdg1"]
+    assert config["functions"]["api/index.py"]["maxDuration"] == 60
+    assert config["rewrites"] == [
+        {"source": "/(.*)", "destination": "/api/index.py"}
+    ]
+    assert (BACKEND_ROOT / "api" / "index.py").read_text(encoding="utf-8") == (
+        "from amina.wsgi import application\n"
+    )
     assert (BACKEND_ROOT / ".python-version").read_text(encoding="utf-8").strip() == "3.12"
