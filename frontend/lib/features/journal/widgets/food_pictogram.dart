@@ -4,6 +4,7 @@ import '../../../core/data/food_pictogram_registry.dart';
 import '../../../core/data/meal_food_catalog.dart';
 import '../../../core/theme/app_theme.dart';
 import 'food_pictogram_painter.dart';
+import 'food_pictogram_painter_batch2.dart';
 
 /// Runtime surface for IAMINA food artwork.
 ///
@@ -12,7 +13,7 @@ import 'food_pictogram_painter.dart';
 /// 2. native IAMINA vector pictogram for the coded launch set;
 /// 3. deterministic emoji fallback for the remaining long tail.
 ///
-/// This keeps food selection fully offline and gives the first launch batch a
+/// This keeps food selection fully offline and gives the launch vocabulary a
 /// premium, platform-independent visual identity without waiting for binary
 /// artwork production.
 class FoodPictogram extends StatelessWidget {
@@ -36,18 +37,21 @@ class FoodPictogram extends StatelessWidget {
     ),
   );
 
-  Widget _nativePictogram() => ExcludeSemantics(
-    child: CustomPaint(
-      size: Size.square(size),
-      painter: FoodPictogramPainter(item.pictogramKey),
-    ),
-  );
+  Widget _nativePictogram() {
+    final painter = hasCodeFoodPictogramBatch2(item.pictogramKey)
+        ? FoodPictogramPainterBatch2(item.pictogramKey)
+        : FoodPictogramPainter(item.pictogramKey);
+    return ExcludeSemantics(
+      child: CustomPaint(size: Size.square(size), painter: painter),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final accent = AminaTheme.accent(context);
     final certified = hasCertifiedFoodPictogram(item.pictogramKey);
-    final native = hasCodeFoodPictogram(item.pictogramKey);
+    final native = hasCodeFoodPictogram(item.pictogramKey) ||
+        hasCodeFoodPictogramBatch2(item.pictogramKey);
 
     return Semantics(
       image: true,
@@ -79,8 +83,8 @@ class FoodPictogram extends StatelessWidget {
                     native ? _nativePictogram() : _emojiFallback(),
               )
             : native
-            ? _nativePictogram()
-            : _emojiFallback(),
+                ? _nativePictogram()
+                : _emojiFallback(),
       ),
     );
   }

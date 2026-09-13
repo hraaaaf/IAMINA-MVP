@@ -324,7 +324,9 @@ class _BrowserMealPickerSurfaceState extends State<_BrowserMealPickerSurface> {
     context.visitChildElements(visit);
     final textField = target?.widget;
     if (textField is TextField) {
-      const query = 'pain';
+      // Batch-2 visual proof: this query exposes tagines, taktouka and
+      // tannour alongside a long-tail fallback in the real production picker.
+      const query = 'ta';
       textField.controller?.text = query;
       textField.onChanged?.call(query);
       _searchSeeded = true;
