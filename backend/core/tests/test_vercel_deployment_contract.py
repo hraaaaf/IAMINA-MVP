@@ -6,14 +6,29 @@ from pathlib import Path
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 
+_EMAIL_ENV_KEYS = {
+    "EMAIL_BACKEND",
+    "EMAIL_HOST",
+    "EMAIL_PORT",
+    "EMAIL_HOST_USER",
+    "EMAIL_HOST_PASSWORD",
+    "DEFAULT_FROM_EMAIL",
+    "PASSWORD_RESET_FRONTEND_URL",
+    "EMAIL_USE_TLS",
+    "EMAIL_USE_SSL",
+}
+
 
 def _import_vercel_settings(
     database_url: str | None,
     *,
     cors_origins: str = "https://iamina-review.vercel.app",
     csrf_origins: str = "https://iamina-review.vercel.app",
+    email_overrides: dict[str, str | None] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
+    for key in _EMAIL_ENV_KEYS:
+        env.pop(key, None)
     env.update(
         {
             "SECRET_KEY": "test-only-secret-key",
@@ -23,8 +38,23 @@ def _import_vercel_settings(
             "CSRF_TRUSTED_ORIGINS": csrf_origins,
             "VERCEL": "1",
             "VERCEL_URL": "iamina-certified.vercel.app",
+            "EMAIL_BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+            "EMAIL_HOST": "smtp.example.test",
+            "EMAIL_PORT": "587",
+            "EMAIL_HOST_USER": "iamina-test",
+            "EMAIL_HOST_PASSWORD": "test-only-password",
+            "DEFAULT_FROM_EMAIL": "noreply@iamina.health",
+            "PASSWORD_RESET_FRONTEND_URL": "iamina://reset-password",
+            "EMAIL_USE_TLS": "True",
+            "EMAIL_USE_SSL": "False",
         }
     )
+    if email_overrides:
+        for key, value in email_overrides.items():
+            if value is None:
+                env.pop(key, None)
+            else:
+                env[key] = value
     if database_url is None:
         env.pop("DATABASE_URL", None)
     else:
@@ -37,7 +67,9 @@ def _import_vercel_settings(
             (
                 "import amina.vercel_settings as s; "
                 "print(s.DATABASES['default']['ENGINE']); "
-                "print(s.ALLOWED_HOSTS)"
+                "print(s.ALLOWED_HOSTS); "
+                "print(s.EMAIL_BACKEND); "
+                "print(s.PASSWORD_RESET_FRONTEND_URL)"
             ),
         ],
         cwd=BACKEND_ROOT,
@@ -82,12 +114,37 @@ def test_vercel_settings_reject_non_https_csrf_origin():
     assert "CSRF_TRUSTED_ORIGINS must contain only valid HTTPS origins" in result.stderr
 
 
+def test_vercel_settings_fail_closed_without_email_host():
+    result = _import_vercel_settings(
+        "postgresql://user:pass@127.0.0.1:5432/iamina",
+        email_overrides={"EMAIL_HOST": None},
+    )
+
+    assert result.returncode != 0
+    assert "password recovery requires" in result.stderr
+    assert "EMAIL_HOST" in result.stderr
+
+
+def test_vercel_settings_reject_non_smtp_email_backend():
+    result = _import_vercel_settings(
+        "postgresql://user:pass@127.0.0.1:5432/iamina",
+        email_overrides={
+            "EMAIL_BACKEND": "django.core.mail.backends.console.EmailBackend"
+        },
+    )
+
+    assert result.returncode != 0
+    assert "requires SMTP EMAIL_BACKEND" in result.stderr
+
+
 def test_vercel_settings_accept_postgres_without_connecting():
     result = _import_vercel_settings("postgresql://user:pass@127.0.0.1:5432/iamina")
 
     assert result.returncode == 0, result.stderr
     assert "django.db.backends.postgresql" in result.stdout
     assert "iamina-certified.vercel.app" in result.stdout
+    assert "django.core.mail.backends.smtp.EmailBackend" in result.stdout
+    assert "iamina://reset-password" in result.stdout
 
 
 def test_vercel_config_keeps_deployments_manual_and_targets_python_bridge():
