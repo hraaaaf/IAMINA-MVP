@@ -10,6 +10,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+Finder _batch6Art() => find.byWidgetPredicate(
+  (widget) => widget is CustomPaint && widget.painter is FoodPictogramPainterBatch6,
+  description: 'Batch 6 food pictogram art',
+);
+
 void main() {
   test('batch 6 covers the exact manifest-derived 24 and native union 144', () {
     const expected = <String>{
@@ -48,8 +53,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(item.visual), findsNothing);
-    final paint = tester.widget<CustomPaint>(find.byType(CustomPaint));
-    expect(paint.painter, isA<FoodPictogramPainterBatch6>());
+    expect(_batch6Art(), findsOneWidget);
+    expect(
+      tester.widget<CustomPaint>(_batch6Art()).painter,
+      isA<FoodPictogramPainterBatch6>(),
+    );
     expect(tester.getSemantics(find.byType(FoodPictogram)).label, contains('Steak de bœuf'));
   });
 
@@ -66,6 +74,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(item.visual), findsOneWidget);
-    expect(find.byType(CustomPaint), findsNothing);
+    expect(_batch6Art(), findsNothing);
   });
 }
