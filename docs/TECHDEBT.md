@@ -34,14 +34,6 @@ Rules:
 - **Risk:** hanging requests, inconsistent streaming failure, poor patient UX.
 - **Resolution:** enforce timeout/failure/fallback policy at the outbound boundary and add frontend typed error UX.
 
-## TD-004 — CI/SAST exclusion paths may contain legacy names
-
-- **Area:** CI / security tooling
-- **Priority:** Medium-high
-- **Current compromise:** historical Bandit exclusions referenced pre-refactor package names in the previous audit.
-- **Risk:** noisy or misleading coverage and accidental scan gaps.
-- **Resolution:** verify current CI paths against actual repository layout; remove stale exclusions rather than copying old names forward.
-
 ## TD-005 — Locale/safety model is still too coarse for MENA rollout
 
 - **Area:** Internationalization / safety
