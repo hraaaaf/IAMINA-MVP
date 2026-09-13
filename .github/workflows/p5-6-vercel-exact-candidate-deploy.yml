@@ -60,49 +60,35 @@ jobs:
           import json
           envs = json.load(open('/tmp/envs.json')).get('envs', [])
           targets = set()
-          db_ids = []
           for item in envs:
               if item.get('key') != 'DATABASE_URL':
                   continue
               target = item.get('target', [])
-              target = {target} if isinstance(target, str) else set(target or [])
-              targets.update(target)
-              if item.get('id') and ('production' in target or 'preview' in target):
-                  db_ids.append(item['id'])
+              targets.update([target] if isinstance(target, str) else (target or []))
           print('database_url_preview=' + str('preview' in targets).lower())
           print('database_url_production=' + str('production' in targets).lower())
           if not {'preview', 'production'}.issubset(targets):
               raise SystemExit('DATABASE_URL must target preview and production')
-          if not db_ids:
-              raise SystemExit('DATABASE_URL id unavailable')
-          with open('/tmp/database-env-id', 'w') as f:
-              f.write(db_ids[0])
-          print('database_url_id_ready=true')
           PY
 
-      - name: Retrieve DATABASE_URL securely for migration
+      - name: Prepare migration DATABASE_URL from GitHub secret
         shell: bash
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          IAMINA_DATABASE_URL: ${{ secrets.IAMINA_DATABASE_URL }}
         run: |
           set -euo pipefail
-          ENV_ID="$(cat /tmp/database-env-id)"
-          code="$(curl -sS -o /tmp/database-env.json -w '%{http_code}' \
-            -H "Authorization: Bearer $VERCEL_TOKEN" \
-            "https://api.vercel.com/v1/projects/$VERCEL_PROJECT_ID/env/$ENV_ID?teamId=$VERCEL_ORG_ID")"
-          echo "vercel_env_decrypt_http=$code"
-          test "$code" = "200"
+          if [ -z "${IAMINA_DATABASE_URL:-}" ]; then
+            echo "IAMINA_DATABASE_URL repository secret is required for one-time migration"
+            exit 1
+          fi
           python - <<'PY'
-          import json
+          import os
           from urllib.parse import quote, urlsplit, urlunsplit
 
-          item = json.load(open('/tmp/database-env.json'))
-          value = (item.get('value') or '').strip()
-          if not value:
-              raise SystemExit('DATABASE_URL decrypted value unavailable')
+          value = os.environ['IAMINA_DATABASE_URL'].strip()
           parts = urlsplit(value)
           if parts.scheme not in {'postgres', 'postgresql'} or not parts.hostname:
-              raise SystemExit('DATABASE_URL is not PostgreSQL')
+              raise SystemExit('IAMINA_DATABASE_URL is not PostgreSQL')
           print('::add-mask::' + value)
           direct_host = parts.hostname.replace('-pooler', '')
           netloc = ''
