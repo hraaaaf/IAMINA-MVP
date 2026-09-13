@@ -1,189 +1,178 @@
 # P5-6 — Real-patient release gate
 
-> **Status:** ACTIVE / BLOCKED_EXTERNAL / CANDIDATE_REFROZEN  
+> **Status:** ACTIVE / BLOCKED_EXTERNAL / CANDIDATE_REFROZEN / CURRENT_CANDIDATE_NOT_DEPLOYED  
 > **Release posture:** `NOT_RELEASE_AUTHORIZED`  
 > **P5-1 prerequisite:** CLOSED / HUMAN_APPROVED / exact-main v8 retained  
-> **Frozen candidate SHA:** `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`  
+> **Frozen candidate SHA:** `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`  
 > **Safety corpus:** 59 exact cases / 10 technical parity tuples  
 > **Safety fingerprint:** `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`  
 > **Consent notice version:** `2026-09-12.1`  
 > **Pilot Readiness arithmetic:** 4/9 = 44.4%  
-> **Deployment:** exact frozen candidate is deployed successfully to Vercel production in `cdg1`, backed by dedicated Neon PostgreSQL 16 in `aws-eu-central-1`; `/api/v1/health` returns HTTP 200 with `db=ok`. Real-patient release remains blocked on restricted safety/compliance evidence and explicit human release authorization.
+> **Global roadmap:** 6/12 = 50.0%
 
 ## Goal
 
-Permit a real-patient pilot only after one exact frozen release SHA is backed by retained clinical-human, consent, processor, residency/transfer and deployment-specific approval evidence.
+Permit a real-patient pilot only after one exact frozen release SHA has retained clinical-human, consent, deployment, processor, residency/transfer and explicit release-authorization evidence.
 
 ## Success
 
-P5-6 may move to `CLOSED` only when all of the following are true for frozen candidate `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`:
+P5-6 closes only when, for frozen candidate `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`:
 
-1. #318 has a valid restricted safety-review manifest covering the exact fingerprint, all 59 cases and all 10 parity tuples;
-2. #320 has actual deployment topology plus deployment/account-specific CNDP, processor and residency/transfer evidence;
-3. the safety and residency restricted manifests carry `source_commit_sha = 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`;
-4. all three fail-closed audits PASS with `--require-approved --expected-source-commit-sha 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`;
-5. retained approved outputs carry `audited_source_commit_sha = 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`;
-6. an explicit human release decision authorizes real-patient processing.
+1. #318 has an approved restricted safety manifest covering the exact fingerprint, all 59 case IDs and all 10 parity tuples;
+2. #320 has the actual deployed topology plus deployment/account-specific CNDP, processor and residency/transfer evidence;
+3. safety and residency manifests carry `source_commit_sha = fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`;
+4. all three exact-SHA fail-closed audits PASS with `--require-approved`;
+5. retained outputs carry `audited_source_commit_sha = fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`;
+6. an explicit human decision authorizes real-patient processing.
 
 Anything less remains `NOT_RELEASE_AUTHORIZED`.
 
-## Deliberate candidate re-freeze after Vercel runtime correction
+## Candidate re-freeze — 2026-09-13
 
-The former candidate `52c0238fede74a1ba85fd3df32b1e89268bbe8f7` remains retained as the PR #590 backend-infrastructure proof, but it is superseded as the forward P5-6 candidate because an exact Vercel deployment attempt exposed an incompatible function-path contract.
+The prior deployed candidate `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` proved the Vercel/Django/Neon runtime, but two release-gate defects were found afterward and fixed:
 
-The frozen candidate is:
+- PR #602: the local-only consent audit can now consume the already-defined restricted residency manifest and bind genuine CNDP health-processing evidence to the exact release SHA instead of remaining structurally impossible to approve;
+- PR #603: native password recovery now requires an explicit provider-neutral SMTP production contract, uses non-silent delivery, preserves account-enumeration resistance, and no longer implies unproven mail delivery.
 
-`5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`
+Forward candidate:
 
-Re-freeze proof:
+`fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`
 
-- old exact candidate `52c0238fede74a1ba85fd3df32b1e89268bbe8f7` produced Vercel deployment `dpl_5AcyTUotrjRi5pt7A9zv92dxQsEX`, which failed with `unused_function` for the former `amina/wsgi.py` function glob;
-- PR #597 `fix(infra): route Django through explicit Vercel Python function`;
-- exact PR head `edd4a3d86e4f773c527111b20349dfa6dd09dab5`;
-- exact-head CI #4169 / workflow `34749918504` — SUCCESS;
-- exact-head Django migration drift #3729 / workflow `34749918503` — SUCCESS;
-- merge `main@5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`, tree `5b07093b3df9b0d337104e0e82133feb18341d80`;
-- exact post-merge CI workflow `34750040306` — SUCCESS after re-running the jobs cancelled only by a later documentation-only push;
-- post-merge Django migration drift #3730 / workflow `34750040338` — SUCCESS.
+Validation retained for this candidate:
 
-PR #597 changes exactly three files: `backend/api/index.py`, `backend/vercel.json`, and `backend/core/tests/test_vercel_deployment_contract.py`.
+- #602 exact-head CI #4186 / workflow `34771054574` — SUCCESS;
+- #602 exact-head migration drift #3733 / workflow `34771054541` — SUCCESS;
+- #603 exact-head CI #4189 / workflow `34771391814` — SUCCESS;
+- #603 exact-head migration drift #3736 / workflow `34771391809` — SUCCESS;
+- #603 merge `main@fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`;
+- post-merge CI #4190 / workflow `34773613905` — SUCCESS;
+- post-merge migration drift #3737 / workflow `34773613814` — SUCCESS.
 
-It does **not** modify the reviewed safety corpus or the consent-evidence contract. The retained safety corpus remains 59 exact cases / 10 tuples with fingerprint `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`, and consent notice version `2026-09-12.1` remains unchanged.
+Clinical rebind proof:
 
-Documentation-only closeout commits may advance repository `main` without moving the frozen candidate. Any later runtime/code change requires another explicit re-freeze.
+- `backend/core/safety_corpora.py` blob is identical between `5b27a22…` and `fb42e4d…`: `bf046c298ee8e77591f5c5b1049b806a6255bfcf`;
+- `backend/core/triage_classification.py` blob is identical between those candidates: `eba7a57967eeec1ba4b264c90ccab1a30e516b38`;
+- therefore the retained corpus remains 59 exact cases / 10 tuples with fingerprint `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`.
 
-## Retained consent-evidence contract
+This is a technical exact-corpus rebind only. It does not fabricate reviewer identity, qualification or a new human approval.
 
-The candidate inherits the merged #591 behavior:
+Documentation-only closeout commits may advance `main` without moving the frozen candidate. Any later runtime/code change requires another explicit re-freeze.
 
-- exact consent notice version/hash/locale evidence;
-- legacy timestamp-only consent invalidation and re-consent;
-- server acceptance receipts;
-- withdrawal clearing active proof and revoking granular media grants;
-- central outbound-AI egress verification against current notice proof;
-- consent epoch separation for media grants;
-- Flutter fail-closed when server acceptance fails;
-- local UI gate requiring Drift consent timestamp plus current Secure Storage evidence;
-- local-only release scope retaining the global CNDP health-processing blocker.
+## Deployment state
 
-## Retained qualified-human safety review
+### Proven predecessor deployment
 
-The project-owner attestation records completion of the retained safety review and adjudication of challenged Darija rows. The enabled corpus remains 59 exact cases and 10 technical `(locale, channel, input_form)` parity tuples with fingerprint:
+The previous candidate `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` remains technically proven in production:
 
-`823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`
+- Vercel project `iamina-certified`, project id `prj_Pn9FnyconF3h2w9gOU74iV98kJoU`;
+- deployment `dpl_8ex2k82KaozE6Fxc8wQBYJuRU43y`, READY, production, `cdg1`;
+- dedicated Neon project `IAMINA`, project id `square-sun-82359137`;
+- PostgreSQL 16 in `aws-eu-central-1`, branch `br-fragrant-frost-b1lbdfzs`;
+- migrations current;
+- `GET /api/v1/health` returned HTTP 200 with `{"status":"ok","db":"ok","cache":"unavailable"}`;
+- runtime log recorded HTTP 200;
+- cache absence is non-fatal under the existing health contract.
 
-The owner-selected qualification wording is **« professionnels qualifiés »**, with machine-readable reference:
+### Current forward candidate
 
-`issue-318:owner-attestation:professionnels-qualifies`
+`fb42e4d641b7b057607fe6a2de3d5104ccf15d0b` is **not deployed**. No new Vercel deployment was performed during #602/#603 closeout.
 
-This is an owner attestation. GitHub does not independently verify identity, diploma, registration, licence or professional credentials. No such detail is invented or required by this retained wording.
+The previous deployment proves the underlying Vercel/Neon path, but it does not count as exact-deployment evidence for the new candidate.
 
-#318 remains open because the restricted exact-corpus manifest and complete approved case/parity evidence are not yet retained.
+PR #603 also deliberately makes production startup fail closed until an explicit SMTP/reset contract is configured. Therefore the current candidate cannot honestly satisfy the full deployment topology gate until the actual mail processor and account-specific evidence are selected/configured and a separately authorized exact deployment is performed.
 
 ## #318 — Qualified clinical/safety evidence
 
-Current state: `OPEN / REVIEW_ATTESTED / OWNER_QUALIFICATION_ATTESTATION_RETAINED / MANIFEST_PENDING / CANDIDATE_REFROZEN`.
+Current state:
+
+`OPEN / REVIEW_ATTESTED / OWNER_QUALIFICATION_ATTESTATION_RETAINED / EXACT_CORPUS_REBOUND_TECHNICALLY / RESTRICTED_QUALIFICATION_REFERENCES_PENDING / BLOCKED_EXTERNAL_HUMAN`
+
+Retained owner wording:
+
+`issue-318:owner-attestation:professionnels-qualifies`
 
 Still required:
 
-- restricted review evidence references required by the manifest, using `issue-318:owner-attestation:professionnels-qualifies` where applicable;
-- complete approved `case_reviews` for all 59 current case IDs;
-- complete approved `parity_reviews` for all 10 tuples;
-- restricted safety manifest bound to `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` and the exact fingerprint;
+- real opaque native-reviewer references for `fr`, `ar`, `en`, `ar-MA`;
+- real qualification references required by the manifest contract;
+- non-stale `reviewed_on` / `review_due_on`;
+- approved coverage of all 59 exact case IDs;
+- approved coverage of all 10 parity tuples;
+- restricted safety manifest bound to `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b` and the exact fingerprint;
 - exact-SHA `audit_safety_corpus_review --require-approved` PASS.
 
-No individual reviewer credential, registration or diploma is claimed by the owner attestation.
+No individual reviewer credential, registration, licence or diploma is inferred from repository history.
 
-## #320 — CNDP, processor and residency approval gate
+## #320 — CNDP, processor and residency gate
 
-Current state: `OPEN / BLOCKED_EXTERNAL_RELEASE / EXACT_PRODUCTION_HEALTHY / COMPLIANCE_EVIDENCE_PENDING`.
+Current state:
 
-The owner explicitly authorized Vercel deployment for evidence collection on 2026-09-13. This technical deployment authorization is **not** real-patient release authorization.
+`OPEN / BLOCKED_EXTERNAL_RELEASE / PREDECESSOR_DEPLOYMENT_PROVEN / CURRENT_CANDIDATE_NOT_DEPLOYED / SMTP_PROCESSOR_PENDING / COMPLIANCE_EVIDENCE_PENDING`
 
-### Exact deployed topology now verified
+Still required:
 
-- frozen source SHA: `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`;
-- GitHub Actions production run `34752706286`, successful rerun job `103717805309`;
-- dedicated Neon project `IAMINA`, project id `square-sun-82359137`;
-- Neon PostgreSQL 16, region `aws-eu-central-1`;
-- Neon default branch `production`, branch id `br-fragrant-frost-b1lbdfzs`;
-- Django migrations applied successfully, `migrate --check` clean, `db_connectivity=ok`, `django_migrations=applied_and_current`;
-- Vercel project `iamina-certified`, project id `prj_Pn9FnyconF3h2w9gOU74iV98kJoU`;
-- exact production deployment `dpl_8ex2k82KaozE6Fxc8wQBYJuRU43y`;
-- deployment state `READY`, target `production`, runtime region `cdg1`, one Python serverless function;
-- stable alias `iamina-certified.vercel.app` resolves to that exact deployment;
-- Vercel deployment metadata reports exact source SHA `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`;
-- `GET https://iamina-certified.vercel.app/api/v1/health` returns HTTP 200 with `{"status":"ok","db":"ok","cache":"unavailable"}`;
-- runtime log for the health request is HTTP 200;
-- cache unavailability is non-fatal under the existing health contract and currently falls back to DB behavior;
-- no AqarFinder/Supabase database and no unrelated Neon database was reused.
-
-The database/runtime portion of the technical deployment gate is therefore proven. This does not prove legal/CNDP or processor approval.
-
-### Still required for real-patient release
-
-- freeze the complete actual runtime/database/cache/email/export/provider topology with exact countries/regions in restricted evidence;
-- approved deployment-specific patient notice/consent evidence;
+- choose and configure the actual password-reset mail processor under the provider-neutral SMTP contract;
+- account-specific processor/DPA/subprocessor/retention/deletion/privacy/security evidence for every enabled processor;
+- actual exact-candidate topology with countries/regions after an explicitly authorized deployment;
+- deployment-specific patient notice/consent approval evidence;
 - applicable CNDP health-data processing evidence;
-- foreign-transfer basis/evidence for each actual external destination, where applicable;
-- account-specific processor/DPA/subprocessor/retention/deletion/no-training/privacy/security evidence;
-- restricted residency manifest bound to the frozen SHA;
+- foreign-transfer basis/evidence for every actual external destination where applicable;
+- restricted residency manifest bound to `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`;
 - exact-SHA consent and residency audit PASS outputs.
 
-Public provider/CNDP documentation may define requirements but is not account-specific approval evidence.
+Public provider/CNDP documentation can define requirements but cannot substitute for account-specific approvals.
 
 ## Exact-SHA release audit contract
 
-The frozen P5-6 release scope is **local-only for external AI egress**: every network provider remains runtime-denied by the processor policy. The consent audit must therefore use `--local-only`; this scopes out disabled network-provider evidence but deliberately keeps the global CNDP health-processing authorization blocker fail-closed.
+External AI egress remains local-only/runtime-denied for the release gate. Disabled network AI providers do not become release blockers, but global health-data authorization remains fail-closed and must come from the validated restricted residency manifest.
 
 ```bash
 python manage.py audit_pilot_consent_governance \
   --local-only \
+  --residency-manifest /restricted/iamina/pilot-residency.json \
   --require-approved \
-  --expected-source-commit-sha 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6
+  --expected-source-commit-sha fb42e4d641b7b057607fe6a2de3d5104ccf15d0b
 
 python manage.py audit_pilot_data_residency \
   --manifest /restricted/iamina/pilot-residency.json \
   --require-approved \
-  --expected-source-commit-sha 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6
+  --expected-source-commit-sha fb42e4d641b7b057607fe6a2de3d5104ccf15d0b
 
 python manage.py audit_safety_corpus_review \
   --manifest /restricted/iamina/safety-review-manifest.json \
   --require-approved \
-  --expected-source-commit-sha 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6
+  --expected-source-commit-sha fb42e4d641b7b057607fe6a2de3d5104ccf15d0b
 ```
 
-Fail-closed behavior remains authoritative: missing expected SHA, malformed SHA, stale/partial manifests, source-SHA mismatch, safety fingerprint mismatch, incomplete case/parity coverage, missing deployment evidence, or missing approval evidence must fail.
+Fail-closed behavior is authoritative: missing/malformed expected SHA, stale/partial manifests, source mismatch, fingerprint mismatch, incomplete case/parity coverage, missing topology/processor evidence, or missing approval evidence must fail.
 
 ## Decision matrix
 
 | Dimension | State | Evidence |
 |---|---|---|
 | P5-1 Morocco linguistic gate | CLOSED | #515 + retained v8 packet |
-| P5-6 frozen candidate | REFROZEN | `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` + #597 exact-head/post-merge CI/drift |
-| Consent-evidence contract | MERGED / GREEN | #591, inherited unchanged |
-| Backend deployment infrastructure | **EXACT_PRODUCTION_HEALTHY** | `dpl_8ex2k82KaozE6Fxc8wQBYJuRU43y`, `cdg1`, health 200 |
-| Dedicated PostgreSQL | **READY / MIGRATED** | Neon `square-sun-82359137`, PG16, `aws-eu-central-1`, migrations current |
-| Safety fingerprint/corpus | VERIFIED / unchanged | fingerprint + 59 cases / 10 tuples |
+| P5-6 frozen candidate | REFROZEN | `fb42e4d…` + #602/#603 + post-merge CI/drift |
+| Safety fingerprint/corpus | VERIFIED / unchanged | identical safety blobs + 59 cases / 10 tuples |
 | Human safety review | ATTESTED_COMPLETE | #318 retained provenance |
-| Qualification wording | OWNER_ATTESTATION_RETAINED | `professionnels qualifiés` / #318 |
 | Restricted safety manifest | MISSING | #318 |
-| Deployment-specific CNDP/legal evidence | MISSING | #320 |
-| Processor/account-specific approvals | MISSING | #320 |
+| Consent audit evidence plumbing | MERGED / GREEN | #602 |
+| Password-reset production contract | MERGED / GREEN | #603 |
+| Exact current-candidate deployment | MISSING | no deploy of `fb42e4d…` |
+| Proven predecessor runtime/DB | HEALTHY | `5b27a22…`, Vercel `cdg1`, Neon `aws-eu-central-1` |
+| Mail processor/account evidence | MISSING | #320 |
+| CNDP/legal evidence | MISSING | #320 |
 | Residency/transfer manifest | MISSING | #320 |
-| Three approved exact-SHA audit outputs | MISSING | cannot pass before restricted evidence exists |
-| Real-patient pilot authorization | **NO** | external/human gates remain open |
+| Three approved exact-SHA audits | MISSING | blocked by restricted evidence |
+| Real-patient pilot authorization | **NO** | human/external gates remain open |
 
 ## Stop conditions
 
-Real-patient enablement must stop while any #318/#320 evidence is incomplete, if any approved audit fails, if any manifest/audit SHA differs from the frozen candidate, if the safety fingerprint differs, if deployment topology differs from reviewed evidence, or if explicit human release authorization is absent.
+Real-patient enablement must stop while any #318/#320 evidence is incomplete, if any approved audit fails, if any manifest/audit SHA differs from the frozen candidate, if the safety fingerprint differs, if exact deployment topology differs from reviewed evidence, or if explicit human release authorization is absent.
 
 ## Non-claims
 
-P5-6 does **not** claim legal advice, CNDP authorization, processor approval, independently verified reviewer credentials, approved production geography for health-data processing, or permission to process real patient data.
-
-Canonical global progress remains 6/12 = 50.0%. P5 whole-lot progress remains 4/9 = 44.4%.
+P5-6 does **not** claim legal advice, CNDP authorization, processor approval, independently verified reviewer credentials, approved production geography for the current candidate, or permission to process real patient data.
 
 ## Next exact action
 
-Build the restricted P5-6 evidence packet against the now-proven exact deployment: complete #318's 59-case/10-parity safety manifest and #320's deployment-specific residency/processor/CNDP evidence for the actual Vercel `cdg1` + Neon `aws-eu-central-1` topology. Then bind both manifests to `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`, run the three exact-SHA `--require-approved` audits, and require an explicit human real-patient release decision.
+Complete the work that does not require deployment: update #318/#320 to the new frozen SHA and assemble the restricted evidence templates. The next unavoidable external decisions are the real #318 qualification references/review-due policy and #320 processor/CNDP/account evidence, including the actual password-reset mail processor. Only after those inputs exist can an exact deployment be separately authorized, topology frozen, manifests approved, the three exact-SHA audits run, and a human real-patient release decision be made.
