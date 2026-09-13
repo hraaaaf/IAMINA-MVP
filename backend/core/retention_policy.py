@@ -94,8 +94,8 @@ RETENTION_RULES: tuple[RetentionRule, ...] = (
         trigger=ACCOUNT_DELETION,
         retention_days=30,
         deletion_action=(
-            "delete owned relational records and explicitly purge patient-linked "
-            "observability telemetry"
+            "delete owned records through Django relational cascade and explicitly purge "
+            "patient-linked observability telemetry"
         ),
         owner=_POLICY_OWNER,
         effective_on=_EFFECTIVE,
