@@ -2,11 +2,11 @@
 
 > **Authority:** this is the single canonical forward tracker for IAMINA. If an issue, PR body, handover, assessment, AGENTS note, architecture note or historical phase document conflicts with this file on current status, priority or next work, **this file wins**. Historical documents remain evidence only.
 >
-> **Global audit:** 2026-09-12, re-bound after PR #590 against frozen P5-6 candidate `52c0238fede74a1ba85fd3df32b1e89268bbe8f7`, open GitHub trackers, `AGENTS.md` and `docs/TECHDEBT.md`.
+> **Global audit:** 2026-09-13, re-bound after PR #597 against frozen P5-6 runtime candidate `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`, open GitHub trackers, `AGENTS.md` and `docs/TECHDEBT.md`.
 >
 > **Canonical global progress:** **6/12 atomic roadmap lots CLOSED = 50.0%**. Atomic denominator: P5-0, P5-1, P5-2, P5-3, P5-4A, P5-4B, P5-5, P5-6 consent evidence engineering, P5-6A, P5-6B, P5-7, P5-8. Closed atoms: P5-0, P5-1, P5-2, P5-4A, P5-5 and P5-6 consent evidence engineering. The P5 whole-lot metric remains **4/9 = 44.4%** and retained MENA remains **32/38 = 84.2%** for their narrower scopes.
 >
-> **Release posture:** `NOT_RELEASE_AUTHORIZED`. No Vercel deployment is authorized by this roadmap.
+> **Release posture:** `NOT_RELEASE_AUTHORIZED`. Owner authorization exists for technical Vercel evidence deployment only; it does not authorize real-patient processing.
 
 ## North star
 
@@ -39,7 +39,7 @@ Ship one safe, measurable Morocco/MENA diabetes-companion PWA pilot, collect rea
 | MENA retained tracker | 🟡 32/38 = 84.2% | informational only |
 | P5 whole-lot tracker | 🟡 4/9 = 44.4% | active program |
 | P5-6 consent evidence engineering | ✅ CLOSED atomic sublot | inherited unchanged by current candidate |
-| P5-6 backend deployment infrastructure | ✅ PREPARED / GREEN | not a new atomic lot; candidate still not deployed |
+| P5-6 backend deployment infrastructure | ✅ MERGED / PREVIEW-PROVEN | dedicated IAMINA PostgreSQL and healthy exact-candidate deployment still missing |
 | Real-patient release | 🟠 BLOCKED_EXTERNAL | current critical path |
 
 ### Progress arithmetic
@@ -54,7 +54,7 @@ No partial credit is assigned inside an atomic lot.
 
 # 2. One critical path
 
-**P5-6A restricted safety evidence + P5-6B authorized deployment/topology/compliance evidence → three exact-SHA approved audits → explicit human release decision → controlled PWA pilot → P5-7 observed evidence → P5-8 go/no-go.**
+**P5-6A restricted safety evidence + P5-6B dedicated database / exact deployment / topology-compliance evidence → three exact-SHA approved audits → explicit human release decision → controlled PWA pilot → P5-7 observed evidence → P5-8 go/no-go.**
 
 Everything else is closed, deferred, parallel non-blocking work, technical debt or repository hygiene.
 
@@ -112,7 +112,7 @@ Retained synthetic/non-patient proof includes main `88b78e036ce3494dfe37921e70e0
 
 Frozen candidate:
 
-- release SHA: `52c0238fede74a1ba85fd3df32b1e89268bbe8f7`;
+- release SHA: `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`;
 - safety corpus: 59 exact cases;
 - parity coverage: 10 technical tuples;
 - safety fingerprint: `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`;
@@ -120,19 +120,22 @@ Frozen candidate:
 
 ### Candidate re-freeze proof
 
-PR #590 changed release/deployment runtime infrastructure and therefore supersedes `fd3e4a53543e515100b493acc63c99cc9e8464ce` as the forward release candidate.
+PR #590 first changed backend release/deployment infrastructure and froze `52c0238fede74a1ba85fd3df32b1e89268bbe8f7`. An exact Vercel attempt then proved that candidate's old function-path packaging incompatible with the active Vercel Python contract. PR #597 corrects only that runtime packaging and therefore supersedes `52c0238...` as the forward candidate.
 
-Verified proof:
+Verified current proof:
 
-- PR #590 exact head `2f5aa97dac9105f865b4cef10f914c58020e26c9`;
-- exact-head CI #4147 / workflow `34709348736` SUCCESS;
-- exact-head migration drift #3721 / workflow `34709348741` SUCCESS;
-- signed merge `main@52c0238fede74a1ba85fd3df32b1e89268bbe8f7`, tree `3db5d6368b07eaa80f810f193da2ce5268c425d8`;
-- post-merge CI #4154 / workflow `34723119692` SUCCESS;
-- post-merge migration drift #3723 / workflow `34723119717` SUCCESS;
-- UI browser screenshot #526, P5-5 rehearsal #102, missing-routes #59 and UI geometry #523 SUCCESS.
+- old exact candidate `52c0238fede74a1ba85fd3df32b1e89268bbe8f7` → deployment `dpl_5AcyTUotrjRi5pt7A9zv92dxQsEX` → Vercel `unused_function`, no successful runtime;
+- PR #597 exact head `edd4a3d86e4f773c527111b20349dfa6dd09dab5`;
+- exact-head CI #4169 / workflow `34749918504` SUCCESS;
+- exact-head migration drift #3729 / workflow `34749918503` SUCCESS;
+- merge `main@5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`, tree `5b07093b3df9b0d337104e0e82133feb18341d80`;
+- exact post-merge CI workflow `34750040306` SUCCESS after re-running backend jobs cancelled only by a later documentation-only push;
+- post-merge migration drift #3730 / workflow `34750040338` SUCCESS;
+- PR #597 changes exactly `backend/api/index.py`, `backend/core/tests/test_vercel_deployment_contract.py` and `backend/vercel.json`.
 
-The six #590 files modify deployment/runtime infrastructure only. The safety corpus and #591 consent-evidence contract are unchanged, so no safety or consent re-qualification is inferred.
+The #597 files modify deployment/runtime packaging only. The safety corpus and #591 consent-evidence contract are unchanged, so no safety or consent re-qualification is inferred.
+
+Documentation-only commits may advance `main` without moving this frozen runtime candidate. Any later runtime/code change requires another explicit re-freeze.
 
 ### P5-6 consent evidence engineering
 
@@ -142,43 +145,51 @@ Retained from #591: exact notice version/hash/locale, legacy consent invalidatio
 
 ### P5-6 backend deployment infrastructure
 
-**Status:** ✅ PREPARED / GREEN / NOT_DEPLOYED.
+**Status:** ✅ MERGED / PREVIEW-PROVEN / DATABASE_INCOMPLETE.
 
-PR #590 prepares a separate Django backend target intended as `iamina-certified`, with Vercel backend configuration in `cdg1`, production WSGI/Gunicorn contract and deployment identity plumbing.
+Verified Vercel target is `iamina-certified` (`prj_Pn9FnyconF3h2w9gOU74iV98kJoU`) linked to `hraaaaf/IAMINA-MVP`. Git auto-deployment remains deliberately disabled; deployment evidence is created explicitly.
 
-This preparation does not authorize or prove a production deployment. The connected Vercel account still exposes `iamina-review` as an older frontend-only offline demo built from `7ca1f9cd6ba65ce58a351a2befceddbe5cb76f38` in `iad1`; it has no `API_BASE_URL` and is not the P5-6 candidate.
+Exact preview source `2fb0eabd8c2be4ada0a6377e257bb5f2a692db85` produced READY deployment `dpl_67XyJnauqp427XPrQhGtn9rAiKfE`, with one Python serverless function and configured region `cdg1`. `/api/health/` reaches Django through the explicit `api/index.py` bridge.
+
+Runtime configuration now contains `SECRET_KEY` as a sensitive Vercel value plus `DEBUG=False`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS`. Secret values were not retained in logs.
+
+The current fail-closed blocker is exact and narrower: `DATABASE_URL` is absent for preview and production. Runtime therefore rejects startup with `DATABASE_URL is required on Vercel; SQLite fallback is forbidden`. No healthy exact-candidate production deployment is claimed.
+
+Connected Neon currently contains only unrelated project `tasdis`; connected Supabase contains only unrelated project `AqarFinder`. Neither may be reused as IAMINA's database.
 
 ### P5-6A — Safety qualification manifest
 
 **Tracker:** #318.
 
-Already retained: owner-attested clinical review, Darija adjudication/runtime cutover, safety-owner/parity attestation and English-locale validation. PR #590 does not change the reviewed corpus.
+Already retained: owner-attested safety/clinical review, Darija adjudication/runtime cutover, safety-owner/parity attestation and English-locale validation. The owner-selected qualification wording is **« professionnels qualifiés »**, machine reference `issue-318:owner-attestation:professionnels-qualifies`.
+
+This is an owner attestation and is not represented as independent credential verification. More specific diploma/licence/registration detail is neither invented nor claimed.
 
 Still missing:
 
-- real restricted reviewer/evidence references where required;
-- real qualification references for required locale reviews `fr`, `ar`, `en`, `ar-MA`;
+- restricted review evidence references required by the manifest, using the retained owner qualification reference where applicable;
 - complete approved 59-case and 10-parity decisions;
-- restricted safety manifest with `source_commit_sha = 52c0238fede74a1ba85fd3df32b1e89268bbe8f7` and the exact fingerprint;
+- restricted safety manifest with `source_commit_sha = 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` and the exact fingerprint;
 - exact-SHA safety audit PASS.
-
-GitHub attestations are provenance, not reviewer qualification records.
 
 ### P5-6B — CNDP / consent / processor / residency
 
 **Tracker:** #320.
 
-Current state: `BLOCKED_EXTERNAL_RELEASE / CANDIDATE_NOT_DEPLOYED / TOPOLOGY_NOT_FROZEN`.
+Current state: `BLOCKED_EXTERNAL_RELEASE / PREVIEW_RUNTIME_PROVEN / DATABASE_TOPOLOGY_INCOMPLETE`.
+
+Owner authorization for technical Vercel deployment/evidence collection is retained from 2026-09-13. It is not permission to process real patient data.
 
 Still required:
 
-- explicit owner authorization before any Vercel deployment;
-- actual candidate deployment and exact runtime/database/cache/email/export/provider topology with countries/regions;
+- provision a dedicated IAMINA PostgreSQL topology and bind `DATABASE_URL` without reusing another project's database;
+- validate migrations/connectivity and obtain `/api/health/` success on the exact frozen candidate;
+- deploy/freeze the exact runtime/database/cache/email/export/provider topology with countries/regions;
 - approved deployment-specific patient notice/consent;
 - applicable CNDP health-data processing evidence;
 - foreign-transfer basis/evidence for every actual external destination, where applicable;
 - account-specific processor/DPA/subprocessor/retention/deletion/no-training/privacy/security evidence;
-- restricted residency manifest with `source_commit_sha = 52c0238fede74a1ba85fd3df32b1e89268bbe8f7`;
+- restricted residency manifest with `source_commit_sha = 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`;
 - exact-SHA consent/residency audit PASS outputs.
 
 Public provider or regulatory documentation may establish requirements but is not account/deployment-specific approval evidence.
@@ -188,9 +199,9 @@ Public provider or regulatory documentation may establish requirements but is no
 All three fail-closed audits must PASS against the same exact candidate:
 
 ```bash
-python manage.py audit_pilot_consent_governance --require-approved --expected-source-commit-sha 52c0238fede74a1ba85fd3df32b1e89268bbe8f7
-python manage.py audit_pilot_data_residency --manifest /restricted/iamina/pilot-residency.json --require-approved --expected-source-commit-sha 52c0238fede74a1ba85fd3df32b1e89268bbe8f7
-python manage.py audit_safety_corpus_review --manifest /restricted/iamina/safety-review-manifest.json --require-approved --expected-source-commit-sha 52c0238fede74a1ba85fd3df32b1e89268bbe8f7
+python manage.py audit_pilot_consent_governance --require-approved --expected-source-commit-sha 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6
+python manage.py audit_pilot_data_residency --manifest /restricted/iamina/pilot-residency.json --require-approved --expected-source-commit-sha 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6
+python manage.py audit_safety_corpus_review --manifest /restricted/iamina/safety-review-manifest.json --require-approved --expected-source-commit-sha 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6
 ```
 
 Then and only then: explicit human real-patient release decision.
@@ -258,9 +269,9 @@ Closed does not imply legal/CNDP authorization, physical-device proof, real-pati
 
 # 9. Execution order
 
-1. **P5-6A #318:** obtain real restricted reviewer/qualification references and build the exact-SHA safety manifest for `52c0238fede74a1ba85fd3df32b1e89268bbe8f7`.
-2. **Human deployment gate:** explicit owner authorization before deploying the exact P5-6 candidate backend/topology.
-3. **P5-6B #320:** after authorized deployment, freeze the actual topology and collect deployment/account-specific CNDP, consent, processor, residency and transfer evidence; build the exact-SHA residency manifest.
+1. **P5-6A #318:** build the exact-SHA restricted safety manifest for `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`, using the retained owner qualification wording **« professionnels qualifiés »**, and complete the 59-case / 10-parity approvals.
+2. **P5-6B #320:** provision a dedicated IAMINA PostgreSQL topology, bind `DATABASE_URL`, validate migrations/connectivity and prove `/api/health/` on the exact frozen candidate.
+3. Freeze the actual runtime/database/cache/email/export/provider topology and collect deployment/account-specific CNDP, consent, processor, residency and transfer evidence; build the exact-SHA residency manifest.
 4. Run the three exact-SHA fail-closed audits.
 5. Explicit human real-patient release decision.
 6. Controlled PWA pilot.
@@ -280,19 +291,21 @@ Parallel work is allowed only if it cannot perturb the frozen candidate or its e
 - Issues/PRs are execution/evidence containers, not canonical portfolio status.
 - Assessments/handovers/ADRs are evidence/history, not forward authority.
 - Never declare a lot closed from a title, branch, PR state or old score alone.
-- No Vercel deployment without explicit owner authorization.
+- No Vercel deployment without explicit owner authorization; technical deployment authorization never implies real-patient release.
 
 ## Current canonical snapshot
 
 - repo: `hraaaaf/IAMINA-MVP`
-- frozen P5-6 candidate: `52c0238fede74a1ba85fd3df32b1e89268bbe8f7`
-- candidate proof: PR #590; exact-head CI #4147 / drift #3721; post-merge CI #4154 / drift #3723; signed merge
+- frozen P5-6 runtime candidate: `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`
+- candidate proof: PR #597; exact-head CI #4169 / drift #3729; post-merge CI `34750040306` / drift #3730; merge `5b27a22...`
+- preview runtime proof: `dpl_67XyJnauqp427XPrQhGtn9rAiKfE`, Python function, `cdg1`, Django reached, fail-closed on missing `DATABASE_URL`
 - safety fingerprint: `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`
+- qualification wording: **professionnels qualifiés** — owner attestation reference `issue-318:owner-attestation:professionnels-qualifies`
 - consent notice: `2026-09-12.1`
 - canonical global progress: **6/12 = 50.0%**
 - P5 whole-lot progress: **4/9 = 44.4%**
 - retained MENA: **32/38 = 84.2%**
-- current blockers: **#318 restricted qualification evidence + #320 candidate deployment/topology/compliance evidence**
-- deployment state: **candidate not deployed**
+- current blockers: **#318 restricted exact-corpus manifest + #320 dedicated database/topology/compliance evidence**
+- deployment state: **preview runtime proven; exact frozen candidate not yet healthy because dedicated PostgreSQL is absent**
 - release posture: **NOT_RELEASE_AUTHORIZED**
-- next exact action: obtain #318 restricted qualification references; the next runtime step is gated on explicit owner authorization to deploy the exact candidate backend/topology.
+- next exact action: provision a dedicated IAMINA PostgreSQL topology, bind `DATABASE_URL`, validate migrations/connectivity and prove `/api/health/` on exact frozen candidate `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`.
