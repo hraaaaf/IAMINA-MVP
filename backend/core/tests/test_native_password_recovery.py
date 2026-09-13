@@ -1,5 +1,7 @@
 """Native password recovery remains enumeration-safe and revokes old tokens."""
 
+import logging
+
 import pytest
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
@@ -19,10 +21,12 @@ from core.native_auth import NativeTokenError, issue_native_token, verify_native
 @pytest.mark.django_db
 def test_reset_request_does_not_disclose_account_existence(monkeypatch):
     sent = []
-    monkeypatch.setattr(
-        "core.api.v1.auth.send_mail",
-        lambda **kwargs: sent.append(kwargs),
-    )
+
+    def _send_mail(**kwargs):
+        sent.append(kwargs)
+        return 1
+
+    monkeypatch.setattr("core.api.v1.auth.send_mail", _send_mail)
 
     missing = request_password_reset(
         None,
@@ -38,8 +42,45 @@ def test_reset_request_does_not_disclose_account_existence(monkeypatch):
         PasswordResetRequest(email=user.email),
     )
 
-    assert missing == existing
+    assert missing == existing == {
+        "detail": "If the account exists, the recovery request was accepted"
+    }
     assert len(sent) == 1
+    assert sent[0]["fail_silently"] is False
+
+
+@pytest.mark.django_db
+def test_reset_request_hides_delivery_failure_without_logging_patient_data(
+    monkeypatch,
+    caplog,
+):
+    user = User.objects.create_user(
+        username="patient@example.test",
+        email="patient@example.test",
+        password="Current-passphrase-2026!",
+    )
+
+    def _fail_send(**kwargs):
+        raise RuntimeError("smtp unavailable")
+
+    monkeypatch.setattr("core.api.v1.auth.send_mail", _fail_send)
+    caplog.set_level(logging.ERROR, logger="core.api.v1.auth")
+
+    missing = request_password_reset(
+        None,
+        PasswordResetRequest(email="missing@example.test"),
+    )
+    existing = request_password_reset(
+        None,
+        PasswordResetRequest(email=user.email),
+    )
+
+    assert missing == existing == {
+        "detail": "If the account exists, the recovery request was accepted"
+    }
+    assert "Password reset email delivery failed: RuntimeError" in caplog.text
+    assert user.email not in caplog.text
+    assert "smtp unavailable" not in caplog.text
 
 
 @pytest.mark.django_db
