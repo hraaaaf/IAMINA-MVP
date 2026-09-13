@@ -2,7 +2,7 @@
 
 > **Authority:** this is the single canonical forward tracker for IAMINA. If an issue, PR body, handover, assessment, AGENTS note, architecture note or historical phase document conflicts with this file on current status, priority or next work, **this file wins**. Historical documents remain evidence only.
 >
-> **Global audit:** 2026-09-13, re-bound after PR #597 against frozen P5-6 runtime candidate `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`, open GitHub trackers, `AGENTS.md` and `docs/TECHDEBT.md`.
+> **Global audit:** 2026-09-13, re-bound after PR #597 and exact production deployment proof against frozen P5-6 runtime candidate `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`, open GitHub trackers, `AGENTS.md` and `docs/TECHDEBT.md`.
 >
 > **Canonical global progress:** **6/12 atomic roadmap lots CLOSED = 50.0%**. Atomic denominator: P5-0, P5-1, P5-2, P5-3, P5-4A, P5-4B, P5-5, P5-6 consent evidence engineering, P5-6A, P5-6B, P5-7, P5-8. Closed atoms: P5-0, P5-1, P5-2, P5-4A, P5-5 and P5-6 consent evidence engineering. The P5 whole-lot metric remains **4/9 = 44.4%** and retained MENA remains **32/38 = 84.2%** for their narrower scopes.
 >
@@ -39,7 +39,7 @@ Ship one safe, measurable Morocco/MENA diabetes-companion PWA pilot, collect rea
 | MENA retained tracker | 🟡 32/38 = 84.2% | informational only |
 | P5 whole-lot tracker | 🟡 4/9 = 44.4% | active program |
 | P5-6 consent evidence engineering | ✅ CLOSED atomic sublot | inherited unchanged by current candidate |
-| P5-6 backend deployment infrastructure | ✅ MERGED / PREVIEW-PROVEN | dedicated IAMINA PostgreSQL and healthy exact-candidate deployment still missing |
+| P5-6 backend deployment infrastructure | ✅ EXACT_PRODUCTION_HEALTHY | dedicated Neon PostgreSQL migrated; exact Vercel production health 200 |
 | Real-patient release | 🟠 BLOCKED_EXTERNAL | current critical path |
 
 ### Progress arithmetic
@@ -54,7 +54,7 @@ No partial credit is assigned inside an atomic lot.
 
 # 2. One critical path
 
-**P5-6A restricted safety evidence + P5-6B dedicated database / exact deployment / topology-compliance evidence → three exact-SHA approved audits → explicit human release decision → controlled PWA pilot → P5-7 observed evidence → P5-8 go/no-go.**
+**P5-6A restricted safety evidence + P5-6B deployment-specific topology/compliance evidence → three exact-SHA approved audits → explicit human release decision → controlled PWA pilot → P5-7 observed evidence → P5-8 go/no-go.**
 
 Everything else is closed, deferred, parallel non-blocking work, technical debt or repository hygiene.
 
@@ -145,17 +145,22 @@ Retained from #591: exact notice version/hash/locale, legacy consent invalidatio
 
 ### P5-6 backend deployment infrastructure
 
-**Status:** ✅ MERGED / PREVIEW-PROVEN / DATABASE_INCOMPLETE.
+**Status:** ✅ EXACT_PRODUCTION_HEALTHY.
 
-Verified Vercel target is `iamina-certified` (`prj_Pn9FnyconF3h2w9gOU74iV98kJoU`) linked to `hraaaaf/IAMINA-MVP`. Git auto-deployment remains deliberately disabled; deployment evidence is created explicitly.
+Verified production topology:
 
-Exact preview source `2fb0eabd8c2be4ada0a6377e257bb5f2a692db85` produced READY deployment `dpl_67XyJnauqp427XPrQhGtn9rAiKfE`, with one Python serverless function and configured region `cdg1`. `/api/health/` reaches Django through the explicit `api/index.py` bridge.
+- Vercel project `iamina-certified` / `prj_Pn9FnyconF3h2w9gOU74iV98kJoU`, linked to `hraaaaf/IAMINA-MVP`;
+- exact frozen source `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`;
+- production deployment `dpl_8ex2k82KaozE6Fxc8wQBYJuRU43y`;
+- state `READY`, target `production`, runtime region `cdg1`, one Python serverless function;
+- stable alias `iamina-certified.vercel.app` resolves to that deployment;
+- dedicated Neon project `IAMINA` / `square-sun-82359137`, PostgreSQL 16, region `aws-eu-central-1`, default branch `production` / `br-fragrant-frost-b1lbdfzs`;
+- GitHub Actions run `34752706286`, successful rerun job `103717805309`: migrations applied, `migrate --check` clean, `db_connectivity=ok`, `django_migrations=applied_and_current`;
+- `GET https://iamina-certified.vercel.app/api/v1/health` → HTTP 200, `status=ok`, `db=ok`, `cache=unavailable`;
+- cache unavailability is non-fatal under the existing health contract; no Redis readiness claim is made;
+- no AqarFinder/Supabase database and no unrelated Neon database was reused.
 
-Runtime configuration now contains `SECRET_KEY` as a sensitive Vercel value plus `DEBUG=False`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS`. Secret values were not retained in logs.
-
-The current fail-closed blocker is exact and narrower: `DATABASE_URL` is absent for preview and production. Runtime therefore rejects startup with `DATABASE_URL is required on Vercel; SQLite fallback is forbidden`. No healthy exact-candidate production deployment is claimed.
-
-Connected Neon currently contains only unrelated project `tasdis`; connected Supabase contains only unrelated project `AqarFinder`. Neither may be reused as IAMINA's database.
+Technical deployment evidence is complete for the exact frozen runtime candidate. This does not authorize patient data or satisfy CNDP/processor evidence gates.
 
 ### P5-6A — Safety qualification manifest
 
@@ -176,15 +181,13 @@ Still missing:
 
 **Tracker:** #320.
 
-Current state: `BLOCKED_EXTERNAL_RELEASE / PREVIEW_RUNTIME_PROVEN / DATABASE_TOPOLOGY_INCOMPLETE`.
+Current state: `BLOCKED_EXTERNAL_RELEASE / EXACT_PRODUCTION_HEALTHY / COMPLIANCE_EVIDENCE_PENDING`.
 
 Owner authorization for technical Vercel deployment/evidence collection is retained from 2026-09-13. It is not permission to process real patient data.
 
-Still required:
+Technical runtime/database proof is now retained in #320 comment `5653049361` and this roadmap. Still required:
 
-- provision a dedicated IAMINA PostgreSQL topology and bind `DATABASE_URL` without reusing another project's database;
-- validate migrations/connectivity and obtain `/api/health/` success on the exact frozen candidate;
-- deploy/freeze the exact runtime/database/cache/email/export/provider topology with countries/regions;
+- freeze the complete actual runtime/database/cache/email/export/provider topology with exact countries/regions in restricted evidence;
 - approved deployment-specific patient notice/consent;
 - applicable CNDP health-data processing evidence;
 - foreign-transfer basis/evidence for every actual external destination, where applicable;
@@ -270,13 +273,12 @@ Closed does not imply legal/CNDP authorization, physical-device proof, real-pati
 # 9. Execution order
 
 1. **P5-6A #318:** build the exact-SHA restricted safety manifest for `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`, using the retained owner qualification wording **« professionnels qualifiés »**, and complete the 59-case / 10-parity approvals.
-2. **P5-6B #320:** provision a dedicated IAMINA PostgreSQL topology, bind `DATABASE_URL`, validate migrations/connectivity and prove `/api/health/` on the exact frozen candidate.
-3. Freeze the actual runtime/database/cache/email/export/provider topology and collect deployment/account-specific CNDP, consent, processor, residency and transfer evidence; build the exact-SHA residency manifest.
-4. Run the three exact-SHA fail-closed audits.
-5. Explicit human real-patient release decision.
-6. Controlled PWA pilot.
-7. P5-7 observed evidence.
-8. P5-8 go/no-go.
+2. **P5-6B #320:** freeze the actual Vercel `cdg1` + Neon `aws-eu-central-1` topology plus cache/email/export/provider paths and collect deployment/account-specific CNDP, consent, processor, residency and transfer evidence; build the exact-SHA residency manifest.
+3. Run the three exact-SHA fail-closed audits.
+4. Explicit human real-patient release decision.
+5. Controlled PWA pilot.
+6. P5-7 observed evidence.
+7. P5-8 go/no-go.
 
 Parallel work is allowed only if it cannot perturb the frozen candidate or its evidence chain.
 
@@ -298,14 +300,15 @@ Parallel work is allowed only if it cannot perturb the frozen candidate or its e
 - repo: `hraaaaf/IAMINA-MVP`
 - frozen P5-6 runtime candidate: `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`
 - candidate proof: PR #597; exact-head CI #4169 / drift #3729; post-merge CI `34750040306` / drift #3730; merge `5b27a22...`
-- preview runtime proof: `dpl_67XyJnauqp427XPrQhGtn9rAiKfE`, Python function, `cdg1`, Django reached, fail-closed on missing `DATABASE_URL`
+- exact production proof: `dpl_8ex2k82KaozE6Fxc8wQBYJuRU43y`, source `5b27a22...`, Python function, `cdg1`, stable alias `iamina-certified.vercel.app`, health HTTP 200 / `db=ok`
+- dedicated database proof: Neon `IAMINA` / `square-sun-82359137`, PG16, `aws-eu-central-1`, branch `production`, migrations current
 - safety fingerprint: `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`
 - qualification wording: **professionnels qualifiés** — owner attestation reference `issue-318:owner-attestation:professionnels-qualifies`
 - consent notice: `2026-09-12.1`
 - canonical global progress: **6/12 = 50.0%**
 - P5 whole-lot progress: **4/9 = 44.4%**
 - retained MENA: **32/38 = 84.2%**
-- current blockers: **#318 restricted exact-corpus manifest + #320 dedicated database/topology/compliance evidence**
-- deployment state: **preview runtime proven; exact frozen candidate not yet healthy because dedicated PostgreSQL is absent**
+- current blockers: **#318 restricted exact-corpus manifest + #320 deployment-specific CNDP/processor/residency/transfer evidence**
+- deployment state: **exact frozen candidate healthy in production; real-patient release still blocked externally**
 - release posture: **NOT_RELEASE_AUTHORIZED**
-- next exact action: provision a dedicated IAMINA PostgreSQL topology, bind `DATABASE_URL`, validate migrations/connectivity and prove `/api/health/` on exact frozen candidate `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`.
+- next exact action: build the restricted #318/#320 evidence packet against the proven exact deployment, bind both manifests to `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`, then run the three exact-SHA approved audits.
