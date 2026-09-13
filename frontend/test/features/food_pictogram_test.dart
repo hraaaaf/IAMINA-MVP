@@ -4,6 +4,7 @@ import 'package:amina/features/journal/widgets/food_pictogram.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch2.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch3.dart';
+import 'package:amina/features/journal/widgets/food_pictogram_painter_batch4.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,7 +14,8 @@ Finder _foodArtwork() => find.byWidgetPredicate(
       widget is CustomPaint &&
       (widget.painter is FoodPictogramPainter ||
           widget.painter is FoodPictogramPainterBatch2 ||
-          widget.painter is FoodPictogramPainterBatch3),
+          widget.painter is FoodPictogramPainterBatch3 ||
+          widget.painter is FoodPictogramPainterBatch4),
   description: 'IAMINA FoodPictogram CustomPaint',
 );
 
@@ -21,7 +23,7 @@ void main() {
   testWidgets(
     'long-tail food keeps deterministic asset path and safe emoji fallback',
     (tester) async {
-      final item = mealFoodById('tanjia')!;
+      final item = mealFoodById('chicken_breast')!;
       const locale = Locale('fr');
       await tester.pumpWidget(
         MaterialApp(
@@ -34,7 +36,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final widget = tester.widget<FoodPictogram>(find.byType(FoodPictogram));
-      expect(widget.assetPath, 'assets/food/pictograms/v1/tanjia.webp');
+      expect(widget.assetPath, 'assets/food/pictograms/v1/chicken_breast.webp');
       expect(find.text(item.visual), findsOneWidget);
       expect(_foodArtwork(), findsNothing);
 
@@ -100,6 +102,25 @@ void main() {
     expect(painter, isA<FoodPictogramPainterBatch3>());
   });
 
+  testWidgets('batch 4 renders Moroccan catalog art instead of emoji', (
+    tester,
+  ) async {
+    final item = mealFoodById('tajine')!;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('fr'),
+        home: Scaffold(body: FoodPictogram(item: item, size: 48)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(hasCodeFoodPictogramBatch4('tajine'), isTrue);
+    expect(find.text(item.visual), findsNothing);
+    expect(_foodArtwork(), findsOneWidget);
+    final painter = tester.widget<CustomPaint>(_foodArtwork()).painter;
+    expect(painter, isA<FoodPictogramPainterBatch4>());
+  });
+
   test('batch 1 code artwork covers exactly the first 24 launch concepts', () {
     expect(codeFoodPictogramIds.length, 24);
     const expected = <String>{
@@ -128,38 +149,28 @@ void main() {
   test('batch 3 covers the exact manifest-derived catalog batch', () {
     expect(codeFoodPictogramBatch3Ids.length, 24);
     const expected = <String>{
-      'baguette',
-      'batbout',
-      'bulgur',
-      'chebab',
-      'couscous',
-      'crepe',
-      'cereal',
-      'oats',
-      'waffle',
-      'granola',
-      'harcha',
-      'krachel',
-      'corn',
-      'muesli',
-      'barley',
-      'white_bread',
-      'toast_bread',
-      'khameer_bread',
-      'pita_bread',
-      'regag_bread',
-      'pancake',
-      'porridge',
-      'pasta',
-      'quinoa',
+      'baguette', 'batbout', 'bulgur', 'chebab', 'couscous', 'crepe',
+      'cereal', 'oats', 'waffle', 'granola', 'harcha', 'krachel', 'corn',
+      'muesli', 'barley', 'white_bread', 'toast_bread', 'khameer_bread',
+      'pita_bread', 'regag_bread', 'pancake', 'porridge', 'pasta', 'quinoa',
     };
     expect(codeFoodPictogramBatch3Ids, expected);
-    expect(codeFoodPictogramBatch3Ids.intersection(codeFoodPictogramIds), isEmpty);
-    expect(
-      codeFoodPictogramBatch3Ids.intersection(codeFoodPictogramBatch2Ids),
-      isEmpty,
-    );
-    for (final id in codeFoodPictogramBatch3Ids) {
+  });
+
+  test('batch 4 covers the exact manifest-derived catalog batch', () {
+    expect(codeFoodPictogramBatch4Ids.length, 24);
+    const expected = <String>{
+      'rice', 'basmati_rice', 'brown_rice', 'semolina', 'vermicelli',
+      'bissara', 'briouat_cheese', 'briouat_meat', 'couscous_tfaya',
+      'hssoua', 'khlii', 'maakouda', 'mrouzia', 'mechoui',
+      'pastilla_chicken', 'pastilla_seafood', 'seffa', 'sellou', 'sfenj',
+      'tajine', 'lamb_prune_tagine', 'tanjia', 'zammita', 'aseeda',
+    };
+    expect(codeFoodPictogramBatch4Ids, expected);
+    expect(codeFoodPictogramBatch4Ids.intersection(codeFoodPictogramIds), isEmpty);
+    expect(codeFoodPictogramBatch4Ids.intersection(codeFoodPictogramBatch2Ids), isEmpty);
+    expect(codeFoodPictogramBatch4Ids.intersection(codeFoodPictogramBatch3Ids), isEmpty);
+    for (final id in codeFoodPictogramBatch4Ids) {
       expect(mealFoodById(id), isNotNull, reason: 'Missing catalog food: $id');
     }
     expect(
@@ -167,8 +178,9 @@ void main() {
         ...codeFoodPictogramIds,
         ...codeFoodPictogramBatch2Ids,
         ...codeFoodPictogramBatch3Ids,
+        ...codeFoodPictogramBatch4Ids,
       }.length,
-      72,
+      96,
     );
   });
 
