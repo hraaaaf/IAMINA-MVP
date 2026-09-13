@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  TARGET_SHA: 0abf507018e3929b61a3aa4e8fe2119b201eae72
+  TARGET_SHA: 8716331485977d4cd398f11f12a6291c62714bc2
   TARGET_REF: fix/p5-6-vercel-django-entrypoint
   VERCEL_ORG_ID: team_NNhXPDOIfjGNBcn253btpyk0
   VERCEL_PROJECT_ID: prj_Pn9FnyconF3h2w9gOU74iV98kJoU
