@@ -197,12 +197,14 @@ Technical runtime/database proof is now retained in #320 comment `5653049361` an
 
 Public provider or regulatory documentation may establish requirements but is not account/deployment-specific approval evidence.
 
+The current frozen pilot scope enables no external AI processor. `--local-only` is therefore mandatory for the consent audit; it does not waive the global CNDP health-processing authorization gate.
+
 ### P5-6 success proof
 
 All three fail-closed audits must PASS against the same exact candidate:
 
 ```bash
-python manage.py audit_pilot_consent_governance --require-approved --expected-source-commit-sha 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6
+python manage.py audit_pilot_consent_governance --local-only --require-approved --expected-source-commit-sha 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6
 python manage.py audit_pilot_data_residency --manifest /restricted/iamina/pilot-residency.json --require-approved --expected-source-commit-sha 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6
 python manage.py audit_safety_corpus_review --manifest /restricted/iamina/safety-review-manifest.json --require-approved --expected-source-commit-sha 5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6
 ```
