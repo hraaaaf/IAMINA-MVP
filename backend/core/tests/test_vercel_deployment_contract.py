@@ -100,6 +100,6 @@ def test_vercel_config_keeps_deployments_manual_and_targets_python_bridge():
         {"source": "/(.*)", "destination": "/api/index.py"}
     ]
     assert (BACKEND_ROOT / "api" / "index.py").read_text(encoding="utf-8") == (
-        "from amina.wsgi import application\n"
+        "from amina.wsgi import application\n\napp = application\n"
     )
     assert (BACKEND_ROOT / ".python-version").read_text(encoding="utf-8").strip() == "3.12"
