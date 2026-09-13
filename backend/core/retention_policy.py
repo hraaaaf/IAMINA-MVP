@@ -93,12 +93,19 @@ RETENTION_RULES: tuple[RetentionRule, ...] = (
         dataset="patient_application_records",
         trigger=ACCOUNT_DELETION,
         retention_days=30,
-        deletion_action="delete owned records through Django relational cascade",
+        deletion_action=(
+            "delete owned records through Django relational cascade and explicitly purge "
+            "patient-linked observability telemetry"
+        ),
         owner=_POLICY_OWNER,
         effective_on=_EFFECTIVE,
         review_due_on=_REVIEW_DUE,
         legal_hold_supported=True,
-        notes="Thirty-day grace period starts after verified deletion request and export offer.",
+        notes=(
+            "Thirty-day grace period starts after verified deletion request and export offer. "
+            "ObservabilityEvent uses a patient_id value rather than a foreign key, so export "
+            "and deletion handle those rows explicitly."
+        ),
     ),
     RetentionRule(
         dataset="security_audit_logs",

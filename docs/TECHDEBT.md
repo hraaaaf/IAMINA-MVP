@@ -74,14 +74,6 @@ Rules:
 - **Risk:** elevated impact of credential compromise.
 - **Resolution:** include strong-auth requirements in Django-native auth design and enforce for privileged roles.
 
-## TD-010 — Observability data retention policy is incomplete
-
-- **Area:** Privacy / observability
-- **Priority:** High before broader production use
-- **Current compromise:** retention instrumentation can include patient-linked identifiers/events without a fully documented lifecycle policy.
-- **Risk:** over-retention and unclear deletion/export behavior.
-- **Resolution:** define retention/deletion schedule and account-deletion interaction for observability data.
-
 ## TD-012 — Large Flutter surfaces and silent catches reduce maintainability
 
 - **Area:** Frontend maintainability
