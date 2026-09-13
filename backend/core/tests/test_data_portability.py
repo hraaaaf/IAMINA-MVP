@@ -8,6 +8,7 @@ from django.core.management import call_command
 
 from core.data_portability import build_patient_export
 from core.models import AuditLog
+from core.observability.events import ObservabilityEvent
 
 
 @pytest.mark.django_db
@@ -34,6 +35,16 @@ def test_export_contains_only_subject_owned_records_and_no_password_hash():
         resource_type="Synthetic",
         resource_id="other-record",
     )
+    own_event = ObservabilityEvent.objects.create(
+        event_type="session_start",
+        patient_id=subject.id,
+        props={"count": 1},
+    )
+    ObservabilityEvent.objects.create(
+        event_type="session_start",
+        patient_id=other.id,
+        props={"count": 2},
+    )
 
     bundle = build_patient_export(
         subject,
@@ -44,7 +55,15 @@ def test_export_contains_only_subject_owned_records_and_no_password_hash():
     logs = bundle["data"]["records"]["core.auditlog"]
     assert [record["id"] for record in logs] == [own_log.id]
     assert logs[0]["resource_id"] == "subject-record"
-    assert "other-record" not in json.dumps(bundle)
+
+    telemetry = bundle["data"]["records"]["core.observabilityevent"]
+    assert [record["id"] for record in telemetry] == [own_event.id]
+    assert telemetry[0]["patient_id"] == subject.id
+    assert telemetry[0]["props"] == {"count": 1}
+
+    serialized = json.dumps(bundle)
+    assert "other-record" not in serialized
+    assert '"count": 2' not in serialized
 
 
 @pytest.mark.django_db
