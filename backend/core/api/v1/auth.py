@@ -5,6 +5,8 @@ temporary migration credential. Native registration and login do not depend on
 Firebase and never synthesize clinical or demographic facts.
 """
 
+import logging
+
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.models import User
@@ -28,6 +30,8 @@ from core.auth_migration import (
 from core.models import BasePatientProfile
 from core.native_auth import issue_native_token, revoke_native_tokens
 from core.observability import EVT_SESSION_START, track
+
+logger = logging.getLogger(__name__)
 
 router = Router(tags=["auth"])
 
@@ -211,7 +215,7 @@ def set_native_password(request, data: SetPasswordRequest):
 
 @router.post("/auth/password/reset/request")
 def request_password_reset(request, data: PasswordResetRequest):
-    """Send a native recovery link without disclosing account existence."""
+    """Accept a native recovery request without disclosing account existence."""
     users = list(User.objects.filter(email__iexact=data.email, is_active=True)[:2])
     if len(users) == 1 and users[0].has_usable_password():
         user = users[0]
@@ -224,21 +228,30 @@ def request_password_reset(request, data: PasswordResetRequest):
         )
         separator = "&" if "?" in base_url else "?"
         reset_url = f"{base_url}{separator}uid={uid}&token={token}"
-        send_mail(
-            subject="Réinitialisation du mot de passe IAMINA",
-            message=(
-                "Utilisez ce lien pour définir un nouveau mot de passe : "
-                f"{reset_url}"
-            ),
-            from_email=getattr(
-                settings,
-                "DEFAULT_FROM_EMAIL",
-                "noreply@iamina.health",
-            ),
-            recipient_list=[user.email],
-            fail_silently=True,
-        )
-    return {"detail": "If the account exists, recovery instructions were sent"}
+        try:
+            sent = send_mail(
+                subject="Réinitialisation du mot de passe IAMINA",
+                message=(
+                    "Utilisez ce lien pour définir un nouveau mot de passe : "
+                    f"{reset_url}"
+                ),
+                from_email=getattr(
+                    settings,
+                    "DEFAULT_FROM_EMAIL",
+                    "noreply@iamina.health",
+                ),
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+        except Exception as exc:
+            logger.error(
+                "Password reset email delivery failed: %s",
+                type(exc).__name__,
+            )
+        else:
+            if sent != 1:
+                logger.error("Password reset email delivery was not confirmed")
+    return {"detail": "If the account exists, the recovery request was accepted"}
 
 
 @router.post("/auth/password/reset/confirm")
