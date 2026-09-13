@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  TARGET_SHA: 8716331485977d4cd398f11f12a6291c62714bc2
+  TARGET_SHA: 2fb0eabd8c2be4ada0a6377e257bb5f2a692db85
   TARGET_REF: fix/p5-6-vercel-django-entrypoint
   VERCEL_ORG_ID: team_NNhXPDOIfjGNBcn253btpyk0
   VERCEL_PROJECT_ID: prj_Pn9FnyconF3h2w9gOU74iV98kJoU
@@ -49,6 +49,113 @@ jobs:
             "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID")"
           echo "vercel_project_read_http=$code"
           test "$code" = "200"
+
+      - name: Audit runtime env metadata and provision required non-DB settings
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /tmp/envs.json -w '%{http_code}' \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID")"
+          echo "vercel_env_list_http=$code"
+          test "$code" = "200"
+
+          python - <<'PY'
+          import json, secrets
+          data = json.load(open('/tmp/envs.json'))
+          envs = data.get('envs', [])
+
+          def targets_of(item):
+              target = item.get('target', [])
+              if isinstance(target, str):
+                  return {target}
+              return set(target or [])
+
+          target_map = {}
+          for item in envs:
+              key = item.get('key')
+              if not key:
+                  continue
+              target_map.setdefault(key, set()).update(targets_of(item))
+
+          for key in sorted(target_map):
+              print(f"env_key={key};targets={','.join(sorted(target_map[key]))}")
+
+          db_targets = target_map.get('DATABASE_URL', set())
+          print('database_url_preview=' + str('preview' in db_targets).lower())
+          print('database_url_production=' + str('production' in db_targets).lower())
+
+          payload = [
+              {
+                  'key': 'DEBUG',
+                  'value': 'False',
+                  'type': 'plain',
+                  'target': ['preview', 'production'],
+                  'comment': 'IAMINA Vercel production-safe runtime setting',
+              },
+              {
+                  'key': 'ALLOWED_HOSTS',
+                  'value': 'iamina-certified.vercel.app',
+                  'type': 'plain',
+                  'target': ['preview', 'production'],
+                  'comment': 'IAMINA stable backend host; exact VERCEL_URL is appended at runtime',
+              },
+              {
+                  'key': 'CORS_ALLOWED_ORIGINS',
+                  'value': 'https://iamina-review.vercel.app',
+                  'type': 'plain',
+                  'target': ['preview', 'production'],
+                  'comment': 'IAMINA approved HTTPS frontend origin',
+              },
+              {
+                  'key': 'CSRF_TRUSTED_ORIGINS',
+                  'value': 'https://iamina-review.vercel.app',
+                  'type': 'plain',
+                  'target': ['preview', 'production'],
+                  'comment': 'IAMINA approved HTTPS frontend origin',
+              },
+          ]
+
+          secret_targets = target_map.get('SECRET_KEY', set())
+          missing_secret_targets = [t for t in ('preview', 'production') if t not in secret_targets]
+          if missing_secret_targets:
+              payload.append({
+                  'key': 'SECRET_KEY',
+                  'value': secrets.token_urlsafe(64),
+                  'type': 'sensitive',
+                  'target': missing_secret_targets,
+                  'comment': 'Generated inside CI and stored only by Vercel; value is never logged',
+              })
+
+          with open('/tmp/runtime-env-payload.json', 'w') as f:
+              json.dump(payload, f, separators=(',', ':'))
+          print('runtime_env_upsert_keys=' + ','.join(item['key'] for item in payload))
+          PY
+
+          code="$(curl -sS -o /tmp/env-upsert.json -w '%{http_code}' \
+            -X POST \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/runtime-env-payload.json \
+            "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?teamId=$VERCEL_ORG_ID&upsert=true")"
+          echo "vercel_env_upsert_http=$code"
+          case "$code" in
+            200|201) ;;
+            *) exit 1 ;;
+          esac
+          python - <<'PY'
+          import json
+          data = json.load(open('/tmp/env-upsert.json'))
+          failed = data.get('failed') or []
+          print('runtime_env_failed_count=' + str(len(failed)))
+          for item in failed:
+              safe = {k: item.get(k) for k in ('key','error','message') if k in item}
+              print('runtime_env_failure=' + json.dumps(safe, separators=(',', ':')))
+          if failed:
+              raise SystemExit(1)
+          PY
 
       - name: Create exact preview deployment through Vercel API
         id: deploy
