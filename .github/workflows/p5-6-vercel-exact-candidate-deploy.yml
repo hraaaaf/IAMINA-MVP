@@ -16,6 +16,7 @@ env:
   TARGET_SHA: 52c0238fede74a1ba85fd3df32b1e89268bbe8f7
   VERCEL_ORG_ID: team_NNhXPDOIfjGNBcn253btpyk0
   VERCEL_PROJECT_ID: prj_Pn9FnyconF3h2w9gOU74iV98kJoU
+  VERCEL_SCOPE: achraf-benmoussa-s-projects
 
 jobs:
   deploy:
@@ -43,6 +44,24 @@ jobs:
           set -euo pipefail
           test -n "$VERCEL_TOKEN" || { echo "VERCEL_TOKEN repository secret is missing" >&2; exit 78; }
 
+      - name: Verify token can read exact project
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /tmp/project.json -w '%{http_code}' \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID")"
+          echo "vercel_project_read_http=$code"
+          test "$code" = "200"
+          python - <<'PY'
+          import json
+          data = json.load(open('/tmp/project.json'))
+          print('vercel_project_name=' + str(data.get('name')))
+          print('vercel_project_id=' + str(data.get('id')))
+          PY
+
       - name: Link exact Vercel project
         shell: bash
         run: |
@@ -56,7 +75,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
-          npx --yes vercel@59.15.1 pull --yes --environment=production --token="$VERCEL_TOKEN" --cwd=backend
+          npx --yes vercel@59.15.1 pull --yes --environment=production --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN" --cwd=backend
 
       - name: Deploy exact candidate to production
         id: deploy
@@ -65,7 +84,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
-          url="$(npx --yes vercel@59.15.1 deploy --prod --yes --token="$VERCEL_TOKEN" --cwd=backend)"
+          url="$(npx --yes vercel@59.15.1 deploy --prod --yes --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN" --cwd=backend)"
           echo "deployment_url=$url" >> "$GITHUB_OUTPUT"
           echo "deployment_url=$url"
 
