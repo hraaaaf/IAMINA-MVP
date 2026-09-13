@@ -128,7 +128,7 @@ jobs:
         run: python ../scripts/check_ai_egress_boundaries.py --check egress
 
       - name: SAST (bandit)
-        run: bandit -r . -ll -ii --skip B101,B311 -x ./tracking/tests,./amina/tests
+        run: bandit -r . -ll -ii --skip B101,B311
 
       - name: OpenAPI schema is current
         run: |
