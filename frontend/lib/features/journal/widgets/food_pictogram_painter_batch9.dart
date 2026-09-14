@@ -40,7 +40,6 @@ class FoodPictogramPainterBatch9 extends CustomPainter {
   static const _teal = Color(0xFF1F9E7A);
   static const _leaf = Color(0xFF6E9F63);
   static const _leafDark = Color(0xFF4E7D56);
-  static const _dark = Color(0xFF394743);
 
   Paint _fill(Color color) => Paint()
     ..style = PaintingStyle.fill
