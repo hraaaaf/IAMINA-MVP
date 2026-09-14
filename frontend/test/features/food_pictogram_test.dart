@@ -27,7 +27,7 @@ void main() {
   testWidgets(
     'long-tail food keeps deterministic asset path and safe emoji fallback',
     (tester) async {
-      final item = mealFoodById('fish')!;
+      final item = mealFoodById('greek_yogurt')!;
       const locale = Locale('fr');
       await tester.pumpWidget(
         MaterialApp(
@@ -40,7 +40,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final widget = tester.widget<FoodPictogram>(find.byType(FoodPictogram));
-      expect(widget.assetPath, 'assets/food/pictograms/v1/fish.webp');
+      expect(widget.assetPath, 'assets/food/pictograms/v1/greek_yogurt.webp');
       expect(find.text(item.visual), findsOneWidget);
       expect(_foodArtwork(), findsNothing);
 
