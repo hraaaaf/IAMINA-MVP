@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone as dt_timezone
 import pytest
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.exceptions import RequestDataTooBig
 from django.http import JsonResponse
 from django.test import RequestFactory, override_settings
 
@@ -144,6 +145,37 @@ def test_limiter_remains_effective_without_redis_and_stores_no_raw_identifiers()
         assert raw_email not in bucket.key_hash
         assert raw_ip not in bucket.key_hash
         assert bucket.count == 1
+
+
+@pytest.mark.django_db
+@override_settings(
+    AUTH_ABUSE_LIMITS={
+        "login_ip": {"limit": 1, "window_seconds": 60},
+        "login_account": {"limit": 100, "window_seconds": 60},
+    }
+)
+def test_unreadable_body_still_consumes_ip_bucket():
+    class UnreadableRequest:
+        method = "POST"
+        path = "/api/v1/auth/login"
+        META = {
+            "CONTENT_LENGTH": "0",
+            "CONTENT_TYPE": "application/json",
+            "REMOTE_ADDR": "198.51.100.16",
+        }
+
+        @property
+        def body(self):
+            raise RequestDataTooBig()
+
+    middleware = _middleware()
+    assert middleware(UnreadableRequest()).status_code == 202
+    second = _post(
+        "/api/v1/auth/login",
+        email="patient@example.test",
+        ip="198.51.100.16",
+    )
+    assert middleware(second).status_code == 429
 
 
 def test_auth_abuse_middleware_is_enabled_in_application_stack():
