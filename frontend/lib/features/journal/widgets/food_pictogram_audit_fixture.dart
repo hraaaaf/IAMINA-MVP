@@ -1,5 +1,5 @@
 /// Browser-only visual proof query for the FoodPicker screenshot surface.
 ///
-/// Keeping this in a tiny fixture lets later pictogram batches change the
-/// exposed artwork without rewriting the shared browser-audit application.
-const String foodPictogramAuditQuery = 'haricot';
+/// Batch 9 final exact-head certification keeps the visual query on `datte`
+/// so the date-family comparison remains identical across all three viewports.
+const String foodPictogramAuditQuery = 'datte';
