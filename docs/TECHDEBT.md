@@ -58,16 +58,6 @@ Rules:
 - **Risk:** hidden failures and expensive regression surface.
 - **Resolution:** refactor opportunistically in focused PRs; typed/logged error handling first, cosmetic decomposition second.
 
-## TD-013 — Authentication endpoints lack retained deterministic abuse protection
-
-- **Area:** Security / authentication
-- **Priority:** High before any real-patient release
-- **Tracker:** #622
-- **Resolved foundation:** native Django registration/login/password reset enforce password validation, account-enumeration resistance on recovery, signed/expiring bearer tokens and explicit token revocation. Production transport is HTTPS/HSTS/secure-cookie hardened.
-- **Current compromise:** implementation is now present on PR #623 but is not yet retained as merged/exact-main evidence. The candidate uses PostgreSQL-backed fixed-window buckets rather than Redis, HMAC-SHA256 keys instead of raw IP/email storage, per-IP + per-account limits, a typed 429 contract and recovery windows. Vercel's documented `x-forwarded-for` overwrite semantics are used for the production client-IP bucket and are locked by a regression test.
-- **Risk until merge/proof:** the protection is not part of retained `main`; credential stuffing, brute-force login attempts, account creation abuse and password-reset flooding therefore remain unresolved at canonical level.
-- **Resolution:** merge only after exact-head CI + migration drift prove the middleware/model/migration/tests. After successful post-merge validation, remove TD-013 rather than leaving resolved debt for history.
-
 ## Documentation closeout rule
 
 After every merged task/phase:
