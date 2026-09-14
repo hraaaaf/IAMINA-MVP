@@ -2,13 +2,16 @@
 
 > **Purpose:** prepare the two restricted manifests without inventing approval evidence.  
 > **Frozen candidate:** `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`  
-> **Release posture:** `NOT_RELEASE_AUTHORIZED`
+> **Release posture:** `NOT_RELEASE_AUTHORIZED`  
+> **Current scheduling:** `PRE_REAL_PATIENT_GATE / DEFERRED`
 
 This file is a workbook only. It is not an approval manifest and must never be used as one.
 
+Owner scheduling decision retained on 2026-09-14: while IAMINA remains synthetic/non-patient, #318 and #320 are **deferred from the active engineering critical path**. They are not waived or closed. Before the first identifiable real-patient health data enters IAMINA, this workbook must be reactivated and every applicable release item below must be completed with genuine evidence.
+
 ## 1. Safety manifest — #318
 
-Generate the authoritative packet from the frozen candidate first:
+Generate the authoritative packet from the frozen candidate first when the pre-real-patient gate is activated:
 
 ```bash
 python manage.py export_safety_corpus_review_packet \
@@ -87,6 +90,8 @@ Human inputs still missing and therefore **must remain missing rather than inven
 - qualification references;
 - real clinical/safety-owner approval references where the retained evidence does not already supply an acceptable opaque reference;
 - real `reviewed_on` and `review_due_on` policy/date.
+
+These missing values are deferred until preparation for real-patient release. Their deferral does not convert them into approvals.
 
 ## 2. Residency / processor manifest — #320
 
@@ -183,9 +188,11 @@ Known technical facts that may be used as evidence inputs, but **not** as regula
 - Firebase migration env is absent in the verified predecessor runtime;
 - current candidate introduces a required `password_reset_email` SMTP contract but no actual processor/account is yet selected or evidenced.
 
-The `password_reset_email` flow therefore **cannot be marked approved/enabled with fabricated processor metadata**. It remains a real #320 blocker until an actual mail provider/account and its processing geography/contracts are evidenced.
+The `password_reset_email` flow therefore **cannot be marked approved/enabled with fabricated processor metadata**. Selecting a real provider/account is deferred until preparation for the first real-patient pilot, but remains mandatory before release.
 
 ## 3. Exact audits after real evidence exists
+
+Run these only when the pre-real-patient gate is activated and genuine restricted evidence exists:
 
 ```bash
 python manage.py audit_pilot_consent_governance \
@@ -231,7 +238,7 @@ A PASS is retainable only if the output contains the exact `audited_source_commi
 
 ### Final release
 
-- [ ] all three audit outputs PASS on `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`
+- [ ] all three audit outputs PASS on the exact release candidate selected at gate activation
 - [ ] explicit human real-patient release authorization retained
 
-Until every applicable item is proven, status remains `NOT_RELEASE_AUTHORIZED`.
+Until every applicable item is proven, status remains `NOT_RELEASE_AUTHORIZED`. While this gate is deferred, IAMINA must remain on synthetic/non-patient data for work that would otherwise require release authorization.
