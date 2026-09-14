@@ -1,16 +1,16 @@
 # IAMINA — Food pictograms Batch 7
 
-Status: ACTIVE
+Status: PRE-CERTIFIED VISUAL — pending Batch 6 merge + exact-main final gate
 
 ## Goal
 
-Extend native FoodPicker pictogram coverage from 144 to 168 concepts, stacked on Batch 6, without changing nutrition logic, catalog structure, search behavior or runtime render priority.
+Extend native FoodPicker pictogram coverage from 144 to 168 concepts without changing nutrition logic, catalog structure, search behavior or runtime render priority.
 
 Success = exact manifest-derived 24-item Batch 7, native union exactly 168, all seven batches pairwise disjoint, every ID bound to the catalog, first post-Batch-7 long-tail fallback preserved, semantics preserved, exact-head CI/geometry/P5-5/P7/Chrome green after Batch 6 integration, and AFTER evidence inspected at 390×844 / 768×1024 / 1280×900.
 
 ## Source of truth
 
-`frontend/tool/food_pictogram_manifest.dart` + `frontend/lib/core/data/meal_food_catalog.dart` inherited from Batch-6 branch rooted at Batch-5 head `7c034f17f8a3cbfdef3dfb1feedc16a6b18d696b`.
+`frontend/tool/food_pictogram_manifest.dart` + `frontend/lib/core/data/meal_food_catalog.dart`.
 
 Ordering contract: first 48 launch IDs, then remaining catalog sorted by `MealFoodCategory.index`, then French label using Dart `String.compareTo`, split into 24-item batches.
 
@@ -22,7 +22,7 @@ Batch 6 ends at `mussels`. Batch 7 continues with the final three remaining fish
 
 ## UI/UX certification
 
-BEFORE: certified Batch-6 FoodPicker surface, same production surface and viewports 390×844 / 768×1024 / 1280×900.
+BEFORE: Batch-6 FoodPicker surface, same production surface and viewports 390×844 / 768×1024 / 1280×900.
 
 Goal: expose several newly-native milk concepts while retaining the Batch-1 `milk` baseline in the same search result family.
 
@@ -30,16 +30,29 @@ Reference: established IAMINA native pictogram language: compact 44–48 px reco
 
 AFTER fixture: search query `lait`.
 
-Comparison scope: same surface/viewports/layout. Displayed data intentionally changes to expose Batch-7 artwork, so this is not a pixel-for-pixel content comparison.
+Early stacked AFTER inspection on head `2bd7ee584bf510a40a5eb4f6ea2f65a1b2e69c91`:
+- 390×844: `Lait`, `Lait de chamelle`, `Lait demi-écrémé`, `Lait entier`, `Lait écrémé` render cleanly with retained non-Batch-7 matching results; no observed collision or horizontal overflow in result rows.
+- 768×1024: same result family remains clean in one column; photo CTA and consent text visible; no observed collision or overflow.
+- 1280×900: clean two-column result grid; full-width CTA below; no observed collision or overflow.
+- Pre-existing category rail edge clipping remains horizontal scroll behavior and is not introduced by Batch 7.
 
-## Validation gate
+Early visual score: 9.3/10. Final score must be reconfirmed on the exact main-based head after Batch 6 merges.
+
+## Early stacked proof
+
+- UI geometry #582 / run `34819599062` — SUCCESS
+- Chrome #585 / run `34819599132` — SUCCESS
+- Chrome artifact `10337524242`, digest `sha256:bc75d517d24b147fded751d4186bddbd9eae76b99e0f25d8205c30828e82e1a2`.
+- Local artifact SHA-256 independently matches the GitHub digest.
+
+## Final validation gate
 
 Before merge:
-- Batch 6 integrated into `main`, then Batch 7 resynced onto exact base;
+- Batch 6 integrated into `main`, then Batch 7 resynced onto exact current main;
 - exact 24 + native union 168 + catalog binding + fallback + semantics tests;
 - visual contract for seven fixed disjoint 24-item batches;
 - exact-head CI, geometry, P5-5, P7 responsive and Chrome SUCCESS;
-- AFTER screenshots inspected at all three viewports;
-- explicit visual score recorded.
+- final AFTER screenshots inspected at all three viewports;
+- final visual score recorded.
 
 No Vercel deployment is part of this lot.
