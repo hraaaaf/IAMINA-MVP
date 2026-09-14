@@ -1,6 +1,6 @@
 # IAMINA — Food pictograms Batch 6
 
-Status: FINAL CERTIFICATION — pending exact-head CI/P5-5
+Status: FINAL CERTIFICATION — product proof retained; doc-only closeout head must recertify before merge
 
 ## Goal
 
@@ -30,7 +30,7 @@ Reference: established IAMINA native pictogram language: compact 44–48 px reco
 
 AFTER fixture: search query `bœuf`.
 
-Manual AFTER inspection on exact integrated product head `892503ee8953fa92f40697d6f9b68dbc1ac1c6ce`:
+Manual AFTER inspection on exact product head `89d0375a5309ff2cc27d745c403f4db5a93b4f53`:
 - 390×844: four beef results render cleanly in one column (`Bœuf`, `Bœuf haché`, `Shawarma bœuf`, `Steak de bœuf`); CTA and consent copy remain visible; no observed collision, overflow or clipped label.
 - 768×1024: same four results render cleanly in one column; no observed collision or overflow.
 - 1280×900: clean two-column result grid and full-width photo CTA; no observed collision or overflow.
@@ -42,13 +42,17 @@ Visual score: 9.3/10.
 
 - Batch 5 merged to `main` as `9e7b80feb9743e2a4db297f38b78c06fbfcd83a5`.
 - Batch 6 was reconstructed/retargeted onto that exact main base before certification.
-- Integrated product head `892503ee8953fa92f40697d6f9b68dbc1ac1c6ce`:
-  - UI geometry #581 / run `34819428627` — SUCCESS
-  - P7 responsive #178 / run `34819428628` — SUCCESS
-  - Chrome #584 / run `34819428637` — SUCCESS
-- Chrome artifact `10338465089`, digest `sha256:bfc622146f0258de628ac7c7572a64c7091494b1e018906b3670731fd511cc4d`.
-- Local artifact SHA-256 independently matches the GitHub digest.
+- Exact product head `89d0375a5309ff2cc27d745c403f4db5a93b4f53` has the complete five-gate set green:
+  - UI geometry run `34823062314` — SUCCESS
+  - P5-5 End-to-End Pilot Rehearsal run `34823062390` — SUCCESS
+  - P7 responsive Dashboard certification run `34823062371` — SUCCESS
+  - CI run `34823062317` — SUCCESS
+  - UI browser screenshot certification run `34823062408` — SUCCESS
+- Chrome artifact `10338634459`, digest `sha256:af0bd5aca6fc5388f804083beb32459a2e16571a22061fe74a020acd07f9daea`.
+- Local artifact ZIP SHA-256 independently matches the GitHub digest.
+- AFTER files inspected at their exact native dimensions: 390×844, 768×1024, 1280×900.
+- PR #606 reviews: 0; unresolved review threads: 0.
 
-CI and P5-5 were not emitted for the retarget-only integrated head. This documentation closeout commit intentionally creates a fresh synchronize event. The lot must not merge until this new exact head has the complete five-gate set: CI, geometry, P5-5, P7 responsive and Chrome all SUCCESS.
+This documentation-only closeout commit changes no product code. It must still receive the same exact-head five-gate set before PR #606 merges; final run IDs can be retained in the PR metadata without another source commit.
 
 No Vercel deployment is part of this lot.
