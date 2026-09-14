@@ -21,6 +21,7 @@ import 'features/import/import_screen.dart';
 import 'features/journal/add_log_screen.dart';
 import 'features/journal/ai_summary_screen.dart';
 import 'features/journal/journal_screen.dart';
+import 'features/journal/widgets/food_pictogram_audit_fixture.dart';
 import 'features/journal/widgets/meal_capture_panel.dart';
 import 'features/medications/medication_screen.dart';
 import 'features/navigation/main_shell.dart';
@@ -324,9 +325,7 @@ class _BrowserMealPickerSurfaceState extends State<_BrowserMealPickerSurface> {
     context.visitChildElements(visit);
     final textField = target?.widget;
     if (textField is TextField) {
-      // Batch-5 visual proof: "machboos" exposes new fish/shrimp/lamb variants
-      // alongside the retained batch-2 chicken Machboos baseline.
-      const query = 'machboos';
+      final query = foodPictogramAuditQuery;
       textField.controller?.text = query;
       textField.onChanged?.call(query);
       _searchSeeded = true;

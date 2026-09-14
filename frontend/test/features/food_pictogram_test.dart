@@ -6,6 +6,7 @@ import 'package:amina/features/journal/widgets/food_pictogram_painter_batch2.dar
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch3.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch4.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch5.dart';
+import 'package:amina/features/journal/widgets/food_pictogram_painter_batch6.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,7 +18,8 @@ Finder _foodArtwork() => find.byWidgetPredicate(
           widget.painter is FoodPictogramPainterBatch2 ||
           widget.painter is FoodPictogramPainterBatch3 ||
           widget.painter is FoodPictogramPainterBatch4 ||
-          widget.painter is FoodPictogramPainterBatch5),
+          widget.painter is FoodPictogramPainterBatch5 ||
+          widget.painter is FoodPictogramPainterBatch6),
   description: 'IAMINA FoodPictogram CustomPaint',
 );
 
@@ -25,7 +27,7 @@ void main() {
   testWidgets(
     'long-tail food keeps deterministic asset path and safe emoji fallback',
     (tester) async {
-      final item = mealFoodById('chicken_breast')!;
+      final item = mealFoodById('fish')!;
       const locale = Locale('fr');
       await tester.pumpWidget(
         MaterialApp(
@@ -38,7 +40,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final widget = tester.widget<FoodPictogram>(find.byType(FoodPictogram));
-      expect(widget.assetPath, 'assets/food/pictograms/v1/chicken_breast.webp');
+      expect(widget.assetPath, 'assets/food/pictograms/v1/fish.webp');
       expect(find.text(item.visual), findsOneWidget);
       expect(_foodArtwork(), findsNothing);
 
@@ -140,6 +142,25 @@ void main() {
     expect(_foodArtwork(), findsOneWidget);
     final painter = tester.widget<CustomPaint>(_foodArtwork()).painter;
     expect(painter, isA<FoodPictogramPainterBatch5>());
+  });
+
+  testWidgets('batch 6 renders native protein art instead of emoji', (
+    tester,
+  ) async {
+    final item = mealFoodById('chicken_breast')!;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('fr'),
+        home: Scaffold(body: FoodPictogram(item: item, size: 48)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(hasCodeFoodPictogramBatch6('chicken_breast'), isTrue);
+    expect(find.text(item.visual), findsNothing);
+    expect(_foodArtwork(), findsOneWidget);
+    final painter = tester.widget<CustomPaint>(_foodArtwork()).painter;
+    expect(painter, isA<FoodPictogramPainterBatch6>());
   });
 
   test('batch 1 code artwork covers exactly the first 24 launch concepts', () {
