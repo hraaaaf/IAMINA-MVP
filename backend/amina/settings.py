@@ -185,7 +185,7 @@ CACHES = {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": REDIS_URL,
         "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.cache.DefaultClient",
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "IGNORE_EXCEPTIONS": True,
             "SOCKET_CONNECT_TIMEOUT": 1,
             "SOCKET_TIMEOUT": 1,
