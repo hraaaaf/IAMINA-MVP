@@ -18,13 +18,14 @@ Rules:
 - **Risk:** uncommon or unlabeled free-form identifiers could survive a text-only redaction pass if they evade the generic DLP, while raw document pixels may contain identity before OCR.
 - **Resolution:** keep patient-document cloud OCR fail closed; qualify a local OCR/de-identification lane and evaluate a multilingual PHI corpus for false negatives/false positives before widening egress. If IAMINA later stores additional direct identifiers such as address, add them to the authoritative patient-identity redaction source rather than relying on heuristic guessing.
 
-## TD-002 — Firebase remains sovereignty-critical legacy authentication infrastructure
+## TD-002 — Firebase migration-only dependencies remain installed
 
-- **Area:** Auth / sovereignty
-- **Priority:** Critical before target architecture is achieved
-- **Current compromise:** Firebase identity/token dependencies remain in backend/client flows.
-- **Risk:** fragmented identity ownership and migration complexity.
-- **Resolution:** P0-MENA-3 account-preserving Django-native migration with reconciliation + rollback before dependency removal.
+- **Area:** Auth / sovereignty cleanup
+- **Priority:** Medium before final target-architecture cleanup; not a current native-auth blocker while the migration bridge remains disabled by default
+- **Resolved foundation:** Django `User` is authoritative. Native registration/login/password recovery do not depend on Firebase. Firebase is accepted only as a temporary migration credential, and `ENABLE_FIREBASE_MIGRATION` defaults to disabled. The Flutter app still declares `firebase_auth` / `firebase_core`, and backend migration support remains present for controlled legacy-account migration.
+- **Current compromise:** Firebase client/backend dependencies and migration-specific verification code remain shipped even though they are no longer the canonical identity path.
+- **Risk:** unnecessary dependency/supply-chain and maintenance surface persists, and an operator can intentionally re-enable the migration bridge for a controlled migration window.
+- **Resolution:** after legacy-account reconciliation is no longer needed, remove the Flutter Firebase dependencies, backend Firebase migration/verification surface, related configuration and migration-only tests. Keep Django-native auth as the sole identity path, then remove TD-002.
 
 ## TD-003 — Provider timeout/circuit-breaker/failure UX is incomplete
 
