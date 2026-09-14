@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+from django.core.exceptions import RequestDataTooBig
 from django.http import JsonResponse
 
 from core.auth_abuse import AuthRateLimitExceeded, enforce_auth_abuse_limit
@@ -29,7 +30,7 @@ def _request_identity(request) -> str | None:
         return None
     try:
         payload = json.loads((request.body or b"{}").decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
+    except (RequestDataTooBig, UnicodeDecodeError, json.JSONDecodeError):
         return None
     if not isinstance(payload, dict):
         return None
