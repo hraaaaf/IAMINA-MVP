@@ -20,6 +20,11 @@ from core.ai_operation_identity import next_operation_reference
 from core.ai_processor_policy import authorize_processor_policy
 
 from .base import BaseLLMProvider
+from .circuit_breaker import (
+    assert_provider_available,
+    record_provider_failure,
+    record_provider_success,
+)
 from .errors import (
     LLMProviderError,
     LLMProviderQuotaExceeded,
@@ -90,12 +95,15 @@ def _execute_provider_call(
     operation: str,
     call: Callable[[], _T],
 ) -> _T:
+    assert_provider_available(provider_name)
     try:
-        return call()
-    except LLMProviderError:
+        result = call()
+    except LLMProviderError as exc:
+        record_provider_failure(provider_name, exc)
         raise
     except Exception as exc:
         normalized = normalize_provider_exception(exc, provider_name)
+        record_provider_failure(provider_name, normalized)
         logger.warning(
             "AI provider operation failed: provider=%s operation=%s code=%s retryable=%s",
             provider_name,
@@ -104,6 +112,9 @@ def _execute_provider_call(
             normalized.retryable,
         )
         raise normalized from None
+    else:
+        record_provider_success(provider_name)
+        return result
 
 
 def _execute_external_complete(
@@ -160,9 +171,13 @@ def _execute_external_complete(
             now=now,
             max_input_tokens=input_upper_bound,
             max_output_tokens=output_ceiling,
-            call=lambda: original_complete(
-                payload.system_prompt,
-                payload.user_prompt,
+            call=lambda: _execute_provider_call(
+                provider_name,
+                "complete",
+                lambda: original_complete(
+                    payload.system_prompt,
+                    payload.user_prompt,
+                ),
             ),
         )
     except LLMProviderQuotaExceeded:
@@ -228,15 +243,18 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
                 "paid external streaming is blocked until usage reconciliation is governed"
             )
 
+        assert_provider_available(provider_name)
         stream = original_stream(payload.system_prompt, payload.user_prompt)
         try:
             yield from stream
         except GeneratorExit:
             raise
-        except LLMProviderError:
+        except LLMProviderError as exc:
+            record_provider_failure(provider_name, exc)
             raise
         except Exception as exc:
             normalized = normalize_provider_exception(exc, provider_name)
+            record_provider_failure(provider_name, normalized)
             logger.warning(
                 "AI provider operation failed: provider=%s operation=stream code=%s retryable=%s",
                 provider_name,
@@ -244,6 +262,8 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
                 normalized.retryable,
             )
             raise normalized from None
+        else:
+            record_provider_success(provider_name)
         finally:
             close = getattr(stream, "close", None)
             if callable(close):
