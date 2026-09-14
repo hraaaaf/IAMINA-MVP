@@ -1,12 +1,12 @@
 # IAMINA — Food pictograms Batch 8
 
-Status: FINAL CERTIFICATION — product proof retained; exact-head gates required before merge
+Status: FINAL CERTIFICATION — exact-main rebuild completed; exact-head gates required before merge
 
 ## Goal
 
 Extend native FoodPicker pictogram coverage from 168 to 192 concepts without changing nutrition logic, catalog structure, search behavior or runtime render priority.
 
-Success = exact manifest-derived 24-item Batch 8, native union exactly 192, all eight batches pairwise disjoint, every ID bound to the catalog, first post-Batch-8 long-tail fallback preserved, semantics preserved, exact-head CI/geometry/P5-5/P7/Chrome green after Batch 7 integration, and AFTER evidence inspected at 390×844 / 768×1024 / 1280×900.
+Success = exact manifest-derived 24-item Batch 8, native union exactly 192, all eight batches pairwise disjoint, every ID bound to the catalog, first post-Batch-8 long-tail fallback preserved, semantics preserved, applicable exact-head CI/geometry/P5-5/Chrome green after Batch 7 integration, and AFTER evidence inspected at 390×844 / 768×1024 / 1280×900.
 
 ## Source of truth
 
@@ -40,16 +40,20 @@ Visual score: 9.3/10.
 
 ## Verified integration and proof
 
-- Batch 8 was aligned onto final Batch-7 head `1d71e85f1a2bfc7e67965122906b1244aedf6d01` through merge commit `accff376d015a30fe485ed694261ef28ed5f632b`.
-- The merge is content-neutral for Batch 8: its tree is unchanged from visually inspected product head `991b26c1d51ea54dcb861cf24e6ce9febc4a2c0b`; only ancestry was synchronized.
-- Product visual proof on `991b26c1d51ea54dcb861cf24e6ce9febc4a2c0b`:
+- Batch 7 merged to `main` as `e8b2bc5b827b58a8a866cade8fde3c6963896261`.
+- The 21 commits that reached `main` around the Batch-7 merge were compared against the Batch-7 head; they touch backend auth-abuse / `docs/TECHDEBT.md` only and do not touch FoodPicker files.
+- Batch 8 was rebuilt from the exact tree of `main@e8b2bc5b827b58a8a866cade8fde3c6963896261` by applying only its six canonical Batch-8 files.
+- Rebuilt product head before this documentation closeout: `b13ea8f336f7796fa5ae3b2787bfe570d51b5b15`.
+- Compare against exact main: 1 commit ahead, 0 behind, exactly six Batch-8 files.
+- Product visual proof retained from `991b26c1d51ea54dcb861cf24e6ce9febc4a2c0b`:
   - UI geometry run `34823395910` — SUCCESS
   - UI browser screenshot certification run `34823395929` — SUCCESS
   - Chrome artifact `10339199771`, digest `sha256:dfb7dfdd8db07482a40169e6c44691eb5897a6579010c86ff9852b26b229a9a2`.
-- Local artifact ZIP SHA-256 independently matches the GitHub digest.
-- AFTER files inspected at their exact native dimensions: 390×844, 768×1024, 1280×900.
-- Batch-8 contract remains: exact 24 IDs, native union 192, pairwise disjoint batches, catalog binding, localized native semantics, and the first post-Batch-8 fallback preserved.
+- Local artifact ZIP SHA-256 independently matched the GitHub digest.
+- AFTER files were inspected at their exact native dimensions: 390×844, 768×1024, 1280×900.
+- Batch-8 contract remains: exact 24 IDs, native union 192, pairwise disjoint batches, catalog binding, localized native semantics, and `lettuce` fallback preserved.
+- P7 responsive Dashboard certification is not applicable to this FoodPicker-only diff: `.github/workflows/p7-responsive-cert.yml` is path-filtered to Dashboard files.
 
-This documentation-only closeout commit changes no product code. Batch 8 must still be retargeted to exact `main` after Batch 7 merges and the same exact HEAD must receive CI, geometry, P5-5, P7 responsive and Chrome SUCCESS before PR #613 merges. Final run IDs can be retained in PR metadata without another source commit.
+This documentation-only closeout commit changes no product code. The resulting exact HEAD must receive all applicable gates — CI, geometry, P5-5 and Chrome — before PR #613 merges. Final run IDs can be retained in PR metadata without another source commit.
 
 No Vercel deployment is part of this lot.
