@@ -6,25 +6,47 @@ import 'package:amina/features/journal/widgets/food_pictogram_painter_batch3.dar
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch4.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch5.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch6.dart';
+import 'package:amina/features/journal/widgets/food_pictogram_painter_batch7.dart';
+import 'package:amina/features/journal/widgets/food_pictogram_painter_batch8.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Finder _batch6Art() => find.byWidgetPredicate(
-  (widget) => widget is CustomPaint && widget.painter is FoodPictogramPainterBatch6,
-  description: 'Batch 6 food pictogram art',
+Finder _batch8Art() => find.byWidgetPredicate(
+  (widget) => widget is CustomPaint && widget.painter is FoodPictogramPainterBatch8,
+  description: 'Batch 8 food pictogram art',
 );
 
 void main() {
-  test('batch 6 covers the exact manifest-derived 24 and native union 144', () {
+  test('batch 8 covers exact manifest-derived 24 and native union 192', () {
     const expected = <String>{
-      'shawarma_beef', 'shuwa', 'tabbouleh', 'lamb', 'chicken_breast',
-      'minced_beef', 'lamb_chops', 'turkey', 'liver', 'kefta', 'merguez',
-      'roast_chicken', 'sausage', 'beef_steak', 'veal', 'sea_bass', 'squid',
-      'crab', 'shrimp', 'sea_bream', 'prawns', 'mackerel', 'hake', 'mussels',
+      'greek_yogurt',
+      'fava_beans',
+      'white_beans',
+      'red_beans',
+      'green_peas',
+      'split_peas',
+      'soybeans',
+      'garlic',
+      'artichoke',
+      'eggplant',
+      'beetroot',
+      'broccoli',
+      'carrot',
+      'mushroom',
+      'cabbage',
+      'cauliflower',
+      'preserved_lemon',
+      'cucumber',
+      'coriander',
+      'pumpkin',
+      'zucchini',
+      'celery',
+      'okra',
+      'green_beans',
     };
-    expect(codeFoodPictogramBatch6Ids, expected);
-    expect(codeFoodPictogramBatch6Ids.length, 24);
+    expect(codeFoodPictogramBatch8Ids, expected);
+    expect(codeFoodPictogramBatch8Ids.length, 24);
 
     final previous = <String>{
       ...codeFoodPictogramIds,
@@ -32,16 +54,18 @@ void main() {
       ...codeFoodPictogramBatch3Ids,
       ...codeFoodPictogramBatch4Ids,
       ...codeFoodPictogramBatch5Ids,
+      ...codeFoodPictogramBatch6Ids,
+      ...codeFoodPictogramBatch7Ids,
     };
-    expect(codeFoodPictogramBatch6Ids.intersection(previous), isEmpty);
-    for (final id in codeFoodPictogramBatch6Ids) {
+    expect(codeFoodPictogramBatch8Ids.intersection(previous), isEmpty);
+    for (final id in codeFoodPictogramBatch8Ids) {
       expect(mealFoodById(id), isNotNull, reason: 'Missing catalog food: $id');
     }
-    expect(<String>{...previous, ...codeFoodPictogramBatch6Ids}.length, 144);
+    expect(<String>{...previous, ...codeFoodPictogramBatch8Ids}.length, 192);
   });
 
-  testWidgets('batch 6 renders native art with localized semantics', (tester) async {
-    final item = mealFoodById('beef_steak')!;
+  testWidgets('batch 8 renders legume art with localized semantics', (tester) async {
+    final item = mealFoodById('white_beans')!;
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('fr'),
@@ -53,15 +77,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(item.visual), findsNothing);
-    expect(_batch6Art(), findsOneWidget);
+    expect(_batch8Art(), findsOneWidget);
     expect(
-      tester.widget<CustomPaint>(_batch6Art()).painter,
-      isA<FoodPictogramPainterBatch6>(),
+      tester.widget<CustomPaint>(_batch8Art()).painter,
+      isA<FoodPictogramPainterBatch8>(),
     );
-    expect(tester.getSemantics(find.byType(FoodPictogram)).label, contains('Steak de bœuf'));
+    expect(tester.getSemantics(find.byType(FoodPictogram)).label, contains('Haricots blancs'));
   });
 
-  testWidgets('current post-batch-8 long tail still uses emoji fallback', (tester) async {
+  testWidgets('first post-batch-8 item keeps emoji fallback', (tester) async {
     final item = mealFoodById('lettuce')!;
     await tester.pumpWidget(
       MaterialApp(
@@ -74,6 +98,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(item.visual), findsOneWidget);
-    expect(_batch6Art(), findsNothing);
+    expect(_batch8Art(), findsNothing);
   });
 }

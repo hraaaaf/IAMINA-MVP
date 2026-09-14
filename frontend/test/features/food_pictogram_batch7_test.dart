@@ -64,8 +64,8 @@ void main() {
     expect(tester.getSemantics(find.byType(FoodPictogram)).label, contains('Lait entier'));
   });
 
-  testWidgets('first post-batch-7 dairy item keeps emoji fallback', (tester) async {
-    final item = mealFoodById('greek_yogurt')!;
+  testWidgets('current post-batch-8 item keeps emoji fallback', (tester) async {
+    final item = mealFoodById('lettuce')!;
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('fr'),
