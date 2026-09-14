@@ -2,4 +2,4 @@
 ///
 /// Keeping this in a tiny fixture lets later pictogram batches change the
 /// exposed artwork without rewriting the shared browser-audit application.
-const String foodPictogramAuditQuery = 'lait';
+const String foodPictogramAuditQuery = 'haricot';
