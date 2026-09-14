@@ -9,7 +9,6 @@ from django.http import JsonResponse
 
 from core.auth_abuse import AuthRateLimitExceeded, enforce_auth_abuse_limit
 
-
 _PATH_ACTIONS = {
     "/api/v1/auth/login": "login",
     "/api/v1/auth/register": "register",
