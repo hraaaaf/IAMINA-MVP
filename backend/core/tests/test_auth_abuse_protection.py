@@ -22,12 +22,15 @@ def _middleware():
     )
 
 
-def _post(path: str, *, email: str, ip: str):
+def _post(path: str, *, email: str, ip: str, forwarded_for: str | None = None):
+    extra = {"REMOTE_ADDR": ip}
+    if forwarded_for is not None:
+        extra["HTTP_X_FORWARDED_FOR"] = forwarded_for
     return RequestFactory().post(
         path,
         data=json.dumps({"email": email, "password": "not-relevant"}),
         content_type="application/json",
-        REMOTE_ADDR=ip,
+        **extra,
     )
 
 
@@ -175,6 +178,33 @@ def test_unreadable_body_still_consumes_ip_bucket():
         email="patient@example.test",
         ip="198.51.100.16",
     )
+    assert middleware(second).status_code == 429
+
+
+@pytest.mark.django_db
+@override_settings(
+    AUTH_ABUSE_LIMITS={
+        "login_ip": {"limit": 1, "window_seconds": 60},
+        "login_account": {"limit": 100, "window_seconds": 60},
+    }
+)
+def test_vercel_forwarded_client_ip_is_the_ip_bucket_key():
+    middleware = _middleware()
+    path = "/api/v1/auth/login"
+    first = _post(
+        path,
+        email="patient@example.test",
+        ip="10.0.0.2",
+        forwarded_for="203.0.113.20",
+    )
+    second = _post(
+        path,
+        email="other@example.test",
+        ip="10.0.0.3",
+        forwarded_for="203.0.113.20",
+    )
+
+    assert middleware(first).status_code == 202
     assert middleware(second).status_code == 429
 
 
