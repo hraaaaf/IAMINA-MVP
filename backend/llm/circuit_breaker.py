@@ -21,6 +21,7 @@ _RECOVERY_SECONDS = 30.0
 class _CircuitState:
     consecutive_failures: int = 0
     opened_at: float | None = None
+    half_open_probe_in_flight: bool = False
 
 
 _lock = threading.Lock()
@@ -32,12 +33,7 @@ def _state(provider: str) -> _CircuitState:
 
 
 def assert_provider_available(provider: str, *, now: float | None = None) -> None:
-    """Fail fast while the provider circuit is open.
-
-    Once the recovery window expires, one caller is allowed through as a
-    half-open probe. A successful call closes the circuit; another retryable
-    failure opens it again.
-    """
+    """Fail fast while open and admit only one half-open recovery probe."""
 
     current = time.monotonic() if now is None else now
     with _lock:
@@ -46,9 +42,9 @@ def assert_provider_available(provider: str, *, now: float | None = None) -> Non
             return
         if current - state.opened_at < _RECOVERY_SECONDS:
             raise LLMProviderUnavailable(provider)
-        # Half-open probe. Reset the timestamp so a failed probe can reopen it.
-        state.opened_at = None
-        state.consecutive_failures = _FAILURE_THRESHOLD - 1
+        if state.half_open_probe_in_flight:
+            raise LLMProviderUnavailable(provider)
+        state.half_open_probe_in_flight = True
 
 
 def record_provider_success(provider: str) -> None:
@@ -58,6 +54,7 @@ def record_provider_success(provider: str) -> None:
         state = _state(provider)
         state.consecutive_failures = 0
         state.opened_at = None
+        state.half_open_probe_in_flight = False
 
 
 def record_provider_failure(
@@ -66,13 +63,16 @@ def record_provider_failure(
     *,
     now: float | None = None,
 ) -> None:
-    """Count retryable transport/service failures and open after the threshold."""
+    """Open on repeated retryable failures; non-retryable responses close recovery probes."""
 
-    if not error.retryable:
-        return
     current = time.monotonic() if now is None else now
     with _lock:
         state = _state(provider)
+        state.half_open_probe_in_flight = False
+        if not error.retryable:
+            state.consecutive_failures = 0
+            state.opened_at = None
+            return
         state.consecutive_failures += 1
         if state.consecutive_failures >= _FAILURE_THRESHOLD:
             state.opened_at = current
