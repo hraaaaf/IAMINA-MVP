@@ -38,7 +38,6 @@ class FoodPictogramPainterBatch6 extends CustomPainter {
   const FoodPictogramPainterBatch6(this.foodId);
 
   static const _teal = Color(0xFF1F9E7A);
-  static const _cream = Color(0xFFFFF6E5);
   static const _brown = Color(0xFF8A5034);
   static const _dark = Color(0xFF394743);
 
