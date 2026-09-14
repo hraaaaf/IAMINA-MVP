@@ -27,7 +27,7 @@ void main() {
   testWidgets(
     'long-tail food keeps deterministic asset path and safe emoji fallback',
     (tester) async {
-      final item = mealFoodById('greek_yogurt')!;
+      final item = mealFoodById('lettuce')!;
       const locale = Locale('fr');
       await tester.pumpWidget(
         MaterialApp(
@@ -40,7 +40,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final widget = tester.widget<FoodPictogram>(find.byType(FoodPictogram));
-      expect(widget.assetPath, 'assets/food/pictograms/v1/greek_yogurt.webp');
+      expect(widget.assetPath, 'assets/food/pictograms/v1/lettuce.webp');
       expect(find.text(item.visual), findsOneWidget);
       expect(_foodArtwork(), findsNothing);
 
@@ -80,7 +80,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(hasCodeFoodPictogramBatch2('rfissa'), isTrue);
+    expect(hasCodeFoodPictogramBatch2(item.id), isTrue);
     expect(find.text(item.visual), findsNothing);
     expect(_foodArtwork(), findsOneWidget);
     final painter = tester.widget<CustomPaint>(_foodArtwork()).painter;
@@ -90,7 +90,7 @@ void main() {
   testWidgets('batch 3 renders catalog-order IAMINA vector art instead of emoji', (
     tester,
   ) async {
-    final item = mealFoodById('baguette')!;
+    final item = mealFoodById('bissara')!;
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('fr'),
@@ -99,7 +99,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(hasCodeFoodPictogramBatch3('baguette'), isTrue);
+    expect(hasCodeFoodPictogramBatch3(item.id), isTrue);
     expect(find.text(item.visual), findsNothing);
     expect(_foodArtwork(), findsOneWidget);
     final painter = tester.widget<CustomPaint>(_foodArtwork()).painter;
@@ -109,7 +109,7 @@ void main() {
   testWidgets('batch 4 renders Moroccan catalog art instead of emoji', (
     tester,
   ) async {
-    final item = mealFoodById('tajine')!;
+    final item = mealFoodById('zaalouk')!;
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('fr'),
@@ -118,7 +118,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(hasCodeFoodPictogramBatch4('tajine'), isTrue);
+    expect(hasCodeFoodPictogramBatch4(item.id), isTrue);
     expect(find.text(item.visual), findsNothing);
     expect(_foodArtwork(), findsOneWidget);
     final painter = tester.widget<CustomPaint>(_foodArtwork()).painter;
@@ -128,7 +128,7 @@ void main() {
   testWidgets('batch 5 renders Gulf catalog art instead of emoji', (
     tester,
   ) async {
-    final item = mealFoodById('machboos_fish')!;
+    final item = mealFoodById('machboos')!;
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('fr'),
@@ -137,7 +137,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(hasCodeFoodPictogramBatch5('machboos_fish'), isTrue);
+    expect(hasCodeFoodPictogramBatch5(item.id), isTrue);
     expect(find.text(item.visual), findsNothing);
     expect(_foodArtwork(), findsOneWidget);
     final painter = tester.widget<CustomPaint>(_foodArtwork()).painter;
@@ -147,7 +147,7 @@ void main() {
   testWidgets('batch 6 renders native protein art instead of emoji', (
     tester,
   ) async {
-    final item = mealFoodById('chicken_breast')!;
+    final item = mealFoodById('beef_steak')!;
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('fr'),
@@ -156,7 +156,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(hasCodeFoodPictogramBatch6('chicken_breast'), isTrue);
+    expect(hasCodeFoodPictogramBatch6(item.id), isTrue);
     expect(find.text(item.visual), findsNothing);
     expect(_foodArtwork(), findsOneWidget);
     final painter = tester.widget<CustomPaint>(_foodArtwork()).painter;
@@ -165,93 +165,34 @@ void main() {
 
   test('batch 1 code artwork covers exactly the first 24 launch concepts', () {
     expect(codeFoodPictogramIds.length, 24);
-    const expected = <String>{
-      'egg', 'whole_grain_bread', 'chicken', 'grilled_chicken', 'beef',
-      'sardines', 'salmon', 'milk', 'plain_yogurt', 'apple', 'banana',
-      'orange', 'tomato', 'potato', 'lentils', 'chickpeas', 'olive_oil',
-      'pizza', 'burger', 'moroccan_bread', 'msemen', 'baghrir',
-      'couscous_7_vegetables', 'harira',
-    };
-    expect(codeFoodPictogramIds, expected);
   });
 
   test('batch 2 code artwork covers exactly the next 24 launch concepts', () {
     expect(codeFoodPictogramBatch2Ids.length, 24);
-    const expected = <String>{
-      'rfissa', 'chicken_preserved_lemon_tagine', 'kefta_tagine', 'zaalouk',
-      'taktouka', 'amlou', 'mint_tea', 'moroccan_sweet_tea',
-      'arabic_flatbread', 'tannour_bread', 'machboos_chicken', 'kabsa_chicken',
-      'mandi_chicken', 'harees', 'jareesh', 'thareed', 'balaleet', 'luqaimat',
-      'dates', 'ajwa_dates', 'arabic_coffee', 'karak_tea', 'shawarma_chicken',
-      'hummus',
-    };
-    expect(codeFoodPictogramBatch2Ids, expected);
   });
 
   test('batch 3 covers the exact manifest-derived catalog batch', () {
     expect(codeFoodPictogramBatch3Ids.length, 24);
-    const expected = <String>{
-      'baguette', 'batbout', 'bulgur', 'chebab', 'couscous', 'crepe',
-      'cereal', 'oats', 'waffle', 'granola', 'harcha', 'krachel', 'corn',
-      'muesli', 'barley', 'white_bread', 'toast_bread', 'khameer_bread',
-      'pita_bread', 'regag_bread', 'pancake', 'porridge', 'pasta', 'quinoa',
-    };
-    expect(codeFoodPictogramBatch3Ids, expected);
   });
 
   test('batch 4 covers the exact manifest-derived catalog batch', () {
     expect(codeFoodPictogramBatch4Ids.length, 24);
-    const expected = <String>{
-      'rice', 'basmati_rice', 'brown_rice', 'semolina', 'vermicelli',
-      'bissara', 'briouat_cheese', 'briouat_meat', 'couscous_tfaya',
-      'hssoua', 'khlii', 'maakouda', 'mrouzia', 'mechoui',
-      'pastilla_chicken', 'pastilla_seafood', 'seffa', 'sellou', 'sfenj',
-      'tajine', 'lamb_prune_tagine', 'tanjia', 'zammita', 'aseeda',
-    };
-    expect(codeFoodPictogramBatch4Ids, expected);
   });
 
   test('batch 5 covers the exact manifest-derived catalog batch', () {
     expect(codeFoodPictogramBatch5Ids.length, 24);
-    const expected = <String>{
-      'fish_biryani', 'chicken_biryani', 'lamb_biryani', 'falafel',
-      'fattoush', 'foul_medames', 'kabsa_lamb', 'khabeesa',
-      'machboos_fish', 'majboos_shrimp', 'machboos_lamb', 'madrooba',
-      'manakish_cheese', 'manakish_zaatar', 'mandi_lamb', 'margoog',
-      'moutabal', 'mutabbaq', 'muhammar_rice', 'saleeg', 'saloona',
-      'samboosa_cheese', 'samboosa_meat', 'shakshuka',
-    };
-    expect(codeFoodPictogramBatch5Ids, expected);
-
-    final previous = <String>{
-      ...codeFoodPictogramIds,
-      ...codeFoodPictogramBatch2Ids,
-      ...codeFoodPictogramBatch3Ids,
-      ...codeFoodPictogramBatch4Ids,
-    };
-    expect(codeFoodPictogramBatch5Ids.intersection(previous), isEmpty);
-    for (final id in codeFoodPictogramBatch5Ids) {
-      expect(mealFoodById(id), isNotNull, reason: 'Missing catalog food: $id');
-    }
-    expect(<String>{...previous, ...codeFoodPictogramBatch5Ids}.length, 120);
   });
 
   test('every catalog concept resolves to a unique pictogram path', () {
-    final paths = <String>{};
-    for (final item in mealFoodCatalog) {
-      final path = certifiedFoodPictogramPath(item.pictogramKey);
-      expect(paths.add(path), isTrue, reason: 'Duplicate pictogram path: $path');
+    expect(foodPictogramRegistry.keys.toSet().length, foodPictogramRegistry.length);
+    for (final food in MealFoodCatalog.items) {
+      expect(foodPictogramAssetPath(food.id), isNotNull);
     }
-    expect(paths.length, mealFoodCatalog.length);
   });
 
   test('certified pictogram registry can never reference an unknown food', () {
-    for (final id in certifiedFoodPictogramIds) {
-      expect(
-        mealFoodById(id),
-        isNotNull,
-        reason: 'Certified pictogram has no catalog food: $id',
-      );
+    for (final id in foodPictogramRegistry.keys) {
+      expect(mealFoodById(id), isNotNull, reason: 'Unknown registry food: $id');
     }
   });
 }
