@@ -1,12 +1,12 @@
 # IAMINA — Food pictograms Batch 11
 
-Status: FINAL CERTIFICATION — aligned to merged Batch 10; exact-head gates required before merge
+Status: FINAL CERTIFICATION — aligned to current main; exact-head gates required before merge
 
 ## Goal
 
 Extend native FoodPicker pictogram coverage from 240 to 264 concepts without changing nutrition logic, catalog structure, search behavior or runtime render priority.
 
-Success = exact manifest-derived 24-item Batch 11, native union exactly 264, all eleven batches pairwise disjoint, every ID bound to the catalog, first post-Batch-11 long-tail fallback preserved, semantics preserved, exact-head CI/geometry/P5-5/Chrome green after Batch 10 integration, and AFTER evidence inspected at 390×844 / 768×1024 / 1280×900.
+Success = exact manifest-derived 24-item Batch 11, native union exactly 264, all eleven batches pairwise disjoint, every ID bound to the catalog, first post-Batch-11 long-tail fallback preserved, semantics preserved, exact-head CI/geometry/P5-5/Chrome green after current-main integration, and AFTER evidence inspected at 390×844 / 768×1024 / 1280×900.
 
 P7 responsive Dashboard certification is N/A for this FoodPicker-only lot because that workflow is path-filtered to Dashboard files.
 
@@ -32,27 +32,29 @@ Reference: established IAMINA native pictogram language: compact 44–48 px reco
 
 AFTER fixture: search query `sauce`.
 
-Manual AFTER inspection on product head `605bb94e3936bd718740a38b8ae9cc94daf571bc`:
+Observed retained product proof:
 - 390×844: sauce-family results render cleanly in one column; CTA and consent copy remain visible; no observed collision, overflow or clipped label.
 - 768×1024: same result family remains clean in one column; no observed collision or overflow.
 - 1280×900: clean two-column result grid; no observed collision or overflow.
 - Pre-existing horizontal category rail edge clipping remains scroll behavior, not a Batch-11 regression.
 
-Visual score: 9.3/10.
+Visual score retained pending final exact-head artifact: 9.3/10.
 
 ## Verified integration and proof
 
 - Batch 10 merged to `main` as `7e858710776a12d84a3db4ba8e9ef966ce80c010`.
-- Batch 11 was rebuilt content-identically on that exact `main`; integration head before this documentation closeout was `dee1e1571df9b1a64bbec568f7c174915fa22ede`.
-- Compare against merged Batch 10: behind 0; only six Batch-11 implementation/docs files plus six inherited fallback-test updates.
-- Product visual proof retained on `605bb94e3936bd718740a38b8ae9cc94daf571bc`:
-  - UI geometry run `34819733134` — SUCCESS
-  - UI browser screenshot certification run `34819733141` — SUCCESS
-  - Chrome artifact `10338450490`, digest `sha256:ca0731d55447fd393ed96b3a08a0e1a675af1cb31e2387825d0e873e7b9425de`.
-- Local artifact ZIP SHA-256 independently matched the GitHub digest.
-- AFTER files were inspected at 390×844, 768×1024 and 1280×900.
-- Batch-11 contract remains: exact 24 IDs, native union 264, pairwise disjoint batches, catalog binding, localized native semantics, and first post-Batch-11 fallback preserved.
+- Batch 11 exact-head `10d205f88b0ac46c890ce0577f30945fa899c175` was fully certified before `main` advanced:
+  - CI `34905567932` — SUCCESS
+  - UI geometry `34905568031` — SUCCESS
+  - P5-5 `34905567789` — SUCCESS
+  - UI browser screenshot certification `34905567737` — SUCCESS
+  - Chrome artifact `10372554693`, digest `sha256:c7a06dcab8a9f98516bb3a9c4d294300f3094e2e22d8b60c22def2940d3230cd`.
+- The exact artifact ZIP digest matched locally and the `sauce` surface was inspected at 390×844, 768×1024 and 1280×900.
+- `main` then advanced to `4f873001910d7b065860aff87bf5b1d9f2cbd99b` through PR #628, which changes backend AI/circuit-breaker files only and does not touch FoodPicker/frontend/docs paths.
+- Batch 11 was therefore rebuilt on that current main while preserving the backend changes from #628.
+- Current-main compare is behind 0 and contains only the twelve expected Batch-11 implementation/docs/fallback-test paths.
+- Batch-11 contract remains: exact 24 IDs, native union 264, pairwise-disjoint batches, catalog binding, localized native semantics, and first post-Batch-11 fallback preserved.
 
-Final exact-head CI/geometry/P5-5/Chrome run IDs and exact Chrome artifact are recorded in PR #616 metadata after certification. P7 is N/A, not green.
+Final current-main exact-head CI/geometry/P5-5/Chrome run IDs and exact Chrome artifact are recorded in PR #616 metadata after certification. P7 is N/A, not green.
 
 No Vercel deployment is part of this lot.
