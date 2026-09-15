@@ -46,6 +46,16 @@ Widget _localizedApp(Widget home) {
   );
 }
 
+Future<void> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  int attempts = 50,
+}) async {
+  for (var i = 0; i < attempts && finder.evaluate().isEmpty; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -109,9 +119,11 @@ void main() {
       '123',
     );
     await tester.tap(find.byKey(const Key('save-log-button')));
-    await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('post-save-receipt')), findsOneWidget);
+    final receipt = find.byKey(const Key('post-save-receipt'));
+    await _pumpUntilFound(tester, receipt);
+    expect(receipt, findsOneWidget);
+
     final persisted = await db.select(db.logEntries).get();
     expect(persisted, hasLength(1));
     expect(persisted.single.bloodSugar, 123);
