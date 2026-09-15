@@ -17,13 +17,8 @@ import 'food_pictogram_painter_batch11.dart';
 import 'food_pictogram_painter_batch12.dart';
 import 'food_pictogram_painter_batch13.dart';
 import 'food_pictogram_painter_batch14.dart';
+import 'food_pictogram_painter_batch15.dart';
 
-/// Runtime surface for IAMINA food artwork.
-///
-/// Rendering priority:
-/// 1. certified bundled artwork when a reviewed asset exists;
-/// 2. native IAMINA vector pictogram for the coded launch/catalog set;
-/// 3. deterministic emoji fallback for the remaining long tail.
 class FoodPictogram extends StatelessWidget {
   final MealFoodItem item;
   final double size;
@@ -39,13 +34,15 @@ class FoodPictogram extends StatelessWidget {
   String get assetPath => certifiedFoodPictogramPath(item.pictogramKey);
 
   Widget _emojiFallback() => ExcludeSemantics(
-    child: Text(item.visual, style: TextStyle(fontSize: size * .48, height: 1)),
-  );
+        child: Text(item.visual, style: TextStyle(fontSize: size * .48, height: 1)),
+      );
 
   Widget _nativePictogram() {
     final key = item.pictogramKey;
     final CustomPainter painter;
-    if (hasCodeFoodPictogramBatch14(key)) {
+    if (hasCodeFoodPictogramBatch15(key)) {
+      painter = FoodPictogramPainterBatch15(key);
+    } else if (hasCodeFoodPictogramBatch14(key)) {
       painter = FoodPictogramPainterBatch14(key);
     } else if (hasCodeFoodPictogramBatch13(key)) {
       painter = FoodPictogramPainterBatch13(key);
@@ -96,7 +93,8 @@ class FoodPictogram extends StatelessWidget {
         hasCodeFoodPictogramBatch11(item.pictogramKey) ||
         hasCodeFoodPictogramBatch12(item.pictogramKey) ||
         hasCodeFoodPictogramBatch13(item.pictogramKey) ||
-        hasCodeFoodPictogramBatch14(item.pictogramKey);
+        hasCodeFoodPictogramBatch14(item.pictogramKey) ||
+        hasCodeFoodPictogramBatch15(item.pictogramKey);
 
     return Semantics(
       image: true,

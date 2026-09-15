@@ -60,7 +60,7 @@ void main() {
   }
 
   test('catalog v3 is broad, unique and Morocco + GCC aware', () {
-    expect(mealFoodCatalogVersion, '3.0.0-morocco-gcc');
+    expect(mealFoodCatalogVersion, '3.1.0-morocco-gcc-core');
     expect(mealFoodCatalog.length, greaterThanOrEqualTo(300));
 
     final ids = mealFoodCatalog.map((item) => item.id).toSet();
