@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
+import '../../services/api_client.dart';
 import '../../services/companion_service.dart';
 
 String _chatText(BuildContext context, String fr, String en, String ar) {
@@ -9,6 +10,41 @@ String _chatText(BuildContext context, String fr, String en, String ar) {
   if (code == 'ar') return ar;
   if (code == 'en') return en;
   return fr;
+}
+
+String _failureText(BuildContext context, ProviderApiException failure) {
+  return switch (failure.code) {
+    'provider_timeout' => _chatText(
+      context,
+      'IAmina met trop de temps à répondre. Réessaie dans un instant.',
+      'IAmina is taking too long to respond. Try again in a moment.',
+      'تستغرق IAmina وقتًا أطول من المعتاد للرد. حاول مجددًا بعد لحظة.',
+    ),
+    'provider_unavailable' => _chatText(
+      context,
+      'Le service IAmina est temporairement indisponible. Réessaie dans un instant.',
+      'IAmina is temporarily unavailable. Try again in a moment.',
+      'خدمة IAmina غير متاحة مؤقتًا. حاول مجددًا بعد لحظة.',
+    ),
+    'provider_quota_exceeded' => _chatText(
+      context,
+      'IAmina a atteint sa limite temporaire. Réessaie plus tard.',
+      'IAmina has reached its temporary limit. Try again later.',
+      'بلغت IAmina الحد المؤقت للخدمة. حاول مجددًا لاحقًا.',
+    ),
+    'authentication_required' => _chatText(
+      context,
+      'Votre session n’est plus valide. Reconnectez-vous avant de réessayer.',
+      'Your session is no longer valid. Sign in again before retrying.',
+      'لم تعد جلستك صالحة. سجّل الدخول مجددًا قبل المحاولة.',
+    ),
+    _ => _chatText(
+      context,
+      'La réponse n’a pas pu être chargée. Réessaie sans modifier ton message.',
+      'The reply could not be loaded. Try again without changing your message.',
+      'تعذر تحميل الرد. حاول مجددًا بدون تغيير رسالتك.',
+    ),
+  };
 }
 
 class CompanionConversationScreen extends StatefulWidget {
@@ -28,7 +64,7 @@ class _CompanionConversationScreenState
   final ScrollController _scrollController = ScrollController();
   final List<_ConversationMessage> _messages = [];
   bool _sending = false;
-  bool _failed = false;
+  ProviderApiException? _failure;
 
   @override
   void dispose() {
@@ -45,18 +81,31 @@ class _CompanionConversationScreenState
     setState(() {
       _messages.add(_ConversationMessage.user(text));
       _sending = true;
-      _failed = false;
+      _failure = null;
       _controller.clear();
     });
     _scrollToBottom();
 
-    final result = await _service.sendChatMessage(text);
+    CompanionChatReply? result;
+    ProviderApiException? failure;
+    try {
+      result = await _service.sendChatMessage(text);
+    } on ProviderApiException catch (error) {
+      failure = error;
+    }
     if (!mounted) return;
 
     setState(() {
       _sending = false;
-      if (result == null) {
-        _failed = true;
+      if (failure != null) {
+        _failure = failure;
+      } else if (result == null) {
+        _failure = const ProviderApiException(
+          code: 'provider_unknown_failure',
+          message: 'The AI request could not be completed safely.',
+          retryable: false,
+          statusCode: 500,
+        );
       } else {
         _messages.add(_ConversationMessage.assistant(result.reply));
       }
@@ -112,16 +161,12 @@ class _CompanionConversationScreenState
                           },
                         ),
                 ),
-                if (_failed)
+                if (_failure != null)
                   Padding(
                     padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 8),
                     child: Text(
-                      _chatText(
-                        context,
-                        'La réponse n’a pas pu être chargée. Réessaie sans modifier ton message.',
-                        'The reply could not be loaded. Try again without changing your message.',
-                        'تعذر تحميل الرد. حاول مجددًا بدون تغيير رسالتك.',
-                      ),
+                      _failureText(context, _failure!),
+                      key: const Key('companion-chat-failure'),
                       style: const TextStyle(
                         color: Color(0xFF9B3C35),
                         fontSize: 12,

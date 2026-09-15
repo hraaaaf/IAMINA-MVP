@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -5,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../data/models/companion_models.dart';
 import '../data/models/companion_next_action_models.dart';
 import '../data/models/proactive_preview_models.dart';
+import 'api_client.dart';
 import 'auth_service.dart';
 
 const String companionApiBaseUrl = String.fromEnvironment(
@@ -108,9 +110,17 @@ class CompanionService {
     final trimmed = message.trim();
     if (trimmed.isEmpty) return null;
 
+    final token = await _authService.getIdToken();
+    if (token == null || token.isEmpty) {
+      throw const ProviderApiException(
+        code: 'authentication_required',
+        message: 'Authentication is required.',
+        retryable: false,
+        statusCode: 401,
+      );
+    }
+
     try {
-      final token = await _authService.getIdToken();
-      if (token == null || token.isEmpty) return null;
       final response = await _http
           .post(
             Uri.parse('$baseUrl/api/v1/ai/chat'),
@@ -124,15 +134,66 @@ class CompanionService {
             }),
           )
           .timeout(const Duration(seconds: 45));
-      if (response.statusCode != 200) return null;
+
+      if (response.statusCode != 200) {
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map) {
+            throw ProviderApiException.fromJson(
+              Map<String, dynamic>.from(decoded),
+              statusCode: response.statusCode,
+            );
+          }
+        } on ProviderApiException {
+          rethrow;
+        } catch (_) {}
+        throw ProviderApiException.unknown(statusCode: response.statusCode);
+      }
+
       final decoded = jsonDecode(response.body);
-      if (decoded is! Map) return null;
+      if (decoded is! Map) {
+        throw const ProviderApiException(
+          code: 'provider_malformed_response',
+          message: 'The AI service returned an invalid response.',
+          retryable: true,
+          statusCode: 502,
+        );
+      }
       final reply = CompanionChatReply.fromJson(
         Map<String, dynamic>.from(decoded),
       );
-      return reply.reply.trim().isEmpty ? null : reply;
+      if (reply.reply.trim().isEmpty) {
+        throw const ProviderApiException(
+          code: 'provider_malformed_response',
+          message: 'The AI service returned an invalid response.',
+          retryable: true,
+          statusCode: 502,
+        );
+      }
+      return reply;
+    } on ProviderApiException {
+      rethrow;
+    } on TimeoutException {
+      throw const ProviderApiException(
+        code: 'provider_timeout',
+        message: 'The AI service did not respond in time.',
+        retryable: true,
+        statusCode: 503,
+      );
+    } on http.ClientException {
+      throw const ProviderApiException(
+        code: 'provider_unavailable',
+        message: 'The AI service is temporarily unavailable.',
+        retryable: true,
+        statusCode: 503,
+      );
     } catch (_) {
-      return null;
+      throw const ProviderApiException(
+        code: 'provider_internal_failure',
+        message: 'The AI request could not be completed safely.',
+        retryable: false,
+        statusCode: 500,
+      );
     }
   }
 
