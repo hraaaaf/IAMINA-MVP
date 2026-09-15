@@ -112,9 +112,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('post-save-receipt')), findsOneWidget);
-    final persisted = await db.select(db.healthLogs).get();
+    final persisted = await db.select(db.logEntries).get();
     expect(persisted, hasLength(1));
-    expect(persisted.single.glucoseMgdl, 123);
+    expect(persisted.single.bloodSugar, 123);
     expect(tester.takeException(), isNull);
   });
 
