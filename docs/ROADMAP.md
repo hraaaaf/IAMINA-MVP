@@ -2,11 +2,11 @@
 
 > **Authority:** this is the single canonical forward tracker for IAMINA. If an issue, PR body, handover, assessment, AGENTS note, architecture note or historical phase document conflicts with this file on current status, priority or next work, **this file wins**. Historical documents remain evidence only.
 >
-> **Global audit:** 2026-09-14, reconciled against current `main`, P5-6 release-gate evidence, #318/#320, and `docs/TECHDEBT.md`. The forward P5-6 candidate is `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`; the predecessor `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` remains the last exact production-proven deployment.
+> **Global audit:** 2026-09-15, reconciled against current `main`, P5-6 release-gate evidence, #318/#320, and `docs/TECHDEBT.md`. The last explicitly frozen P5-6 candidate is `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`; later runtime/code changes mean it is retained as historical freeze evidence only, not as the current release candidate. The predecessor `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` remains the last exact production-proven deployment. No current release candidate exists until an explicit re-freeze is performed when the pre-real-patient gate is reactivated.
 >
 > **Canonical global progress:** **6/12 atomic roadmap lots CLOSED = 50.0%**. Atomic denominator: P5-0, P5-1, P5-2, P5-3, P5-4A, P5-4B, P5-5, P5-6 consent evidence engineering, P5-6A, P5-6B, P5-7, P5-8. Closed atoms: P5-0, P5-1, P5-2, P5-4A, P5-5 and P5-6 consent evidence engineering. The P5 whole-lot metric remains **4/9 = 44.4%** and retained MENA remains **32/38 = 84.2%** for their narrower scopes.
 >
-> **Release posture:** `NOT_RELEASE_AUTHORIZED`. No current authorization exists to deploy the refrozen candidate or process real-patient data. Engineering, UX, reliability, security and synthetic/non-patient work may continue. P5-6A/#318 and P5-6B/#320 are retained as mandatory **pre-real-patient gates**, not as the current engineering critical path.
+> **Release posture:** `NOT_RELEASE_AUTHORIZED`. No current release candidate is frozen or authorized for deployment or real-patient processing. Engineering, UX, reliability, security and synthetic/non-patient work may continue. P5-6A/#318 and P5-6B/#320 are retained as mandatory **pre-real-patient gates**, not as the current engineering critical path.
 
 ## North star
 
@@ -39,9 +39,10 @@ Ship one safe, measurable Morocco/MENA diabetes-companion PWA pilot, collect rea
 | P4-FRUGAL PRE-PILOT | ✅ CLOSED 10/10 | real pilot economics belong to P5-7 |
 | MENA retained tracker | 🟡 32/38 = 84.2% | informational only |
 | P5 whole-lot tracker | 🟡 4/9 = 44.4% | active program |
-| P5-6 consent evidence engineering | ✅ CLOSED atomic sublot | inherited unchanged by current candidate |
-| P5-6 predecessor deployment infrastructure | ✅ EXACT_PRODUCTION_HEALTHY | proves Vercel/Neon path for `5b27a22…`, not exact deployment proof for current candidate |
-| P5-6 current forward candidate | 🟠 REFROZEN / NOT_DEPLOYED | `fb42e4d…`; deployment requires separate explicit owner authorization |
+| P5-6 consent evidence engineering | ✅ CLOSED atomic sublot | retained as merged engineering evidence |
+| P5-6 predecessor deployment infrastructure | ✅ EXACT_PRODUCTION_HEALTHY | proves Vercel/Neon path for `5b27a22…`, not exact deployment proof for any future candidate |
+| P5-6 last frozen candidate evidence | 🟠 HISTORICAL_FREEZE / NOT_CURRENT | `fb42e4d…`; runtime/code advanced later, so explicit re-freeze is required before any release attempt |
+| P5-6 current release candidate | ⚪ NONE | must be created by an explicit exact-SHA re-freeze when the pre-real-patient gate is reactivated |
 | P5-6A / P5-6B | ⏸️ PRE_REAL_PATIENT_GATE / DEFERRED | mandatory before first identifiable real-patient health data; not current engineering critical path |
 | Real-patient release | 🟠 NOT_AUTHORIZED | blocked until pre-real-patient gate is completed and explicitly authorized |
 
@@ -59,7 +60,7 @@ No partial credit is assigned inside an atomic lot. Deferring a gate does not cl
 
 **Current non-patient engineering path:** continue verified product/security/reliability/UX work on synthetic or non-patient data, prioritizing reproduced defects and unresolved technical debt.
 
-**Mandatory pre-real-patient path, activated before the first identifiable real-patient health data:** P5-6A restricted safety evidence + P5-6B processor/CNDP evidence + explicitly authorized exact-candidate deployment/topology proof → three exact-SHA approved audits → explicit human release decision → controlled PWA pilot → P5-7 observed evidence → P5-8 go/no-go.
+**Mandatory pre-real-patient path, activated before the first identifiable real-patient health data:** explicit exact-SHA re-freeze → P5-6A restricted safety evidence + P5-6B processor/CNDP evidence + explicitly authorized exact-candidate deployment/topology proof → three exact-SHA approved audits → explicit human release decision → controlled PWA pilot → P5-7 observed evidence → P5-8 go/no-go.
 
 The pre-real-patient path is deferred, not waived. No release, deployment authorization or regulatory approval is implied by current engineering progress.
 
@@ -117,22 +118,25 @@ Retained synthetic/non-patient proof includes main `88b78e036ce3494dfe37921e70e0
 
 This gate is mandatory before the first identifiable real-patient health data enters IAMINA. It is not the current day-to-day engineering priority while work remains synthetic/non-patient. Deferral does not constitute approval, closure or waiver.
 
-Forward candidate:
+### Last retained frozen candidate evidence
 
-- release SHA: `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`;
+The last explicitly frozen release SHA was `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`, with:
+
 - safety corpus: 59 exact cases;
 - parity coverage: 10 technical tuples;
 - safety fingerprint: `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`;
 - consent notice version: `2026-09-12.1`.
 
-### Candidate re-freeze proof
+That SHA is retained as historical exact-freeze evidence. It is **not** the current release candidate because later runtime/code changes have advanced `main`. A new exact release candidate must be explicitly re-frozen before the pre-real-patient gate is executed.
+
+### Historical candidate re-freeze proof
 
 The predecessor candidate `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` proved the Vercel/Django/Neon runtime. Two release-gate defects were then fixed:
 
 - PR #602 made the local-only consent audit consume the restricted residency manifest and bind genuine CNDP health-processing evidence to the exact release SHA;
 - PR #603 made native password recovery require an explicit provider-neutral SMTP production contract, removed silent delivery assumptions and preserved account-enumeration resistance.
 
-Validation retained for the refrozen candidate:
+Validation retained for the historical `fb42e4d…` freeze:
 
 - #602 exact-head CI #4186 / workflow `34771054574` SUCCESS;
 - #602 exact-head migration drift #3733 / workflow `34771054541` SUCCESS;
@@ -142,15 +146,13 @@ Validation retained for the refrozen candidate:
 - post-merge CI #4190 / workflow `34773613905` SUCCESS;
 - post-merge migration drift #3737 / workflow `34773613814` SUCCESS.
 
-Clinical rebind proof:
+Clinical rebind proof retained for that historical freeze:
 
 - `backend/core/safety_corpora.py` blob is identical between `5b27a22…` and `fb42e4d…`: `bf046c298ee8e77591f5c5b1049b806a6255bfcf`;
 - `backend/core/triage_classification.py` blob is identical between those candidates: `eba7a57967eeec1ba4b264c90ccab1a30e516b38`;
 - the retained corpus therefore remains 59 exact cases / 10 tuples with fingerprint `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`.
 
-This is a technical exact-corpus rebind only. It does not fabricate reviewer identity, qualification or a new human approval.
-
-Documentation-only closeout commits may advance `main` without moving the frozen candidate. Any later runtime/code change requires another explicit re-freeze before a real-patient release attempt.
+This is historical technical exact-corpus evidence only. It does not fabricate reviewer identity, qualification or a new human approval. Any later runtime/code change invalidates use of that historical freeze as the current release candidate and requires another explicit re-freeze before a real-patient release attempt.
 
 ### P5-6 consent evidence engineering
 
@@ -160,7 +162,7 @@ Retained from #591: exact notice version/hash/locale, legacy consent invalidatio
 
 ### P5-6 deployment state
 
-**Status:** 🟠 PREDECESSOR_EXACT_PRODUCTION_HEALTHY / CURRENT_CANDIDATE_NOT_DEPLOYED.
+**Status:** 🟠 PREDECESSOR_EXACT_PRODUCTION_HEALTHY / NO_CURRENT_CANDIDATE.
 
 Proven predecessor topology:
 
@@ -174,41 +176,43 @@ Proven predecessor topology:
 - cache unavailability is non-fatal under the existing health contract; no Redis readiness claim is made;
 - no AqarFinder/Supabase database and no unrelated Neon database was reused.
 
-The current candidate `fb42e4d…` is **not deployed**. PR #603 deliberately makes production startup fail closed until an explicit SMTP/reset contract is configured. No deployment of the refrozen candidate may be performed without separate explicit owner authorization.
+The historical `fb42e4d…` freeze was **not deployed**. PR #603 deliberately made production startup fail closed until an explicit SMTP/reset contract is configured. No future exact candidate may be deployed without separate explicit owner authorization.
 
 ### P5-6A — Safety qualification manifest
 
 **Tracker:** #318.
 
-Current state: `OPEN / PRE_REAL_PATIENT_GATE / DEFERRED / REVIEW_ATTESTED / OWNER_QUALIFICATION_ATTESTATION_RETAINED / EXACT_CORPUS_REBOUND_TECHNICALLY / RESTRICTED_QUALIFICATION_REFERENCES_PENDING`.
+Current state: `OPEN / PRE_REAL_PATIENT_GATE / DEFERRED / REVIEW_ATTESTED / OWNER_QUALIFICATION_ATTESTATION_RETAINED / HISTORICAL_EXACT_CORPUS_EVIDENCE_RETAINED / CURRENT_CANDIDATE_PENDING_REFREEZE / RESTRICTED_QUALIFICATION_REFERENCES_PENDING`.
 
 Already retained: owner-attested safety/clinical review, Darija adjudication/runtime cutover, safety-owner/parity attestation and English-locale validation. Owner qualification wording: **« professionnels qualifiés »**, reference `issue-318:owner-attestation:professionnels-qualifies`.
 
 Still missing before real-patient release:
 
+- explicit exact-SHA re-freeze of the future release candidate;
 - real opaque native-reviewer references for `fr`, `ar`, `en`, `ar-MA`;
 - real qualification references required by the manifest contract;
 - non-stale `reviewed_on` / `review_due_on`;
 - approved coverage of all 59 exact case IDs;
 - approved coverage of all 10 exact parity tuples;
-- restricted safety manifest with `source_commit_sha = fb42e4d641b7b057607fe6a2de3d5104ccf15d0b` and the exact fingerprint;
+- restricted safety manifest bound to the newly refrozen exact candidate and exact safety fingerprint;
 - exact-SHA safety audit PASS.
 
 ### P5-6B — CNDP / consent / processor / residency
 
 **Tracker:** #320.
 
-Current state: `OPEN / PRE_REAL_PATIENT_GATE / DEFERRED / PREDECESSOR_DEPLOYMENT_PROVEN / CURRENT_CANDIDATE_NOT_DEPLOYED / SMTP_PROCESSOR_PENDING / COMPLIANCE_EVIDENCE_PENDING`.
+Current state: `OPEN / PRE_REAL_PATIENT_GATE / DEFERRED / PREDECESSOR_DEPLOYMENT_PROVEN / CURRENT_CANDIDATE_PENDING_REFREEZE / SMTP_PROCESSOR_PENDING / COMPLIANCE_EVIDENCE_PENDING`.
 
 Still required before real-patient release:
 
+- explicit exact-SHA re-freeze of the future release candidate;
 - choose and configure the actual password-reset mail processor under the provider-neutral SMTP contract;
 - account-specific processor/DPA/subprocessor/retention/deletion/privacy/security evidence for every enabled processor;
 - actual exact-candidate topology with countries/regions after an explicitly authorized deployment;
 - deployment-specific patient notice/consent approval evidence;
 - applicable CNDP health-data processing evidence;
 - foreign-transfer basis/evidence for every actual external destination where applicable;
-- restricted residency manifest bound to `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`;
+- restricted residency manifest bound to the newly refrozen exact candidate;
 - exact-SHA consent and residency audit PASS outputs.
 
 Public provider/CNDP documentation can define requirements but cannot substitute for account-specific approvals.
@@ -217,24 +221,24 @@ The current pilot scope enables no external AI processor. `--local-only` remains
 
 ### P5-6 success proof
 
-When preparation for the first real-patient pilot starts, all three fail-closed audits must PASS against the same exact candidate:
+When preparation for the first real-patient pilot starts, first explicitly re-freeze the exact release SHA and bind all restricted manifests to that same SHA. Then all three fail-closed audits must PASS against it:
 
 ```bash
 python manage.py audit_pilot_consent_governance \
   --local-only \
   --residency-manifest /restricted/iamina/pilot-residency.json \
   --require-approved \
-  --expected-source-commit-sha fb42e4d641b7b057607fe6a2de3d5104ccf15d0b
+  --expected-source-commit-sha <EXACT_REFROZEN_SHA>
 
 python manage.py audit_pilot_data_residency \
   --manifest /restricted/iamina/pilot-residency.json \
   --require-approved \
-  --expected-source-commit-sha fb42e4d641b7b057607fe6a2de3d5104ccf15d0b
+  --expected-source-commit-sha <EXACT_REFROZEN_SHA>
 
 python manage.py audit_safety_corpus_review \
   --manifest /restricted/iamina/safety-review-manifest.json \
   --require-approved \
-  --expected-source-commit-sha fb42e4d641b7b057607fe6a2de3d5104ccf15d0b
+  --expected-source-commit-sha <EXACT_REFROZEN_SHA>
 ```
 
 Then and only then: explicit human real-patient release decision.
@@ -278,12 +282,13 @@ Retained MENA metric: 32/38 = 84.2%, informational only.
 
 `docs/TECHDEBT.md` owns unresolved compromises; it is not a competing roadmap. Critical/high debt is promoted into the current engineering path only when the corresponding feature is active or a current defect is reproduced. Pre-real-patient compliance evidence remains a separate future release gate.
 
-Reconciliation retained on 2026-09-14:
+Reconciliation retained through 2026-09-15:
 
 - TD-010 observability retention lifecycle is CLOSED by PR #610, merge `e9c04beee31638ff86d7fd0b50d5eddccc313c4e`, post-merge CI #4206 / workflow `34787203311` SUCCESS and migration drift #3742 SUCCESS;
 - former TD-005 and TD-006 were removed from the unresolved-debt register because current runtime safety variant coverage is implemented and the only remaining release gate is the restricted human qualification/approval evidence already owned by #318/P5-6A;
 - former TD-007 was removed after verifying the explicitly approved/documented `SELF_CARE_ONLY` pilot operating model: PR #24 formalized no human monitoring, mandatory disclosure and fail-closed evidence requirements for any future `MONITORED_HUMAN` mode; P0.6 PR #128 later centralized all patient-facing urgent responses through that policy;
-- TD-013 authentication abuse protection is CLOSED by PR #623, merged as `main@f045491a3e07db388067fe54c60fd0c4b543e050`; exact-head CI #4238 and drift #3760 succeeded, then exact-main post-merge CI #4241 and drift #3761 succeeded. Tracker #622 is closed. The retained limiter is PostgreSQL-backed, covers login/registration/password-reset, is independent of Redis availability, stores HMAC-derived identifiers rather than raw IP/email, and has typed 429/recovery tests.
+- TD-013 authentication abuse protection is CLOSED by PR #623, merged as `main@f045491a3e07db388067fe54c60fd0c4b543e050`; exact-head CI #4238 and drift #3760 succeeded, then exact-main post-merge CI #4241 and drift #3761 succeeded. Tracker #622 is closed. The retained limiter is PostgreSQL-backed, covers login/registration/password-reset, is independent of Redis availability, stores HMAC-derived identifiers rather than raw IP/email, and has typed 429/recovery tests;
+- TD-003 provider timeout/circuit-breaker/failure UX is CLOSED by backend breaker PR #628, frontend typed-error UX PR #629 and docs closeout PR #630. Exact-head #629 CI #4280, Companion E2E #98, UI browser #710, UI geometry #707 and missing-routes #66 succeeded; #630 exact-head CI #4291 and post-merge CI #4292 succeeded.
 
 ---
 
@@ -311,7 +316,7 @@ Closed does not imply legal/CNDP authorization, physical-device proof, real-pati
 
 1. **Current engineering:** audit remaining `docs/TECHDEBT.md` items for staleness against current code before opening implementation work; prioritize reproduced security/reliability/accessibility defects that can be solved with synthetic/non-patient data.
 2. Continue product/UX/reliability/security engineering while preserving fail-closed real-patient boundaries.
-3. **Before the first identifiable real-patient health data:** reactivate P5-6A #318 and P5-6B #320, collect genuine restricted evidence, choose/configure actual processors and obtain required approvals.
+3. **Before the first identifiable real-patient health data:** explicitly re-freeze the chosen exact release SHA, then reactivate P5-6A #318 and P5-6B #320, collect genuine restricted evidence, choose/configure actual processors and obtain required approvals.
 4. **Human gate:** obtain separate explicit owner authorization before any deployment of the chosen exact candidate.
 5. Deploy the exact candidate only after that authorization, freeze actual topology and complete the exact residency manifest.
 6. Run the three exact-SHA fail-closed audits.
@@ -339,19 +344,20 @@ No Vercel deployment is authorized by this execution order.
 ## Current canonical snapshot
 
 - repo: `hraaaaf/IAMINA-MVP`
-- current engineering main proof after auth-abuse hardening: `f045491a3e07db388067fe54c60fd0c4b543e050`, CI #4241 SUCCESS, migration drift #3761 SUCCESS
-- forward frozen P5-6 candidate: `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`
-- candidate proof: PRs #602/#603; #603 post-merge CI #4190 / workflow `34773613905`; post-merge drift #3737 / workflow `34773613814`
-- current candidate deployment: **NOT DEPLOYED**
+- current engineering main proof after TD-003 closeout: `e307a70ed055688a4e509a25582ca72ff2169629`, post-merge CI #4292 SUCCESS
+- last explicitly frozen P5-6 SHA: `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b` — **historical freeze evidence, not current release candidate**
+- current release candidate: **NONE / PENDING EXPLICIT REFREEZE**
+- historical freeze proof: PRs #602/#603; #603 post-merge CI #4190 / workflow `34773613905`; post-merge drift #3737 / workflow `34773613814`
+- current candidate deployment: **N/A — no current candidate**
 - proven predecessor production deployment: `dpl_8ex2k82KaozE6Fxc8wQBYJuRU43y`, source `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`, Python function, `cdg1`, health HTTP 200 / `db=ok`
 - dedicated database proof: Neon `IAMINA` / `square-sun-82359137`, PG16, `aws-eu-central-1`, branch `production`, migrations current for the predecessor deployment
-- safety fingerprint: `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`
+- safety fingerprint retained from historical freeze: `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`
 - qualification wording: **professionnels qualifiés** — owner attestation reference `issue-318:owner-attestation:professionnels-qualifies`
 - consent notice: `2026-09-12.1`
 - canonical global progress: **6/12 = 50.0%**
 - P5 whole-lot progress: **4/9 = 44.4%**
 - retained MENA: **32/38 = 84.2%**
 - current non-patient engineering blockers: none from #318/#320; unresolved technical debt remains separately governed in `docs/TECHDEBT.md`
-- pre-real-patient blockers: **#318 restricted qualification/approval evidence + #320 processor/CNDP/account evidence + exact-candidate deployment topology after explicit authorization**
+- pre-real-patient blockers: **explicit exact-SHA re-freeze + #318 restricted qualification/approval evidence + #320 processor/CNDP/account evidence + exact-candidate deployment topology after explicit authorization**
 - release posture: **NOT_RELEASE_AUTHORIZED**
 - next exact action: audit remaining unresolved technical debt for staleness against current code, then execute the highest-risk reproduced engineering gap without introducing real-patient data or deploying Vercel.
