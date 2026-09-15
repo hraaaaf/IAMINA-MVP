@@ -100,6 +100,7 @@ void main() {
   testWidgets('real app shell redirects to login and fails auth safely', (
     tester,
   ) async {
+    final originalErrorWidgetBuilder = ErrorWidget.builder;
     final db = AppDatabase(NativeDatabase.memory());
     final auth = _FailingAuthService();
     final api = ApiClient(authService: auth);
@@ -110,6 +111,7 @@ void main() {
     final tweaks = TweaksNotifier();
     final routerHolder = createAppRouterHolder(authService: auth);
     addTearDown(() async {
+      ErrorWidget.builder = originalErrorWidgetBuilder;
       routerHolder.dispose();
       locale.dispose();
       tweaks.dispose();
@@ -155,6 +157,7 @@ void main() {
   });
 
   testWidgets('real app shell logs glucose and persists locally', (tester) async {
+    final originalErrorWidgetBuilder = ErrorWidget.builder;
     final db = AppDatabase(NativeDatabase.memory());
     final auth = _FailingAuthService(authenticated: true);
     final api = ApiClient(authService: auth);
@@ -166,6 +169,7 @@ void main() {
     final routerHolder = createAppRouterHolder(authService: auth);
     routerHolder.router.go('/ajouter');
     addTearDown(() async {
+      ErrorWidget.builder = originalErrorWidgetBuilder;
       routerHolder.dispose();
       locale.dispose();
       tweaks.dispose();
