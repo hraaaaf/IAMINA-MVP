@@ -111,7 +111,6 @@ void main() {
     final tweaks = TweaksNotifier();
     final routerHolder = createAppRouterHolder(authService: auth);
     addTearDown(() async {
-      ErrorWidget.builder = originalErrorWidgetBuilder;
       routerHolder.dispose();
       locale.dispose();
       tweaks.dispose();
@@ -154,6 +153,7 @@ void main() {
     expect(find.byType(LoginScreen), findsOneWidget);
     expect(find.text(l10n.loginError), findsOneWidget);
     expect(tester.takeException(), isNull);
+    ErrorWidget.builder = originalErrorWidgetBuilder;
   });
 
   testWidgets('real app shell logs glucose and persists locally', (tester) async {
@@ -169,7 +169,6 @@ void main() {
     final routerHolder = createAppRouterHolder(authService: auth);
     routerHolder.router.go('/ajouter');
     addTearDown(() async {
-      ErrorWidget.builder = originalErrorWidgetBuilder;
       routerHolder.dispose();
       locale.dispose();
       tweaks.dispose();
@@ -220,6 +219,7 @@ void main() {
     await _pumpUntilFound(tester, receipt);
     expect(receipt, findsOneWidget);
     expect(tester.takeException(), isNull);
+    ErrorWidget.builder = originalErrorWidgetBuilder;
   });
 
   testWidgets('Companion provider timeout is surfaced as typed safe UX', (
