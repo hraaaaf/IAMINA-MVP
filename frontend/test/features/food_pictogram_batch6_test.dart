@@ -61,8 +61,8 @@ void main() {
     expect(tester.getSemantics(find.byType(FoodPictogram)).label, contains('Steak de bœuf'));
   });
 
-  testWidgets('current post-batch-11 long tail still uses emoji fallback', (tester) async {
-    final item = mealFoodById('coconut_water')!;
+  testWidgets('current post-batch-12 long tail still uses emoji fallback', (tester) async {
+    final item = mealFoodById('cake')!;
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('fr'),
