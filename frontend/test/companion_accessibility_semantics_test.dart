@@ -1,5 +1,3 @@
-import 'dart:ui' show SemanticsFlag;
-
 import 'package:amina/features/companion/companion_conversation_screen.dart';
 import 'package:amina/services/api_client.dart';
 import 'package:amina/services/companion_service.dart';
@@ -89,6 +87,6 @@ void main() {
     expect(failureFinder, findsOneWidget);
 
     final node = tester.getSemantics(failureFinder);
-    expect(node.flagsCollection.contains(SemanticsFlag.isLiveRegion), isTrue);
+    expect(node.flagsCollection.isLiveRegion, isTrue);
   });
 }
