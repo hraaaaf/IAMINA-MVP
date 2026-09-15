@@ -1,6 +1,6 @@
 # IAMINA — Gulf Core Foods B15
 
-Status: FINAL CERTIFICATION — cultural audit complete; exact-head gates required before merge
+Status: FINAL CERTIFICATION — rebuilt on current main; exact-head gates required before merge
 
 ## Goal
 
@@ -10,8 +10,10 @@ Success = 346/346 catalog items resolve to native pictograms, the first 322 IDs 
 
 ## Base / non-regression boundary
 
-- Source baseline: current `main` after B14 certification and subsequent unrelated docs-only merges.
-- `meal_food_catalog_v3.dart` is the unchanged certified 322-item catalog blob.
+- Exact reconstruction base: `main@81a32cfed9b84c1f037ef2a7f6231f078c2d4876` (tree `da960a64c6bddff8f2954bf1c733a91d4331f760`).
+- The previously certified B15 head `723d5f6b088eef95ff58eb1b170384e824c9e93c` was intentionally not merged after `main` advanced through unrelated Companion/a11y and documentation work.
+- B15 was rebuilt from the exact current main tree by overlaying only its 13 intended paths; compare proof before this handover update was `ahead 1 / behind 0`, exactly 13 paths, with no Companion/a11y drift.
+- `meal_food_catalog_v3.dart` is the unchanged certified 322-item catalog blob (`87c2d0acb135194651c5c464786305f8eccf0d26`).
 - `meal_food_catalog.dart` is the compatibility facade and appends Gulf Core only.
 - Manifest ordering explicitly appends B15 after the 322-item baseline so B1-B14 cannot be reshuffled.
 - No backend, DB, patient data, documents, API schema or deployment changes.
