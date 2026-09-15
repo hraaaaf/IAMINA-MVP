@@ -118,15 +118,27 @@ void main() {
       find.byKey(const Key('glucose-input')),
       '123',
     );
-    await tester.tap(find.byKey(const Key('save-log-button')));
+    await tester.pump();
+
+    final saveButton = find.byKey(const Key('save-log-button'));
+    expect(saveButton, findsOneWidget);
+    expect(tester.widget<FilledButton>(saveButton).onPressed, isNotNull);
+    await tester.ensureVisible(saveButton);
+    await tester.pump();
+    await tester.tap(saveButton);
+    await tester.pump();
+
+    var persisted = await db.select(db.logEntries).get();
+    for (var i = 0; i < 50 && persisted.isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      persisted = await db.select(db.logEntries).get();
+    }
+    expect(persisted, hasLength(1));
+    expect(persisted.single.bloodSugar, 123);
 
     final receipt = find.byKey(const Key('post-save-receipt'));
     await _pumpUntilFound(tester, receipt);
     expect(receipt, findsOneWidget);
-
-    final persisted = await db.select(db.logEntries).get();
-    expect(persisted, hasLength(1));
-    expect(persisted.single.bloodSugar, 123);
     expect(tester.takeException(), isNull);
   });
 
