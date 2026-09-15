@@ -1,11 +1,14 @@
+import 'package:amina/core/theme/app_theme.dart';
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/auth/login_screen.dart';
 import 'package:amina/features/companion/companion_conversation_screen.dart';
-import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
 import 'package:amina/l10n/app_localizations.dart';
+import 'package:amina/main.dart';
+import 'package:amina/routes/app_router.dart';
 import 'package:amina/services/api_client.dart';
 import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/companion_service.dart';
+import 'package:amina/services/locale_preference_service.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,6 +16,20 @@ import 'package:integration_test/integration_test.dart';
 import 'package:provider/provider.dart';
 
 class _FailingAuthService extends AuthService {
+  _FailingAuthService({bool authenticated = false})
+      : _authenticated = authenticated;
+
+  final bool _authenticated;
+
+  @override
+  bool get isInitialized => true;
+
+  @override
+  bool get isAuthenticated => _authenticated;
+
+  @override
+  bool get isAnonymous => _authenticated;
+
   @override
   Future<void> signInWithEmail(String email, String password) async {
     throw StateError('synthetic authentication failure');
@@ -46,6 +63,27 @@ Widget _localizedApp(Widget home) {
   );
 }
 
+Widget _realShell({
+  required AppDatabase db,
+  required AuthService auth,
+  required ApiClient api,
+  required LocalePreferenceService locale,
+  required TweaksNotifier tweaks,
+  required AppRouterHolder routerHolder,
+}) {
+  return MultiProvider(
+    providers: [
+      Provider<AppDatabase>.value(value: db),
+      ChangeNotifierProvider<AuthService>.value(value: auth),
+      Provider<ApiClient>.value(value: api),
+      ChangeNotifierProvider<LocalePreferenceService>.value(value: locale),
+      Provider<PatientProfileData?>.value(value: null),
+      ChangeNotifierProvider<TweaksNotifier>.value(value: tweaks),
+    ],
+    child: AminaApp(router: routerHolder.router),
+  );
+}
+
 Future<void> _pumpUntilFound(
   WidgetTester tester,
   Finder finder, {
@@ -59,26 +97,43 @@ Future<void> _pumpUntilFound(
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('auth entry fails safely without leaving login', (tester) async {
+  testWidgets('real app shell redirects to login and fails auth safely', (
+    tester,
+  ) async {
     final db = AppDatabase(NativeDatabase.memory());
     final auth = _FailingAuthService();
     final api = ApiClient(authService: auth);
+    final locale = LocalePreferenceService(
+      api,
+      auditLocale: const Locale('fr'),
+    );
+    final tweaks = TweaksNotifier();
+    final routerHolder = createAppRouterHolder(authService: auth);
     addTearDown(() async {
+      routerHolder.dispose();
+      locale.dispose();
+      tweaks.dispose();
       auth.dispose();
       await db.close();
     });
 
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<AuthService>.value(value: auth),
-          Provider<AppDatabase>.value(value: db),
-          Provider<ApiClient>.value(value: api),
-        ],
-        child: _localizedApp(const LoginScreen()),
+      _realShell(
+        db: db,
+        auth: auth,
+        api: api,
+        locale: locale,
+        tweaks: tweaks,
+        routerHolder: routerHolder,
       ),
     );
     await tester.pumpAndSettle();
+
+    expect(
+      routerHolder.router.routeInformationProvider.value.uri.path,
+      '/login',
+    );
+    expect(find.byType(LoginScreen), findsOneWidget);
 
     final fields = find.byType(TextField);
     expect(fields, findsNWidgets(2));
@@ -90,29 +145,50 @@ void main() {
     await tester.tap(find.text(l10n.signIn).first);
     await tester.pumpAndSettle();
 
+    expect(
+      routerHolder.router.routeInformationProvider.value.uri.path,
+      '/login',
+    );
     expect(find.byType(LoginScreen), findsOneWidget);
     expect(find.text(l10n.loginError), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('glucose logging persists to an isolated local database', (
-    tester,
-  ) async {
+  testWidgets('real app shell logs glucose and persists locally', (tester) async {
     final db = AppDatabase(NativeDatabase.memory());
-    addTearDown(() async => db.close());
+    final auth = _FailingAuthService(authenticated: true);
+    final api = ApiClient(authService: auth);
+    final locale = LocalePreferenceService(
+      api,
+      auditLocale: const Locale('fr'),
+    );
+    final tweaks = TweaksNotifier();
+    final routerHolder = createAppRouterHolder(authService: auth);
+    routerHolder.router.go('/ajouter');
+    addTearDown(() async {
+      routerHolder.dispose();
+      locale.dispose();
+      tweaks.dispose();
+      auth.dispose();
+      await db.close();
+    });
 
     await tester.pumpWidget(
-      _localizedApp(
-        MultiProvider(
-          providers: [
-            Provider<AppDatabase>.value(value: db),
-            Provider<PatientProfileData?>.value(value: null),
-          ],
-          child: const Scaffold(body: AddLogSheet()),
-        ),
+      _realShell(
+        db: db,
+        auth: auth,
+        api: api,
+        locale: locale,
+        tweaks: tweaks,
+        routerHolder: routerHolder,
       ),
     );
     await tester.pumpAndSettle();
+
+    expect(
+      routerHolder.router.routeInformationProvider.value.uri.path,
+      '/ajouter',
+    );
 
     await tester.enterText(
       find.byKey(const Key('glucose-input')),
