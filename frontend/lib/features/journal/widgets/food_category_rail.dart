@@ -75,7 +75,9 @@ class FoodCategoryRail extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final category = index == 0 ? null : primaryCategories[index - 1];
-          final active = category == null ? allSelected : selected == category;
+          final active = category == null
+              ? (allSelected || selected == null)
+              : selected == category;
           final label = category == null
               ? _allLabel(locale)
               : mealFoodCategoryLabel(category, locale);
