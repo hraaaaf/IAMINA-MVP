@@ -57,8 +57,14 @@ void main() {
     expect(tester.getSemantics(find.byType(FoodPictogram)).label, contains('Café'));
   });
 
-  testWidgets('first post-batch-13 item keeps emoji fallback', (tester) async {
-    final item = mealFoodById('sandwich')!;
+  testWidgets('synthetic outside-catalog item keeps emoji fallback after full coverage', (tester) async {
+    const item = MealFoodItem(
+      '__fallback_probe__',
+      'Probe fallback',
+      'Fallback probe',
+      'اختبار',
+      visual: '🍽️',
+    );
     await tester.pumpWidget(MaterialApp(
       locale: const Locale('fr'),
       supportedLocales: const <Locale>[Locale('fr')],
@@ -66,6 +72,7 @@ void main() {
       home: Scaffold(body: FoodPictogram(item: item)),
     ));
     await tester.pumpAndSettle();
+    expect(mealFoodById(item.id), isNull);
     expect(find.text(item.visual), findsOneWidget);
     expect(_batch11Art(), findsNothing);
   });

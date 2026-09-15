@@ -25,9 +25,15 @@ Finder _foodArtwork() => find.byWidgetPredicate(
 
 void main() {
   testWidgets(
-    'long-tail food keeps deterministic asset path and safe emoji fallback',
+    'synthetic outside-catalog item keeps deterministic asset path and safe emoji fallback',
     (tester) async {
-      final item = mealFoodById('sandwich')!;
+      const item = MealFoodItem(
+        '__fallback_probe__',
+        'Probe fallback',
+        'Fallback probe',
+        'اختبار',
+        visual: '🍽️',
+      );
       const locale = Locale('fr');
       await tester.pumpWidget(
         MaterialApp(
@@ -39,8 +45,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(mealFoodById(item.id), isNull);
       final widget = tester.widget<FoodPictogram>(find.byType(FoodPictogram));
-      expect(widget.assetPath, 'assets/food/pictograms/v1/sandwich.webp');
+      expect(widget.assetPath, 'assets/food/pictograms/v1/__fallback_probe__.webp');
       expect(find.text(item.visual), findsOneWidget);
       expect(_foodArtwork(), findsNothing);
 

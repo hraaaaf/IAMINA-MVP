@@ -13,24 +13,24 @@ import 'package:amina/features/journal/widgets/food_pictogram_painter_batch10.da
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch11.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch12.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch13.dart';
+import 'package:amina/features/journal/widgets/food_pictogram_painter_batch14.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Finder _batch13Art() => find.byWidgetPredicate(
-  (widget) => widget is CustomPaint && widget.painter is FoodPictogramPainterBatch13,
+Finder _batch14Art() => find.byWidgetPredicate(
+  (widget) => widget is CustomPaint && widget.painter is FoodPictogramPainterBatch14,
 );
 
 void main() {
-  test('batch 13 covers exact manifest-derived 24 and native union 312', () {
+  test('batch 14 covers final manifest-derived 10 and native union 322', () {
     const expected = <String>{
-      'cake', 'bastilla_milk', 'khanfaroosh', 'kunafa', 'maamoul', 'mhalbiya',
-      'mhancha', 'honey', 'molasses', 'umm_ali', 'qatayef', 'sago_dessert',
-      'date_syrup', 'stevia', 'sugar', 'brown_sugar', 'bocadillo', 'chips',
-      'fries', 'hot_dog', 'nuggets', 'panini', 'popcorn', 'fried_chicken',
+      'sandwich', 'tacos_wrap', 'chicken_caesar_salad', 'tuna_salad',
+      'greek_salad', 'chorba', 'lentil_soup', 'vegetable_soup',
+      'chicken_soup', 'tomato_soup',
     };
-    expect(codeFoodPictogramBatch13Ids, expected);
-    expect(codeFoodPictogramBatch13Ids.length, 24);
+    expect(codeFoodPictogramBatch14Ids, expected);
+    expect(codeFoodPictogramBatch14Ids.length, 10);
 
     final previous = <String>{
       ...codeFoodPictogramIds, ...codeFoodPictogramBatch2Ids,
@@ -39,16 +39,19 @@ void main() {
       ...codeFoodPictogramBatch7Ids, ...codeFoodPictogramBatch8Ids,
       ...codeFoodPictogramBatch9Ids, ...codeFoodPictogramBatch10Ids,
       ...codeFoodPictogramBatch11Ids, ...codeFoodPictogramBatch12Ids,
+      ...codeFoodPictogramBatch13Ids,
     };
-    expect(codeFoodPictogramBatch13Ids.intersection(previous), isEmpty);
-    for (final id in codeFoodPictogramBatch13Ids) {
+    expect(codeFoodPictogramBatch14Ids.intersection(previous), isEmpty);
+    for (final id in codeFoodPictogramBatch14Ids) {
       expect(mealFoodById(id), isNotNull, reason: 'Missing catalog food: $id');
     }
-    expect(<String>{...previous, ...codeFoodPictogramBatch13Ids}.length, 312);
+    final union = <String>{...previous, ...codeFoodPictogramBatch14Ids};
+    expect(union.length, 322);
+    expect(union, mealFoodCatalog.map((item) => item.id).toSet());
   });
 
-  testWidgets('batch 13 renders fast-food art with localized semantics', (tester) async {
-    final item = mealFoodById('fries')!;
+  testWidgets('batch 14 renders soup art with localized semantics', (tester) async {
+    final item = mealFoodById('lentil_soup')!;
     await tester.pumpWidget(MaterialApp(
       locale: const Locale('fr'),
       supportedLocales: const <Locale>[Locale('fr')],
@@ -57,27 +60,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(find.text(item.visual), findsNothing);
-    expect(_batch13Art(), findsOneWidget);
-    expect(tester.getSemantics(find.byType(FoodPictogram)).label, contains('Frites'));
-  });
-
-  testWidgets('synthetic outside-catalog item keeps emoji fallback after full coverage', (tester) async {
-    const item = MealFoodItem(
-      '__fallback_probe__',
-      'Probe fallback',
-      'Fallback probe',
-      'اختبار',
-      visual: '🍽️',
-    );
-    await tester.pumpWidget(MaterialApp(
-      locale: const Locale('fr'),
-      supportedLocales: const <Locale>[Locale('fr')],
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      home: Scaffold(body: FoodPictogram(item: item)),
-    ));
-    await tester.pumpAndSettle();
-    expect(mealFoodById(item.id), isNull);
-    expect(find.text(item.visual), findsOneWidget);
-    expect(_batch13Art(), findsNothing);
+    expect(_batch14Art(), findsOneWidget);
+    expect(tester.getSemantics(find.byType(FoodPictogram)).label, contains('Soupe de lentilles'));
   });
 }

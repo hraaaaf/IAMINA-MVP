@@ -16,6 +16,7 @@ import 'food_pictogram_painter_batch10.dart';
 import 'food_pictogram_painter_batch11.dart';
 import 'food_pictogram_painter_batch12.dart';
 import 'food_pictogram_painter_batch13.dart';
+import 'food_pictogram_painter_batch14.dart';
 
 /// Runtime surface for IAMINA food artwork.
 ///
@@ -44,7 +45,9 @@ class FoodPictogram extends StatelessWidget {
   Widget _nativePictogram() {
     final key = item.pictogramKey;
     final CustomPainter painter;
-    if (hasCodeFoodPictogramBatch13(key)) {
+    if (hasCodeFoodPictogramBatch14(key)) {
+      painter = FoodPictogramPainterBatch14(key);
+    } else if (hasCodeFoodPictogramBatch13(key)) {
       painter = FoodPictogramPainterBatch13(key);
     } else if (hasCodeFoodPictogramBatch12(key)) {
       painter = FoodPictogramPainterBatch12(key);
@@ -92,7 +95,8 @@ class FoodPictogram extends StatelessWidget {
         hasCodeFoodPictogramBatch10(item.pictogramKey) ||
         hasCodeFoodPictogramBatch11(item.pictogramKey) ||
         hasCodeFoodPictogramBatch12(item.pictogramKey) ||
-        hasCodeFoodPictogramBatch13(item.pictogramKey);
+        hasCodeFoodPictogramBatch13(item.pictogramKey) ||
+        hasCodeFoodPictogramBatch14(item.pictogramKey);
 
     return Semantics(
       image: true,
