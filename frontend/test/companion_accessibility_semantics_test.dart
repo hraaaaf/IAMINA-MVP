@@ -57,13 +57,15 @@ void main() {
       tester,
     ) async {
       final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
+      try {
+        await tester.pumpWidget(_harness(entry.key));
+        await tester.pumpAndSettle();
 
-      await tester.pumpWidget(_harness(entry.key));
-      await tester.pumpAndSettle();
-
-      expect(find.bySemanticsLabel(entry.value.close), findsOneWidget);
-      expect(find.bySemanticsLabel(entry.value.send), findsOneWidget);
+        expect(find.bySemanticsLabel(entry.value.close), findsOneWidget);
+        expect(find.bySemanticsLabel(entry.value.send), findsOneWidget);
+      } finally {
+        semantics.dispose();
+      }
     });
   }
 
@@ -71,22 +73,24 @@ void main() {
     tester,
   ) async {
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
+    try {
+      await tester.pumpWidget(_harness(const Locale('fr')));
+      await tester.enterText(
+        find.byKey(const Key('companion-chat-input')),
+        'Bonjour',
+      );
+      await tester.tap(find.byKey(const Key('companion-chat-send')));
+      await tester.pumpAndSettle();
 
-    await tester.pumpWidget(_harness(const Locale('fr')));
-    await tester.enterText(
-      find.byKey(const Key('companion-chat-input')),
-      'Bonjour',
-    );
-    await tester.tap(find.byKey(const Key('companion-chat-send')));
-    await tester.pumpAndSettle();
+      const failure =
+          'IAmina met trop de temps à répondre. Réessaie dans un instant.';
+      final failureFinder = find.bySemanticsLabel(failure);
+      expect(failureFinder, findsOneWidget);
 
-    const failure =
-        'IAmina met trop de temps à répondre. Réessaie dans un instant.';
-    final failureFinder = find.bySemanticsLabel(failure);
-    expect(failureFinder, findsOneWidget);
-
-    final node = tester.getSemantics(failureFinder);
-    expect(node.flagsCollection.isLiveRegion, isTrue);
+      final node = tester.getSemantics(failureFinder);
+      expect(node.flagsCollection.isLiveRegion, isTrue);
+    } finally {
+      semantics.dispose();
+    }
   });
 }
