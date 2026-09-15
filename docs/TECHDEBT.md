@@ -27,14 +27,6 @@ Rules:
 - **Risk:** unnecessary dependency/supply-chain and maintenance surface persists, and an operator can intentionally re-enable the migration bridge for a controlled migration window.
 - **Resolution:** after legacy-account reconciliation is no longer needed, remove the Flutter Firebase dependencies, backend Firebase migration/verification surface, related configuration and migration-only tests. Keep Django-native auth as the sole identity path, then remove TD-002.
 
-## TD-003 — Provider timeout/circuit-breaker/failure UX is incomplete
-
-- **Area:** Reliability / AI
-- **Priority:** High before pilot
-- **Current compromise:** provider abstraction/fallback exists in parts of the stack, but explicit per-call timeout and unified failure contracts are not consistently enforced across modalities.
-- **Risk:** hanging requests, inconsistent streaming failure, poor patient UX.
-- **Resolution:** enforce timeout/failure/fallback policy at the outbound boundary and add frontend typed error UX.
-
 ## TD-008 — Frontend integration/accessibility coverage is incomplete
 
 - **Area:** Quality / accessibility
