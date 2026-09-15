@@ -164,13 +164,19 @@ class _CompanionConversationScreenState
                 if (_failure != null)
                   Padding(
                     padding: const EdgeInsetsDirectional.fromSTEB(24, 0, 24, 8),
-                    child: Text(
-                      _failureText(context, _failure!),
-                      key: const Key('companion-chat-failure'),
-                      style: const TextStyle(
-                        color: Color(0xFF9B3C35),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                    child: Semantics(
+                      liveRegion: true,
+                      label: _failureText(context, _failure!),
+                      child: ExcludeSemantics(
+                        child: Text(
+                          _failureText(context, _failure!),
+                          key: const Key('companion-chat-failure'),
+                          style: const TextStyle(
+                            color: Color(0xFF9B3C35),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -287,16 +293,26 @@ class _ConversationHeader extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            key: const Key('companion-chat-close'),
-            onPressed: onClose,
-            icon: const Icon(Icons.close_rounded),
-            style: IconButton.styleFrom(
-              minimumSize: const Size(44, 44),
-              backgroundColor: AminaVisualLanguage.controlSurface(context),
-              foregroundColor: AminaVisualLanguage.forestDeep,
-              side: BorderSide(
-                color: AminaVisualLanguage.controlBorder(context),
+          Semantics(
+            label: _chatText(
+              context,
+              'Fermer la conversation',
+              'Close conversation',
+              'إغلاق المحادثة',
+            ),
+            button: true,
+            excludeSemantics: true,
+            child: IconButton(
+              key: const Key('companion-chat-close'),
+              onPressed: onClose,
+              icon: const Icon(Icons.close_rounded),
+              style: IconButton.styleFrom(
+                minimumSize: const Size(44, 44),
+                backgroundColor: AminaVisualLanguage.controlSurface(context),
+                foregroundColor: AminaVisualLanguage.forestDeep,
+                side: BorderSide(
+                  color: AminaVisualLanguage.controlBorder(context),
+                ),
               ),
             ),
           ),
@@ -434,20 +450,30 @@ class _Composer extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 9),
-          IconButton.filled(
-            key: const Key('companion-chat-send'),
-            onPressed: sending ? null : onSend,
-            icon: sending
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.arrow_upward_rounded),
-            style: IconButton.styleFrom(
-              minimumSize: const Size(48, 48),
-              backgroundColor: AminaVisualLanguage.actionGreen,
-              foregroundColor: Colors.white,
+          Semantics(
+            label: _chatText(
+              context,
+              'Envoyer le message',
+              'Send message',
+              'إرسال الرسالة',
+            ),
+            button: true,
+            excludeSemantics: true,
+            child: IconButton.filled(
+              key: const Key('companion-chat-send'),
+              onPressed: sending ? null : onSend,
+              icon: sending
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.arrow_upward_rounded),
+              style: IconButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                backgroundColor: AminaVisualLanguage.actionGreen,
+                foregroundColor: Colors.white,
+              ),
             ),
           ),
         ],
