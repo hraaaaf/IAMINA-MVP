@@ -1,3 +1,5 @@
+import 'dart:ui' show SemanticsFlag;
+
 import 'package:amina/features/companion/companion_conversation_screen.dart';
 import 'package:amina/services/api_client.dart';
 import 'package:amina/services/companion_service.dart';
@@ -37,10 +39,19 @@ Widget _harness(Locale locale) {
 }
 
 void main() {
-  final labels = <Locale, (String close, String send)>{
-    const Locale('fr'): ('Fermer la conversation', 'Envoyer le message'),
-    const Locale('en'): ('Close conversation', 'Send message'),
-    const Locale('ar'): ('إغلاق المحادثة', 'إرسال الرسالة'),
+  final labels = <Locale, ({String close, String send})>{
+    const Locale('fr'): (
+      close: 'Fermer la conversation',
+      send: 'Envoyer le message',
+    ),
+    const Locale('en'): (
+      close: 'Close conversation',
+      send: 'Send message',
+    ),
+    const Locale('ar'): (
+      close: 'إغلاق المحادثة',
+      send: 'إرسال الرسالة',
+    ),
   };
 
   for (final entry in labels.entries) {
@@ -78,6 +89,6 @@ void main() {
     expect(failureFinder, findsOneWidget);
 
     final node = tester.getSemantics(failureFinder);
-    expect(node.hasFlag(SemanticsFlag.isLiveRegion), isTrue);
+    expect(node.flagsCollection.contains(SemanticsFlag.isLiveRegion), isTrue);
   });
 }
