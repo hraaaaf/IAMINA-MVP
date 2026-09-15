@@ -1,12 +1,12 @@
 # IAMINA — Food pictograms Batch 14
 
-Status: PREPARED — awaiting Batch-13 merge and exact-main reconstruction
+Status: FINAL CERTIFICATION — rebuilt on merged Batch 13; exact-head gates required before merge
 
 ## Goal
 
 Finish native FoodPicker pictogram coverage from 312 to the full 322-concept catalog without changing nutrition logic, catalog structure, search behavior or runtime render priority.
 
-Success = exact manifest-derived final 10-item Batch 14, native union exactly equal to all 322 catalog IDs, all fourteen batches pairwise disjoint, semantics preserved, exact-head CI/geometry/P5-5/Chrome green after Batch 13 integration, and AFTER evidence inspected at 390×844 / 768×1024 / 1280×900.
+Success = exact manifest-derived final 10-item Batch 14, native union exactly equal to all 322 catalog IDs, all fourteen batches pairwise disjoint, semantics preserved, exact-head CI/geometry/P5-5/Chrome green, AFTER evidence inspected at 390×844 / 768×1024 / 1280×900, and final PR checks clean.
 
 P7 responsive Dashboard certification is N/A for this FoodPicker-only lot because that workflow is path-filtered to Dashboard files.
 
@@ -22,6 +22,15 @@ Batch 13 ends at `fried_chicken`. Batch 14 contains the two remaining snack/fast
 
 `sandwich`, `tacos_wrap`, `chicken_caesar_salad`, `tuna_salad`, `greek_salad`, `chorba`, `lentil_soup`, `vegetable_soup`, `chicken_soup`, `tomato_soup`.
 
+## Current-main integration
+
+- Batch 13 merged through PR #618 as `a9e38a27ef90ee0b4f25bc87b0ae87264b82e179`.
+- Batch 14 rebuilt on that exact `main` tree with only the intended FoodPicker delta.
+- Integration commit before this documentation closeout: `b4452203248975a04c073e946145625c4f27eb8f`.
+- Compare against merged Batch 13: ahead 1, behind 0, exactly 15 expected Batch-14 implementation/docs/fallback-test paths.
+- No Companion-chat or unrelated drift is present.
+- Runtime priority remains: certified asset > native painter > emoji fallback.
+
 ## Final mathematical contract
 
 The final Batch-14 test must prove on the exact merge head:
@@ -34,9 +43,9 @@ Only after those checks pass may the chantier be described as 322/322 native.
 
 ## Final fallback regression contract
 
-After Batch 14 there is intentionally no real catalog item outside the native union. Historical fallback regression tests must therefore stop using a real catalog sentinel such as `sandwich`.
+After Batch 14 there is intentionally no real catalog item outside the native union. Historical fallback regression tests therefore use a synthetic outside-catalog probe rather than a real catalog sentinel such as `sandwich`.
 
-Nine fallback checks require the same synthetic outside-catalog probe on the final lot:
+Nine fallback checks use the same synthetic outside-catalog probe on the final lot:
 - Batch 6 through Batch 13 fallback tests: 8 checks;
 - generic deterministic asset-path/emoji-fallback test: 1 check.
 
@@ -52,12 +61,11 @@ Reference: established IAMINA native pictogram language: compact 44–48 px reco
 
 AFTER fixture: search query `soupe`.
 
-Retained product proof exists for the same Batch-14 rendering. Final merge still requires exact-head reconstruction/certification after Batch 13 merges.
+Retained product proof exists for the same Batch-14 rendering. Final merge still requires exact-head proof on the final branch head.
 
 ## Validation gate
 
 Before merge:
-- Batch 13 integrated into `main`, then Batch 14 reconstructed on exact current main;
 - final 10 + native union exactly equal to the complete catalog ID set;
 - pairwise-disjoint batch contract;
 - all nine synthetic outside-catalog fallback probes green;
@@ -65,6 +73,7 @@ Before merge:
 - exact-head CI, geometry, P5-5 and Chrome SUCCESS;
 - P7 recorded N/A, not green;
 - AFTER screenshots inspected at all three viewports;
-- explicit visual score recorded.
+- explicit visual score recorded;
+- PR review/thread/mergeability rechecked.
 
 No Vercel deployment is part of this lot.
