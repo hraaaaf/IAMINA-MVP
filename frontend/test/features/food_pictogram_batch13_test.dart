@@ -12,25 +12,25 @@ import 'package:amina/features/journal/widgets/food_pictogram_painter_batch9.dar
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch10.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch11.dart';
 import 'package:amina/features/journal/widgets/food_pictogram_painter_batch12.dart';
+import 'package:amina/features/journal/widgets/food_pictogram_painter_batch13.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Finder _batch12Art() => find.byWidgetPredicate(
-  (widget) => widget is CustomPaint && widget.painter is FoodPictogramPainterBatch12,
+Finder _batch13Art() => find.byWidgetPredicate(
+  (widget) => widget is CustomPaint && widget.painter is FoodPictogramPainterBatch13,
 );
 
 void main() {
-  test('batch 12 covers exact manifest-derived 24 and native union 288', () {
+  test('batch 13 covers exact manifest-derived 24 and native union 312', () {
     const expected = <String>{
-      'coconut_water', 'sparkling_water', 'juice', 'orange_juice', 'apple_juice',
-      'milkshake', 'protein_shake', 'smoothie', 'soft_drink', 'diet_soft_drink',
-      'black_tea', 'green_tea', 'baklava', 'basbousa', 'cookie', 'chebakia',
-      'chocolate', 'dark_chocolate', 'jam', 'gazelle_horns', 'croissant',
-      'atayef_moroccan', 'ghriyba', 'ice_cream',
+      'cake', 'bastilla_milk', 'khanfaroosh', 'kunafa', 'maamoul', 'mhalbiya',
+      'mhancha', 'honey', 'molasses', 'umm_ali', 'qatayef', 'sago_dessert',
+      'date_syrup', 'stevia', 'sugar', 'brown_sugar', 'bocadillo', 'chips',
+      'fries', 'hot_dog', 'nuggets', 'panini', 'popcorn', 'fried_chicken',
     };
-    expect(codeFoodPictogramBatch12Ids, expected);
-    expect(codeFoodPictogramBatch12Ids.length, 24);
+    expect(codeFoodPictogramBatch13Ids, expected);
+    expect(codeFoodPictogramBatch13Ids.length, 24);
 
     final previous = <String>{
       ...codeFoodPictogramIds, ...codeFoodPictogramBatch2Ids,
@@ -38,17 +38,17 @@ void main() {
       ...codeFoodPictogramBatch5Ids, ...codeFoodPictogramBatch6Ids,
       ...codeFoodPictogramBatch7Ids, ...codeFoodPictogramBatch8Ids,
       ...codeFoodPictogramBatch9Ids, ...codeFoodPictogramBatch10Ids,
-      ...codeFoodPictogramBatch11Ids,
+      ...codeFoodPictogramBatch11Ids, ...codeFoodPictogramBatch12Ids,
     };
-    expect(codeFoodPictogramBatch12Ids.intersection(previous), isEmpty);
-    for (final id in codeFoodPictogramBatch12Ids) {
+    expect(codeFoodPictogramBatch13Ids.intersection(previous), isEmpty);
+    for (final id in codeFoodPictogramBatch13Ids) {
       expect(mealFoodById(id), isNotNull, reason: 'Missing catalog food: $id');
     }
-    expect(<String>{...previous, ...codeFoodPictogramBatch12Ids}.length, 288);
+    expect(<String>{...previous, ...codeFoodPictogramBatch13Ids}.length, 312);
   });
 
-  testWidgets('batch 12 renders dessert art with localized semantics', (tester) async {
-    final item = mealFoodById('chocolate')!;
+  testWidgets('batch 13 renders fast-food art with localized semantics', (tester) async {
+    final item = mealFoodById('fries')!;
     await tester.pumpWidget(MaterialApp(
       locale: const Locale('fr'),
       supportedLocales: const <Locale>[Locale('fr')],
@@ -57,8 +57,8 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(find.text(item.visual), findsNothing);
-    expect(_batch12Art(), findsOneWidget);
-    expect(tester.getSemantics(find.byType(FoodPictogram)).label, contains('Chocolat'));
+    expect(_batch13Art(), findsOneWidget);
+    expect(tester.getSemantics(find.byType(FoodPictogram)).label, contains('Frites'));
   });
 
   testWidgets('first post-batch-13 item keeps emoji fallback', (tester) async {
@@ -71,6 +71,6 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(find.text(item.visual), findsOneWidget);
-    expect(_batch12Art(), findsNothing);
+    expect(_batch13Art(), findsNothing);
   });
 }
