@@ -61,8 +61,14 @@ void main() {
     expect(tester.getSemantics(find.byType(FoodPictogram)).label, contains('Steak de bœuf'));
   });
 
-  testWidgets('current post-batch-13 long tail still uses emoji fallback', (tester) async {
-    final item = mealFoodById('sandwich')!;
+  testWidgets('synthetic outside-catalog item keeps emoji fallback after full coverage', (tester) async {
+    const item = MealFoodItem(
+      '__fallback_probe__',
+      'Probe fallback',
+      'Fallback probe',
+      'اختبار',
+      visual: '🍽️',
+    );
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('fr'),
@@ -73,6 +79,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(mealFoodById(item.id), isNull);
     expect(find.text(item.visual), findsOneWidget);
     expect(_batch6Art(), findsNothing);
   });
