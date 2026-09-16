@@ -6,6 +6,7 @@ const _patientFacingSources = <String>[
   'lib/features/dashboard/dashboard_screen.dart',
   'lib/features/dashboard/widgets/top_bar.dart',
   'lib/features/dashboard/widgets/add_log_sheet.dart',
+  'lib/features/dashboard/widgets/add_log_view.dart',
   'lib/features/journal/journal_screen.dart',
   'lib/features/journal/ai_summary_screen.dart',
   'lib/features/journal/edit_log_screen.dart',
