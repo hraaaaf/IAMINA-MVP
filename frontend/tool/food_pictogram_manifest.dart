@@ -25,6 +25,7 @@ const List<String> _launchPriorityIds = <String>[
 
 const List<String> _postV3AppendIds = <String>[
   'matazeez','areeka','masoub','haneeth','maghsh','samak_mkashan','mahshoosh','marsah','gahwa_gishr','tasabea','mashgotha','miva_bread','qabooli','mishkak','omani_halwa','lamb_khuzi','bahraini_halwa','malgoum','louba_bahraini','bahraini_tikka','tashreeb','murabiyan','mutabbaq_zubaidi','dakkous',
+  'medfouna_rissani','tafernout_bread','berkoukes',
 ];
 
 String _categoryDirection(MealFoodCategory category) => switch (category) {
