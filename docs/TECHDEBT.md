@@ -35,13 +35,14 @@ Rules:
 - **Risk:** elevated impact of credential compromise.
 - **Resolution:** include strong-auth requirements in Django-native auth design and enforce for privileged roles.
 
-## TD-012 — Large Flutter surfaces and silent catches reduce maintainability
+## TD-012 — Residual Flutter error boundaries and oversized surfaces
 
-- **Area:** Frontend maintainability
-- **Priority:** Medium after pilot-critical work
-- **Current compromise:** some large widgets/services and broad/silent error catches remain from rapid iteration.
-- **Risk:** hidden failures and expensive regression surface.
-- **Resolution:** refactor opportunistically in focused PRs; typed/logged error handling first, cosmetic decomposition second.
+- **Area:** Frontend maintainability / resilience
+- **Priority:** High for remaining auth error boundaries; cosmetic decomposition remains secondary
+- **Resolved foundation:** pilot-critical journal synchronization now preserves explicit failure state and sanitized observability; malformed local meal JSON uses typed fallbacks; journal `ApiClient` synchronization distinguishes ordinary server non-confirmation from technical/parsing failures through a typed, payload-minimized error contract.
+- **Current compromise:** `AuthService` still contains broad catches around initialization, logout/native-token validation and requires a dedicated Security-scoped slice. Companion overview/proactive/next-action reads still broadly degrade to `null`. Large Flutter widgets/services also remain from rapid iteration.
+- **Risk:** auth failures can still lose diagnostic precision; some companion read failures can remain indistinguishable from absent data; oversized surfaces increase regression cost.
+- **Resolution:** pay the `AuthService` error-boundary slice next with explicit security review and regression tests, then narrow/log the verified Companion read fallbacks. Only after these functional error boundaries are paid should cosmetic widget/service decomposition proceed in separate focused PRs.
 
 ## Documentation closeout rule
 
