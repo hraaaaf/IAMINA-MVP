@@ -12,6 +12,11 @@ void main() {
   late _MockHttpClient httpClient;
   late List<String> failures;
 
+  setUpAll(() {
+    registerFallbackValue(Uri());
+    registerFallbackValue(<String, String>{});
+  });
+
   setUp(() {
     storage = _MockSecureStorage();
     httpClient = _MockHttpClient();
