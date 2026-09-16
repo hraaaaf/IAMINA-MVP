@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -18,12 +19,19 @@ const bool kOfflineDemo = bool.fromEnvironment(
   defaultValue: false,
 );
 
+typedef AuthFailureLogger = void Function(
+  String operation,
+  String errorType,
+  StackTrace stackTrace,
+);
+
 class AuthService extends ChangeNotifier {
   static const _tokenKey = 'iamina_native_access_token';
 
   final FirebaseAuth? _firebaseAuth;
   final FlutterSecureStorage _storage;
   final http.Client _httpClient;
+  final AuthFailureLogger _failureLogger;
   String? _nativeToken;
   bool _initialized = false;
   bool _auditSession = false;
@@ -32,17 +40,42 @@ class AuthService extends ChangeNotifier {
     FirebaseAuth? auth,
     FlutterSecureStorage? storage,
     http.Client? httpClient,
-  })  : _firebaseAuth = _getAuthInstance(auth),
+    AuthFailureLogger? failureLogger,
+  })  : _firebaseAuth = _getAuthInstance(
+          auth,
+          failureLogger ?? _defaultFailureLogger,
+        ),
         _storage = storage ?? const FlutterSecureStorage(),
-        _httpClient = httpClient ?? http.Client();
+        _httpClient = httpClient ?? http.Client(),
+        _failureLogger = failureLogger ?? _defaultFailureLogger;
 
-  static FirebaseAuth? _getAuthInstance(FirebaseAuth? provided) {
+  static FirebaseAuth? _getAuthInstance(
+    FirebaseAuth? provided,
+    AuthFailureLogger failureLogger,
+  ) {
     if (!kFirebaseMigrationEnabled) return null;
     try {
       return provided ?? FirebaseAuth.instance;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      failureLogger(
+        'firebase_instance',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
       return null;
     }
+  }
+
+  static void _defaultFailureLogger(
+    String operation,
+    String errorType,
+    StackTrace stackTrace,
+  ) {
+    developer.log(
+      'Safe auth fallback invoked for $errorType.',
+      name: 'iamina.auth.$operation',
+      stackTrace: stackTrace,
+    );
   }
 
   static int get authEpoch => AuthEpoch.value;
@@ -68,7 +101,12 @@ class AuthService extends ChangeNotifier {
       } else if (stored != null) {
         await _storage.delete(key: _tokenKey);
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _failureLogger(
+        'initialize',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
       _nativeToken = null;
     } finally {
       _initialized = true;
@@ -150,7 +188,13 @@ class AuthService extends ChangeNotifier {
           Uri.parse('$kAuthBaseUrl/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        _failureLogger(
+          'logout',
+          error.runtimeType.toString(),
+          stackTrace,
+        );
+      }
     }
     _nativeToken = null;
     await _storage.delete(key: _tokenKey);
@@ -205,7 +249,12 @@ class AuthService extends ChangeNotifier {
         headers: {'Authorization': 'Bearer $token'},
       );
       return response.statusCode >= 200 && response.statusCode < 300;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _failureLogger(
+        'validate_native_token',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
       return false;
     }
   }
