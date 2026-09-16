@@ -11,7 +11,8 @@ const _tokenKey = 'iamina_native_access_token';
 const _localSessionKey = 'iamina_local_session_v1';
 const _localSessionValue = 'enrolled';
 const _localDeviceIdKey = 'iamina_local_device_id_v1';
-const _token = 'iamina.previously-enrolled-token';
+const _token = 'iamina.e30:1abcde:signature_123';
+const _freshToken = 'iamina.eyJ1aWQiOjEsInYiOjB9:1abcdf:signature_456';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -131,7 +132,7 @@ void main() {
       httpClient: MockClient((request) async {
         expect(request.url.path, '/api/v1/auth/login');
         return http.Response(
-          '{"access_token":"iamina.fresh-token","user":{"id":1}}',
+          '{"access_token":"$_freshToken","user":{"id":1}}',
           200,
         );
       }),
@@ -141,7 +142,7 @@ void main() {
 
     expect(service.isAuthenticated, isTrue);
     expect(service.isRemoteCredentialVerified, isTrue);
-    expect(await service.getIdToken(), 'iamina.fresh-token');
+    expect(await service.getIdToken(), _freshToken);
     expect(
       await const FlutterSecureStorage().read(key: _localSessionKey),
       _localSessionValue,
@@ -215,6 +216,18 @@ void main() {
 
   test('malformed secure-storage text cannot bootstrap local enrollment', () async {
     seedStorage({_tokenKey: 'not-an-iamina-token'});
+    final service = AuthService(httpClient: noBootNetworkClient());
+    await service.initialize();
+
+    expect(service.isAuthenticated, isFalse);
+    expect(service.isRemoteCredentialVerified, isFalse);
+    expect(await const FlutterSecureStorage().read(key: _tokenKey), isNull);
+    expect(await const FlutterSecureStorage().read(key: _localSessionKey), isNull);
+    service.dispose();
+  });
+
+  test('prefixed malformed bearer cannot bootstrap local enrollment', () async {
+    seedStorage({_tokenKey: 'iamina.previously-enrolled-token'});
     final service = AuthService(httpClient: noBootNetworkClient());
     await service.initialize();
 
