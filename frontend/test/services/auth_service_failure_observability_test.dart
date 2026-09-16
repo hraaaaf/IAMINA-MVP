@@ -50,7 +50,7 @@ void main() {
   });
 
   test('legacy native token boot stays local and performs no remote validation', () async {
-    const token = 'iamina.synthetic-secret-token';
+    const token = 'iamina.e30:1abcde:synthetic_secret_token';
     when(() => storage.read(key: any(named: 'key'))).thenAnswer((invocation) async {
       final key = invocation.namedArguments[#key] as String?;
       if (key == 'iamina_native_access_token') return token;
@@ -75,7 +75,7 @@ void main() {
   });
 
   test('logout transport failure is observable but local logout completes', () async {
-    const token = 'iamina.synthetic-secret-token';
+    const token = 'iamina.e30:1abcde:synthetic_secret_token';
     when(() => storage.read(key: any(named: 'key'))).thenAnswer((invocation) async {
       final key = invocation.namedArguments[#key] as String?;
       if (key == 'iamina_native_access_token') return token;
@@ -104,6 +104,7 @@ void main() {
     expect(service.isAuthenticated, isFalse);
     expect(failures, <String>['logout:StateError']);
     expect(failures.single, isNot(contains(token)));
+    expect(failures.single, isNot(contains('synthetic-secret-token')));
 
     service.dispose();
   });
