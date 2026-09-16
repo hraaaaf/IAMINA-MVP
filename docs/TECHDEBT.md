@@ -35,14 +35,14 @@ Rules:
 - **Risk:** elevated impact of credential compromise.
 - **Resolution:** include strong-auth requirements in Django-native auth design and enforce for privileged roles.
 
-## TD-012 — Residual Flutter error boundaries and oversized surfaces
+## TD-012 — Oversized Flutter surfaces remain
 
-- **Area:** Frontend maintainability / resilience
-- **Priority:** Medium for remaining Companion read fallbacks; cosmetic decomposition remains secondary
-- **Resolved foundation:** pilot-critical journal synchronization now preserves explicit failure state and sanitized observability; malformed local meal JSON uses typed fallbacks; journal `ApiClient` synchronization distinguishes ordinary server non-confirmation from technical/parsing failures through a typed, payload-minimized error contract. `AuthService` initialization, Firebase-instance fallback, native-token validation and remote logout catches now emit sanitized operation/error-type observability while preserving the existing fail-closed/local-cleanup behavior.
-- **Current compromise:** Companion overview/proactive/next-action reads still broadly degrade to `null`. Large Flutter widgets/services also remain from rapid iteration.
-- **Risk:** some companion read failures can remain indistinguishable from absent data; oversized surfaces increase regression cost.
-- **Resolution:** narrow/log the verified Companion read fallbacks next. Only after these functional error boundaries are paid should cosmetic widget/service decomposition proceed in separate focused PRs.
+- **Area:** Frontend maintainability
+- **Priority:** Medium; functional error-boundary debt is paid before cosmetic decomposition
+- **Resolved foundation:** pilot-critical journal synchronization preserves explicit failure state and sanitized observability; malformed local meal JSON uses typed fallbacks; journal `ApiClient` synchronization distinguishes ordinary server non-confirmation from technical/parsing failures through a typed, payload-minimized error contract. `AuthService` initialization, Firebase-instance fallback, native-token validation and remote logout catches emit sanitized operation/error-type observability while preserving fail-closed/local-cleanup behavior. Companion overview, proactive-preview and next-action read exceptions also emit sanitized observability while preserving their existing `null` fallback contract; the chat path keeps its typed provider failures.
+- **Current compromise:** large Flutter widgets/services remain from rapid iteration.
+- **Risk:** oversized surfaces increase regression cost and make isolated maintenance harder.
+- **Resolution:** decompose oversized Flutter widgets/services in separate focused, behavior-preserving PRs with targeted regression tests and visual evidence only where UI changes.
 
 ## Documentation closeout rule
 
