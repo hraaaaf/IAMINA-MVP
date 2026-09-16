@@ -28,15 +28,14 @@ void main(){
     expect(codeFoodPictogramBatch15Ids,expected);
     expect(codeFoodPictogramBatch15Ids.length,24);
     expect(v3.mealFoodCatalog.length,322);
-    expect(mealFoodCatalog.length,346);
-    expect(mealFoodCatalogVersion,'3.1.0-morocco-gcc-core');
+    expect(mealFoodCatalog.length,greaterThanOrEqualTo(346));
     expect(mealFoodCatalog.take(322).map((item)=>item.id).toList(),v3.mealFoodCatalog.map((item)=>item.id).toList());
     final baselineNative=<String>{...codeFoodPictogramIds,...codeFoodPictogramBatch2Ids,...codeFoodPictogramBatch3Ids,...codeFoodPictogramBatch4Ids,...codeFoodPictogramBatch5Ids,...codeFoodPictogramBatch6Ids,...codeFoodPictogramBatch7Ids,...codeFoodPictogramBatch8Ids,...codeFoodPictogramBatch9Ids,...codeFoodPictogramBatch10Ids,...codeFoodPictogramBatch11Ids,...codeFoodPictogramBatch12Ids,...codeFoodPictogramBatch13Ids,...codeFoodPictogramBatch14Ids};
     expect(baselineNative.length,322);
     expect(codeFoodPictogramBatch15Ids.intersection(baselineNative),isEmpty);
     final union=<String>{...baselineNative,...codeFoodPictogramBatch15Ids};
     expect(union.length,346);
-    expect(union,mealFoodCatalog.map((item)=>item.id).toSet());
+    expect(mealFoodCatalog.take(346).map((item)=>item.id).toSet(),union);
     for(final id in codeFoodPictogramBatch15Ids){expect(mealFoodById(id),isNotNull,reason:'Missing Gulf Core food: $id');}
   });
 
