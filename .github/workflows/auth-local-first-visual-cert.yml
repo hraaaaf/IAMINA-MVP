@@ -1,0 +1,99 @@
+name: Auth local-first visual certification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/lib/features/auth/**'
+      - 'frontend/lib/core/localization/auth_localized_copy.dart'
+      - 'frontend/lib/services/auth_service.dart'
+      - 'frontend/test/local_device_enrollment_ui_contract_test.dart'
+      - 'tools/auth_local_first_visual_capture.js'
+      - '.github/workflows/auth-local-first-visual-cert.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout BEFORE
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          path: before
+
+      - name: Checkout AFTER
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: after
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build BEFORE
+        working-directory: before/frontend
+        run: |
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn
+
+      - name: Build AFTER
+        working-directory: after/frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos
+          flutter test --no-pub test/services/auth_service_local_first_test.dart test/local_device_enrollment_ui_contract_test.dart
+          flutter build web --release --no-web-resources-cdn
+
+      - name: Install Playwright Chromium
+        working-directory: after
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Capture BEFORE and AFTER at identical viewports
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd before/frontend/build/web && python3 -m http.server 7357 --bind 127.0.0.1 >/tmp/iamina-auth-before.log 2>&1) &
+          BEFORE_PID=$!
+          (cd after/frontend/build/web && python3 -m http.server 7358 --bind 127.0.0.1 >/tmp/iamina-auth-after.log 2>&1) &
+          AFTER_PID=$!
+          trap 'kill $BEFORE_PID $AFTER_PID 2>/dev/null || true' EXIT
+
+          for port in 7357 7358; do
+            for _ in $(seq 1 30); do
+              if curl -fsS "http://127.0.0.1:${port}/" >/dev/null; then break; fi
+              sleep 1
+            done
+            curl -fsS "http://127.0.0.1:${port}/" >/dev/null
+          done
+
+          cd after
+          BEFORE_URL=http://127.0.0.1:7357/ \
+          AFTER_URL=http://127.0.0.1:7358/ \
+          AUTH_VISUAL_OUT=auth-local-first-visual \
+          node tools/auth_local_first_visual_capture.js
+
+      - name: Upload visual proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-auth-local-first-before-after
+          path: |
+            after/auth-local-first-visual/*
+            /tmp/iamina-auth-before.log
+            /tmp/iamina-auth-after.log
+          if-no-files-found: warn
+          retention-days: 7

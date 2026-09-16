@@ -49,47 +49,45 @@ void main() {
     service.dispose();
   });
 
-  test('token validation transport failure is observable and remains invalid', () async {
+  test('legacy native token boot stays local and performs no remote validation', () async {
     const token = 'iamina.synthetic-secret-token';
-    when(() => storage.read(key: any(named: 'key'))).thenAnswer(
-      (_) async => token,
-    );
-    when(() => storage.delete(key: any(named: 'key'))).thenAnswer(
-      (_) async {},
-    );
+    when(() => storage.read(key: any(named: 'key'))).thenAnswer((invocation) async {
+      final key = invocation.namedArguments[#key] as String?;
+      if (key == 'iamina_native_access_token') return token;
+      return null;
+    });
     when(
-      () => httpClient.get(
-        any(),
-        headers: any(named: 'headers'),
+      () => storage.write(
+        key: any(named: 'key'),
+        value: any(named: 'value'),
       ),
-    ).thenThrow(StateError('transport carried synthetic-secret-token'));
+    ).thenAnswer((_) async {});
 
     final service = buildService();
     await service.initialize();
 
     expect(service.isInitialized, isTrue);
-    expect(service.isAuthenticated, isFalse);
-    expect(failures, <String>['validate_native_token:StateError']);
-    expect(failures.single, isNot(contains(token)));
-    verify(() => storage.delete(key: any(named: 'key'))).called(1);
+    expect(service.isAuthenticated, isTrue);
+    expect(failures, isEmpty);
+    verifyNever(() => httpClient.get(any(), headers: any(named: 'headers')));
 
     service.dispose();
   });
 
   test('logout transport failure is observable but local logout completes', () async {
     const token = 'iamina.synthetic-secret-token';
-    when(() => storage.read(key: any(named: 'key'))).thenAnswer(
-      (_) async => token,
-    );
-    when(() => storage.delete(key: any(named: 'key'))).thenAnswer(
-      (_) async {},
-    );
+    when(() => storage.read(key: any(named: 'key'))).thenAnswer((invocation) async {
+      final key = invocation.namedArguments[#key] as String?;
+      if (key == 'iamina_native_access_token') return token;
+      return null;
+    });
     when(
-      () => httpClient.get(
-        any(),
-        headers: any(named: 'headers'),
+      () => storage.write(
+        key: any(named: 'key'),
+        value: any(named: 'value'),
       ),
-    ).thenAnswer((_) async => http.Response('{}', 200));
+    ).thenAnswer((_) async {});
+    when(() => storage.delete(key: any(named: 'key'))).thenAnswer((_) async {});
     when(
       () => httpClient.post(
         any(),
@@ -106,7 +104,6 @@ void main() {
     expect(service.isAuthenticated, isFalse);
     expect(failures, <String>['logout:StateError']);
     expect(failures.single, isNot(contains(token)));
-    verify(() => storage.delete(key: any(named: 'key'))).called(1);
 
     service.dispose();
   });

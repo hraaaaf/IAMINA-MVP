@@ -2,9 +2,9 @@
 
 > **Authority:** this is the single canonical forward tracker for IAMINA. If an issue, PR body, handover, assessment, AGENTS note, architecture note or historical phase document conflicts with this file on current status, priority or next work, **this file wins**. Historical documents remain evidence only.
 >
-> **Global audit:** 2026-09-15, reconciled against current `main`, P5-6 release-gate evidence, #318/#320, and `docs/TECHDEBT.md`. The last explicitly frozen P5-6 candidate is `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`; later runtime/code changes mean it is retained as historical freeze evidence only, not as the current release candidate. The predecessor `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` remains the last exact production-proven deployment. No current release candidate exists until an explicit re-freeze is performed when the pre-real-patient gate is reactivated.
+> **Global audit:** 2026-09-16, reconciled against `main@c8b17637453734e5596979b8e8053d026954e451`, P5-6 release-gate evidence, #318/#320, `docs/TECHDEBT.md`, and the clarified local-first runtime boundary. The last explicitly frozen P5-6 candidate is `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`; later runtime/code changes mean it is retained as historical freeze evidence only, not as the current release candidate. The predecessor `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` remains the last exact **remote development/certification** deployment proof. Vercel/Django/Neon is not the patient production runtime. No current release candidate exists until an explicit re-freeze is performed when the pre-real-patient gate is reactivated.
 >
-> **Canonical global progress:** **6/12 atomic roadmap lots CLOSED = 50.0%**. Atomic denominator: P5-0, P5-1, P5-2, P5-3, P5-4A, P5-4B, P5-5, P5-6 consent evidence engineering, P5-6A, P5-6B, P5-7, P5-8. Closed atoms: P5-0, P5-1, P5-2, P5-4A, P5-5 and P5-6 consent evidence engineering. The P5 whole-lot metric remains **4/9 = 44.4%** and retained MENA remains **32/38 = 84.2%** for their narrower scopes.
+> **Canonical global progress:** **5/12 atomic roadmap lots CLOSED = 41.7%** while the reproduced P5-4A offline-auth regression is under remediation. Atomic denominator: P5-0, P5-1, P5-2, P5-3, P5-4A, P5-4B, P5-5, P5-6 consent evidence engineering, P5-6A, P5-6B, P5-7, P5-8. Closed atoms currently retained: P5-0, P5-1, P5-2, P5-5 and P5-6 consent evidence engineering. P5-4A returns to CLOSED only after the local-first auth remediation is proved green and merged. The P5 whole-lot metric remains **4/9 = 44.4%** and retained MENA remains **32/38 = 84.2%** for their narrower scopes.
 >
 > **Release posture:** `NOT_RELEASE_AUTHORIZED`. No current release candidate is frozen or authorized for deployment or real-patient processing. Engineering, UX, reliability, security and synthetic/non-patient work may continue. P5-6A/#318 and P5-6B/#320 are retained as mandatory **pre-real-patient gates**, not as the current engineering critical path.
 
@@ -20,6 +20,10 @@ Ship one safe, measurable Morocco/MENA diabetes-companion PWA pilot, collect rea
 - No diagnosis, prescription, dose calculation, treatment optimization/change or autonomous medical instruction.
 - Language/dialect enablement requires explicit safety parity; location never silently determines language or emergency jurisdiction.
 - Pilot delivery is PWA-first. Native Android/iOS is deferred unless explicitly activated.
+- **Patient runtime is local-first:** first device enrollment, subsequent reopen, core clinical persistence and required local workflows must not require Vercel, Neon, Firebase, SMTP or another remote processor to be reachable.
+- `iamina-certified` on Vercel, its Django runtime and its dedicated Neon database are **development/integration/certification infrastructure**, not the patient production runtime.
+- Remote account creation is disabled by default in the patient path and may be enabled only explicitly for a remote DEV/certification account flow. Remote account, synchronization or auxiliary services may degrade independently; their outage or credential rejection must not destroy local enrollment or valid local clinical state.
+- Local enrollment is continuity state, not a claim of strong standalone user authentication. The unresolved IAmina-specific app-lock/re-authentication requirement is tracked separately as TD-014 and remains mandatory before identifiable real-patient release.
 - Engineering proof, human approval, legal/CNDP approval and real-patient authorization are separate gates.
 - No identifiable real-patient health data may enter IAMINA until the pre-real-patient gate is explicitly completed and release is authorized.
 
@@ -29,7 +33,7 @@ Ship one safe, measurable Morocco/MENA diabetes-companion PWA pilot, collect rea
 
 | Area | Canonical status | Forward consequence |
 |---|---|---|
-| **Global canonical roadmap** | **🟡 6/12 = 50.0%** | authoritative portfolio completion metric |
+| **Global canonical roadmap** | **🟡 5/12 = 41.7%** | P5-4A reopened by reproduced offline-auth regression; no partial credit |
 | Gate A Secure Core | ✅ CLOSED / certified 10.0/10 | maintenance only |
 | Historical P0 foundations / product truthfulness / agent governance | ✅ CLOSED | no reopening without new defect/evidence |
 | Global UX / Dashboard / Journal | ✅ CLOSED | regressions only |
@@ -39,8 +43,9 @@ Ship one safe, measurable Morocco/MENA diabetes-companion PWA pilot, collect rea
 | P4-FRUGAL PRE-PILOT | ✅ CLOSED 10/10 | real pilot economics belong to P5-7 |
 | MENA retained tracker | 🟡 32/38 = 84.2% | informational only |
 | P5 whole-lot tracker | 🟡 4/9 = 44.4% | active program |
+| P5-4A offline packaging | 🟡 REGRESSION_OPEN / AUTH_LOCAL_FIRST_REMEDIATION | prove first enrollment + reopen local-first and truthful UI before re-closing |
 | P5-6 consent evidence engineering | ✅ CLOSED atomic sublot | retained as merged engineering evidence |
-| P5-6 predecessor deployment infrastructure | ✅ EXACT_PRODUCTION_HEALTHY | proves Vercel/Neon path for `5b27a22…`, not exact deployment proof for any future candidate |
+| P5-6 remote dev/cert infrastructure | ✅ EXACT_REMOTE_PATH_HEALTHY / NOT_PATIENT_PROD | proves Vercel/Neon dev/cert path for `5b27a22…`; does not define patient production topology |
 | P5-6 last frozen candidate evidence | 🟠 HISTORICAL_FREEZE / NOT_CURRENT | `fb42e4d…`; runtime/code advanced later, so explicit re-freeze is required before any release attempt |
 | P5-6 current release candidate | ⚪ NONE | must be created by an explicit exact-SHA re-freeze when the pre-real-patient gate is reactivated |
 | P5-6A / P5-6B | ⏸️ PRE_REAL_PATIENT_GATE / DEFERRED | mandatory before first identifiable real-patient health data; not current engineering critical path |
@@ -48,7 +53,7 @@ Ship one safe, measurable Morocco/MENA diabetes-companion PWA pilot, collect rea
 
 ### Progress arithmetic
 
-1. **Canonical global progress: 6/12 = 50.0%.** Equal-weight atomic forward lots.
+1. **Canonical global progress: 5/12 = 41.7%.** Equal-weight atomic forward lots; P5-4A is temporarily reopened by a reproduced regression.
 2. **P5 Pilot Readiness: 4/9 = 44.4%.** Historical whole-lot P5 accounting; P5-4 and P5-6 remain open as macro lots.
 3. **Retained MENA: 32/38 = 84.2%.** Informational only; never a release gate.
 
@@ -58,11 +63,11 @@ No partial credit is assigned inside an atomic lot. Deferring a gate does not cl
 
 # 2. One critical path
 
-**Current non-patient engineering path:** continue verified product/security/reliability/UX work on synthetic or non-patient data, prioritizing reproduced defects and unresolved technical debt.
+**Current non-patient engineering path:** close the reproduced P5-4A local-first authentication regression, then continue verified product/security/reliability/UX work on synthetic or non-patient data, prioritizing reproduced defects and unresolved technical debt.
 
-**Mandatory pre-real-patient path, activated before the first identifiable real-patient health data:** explicit exact-SHA re-freeze → P5-6A restricted safety evidence + P5-6B processor/CNDP evidence + explicitly authorized exact-candidate deployment/topology proof → three exact-SHA approved audits → explicit human release decision → controlled PWA pilot → P5-7 observed evidence → P5-8 go/no-go.
+**Mandatory pre-real-patient path, activated before the first identifiable real-patient health data:** explicit exact-SHA re-freeze → P5-6A restricted safety evidence + P5-6B processor/CNDP evidence bound to the **actual local-first patient runtime and genuinely enabled external processors** → actual patient-runtime topology proof → three exact-SHA approved audits → explicit human release decision → controlled PWA pilot → P5-7 observed evidence → P5-8 go/no-go.
 
-The pre-real-patient path is deferred, not waived. No release, deployment authorization or regulatory approval is implied by current engineering progress.
+The Vercel/Django/Neon development/certification stack is not a mandatory patient-production dependency and must not be inserted into the patient processor/residency inventory solely because it exists for engineering. The pre-real-patient path is deferred, not waived. No release, deployment authorization or regulatory approval is implied by current engineering progress.
 
 ---
 
@@ -92,13 +97,29 @@ Tracker: #518. Required only before a native pilot/distribution claim; it does n
 
 ## P5-4 — Pilot packaging
 
-**Status:** 🟡 SPLIT.
+**Status:** 🟡 SPLIT / P5-4A REGRESSION OPEN.
 
 ### P5-4A — PWA packaging engineering
 
-**Status:** ✅ CLOSED_WITH_BOUNDARIES.
+**Status:** 🟡 REGRESSION_OPEN / AUTH_LOCAL_FIRST_REMEDIATION_IN_REVIEW.
 
-Persistence, strict offline reopen, release discovery, last-known-good preservation and update behavior are retained. Controlled pilot URL, physical target-browser installation, production deployment and real-patient authorization remain external.
+The previously retained packaging evidence includes persistence, release discovery, last-known-good preservation and update behavior. A reproduced authentication defect invalidated the prior **strict offline reopen** claim: the app-wide auth gate depended on remote Django verification and could therefore turn remote unavailability into local loss of access.
+
+The remediation contract is now:
+
+- first patient-device enrollment creates only a device-local enrollment marker plus opaque installation identifier and performs **zero required network requests**;
+- subsequent local boot/reopen performs **zero required auth-network requests**;
+- the default patient enrollment UI requests no email/password and makes no online-account claim;
+- remote account registration is disabled by default and `registerWithEmail()` fails closed unless `IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true` is explicitly enabled for the remote DEV/certification flow;
+- local enrollment/session and the Django-signed remote API bearer are separate states;
+- remote bearer rejection/expiry clears remote credential use only and cannot erase local enrollment or local clinical state;
+- explicit sign-out clears the remote bearer, local marker and opaque local device identifier even if remote logout is unavailable;
+- malformed secure-storage text never bootstraps local enrollment;
+- the present local marker is **not** represented as strong app-specific authentication. TD-014 owns the remaining biometric/passkey/app-lock requirement before identifiable real-patient release.
+
+UI/UX acceptance requires a BEFORE/AFTER browser proof at the same `390×844`, `768×1024` and `1280×900` viewports, no horizontal overflow, and explicit visual review. Security/auth acceptance requires exact-head tests plus full CI. Candidate remediation branch: `fix/auth-local-first-boundary-20260915`. Re-close requires those proofs green **and merge**; no closure is claimed from the code diff alone.
+
+Controlled pilot URL, physical target-browser installation, any patient distribution hosting, production release and real-patient authorization remain external.
 
 ### P5-4B — Native Android/iOS alignment
 
@@ -131,10 +152,10 @@ That SHA is retained as historical exact-freeze evidence. It is **not** the curr
 
 ### Historical candidate re-freeze proof
 
-The predecessor candidate `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` proved the Vercel/Django/Neon runtime. Two release-gate defects were then fixed:
+The predecessor candidate `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` proved the **remote Vercel/Django/Neon development/certification path**. It did not prove or define the patient production runtime. Two release-gate/runtime defects were then fixed:
 
 - PR #602 made the local-only consent audit consume the restricted residency manifest and bind genuine CNDP health-processing evidence to the exact release SHA;
-- PR #603 made native password recovery require an explicit provider-neutral SMTP production contract, removed silent delivery assumptions and preserved account-enumeration resistance.
+- PR #603 made native password recovery require an explicit provider-neutral SMTP contract when that remote recovery path is enabled, removed silent delivery assumptions and preserved account-enumeration resistance.
 
 Validation retained for the historical `fb42e4d…` freeze:
 
@@ -160,23 +181,25 @@ This is historical technical exact-corpus evidence only. It does not fabricate r
 
 Retained from #591: exact notice version/hash/locale, legacy consent invalidation, server acceptance receipts, withdrawal revocation, current-consent AI-egress verification, consent-epoch isolation, Flutter/server fail-closed behavior and Secure Storage + Drift local gating.
 
-### P5-6 deployment state
+### P5-6 remote development/certification deployment state
 
-**Status:** 🟠 PREDECESSOR_EXACT_PRODUCTION_HEALTHY / NO_CURRENT_CANDIDATE.
+**Status:** ✅ PREDECESSOR_REMOTE_PATH_HEALTHY / NOT_PATIENT_PROD / NO_CURRENT_CANDIDATE.
 
-Proven predecessor topology:
+Proven predecessor **remote development/certification** topology:
 
 - Vercel project `iamina-certified` / `prj_Pn9FnyconF3h2w9gOU74iV98kJoU`;
 - exact source `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`;
-- production deployment `dpl_8ex2k82KaozE6Fxc8wQBYJuRU43y`;
-- state `READY`, target `production`, runtime region `cdg1`, one Python serverless function;
+- deployment `dpl_8ex2k82KaozE6Fxc8wQBYJuRU43y`;
+- state `READY`, target `production` in Vercel's deployment terminology, runtime region `cdg1`, one Python serverless function;
 - stable alias `iamina-certified.vercel.app` resolved to that deployment;
 - dedicated Neon project `IAMINA` / `square-sun-82359137`, PostgreSQL 16, region `aws-eu-central-1`, default branch `production` / `br-fragrant-frost-b1lbdfzs`;
 - migrations current and health HTTP 200 with `status=ok`, `db=ok`, `cache=unavailable`;
 - cache unavailability is non-fatal under the existing health contract; no Redis readiness claim is made;
 - no AqarFinder/Supabase database and no unrelated Neon database was reused.
 
-The historical `fb42e4d…` freeze was **not deployed**. PR #603 deliberately made production startup fail closed until an explicit SMTP/reset contract is configured. No future exact candidate may be deployed without separate explicit owner authorization.
+The words `production` above describe Vercel/Neon environment labels only. They do **not** mean patient production. `docs/LOCAL_FIRST_RUNTIME_BOUNDARY.md` defines the runtime boundary.
+
+The historical `fb42e4d…` freeze was **not deployed**. PR #603 deliberately made the remote Django production-settings path fail closed until an explicit SMTP/reset contract is configured. That is a remote dev/cert deployment condition, not a requirement for local clinical availability. No future Vercel deployment may occur without separate explicit owner authorization.
 
 ### P5-6A — Safety qualification manifest
 
@@ -201,27 +224,27 @@ Still missing before real-patient release:
 
 **Tracker:** #320.
 
-Current state: `OPEN / PRE_REAL_PATIENT_GATE / DEFERRED / PREDECESSOR_DEPLOYMENT_PROVEN / CURRENT_CANDIDATE_PENDING_REFREEZE / SMTP_PROCESSOR_PENDING / COMPLIANCE_EVIDENCE_PENDING`.
+Current state: `OPEN / PRE_REAL_PATIENT_GATE / DEFERRED / REMOTE_DEV_CERT_PATH_PROVEN / PATIENT_RUNTIME_TOPOLOGY_PENDING / COMPLIANCE_EVIDENCE_PENDING`.
 
 Still required before real-patient release:
 
 - explicit exact-SHA re-freeze of the future release candidate;
-- choose and configure the actual password-reset mail processor under the provider-neutral SMTP contract;
-- account-specific processor/DPA/subprocessor/retention/deletion/privacy/security evidence for every enabled processor;
-- actual exact-candidate topology with countries/regions after an explicitly authorized deployment;
-- deployment-specific patient notice/consent approval evidence;
+- freeze the **actual local-first patient runtime topology** and enumerate only the external processors genuinely enabled for that pilot;
+- account-specific processor/DPA/subprocessor/retention/deletion/privacy/security evidence for every genuinely enabled external processor;
+- if remote password recovery is enabled for the pilot, choose/configure its mail processor and include it in that evidence inventory; if it is not enabled, do not fabricate it as a runtime dependency;
+- deployment/distribution-specific patient notice/consent approval evidence for the actual pilot architecture;
 - applicable CNDP health-data processing evidence;
 - foreign-transfer basis/evidence for every actual external destination where applicable;
-- restricted residency manifest bound to the newly refrozen exact candidate;
+- restricted residency manifest bound to the newly refrozen exact candidate and actual patient topology;
 - exact-SHA consent and residency audit PASS outputs.
 
-Public provider/CNDP documentation can define requirements but cannot substitute for account-specific approvals.
+Public provider/CNDP documentation can define requirements but cannot substitute for account-specific approvals. Development-only Vercel/Neon infrastructure is excluded from the patient processor/residency inventory unless the actual pilot architecture later enables it for patient data.
 
 The current pilot scope enables no external AI processor. `--local-only` remains mandatory for the consent audit when the gate is activated; it does not waive the global CNDP health-processing authorization gate.
 
 ### P5-6 success proof
 
-When preparation for the first real-patient pilot starts, first explicitly re-freeze the exact release SHA and bind all restricted manifests to that same SHA. Then all three fail-closed audits must PASS against it:
+When preparation for the first real-patient pilot starts, first explicitly re-freeze the exact release SHA and bind all restricted manifests to that same SHA and the actual patient runtime topology. Then all three fail-closed audits must PASS against it:
 
 ```bash
 python manage.py audit_pilot_consent_governance \
@@ -256,7 +279,7 @@ Collect real pilot MAU/activation/retention, safety incidents, reliability/offli
 No second disease capsule before this evidence-based decision gate.
 
 **P5 whole-lot tracker:** 4/9 = 44.4%.  
-**Canonical global atomic tracker:** 6/12 = 50.0%.
+**Canonical global atomic tracker:** 5/12 = 41.7% while P5-4A regression remains open.
 
 ---
 
@@ -282,13 +305,15 @@ Retained MENA metric: 32/38 = 84.2%, informational only.
 
 `docs/TECHDEBT.md` owns unresolved compromises; it is not a competing roadmap. Critical/high debt is promoted into the current engineering path only when the corresponding feature is active or a current defect is reproduced. Pre-real-patient compliance evidence remains a separate future release gate.
 
-Reconciliation retained through 2026-09-15:
+Reconciliation retained through 2026-09-16:
 
 - TD-010 observability retention lifecycle is CLOSED by PR #610, merge `e9c04beee31638ff86d7fd0b50d5eddccc313c4e`, post-merge CI #4206 / workflow `34787203311` SUCCESS and migration drift #3742 SUCCESS;
 - former TD-005 and TD-006 were removed from the unresolved-debt register because current runtime safety variant coverage is implemented and the only remaining release gate is the restricted human qualification/approval evidence already owned by #318/P5-6A;
 - former TD-007 was removed after verifying the explicitly approved/documented `SELF_CARE_ONLY` pilot operating model: PR #24 formalized no human monitoring, mandatory disclosure and fail-closed evidence requirements for any future `MONITORED_HUMAN` mode; P0.6 PR #128 later centralized all patient-facing urgent responses through that policy;
-- TD-013 authentication abuse protection is CLOSED by PR #623, merged as `main@f045491a3e07db388067fe54c60fd0c4b543e050`; exact-head CI #4238 and drift #3760 succeeded, then exact-main post-merge CI #4241 and drift #3761 succeeded. Tracker #622 is closed. The retained limiter is PostgreSQL-backed, covers login/registration/password-reset, is independent of Redis availability, stores HMAC-derived identifiers rather than raw IP/email, and has typed 429/recovery tests;
-- TD-003 provider timeout/circuit-breaker/failure UX is CLOSED by backend breaker PR #628, frontend typed-error UX PR #629 and docs closeout PR #630. Exact-head #629 CI #4280, Companion E2E #98, UI browser #710, UI geometry #707 and missing-routes #66 succeeded; #630 exact-head CI #4291 and post-merge CI #4292 succeeded.
+- TD-008 device-level critical-flow coverage is CLOSED by PR #636 / merge `532376020d4696d4098994a97a764a1994c7f92f`; the dedicated integration baseline landed, the resolved debt was removed in `8d54168674c316ddcc64846384b0bcac72650fe4`, and handover `4e7b04a3387da68374e00ab858e63b914faa1884` retained the closeout;
+- historical TD-013 authentication abuse protection is CLOSED by PR #623, merged as `main@f045491a3e07db388067fe54c60fd0c4b543e050`; exact-head CI #4238 and drift #3760 succeeded, then exact-main post-merge CI #4241 and drift #3761 succeeded. Tracker #622 is closed. The retained limiter is PostgreSQL-backed, covers login/registration/password-reset, is independent of Redis availability, stores HMAC-derived identifiers rather than raw IP/email, and has typed 429/recovery tests;
+- TD-003 provider timeout/circuit-breaker/failure UX is CLOSED by backend breaker PR #628, frontend typed-error UX PR #629 and docs closeout PR #630. Exact-head #629 CI #4280, Companion E2E #98, UI browser #710, UI geometry #707 and missing-routes #66 succeeded; #630 exact-head CI #4291 and post-merge CI #4292 succeeded;
+- TD-014 patient local app-lock/re-authentication is **OPEN / HIGH BEFORE IDENTIFIABLE REAL-PATIENT RELEASE**. It is deliberately separate from P5-4A's local-first availability correction: the current local marker provides continuity but is not presented as a biometric/passkey/password security factor.
 
 ---
 
@@ -306,7 +331,9 @@ Open GitHub items are not automatically active roadmap work. Historical Companio
 
 # 8. Closed workstreams retained as history
 
-Closed unless a new reproduced regression opens a scoped lot: Gate A Secure Core; P0 foundations; product truthfulness; agent governance; global UX/Dashboard/Journal convergence; outbound AI/data-egress foundation; current sovereign-auth migration work recorded as merged; Companion intelligence/proactivity convergence; CGM gateway V1/V1.1/V2/V2.1; P4-FRUGAL PRE-PILOT; P5-0; P5-1; P5-2; P5-5; P5-4A; and the P5-6 consent-evidence engineering atomic sublot.
+Closed unless a new reproduced regression opens a scoped lot: Gate A Secure Core; P0 foundations; product truthfulness; agent governance; global UX/Dashboard/Journal convergence; outbound AI/data-egress foundation; current sovereign-auth migration work recorded as merged; Companion intelligence/proactivity convergence; CGM gateway V1/V1.1/V2/V2.1; P4-FRUGAL PRE-PILOT; P5-0; P5-1; P5-2; P5-5; and the P5-6 consent-evidence engineering atomic sublot.
+
+P5-4A is intentionally absent from the closed list while the reproduced local-first auth regression is under remediation.
 
 Closed does not imply legal/CNDP authorization, physical-device proof, real-patient authorization or production approval unless that exact evidence is retained.
 
@@ -314,11 +341,11 @@ Closed does not imply legal/CNDP authorization, physical-device proof, real-pati
 
 # 9. Execution order
 
-1. **Current engineering:** audit remaining `docs/TECHDEBT.md` items for staleness against current code before opening implementation work; prioritize reproduced security/reliability/accessibility defects that can be solved with synthetic/non-patient data.
-2. Continue product/UX/reliability/security engineering while preserving fail-closed real-patient boundaries.
-3. **Before the first identifiable real-patient health data:** explicitly re-freeze the chosen exact release SHA, then reactivate P5-6A #318 and P5-6B #320, collect genuine restricted evidence, choose/configure actual processors and obtain required approvals.
-4. **Human gate:** obtain separate explicit owner authorization before any deployment of the chosen exact candidate.
-5. Deploy the exact candidate only after that authorization, freeze actual topology and complete the exact residency manifest.
+1. **Current engineering:** close P5-4A AUTH-LOCAL-FIRST with exact-head tests/CI plus same-viewport BEFORE/AFTER visual certification; then continue auditing remaining `docs/TECHDEBT.md` items for staleness and prioritize reproduced security/reliability/accessibility defects solvable with synthetic/non-patient data.
+2. Continue product/UX/reliability/security engineering while preserving fail-closed real-patient boundaries and the local-first runtime contract. TD-014 must be resolved before identifiable real-patient release, but it does not turn Vercel/Django into a patient-runtime dependency.
+3. **Before the first identifiable real-patient health data:** explicitly re-freeze the chosen exact release SHA, reactivate P5-6A #318 and P5-6B #320, freeze the actual patient runtime topology, enumerate only genuinely enabled processors, and collect genuine restricted evidence/approvals.
+4. If the pilot requires any remote deployment/distribution change, obtain separate explicit owner authorization before that deployment. Development Vercel deployment remains separately authorization-gated and is not patient production proof.
+5. Freeze the actual pilot topology/residency evidence after every authorized deployment/distribution step relevant to patient processing.
 6. Run the three exact-SHA fail-closed audits.
 7. Explicit human real-patient release decision.
 8. Controlled PWA pilot.
@@ -332,6 +359,7 @@ No Vercel deployment is authorized by this execution order.
 # 10. Canonical governance
 
 - `docs/ROADMAP.md` owns all forward status, priority, sequencing and completion percentages.
+- `docs/LOCAL_FIRST_RUNTIME_BOUNDARY.md` owns the patient-runtime vs remote-dev/cert architecture boundary and is subordinate only to an explicit later change in this roadmap.
 - Overall progress is the atomic 12-lot metric. Its denominator changes only through an explicit roadmap governance change.
 - `docs/TECHDEBT.md` owns unresolved compromises only.
 - `AGENTS.md` owns execution rules only and is subordinate to this roadmap for status.
@@ -344,20 +372,16 @@ No Vercel deployment is authorized by this execution order.
 ## Current canonical snapshot
 
 - repo: `hraaaaf/IAMINA-MVP`
-- current engineering main proof after TD-003 closeout: `e307a70ed055688a4e509a25582ca72ff2169629`, post-merge CI #4292 SUCCESS
+- main reconciled for this lot: `c8b17637453734e5596979b8e8053d026954e451`
+- AUTH-LOCAL-FIRST remediation branch: `fix/auth-local-first-boundary-20260915` — exact-head CI/visual certification/merge pending, therefore P5-4A remains OPEN
+- last retained green engineering proof before this regression lot: `e307a70ed055688a4e509a25582ca72ff2169629`, post-merge CI #4292 SUCCESS
 - last explicitly frozen P5-6 SHA: `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b` — **historical freeze evidence, not current release candidate**
 - current release candidate: **NONE / PENDING EXPLICIT REFREEZE**
 - historical freeze proof: PRs #602/#603; #603 post-merge CI #4190 / workflow `34773613905`; post-merge drift #3737 / workflow `34773613814`
-- current candidate deployment: **N/A — no current candidate**
-- proven predecessor production deployment: `dpl_8ex2k82KaozE6Fxc8wQBYJuRU43y`, source `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`, Python function, `cdg1`, health HTTP 200 / `db=ok`
-- dedicated database proof: Neon `IAMINA` / `square-sun-82359137`, PG16, `aws-eu-central-1`, branch `production`, migrations current for the predecessor deployment
+- patient production runtime boundary: **LOCAL-FIRST; Vercel/Django/Neon excluded unless a future explicit architecture change says otherwise**
+- proven predecessor remote dev/cert deployment: `dpl_8ex2k82KaozE6Fxc8wQBYJuRU43y`, source `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6`, Python function, `cdg1`, health HTTP 200 / `db=ok`
+- dedicated remote dev/cert database proof: Neon `IAMINA` / `square-sun-82359137`, PG16, `aws-eu-central-1`, branch `production`, migrations current for the predecessor remote deployment
 - safety fingerprint retained from historical freeze: `823d109b0ddd10d1874eec53027eafd9d65884f14810304af3681c57c82cf7e5`
 - qualification wording: **professionnels qualifiés** — owner attestation reference `issue-318:owner-attestation:professionnels-qualifies`
 - consent notice: `2026-09-12.1`
-- canonical global progress: **6/12 = 50.0%**
-- P5 whole-lot progress: **4/9 = 44.4%**
-- retained MENA: **32/38 = 84.2%**
-- current non-patient engineering blockers: none from #318/#320; unresolved technical debt remains separately governed in `docs/TECHDEBT.md`
-- pre-real-patient blockers: **explicit exact-SHA re-freeze + #318 restricted qualification/approval evidence + #320 processor/CNDP/account evidence + exact-candidate deployment topology after explicit authorization**
-- release posture: **NOT_RELEASE_AUTHORIZED**
-- next exact action: audit remaining unresolved technical debt for staleness against current code, then execute the highest-risk reproduced engineering gap without introducing real-patient data or deploying Vercel.
+- canonical global progress: **5/12 = 41.7% while P5-4A regression remains open**

@@ -43,6 +43,54 @@ extension AuthLocalizedCopy on AppLocalizations {
         ar: 'ليس لديك حساب بعد؟',
       );
 
+  String get localEnrollmentEyebrow => _pick(
+        en: 'ON THIS DEVICE',
+        fr: 'SUR CET APPAREIL',
+        ar: 'على هذا الجهاز',
+      );
+
+  String get localEnrollmentTitle => _pick(
+        en: 'Set up IAmina here',
+        fr: 'Configurer IAmina ici',
+        ar: 'إعداد IAmina هنا',
+      );
+
+  String get localEnrollmentSubtitle => _pick(
+        en: 'Create your IAmina space on this device. No online account is required.',
+        fr: 'Créez votre espace IAmina sur cet appareil. Aucun compte en ligne n’est nécessaire.',
+        ar: 'أنشئ مساحة IAmina على هذا الجهاز. لا يلزم حساب عبر الإنترنت.',
+      );
+
+  String get localEnrollmentOffline => _pick(
+        en: 'No Internet connection is required to set up or reopen IAmina on this device.',
+        fr: 'Aucune connexion Internet n’est nécessaire pour configurer ou rouvrir IAmina sur cet appareil.',
+        ar: 'لا يلزم اتصال بالإنترنت لإعداد IAmina أو إعادة فتحه على هذا الجهاز.',
+      );
+
+  String get localEnrollmentSecurity => _pick(
+        en: 'Access currently relies on this device’s lock. Enable a passcode, Face ID or fingerprint when available.',
+        fr: 'L’accès repose actuellement sur le verrouillage de cet appareil. Activez un code, Face ID ou une empreinte si disponible.',
+        ar: 'يعتمد الوصول حالياً على قفل هذا الجهاز. فعّل رمزاً أو بصمة الوجه أو الإصبع عندما تكون متاحة.',
+      );
+
+  String get localEnrollmentAction => _pick(
+        en: 'Set up this device',
+        fr: 'Configurer cet appareil',
+        ar: 'إعداد هذا الجهاز',
+      );
+
+  String get localEnrollmentFooter => _pick(
+        en: 'You can keep using local features even when you are offline.',
+        fr: 'Vous pourrez continuer à utiliser les fonctions locales même hors connexion.',
+        ar: 'يمكنك الاستمرار في استخدام الوظائف المحلية حتى دون اتصال.',
+      );
+
+  String get localEnrollmentFailed => _pick(
+        en: 'Local setup failed. Check that secure storage is available on this device.',
+        fr: 'La configuration locale a échoué. Vérifiez que le stockage sécurisé est disponible sur cet appareil.',
+        ar: 'فشل الإعداد المحلي. تحقق من توفر التخزين الآمن على هذا الجهاز.',
+      );
+
   String get invalidResetLink => _pick(
         en: 'The reset link is invalid or incomplete.',
         fr: 'Lien de réinitialisation invalide ou incomplet.',

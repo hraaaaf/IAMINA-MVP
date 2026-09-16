@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 
 import 'auth_epoch.dart';
 import 'firebase_migration_policy.dart';
@@ -19,6 +20,11 @@ const bool kOfflineDemo = bool.fromEnvironment(
   defaultValue: false,
 );
 
+const bool kRemoteAccountEnrollmentEnabled = bool.fromEnvironment(
+  'IAMINA_REMOTE_ACCOUNT_ENROLLMENT',
+  defaultValue: false,
+);
+
 typedef AuthFailureLogger = void Function(
   String operation,
   String errorType,
@@ -27,14 +33,19 @@ typedef AuthFailureLogger = void Function(
 
 class AuthService extends ChangeNotifier {
   static const _tokenKey = 'iamina_native_access_token';
+  static const _localSessionKey = 'iamina_local_session_v1';
+  static const _localSessionValue = 'enrolled';
+  static const _localDeviceIdKey = 'iamina_local_device_id_v1';
 
   final FirebaseAuth? _firebaseAuth;
   final FlutterSecureStorage _storage;
   final http.Client _httpClient;
   final AuthFailureLogger _failureLogger;
   String? _nativeToken;
+  bool _localSessionEnrolled = false;
   bool _initialized = false;
   bool _auditSession = false;
+  bool _remoteCredentialVerified = false;
 
   AuthService({
     FirebaseAuth? auth,
@@ -83,23 +94,30 @@ class AuthService extends ChangeNotifier {
   bool get isInitialized => _initialized;
   bool get isAuthenticated =>
       _auditSession ||
-      (_nativeToken?.isNotEmpty ?? false) ||
+      _localSessionEnrolled ||
       (_firebaseAuth?.currentUser != null);
+  bool get isRemoteCredentialVerified => _remoteCredentialVerified;
   bool get isAnonymous =>
       _auditSession ||
-      (_nativeToken == null && (_firebaseAuth?.currentUser?.isAnonymous ?? false));
+      (!_localSessionEnrolled &&
+          _nativeToken == null &&
+          (_firebaseAuth?.currentUser?.isAnonymous ?? false));
   bool get isAuditSession => _auditSession;
   User? get firebaseUser => _firebaseAuth?.currentUser;
 
   Future<void> initialize() async {
     try {
-      final stored = await _storage.read(key: _tokenKey);
-      if (stored != null &&
-          stored.isNotEmpty &&
-          await _validateNativeToken(stored)) {
-        _nativeToken = stored;
-      } else if (stored != null) {
+      _localSessionEnrolled =
+          await _storage.read(key: _localSessionKey) == _localSessionValue;
+      final storedToken = await _storage.read(key: _tokenKey);
+      if (storedToken != null && storedToken.startsWith('iamina.')) {
+        _nativeToken = storedToken;
+        _remoteCredentialVerified = false;
+        await _ensureLocalEnrollment();
+      } else if (storedToken != null) {
         await _storage.delete(key: _tokenKey);
+        _nativeToken = null;
+        _remoteCredentialVerified = false;
       }
     } catch (error, stackTrace) {
       _failureLogger(
@@ -108,10 +126,27 @@ class AuthService extends ChangeNotifier {
         stackTrace,
       );
       _nativeToken = null;
+      _localSessionEnrolled = false;
+      _remoteCredentialVerified = false;
     } finally {
       _initialized = true;
       _notifyAuthChanged();
     }
+  }
+
+  /// Enrol this installation for local-first use without contacting a server.
+  /// This provides device-local continuity, not strong user authentication.
+  Future<void> enrollLocalDevice() async {
+    if (!_initialized) {
+      throw StateError('Local enrollment requires initialized authentication');
+    }
+    final existingId = await _storage.read(key: _localDeviceIdKey);
+    if (existingId == null || existingId.isEmpty) {
+      await _storage.write(key: _localDeviceIdKey, value: const Uuid().v4());
+    }
+    await _ensureLocalEnrollment();
+    _remoteCredentialVerified = false;
+    _notifyAuthChanged();
   }
 
   void enterAuditSession() {
@@ -131,8 +166,13 @@ class AuthService extends ChangeNotifier {
 
   Future<String?> refreshToken() async {
     if (_auditSession) return null;
-    final native = _nativeToken;
-    if (native != null && native.isNotEmpty) return native;
+    if (_nativeToken != null) {
+      _nativeToken = null;
+      _remoteCredentialVerified = false;
+      await _storage.delete(key: _tokenKey);
+      _notifyAuthChanged();
+      return null;
+    }
     return _firebaseAuth?.currentUser?.getIdToken(true);
   }
 
@@ -146,7 +186,6 @@ class AuthService extends ChangeNotifier {
       await _acceptAuthResponse(nativeResponse);
       return;
     }
-
     if (nativeResponse.statusCode == 401 && _firebaseAuth != null) {
       final credential = await _firebaseAuth.signInWithEmailAndPassword(
         email: normalized,
@@ -169,6 +208,9 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> registerWithEmail(String email, String password) async {
+    if (!kRemoteAccountEnrollmentEnabled) {
+      throw StateError('Remote account enrollment is disabled');
+    }
     final response = await _postJson(
       '/api/v1/auth/register',
       {'email': email.trim().toLowerCase(), 'password': password},
@@ -197,7 +239,11 @@ class AuthService extends ChangeNotifier {
       }
     }
     _nativeToken = null;
+    _localSessionEnrolled = false;
+    _remoteCredentialVerified = false;
     await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _localSessionKey);
+    await _storage.delete(key: _localDeviceIdKey);
     await _firebaseAuth?.signOut();
     _notifyAuthChanged();
   }
@@ -231,32 +277,17 @@ class AuthService extends ChangeNotifier {
   }) async {
     final response = await _postJson(
       '/api/v1/auth/password/reset/confirm',
-      {
-        'uid': uid,
-        'token': token,
-        'new_password': newPassword,
-      },
+      {'uid': uid, 'token': token, 'new_password': newPassword},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('Password recovery confirmation failed');
     }
   }
 
-  Future<bool> _validateNativeToken(String token) async {
-    try {
-      final response = await _httpClient.get(
-        Uri.parse('$kAuthBaseUrl/api/v1/auth/me'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      return response.statusCode >= 200 && response.statusCode < 300;
-    } catch (error, stackTrace) {
-      _failureLogger(
-        'validate_native_token',
-        error.runtimeType.toString(),
-        stackTrace,
-      );
-      return false;
-    }
+  Future<void> _ensureLocalEnrollment() async {
+    if (_localSessionEnrolled) return;
+    await _storage.write(key: _localSessionKey, value: _localSessionValue);
+    _localSessionEnrolled = true;
   }
 
   Future<http.Response> _postJson(String path, Map<String, dynamic> body) {
@@ -276,8 +307,11 @@ class AuthService extends ChangeNotifier {
     if (token is! String || !token.startsWith('iamina.')) {
       throw StateError('Missing IAMINA access token');
     }
-    _nativeToken = token;
     await _storage.write(key: _tokenKey, value: token);
+    await _storage.write(key: _localSessionKey, value: _localSessionValue);
+    _nativeToken = token;
+    _localSessionEnrolled = true;
+    _remoteCredentialVerified = true;
     _notifyAuthChanged();
   }
 
