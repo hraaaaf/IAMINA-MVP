@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -8,6 +9,9 @@ import '../data/drift/database.dart';
 import 'api_client.dart';
 
 enum SyncUiState { checking, upToDate, pending, syncing, offline, error }
+
+typedef SyncFailureLogger =
+    void Function(String operation, Object error, StackTrace stackTrace);
 
 Map<String, Object> journalContextFieldsForSync({
   required bool isSick,
@@ -28,6 +32,7 @@ Map<String, Object> journalContextFieldsForSync({
 class SyncService {
   final AppDatabase _db;
   final ApiClient _apiClient;
+  final SyncFailureLogger _failureLogger;
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
@@ -40,7 +45,23 @@ class SyncService {
     SyncUiState.checking,
   );
 
-  SyncService(this._db, this._apiClient);
+  SyncService(
+    this._db,
+    this._apiClient, {
+    SyncFailureLogger? failureLogger,
+  }) : _failureLogger = failureLogger ?? _defaultFailureLogger;
+
+  static void _defaultFailureLogger(
+    String operation,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    developer.log(
+      'Safe sync fallback invoked for ${error.runtimeType}.',
+      name: 'iamina.sync.$operation',
+      stackTrace: stackTrace,
+    );
+  }
 
   void init() {
     unawaited(refreshState());
@@ -131,13 +152,13 @@ class SyncService {
       state.value = hadFailure || stillPending.isNotEmpty
           ? SyncUiState.error
           : SyncUiState.upToDate;
-    } catch (error) {
+    } catch (error, stackTrace) {
       hadFailure = true;
       state.value = SyncUiState.error;
+      _failureLogger('sync_pending_logs', error, stackTrace);
       for (final log in pending) {
         await _db.reportSyncFailure(log.id, log.syncAttempts);
       }
-      if (kDebugMode) print('SyncService Error: $error');
     } finally {
       isSyncing.value = false;
       if (!hadFailure && state.value == SyncUiState.syncing) {
@@ -152,7 +173,8 @@ class SyncService {
       final decoded = jsonDecode(raw);
       if (decoded is! List) return const <String>[];
       return decoded.whereType<String>().toList(growable: false);
-    } catch (_) {
+    } on FormatException catch (error, stackTrace) {
+      _failureLogger('decode_meal_items', error, stackTrace);
       return const <String>[];
     }
   }
@@ -187,7 +209,8 @@ class SyncService {
         });
       }
       return result;
-    } catch (_) {
+    } on FormatException catch (error, stackTrace) {
+      _failureLogger('decode_meal_portions', error, stackTrace);
       return const <Map<String, Object>>[];
     }
   }
