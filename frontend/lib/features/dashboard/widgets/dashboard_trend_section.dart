@@ -2,6 +2,7 @@ import 'package:amina/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/localization/dashboard_trend_localized_copy.dart';
 import '../../../core/theme/amina_visual_language.dart';
 import '../../../data/drift/dashboard_trend_queries.dart';
 import '../../../data/drift/database.dart';
