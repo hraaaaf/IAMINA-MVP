@@ -1,0 +1,251 @@
+import 'package:amina/core/theme/app_theme.dart';
+import 'package:amina/data/drift/database.dart';
+import 'package:amina/features/auth/login_screen.dart';
+import 'package:amina/features/companion/companion_conversation_screen.dart';
+import 'package:amina/l10n/app_localizations.dart';
+import 'package:amina/main.dart';
+import 'package:amina/routes/app_router.dart';
+import 'package:amina/services/api_client.dart';
+import 'package:amina/services/auth_service.dart';
+import 'package:amina/services/companion_service.dart';
+import 'package:amina/services/locale_preference_service.dart';
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
+import 'package:provider/provider.dart';
+
+class _FailingAuthService extends AuthService {
+  _FailingAuthService({bool authenticated = false})
+      : _authenticated = authenticated;
+
+  final bool _authenticated;
+
+  @override
+  bool get isInitialized => true;
+
+  @override
+  bool get isAuthenticated => _authenticated;
+
+  @override
+  bool get isAnonymous => _authenticated;
+
+  @override
+  Future<void> signInWithEmail(String email, String password) async {
+    throw StateError('synthetic authentication failure');
+  }
+}
+
+class _FailingCompanionService extends CompanionService {
+  @override
+  Future<CompanionChatReply?> sendChatMessage(
+    String message, {
+    int contextDays = 14,
+  }) async {
+    throw const ProviderApiException(
+      code: 'provider_timeout',
+      message: 'The AI service did not respond in time.',
+      retryable: true,
+      statusCode: 503,
+    );
+  }
+
+  @override
+  void dispose() {}
+}
+
+Widget _localizedApp(Widget home) {
+  return MaterialApp(
+    locale: const Locale('fr'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: home,
+  );
+}
+
+Widget _realShell({
+  required AppDatabase db,
+  required AuthService auth,
+  required ApiClient api,
+  required LocalePreferenceService locale,
+  required TweaksNotifier tweaks,
+  required AppRouterHolder routerHolder,
+}) {
+  return MultiProvider(
+    providers: [
+      Provider<AppDatabase>.value(value: db),
+      ChangeNotifierProvider<AuthService>.value(value: auth),
+      Provider<ApiClient>.value(value: api),
+      ChangeNotifierProvider<LocalePreferenceService>.value(value: locale),
+      Provider<PatientProfileData?>.value(value: null),
+      ChangeNotifierProvider<TweaksNotifier>.value(value: tweaks),
+    ],
+    child: AminaApp(router: routerHolder.router),
+  );
+}
+
+Future<void> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  int attempts = 50,
+}) async {
+  for (var i = 0; i < attempts && finder.evaluate().isEmpty; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('real app shell redirects to login and fails auth safely', (
+    tester,
+  ) async {
+    final originalErrorWidgetBuilder = ErrorWidget.builder;
+    final db = AppDatabase(NativeDatabase.memory());
+    final auth = _FailingAuthService();
+    final api = ApiClient(authService: auth);
+    final locale = LocalePreferenceService(
+      api,
+      auditLocale: const Locale('fr'),
+    );
+    final tweaks = TweaksNotifier();
+    final routerHolder = createAppRouterHolder(authService: auth);
+    addTearDown(() async {
+      routerHolder.dispose();
+      locale.dispose();
+      tweaks.dispose();
+      auth.dispose();
+      await db.close();
+    });
+
+    await tester.pumpWidget(
+      _realShell(
+        db: db,
+        auth: auth,
+        api: api,
+        locale: locale,
+        tweaks: tweaks,
+        routerHolder: routerHolder,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      routerHolder.router.routeInformationProvider.value.uri.path,
+      '/login',
+    );
+    expect(find.byType(LoginScreen), findsOneWidget);
+
+    final fields = find.byType(TextField);
+    expect(fields, findsNWidgets(2));
+    await tester.enterText(fields.at(0), 'pilot@example.test');
+    await tester.enterText(fields.at(1), 'wrong-password');
+
+    final loginContext = tester.element(find.byType(LoginScreen));
+    final l10n = AppLocalizations.of(loginContext)!;
+    await tester.tap(find.text(l10n.signIn).first);
+    await tester.pumpAndSettle();
+
+    expect(
+      routerHolder.router.routeInformationProvider.value.uri.path,
+      '/login',
+    );
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.text(l10n.loginError), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    ErrorWidget.builder = originalErrorWidgetBuilder;
+  });
+
+  testWidgets('real app shell logs glucose and persists locally', (tester) async {
+    final originalErrorWidgetBuilder = ErrorWidget.builder;
+    final db = AppDatabase(NativeDatabase.memory());
+    final auth = _FailingAuthService(authenticated: true);
+    final api = ApiClient(authService: auth);
+    final locale = LocalePreferenceService(
+      api,
+      auditLocale: const Locale('fr'),
+    );
+    final tweaks = TweaksNotifier();
+    final routerHolder = createAppRouterHolder(authService: auth);
+    routerHolder.router.go('/ajouter');
+    addTearDown(() async {
+      routerHolder.dispose();
+      locale.dispose();
+      tweaks.dispose();
+      auth.dispose();
+      await db.close();
+    });
+
+    await tester.pumpWidget(
+      _realShell(
+        db: db,
+        auth: auth,
+        api: api,
+        locale: locale,
+        tweaks: tweaks,
+        routerHolder: routerHolder,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      routerHolder.router.routeInformationProvider.value.uri.path,
+      '/ajouter',
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('glucose-input')),
+      '123',
+    );
+    await tester.pump();
+
+    final saveButton = find.byKey(const Key('save-log-button'));
+    expect(saveButton, findsOneWidget);
+    expect(tester.widget<FilledButton>(saveButton).onPressed, isNotNull);
+    await tester.ensureVisible(saveButton);
+    await tester.pump();
+    await tester.tap(saveButton);
+    await tester.pump();
+
+    var persisted = await db.select(db.logEntries).get();
+    for (var i = 0; i < 50 && persisted.isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      persisted = await db.select(db.logEntries).get();
+    }
+    expect(persisted, hasLength(1));
+    expect(persisted.single.bloodSugar, 123);
+
+    final receipt = find.byKey(const Key('post-save-receipt'));
+    await _pumpUntilFound(tester, receipt);
+    expect(receipt, findsOneWidget);
+    expect(tester.takeException(), isNull);
+    ErrorWidget.builder = originalErrorWidgetBuilder;
+  });
+
+  testWidgets('Companion provider timeout is surfaced as typed safe UX', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _localizedApp(
+        CompanionConversationScreen(service: _FailingCompanionService()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('companion-chat-input')),
+      'Bonjour',
+    );
+    await tester.tap(find.byKey(const Key('companion-chat-send')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('companion-chat-failure')), findsOneWidget);
+    expect(
+      find.text(
+        'IAmina met trop de temps à répondre. Réessaie dans un instant.',
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+}

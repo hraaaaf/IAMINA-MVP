@@ -1,0 +1,60 @@
+name: TD-008 device integration baseline
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/integration_test/**'
+      - 'frontend/pubspec.yaml'
+      - '.github/workflows/td008-device-integration.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/integration_test/**'
+      - 'frontend/pubspec.yaml'
+      - '.github/workflows/td008-device-integration.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: td008-device-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-integration:
+    name: Android pilot-critical journeys
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: Get Flutter dependencies
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Analyze integration baseline
+        working-directory: frontend
+        run: flutter analyze integration_test/pilot_critical_journeys_test.dart --no-fatal-infos
+
+      - name: Run integration baseline on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: cd frontend && flutter test integration_test/pilot_critical_journeys_test.dart -d emulator-5554 --no-pub
