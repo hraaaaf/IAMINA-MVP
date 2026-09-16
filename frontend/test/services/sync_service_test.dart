@@ -93,8 +93,8 @@ void main() {
     syncService = SyncService(
       mockDb,
       mockApi,
-      failureLogger: (operation, error, stackTrace) {
-        failureEvents.add('$operation:${error.runtimeType}');
+      failureLogger: (operation, errorType, stackTrace) {
+        failureEvents.add('$operation:$errorType');
       },
     );
     when(() => mockDb.getPendingLogs()).thenAnswer((_) async => [testLog]);
@@ -132,8 +132,8 @@ void main() {
     syncService = SyncService(
       mockDb,
       mockApi,
-      failureLogger: (operation, error, stackTrace) {
-        failureEvents.add('$operation:${error.runtimeType}');
+      failureLogger: (operation, errorType, stackTrace) {
+        failureEvents.add('$operation:$errorType');
       },
     );
     var pendingReads = 0;

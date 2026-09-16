@@ -11,7 +11,7 @@ import 'api_client.dart';
 enum SyncUiState { checking, upToDate, pending, syncing, offline, error }
 
 typedef SyncFailureLogger =
-    void Function(String operation, Object error, StackTrace stackTrace);
+    void Function(String operation, String errorType, StackTrace stackTrace);
 
 Map<String, Object> journalContextFieldsForSync({
   required bool isSick,
@@ -53,11 +53,11 @@ class SyncService {
 
   static void _defaultFailureLogger(
     String operation,
-    Object error,
+    String errorType,
     StackTrace stackTrace,
   ) {
     developer.log(
-      'Safe sync fallback invoked for ${error.runtimeType}.',
+      'Safe sync fallback invoked for $errorType.',
       name: 'iamina.sync.$operation',
       stackTrace: stackTrace,
     );
@@ -155,7 +155,11 @@ class SyncService {
     } catch (error, stackTrace) {
       hadFailure = true;
       state.value = SyncUiState.error;
-      _failureLogger('sync_pending_logs', error, stackTrace);
+      _failureLogger(
+        'sync_pending_logs',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
       for (final log in pending) {
         await _db.reportSyncFailure(log.id, log.syncAttempts);
       }
@@ -174,7 +178,11 @@ class SyncService {
       if (decoded is! List) return const <String>[];
       return decoded.whereType<String>().toList(growable: false);
     } on FormatException catch (error, stackTrace) {
-      _failureLogger('decode_meal_items', error, stackTrace);
+      _failureLogger(
+        'decode_meal_items',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
       return const <String>[];
     }
   }
@@ -210,7 +218,11 @@ class SyncService {
       }
       return result;
     } on FormatException catch (error, stackTrace) {
-      _failureLogger('decode_meal_portions', error, stackTrace);
+      _failureLogger(
+        'decode_meal_portions',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
       return const <Map<String, Object>>[];
     }
   }
