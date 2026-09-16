@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'meal_food_catalog_v3.dart' as base;
 import 'meal_food_gulf_core.dart';
+import 'meal_food_morocco_regional_b16.dart';
 
 export 'meal_food_catalog_v3.dart'
     hide
@@ -18,11 +19,12 @@ export 'meal_food_catalog_v3.dart'
 
 /// Catalog facade preserving the certified 322-item V3 baseline byte-for-byte
 /// while allowing reviewed regional extensions to remain modular.
-const String mealFoodCatalogVersion = '3.1.0-morocco-gcc-core';
+const String mealFoodCatalogVersion = '3.2.0-morocco-regional-b16';
 
 const List<base.MealFoodItem> mealFoodCatalog = <base.MealFoodItem>[
   ...base.mealFoodCatalog,
   ...gulfCoreFoodCatalog,
+  ...moroccoRegionalB16FoodCatalog,
 ];
 
 final Map<String, base.MealFoodItem> _mealFoodById = <String, base.MealFoodItem>{
@@ -32,29 +34,20 @@ final Map<String, base.MealFoodItem> _mealFoodById = <String, base.MealFoodItem>
 base.MealFoodItem? mealFoodById(String id) => _mealFoodById[id];
 
 List<base.MealFoodItem> mealFoodsForRegion(base.MealFoodRegion region) =>
-    mealFoodCatalog
-        .where((item) => item.regions.contains(region))
-        .toList(growable: false);
+    mealFoodCatalog.where((item) => item.regions.contains(region)).toList(growable: false);
 
 List<base.MealFoodItem> mealFoodsForCategory(base.MealFoodCategory category) =>
-    mealFoodCatalog
-        .where((item) => item.category == category)
-        .toList(growable: false);
+    mealFoodCatalog.where((item) => item.category == category).toList(growable: false);
 
 List<base.MealFoodItem> mealFoodsForMoment(base.MealFoodMoment moment) =>
-    mealFoodCatalog
-        .where((item) => item.moments.contains(moment))
-        .toList(growable: false);
+    mealFoodCatalog.where((item) => item.moments.contains(moment)).toList(growable: false);
 
 List<String> decodeMealItemIds(String? raw) {
   if (raw == null || raw.trim().isEmpty) return const <String>[];
   try {
     final decoded = jsonDecode(raw);
     if (decoded is! List) return const <String>[];
-    return decoded
-        .whereType<String>()
-        .where(_mealFoodById.containsKey)
-        .toList(growable: false);
+    return decoded.whereType<String>().where(_mealFoodById.containsKey).toList(growable: false);
   } catch (_) {
     return const <String>[];
   }
@@ -73,10 +66,7 @@ int _mealSearchScore(base.MealFoodItem item, String folded) {
   if (values.any((value) => value.startsWith(folded))) return 80;
   if (values.any((value) => value.contains(folded))) return 60;
   final terms = folded.split(' ').where((term) => term.isNotEmpty).toList();
-  if (terms.isNotEmpty &&
-      terms.every((term) => base.foldMealText(item.searchable).contains(term))) {
-    return 40;
-  }
+  if (terms.isNotEmpty && terms.every((term) => base.foldMealText(item.searchable).contains(term))) return 40;
   return 0;
 }
 

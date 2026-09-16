@@ -18,18 +18,14 @@ import 'food_pictogram_painter_batch12.dart';
 import 'food_pictogram_painter_batch13.dart';
 import 'food_pictogram_painter_batch14.dart';
 import 'food_pictogram_painter_batch15.dart';
+import 'food_pictogram_painter_batch16.dart';
 
 class FoodPictogram extends StatelessWidget {
   final MealFoodItem item;
   final double size;
   final bool selected;
 
-  const FoodPictogram({
-    super.key,
-    required this.item,
-    this.size = 42,
-    this.selected = false,
-  });
+  const FoodPictogram({super.key, required this.item, this.size = 42, this.selected = false});
 
   String get assetPath => certifiedFoodPictogramPath(item.pictogramKey);
 
@@ -40,7 +36,9 @@ class FoodPictogram extends StatelessWidget {
   Widget _nativePictogram() {
     final key = item.pictogramKey;
     final CustomPainter painter;
-    if (hasCodeFoodPictogramBatch15(key)) {
+    if (hasCodeFoodPictogramBatch16(key)) {
+      painter = FoodPictogramPainterBatch16(key);
+    } else if (hasCodeFoodPictogramBatch15(key)) {
       painter = FoodPictogramPainterBatch15(key);
     } else if (hasCodeFoodPictogramBatch14(key)) {
       painter = FoodPictogramPainterBatch14(key);
@@ -71,9 +69,7 @@ class FoodPictogram extends StatelessWidget {
     } else {
       painter = FoodPictogramPainter(key);
     }
-    return ExcludeSemantics(
-      child: CustomPaint(size: Size.square(size), painter: painter),
-    );
+    return ExcludeSemantics(child: CustomPaint(size: Size.square(size), painter: painter));
   }
 
   @override
@@ -94,7 +90,8 @@ class FoodPictogram extends StatelessWidget {
         hasCodeFoodPictogramBatch12(item.pictogramKey) ||
         hasCodeFoodPictogramBatch13(item.pictogramKey) ||
         hasCodeFoodPictogramBatch14(item.pictogramKey) ||
-        hasCodeFoodPictogramBatch15(item.pictogramKey);
+        hasCodeFoodPictogramBatch15(item.pictogramKey) ||
+        hasCodeFoodPictogramBatch16(item.pictogramKey);
 
     return Semantics(
       image: true,
@@ -103,13 +100,9 @@ class FoodPictogram extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: selected
-              ? accent.withValues(alpha: AminaTheme.isDark(context) ? .18 : .09)
-              : AminaTheme.subtleBg(context),
+          color: selected ? accent.withValues(alpha: AminaTheme.isDark(context) ? .18 : .09) : AminaTheme.subtleBg(context),
           borderRadius: BorderRadius.circular(size * .31),
-          border: Border.all(
-            color: selected ? accent.withValues(alpha: .45) : AminaTheme.divider(context),
-          ),
+          border: Border.all(color: selected ? accent.withValues(alpha: .45) : AminaTheme.divider(context)),
         ),
         clipBehavior: Clip.antiAlias,
         alignment: Alignment.center,
@@ -120,8 +113,7 @@ class FoodPictogram extends StatelessWidget {
                 height: size,
                 fit: BoxFit.contain,
                 excludeFromSemantics: true,
-                errorBuilder: (context, error, stackTrace) =>
-                    native ? _nativePictogram() : _emojiFallback(),
+                errorBuilder: (context, error, stackTrace) => native ? _nativePictogram() : _emojiFallback(),
               )
             : native
                 ? _nativePictogram()
