@@ -1,13 +1,11 @@
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/localization/dashboard_trend_localized_copy.dart';
 import '../../../core/theme/amina_visual_language.dart';
 import '../../../data/drift/dashboard_trend_queries.dart';
 import '../../../data/drift/database.dart';
-import 'dashboard_trend_painter.dart';
+import 'dashboard_trend_view.dart';
 
 enum _TrendRange { hours24, days7, days14, days30 }
 
@@ -84,13 +82,16 @@ class _DashboardTrendSectionState extends State<DashboardTrendSection> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (snapshot.hasError)
-                _TrendState(
+                DashboardTrendState(
                   icon: Icons.cloud_off_outlined,
                   text: l10n.dashboardTrendUnavailable,
                 )
               else if (snapshot.connectionState == ConnectionState.waiting &&
                   logs.isEmpty)
-                _TrendState(loading: true, text: l10n.dashboardTrendLoading)
+                DashboardTrendState(
+                  loading: true,
+                  text: l10n.dashboardTrendLoading,
+                )
               else if (logs.isEmpty)
                 Column(
                   children: [
@@ -99,7 +100,7 @@ class _DashboardTrendSectionState extends State<DashboardTrendSection> {
                       onChanged: _setRange,
                     ),
                     const SizedBox(height: 16),
-                    _TrendState(
+                    DashboardTrendState(
                       icon: Icons.insights_outlined,
                       text: l10n.dashboardTrendEmpty,
                     ),
@@ -195,7 +196,7 @@ class _TrendContent extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _TrendSummary(
+            DashboardTrendSummary(
               recent: logs.last,
               average: average,
               inTarget: inTarget,
@@ -232,7 +233,7 @@ class _TrendContent extends StatelessWidget {
                   const SizedBox(height: 2),
                   SizedBox(
                     height: 250,
-                    child: _TrendPlot(
+                    child: DashboardTrendPlot(
                       logs: logs,
                       medications: medications,
                       start: start,
@@ -247,7 +248,7 @@ class _TrendContent extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _TrendLegend(
+                  DashboardTrendLegend(
                     unit: unit,
                     low: low,
                     high: high,
@@ -271,7 +272,11 @@ class _TrendContent extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            _TrendSelectionCard(log: selected, unit: unit, locale: locale),
+            DashboardTrendSelectionCard(
+              log: selected,
+              unit: unit,
+              locale: locale,
+            ),
           ],
         );
       },
@@ -303,54 +308,10 @@ class _TrendShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: AminaVisualLanguage.cardDecoration(context, radius: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.dashboardTrendHeading,
-                      style: TextStyle(
-                        fontFamily: 'Georgia',
-                        fontSize: 23,
-                        height: 1.02,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -.45,
-                        color: AminaVisualLanguage.primaryText(context),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _subtitle(context, range),
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        height: 1.3,
-                        color: AminaVisualLanguage.secondary(context),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (count != null) ...[
-                const SizedBox(width: 8),
-                _CountPill(text: l10n.dashboardTrendPointCount(count!)),
-              ],
-            ],
-          ),
-          const SizedBox(height: 14),
-          child,
-        ],
-      ),
+    return DashboardTrendShell(
+      count: count,
+      subtitle: _subtitle(context, range),
+      child: child,
     );
   }
 
@@ -368,186 +329,6 @@ class _TrendShell extends StatelessWidget {
   }
 }
 
-class _TrendSummary extends StatelessWidget {
-  final LogEntryData recent;
-  final double average;
-  final int? inTarget;
-  final int count;
-  final String unit;
-
-  const _TrendSummary({
-    required this.recent,
-    required this.average,
-    required this.inTarget,
-    required this.count,
-    required this.unit,
-  });
-
-  String _display(double mgDl) => unit == 'mmol/L'
-      ? (mgDl / 18.0).toStringAsFixed(1)
-      : mgDl.toStringAsFixed(0);
-
-  @override
-  Widget build(BuildContext context) {
-    final cards = <Widget>[
-      _SummaryMetric(
-        icon: Icons.water_drop_outlined,
-        value: _display(recent.bloodSugar),
-        unit: unit,
-        label: _pick(context, 'Récent', 'Recent', 'الأحدث'),
-      ),
-      _SummaryMetric(
-        icon: Icons.show_chart_rounded,
-        value: _display(average),
-        unit: unit,
-        label: _pick(context, 'Moyenne', 'Average', 'المتوسط'),
-      ),
-      _SummaryMetric(
-        icon: Icons.adjust_rounded,
-        value: inTarget == null ? '—' : '$inTarget / $count',
-        label: _pick(context, 'Dans la cible', 'In range', 'ضمن النطاق'),
-      ),
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= 650) {
-          return Row(
-            children: [
-              for (var i = 0; i < cards.length; i++) ...[
-                Expanded(child: cards[i]),
-                if (i != cards.length - 1) const SizedBox(width: 10),
-              ],
-            ],
-          );
-        }
-        return Column(
-          children: [
-            for (var i = 0; i < cards.length; i++) ...[
-              cards[i],
-              if (i != cards.length - 1) const SizedBox(height: 8),
-            ],
-          ],
-        );
-      },
-    );
-  }
-
-  String _pick(BuildContext context, String fr, String en, String ar) {
-    return switch (Localizations.localeOf(context).languageCode) {
-      'fr' => fr,
-      'ar' => ar,
-      _ => en,
-    };
-  }
-}
-
-class _SummaryMetric extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String? unit;
-  final String label;
-
-  const _SummaryMetric({
-    required this.icon,
-    required this.value,
-    this.unit,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 94),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: AminaVisualLanguage.mintSurface.withValues(alpha: .32),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AminaVisualLanguage.mintSurface,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 23, color: AminaVisualLanguage.actionGreen),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        value,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'Georgia',
-                          fontSize: 26,
-                          height: 1,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -.5,
-                          color: AminaVisualLanguage.primaryText(context),
-                        ),
-                      ),
-                    ),
-                    if (unit != null) ...[
-                      const SizedBox(width: 6),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 2),
-                        child: Text(
-                          unit!,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: AminaVisualLanguage.secondary(context),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: AminaVisualLanguage.secondary(context),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Icon(
-                      Icons.info_outline_rounded,
-                      size: 14,
-                      color: AminaVisualLanguage.secondary(context),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _RangeSelector extends StatelessWidget {
   final _TrendRange selected;
   final ValueChanged<_TrendRange> onChanged;
@@ -557,632 +338,11 @@ class _RangeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Row(
-      children: _TrendRange.values
-          .map((value) {
-            final active = value == selected;
-            return Expanded(
-              child: Padding(
-                padding: EdgeInsetsDirectional.only(
-                  end: value == _TrendRange.values.last ? 0 : 6,
-                ),
-                child: Semantics(
-                  selected: active,
-                  button: true,
-                  child: InkWell(
-                    onTap: () => onChanged(value),
-                    borderRadius: BorderRadius.circular(12),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      height: 42,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: active
-                            ? AminaVisualLanguage.mintSurface
-                            : AminaVisualLanguage.controlSurface(context),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: active
-                              ? AminaVisualLanguage.mintBorder
-                              : AminaVisualLanguage.controlBorder(context),
-                        ),
-                      ),
-                      child: Text(
-                        value.label(l10n),
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                          color: active
-                              ? AminaVisualLanguage.actionGreen
-                              : AminaVisualLanguage.secondary(context),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          })
-          .toList(growable: false),
-    );
-  }
-}
-
-class _TrendPlot extends StatelessWidget {
-  final List<LogEntryData> logs;
-  final List<MedicationEventData> medications;
-  final DateTime start;
-  final DateTime end;
-  final double? low;
-  final double? high;
-  final int selectedLogId;
-  final String unit;
-  final String locale;
-  final bool dailySummary;
-  final ValueChanged<int> onSelect;
-
-  const _TrendPlot({
-    required this.logs,
-    required this.medications,
-    required this.start,
-    required this.end,
-    required this.low,
-    required this.high,
-    required this.selectedLogId,
-    required this.unit,
-    required this.locale,
-    required this.dailySummary,
-    required this.onSelect,
-  });
-
-  DateTime _recordedAt(LogEntryData log) => log.loggedAt ?? log.createdAt;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final plotWidth =
-            (constraints.maxWidth -
-                    DashboardTrendPainter.leftInset -
-                    DashboardTrendPainter.rightInset)
-                .clamp(1.0, double.infinity)
-                .toDouble();
-        return Semantics(
-          label: AppLocalizations.of(
-            context,
-          )!.dashboardTrendPointCount(logs.length),
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: (details) {
-              final dx = details.localPosition.dx
-                  .clamp(
-                    DashboardTrendPainter.leftInset,
-                    constraints.maxWidth - DashboardTrendPainter.rightInset,
-                  )
-                  .toDouble();
-              final fraction =
-                  ((dx - DashboardTrendPainter.leftInset) / plotWidth)
-                      .clamp(0.0, 1.0)
-                      .toDouble();
-              final targetMs =
-                  start.millisecondsSinceEpoch +
-                  ((end.millisecondsSinceEpoch - start.millisecondsSinceEpoch) *
-                          fraction)
-                      .round();
-              var nearest = logs.first;
-              var distance =
-                  (_recordedAt(nearest).millisecondsSinceEpoch - targetMs)
-                      .abs();
-              for (final log in logs.skip(1)) {
-                final candidate =
-                    (_recordedAt(log).millisecondsSinceEpoch - targetMs).abs();
-                if (candidate < distance) {
-                  nearest = log;
-                  distance = candidate;
-                }
-              }
-              onSelect(nearest.id);
-            },
-            child: CustomPaint(
-              painter: DashboardTrendPainter(
-                logs: logs,
-                medications: medications,
-                start: start,
-                end: end,
-                low: low,
-                high: high,
-                selectedLogId: selectedLogId,
-                unit: unit,
-                locale: locale,
-                isDark: Theme.of(context).brightness == Brightness.dark,
-                dailySummary: dailySummary,
-              ),
-              child: const SizedBox.expand(),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _TrendLegend extends StatelessWidget {
-  final String unit;
-  final double? low;
-  final double? high;
-  final bool dailySummary;
-  final int medicationCount;
-
-  const _TrendLegend({
-    required this.unit,
-    required this.low,
-    required this.high,
-    required this.dailySummary,
-    required this.medicationCount,
-  });
-
-  String _display(double mgDl) => unit == 'mmol/L'
-      ? (mgDl / 18.0).toStringAsFixed(1)
-      : mgDl.toStringAsFixed(0);
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final targetConfigured = low != null && high != null && low! < high!;
-    final code = Localizations.localeOf(context).languageCode;
-    final medianLabel = code == 'fr'
-        ? 'Médiane journalière'
-        : code == 'ar'
-        ? 'الوسيط اليومي'
-        : 'Daily median';
-    final minMaxLabel = code == 'fr'
-        ? 'Min – Max (observé)'
-        : code == 'ar'
-        ? 'الأدنى – الأعلى (مسجل)'
-        : 'Min – Max (observed)';
-
-    return Wrap(
-      spacing: 14,
-      runSpacing: 7,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        _LegendDot(
-          color: AminaVisualLanguage.forestDeep,
-          label: dailySummary ? medianLabel : l10n.dashboardTrendPointCount(1),
-        ),
-        if (targetConfigured)
-          _LegendBand(
-            label: code == 'fr'
-                ? 'Plage cible (${_display(low!)} – ${_display(high!)} $unit)'
-                : '${l10n.dashboardTrendTargetBand} (${_display(low!)} – ${_display(high!)} $unit)',
-          )
-        else
-          _LegendIcon(
-            icon: Icons.tune_rounded,
-            label: l10n.dashboardTrendTargetMissing,
-          ),
-        if (dailySummary) _LegendWhisker(label: minMaxLabel),
-        if (medicationCount > 0)
-          _LegendDot(
-            color: const Color(0xFFC9852B),
-            label: l10n.dashboardTrendMedicationEvents(medicationCount),
-          ),
-      ],
-    );
-  }
-}
-
-class _TrendSelectionCard extends StatelessWidget {
-  final LogEntryData log;
-  final String unit;
-  final String locale;
-
-  const _TrendSelectionCard({
-    required this.log,
-    required this.unit,
-    required this.locale,
-  });
-
-  String _value() => unit == 'mmol/L'
-      ? (log.bloodSugar / 18.0).toStringAsFixed(1)
-      : log.bloodSugar.toStringAsFixed(0);
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final at = log.loggedAt ?? log.createdAt;
-    final tags = <String>{};
-
-    void addTag(String? key) {
-      if (key == null || key.trim().isEmpty) return;
-      final label = l10n.dashboardTrendContextLabel(key.trim());
-      if (label != null) tags.add(label);
-    }
-
-    addTag(log.glycemicContext);
-    addTag(log.mealType);
-    if (log.isStressed) addTag('stress');
-    if (log.isActive) addTag('activity');
-    if (log.isSick) addTag('illness');
-    if (log.isTired || (log.fatigueLevel ?? 0) > 0) addTag('fatigue');
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-      decoration: BoxDecoration(
-        color: AminaVisualLanguage.controlSurface(context),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 660;
-          final value = _SelectionValue(value: _value(), unit: unit);
-          final date = _SelectionDate(at: at, locale: locale);
-          final contextTags = tags.isEmpty
-              ? Text(
-                  l10n.dashboardTrendNoContext,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    color: AminaVisualLanguage.secondary(context),
-                  ),
-                )
-              : Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: tags
-                      .map((tag) => _ContextPill(label: tag))
-                      .toList(growable: false),
-                );
-          final source = _SourcePill(
-            label: l10n.dashboardTrendSourceLabel(log.source),
-          );
-
-          if (compact) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [Expanded(child: value), source]),
-                const SizedBox(height: 10),
-                date,
-                const SizedBox(height: 10),
-                contextTags,
-              ],
-            );
-          }
-
-          return Row(
-            children: [
-              SizedBox(width: 150, child: value),
-              _VerticalDivider(),
-              Expanded(flex: 2, child: date),
-              _VerticalDivider(),
-              Expanded(flex: 3, child: contextTags),
-              _VerticalDivider(),
-              source,
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _SelectionValue extends StatelessWidget {
-  final String value;
-  final String unit;
-  const _SelectionValue({required this.value, required this.unit});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontFamily: 'Georgia',
-            fontSize: 29,
-            height: 1,
-            fontWeight: FontWeight.w700,
-            color: AminaVisualLanguage.primaryText(context),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 2),
-          child: Text(
-            unit,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: AminaVisualLanguage.secondary(context),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SelectionDate extends StatelessWidget {
-  final DateTime at;
-  final String locale;
-  const _SelectionDate({required this.at, required this.locale});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          Icons.calendar_month_outlined,
-          size: 18,
-          color: AminaVisualLanguage.secondary(context),
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            DateFormat('d MMM · HH:mm', locale).format(at),
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: AminaVisualLanguage.secondary(context),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _VerticalDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 36,
-      margin: const EdgeInsets.symmetric(horizontal: 14),
-      color: AminaVisualLanguage.controlBorder(context),
-    );
-  }
-}
-
-class _TrendState extends StatelessWidget {
-  final bool loading;
-  final IconData? icon;
-  final String text;
-
-  const _TrendState({this.loading = false, this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 150),
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (loading)
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2.2),
-            )
-          else
-            Icon(
-              icon ?? Icons.info_outline_rounded,
-              color: AminaVisualLanguage.actionGreen,
-              size: 26,
-            ),
-          const SizedBox(height: 10),
-          Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              height: 1.4,
-              color: AminaVisualLanguage.secondary(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CountPill extends StatelessWidget {
-  final String text;
-  const _CountPill({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 152),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AminaVisualLanguage.mintSurface,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.bar_chart_rounded,
-            size: 13,
-            color: AminaVisualLanguage.actionGreen,
-          ),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AminaVisualLanguage.actionGreen,
-                fontSize: 9.8,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SourcePill extends StatelessWidget {
-  final String label;
-  const _SourcePill({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-      decoration: BoxDecoration(
-        color: AminaVisualLanguage.mintSurface,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: AminaVisualLanguage.actionGreen,
-          fontSize: 10.2,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
-class _ContextPill extends StatelessWidget {
-  final String label;
-  const _ContextPill({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AminaVisualLanguage.mintSurface.withValues(alpha: .68),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AminaVisualLanguage.mintBorder),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 10.4,
-          fontWeight: FontWeight.w700,
-          color: AminaVisualLanguage.secondary(context),
-        ),
-      ),
-    );
-  }
-}
-
-class _LegendItem extends StatelessWidget {
-  final Widget leading;
-  final String label;
-
-  const _LegendItem({required this.leading, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 220),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          leading,
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 10.2,
-                height: 1.25,
-                color: AminaVisualLanguage.secondary(context),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LegendDot extends StatelessWidget {
-  final Color color;
-  final String label;
-  const _LegendDot({required this.color, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return _LegendItem(
-      label: label,
-      leading: Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      ),
-    );
-  }
-}
-
-class _LegendBand extends StatelessWidget {
-  final String label;
-  const _LegendBand({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return _LegendItem(
-      label: label,
-      leading: Container(
-        width: 19,
-        height: 9,
-        decoration: BoxDecoration(
-          color: AminaVisualLanguage.mintSurface,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: AminaVisualLanguage.mintBorder),
-        ),
-      ),
-    );
-  }
-}
-
-class _LegendWhisker extends StatelessWidget {
-  final String label;
-  const _LegendWhisker({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return _LegendItem(
-      label: label,
-      leading: Container(
-        width: 2,
-        height: 15,
-        decoration: BoxDecoration(
-          color: AminaVisualLanguage.forestDeep.withValues(alpha: .65),
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-    );
-  }
-}
-
-class _LegendIcon extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _LegendIcon({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return _LegendItem(
-      label: label,
-      leading: Icon(icon, size: 13, color: AminaVisualLanguage.actionGreen),
+    final values = _TrendRange.values;
+    return DashboardTrendRangeSelector(
+      labels: values.map((value) => value.label(l10n)).toList(growable: false),
+      selectedIndex: values.indexOf(selected),
+      onChanged: (index) => onChanged(values[index]),
     );
   }
 }
