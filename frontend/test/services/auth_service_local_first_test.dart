@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:amina/services/auth_service.dart';
@@ -184,6 +185,31 @@ void main() {
     expect(await const FlutterSecureStorage().read(key: _tokenKey), isNull);
     expect(await const FlutterSecureStorage().read(key: _localSessionKey), isNull);
     expect(await const FlutterSecureStorage().read(key: _localDeviceIdKey), isNull);
+    service.dispose();
+  });
+
+  test('stalled remote logout cannot delay local sign-out', () async {
+    seedStorage({
+      _tokenKey: _token,
+      _localSessionKey: _localSessionValue,
+      _localDeviceIdKey: 'device-id',
+    });
+    final remoteLogout = Completer<http.Response>();
+    final service = AuthService(
+      httpClient: MockClient((request) => remoteLogout.future),
+    );
+    await service.initialize();
+
+    final signOut = service.signOut();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(service.isAuthenticated, isFalse);
+    expect(await const FlutterSecureStorage().read(key: _tokenKey), isNull);
+    expect(await const FlutterSecureStorage().read(key: _localSessionKey), isNull);
+    expect(await const FlutterSecureStorage().read(key: _localDeviceIdKey), isNull);
+
+    remoteLogout.complete(http.Response('', 204));
+    await signOut;
     service.dispose();
   });
 

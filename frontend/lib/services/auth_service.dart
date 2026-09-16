@@ -224,6 +224,21 @@ class AuthService extends ChangeNotifier {
   Future<void> signOut() async {
     _auditSession = false;
     final token = _nativeToken;
+
+    // Local sign-out is authoritative. Never let optional remote revocation keep
+    // an enrolled device authenticated while the network is slow or unavailable.
+    _nativeToken = null;
+    _localSessionEnrolled = false;
+    _remoteCredentialVerified = false;
+    try {
+      await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _localSessionKey);
+      await _storage.delete(key: _localDeviceIdKey);
+      await _firebaseAuth?.signOut();
+    } finally {
+      _notifyAuthChanged();
+    }
+
     if (token != null) {
       try {
         await _httpClient.post(
@@ -238,14 +253,6 @@ class AuthService extends ChangeNotifier {
         );
       }
     }
-    _nativeToken = null;
-    _localSessionEnrolled = false;
-    _remoteCredentialVerified = false;
-    await _storage.delete(key: _tokenKey);
-    await _storage.delete(key: _localSessionKey);
-    await _storage.delete(key: _localDeviceIdKey);
-    await _firebaseAuth?.signOut();
-    _notifyAuthChanged();
   }
 
   Future<void> signInAnonymously() async {
