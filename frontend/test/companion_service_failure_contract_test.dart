@@ -64,4 +64,85 @@ void main() {
     expect(caught.toString(), isNot(contains('vendor-secret-detail')));
     service.dispose();
   });
+
+  test('overview transport failure is observable and still returns null', () async {
+    final failures = <String>[];
+    final service = CompanionService(
+      authService: _TokenAuthService(),
+      httpClient: MockClient(
+        (_) async => throw StateError('synthetic-sensitive-overview'),
+      ),
+      baseUrl: 'http://127.0.0.1:8000',
+      failureLogger: (operation, errorType, stackTrace) {
+        failures.add('$operation:$errorType');
+      },
+    );
+
+    final result = await service.fetchOverview();
+
+    expect(result, isNull);
+    expect(failures, <String>['fetch_overview:StateError']);
+    expect(failures.single, isNot(contains('synthetic-sensitive-overview')));
+    service.dispose();
+  });
+
+  test('proactive transport failure is observable and still returns null', () async {
+    final failures = <String>[];
+    final service = CompanionService(
+      authService: _TokenAuthService(),
+      httpClient: MockClient(
+        (_) async => throw StateError('synthetic-sensitive-proactive'),
+      ),
+      baseUrl: 'http://127.0.0.1:8000',
+      failureLogger: (operation, errorType, stackTrace) {
+        failures.add('$operation:$errorType');
+      },
+    );
+
+    final result = await service.fetchProactivePreview();
+
+    expect(result, isNull);
+    expect(failures, <String>['fetch_proactive_preview:StateError']);
+    expect(failures.single, isNot(contains('synthetic-sensitive-proactive')));
+    service.dispose();
+  });
+
+  test('next-action transport failure is observable and still returns null', () async {
+    final failures = <String>[];
+    final service = CompanionService(
+      authService: _TokenAuthService(),
+      httpClient: MockClient(
+        (_) async => throw StateError('synthetic-sensitive-next-action'),
+      ),
+      baseUrl: 'http://127.0.0.1:8000',
+      failureLogger: (operation, errorType, stackTrace) {
+        failures.add('$operation:$errorType');
+      },
+    );
+
+    final result = await service.evaluateNextAction();
+
+    expect(result, isNull);
+    expect(failures, <String>['evaluate_next_action:StateError']);
+    expect(failures.single, isNot(contains('synthetic-sensitive-next-action')));
+    service.dispose();
+  });
+
+  test('ordinary overview non-success remains null without failure log', () async {
+    final failures = <String>[];
+    final service = CompanionService(
+      authService: _TokenAuthService(),
+      httpClient: MockClient((_) async => http.Response('{}', 503)),
+      baseUrl: 'http://127.0.0.1:8000',
+      failureLogger: (operation, errorType, stackTrace) {
+        failures.add('$operation:$errorType');
+      },
+    );
+
+    final result = await service.fetchOverview();
+
+    expect(result, isNull);
+    expect(failures, isEmpty);
+    service.dispose();
+  });
 }
