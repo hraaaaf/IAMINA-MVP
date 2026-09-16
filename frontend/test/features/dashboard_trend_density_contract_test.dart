@@ -26,14 +26,18 @@ void main() {
     final section = File(
       'lib/features/dashboard/widgets/dashboard_trend_section.dart',
     ).readAsStringSync();
+    final view = File(
+      'lib/features/dashboard/widgets/dashboard_trend_view.dart',
+    ).readAsStringSync();
     final painter = File(
       'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
     ).readAsStringSync();
 
-    expect(section, contains("'Médiane journalière'"));
-    expect(section, contains("'Min – Max (observé)'"));
-    expect(section, contains('Plage cible'));
-    expect(section, contains('_TrendSelectionCard'));
+    expect(section, contains('DashboardTrendSelectionCard'));
+    expect(view, contains("'Médiane journalière'"));
+    expect(view, contains("'Min – Max (observé)'"));
+    expect(view, contains('Plage cible'));
+    expect(view, contains('class DashboardTrendSelectionCard'));
     expect(painter, contains('_paintTargetBand'));
     expect(painter, contains('summary.logIds.contains(selectedLogId)'));
   });

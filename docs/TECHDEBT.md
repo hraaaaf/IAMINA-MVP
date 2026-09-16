@@ -39,10 +39,10 @@ Rules:
 
 - **Area:** Frontend maintainability
 - **Priority:** Medium; functional error-boundary debt is paid before cosmetic decomposition
-- **Resolved foundation:** pilot-critical journal synchronization preserves explicit failure state and sanitized observability; malformed local meal JSON uses typed fallbacks; journal `ApiClient` synchronization distinguishes ordinary server non-confirmation from technical/parsing failures through a typed, payload-minimized error contract. `AuthService` initialization, Firebase-instance fallback, native-token validation and remote logout catches emit sanitized operation/error-type observability while preserving fail-closed/local-cleanup behavior. Companion overview, proactive-preview and next-action read exceptions also emit sanitized observability while preserving their existing `null` fallback contract; the chat path keeps its typed provider failures.
-- **Current compromise:** large Flutter widgets/services remain from rapid iteration.
-- **Risk:** oversized surfaces increase regression cost and make isolated maintenance harder.
-- **Resolution:** decompose oversized Flutter widgets/services in separate focused, behavior-preserving PRs with targeted regression tests and visual evidence only where UI changes.
+- **Resolved foundation:** pilot-critical journal synchronization preserves explicit failure state and sanitized observability; malformed local meal JSON uses typed fallbacks; journal `ApiClient` synchronization distinguishes ordinary server non-confirmation from technical/parsing failures through a typed, payload-minimized error contract. `AuthService` initialization, Firebase-instance fallback, native-token validation and remote logout catches emit sanitized operation/error-type observability while preserving fail-closed/local-cleanup behavior. Companion overview, proactive-preview and next-action read exceptions also emit sanitized observability while preserving their existing `null` fallback contract; the chat path keeps its typed provider failures. The Dashboard trend hotspot is split into orchestration/state (`dashboard_trend_section.dart`) and presentation/interaction (`dashboard_trend_view.dart`) while retaining the existing painter, queries, calculations, copy and visual geometry.
+- **Current compromise:** other large Flutter widgets/services remain from rapid iteration; TD-012 therefore stays open after the Dashboard trend split.
+- **Risk:** oversized remaining surfaces increase regression cost and make isolated maintenance harder.
+- **Resolution:** continue decomposing oversized Flutter widgets/services in separate focused, behavior-preserving PRs with targeted regression tests and visual evidence where UI surfaces are touched.
 
 ## Documentation closeout rule
 

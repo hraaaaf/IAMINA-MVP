@@ -53,22 +53,48 @@ void main() {
     final section = File(
       'lib/features/dashboard/widgets/dashboard_trend_section.dart',
     ).readAsStringSync();
+    final view = File(
+      'lib/features/dashboard/widgets/dashboard_trend_view.dart',
+    ).readAsStringSync();
     final painter = File(
       'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
     ).readAsStringSync();
+    final source = section + view;
 
-    expect(section, contains('_TrendSummary'));
-    expect(section, contains('_SummaryMetric'));
-    expect(section, contains("'Récent'"));
-    expect(section, contains("'Moyenne'"));
-    expect(section, contains("'Dans la cible'"));
-    expect(section, contains("'Médiane journalière'"));
-    expect(section, contains("'Min – Max (observé)'"));
-    expect(section, contains('Plage cible'));
-    expect(section, contains('_TrendSelectionCard'));
+    expect(section, contains('DashboardTrendSummary('));
+    expect(view, contains('class DashboardTrendSummary'));
+    expect(view, contains('_SummaryMetric'));
+    expect(view, contains("'Récent'"));
+    expect(view, contains("'Moyenne'"));
+    expect(view, contains("'Dans la cible'"));
+    expect(view, contains("'Médiane journalière'"));
+    expect(view, contains("'Min – Max (observé)'"));
+    expect(view, contains('Plage cible'));
+    expect(section, contains('DashboardTrendSelectionCard('));
+    expect(view, contains('class DashboardTrendSelectionCard'));
+    expect(source, contains('DashboardTrendRangeSelector('));
     expect(painter, contains('path.cubicTo'));
     expect(painter, contains('_paintTargetBand'));
     expect(painter, contains('_paintDailySummary'));
+  });
+
+  test('Dashboard trend presentation is decomposed from orchestration', () {
+    final section = File(
+      'lib/features/dashboard/widgets/dashboard_trend_section.dart',
+    ).readAsStringSync();
+    final view = File(
+      'lib/features/dashboard/widgets/dashboard_trend_view.dart',
+    ).readAsStringSync();
+
+    expect(section, contains("import 'dashboard_trend_view.dart';"));
+    expect(section, contains('DashboardTrendPlot('));
+    expect(section, contains('DashboardTrendLegend('));
+    expect(view, contains('class DashboardTrendPlot'));
+    expect(view, contains('class DashboardTrendLegend'));
+    expect(section, isNot(contains('class _SummaryMetric')));
+    expect(section, isNot(contains('class _LegendItem')));
+    expect(section.length, lessThan(20000));
+    expect(view.length, lessThan(30000));
   });
 
   test('Daily line connects daily medians rather than raw measurements', () {
@@ -103,9 +129,13 @@ void main() {
   });
 
   test('Dashboard trend keeps provenance and selected reading context explicit', () {
-    final source = File(
+    final section = File(
       'lib/features/dashboard/widgets/dashboard_trend_section.dart',
     ).readAsStringSync();
+    final view = File(
+      'lib/features/dashboard/widgets/dashboard_trend_view.dart',
+    ).readAsStringSync();
+    final source = section + view;
 
     expect(source, contains('dashboardTrendSourceLabel(log.source)'));
     expect(source, contains('dashboardTrendNoContext'));

@@ -14,6 +14,17 @@ on:
       - 'frontend/test/dashboard_main_shell_auth_contract_test.dart'
       - 'frontend/test/features/dashboard_trend_contract_test.dart'
       - 'frontend/test/features/dashboard_responsive_convergence_contract_test.dart'
+  pull_request:
+    paths:
+      - '.github/workflows/dashboard-responsive-visual-cert.yml'
+      - 'tools/dashboard_capture.js'
+      - 'tools/dashboard_cert_proxy.py'
+      - 'frontend/lib/ui_dashboard_backend_cert_main.dart'
+      - 'frontend/lib/features/dashboard/**'
+      - 'frontend/lib/features/navigation/main_shell.dart'
+      - 'frontend/test/dashboard_main_shell_auth_contract_test.dart'
+      - 'frontend/test/features/dashboard_trend_contract_test.dart'
+      - 'frontend/test/features/dashboard_responsive_convergence_contract_test.dart'
 
 permissions:
   contents: read
@@ -46,6 +57,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact source checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_SHA="${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          echo "expected=$EXPECTED_SHA"
+          echo "actual=$ACTUAL_SHA"
+          test "$ACTUAL_SHA" = "$EXPECTED_SHA"
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
