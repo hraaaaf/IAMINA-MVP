@@ -27,15 +27,6 @@ Rules:
 - **Risk:** unnecessary dependency/supply-chain and maintenance surface persists, and an operator can intentionally re-enable the migration bridge for a controlled migration window.
 - **Resolution:** after legacy-account reconciliation is no longer needed, remove the Flutter Firebase dependencies, backend Firebase migration/verification surface, related configuration and migration-only tests. Keep Django-native auth as the sole identity path, then remove TD-002.
 
-## TD-008 — Device-level critical-flow coverage is incomplete
-
-- **Area:** Quality / accessibility
-- **Priority:** Medium; high before broader release
-- **Resolved foundation:** pilot-critical Flutter surfaces already have substantial widget/contract coverage across responsive layouts, FR/EN/AR, RTL, navigation, real Chrome screenshots, geometry audits and Semantics-tree assertions. PR #632 adds explicit localized semantics for Companion close/send controls and a live-region announcement for provider failures without changing visual layout.
-- **Current compromise:** there is still no dedicated device-level / `integration_test` baseline that exercises complete pilot-critical user journeys through the real Flutter app shell across onboarding, logging, safety/error and recovery flows.
-- **Risk:** cross-screen regressions can escape otherwise strong widget/contract coverage when navigation, app lifecycle, persistence or platform behavior interact across multiple surfaces.
-- **Resolution:** add a minimal device-level integration baseline for the smallest set of pilot-critical end-to-end journeys, preserving the existing widget/accessibility/browser certifications rather than duplicating them.
-
 ## TD-009 — Staff/professional strong authentication is incomplete
 
 - **Area:** Security
