@@ -12,8 +12,17 @@ void main() {
     ).readAsStringSync();
 
     expect(sheet, contains('classifyGlucoseEntrySafety'));
+    expect(sheet, contains('if (mgdl < 54)'));
+    expect(sheet, contains('if (mgdl < 70)'));
+    expect(sheet, contains('value * 18.0'));
     expect(sheet, contains('mealTypesForProfileDate'));
+    expect(sheet, contains('isRamadanProfileDate'));
     expect(sheet, contains('LogEntriesCompanion.insert'));
+    expect(sheet, contains('bloodSugar: mgdl'));
+    expect(sheet, contains('insulinUnits: const drift.Value(null)'));
+    expect(sheet, contains('glycemicContext: drift.Value(_glycemicContext)'));
+    expect(sheet, contains('mealType: drift.Value(_mealType)'));
+    expect(sheet, contains('loggedAt: drift.Value(_selectedTime)'));
     expect(sheet, contains('_confirmLowGlucose'));
     expect(sheet, contains('_saveLog'));
     expect(sheet, contains("import 'add_log_view.dart';"));
@@ -27,6 +36,7 @@ void main() {
     expect(view, isNot(contains('LogEntriesCompanion')));
     expect(view, isNot(contains('AppDatabase')));
     expect(view, isNot(contains('mealTypesForProfileDate')));
+    expect(view, isNot(contains('isRamadanProfileDate')));
     expect(view, isNot(contains('classifyGlucoseEntrySafety')));
   });
 }
