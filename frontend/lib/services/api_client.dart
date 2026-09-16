@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'auth_service.dart';
 import 'document_ingest_minimizer.dart';
+import 'sync_api_contract.dart';
 import '../data/models/ai_models.dart';
 import '../data/models/document_models.dart';
 import '../data/models/personal_response_models.dart';
@@ -95,8 +96,8 @@ class AuthInterceptor implements Interceptor {
 }
 
 /// Applies a hard 30-second timeout to every Chopper request.
-/// TimeoutException is silently caught by each ApiClient method's catch(_) block,
-/// which returns null / false to the caller — safe degraded behaviour.
+/// Each ApiClient method decides whether a timeout should degrade safely or
+/// surface as a typed failure to its caller.
 class TimeoutInterceptor implements Interceptor {
   static const _kTimeout = Duration(seconds: 30);
 
@@ -208,32 +209,24 @@ class ApiClient {
   }
 
   /// Envoie un log unique au backend.
-  Future<bool> syncLogEntry(Map<String, dynamic> log) async {
-    try {
+  Future<bool> syncLogEntry(Map<String, dynamic> log) {
+    return guardSyncApiCall<bool>('sync_log_entry', () async {
       final response = await _client.post(Uri.parse('/api/v1/logs'), body: log);
       return response.isSuccessful;
-    } catch (_) {
-      return false;
-    }
+    });
   }
 
   /// Envoie une liste de logs en une seule requête (Batch).
-  Future<List<String>> batchSyncLogs(List<Map<String, dynamic>> logs) async {
-    try {
+  Future<List<String>> batchSyncLogs(List<Map<String, dynamic>> logs) {
+    return guardSyncApiCall<List<String>>('batch_sync_logs', () async {
       final response = await _client.post(
         Uri.parse('/api/v1/logs/batch'),
         body: logs,
       );
 
-      if (response.isSuccessful && response.body != null) {
-        final data = response.body as Map<String, dynamic>;
-        final syncedIds = List<String>.from(data['synced_ids'] ?? []);
-        return syncedIds;
-      }
-      return [];
-    } catch (_) {
-      return [];
-    }
+      if (!response.isSuccessful) return const <String>[];
+      return parseBatchSyncIds(response.body);
+    });
   }
 
   /// Récupère le résumé analytique IAmina.

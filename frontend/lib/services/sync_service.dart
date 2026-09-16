@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import '../data/drift/database.dart';
 import 'api_client.dart';
+import 'sync_api_contract.dart';
 
 enum SyncUiState { checking, upToDate, pending, syncing, offline, error }
 
@@ -155,11 +156,10 @@ class SyncService {
     } catch (error, stackTrace) {
       hadFailure = true;
       state.value = SyncUiState.error;
-      _failureLogger(
-        'sync_pending_logs',
-        error.runtimeType.toString(),
-        stackTrace,
-      );
+      final errorType = error is SyncApiException
+          ? error.errorType
+          : error.runtimeType.toString();
+      _failureLogger('sync_pending_logs', errorType, stackTrace);
       for (final log in pending) {
         await _db.reportSyncFailure(log.id, log.syncAttempts);
       }
