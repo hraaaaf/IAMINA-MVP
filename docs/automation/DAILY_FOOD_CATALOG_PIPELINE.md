@@ -19,7 +19,7 @@ A run is never successful merely because candidates were generated.
 
 Target: 1 run per day.
 
-Default batch size: 3–6 new food concepts.
+Default batch size: 3–10 new food concepts.
 
 Do not create a second concurrent food-catalog batch while a previous food-catalog PR is still open, failing, awaiting remediation, or awaiting human merge approval. Continue the existing lot first.
 
