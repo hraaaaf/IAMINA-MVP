@@ -65,12 +65,33 @@ Additional skills/reviewers are mandatory according to `.agents/README.md` when 
 
 A code or documentation change after certification changes the head SHA and invalidates stale exact-head evidence. Re-run the applicable gates before merge.
 
+## Mandatory quality scoring and verification
+
+`docs/QUALITY_SCORING_POLICY.md` is the canonical scoring contract and applies to every material step and every LOT.
+
+- Every material step receives `EXECUTION_SCORE /10` and `ADVERSARIAL_SCORE /10`.
+- The retained score is always the lower admissible score after applicable caps, never an average.
+- A LOT score is the lowest retained material-step score, never an average across steps.
+- A score gap greater than `0.5` requires investigation, remediation/justification, rerun of affected evidence, and rescore.
+- `10/10` is exceptional; `9.5+` requires genuine independent review.
+- Same executor + adversarial reviewer is automatically capped at `9.4/10`.
+- Required red test or missing/stale required proof caps at `7.9/10`.
+- Demonstrated regression caps at `6.9/10` until remediated and rerun.
+- Blocking security/privacy/data-integrity/clinical-claim finding caps at `5.9/10` and forces `BLOCKED`.
+- For UI/UX, visual fidelity without a real Target ↔ Render comparison at required identical viewports/states is capped at `7.5/10`.
+- No weak critical dimension may be hidden by a strong average.
+- A LOT may be `VERIFIED` only at retained score `>=9.0/10`, with every required binary gate green, no blocker, resolved scoring discrepancies, and a completed Perfection Pass.
+- Even at `9.0+`, the final Perfection Pass is mandatory: enumerate remaining weaknesses, fix every materially improvable in-scope weakness, rerun affected evidence, and rescore.
+
+Scores never override binary gates.
+
 ## Source of truth discipline
 
 - `docs/ROADMAP.md`: single forward backlog, priorities, gates, recent closeout state.
 - `docs/architecture/ARCHITECTURE.md`: current architecture and target boundaries.
 - `docs/SPECS.md`: current product/API capability contract.
 - `docs/MEDICAL_DATA_PLAN.md`: current clinical-data and safety contract.
+- `docs/QUALITY_SCORING_POLICY.md`: canonical execution/adversarial scoring, caps, verification threshold and Perfection Pass.
 - `docs/TECHDEBT.md`: unresolved technical debt only.
 - `docs/MISTAKES.md`: reusable engineering lessons only.
 - `CLAUDE.md` / `AGENTS.md`: stable agent briefs, never session diaries.
@@ -87,9 +108,11 @@ A PR should state:
 2. what changed and why;
 3. safety/privacy impact;
 4. tests/checks run;
-5. any manual verification still required;
-6. which canonical docs must change at closeout;
-7. Builder identity/pass, applicable Reviewer verdict(s), and Release Certifier verdict.
+5. material-step Execution/Adversarial/retained scores, applicable caps and any discrepancy investigation;
+6. Perfection Pass result before VERIFIED;
+7. any manual verification still required;
+8. which canonical docs must change at closeout;
+9. Builder identity/pass, applicable Reviewer verdict(s), and Release Certifier verdict.
 
 Keep PRs focused. Large diffs are acceptable when a coherent cleanup cannot safely be split, but explain why.
 
