@@ -44,6 +44,15 @@ Rules:
 - **Risk:** oversized remaining surfaces increase regression cost and make isolated maintenance harder.
 - **Resolution:** continue decomposing oversized Flutter widgets/services in separate focused, behavior-preserving PRs with targeted regression tests and visual evidence where UI surfaces are touched.
 
+### TD-014 — Patient local app-lock / re-authentication is not IAmina-specific yet
+
+- **Severity:** HIGH BEFORE IDENTIFIABLE REAL-PATIENT RELEASE
+- **Status:** OPEN / SEPARATE FROM P5-4A LOCAL-FIRST AVAILABILITY
+- **Symptom / risk:** the corrected patient auth boundary stores an opaque installation id plus an explicit local-enrollment marker in platform secure storage and can reopen with zero network, but IAMINA does not yet enforce its own biometric/passkey/PIN re-authentication gate before exposing the enrolled local profile. Current protection therefore inherits the physical device / OS / browser-profile access boundary.
+- **Why this remains debt:** local-first continuity and strong local user authentication are separate properties. Reintroducing Django/Vercel verification at boot would fix neither the stolen-device problem nor the local-first availability requirement; inventing a locally hashed PIN without an approved KDF/passkey/biometric design would create a weaker pseudo-authentication scheme.
+- **Evidence:** `frontend/lib/services/auth_service.dart`
+- **Canonical dependency:** P5-4A may close once local-first enrollment/reopen is proved; **real-patient release remains blocked on a separately reviewed strong local app-lock/re-authentication design** before identifiable patient data is allowed.
+
 ## Documentation closeout rule
 
 After every merged task/phase:
