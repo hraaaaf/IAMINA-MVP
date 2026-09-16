@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:http/http.dart' as http;
 
@@ -12,6 +13,12 @@ import 'auth_service.dart';
 const String companionApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'http://localhost:8000',
+);
+
+typedef CompanionFailureLogger = void Function(
+  String operation,
+  String errorType,
+  StackTrace stackTrace,
 );
 
 class CompanionChatReply {
@@ -38,13 +45,28 @@ class CompanionService {
   final AuthService _authService;
   final http.Client _http;
   final String baseUrl;
+  final CompanionFailureLogger _failureLogger;
 
   CompanionService({
     AuthService? authService,
     http.Client? httpClient,
     this.baseUrl = companionApiBaseUrl,
+    CompanionFailureLogger? failureLogger,
   }) : _authService = authService ?? AuthService(),
-       _http = httpClient ?? http.Client();
+       _http = httpClient ?? http.Client(),
+       _failureLogger = failureLogger ?? _defaultFailureLogger;
+
+  static void _defaultFailureLogger(
+    String operation,
+    String errorType,
+    StackTrace stackTrace,
+  ) {
+    developer.log(
+      'Safe companion fallback invoked for $errorType.',
+      name: 'iamina.companion.$operation',
+      stackTrace: stackTrace,
+    );
+  }
 
   Future<CompanionOverview?> fetchOverview() async {
     try {
@@ -60,7 +82,12 @@ class CompanionService {
       final decoded = jsonDecode(response.body);
       if (decoded is! Map) return null;
       return CompanionOverview.fromJson(Map<String, dynamic>.from(decoded));
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _failureLogger(
+        'fetch_overview',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
       return null;
     }
   }
@@ -79,7 +106,12 @@ class CompanionService {
       final decoded = jsonDecode(response.body);
       if (decoded is! Map) return null;
       return ProactivePreview.fromJson(Map<String, dynamic>.from(decoded));
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _failureLogger(
+        'fetch_proactive_preview',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
       return null;
     }
   }
@@ -98,7 +130,12 @@ class CompanionService {
       final decoded = jsonDecode(response.body);
       if (decoded is! Map) return null;
       return CompanionNextAction.fromJson(Map<String, dynamic>.from(decoded));
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _failureLogger(
+        'evaluate_next_action',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
       return null;
     }
   }
