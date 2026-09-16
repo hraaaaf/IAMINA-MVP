@@ -2,7 +2,7 @@
 
 > **Authority:** this is the single canonical forward tracker for IAMINA. If an issue, PR body, handover, assessment, AGENTS note, architecture note or historical phase document conflicts with this file on current status, priority or next work, **this file wins**. Historical documents remain evidence only.
 >
-> **Global audit:** 2026-09-16, reconciled against `main@c8b17637453734e5596979b8e8053d026954e451`, P5-6 release-gate evidence, #318/#320, `docs/TECHDEBT.md`, and the clarified local-first runtime boundary. The last explicitly frozen P5-6 candidate is `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`; later runtime/code changes mean it is retained as historical freeze evidence only, not as the current release candidate. The predecessor `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` remains the last exact **remote development/certification** deployment proof. Vercel/Django/Neon is not the patient production runtime. No current release candidate exists until an explicit re-freeze is performed when the pre-real-patient gate is reactivated.
+> **Global audit:** 2026-09-16, reconciled against `main@c9f1046689af1f8e7173929e93f1f6025e205b1d`, P5-6 release-gate evidence, #318/#320, `docs/TECHDEBT.md`, and the clarified local-first runtime boundary. The last explicitly frozen P5-6 candidate is `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`; later runtime/code changes mean it is retained as historical freeze evidence only, not as the current release candidate. The predecessor `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` remains the last exact **remote development/certification** deployment proof. Vercel/Django/Neon is not the patient production runtime. No current release candidate exists until an explicit re-freeze is performed when the pre-real-patient gate is reactivated.
 >
 > **Canonical global progress:** **5/12 atomic roadmap lots CLOSED = 41.7%** while the reproduced P5-4A offline-auth regression is under remediation. Atomic denominator: P5-0, P5-1, P5-2, P5-3, P5-4A, P5-4B, P5-5, P5-6 consent evidence engineering, P5-6A, P5-6B, P5-7, P5-8. Closed atoms currently retained: P5-0, P5-1, P5-2, P5-5 and P5-6 consent evidence engineering. P5-4A returns to CLOSED only after the local-first auth remediation is proved green and merged. The P5 whole-lot metric remains **4/9 = 44.4%** and retained MENA remains **32/38 = 84.2%** for their narrower scopes.
 >
@@ -40,7 +40,7 @@ Ship one safe, measurable Morocco/MENA diabetes-companion PWA pilot, collect rea
 | Clinical Data Layer & Privacy foundation | ✅ MERGED | residual privacy debt remains under `docs/TECHDEBT.md` |
 | Companion intelligence / proactive lifecycle | ✅ CLOSED through current convergence | no active forward feature lot |
 | CGM gateway V1/V1.1/V2/V2.1 | ✅ CLOSED | physical-sensor evidence remains external if later claimed |
-| P4-FRUGAL PRE-PILOT | ✅ CLOSED 10/10 | real pilot economics belong to P5-7 |
+| P4-FRUGAL PRE-PILOT | ✅ CLOSED 10.0/10 | real pilot economics belong to P5-7 |
 | MENA retained tracker | 🟡 32/38 = 84.2% | informational only |
 | P5 whole-lot tracker | 🟡 4/9 = 44.4% | active program |
 | P5-4A offline packaging | 🟡 REGRESSION_OPEN / AUTH_LOCAL_FIRST_REMEDIATION | prove first enrollment + reopen local-first and truthful UI before re-closing |
@@ -372,7 +372,7 @@ No Vercel deployment is authorized by this execution order.
 ## Current canonical snapshot
 
 - repo: `hraaaaf/IAMINA-MVP`
-- main reconciled for this lot: `c8b17637453734e5596979b8e8053d026954e451`
+- main reconciled for this lot: `c9f1046689af1f8e7173929e93f1f6025e205b1d`
 - AUTH-LOCAL-FIRST remediation branch: `fix/auth-local-first-boundary-20260915` — exact-head CI/visual certification/merge pending, therefore P5-4A remains OPEN
 - last retained green engineering proof before this regression lot: `e307a70ed055688a4e509a25582ca72ff2169629`, post-merge CI #4292 SUCCESS
 - last explicitly frozen P5-6 SHA: `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b` — **historical freeze evidence, not current release candidate**
