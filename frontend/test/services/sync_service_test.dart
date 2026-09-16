@@ -87,4 +87,78 @@ void main() {
     verify(() => mockDb.markLogAsSynced(1)).called(1);       // log1 synced
     verify(() => mockDb.reportSyncFailure(2, 0)).called(1);  // log2 failed
   });
+
+  test('syncPendingLogs explicitly logs its safe error fallback', () async {
+    final failureEvents = <String>[];
+    syncService = SyncService(
+      mockDb,
+      mockApi,
+      failureLogger: (operation, errorType, stackTrace) {
+        failureEvents.add('$operation:$errorType');
+      },
+    );
+    when(() => mockDb.getPendingLogs()).thenAnswer((_) async => [testLog]);
+    when(() => mockApi.batchSyncLogs(any())).thenThrow(StateError('synthetic'));
+    when(() => mockDb.reportSyncFailure(any(), any())).thenAnswer((_) async => 1);
+
+    await syncService.syncPendingLogs();
+
+    expect(syncService.state.value, SyncUiState.error);
+    expect(syncService.isSyncing.value, isFalse);
+    expect(failureEvents, ['sync_pending_logs:StateError']);
+    verify(() => mockDb.reportSyncFailure(testLog.id, testLog.syncAttempts)).called(1);
+  });
+
+  test('malformed meal JSON uses typed fallback and remains syncable', () async {
+    final malformedLog = LogEntryData(
+      id: 3,
+      createdAt: DateTime.now(),
+      bloodSugar: 110,
+      clientUuid: 'test-uuid-malformed',
+      syncStatus: 'pending',
+      source: 'manual',
+      isSick: false,
+      isStressed: false,
+      isTired: false,
+      isActive: false,
+      ramadanMode: false,
+      syncAttempts: 0,
+      errorSync: false,
+      loggedAt: DateTime.now(),
+      mealItemsJson: '{',
+      mealPortionsJson: '[',
+    );
+    final failureEvents = <String>[];
+    syncService = SyncService(
+      mockDb,
+      mockApi,
+      failureLogger: (operation, errorType, stackTrace) {
+        failureEvents.add('$operation:$errorType');
+      },
+    );
+    var pendingReads = 0;
+    when(() => mockDb.getPendingLogs()).thenAnswer((_) async {
+      pendingReads += 1;
+      return pendingReads == 1 ? [malformedLog] : <LogEntryData>[];
+    });
+    when(() => mockApi.batchSyncLogs(any()))
+        .thenAnswer((_) async => ['test-uuid-malformed']);
+    when(() => mockDb.markLogAsSynced(any())).thenAnswer((_) async => 1);
+
+    await syncService.syncPendingLogs();
+
+    final batch = verify(
+      () => mockApi.batchSyncLogs(captureAny()),
+    ).captured.single as List<Map<String, dynamic>>;
+    expect(batch.single['meal_items'], isEmpty);
+    expect(batch.single['meal_portions'], isEmpty);
+    expect(
+      failureEvents,
+      containsAll(<String>[
+        'decode_meal_items:FormatException',
+        'decode_meal_portions:FormatException',
+      ]),
+    );
+    expect(syncService.state.value, SyncUiState.upToDate);
+  });
 }
