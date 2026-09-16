@@ -36,6 +36,9 @@ class AuthService extends ChangeNotifier {
   static const _localSessionKey = 'iamina_local_session_v1';
   static const _localSessionValue = 'enrolled';
   static const _localDeviceIdKey = 'iamina_local_device_id_v1';
+  static final RegExp _nativeBearerShape = RegExp(
+    r'^iamina\.[A-Za-z0-9_.-]+:[A-Za-z0-9]+:[A-Za-z0-9_-]+$',
+  );
 
   final FirebaseAuth? _firebaseAuth;
   final FlutterSecureStorage _storage;
@@ -89,6 +92,9 @@ class AuthService extends ChangeNotifier {
     );
   }
 
+  static bool _isExpectedNativeBearerShape(String? token) =>
+      token != null && _nativeBearerShape.hasMatch(token);
+
   static int get authEpoch => AuthEpoch.value;
 
   bool get isInitialized => _initialized;
@@ -110,7 +116,7 @@ class AuthService extends ChangeNotifier {
       _localSessionEnrolled =
           await _storage.read(key: _localSessionKey) == _localSessionValue;
       final storedToken = await _storage.read(key: _tokenKey);
-      if (storedToken != null && storedToken.startsWith('iamina.')) {
+      if (_isExpectedNativeBearerShape(storedToken)) {
         _nativeToken = storedToken;
         _remoteCredentialVerified = false;
         await _ensureLocalEnrollment();
@@ -311,7 +317,7 @@ class AuthService extends ChangeNotifier {
       throw StateError('Malformed authentication response');
     }
     final token = payload['access_token'];
-    if (token is! String || !token.startsWith('iamina.')) {
+    if (token is! String || !_isExpectedNativeBearerShape(token)) {
       throw StateError('Missing IAMINA access token');
     }
     await _storage.write(key: _tokenKey, value: token);
