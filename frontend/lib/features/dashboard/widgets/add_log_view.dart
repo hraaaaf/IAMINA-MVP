@@ -91,7 +91,6 @@ class AddLogSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final isDesktop = MediaQuery.sizeOf(context).width >= 1000;
     final isDark = AminaTheme.isDark(context);
 
