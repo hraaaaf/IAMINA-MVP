@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,12 +8,10 @@ import 'package:uuid/uuid.dart';
 import '../../../core/data/meal_food_catalog.dart';
 import '../../../core/data/nutrition_catalog.dart';
 import '../../../core/data/ramadan_context.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../data/drift/database.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../journal/widgets/meal_capture_panel.dart';
-import '../../journal/widgets/nutrition_portion_editor.dart';
 import '../../journal/widgets/post_save_receipt.dart';
+import 'add_log_view.dart';
 
 /// Deterministic entry-safety classification for a single normalized reading.
 ///
@@ -72,13 +68,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
   bool _badSleep = false;
   PostSaveReceiptData? _savedReceipt;
 
-  static const List<String> _glycemicContexts = <String>[
-    'fasting',
-    'pre_meal',
-    'post_meal',
-    'other',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -125,8 +114,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
     final profile = context.watch<PatientProfileData?>();
     final unit = profile?.unitPreference ?? 'mg/dL';
     final l10n = AppLocalizations.of(context)!;
-    final isDesktop = MediaQuery.sizeOf(context).width >= 1000;
-    final isDark = AminaTheme.isDark(context);
 
     final savedReceipt = _savedReceipt;
     if (savedReceipt != null) {
@@ -139,328 +126,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
       );
     }
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
-        if (await _confirmLeave(l10n) && mounted) _close();
-      },
-      child: DecoratedBox(
-        key: const Key('add-log-ambient-backdrop'),
-        decoration: BoxDecoration(
-          color: AminaTheme.bg(context),
-          gradient: isDark
-              ? null
-              : const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: <Color>[
-                    Color(0xFFF8FBFA),
-                    Color(0xFFF0F7F5),
-                    Color(0xFFF7FAF9),
-                  ],
-                  stops: <double>[0, 0.62, 1],
-                ),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: <Widget>[
-              SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 112),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1080),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        if (!widget.isPage) ...<Widget>[
-                          _header(l10n),
-                          const SizedBox(height: 22),
-                        ],
-                        if (isDesktop)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Expanded(
-                                flex: 6,
-                                child: _primaryEvent(
-                                  l10n,
-                                  unit,
-                                  profile?.aiConsentGivenAt != null,
-                                  profile,
-                                ),
-                              ),
-                              const SizedBox(width: 28),
-                              Expanded(flex: 4, child: _detailsCard(l10n)),
-                            ],
-                          )
-                        else ...<Widget>[
-                          _primaryEvent(
-                            l10n,
-                            unit,
-                            profile?.aiConsentGivenAt != null,
-                            profile,
-                          ),
-                          const SizedBox(height: 18),
-                          if (!_detailsExpanded)
-                            _detailsButton(l10n)
-                          else
-                            _detailsCard(l10n),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              PositionedDirectional(
-                start: 0,
-                end: 0,
-                bottom: 0,
-                child: _saveBar(db, unit, l10n),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _header(AppLocalizations l10n) => Row(
-    children: <Widget>[
-      IconButton(
-        tooltip: l10n.journalBack,
-        onPressed: () async {
-          if (await _confirmLeave(l10n) && mounted) _close();
-        },
-        icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-      ),
-      const SizedBox(width: 6),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              l10n.journalAddTitle,
-              style: TextStyle(
-                color: AminaTheme.textPrimary(context),
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              l10n.journalAddSubtitle,
-              style: TextStyle(
-                color: AminaTheme.textSecondary(context),
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ],
-  );
-
-  Widget _primaryEvent(
-    AppLocalizations l10n,
-    String unit,
-    bool canUsePhotoRecognition,
-    PatientProfileData? profile,
-  ) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: <Widget>[
-      _glucoseCard(l10n, unit),
-      const SizedBox(height: 18),
-      _measurementContext(l10n),
-      const SizedBox(height: 18),
-      _mealCapture(l10n, canUsePhotoRecognition, profile),
-    ],
-  );
-
-  Widget _glucoseCard(AppLocalizations l10n, String unit) {
-    final mgdl = _mgdlGlucose(unit);
-    final isLow = mgdl != null && mgdl < 70;
-    final isDark = AminaTheme.isDark(context);
-    final radius = BorderRadius.circular(22);
-    final glassSurface = isDark
-        ? AminaTheme.darkCardElevated.withValues(alpha: 0.78)
-        : Colors.white.withValues(alpha: 0.68);
-    final glassBorder = isDark
-        ? AminaTheme.dark400.withValues(alpha: 0.22)
-        : Colors.white.withValues(alpha: 0.92);
-    final fieldSurface = isDark
-        ? AminaTheme.dark700.withValues(alpha: 0.54)
-        : Colors.white.withValues(alpha: 0.78);
-
-    return Semantics(
-      container: true,
-      label: l10n.journalGlucose,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: radius,
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: isLow
-                  ? const Color(0xFFF97316).withValues(alpha: 0.12)
-                  : AminaTheme.teal900.withValues(
-                      alpha: isDark ? 0.16 : 0.10,
-                    ),
-              blurRadius: 30,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: radius,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              key: const Key('glucose-glass-card'),
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 15),
-              decoration: BoxDecoration(
-                color: isLow
-                    ? const Color(0xFFFFF7ED).withValues(alpha: 0.94)
-                    : glassSurface,
-                borderRadius: radius,
-                border: Border.all(
-                  color: isLow ? const Color(0xFFF97316) : glassBorder,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  _sectionLabel(l10n.journalGlucose),
-                  const SizedBox(height: 10),
-                  TextField(
-                    key: const Key('glucose-input'),
-                    controller: _glucoseController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9,.]')),
-                    ],
-                    style: TextStyle(
-                      color: AminaTheme.textPrimary(context),
-                      fontSize: 44,
-                      fontWeight: FontWeight.w800,
-                      height: 1.0,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: '—',
-                      suffixIcon: Padding(
-                        padding: const EdgeInsetsDirectional.only(end: 16),
-                        child: Center(
-                          widthFactor: 1,
-                          child: Text(
-                            unit,
-                            key: const Key('glucose-unit'),
-                            style: TextStyle(
-                              color: AminaTheme.textSecondary(context),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                      suffixIconConstraints: const BoxConstraints(
-                        minWidth: 0,
-                        minHeight: 0,
-                      ),
-                      filled: true,
-                      fillColor: isLow
-                          ? Colors.white.withValues(alpha: 0.82)
-                          : fieldSurface,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 13,
-                      ),
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: AminaTheme.divider(context),
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: isLow
-                              ? const Color(0xFFF97316).withValues(alpha: 0.48)
-                              : AminaTheme.divider(context),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: isLow
-                              ? const Color(0xFFF97316)
-                              : AminaTheme.accent(context),
-                          width: 1.5,
-                        ),
-                      ),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  const SizedBox(height: 9),
-                  if (mgdl == null)
-                    Text(
-                      l10n.journalNoGlucoseAssumption,
-                      style: _glucoseHelperStyle(),
-                    )
-                  else if (isLow)
-                    Text(
-                      l10n.journalLowGlucoseDetected,
-                      style: const TextStyle(
-                        color: Color(0xFFC2410C),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        height: 1.4,
-                      ),
-                    )
-                  else
-                    Text(
-                      l10n.journalTargetNotInferred,
-                      style: _glucoseHelperStyle(),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _measurementContext(AppLocalizations l10n) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: <Widget>[
-      _sectionLabel(l10n.journalMeasurementContext),
-      const SizedBox(height: 5),
-      Text(l10n.journalContextHint, style: _helperStyle()),
-      const SizedBox(height: 11),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: _glycemicContexts.map((value) {
-          return ChoiceChip(
-            key: Key('glycemic-context-$value'),
-            label: Text(_contextLabel(l10n, value)),
-            selected: _glycemicContext == value,
-            onSelected: (selected) => setState(() {
-              _glycemicContext = selected ? value : null;
-            }),
-          );
-        }).toList(),
-      ),
-    ],
-  );
-
-  Widget _mealCapture(
-    AppLocalizations l10n,
-    bool canUsePhotoRecognition,
-    PatientProfileData? profile,
-  ) {
     final ramadanActive = isRamadanProfileDate(
       _selectedTime,
       profile?.ramadanStartDate,
@@ -471,298 +136,95 @@ class _AddLogSheetState extends State<AddLogSheet> {
       profile?.ramadanStartDate,
       profile?.ramadanEndDate,
     );
-    if (!_mealExpanded) {
-      return OutlinedButton.icon(
-        key: const Key('add-meal-button'),
-        onPressed: () => setState(() => _mealExpanded = true),
-        icon: const Icon(Icons.restaurant_outlined, size: 18),
-        label: Text('${l10n.journalAddMeal} · ${l10n.journalOptional}'),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(48),
-          alignment: AlignmentDirectional.center,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      );
-    }
 
-    return Container(
-      key: const Key('meal-section'),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AminaTheme.subtleBg(context),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AminaTheme.divider(context)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(child: _sectionLabel(l10n.journalMealOptional)),
-              TextButton(
-                onPressed: () => setState(() {
-                  _mealExpanded = false;
-                  _mealType = null;
-                  _selectedMealItemIds.clear();
-                  _mealPortionSelections.clear();
-                  _mealNoteController.clear();
-                }),
-                child: Text(l10n.journalRemoveMeal),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (ramadanActive) ...<Widget>[
-            Text(
-              l10n.journalRamadanMealVocabularyHint,
-              key: const Key('ramadan-meal-vocabulary-hint'),
-              style: _helperStyle(),
-            ),
-            const SizedBox(height: 10),
-          ],
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: mealTypes.map((value) {
-              return ChoiceChip(
-                key: Key('meal-type-$value'),
-                label: Text(_mealLabel(l10n, value)),
-                selected: _mealType == value,
-                onSelected: (selected) => setState(() {
-                  _mealType = selected ? value : null;
-                }),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-          MealCapturePanel(
-            selectedIds: _selectedMealItemIds,
-            canUsePhotoRecognition: canUsePhotoRecognition,
-            onChanged: (ids) => setState(() {
-              _selectedMealItemIds
-                ..clear()
-                ..addAll(ids);
-              _mealPortionSelections.removeWhere(
-                (foodId, _) => !ids.contains(foodId),
-              );
-            }),
-          ),
-          if (_selectedMealItemIds.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 16),
-            NutritionPortionEditor(
-              selectedFoodIds: _selectedMealItemIds,
-              selections: _mealPortionSelections,
-              onChanged: (next) => setState(() {
-                _mealPortionSelections
-                  ..clear()
-                  ..addAll(next);
-              }),
-            ),
-          ],
-          const SizedBox(height: 16),
-          TextField(
-            key: const Key('meal-note-input'),
-            controller: _mealNoteController,
-            minLines: 2,
-            maxLines: 4,
-            decoration: InputDecoration(
-              labelText: l10n.journalMealNoteLabel,
-              hintText: l10n.journalMealNoteHint,
-              border: const OutlineInputBorder(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _detailsButton(AppLocalizations l10n) => OutlinedButton.icon(
-    key: const Key('journal-details-button'),
-    onPressed: () => setState(() => _detailsExpanded = true),
-    icon: const Icon(Icons.tune_rounded, size: 18),
-    label: Text(_detailsLabel()),
-    style: OutlinedButton.styleFrom(
-      minimumSize: const Size.fromHeight(48),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    ),
-  );
-
-  String _detailsLabel() {
-    final code = Localizations.localeOf(context).languageCode;
-    if (code == 'ar') return 'تفاصيل: الوقت والسياق…';
-    if (code == 'en') return 'Details: time and context…';
-    return 'Détails : heure et contexte…';
-  }
-
-  Widget _detailsCard(AppLocalizations l10n) => Container(
-    key: const Key('journal-details-card'),
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      color: AminaTheme.subtleBg(context),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: AminaTheme.divider(context)),
-    ),
-    child: Column(
+    final primaryEvent = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Text(
-          l10n.journalDetailsTitle,
-          style: TextStyle(
-            color: AminaTheme.textPrimary(context),
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-          ),
+        AddLogGlucoseCard(
+          controller: _glucoseController,
+          unit: unit,
+          mgdl: _mgdlGlucose(unit),
+          onChanged: (_) => setState(() {}),
         ),
-        const SizedBox(height: 16),
-        _timeRow(l10n),
-        const SizedBox(height: 20),
-        _healthContext(l10n),
-      ],
-    ),
-  );
-
-  Widget _timeRow(AppLocalizations l10n) => InkWell(
-    borderRadius: BorderRadius.circular(14),
-    onTap: _pickDateTime,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-      decoration: BoxDecoration(
-        color: AminaTheme.bg(context),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AminaTheme.divider(context)),
-      ),
-      child: Row(
-        children: <Widget>[
-          const Icon(Icons.schedule_outlined, size: 18),
-          const SizedBox(width: 10),
-          Expanded(child: Text(_timeLabel(l10n))),
-          const Icon(Icons.edit_outlined, size: 16),
-        ],
-      ),
-    ),
-  );
-
-  Widget _healthContext(AppLocalizations l10n) {
-    final hasContext = _isSick || _isStressed || _isActive || _badSleep;
-    if (!_contextExpanded && !hasContext) {
-      return OutlinedButton.icon(
-        key: const Key('journal-context-button'),
-        onPressed: () => setState(() => _contextExpanded = true),
-        icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-        label: Text(
-          '${l10n.journalAdditionalContext} · ${l10n.journalOptional}',
+        const SizedBox(height: 18),
+        AddLogMeasurementContext(
+          selected: _glycemicContext,
+          onChanged: (value) => setState(() => _glycemicContext = value),
         ),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(48),
-          alignment: AlignmentDirectional.centerStart,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-      );
-    }
-    return Column(
-      key: const Key('journal-context-selector'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            Expanded(child: _sectionLabel(l10n.journalAdditionalContext)),
-            if (!hasContext)
-              TextButton(
-                onPressed: () => setState(() => _contextExpanded = false),
-                child: Text(l10n.cancel),
-              ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: <Widget>[
-            FilterChip(
-              key: const Key('context-illness'),
-              label: Text(l10n.journalSick),
-              selected: _isSick,
-              onSelected: (value) => setState(() => _isSick = value),
-            ),
-            FilterChip(
-              key: const Key('context-stress'),
-              label: Text(l10n.journalUnusualStress),
-              selected: _isStressed,
-              onSelected: (value) => setState(() => _isStressed = value),
-            ),
-            FilterChip(
-              key: const Key('context-activity'),
-              label: Text(l10n.journalPhysicalActivity),
-              selected: _isActive,
-              onSelected: (value) => setState(() => _isActive = value),
-            ),
-            FilterChip(
-              key: const Key('context-poor-sleep'),
-              label: Text(l10n.journalPoorSleep),
-              selected: _badSleep,
-              onSelected: (value) => setState(() => _badSleep = value),
-            ),
-          ],
+        const SizedBox(height: 18),
+        AddLogMealCapture(
+          expanded: _mealExpanded,
+          ramadanActive: ramadanActive,
+          mealTypes: mealTypes,
+          selectedMealType: _mealType,
+          selectedMealItemIds: _selectedMealItemIds,
+          mealPortionSelections: _mealPortionSelections,
+          mealNoteController: _mealNoteController,
+          canUsePhotoRecognition: profile?.aiConsentGivenAt != null,
+          onExpand: () => setState(() => _mealExpanded = true),
+          onRemove: () => setState(() {
+            _mealExpanded = false;
+            _mealType = null;
+            _selectedMealItemIds.clear();
+            _mealPortionSelections.clear();
+            _mealNoteController.clear();
+          }),
+          onMealTypeChanged: (value) => setState(() => _mealType = value),
+          onSelectedMealItemIdsChanged: (ids) => setState(() {
+            _selectedMealItemIds
+              ..clear()
+              ..addAll(ids);
+            _mealPortionSelections.removeWhere(
+              (foodId, _) => !ids.contains(foodId),
+            );
+          }),
+          onPortionsChanged: (next) => setState(() {
+            _mealPortionSelections
+              ..clear()
+              ..addAll(next);
+          }),
         ),
       ],
     );
-  }
 
-  Widget _sectionLabel(String text) => Text(
-    text,
-    style: TextStyle(
-      color: AminaTheme.textSecondary(context),
-      fontSize: 11,
-      fontWeight: FontWeight.w800,
-      letterSpacing: .55,
-    ),
-  );
+    final detailsCard = AddLogDetailsCard(
+      timeLabel: addLogTimeLabel(l10n, _selectedTime),
+      onPickDateTime: _pickDateTime,
+      contextExpanded: _contextExpanded,
+      isSick: _isSick,
+      isStressed: _isStressed,
+      isActive: _isActive,
+      badSleep: _badSleep,
+      onExpandContext: () => setState(() => _contextExpanded = true),
+      onCollapseContext: () => setState(() => _contextExpanded = false),
+      onSickChanged: (value) => setState(() => _isSick = value),
+      onStressedChanged: (value) => setState(() => _isStressed = value),
+      onActiveChanged: (value) => setState(() => _isActive = value),
+      onBadSleepChanged: (value) => setState(() => _badSleep = value),
+    );
 
-  TextStyle _helperStyle() => TextStyle(
-    color: AminaTheme.textSecondary(context),
-    fontSize: 12,
-    height: 1.4,
-  );
-
-  TextStyle _glucoseHelperStyle() => TextStyle(
-    color: AminaTheme.textSecondary(context),
-    fontSize: 11.5,
-    height: 1.35,
-  );
-
-  String _contextLabel(AppLocalizations l10n, String value) => switch (value) {
-    'fasting' => l10n.journalContextFasting,
-    'pre_meal' => l10n.journalContextPreMeal,
-    'post_meal' => l10n.journalContextPostMeal,
-    _ => l10n.journalContextOther,
-  };
-
-  String _mealLabel(AppLocalizations l10n, String value) => switch (value) {
-    'breakfast' => l10n.journalMealBreakfast,
-    'lunch' => l10n.journalMealLunch,
-    'dinner' => l10n.journalMealDinner,
-    'suhoor' => l10n.journalMealSuhoor,
-    'iftar' => l10n.journalMealIftar,
-    'other' => l10n.journalMealOther,
-    _ => l10n.journalMealSnack,
-  };
-
-  String _timeLabel(AppLocalizations l10n) {
-    final now = DateTime.now();
-    final sameDay =
-        _selectedTime.year == now.year &&
-        _selectedTime.month == now.month &&
-        _selectedTime.day == now.day;
-    final hh = _selectedTime.hour.toString().padLeft(2, '0');
-    final mm = _selectedTime.minute.toString().padLeft(2, '0');
-    if (sameDay) return '${l10n.journalToday} · $hh:$mm';
-    final dd = _selectedTime.day.toString().padLeft(2, '0');
-    final mo = _selectedTime.month.toString().padLeft(2, '0');
-    return '$dd/$mo · $hh:$mm';
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (await _confirmLeave(l10n) && mounted) _close();
+      },
+      child: AddLogSurface(
+        isPage: widget.isPage,
+        onBack: () async {
+          if (await _confirmLeave(l10n) && mounted) _close();
+        },
+        primaryEvent: primaryEvent,
+        detailsCard: detailsCard,
+        detailsExpanded: _detailsExpanded,
+        onShowDetails: () => setState(() => _detailsExpanded = true),
+        saveBar: AddLogSaveBar(
+          saving: _saving,
+          enabled: _hasValidGlucose,
+          onSave: () => _saveLog(db, unit, l10n),
+        ),
+      ),
+    );
   }
 
   Future<void> _pickDateTime() async {
@@ -796,86 +258,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
         _mealType = null;
       }
     });
-  }
-
-  Widget _saveBar(AppDatabase db, String unit, AppLocalizations l10n) {
-    final desktop = MediaQuery.sizeOf(context).width >= 1000;
-    final isDark = AminaTheme.isDark(context);
-    final surface = (isDark ? AminaTheme.darkPaper : Colors.white).withValues(
-      alpha: isDark ? 0.84 : 0.74,
-    );
-
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          key: const Key('save-log-glass-bar'),
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-          decoration: BoxDecoration(
-            color: surface,
-            border: Border(
-              top: BorderSide(
-                color: isDark
-                    ? AminaTheme.dark600.withValues(alpha: 0.58)
-                    : Colors.white.withValues(alpha: 0.92),
-              ),
-            ),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: AminaTheme.teal900.withValues(
-                  alpha: isDark ? 0.18 : 0.06,
-                ),
-                blurRadius: 24,
-                offset: const Offset(0, -8),
-              ),
-            ],
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1080),
-              child: Align(
-                alignment: desktop
-                    ? AlignmentDirectional.centerEnd
-                    : AlignmentDirectional.center,
-                child: SizedBox(
-                  width: desktop ? 280 : double.infinity,
-                  child: FilledButton.icon(
-                    key: const Key('save-log-button'),
-                    onPressed: _saving || !_hasValidGlucose
-                        ? null
-                        : () => _saveLog(db, unit, l10n),
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.check_rounded),
-                    label: Text(
-                      _saving ? l10n.journalSaving : l10n.journalSave,
-                    ),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(54),
-                      backgroundColor: AminaTheme.teal600,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: isDark
-                          ? AminaTheme.dark600
-                          : AminaTheme.ink200,
-                      disabledForegroundColor: isDark
-                          ? AminaTheme.dark300
-                          : AminaTheme.ink500,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   Future<bool> _confirmLowGlucose(double mgdl, AppLocalizations l10n) async {
@@ -954,11 +336,13 @@ class _AddLogSheetState extends State<AddLogSheet> {
       final receipt = PostSaveReceiptData(
         glucose: glucose,
         unit: unit,
-        timeLabel: _timeLabel(l10n),
+        timeLabel: addLogTimeLabel(l10n, _selectedTime),
         measurementContextLabel: _glycemicContext == null
             ? null
-            : _contextLabel(l10n, _glycemicContext!),
-        mealTypeLabel: _mealType == null ? null : _mealLabel(l10n, _mealType!),
+            : addLogContextLabel(l10n, _glycemicContext!),
+        mealTypeLabel: _mealType == null
+            ? null
+            : addLogMealLabel(l10n, _mealType!),
         additionalContextLabels: <String>[
           if (_isSick) l10n.journalSick,
           if (_isStressed) l10n.journalUnusualStress,
