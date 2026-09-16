@@ -8,11 +8,12 @@ This file is a **stable execution contract for coding agents**, not a session di
 2. `docs/COMPANION_INTELLIGENCE_CONTRACT.md` — patient-companion identity, authority ceiling and allowed suggestion classes.
 3. `docs/architecture/ARCHITECTURE.md` — current architecture + target boundaries.
 4. `docs/CONTRIBUTING.md` — workflow and non-negotiable guardrails.
-5. `docs/MISTAKES.md` — durable lessons.
-6. Relevant ADR/spec for the assigned unit.
-7. `.skills/lot-execution/SKILL.md` — mandatory LOT procedure.
-8. `.agents/README.md` — reviewer routing matrix.
-9. Every additional `.skills/*/SKILL.md` required by the touched surface.
+5. `docs/QUALITY_SCORING_POLICY.md` — mandatory Execution/Adversarial scoring, caps, VERIFIED threshold and Perfection Pass.
+6. `docs/MISTAKES.md` — durable lessons.
+7. Relevant ADR/spec for the assigned unit.
+8. `.skills/lot-execution/SKILL.md` — mandatory LOT procedure.
+9. `.agents/README.md` — reviewer routing matrix.
+10. Every additional `.skills/*/SKILL.md` required by the touched surface.
 
 Do not choose work from old phase numbers, archived plans, assessments, or stale commit notes.
 
@@ -94,7 +95,25 @@ Every roadmap LOT, P-level remediation unit, hotfix or governance change must us
 
 The Builder may not certify its own LOT. Prefer separate agents when orchestration supports them. If only one runtime/session is available, roles must still be executed as explicit isolated passes: the Reviewer must re-read evidence without relying on Builder conclusions, and the Certifier must independently re-check the final diff and exact-head evidence.
 
-For UX/UI LOTs, `.skills/ux-ui-certification/SKILL.md` is mandatory and a score **strictly above 9.0/10** is required. A score `<=9.0` keeps the LOT open.
+## Mandatory quality scoring
+
+`docs/QUALITY_SCORING_POLICY.md` is mandatory for every material step and every LOT.
+
+- Every material step receives both `EXECUTION_SCORE /10` and `ADVERSARIAL_SCORE /10`.
+- Retained score is the lower admissible value after all caps; never average the two scores.
+- The LOT score is the lowest retained material-step score.
+- A score gap `>0.5` requires investigation, affected remediation/evidence rerun, and rescore.
+- `10/10` is exceptional; `9.5+` requires a genuinely independent review.
+- Same executor + adversarial reviewer is capped at `9.4/10`.
+- Required red test or missing/stale proof caps at `7.9/10`.
+- Demonstrated regression caps at `6.9/10` until remediated and rerun.
+- Blocking security/privacy/data/clinical-claim finding caps at `5.9/10` and forces `BLOCKED`.
+- UI visual fidelity without real Target ↔ Render comparison is capped at `7.5/10`.
+- No weak critical dimension may be hidden by an average.
+- A LOT may be `VERIFIED` only at retained score `>=9.0/10` with all required binary gates green, no blocker, resolved score discrepancies, and the mandatory final Perfection Pass completed.
+- Even at `9.0+`, the Perfection Pass must identify remaining weaknesses, fix every materially improvable in-scope weakness, rerun affected evidence, and rescore before closure.
+
+For UX/UI LOTs, `.skills/ux-ui-certification/SKILL.md` is mandatory and must apply this scoring policy.
 
 Specialized skills are mandatory when their surface is touched:
 - clinical/medical/safety → `.skills/clinical-safety/SKILL.md`;
@@ -139,6 +158,7 @@ Additional expectations:
 - `SPECS.md` — current capability contract.
 - `TECHDEBT.md` — unresolved compromises only.
 - `MISTAKES.md` — reusable lessons only.
+- `QUALITY_SCORING_POLICY.md` — canonical material-step/LOT scoring and verification thresholds.
 - ADRs/timeline/assessments — historical record.
 
 ## Commit format
