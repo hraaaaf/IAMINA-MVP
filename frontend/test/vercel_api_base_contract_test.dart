@@ -45,6 +45,18 @@ void main() {
     );
   });
 
+  test('Vercel review build enables native account enrollment for hosted testing', () {
+    final source = File('vercel_build.sh').readAsStringSync();
+
+    expect(source, contains('IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true'));
+    expect(
+      source,
+      contains(
+        r'--dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT="${IAMINA_REMOTE_ACCOUNT_ENROLLMENT:-false}"',
+      ),
+    );
+  });
+
   test('Vercel build strips a legacy /api/v1 suffix defensively', () {
     final source = File('vercel_build.sh').readAsStringSync();
 
