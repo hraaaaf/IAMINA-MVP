@@ -125,13 +125,14 @@ void main() {
     expect(browserWorkflow, contains('Emulation.setDeviceMetricsOverride'));
     expect(browserWorkflow, contains('suspiciously small'));
     expect(browserWorkflow, contains('distinct renders'));
+    expect(browserWorkflow, contains('amina-chat'));
     expect(browserWorkflow, contains('iamina-ui-browser-cert-multi-viewport'));
     expect(browserWorkflow, contains('"390 844 true"'));
     expect(browserWorkflow, contains('"768 1024 false"'));
     expect(browserWorkflow, contains('"1280 900 false"'));
     expect(
       browserWorkflow,
-      contains(r'test "$total" -eq 45'.replaceAll(r'\"', '"')),
+      contains(r'test "$total" -eq 48'.replaceAll(r'\"', '"')),
     );
   });
 }
