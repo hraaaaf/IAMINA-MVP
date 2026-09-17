@@ -25,6 +25,7 @@ def _import_vercel_settings(
     cors_origins: str = "https://iamina-review.vercel.app",
     csrf_origins: str = "https://iamina-review.vercel.app",
     vercel_env: str = "production",
+    iamina_env: str = "production",
     email_overrides: dict[str, str | None] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
@@ -40,6 +41,7 @@ def _import_vercel_settings(
             "VERCEL": "1",
             "VERCEL_ENV": vercel_env,
             "VERCEL_URL": "iamina-certified.vercel.app",
+            "IAMINA_ENV": iamina_env,
             "EMAIL_BACKEND": "django.core.mail.backends.smtp.EmailBackend",
             "EMAIL_HOST": "smtp.example.test",
             "EMAIL_PORT": "587",
@@ -143,6 +145,26 @@ def test_vercel_preview_can_boot_without_smtp_settings():
     result = _import_vercel_settings(
         "postgresql://user:pass@127.0.0.1:5432/iamina",
         vercel_env="preview",
+        email_overrides={
+            "EMAIL_BACKEND": None,
+            "EMAIL_HOST": None,
+            "EMAIL_PORT": None,
+            "EMAIL_HOST_USER": None,
+            "EMAIL_HOST_PASSWORD": None,
+            "DEFAULT_FROM_EMAIL": None,
+            "PASSWORD_RESET_FRONTEND_URL": None,
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "django.db.backends.postgresql" in result.stdout
+
+
+def test_vercel_production_target_can_boot_as_iamina_dev_without_smtp_settings():
+    result = _import_vercel_settings(
+        "postgresql://user:pass@127.0.0.1:5432/iamina",
+        vercel_env="production",
+        iamina_env="development",
         email_overrides={
             "EMAIL_BACKEND": None,
             "EMAIL_HOST": None,
