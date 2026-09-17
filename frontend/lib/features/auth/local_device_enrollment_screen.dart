@@ -27,7 +27,7 @@ class _LocalDeviceEnrollmentScreenState
     });
     try {
       await context.read<AuthService>().enrollLocalDevice();
-      if (mounted) context.go('/onboarding');
+      if (mounted) context.go('/app-lock/setup');
     } catch (_) {
       if (mounted) {
         setState(

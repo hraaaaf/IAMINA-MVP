@@ -12,6 +12,7 @@ import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'routes/app_router.dart';
 import 'services/api_client.dart';
+import 'services/app_lock_service.dart';
 import 'services/audit_access_policy.dart';
 import 'services/auth_service.dart';
 import 'services/consent_evidence_store.dart';
@@ -21,6 +22,31 @@ import 'services/locale_preference_service.dart';
 import 'services/modules_provider.dart';
 import 'services/offline_demo_audit_seed.dart';
 import 'services/sync_service.dart';
+
+Future<bool> _hasProtectedLocalState({
+  required AppDatabase db,
+  required AuthService authService,
+  required bool auditAllowed,
+}) async {
+  if (!auditAllowed && authService.isAuthenticated) return true;
+
+  if (await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull() != null) {
+    return true;
+  }
+  if (await (db.select(db.logEntries)..limit(1)).getSingleOrNull() != null) {
+    return true;
+  }
+  if (await (db.select(db.chatMessages)..limit(1)).getSingleOrNull() != null) {
+    return true;
+  }
+  if (await (db.select(db.medicationEvents)..limit(1)).getSingleOrNull() != null) {
+    return true;
+  }
+  if (await (db.select(db.reminders)..limit(1)).getSingleOrNull() != null) {
+    return true;
+  }
+  return false;
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +84,17 @@ Future<void> main() async {
   if (auditAllowed) {
     authService.enterAuditSession();
   }
+
+  final appLockService = AppLockService(
+    authService: authService,
+    protectedLocalStateProbe: () => _hasProtectedLocalState(
+      db: db,
+      authService: authService,
+      auditAllowed: auditAllowed,
+    ),
+  );
+  await appLockService.initialize();
+
   await seedOfflineDemoAuditData(
     db,
     auditAllowed: auditAllowed,
@@ -76,6 +113,7 @@ Future<void> main() async {
   final routerHolder = createAppRouterHolder(
     authService: authService,
     consentService: consentService,
+    appLockService: appLockService,
   );
 
   runApp(
@@ -83,6 +121,7 @@ Future<void> main() async {
       providers: [
         Provider<AppDatabase>.value(value: db),
         ChangeNotifierProvider<AuthService>.value(value: authService),
+        ChangeNotifierProvider<AppLockService>.value(value: appLockService),
         Provider<ApiClient>.value(value: apiClient),
         Provider<SyncService>.value(value: syncService),
         Provider<ConsentEvidenceStore>.value(value: consentEvidenceStore),
@@ -101,20 +140,58 @@ Future<void> main() async {
           create: (_) => TweaksNotifier(),
         ),
       ],
-      child: AminaApp(router: routerHolder.router),
+      child: AminaApp(
+        router: routerHolder.router,
+        appLockService: appLockService,
+      ),
     ),
   );
 }
 
 class AminaApp extends StatefulWidget {
   final GoRouter router;
-  const AminaApp({super.key, required this.router});
+  final AppLockService appLockService;
+
+  const AminaApp({
+    super.key,
+    required this.router,
+    required this.appLockService,
+  });
 
   @override
   State<AminaApp> createState() => _AminaAppState();
 }
 
-class _AminaAppState extends State<AminaApp> {
+class _AminaAppState extends State<AminaApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+        widget.appLockService.noteBackgrounded();
+      case AppLifecycleState.resumed:
+        widget.appLockService.noteResumed();
+      case AppLifecycleState.detached:
+        widget.appLockService.noteDetached();
+      case AppLifecycleState.inactive:
+        // Authentication/system UI can make the app temporarily inactive.
+        // Do not lock on this transient state.
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tweaks = context.watch<TweaksNotifier>();
