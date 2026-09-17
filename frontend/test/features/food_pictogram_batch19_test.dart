@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:iamina/core/data/meal_food_catalog.dart';
-import 'package:iamina/features/journal/widgets/food_pictogram_painter_batch19.dart';
+import 'package:amina/core/data/meal_food_catalog.dart';
+import 'package:amina/features/journal/widgets/food_pictogram_painter_batch19.dart';
 
 void main(){
  const ids=<String>['qatari_saloona','qatari_margoog','qatari_sago'];
