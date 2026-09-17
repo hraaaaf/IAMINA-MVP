@@ -1,27 +1,31 @@
-# IAMINA Daily Food Catalog Pipeline
+# IAMINA Hourly Food Catalog Pipeline
 
 Status: ACTIVE PROTOCOL — human merge required
 
 ## Goal
 
-Continuously enrich the IAMINA FoodPicker catalog with a small number of culturally verified MENA foods every day, without degrading catalog quality, historical ordering, UI clarity, or validated behavior.
+Continuously enrich the IAMINA FoodPicker catalog with small, culturally verified MENA food batches on an hourly operating cadence, without degrading catalog quality, historical ordering, UI clarity, or validated behavior.
 
 ## Observable success
 
-A daily run is successful only when it produces either:
+An hourly cycle is successful only when it produces either:
 
 1. a verified PR containing a coherent new food batch with all required evidence; or
-2. an explicit no-op / blocked report explaining why no safe batch should be created that day.
+2. an explicit no-op / blocked report explaining why no safe batch should be created during that cycle.
 
-A run is never successful merely because candidates were generated.
+A cycle is never successful merely because candidates were generated.
 
-## Daily cadence
+## Hourly cadence
 
-Target: 1 run per day.
+Target: 1 pipeline cycle per hour.
 
 Default batch size: 3–10 new food concepts.
 
-Do not create a second concurrent food-catalog batch while a previous food-catalog PR is still open, failing, awaiting remediation, or awaiting human merge approval. Continue the existing lot first.
+An hourly cycle does not mean a batch must be forced every hour. Quality and evidence remain mandatory. If fewer than 3 strong non-duplicate candidates pass the acceptance gate, return a no-op / blocked result for that cycle.
+
+Never create a second concurrent food-catalog batch while a previous food-catalog PR is still open, failing, in CI, awaiting remediation, or awaiting human merge approval. Continue the existing lot first.
+
+A merged lot frees the next hourly cycle to start a new lot from the then-current main, provided the candidate and source gates are satisfied.
 
 ## Geographic strategy
 
@@ -51,7 +55,7 @@ Every candidate must pass all gates below before implementation:
 - clean FR / EN / AR labels available;
 - no trademark-dependent naming when a generic food concept is more appropriate.
 
-If provenance remains ambiguous after verification, reject the candidate for that run.
+If provenance remains ambiguous after verification, reject the candidate for that cycle.
 
 ## Source policy
 
@@ -79,13 +83,13 @@ Each accepted concept must define:
 - regional/provenance note when useful;
 - visual/pictogram route.
 
-Do not silently recategorize existing foods as part of a daily append batch unless a demonstrated defect requires it.
+Do not silently recategorize existing foods as part of an hourly append batch unless a demonstrated defect requires it.
 
 Cuisine-specific categories must remain semantically clear. In particular, Gulf foods must not visually appear to belong to Cuisine marocaine, and vice versa.
 
 ## Append-only / non-regression policy
 
-Daily batches should be append-only whenever possible.
+Hourly batches should be append-only whenever possible.
 
 Preserve the previously certified catalog entries and ordering byte-for-byte where the architecture allows it.
 
@@ -97,7 +101,7 @@ Any required refactor must be minimal, documented, and separately justified.
 
 Every added concept must receive a native FoodPicker pictogram through the current painter architecture.
 
-Generic fallback is not an acceptable final representation for an accepted daily concept.
+Generic fallback is not an acceptable final representation for an accepted concept.
 
 Pictograms must remain visually distinguishable at the FoodPicker rendering size and should reflect the concept without relying on text inside the art.
 
@@ -165,7 +169,7 @@ For UI browser certification:
 
 ## Branch and PR contract
 
-One daily lot = one dedicated branch / PR.
+One hourly lot = one dedicated branch / PR.
 
 The PR must contain:
 
@@ -183,7 +187,7 @@ The PR must contain:
 
 ## Human gate
 
-NEVER auto-merge a daily food PR.
+NEVER auto-merge an hourly food PR.
 
 Human approval is mandatory after the user has been shown the principal certified screenshot and the exact evidence state.
 
@@ -218,7 +222,7 @@ After merge:
 
 Do not force a batch when quality is insufficient.
 
-A daily run should stop without a PR when:
+An hourly cycle should stop without a new PR when:
 
 - fewer than 3 good non-duplicate candidates pass provenance gates;
 - credible sources disagree materially;
@@ -232,7 +236,7 @@ A no-op with evidence is better than low-quality catalog growth.
 
 No Vercel deployment is part of this pipeline unless explicitly authorized by the user.
 
-## Daily report format
+## Hourly report format
 
 Result → proof → next action.
 
