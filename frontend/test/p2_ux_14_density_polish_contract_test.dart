@@ -8,7 +8,7 @@ void main() {
   test(
     'summary degraded state preserves a focal wide composition without harming mobile',
     () {
-      final source = _read('lib/features/journal/ai_summary_screen.dart');
+      final source = _read('lib/features/journal/ai_summary_screen_presentation.dart');
       expect(source, contains('constraints.maxWidth >= 720'));
       expect(source, contains('AlignmentDirectional.topStart'));
       expect(source, contains('maxWidth: isWide ? 960 : 520'));

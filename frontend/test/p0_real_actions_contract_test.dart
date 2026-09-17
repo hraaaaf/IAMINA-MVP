@@ -9,6 +9,7 @@ const _patientFacingSources = <String>[
   'lib/features/dashboard/widgets/add_log_view.dart',
   'lib/features/journal/journal_screen.dart',
   'lib/features/journal/ai_summary_screen.dart',
+  'lib/features/journal/ai_summary_screen_presentation.dart',
   'lib/features/journal/edit_log_screen.dart',
   'lib/features/import/import_screen.dart',
   'lib/features/profile/profile_screen.dart',
@@ -111,9 +112,11 @@ void main() {
 
   test('summary contains no fallback dose or basal adjustment advice', () {
     final summary = _read('lib/features/journal/ai_summary_screen.dart');
+    final presentation =
+        _read('lib/features/journal/ai_summary_screen_presentation.dart');
     final localizedCopy =
         _read('lib/core/localization/ai_summary_localized_copy.dart');
-    final combined = '$summary\n$localizedCopy';
+    final combined = '$summary\n$presentation\n$localizedCopy';
     const forbidden = <String>[
       'Diviser la dose repas glucidique',
       'Fractionner bolus avant et après le repas',
@@ -131,10 +134,10 @@ void main() {
         reason: 'Forbidden UI contract: $phrase',
       );
     }
-    expect(summary, contains('l10n.discussionPoints'));
-    expect(summary, contains('l10n.discussionSuggestion(card.action)'));
+    expect(combined, contains('l10n.discussionPoints'));
+    expect(combined, contains('l10n.discussionSuggestion(card.action)'));
     expect(localizedCopy, contains('POINTS À DISCUTER'));
     expect(localizedCopy, contains('Piste à discuter :'));
-    expect(summary, contains('onDiscoverTap: _scrollToInsights'));
+    expect(combined, contains('onDiscoverTap: _scrollToInsights'));
   });
 }

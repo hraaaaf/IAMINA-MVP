@@ -4,6 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
+String _readSummaryLibrary() => [
+  _read('lib/features/journal/ai_summary_screen.dart'),
+  _read('lib/features/journal/ai_summary_screen_presentation.dart'),
+].join('\n');
+
 void main() {
   test('shared first-use panel is directional, semantic and action safe', () {
     final source = _read('lib/core/widgets/first_use_panel.dart');
@@ -96,7 +101,7 @@ void main() {
   });
 
   test('summary distinguishes no local data from a retrieval failure', () {
-    final source = _read('lib/features/journal/ai_summary_screen.dart');
+    final source = _readSummaryLibrary();
     expect(source, contains('final count = await db.countLogs()'));
     expect(source, contains('_hasLocalLogs = count > 0'));
     expect(source, contains('_hasLocalLogs == false'));

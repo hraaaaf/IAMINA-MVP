@@ -36,7 +36,10 @@ void main() {
   );
 
   test('certified offline IAmina states are localized', () {
-    final source = _read('lib/features/journal/ai_summary_screen.dart');
+    final source = [
+      _read('lib/features/journal/ai_summary_screen.dart'),
+      _read('lib/features/journal/ai_summary_screen_presentation.dart'),
+    ].join('\n');
     expect(source, contains('analysisLoadError'));
     expect(source, contains('analysisLoading'));
     expect(source, contains('analysisLoadingWait'));
