@@ -20,6 +20,7 @@ import 'features/documents/document_import_premium_screen.dart';
 import 'features/import/import_screen.dart';
 import 'features/journal/add_log_screen.dart';
 import 'features/journal/ai_summary_screen.dart';
+import 'features/journal/widgets/amina_chat_view.dart';
 import 'features/journal/journal_screen.dart';
 import 'features/journal/widgets/food_pictogram_audit_fixture.dart';
 import 'features/journal/widgets/meal_capture_panel.dart';
@@ -229,6 +230,15 @@ class _BrowserAuditApp extends StatelessWidget {
           builder: (context, state) => const CompanionPremiumScreen(),
         ),
         GoRoute(
+          path: '/amina-chat',
+          builder: (context, state) => Scaffold(
+            backgroundColor: AminaTheme.bg(context),
+            body: SafeArea(
+              child: AminaChatView(onClose: () {}),
+            ),
+          ),
+        ),
+        GoRoute(
           path: '/trend',
           builder: (context, state) => const _BrowserTrendSurface(),
         ),
@@ -281,6 +291,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'medications' => '/medications',
   'reminders' => '/reminders',
   'companion' => '/companion',
+  'amina-chat' => '/amina-chat',
   'trend' => '/trend',
   'kpi' => '/kpi',
   'insight' => '/insight',
