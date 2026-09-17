@@ -24,6 +24,7 @@ def _import_vercel_settings(
     *,
     cors_origins: str = "https://iamina-review.vercel.app",
     csrf_origins: str = "https://iamina-review.vercel.app",
+    vercel_env: str = "production",
     email_overrides: dict[str, str | None] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
@@ -37,6 +38,7 @@ def _import_vercel_settings(
             "CORS_ALLOWED_ORIGINS": cors_origins,
             "CSRF_TRUSTED_ORIGINS": csrf_origins,
             "VERCEL": "1",
+            "VERCEL_ENV": vercel_env,
             "VERCEL_URL": "iamina-certified.vercel.app",
             "EMAIL_BACKEND": "django.core.mail.backends.smtp.EmailBackend",
             "EMAIL_HOST": "smtp.example.test",
@@ -114,7 +116,7 @@ def test_vercel_settings_reject_non_https_csrf_origin():
     assert "CSRF_TRUSTED_ORIGINS must contain only valid HTTPS origins" in result.stderr
 
 
-def test_vercel_settings_fail_closed_without_email_host():
+def test_vercel_settings_fail_closed_without_email_host_in_production():
     result = _import_vercel_settings(
         "postgresql://user:pass@127.0.0.1:5432/iamina",
         email_overrides={"EMAIL_HOST": None},
@@ -125,7 +127,7 @@ def test_vercel_settings_fail_closed_without_email_host():
     assert "EMAIL_HOST" in result.stderr
 
 
-def test_vercel_settings_reject_non_smtp_email_backend():
+def test_vercel_settings_reject_non_smtp_email_backend_in_production():
     result = _import_vercel_settings(
         "postgresql://user:pass@127.0.0.1:5432/iamina",
         email_overrides={
@@ -135,6 +137,25 @@ def test_vercel_settings_reject_non_smtp_email_backend():
 
     assert result.returncode != 0
     assert "requires SMTP EMAIL_BACKEND" in result.stderr
+
+
+def test_vercel_preview_can_boot_without_smtp_settings():
+    result = _import_vercel_settings(
+        "postgresql://user:pass@127.0.0.1:5432/iamina",
+        vercel_env="preview",
+        email_overrides={
+            "EMAIL_BACKEND": None,
+            "EMAIL_HOST": None,
+            "EMAIL_PORT": None,
+            "EMAIL_HOST_USER": None,
+            "EMAIL_HOST_PASSWORD": None,
+            "DEFAULT_FROM_EMAIL": None,
+            "PASSWORD_RESET_FRONTEND_URL": None,
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "django.db.backends.postgresql" in result.stdout
 
 
 def test_vercel_settings_accept_postgres_without_connecting():

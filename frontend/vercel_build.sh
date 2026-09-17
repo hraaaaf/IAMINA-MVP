@@ -19,7 +19,18 @@ flutter pub get
 IAMINA_REVIEW_VERCEL_PROJECT_ID="prj_AYaUi32KTDHak8I7dmdQpDrqd8SI"
 IAMINA_CERTIFIED_API_BASE_URL="https://iamina-certified.vercel.app"
 
-if [ -z "${API_BASE_URL:-}" ] && [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
+# Fail closed on Vercel if this Flutter build is ever invoked by another
+# project. This prevents the certified backend project from accidentally
+# publishing the Flutter SPA when its Root Directory is misconfigured.
+if [ -n "${VERCEL_PROJECT_ID:-}" ] && [ "$VERCEL_PROJECT_ID" != "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
+  echo "ERROR: refusing Flutter build for Vercel project $VERCEL_PROJECT_ID; expected $IAMINA_REVIEW_VERCEL_PROJECT_ID" >&2
+  exit 64
+fi
+
+# The review project has one canonical backend origin. Always override any
+# stale project-level API_BASE_URL (for example one ending in /api/v1), because
+# Flutter services append their own /api/v1 paths.
+if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
   API_BASE_URL="$IAMINA_CERTIFIED_API_BASE_URL"
 fi
 

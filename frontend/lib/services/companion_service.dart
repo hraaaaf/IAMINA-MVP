@@ -10,10 +10,7 @@ import '../data/models/proactive_preview_models.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
 
-const String companionApiBaseUrl = String.fromEnvironment(
-  'API_BASE_URL',
-  defaultValue: 'http://localhost:8000',
-);
+const String companionApiBaseUrl = kBaseUrl;
 
 typedef CompanionFailureLogger = void Function(
   String operation,

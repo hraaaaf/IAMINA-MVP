@@ -21,4 +21,50 @@ void main() {
       ),
     );
   });
+
+  test('Vercel review build overrides stale project-level API_BASE_URL', () {
+    final source = File('vercel_build.sh').readAsStringSync();
+
+    expect(
+      source,
+      contains(
+        r'if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then',
+      ),
+    );
+    expect(
+      source,
+      contains(r'API_BASE_URL="$IAMINA_CERTIFIED_API_BASE_URL"'),
+    );
+    expect(
+      source,
+      isNot(
+        contains(
+          r'if [ -z "${API_BASE_URL:-}" ] && [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then',
+        ),
+      ),
+    );
+  });
+
+  test('Vercel Flutter build fails closed outside the review project', () {
+    final source = File('vercel_build.sh').readAsStringSync();
+
+    expect(
+      source,
+      contains(
+        r'if [ -n "${VERCEL_PROJECT_ID:-}" ] && [ "$VERCEL_PROJECT_ID" != "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then',
+      ),
+    );
+    expect(
+      source,
+      contains('ERROR: refusing Flutter build for Vercel project'),
+    );
+    expect(source, contains('exit 64'));
+  });
+
+  test('CompanionService reuses the canonical frontend API origin', () {
+    final source = File('lib/services/companion_service.dart').readAsStringSync();
+
+    expect(source, contains('const String companionApiBaseUrl = kBaseUrl;'));
+    expect(source, isNot(contains("String.fromEnvironment(\n  'API_BASE_URL'")));
+  });
 }

@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:developer' as developer;
+
 import 'package:drift/drift.dart' as drift;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +20,8 @@ class OnboardingChatScreen extends StatefulWidget {
 }
 
 class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
+  static const _persistenceTimeout = Duration(seconds: 10);
+
   String? _language;
   String? _country;
   String? _tone;
@@ -45,29 +50,58 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         _treatment == null) {
       return;
     }
+
     setState(() => _saving = true);
-    final localeService = context.read<LocalePreferenceService>();
-    await localeService.setExperience(
-      language: _language!,
-      country: _country!,
-      tone: _tone!,
-    );
-    if (!mounted) return;
-    final db = context.read<AppDatabase>();
-    final firebaseUser = FirebaseAuth.instance.currentUser;
-    final userId = firebaseUser?.uid.hashCode.abs() ?? 1;
-    final profile = PatientProfilesCompanion.insert(
-      userId: drift.Value(userId),
-      preferredLanguage: drift.Value(_language!),
-      updatedAt: DateTime.now(),
-      diabetesType: drift.Value(_diabetesType!),
-      treatment: drift.Value(_treatment!),
-      unitPreference: drift.Value(_unit),
-      targetRangeLow: const drift.Value(70),
-      targetRangeHigh: const drift.Value(180),
-    );
-    await db.into(db.patientProfiles).insertOnConflictUpdate(profile);
-    if (mounted) context.go('/dashboard');
+
+    try {
+      final localeService = context.read<LocalePreferenceService>();
+      await localeService
+          .setExperience(
+            language: _language!,
+            country: _country!,
+            tone: _tone!,
+          )
+          .timeout(_persistenceTimeout);
+
+      if (!mounted) return;
+
+      final db = context.read<AppDatabase>();
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      final userId = firebaseUser?.uid.hashCode.abs() ?? 1;
+      final profile = PatientProfilesCompanion.insert(
+        userId: drift.Value(userId),
+        preferredLanguage: drift.Value(_language!),
+        updatedAt: DateTime.now(),
+        diabetesType: drift.Value(_diabetesType!),
+        treatment: drift.Value(_treatment!),
+        unitPreference: drift.Value(_unit),
+        targetRangeLow: const drift.Value(70),
+        targetRangeHigh: const drift.Value(180),
+      );
+
+      await db
+          .into(db.patientProfiles)
+          .insertOnConflictUpdate(profile)
+          .timeout(_persistenceTimeout);
+
+      if (mounted) context.go('/dashboard');
+    } on TimeoutException catch (error, stackTrace) {
+      developer.log(
+        'Onboarding local persistence timed out.',
+        name: 'iamina.onboarding.finish',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (mounted) setState(() => _saving = false);
+    } catch (error, stackTrace) {
+      developer.log(
+        'Onboarding local persistence failed.',
+        name: 'iamina.onboarding.finish',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
