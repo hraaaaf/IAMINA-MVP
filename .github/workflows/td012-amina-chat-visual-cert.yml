@@ -1,0 +1,92 @@
+name: TD-012 IAmina chat visual cert
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/journal/widgets/amina_chat_view*.dart'
+      - 'frontend/lib/ui_browser_audit_main.dart'
+      - 'frontend/test/features/chat/**'
+      - '.github/workflows/td012-amina-chat-visual-cert.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chat-visual-cert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Analyze chat audit entrypoint
+        run: flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart lib/features/journal/widgets/amina_chat_view.dart
+      - name: Build isolated browser audit
+        run: flutter build web --release -t lib/ui_browser_audit_main.dart
+      - name: Capture IAmina chat only
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/td012-amina-chat"
+          python3 -m pip install --quiet websocket-client
+          python3 -m http.server 7358 --directory build/web >/tmp/td012-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:7358 >/dev/null && break
+            sleep 1
+          done
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          cat > /tmp/capture_chat.py <<'PY'
+          import base64, json, sys, time, urllib.request
+          from websocket import create_connection
+          target, width, height, mobile = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]=='true'
+          pages=json.load(urllib.request.urlopen('http://127.0.0.1:9222/json/list'))
+          page=next(p for p in pages if p.get('type')=='page')
+          ws=create_connection(page['webSocketDebuggerUrl'], timeout=20)
+          i=0
+          def call(method, params=None):
+              global i
+              i+=1
+              ws.send(json.dumps({'id':i,'method':method,'params':params or {}}))
+              while True:
+                  r=json.loads(ws.recv())
+                  if r.get('id')==i: return r
+          call('Page.enable')
+          call('Emulation.setDeviceMetricsOverride', {'width':width,'height':height,'deviceScaleFactor':1,'mobile':mobile})
+          call('Page.reload', {'ignoreCache':True})
+          time.sleep(8)
+          shot=call('Page.captureScreenshot', {'format':'png','captureBeyondViewport':False,'fromSurface':True})
+          data=shot.get('result',{}).get('data')
+          if not data: raise RuntimeError('missing screenshot')
+          open(target,'wb').write(base64.b64decode(data))
+          ws.close()
+          PY
+          for spec in "390 844 true" "768 1024 false" "1280 900 false"; do
+            read -r width height mobile <<< "$spec"
+            PROFILE="$(mktemp -d)"
+            "$CHROME" --headless=new --no-sandbox --enable-unsafe-swiftshader --hide-scrollbars --remote-allow-origins='*' --remote-debugging-port=9222 --user-data-dir="$PROFILE" --window-size=${width},${height} "http://127.0.0.1:7358/?surface=amina-chat" >/tmp/chat-${width}.log 2>&1 &
+            PID=$!
+            for _ in $(seq 1 30); do
+              curl -fsS http://127.0.0.1:9222/json/list >/dev/null && break
+              sleep 1
+            done
+            python3 /tmp/capture_chat.py "$GITHUB_WORKSPACE/td012-amina-chat/amina-chat-${width}x${height}.png" "$width" "$height" "$mobile"
+            kill "$PID" 2>/dev/null || true
+            wait "$PID" 2>/dev/null || true
+            rm -rf "$PROFILE"
+          done
+      - name: Upload IAmina chat captures
+        uses: actions/upload-artifact@v4
+        with:
+          name: td012-amina-chat-visual
+          path: td012-amina-chat/*.png
+          retention-days: 7
