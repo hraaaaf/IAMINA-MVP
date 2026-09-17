@@ -81,10 +81,18 @@ jobs:
             done
             python3 /tmp/capture_chat.py "$GITHUB_WORKSPACE/td012-amina-chat/amina-chat-${width}x${height}.png" "$width" "$height" "$mobile"
             kill "$PID" 2>/dev/null || true
+            for _ in $(seq 1 10); do
+              if ! kill -0 "$PID" 2>/dev/null; then
+                break
+              fi
+              sleep 0.2
+            done
+            kill -9 "$PID" 2>/dev/null || true
             wait "$PID" 2>/dev/null || true
-            rm -rf "$PROFILE"
+            rm -rf "$PROFILE" 2>/dev/null || true
           done
       - name: Upload IAmina chat captures
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: td012-amina-chat-visual
