@@ -22,6 +22,26 @@ void main() {
     );
   });
 
+  test('Vercel review build overrides stale project-level API_BASE_URL', () {
+    final source = File('vercel_build.sh').readAsStringSync();
+
+    expect(
+      source,
+      contains(
+        r'if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then',
+      ),
+    );
+    expect(source, contains('API_BASE_URL="$IAMINA_CERTIFIED_API_BASE_URL"'));
+    expect(
+      source,
+      isNot(
+        contains(
+          r'if [ -z "${API_BASE_URL:-}" ] && [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then',
+        ),
+      ),
+    );
+  });
+
   test('Vercel Flutter build fails closed outside the review project', () {
     final source = File('vercel_build.sh').readAsStringSync();
 
