@@ -19,6 +19,7 @@ import 'food_pictogram_painter_batch13.dart';
 import 'food_pictogram_painter_batch14.dart';
 import 'food_pictogram_painter_batch15.dart';
 import 'food_pictogram_painter_batch16.dart';
+import 'food_pictogram_painter_batch17.dart';
 
 class FoodPictogram extends StatelessWidget {
   final MealFoodItem item;
@@ -36,7 +37,9 @@ class FoodPictogram extends StatelessWidget {
   Widget _nativePictogram() {
     final key = item.pictogramKey;
     final CustomPainter painter;
-    if (hasCodeFoodPictogramBatch16(key)) {
+    if (hasCodeFoodPictogramBatch17(key)) {
+      painter = FoodPictogramPainterBatch17(key);
+    } else if (hasCodeFoodPictogramBatch16(key)) {
       painter = FoodPictogramPainterBatch16(key);
     } else if (hasCodeFoodPictogramBatch15(key)) {
       painter = FoodPictogramPainterBatch15(key);
@@ -91,7 +94,8 @@ class FoodPictogram extends StatelessWidget {
         hasCodeFoodPictogramBatch13(item.pictogramKey) ||
         hasCodeFoodPictogramBatch14(item.pictogramKey) ||
         hasCodeFoodPictogramBatch15(item.pictogramKey) ||
-        hasCodeFoodPictogramBatch16(item.pictogramKey);
+        hasCodeFoodPictogramBatch16(item.pictogramKey) ||
+        hasCodeFoodPictogramBatch17(item.pictogramKey);
 
     return Semantics(
       image: true,
