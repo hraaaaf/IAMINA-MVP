@@ -15,8 +15,9 @@ flutter pub get
 # The public review frontend is a separate Vercel project from the certified
 # Django backend. Bind only that frontend project to the live backend so the
 # backend project itself and local/demo builds keep their existing behavior.
+# API_BASE_URL is the backend origin only: Flutter services append /api/v1.
 IAMINA_REVIEW_VERCEL_PROJECT_ID="prj_AYaUi32KTDHak8I7dmdQpDrqd8SI"
-IAMINA_CERTIFIED_API_BASE_URL="https://iamina-certified.vercel.app/api/v1"
+IAMINA_CERTIFIED_API_BASE_URL="https://iamina-certified.vercel.app"
 
 if [ -z "${API_BASE_URL:-}" ] && [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
   API_BASE_URL="$IAMINA_CERTIFIED_API_BASE_URL"
