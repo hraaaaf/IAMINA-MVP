@@ -1,6 +1,15 @@
 part of 'amina_chat_view.dart';
 
 extension _AminaChatViewPresentation on _AminaChatViewState {
+  // Suggested prompts — generated dynamically in _buildSuggestions()
+  // Fallback static set used when no log data is available
+  static const _fallbackSuggestions = [
+    'Comment se passe ma semaine ?',
+    'Ai-je eu des hypos ?',
+    'Éviter les pics',
+    'Mon meilleur jour',
+  ];
+
   bool get _hasUserMessage => _messages.any((m) => m['isAi'] == false);
 
   /// Build contextual suggestions based on the patient's recent logs.
