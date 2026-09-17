@@ -324,6 +324,7 @@ Reconciliation retained through 2026-09-17:
 - historical TD-013 authentication abuse protection is CLOSED by PR #623, merged as `main@f045491a3e07db388067fe54c60fd0c4b543e050`; exact-head CI #4238 and drift #3760 succeeded, then exact-main post-merge CI #4241 and drift #3761 succeeded. Tracker #622 is closed. The retained limiter is PostgreSQL-backed, covers login/registration/password-reset, is independent of Redis availability, stores HMAC-derived identifiers rather than raw IP/email, and has typed 429/recovery tests;
 - TD-003 provider timeout/circuit-breaker/failure UX is CLOSED by backend breaker PR #628, frontend typed-error UX PR #629 and docs closeout PR #630. Exact-head #629 CI #4280, Companion E2E #98, UI browser #710, UI geometry #707 and missing-routes #66 succeeded; #630 exact-head CI #4291 and post-merge CI #4292 succeeded;
 - TD-014 patient local app-lock/re-authentication is CLOSED by PR #649 / merge `df457cfdcc574439adb791fbfc44d484a1224417`; final candidate `fd5bc4392ceda6b411b72f3ceb9254119024ac5c` passed 15/15 workflows and its fresh WebAuthn/offline/visual artifact was inspected. TD-014 is removed from the unresolved debt register.
+- TD-012 remains OPEN, but the AISummary atomic decomposition is CLOSED by PR #661 / merge `9f99765f19910430485b54a6797b0dce72b03703`. Exact-head CI #4465, browser #861, geometry #806, Offline UI #89 and P5-5 #257 all succeeded; `ai_summary_screen.dart` retains orchestration/API/DB/state while `ai_summary_screen_presentation.dart` owns responsive presentation. Next verified hotspots are `amina_chat_view.dart` and `profile_screen.dart`.
 
 ---
 
@@ -380,7 +381,7 @@ No Vercel deployment is authorized by this execution order.
 ## Current canonical snapshot
 
 - repo: `hraaaaf/IAMINA-MVP`
-- main reconciled for this lot: `df457cfdcc574439adb791fbfc44d484a1224417`
+- main reconciled for this lot: `9f99765f19910430485b54a6797b0dce72b03703`
 - P5-4A AUTH-LOCAL-FIRST: **CLOSED**, PR #639 merged as `bd13e8ad0c6f3ff2c4376b00c43fb8c54068d053`
 - TD-014 strong local app-lock: **CLOSED**, PR #649 merged as `df457cfdcc574439adb791fbfc44d484a1224417`; final candidate `fd5bc4392ceda6b411b72f3ceb9254119024ac5c` had 15/15 SUCCESS
 - last explicitly frozen P5-6 SHA: `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b` — **historical freeze evidence, not current release candidate**
