@@ -5,7 +5,7 @@ from typing import Any, Callable, Optional
 
 from django.http import HttpRequest, HttpResponseForbidden
 from ninja.errors import HttpError
-from ninja.security import SessionAuth
+from ninja.security import SessionAuth as NinjaSessionAuth
 
 from amina.middleware.vercel_csrf import IaminaVercelCsrfViewMiddleware
 
@@ -24,7 +24,7 @@ def check_iamina_csrf(
     return middleware.process_view(request, callback, (), {})
 
 
-class IaminaSessionAuth(SessionAuth):
+class SessionAuth(NinjaSessionAuth):
     """Preserve Django session auth while using IAMINA's narrow Vercel CSRF policy."""
 
     def _get_key(self, request: HttpRequest) -> Optional[str]:
