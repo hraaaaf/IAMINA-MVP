@@ -35,15 +35,6 @@ class _AminaChatViewState extends State<AminaChatView> {
   final FlutterTts    _tts      = FlutterTts();
   _VoiceState _voiceState = _VoiceState.idle;
 
-  // Suggested prompts — generated dynamically in _buildSuggestions()
-  // Fallback static set used when no log data is available
-  static const _fallbackSuggestions = [
-    'Comment se passe ma semaine ?',
-    'Ai-je eu des hypos ?',
-    'Éviter les pics',
-    'Mon meilleur jour',
-  ];
-
   @override
   void initState() {
     super.initState();
