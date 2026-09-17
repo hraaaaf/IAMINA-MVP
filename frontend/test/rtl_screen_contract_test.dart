@@ -24,6 +24,16 @@ const _screenRegistry = <_RtlScreenEntry>[
     source: 'lib/features/auth/login_screen.dart',
   ),
   _RtlScreenEntry(
+    route: '/app-lock/setup',
+    widget: 'AppLockSetupScreen',
+    source: 'lib/features/auth/app_lock_setup_screen.dart',
+  ),
+  _RtlScreenEntry(
+    route: '/app-lock/unlock',
+    widget: 'AppLockUnlockScreen',
+    source: 'lib/features/auth/app_lock_unlock_screen.dart',
+  ),
+  _RtlScreenEntry(
     route: '/reset-password',
     widget: 'ResetPasswordScreen',
     source: 'lib/features/auth/reset_password_screen.dart',

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/motion/amina_motion.dart';
+import '../features/auth/app_lock_setup_screen.dart';
+import '../features/auth/app_lock_unlock_screen.dart';
 import '../features/auth/consent_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/onboarding_chat_screen.dart';
@@ -9,6 +11,7 @@ import '../features/auth/reset_password_screen.dart';
 import '../features/navigation/main_shell.dart';
 import '../features/profile/profile_screen.dart';
 import '../modules/module_registry.dart';
+import '../services/app_lock_service.dart';
 import '../services/auth_service.dart';
 import '../services/consent_service.dart';
 
@@ -27,15 +30,22 @@ class AppRouterHolder {
 AppRouterHolder createAppRouterHolder({
   required AuthService authService,
   ConsentService? consentService,
+  AppLockService? appLockService,
 }) {
   final consent = consentService;
+  final lock = appLockService;
+  final refreshables = <Listenable>[
+    authService,
+    if (consent != null) consent,
+    if (lock != null) lock,
+  ];
 
   final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: _homeRoute(),
-    refreshListenable: consent != null
-        ? Listenable.merge([authService, consent])
-        : authService,
+    refreshListenable: refreshables.length == 1
+        ? refreshables.first
+        : Listenable.merge(refreshables),
     redirect: (context, state) {
       final isLoggedIn = authService.isAuthenticated;
       final isAnonymous = authService.isAnonymous;
@@ -43,14 +53,37 @@ AppRouterHolder createAppRouterHolder({
       final isLoginPage = path == '/login';
       final isPasswordResetPage = path == '/reset-password';
       final isConsentPage = path == '/consent';
+      final isAppLockSetupPage = path == '/app-lock/setup';
+      final isAppLockUnlockPage = path == '/app-lock/unlock';
+      final isAppLockPage = isAppLockSetupPage || isAppLockUnlockPage;
 
-      if (!authService.isInitialized) return null;
+      if (!authService.isInitialized ||
+          (lock != null && !lock.isInitialized)) {
+        return null;
+      }
 
-      // Password-reset links must remain reachable without a session.
+      // Password-reset links belong to the optional remote account path and
+      // must remain reachable without a local session.
       if (isPasswordResetPage) return null;
 
-      // ── Auth gate ──────────────────────────────────────────────────────────
+      // ── Local enrollment gate ─────────────────────────────────────────────
       if (!isLoggedIn && !isLoginPage) return '/login';
+
+      // Audit access is compile-time + loopback constrained. It may render the
+      // lock screens for visual certification but never changes patient state.
+      if (authService.isAuditSession && isAppLockPage) return null;
+
+      // ── Strong local app-lock gate ────────────────────────────────────────
+      if (isLoggedIn && !authService.isAuditSession && lock != null) {
+        if (lock.recoveryRequired) {
+          if (!isAppLockUnlockPage) return '/app-lock/unlock';
+        } else if (!lock.isConfigured) {
+          if (!isAppLockSetupPage) return '/app-lock/setup';
+        } else if (!lock.isUnlocked) {
+          if (!isAppLockUnlockPage) return '/app-lock/unlock';
+        }
+      }
+
       if (isLoggedIn && isLoginPage) return _homeRoute();
 
       // ── Consent gate (RGPD Art. 7) ────────────────────────────────────────
@@ -59,7 +92,9 @@ AppRouterHolder createAppRouterHolder({
         final hasConsent = consent.hasConsent;
         final hasDeclined = consent.hasDeclinedLocally;
 
-        if (!hasConsent && !hasDeclined && !isConsentPage) return '/consent';
+        if (!hasConsent && !hasDeclined && !isConsentPage && !isAppLockPage) {
+          return '/consent';
+        }
         if (hasConsent && isConsentPage) return _homeRoute();
       }
 
@@ -84,6 +119,22 @@ AppRouterHolder createAppRouterHolder({
               child: child,
             );
           },
+        ),
+      ),
+      GoRoute(
+        path: '/app-lock/setup',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _createPage(
+          state,
+          const AppLockSetupScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/app-lock/unlock',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _createPage(
+          state,
+          const AppLockUnlockScreen(),
         ),
       ),
       GoRoute(

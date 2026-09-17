@@ -1,0 +1,136 @@
+name: TD-014 local app-lock certification
+
+on:
+  pull_request:
+    branches:
+      - main
+      - fix/auth-local-first-boundary-20260915
+    paths:
+      - 'frontend/lib/core/localization/app_lock_localized_copy.dart'
+      - 'frontend/lib/core/localization/auth_localized_copy.dart'
+      - 'frontend/lib/features/auth/**'
+      - 'frontend/lib/routes/app_router.dart'
+      - 'frontend/lib/services/app_lock_**'
+      - 'frontend/lib/main.dart'
+      - 'frontend/web/index.html'
+      - 'frontend/web/iamina_app_lock.js'
+      - 'frontend/test/app_lock_ui_contract_test.dart'
+      - 'frontend/test/services/app_lock_service_test.dart'
+      - 'tools/td014_app_lock_browser_cert.js'
+      - 'tools/td014_app_lock_visual_capture.js'
+      - 'docs/TD_014_APP_LOCK_UX.md'
+      - '.github/workflows/td014-app-lock-cert.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout BEFORE
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          path: before
+
+      - name: Checkout AFTER
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: after
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build BEFORE visual reference
+        working-directory: before/frontend
+        run: |
+          flutter pub get
+          flutter build web --release --no-web-resources-cdn \
+            --dart-define=IAMINA_AUDIT_ACCESS=true
+
+      - name: Analyze, test and build AFTER
+        working-directory: after/frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos
+          flutter test --no-pub \
+            test/services/auth_service_local_first_test.dart \
+            test/services/app_lock_service_test.dart \
+            test/local_device_enrollment_ui_contract_test.dart \
+            test/app_lock_ui_contract_test.dart
+          flutter build web --release --no-web-resources-cdn \
+            --dart-define=IAMINA_AUDIT_ACCESS=true
+
+      - name: Install Playwright Chromium
+        working-directory: after
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Certify real-browser WebAuthn including offline unlock
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd after/frontend/build/web && python3 -m http.server 7360 --bind 127.0.0.1 >/tmp/iamina-td014-browser.log 2>&1) &
+          APP_PID=$!
+          trap 'kill $APP_PID 2>/dev/null || true' EXIT
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:7360/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://localhost:7360/ >/dev/null
+
+          cd after
+          TD014_URL=http://localhost:7360/ \
+          TD014_OUT=td014-app-lock-proof \
+          node tools/td014_app_lock_browser_cert.js
+
+      - name: Capture BEFORE and AFTER at identical viewports
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd before/frontend/build/web && python3 -m http.server 7361 --bind 127.0.0.1 >/tmp/iamina-td014-before.log 2>&1) &
+          BEFORE_PID=$!
+          (cd after/frontend/build/web && python3 -m http.server 7362 --bind 127.0.0.1 >/tmp/iamina-td014-after.log 2>&1) &
+          AFTER_PID=$!
+          trap 'kill $BEFORE_PID $AFTER_PID 2>/dev/null || true' EXIT
+
+          for port in 7361 7362; do
+            for _ in $(seq 1 30); do
+              if curl -fsS "http://localhost:${port}/" >/dev/null; then break; fi
+              sleep 1
+            done
+            curl -fsS "http://localhost:${port}/" >/dev/null
+          done
+
+          cd after
+          BEFORE_URL=http://localhost:7361/ \
+          AFTER_URL=http://localhost:7362/ \
+          TD014_VISUAL_OUT=td014-app-lock-visual \
+          node tools/td014_app_lock_visual_capture.js
+
+      - name: Upload TD-014 proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-td014-app-lock-proof
+          path: |
+            after/td014-app-lock-proof/*
+            after/td014-app-lock-visual/*
+            /tmp/iamina-td014-browser.log
+            /tmp/iamina-td014-before.log
+            /tmp/iamina-td014-after.log
+          if-no-files-found: warn
+          retention-days: 7

@@ -68,9 +68,9 @@ extension AuthLocalizedCopy on AppLocalizations {
       );
 
   String get localEnrollmentSecurity => _pick(
-        en: 'Access currently relies on this device’s lock. Enable a passcode, Face ID or fingerprint when available.',
-        fr: 'L’accès repose actuellement sur le verrouillage de cet appareil. Activez un code, Face ID ou une empreinte si disponible.',
-        ar: 'يعتمد الوصول حالياً على قفل هذا الجهاز. فعّل رمزاً أو بصمة الوجه أو الإصبع عندما تكون متاحة.',
+        en: 'Next, IAmina will ask this device to protect access with its secure unlock.',
+        fr: 'Ensuite, IAmina demandera à cet appareil de protéger l’accès avec son déverrouillage sécurisé.',
+        ar: 'بعد ذلك سيطلب IAmina من هذا الجهاز حماية الوصول باستخدام فتح القفل الآمن.',
       );
 
   String get localEnrollmentAction => _pick(

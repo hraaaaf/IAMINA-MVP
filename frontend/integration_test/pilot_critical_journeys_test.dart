@@ -1,11 +1,13 @@
 import 'package:amina/core/theme/app_theme.dart';
 import 'package:amina/data/drift/database.dart';
+import 'package:amina/features/auth/local_device_enrollment_screen.dart';
 import 'package:amina/features/auth/login_screen.dart';
 import 'package:amina/features/companion/companion_conversation_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/main.dart';
 import 'package:amina/routes/app_router.dart';
 import 'package:amina/services/api_client.dart';
+import 'package:amina/services/app_lock_service.dart';
 import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/companion_service.dart';
 import 'package:amina/services/locale_preference_service.dart';
@@ -66,6 +68,7 @@ Widget _localizedApp(Widget home) {
 Widget _realShell({
   required AppDatabase db,
   required AuthService auth,
+  required AppLockService appLock,
   required ApiClient api,
   required LocalePreferenceService locale,
   required TweaksNotifier tweaks,
@@ -75,12 +78,16 @@ Widget _realShell({
     providers: [
       Provider<AppDatabase>.value(value: db),
       ChangeNotifierProvider<AuthService>.value(value: auth),
+      ChangeNotifierProvider<AppLockService>.value(value: appLock),
       Provider<ApiClient>.value(value: api),
       ChangeNotifierProvider<LocalePreferenceService>.value(value: locale),
       Provider<PatientProfileData?>.value(value: null),
       ChangeNotifierProvider<TweaksNotifier>.value(value: tweaks),
     ],
-    child: AminaApp(router: routerHolder.router),
+    child: AminaApp(
+      router: routerHolder.router,
+      appLockService: appLock,
+    ),
   );
 }
 
@@ -97,12 +104,13 @@ Future<void> _pumpUntilFound(
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('real app shell redirects to login and fails auth safely', (
+  testWidgets('real app shell redirects to local enrollment without remote credentials', (
     tester,
   ) async {
     final originalErrorWidgetBuilder = ErrorWidget.builder;
     final db = AppDatabase(NativeDatabase.memory());
     final auth = _FailingAuthService();
+    final appLock = AppLockService();
     final api = ApiClient(authService: auth);
     final locale = LocalePreferenceService(
       api,
@@ -114,6 +122,7 @@ void main() {
       routerHolder.dispose();
       locale.dispose();
       tweaks.dispose();
+      appLock.dispose();
       auth.dispose();
       await db.close();
     });
@@ -122,6 +131,7 @@ void main() {
       _realShell(
         db: db,
         auth: auth,
+        appLock: appLock,
         api: api,
         locale: locale,
         tweaks: tweaks,
@@ -135,23 +145,8 @@ void main() {
       '/login',
     );
     expect(find.byType(LoginScreen), findsOneWidget);
-
-    final fields = find.byType(TextField);
-    expect(fields, findsNWidgets(2));
-    await tester.enterText(fields.at(0), 'pilot@example.test');
-    await tester.enterText(fields.at(1), 'wrong-password');
-
-    final loginContext = tester.element(find.byType(LoginScreen));
-    final l10n = AppLocalizations.of(loginContext)!;
-    await tester.tap(find.text(l10n.signIn).first);
-    await tester.pumpAndSettle();
-
-    expect(
-      routerHolder.router.routeInformationProvider.value.uri.path,
-      '/login',
-    );
-    expect(find.byType(LoginScreen), findsOneWidget);
-    expect(find.text(l10n.loginError), findsOneWidget);
+    expect(find.byType(LocalDeviceEnrollmentScreen), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
     expect(tester.takeException(), isNull);
     ErrorWidget.builder = originalErrorWidgetBuilder;
   });
@@ -160,6 +155,7 @@ void main() {
     final originalErrorWidgetBuilder = ErrorWidget.builder;
     final db = AppDatabase(NativeDatabase.memory());
     final auth = _FailingAuthService(authenticated: true);
+    final appLock = AppLockService();
     final api = ApiClient(authService: auth);
     final locale = LocalePreferenceService(
       api,
@@ -172,6 +168,7 @@ void main() {
       routerHolder.dispose();
       locale.dispose();
       tweaks.dispose();
+      appLock.dispose();
       auth.dispose();
       await db.close();
     });
@@ -180,6 +177,7 @@ void main() {
       _realShell(
         db: db,
         auth: auth,
+        appLock: appLock,
         api: api,
         locale: locale,
         tweaks: tweaks,
