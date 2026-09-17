@@ -4,9 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
+String _readSummaryLibrary() => [
+  _read('lib/features/journal/ai_summary_screen.dart'),
+  _read('lib/features/journal/ai_summary_screen_presentation.dart'),
+].join('\n');
+
 void main() {
   test('AI summary static shell follows the active locale', () {
-    final source = _read('lib/features/journal/ai_summary_screen.dart');
+    final source = _readSummaryLibrary();
     final copy = _read('lib/core/localization/ai_summary_localized_copy.dart');
 
     expect(source, contains('ai_summary_localized_copy.dart'));
@@ -43,7 +48,7 @@ void main() {
   });
 
   test('server-provided clinical insight content stays verbatim', () {
-    final source = _read('lib/features/journal/ai_summary_screen.dart');
+    final source = _readSummaryLibrary();
 
     expect(source, contains('card.title'));
     expect(source, contains('card.body'));

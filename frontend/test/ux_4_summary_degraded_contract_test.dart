@@ -4,9 +4,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('UX-4 keeps degraded Summary integrated into the page shell', () {
-    final source = File(
-      'lib/features/journal/ai_summary_screen.dart',
-    ).readAsStringSync();
+    final source = [
+      File('lib/features/journal/ai_summary_screen.dart').readAsStringSync(),
+      File(
+        'lib/features/journal/ai_summary_screen_presentation.dart',
+      ).readAsStringSync(),
+    ].join('\n');
 
     expect(
       source,
