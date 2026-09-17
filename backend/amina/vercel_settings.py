@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 import dj_database_url
 
+from .middleware.vercel_csrf import IAMINA_FRONTEND_STABLE_ORIGIN
 from .settings import *  # noqa: F403,F401
 
 if DEBUG:  # noqa: F405
@@ -38,6 +39,27 @@ def _require_https_origins(name: str, origins: list[str]) -> None:
     if invalid:
         raise ValueError(f"{name} must contain only valid HTTPS origins on Vercel")
 
+
+# The stable frontend alias is always trusted. Deployment/preview hostnames are
+# handled by narrow project/account-specific regex policy below; never trust
+# all of ``*.vercel.app``.
+if IAMINA_FRONTEND_STABLE_ORIGIN not in CORS_ALLOWED_ORIGINS:  # noqa: F405
+    CORS_ALLOWED_ORIGINS.append(IAMINA_FRONTEND_STABLE_ORIGIN)  # noqa: F405
+if IAMINA_FRONTEND_STABLE_ORIGIN not in CSRF_TRUSTED_ORIGINS:  # noqa: F405
+    CSRF_TRUSTED_ORIGINS.append(IAMINA_FRONTEND_STABLE_ORIGIN)  # noqa: F405
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects\.vercel\.app$",
+]
+
+_csrf_middleware = "django.middleware.csrf.CsrfViewMiddleware"
+_vercel_csrf_middleware = "amina.middleware.vercel_csrf.IaminaVercelCsrfViewMiddleware"
+MIDDLEWARE = [
+    _vercel_csrf_middleware if item == _csrf_middleware else item
+    for item in MIDDLEWARE  # noqa: F405
+]
+if _vercel_csrf_middleware not in MIDDLEWARE:
+    raise ValueError("Django CSRF middleware is missing from IAMINA Vercel settings")
 
 _require_https_origins("CORS_ALLOWED_ORIGINS", CORS_ALLOWED_ORIGINS)  # noqa: F405
 _require_https_origins("CSRF_TRUSTED_ORIGINS", CSRF_TRUSTED_ORIGINS)  # noqa: F405
