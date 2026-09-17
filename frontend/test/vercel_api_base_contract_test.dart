@@ -37,4 +37,11 @@ void main() {
     );
     expect(source, contains('exit 64'));
   });
+
+  test('CompanionService reuses the canonical frontend API origin', () {
+    final source = File('lib/services/companion_service.dart').readAsStringSync();
+
+    expect(source, contains('const String companionApiBaseUrl = kBaseUrl;'));
+    expect(source, isNot(contains("String.fromEnvironment(\n  'API_BASE_URL'")));
+  });
 }
