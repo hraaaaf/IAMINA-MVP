@@ -45,6 +45,13 @@ void main() {
     );
   });
 
+  test('Vercel build strips a legacy /api/v1 suffix defensively', () {
+    final source = File('vercel_build.sh').readAsStringSync();
+
+    expect(source, contains(r'API_BASE_URL="${API_BASE_URL%/}"'));
+    expect(source, contains(r'API_BASE_URL="${API_BASE_URL%/api/v1}"'));
+  });
+
   test('Vercel Flutter build fails closed outside the review project', () {
     final source = File('vercel_build.sh').readAsStringSync();
 
