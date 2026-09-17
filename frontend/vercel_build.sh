@@ -27,7 +27,10 @@ if [ -n "${VERCEL_PROJECT_ID:-}" ] && [ "$VERCEL_PROJECT_ID" != "$IAMINA_REVIEW_
   exit 64
 fi
 
-if [ -z "${API_BASE_URL:-}" ] && [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
+# The review project has one canonical backend origin. Always override any
+# stale project-level API_BASE_URL (for example one ending in /api/v1), because
+# Flutter services append their own /api/v1 paths.
+if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
   API_BASE_URL="$IAMINA_CERTIFIED_API_BASE_URL"
 fi
 
