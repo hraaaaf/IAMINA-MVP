@@ -21,4 +21,20 @@ void main() {
       ),
     );
   });
+
+  test('Vercel Flutter build fails closed outside the review project', () {
+    final source = File('vercel_build.sh').readAsStringSync();
+
+    expect(
+      source,
+      contains(
+        'if [ -n "\${VERCEL_PROJECT_ID:-}" ] && [ "$VERCEL_PROJECT_ID" != "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then',
+      ),
+    );
+    expect(
+      source,
+      contains('ERROR: refusing Flutter build for Vercel project'),
+    );
+    expect(source, contains('exit 64'));
+  });
 }
