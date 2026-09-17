@@ -31,7 +31,10 @@ void main() {
         r'if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then',
       ),
     );
-    expect(source, contains('API_BASE_URL="$IAMINA_CERTIFIED_API_BASE_URL"'));
+    expect(
+      source,
+      contains(r'API_BASE_URL="$IAMINA_CERTIFIED_API_BASE_URL"'),
+    );
     expect(
       source,
       isNot(
