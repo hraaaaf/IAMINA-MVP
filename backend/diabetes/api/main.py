@@ -4,7 +4,7 @@ Diabetes Log API entry point.
 
 from ninja import NinjaAPI
 
-from amina.vercel_session_auth import IaminaSessionAuth
+from amina.vercel_session_auth import SessionAuth
 from llm.errors import LLMProviderError
 
 from .v1.security import firebase_auth_backend
@@ -12,7 +12,7 @@ from .v1.security import firebase_auth_backend
 # Accept Firebase Bearer (mobile/Flutter) OR Django session (web/PWA).
 # Session CSRF must use IAMINA's narrow Vercel-origin policy; Django-Ninja's
 # default SessionAuth instantiates the stock CsrfViewMiddleware internally.
-_auth = [firebase_auth_backend, IaminaSessionAuth()]
+_auth = [firebase_auth_backend, SessionAuth()]
 
 # ── diabetes/ routers (capsule-shaped) ───────────────────────────────────────
 # ── ai/ routers (engine-shaped — Phase 5 migration) ──────────────────────────
