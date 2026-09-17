@@ -52,6 +52,19 @@ void main() {
     expect(source, contains(r'API_BASE_URL="${API_BASE_URL%/api/v1}"'));
   });
 
+  test('Vercel review build enables remote account enrollment', () {
+    final source = File('vercel_build.sh').readAsStringSync();
+
+    expect(
+      source,
+      contains(r'IAMINA_REMOTE_ACCOUNT_ENROLLMENT="true"'),
+    );
+    expect(
+      source,
+      contains('--dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true'),
+    );
+  });
+
   test('Vercel Flutter build fails closed outside the review project', () {
     final source = File('vercel_build.sh').readAsStringSync();
 

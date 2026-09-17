@@ -17,4 +17,17 @@ void main() {
       );
     },
   );
+
+  test('router requires remote identity before server consent gating', () {
+    final source = File('lib/routes/app_router.dart').readAsStringSync();
+
+    expect(
+      source,
+      contains('authService.isRemoteCredentialVerified'),
+    );
+    expect(
+      source,
+      contains('!kRemoteAccountEnrollmentEnabled ||'),
+    );
+  });
 }

@@ -84,11 +84,19 @@ AppRouterHolder createAppRouterHolder({
         }
       }
 
-      if (isLoggedIn && isLoginPage) return _homeRoute();
+      if (isLoggedIn &&
+          isLoginPage &&
+          (!kRemoteAccountEnrollmentEnabled ||
+              authService.isRemoteCredentialVerified)) {
+        return _homeRoute();
+      }
 
       // ── Consent gate (RGPD Art. 7) ────────────────────────────────────────
       // Skip for anonymous demo users and when ConsentService is not wired.
-      if (isLoggedIn && !isAnonymous && consent != null) {
+      if (isLoggedIn &&
+          authService.isRemoteCredentialVerified &&
+          !isAnonymous &&
+          consent != null) {
         final hasConsent = consent.hasConsent;
         final hasDeclined = consent.hasDeclinedLocally;
 
