@@ -10,6 +10,7 @@ import 'meal_food_oman_depth_b20.dart';
 import 'meal_food_tunisia_depth_b21.dart';
 import 'meal_food_algeria_depth_b22.dart';
 import 'meal_food_yemen_depth_b23.dart';
+import 'meal_food_morocco_depth_b24.dart';
 
 export 'meal_food_catalog_v3.dart'
     hide
@@ -26,7 +27,7 @@ export 'meal_food_catalog_v3.dart'
 
 /// Catalog facade preserving the certified 322-item V3 baseline byte-for-byte
 /// while allowing reviewed regional extensions to remain modular.
-const String mealFoodCatalogVersion = '3.9.0-yemen-depth-b23';
+const String mealFoodCatalogVersion = '3.10.0-morocco-depth-b24';
 
 const List<base.MealFoodItem> mealFoodCatalog = <base.MealFoodItem>[
   ...base.mealFoodCatalog,
@@ -39,6 +40,7 @@ const List<base.MealFoodItem> mealFoodCatalog = <base.MealFoodItem>[
   ...tunisiaDepthB21FoodCatalog,
   ...algeriaDepthB22FoodCatalog,
   ...yemenDepthB23FoodCatalog,
+  ...moroccoDepthB24FoodCatalog,
 ];
 
 final Map<String, base.MealFoodItem> _mealFoodById = <String, base.MealFoodItem>{for (final item in mealFoodCatalog) item.id: item};

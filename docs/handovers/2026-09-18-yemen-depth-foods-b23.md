@@ -19,8 +19,17 @@ Categories: saltah=other; fahsa=other; bint-al-sahn=sweetDessert. Current region
 Duplicate gate: repository-wide search for saltah/salta, fahsa/fahsah and bint al-sahn/sabayah returned no existing catalog representation before implementation.
 
 BEFORE: certified B22, 368 concepts. Goal: expose Bint al-sahn yéménite with native pictogram and neutral category association at 390×844, 768×1024, 1280×900, with no overflow/clipping/collision and readable labels.
-AFTER: pending exact-head browser certification and artifact inspection.
+AFTER: exact-head browser artifact inspected at all three required viewports; native pictogram present, label readable, no visible overflow/clipping/collision.
 
-Required exact-head gates: CI, P5-5 End-to-End Pilot Rehearsal, UI geometry golden audit, UI browser screenshot certification. Artifact ZIP SHA256 must match GitHub digest before screenshot acceptance.
+Certified PR HEAD: `11cc48de7001266dcaaf99e9ef36f9b1e4bab586`.
+PR #676 merged by explicit human approval as squash commit `a668e22041a421adbc8b96a49adac5aee886021a`.
+Exact-head artifact: `10527330467`; verified SHA256: `2f8f1f82d2558b55241a566b583116d0211a68be1c6641ac0f81339c9058b9aa`.
 
-Human merge required. No Vercel.
+Post-merge closeout on `main@a668e22041a421adbc8b96a49adac5aee886021a`:
+- CI `35316363627` — SUCCESS
+- P5-5 `35316363639` — SUCCESS
+- UI geometry `35316363643` — SUCCESS
+- UI browser screenshot certification `35316363613` — SUCCESS
+- CGM onboarding browser certification `35316363810` — SUCCESS
+
+Status: B23 CLOSED / VERIFIED. Catalog baseline for the next lot: 371. No Vercel deployment performed by the food pipeline.
