@@ -31,6 +31,7 @@ def _import_vercel_settings(
     env = os.environ.copy()
     for key in _EMAIL_ENV_KEYS:
         env.pop(key, None)
+    env.pop("IAMINA_DEV_LLM_PROVIDER", None)
     env.update(
         {
             "SECRET_KEY": "test-only-secret-key",
@@ -73,7 +74,8 @@ def _import_vercel_settings(
                 "print(s.DATABASES['default']['ENGINE']); "
                 "print(s.ALLOWED_HOSTS); "
                 "print(s.EMAIL_BACKEND); "
-                "print(s.PASSWORD_RESET_FRONTEND_URL)"
+                "print(s.PASSWORD_RESET_FRONTEND_URL); "
+                "print(s.LLM_PROVIDER)"
             ),
         ],
         cwd=BACKEND_ROOT,
@@ -178,6 +180,17 @@ def test_vercel_production_target_can_boot_as_iamina_dev_without_smtp_settings()
 
     assert result.returncode == 0, result.stderr
     assert "django.db.backends.postgresql" in result.stdout
+
+
+def test_vercel_hosted_dev_defaults_to_local_llm_fallback():
+    result = _import_vercel_settings(
+        "postgresql://user:pass@127.0.0.1:5432/iamina",
+        vercel_env="production",
+        iamina_env="development",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip().splitlines()[-1] == "fallback"
 
 
 def test_vercel_settings_accept_postgres_without_connecting():
