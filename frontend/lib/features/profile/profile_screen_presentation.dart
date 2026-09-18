@@ -221,7 +221,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                     key: const Key('ramadan-clear-period'),
                     onPressed: _savingRamadan
                         ? null
-                        : () => setState(() {
+                        : () => _setPresentationState(() {
                             _ramadanStartDate = null;
                             _ramadanEndDate = null;
                           }),
