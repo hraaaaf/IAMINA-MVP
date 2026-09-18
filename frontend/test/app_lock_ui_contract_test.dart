@@ -12,9 +12,9 @@ void main() {
     expect(enrollment, contains("context.go('/app-lock/setup')"));
     expect(router, contains("path: '/app-lock/setup'"));
     expect(router, contains("path: '/app-lock/unlock'"));
-    expect(router, contains('lock.recoveryRequired'));
-    expect(router, contains('!lock.isConfigured'));
-    expect(router, contains('!lock.isUnlocked'));
+    expect(router, contains('activeLock.recoveryRequired'));
+    expect(router, contains('!activeLock.isConfigured'));
+    expect(router, contains('!activeLock.isUnlocked'));
   });
 
   test('app-lock UI exposes no weak patient bypass', () {

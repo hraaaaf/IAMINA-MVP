@@ -14,6 +14,30 @@ void main() {
     );
   });
 
+  test('hosted local-only session cannot enter app-lock before remote login', () {
+    expect(
+      shouldApplyAppLockGate(
+        isLoggedIn: true,
+        requiresHostedRemoteLogin: true,
+        isAuditSession: false,
+        hasLockService: true,
+      ),
+      isFalse,
+    );
+  });
+
+  test('authenticated hosted session may enter app-lock after remote login', () {
+    expect(
+      shouldApplyAppLockGate(
+        isLoggedIn: true,
+        requiresHostedRemoteLogin: false,
+        isAuditSession: false,
+        hasLockService: true,
+      ),
+      isTrue,
+    );
+  });
+
   test('hosted remote flow accepts session with native API credential', () {
     expect(
       hostedRemoteLoginRequired(
