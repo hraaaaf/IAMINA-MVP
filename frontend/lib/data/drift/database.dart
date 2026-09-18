@@ -273,7 +273,15 @@ class AppDatabase extends _$AppDatabase {
 
   /// RGPD Art. 7 — record explicit AI consent in the local DB.
   /// [granted] true = consent given, false = consent withdrawn.
-  Future<void> setAiConsent({required bool granted}) async {
+  ///
+  /// A freshly registered remote account can reach the consent gate before
+  /// onboarding has created its local profile row. In that case [userId]
+  /// anchors a minimal local identity row so the verified consent survives
+  /// app restart and onboarding can fill the remaining declared fields later.
+  Future<void> setAiConsent({
+    required bool granted,
+    int? userId,
+  }) async {
     final ts = granted ? DateTime.now() : null;
     final existing = await (select(
       patientProfiles,
@@ -281,7 +289,23 @@ class AppDatabase extends _$AppDatabase {
     if (existing != null) {
       await (update(patientProfiles)
             ..where((t) => t.userId.equals(existing.userId)))
-          .write(PatientProfilesCompanion(aiConsentGivenAt: Value(ts)));
+          .write(
+            PatientProfilesCompanion(
+              aiConsentGivenAt: Value(ts),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
+      return;
+    }
+
+    if (granted && userId != null && userId > 0) {
+      await into(patientProfiles).insert(
+        PatientProfilesCompanion.insert(
+          userId: Value(userId),
+          updatedAt: DateTime.now(),
+          aiConsentGivenAt: Value(ts),
+        ),
+      );
     }
   }
 
