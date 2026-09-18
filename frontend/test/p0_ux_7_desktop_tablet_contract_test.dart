@@ -4,6 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
+String _readProfileLibrary() => [
+  _read('lib/features/profile/profile_screen.dart'),
+  _read('lib/features/profile/profile_screen_presentation.dart'),
+].join('\n');
+
 void main() {
   test('shell exposes the actual post-sidebar viewport to routed pages', () {
     final shell = _read('lib/features/navigation/main_shell.dart');
@@ -64,7 +69,7 @@ void main() {
   test(
     'profile and Pulper cap over-wide desktop bodies without shrinking tablet',
     () {
-      final profile = _read('lib/features/profile/profile_screen.dart');
+      final profile = _readProfileLibrary();
       final pulper = _read(
         'lib/features/documents/document_import_screen.dart',
       );
