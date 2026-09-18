@@ -226,6 +226,34 @@ class AppDatabase extends _$AppDatabase {
     return (select(patientProfiles)..limit(1)).watchSingleOrNull();
   }
 
+  /// Bind the single-device local profile to the authenticated backend identity.
+  ///
+  /// IAMINA currently stores one patient profile per installation. A legacy
+  /// local-first profile may predate native backend authentication and use a
+  /// placeholder id. Rebinding preserves that local data while preventing a
+  /// second profile row from being created for the same installation.
+  Future<void> bindSingleProfileToUser(int userId) async {
+    if (userId <= 0) {
+      throw ArgumentError.value(userId, 'userId', 'must be positive');
+    }
+    final profiles = await select(patientProfiles).get();
+    if (profiles.any((profile) => profile.userId == userId)) return;
+    if (profiles.isEmpty) return;
+    if (profiles.length != 1) {
+      throw StateError('Cannot bind ambiguous local patient profiles');
+    }
+
+    final existing = profiles.single;
+    await (update(patientProfiles)
+          ..where((row) => row.userId.equals(existing.userId)))
+        .write(
+          PatientProfilesCompanion(
+            userId: Value(userId),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
+  }
+
   // Queries
   Future<List<LogEntryData>> getPendingLogs() {
     return (select(logEntries)
@@ -283,9 +311,11 @@ class AppDatabase extends _$AppDatabase {
     int? userId,
   }) async {
     final ts = granted ? DateTime.now() : null;
-    final existing = await (select(
-      patientProfiles,
-    )..limit(1)).getSingleOrNull();
+    final query = select(patientProfiles)..limit(1);
+    if (userId != null) {
+      query.where((row) => row.userId.equals(userId));
+    }
+    final existing = await query.getSingleOrNull();
     if (existing != null) {
       await (update(patientProfiles)
             ..where((t) => t.userId.equals(existing.userId)))
