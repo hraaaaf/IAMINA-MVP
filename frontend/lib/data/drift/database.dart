@@ -278,11 +278,15 @@ class AppDatabase extends _$AppDatabase {
     final existing = await (select(
       patientProfiles,
     )..limit(1)).getSingleOrNull();
-    if (existing != null) {
-      await (update(patientProfiles)
-            ..where((t) => t.userId.equals(existing.userId)))
-          .write(PatientProfilesCompanion(aiConsentGivenAt: Value(ts)));
+    if (existing == null) {
+      if (granted) {
+        throw StateError('AI consent requires an initialized local profile');
+      }
+      return;
     }
+    await (update(patientProfiles)
+          ..where((t) => t.userId.equals(existing.userId)))
+        .write(PatientProfilesCompanion(aiConsentGivenAt: Value(ts)));
   }
 
   Stream<List<MedicationEventData>> watchMedicationEvents({int limit = 50}) {
