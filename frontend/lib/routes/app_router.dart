@@ -56,6 +56,11 @@ AppRouterHolder createAppRouterHolder({
       final isAppLockSetupPage = path == '/app-lock/setup';
       final isAppLockUnlockPage = path == '/app-lock/unlock';
       final isAppLockPage = isAppLockSetupPage || isAppLockUnlockPage;
+      final requiresRemoteCredential =
+          kRemoteAccountEnrollmentEnabled &&
+          isLoggedIn &&
+          !authService.isAuditSession &&
+          !authService.hasRemoteCredential;
 
       if (!authService.isInitialized ||
           (lock != null && !lock.isInitialized)) {
@@ -68,6 +73,11 @@ AppRouterHolder createAppRouterHolder({
 
       // ── Local enrollment gate ─────────────────────────────────────────────
       if (!isLoggedIn && !isLoginPage) return '/login';
+
+      // Hosted dev/test enables remote account enrollment so protected backend
+      // calls must not run from a marker-only local session. A persisted native
+      // bearer is sufficient; server-side auth remains authoritative on use.
+      if (requiresRemoteCredential && !isLoginPage) return '/login';
 
       // Audit access is compile-time + loopback constrained. It may render the
       // lock screens for visual certification but never changes patient state.
@@ -84,7 +94,9 @@ AppRouterHolder createAppRouterHolder({
         }
       }
 
-      if (isLoggedIn && isLoginPage) return _homeRoute();
+      if (isLoggedIn && isLoginPage && !requiresRemoteCredential) {
+        return _homeRoute();
+      }
 
       // ── Consent gate (RGPD Art. 7) ────────────────────────────────────────
       // Skip for anonymous demo users and when ConsentService is not wired.
