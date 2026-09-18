@@ -1,0 +1,9 @@
+{
+  "batch": "B23",
+  "theme": "Yemen depth",
+  "baseline_count": 368,
+  "target_count": 371,
+  "fixture_query": "Bint al-sahn yéménite",
+  "ids": ["yemeni_saltah", "yemeni_fahsa", "yemeni_bint_al_sahn"],
+  "required_viewports": ["390x844", "768x1024", "1280x900"]
+}
