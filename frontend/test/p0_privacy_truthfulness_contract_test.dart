@@ -8,6 +8,11 @@ Map<String, dynamic> _arb(String path) =>
 
 String _read(String path) => File(path).readAsStringSync();
 
+String _readDocumentImportLibrary() => [
+  _read('lib/features/documents/document_import_screen.dart'),
+  _read('lib/features/documents/document_import_screen_presentation.dart'),
+].join('\n');
+
 void main() {
   final localeFiles = <String, String>{
     'fr': 'lib/l10n/app_fr.arb',
@@ -67,9 +72,7 @@ void main() {
   test(
     'document import displays the fail-closed privacy gate before selection',
     () {
-      final source = _read(
-        'lib/features/documents/document_import_screen.dart',
-      );
+      final source = _readDocumentImportLibrary();
 
       for (final required in <String>[
         'document-privacy-gate',
