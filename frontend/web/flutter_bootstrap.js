@@ -4,7 +4,7 @@
 _flutter.loader.load();
 
 if ('serviceWorker' in navigator) {
-  const IAMINA_FALLBACK_RELEASE = '0.1.0+2';
+  const IAMINA_FALLBACK_RELEASE = '0.1.0+1';
 
   const readCurrentIaminaRelease = async () => {
     try {
