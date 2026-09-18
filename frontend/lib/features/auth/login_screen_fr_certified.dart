@@ -116,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 6),
               _Field(
                 controller: passwordCtrl,
-                hint: '••••••••  (min. 6 caractères)',
+                hint: '••••••••  (min. 8 caractères)',
                 obscureText: obscure,
                 suffix: IconButton(
                   onPressed: () => setDlgState(() => obscure = !obscure),
@@ -172,12 +172,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     password,
                   );
                   if (mounted) context.go('/onboarding');
-                } catch (_) {
+                } catch (error) {
                   if (mounted) {
-                    setState(
-                      () => _error =
-                          'Échec de la création du compte — vérifiez l\'e-mail et le mot de passe.',
-                    );
+                    final message = switch (error) {
+                      RegistrationFailure(
+                        code: RegistrationFailureCode.weakPassword,
+                      ) =>
+                        'Mot de passe trop faible : utilisez au moins 8 caractères, évitez un mot de passe courant, uniquement numérique ou trop proche de votre e-mail.',
+                      RegistrationFailure(
+                        code: RegistrationFailureCode.accountExists,
+                      ) =>
+                        'Un compte existe déjà avec cette adresse e-mail. Connectez-vous ou utilisez « Mot de passe oublié ».',
+                      _ =>
+                        'Échec de la création du compte — vérifiez votre connexion puis réessayez.',
+                    };
+                    setState(() => _error = message);
                   }
                 } finally {
                   if (mounted) setState(() => _isLoading = false);
