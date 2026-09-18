@@ -2,6 +2,11 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+String _readCompanionLibrary() => [
+  File('lib/features/companion/companion_premium_screen.dart').readAsStringSync(),
+  File('lib/features/companion/companion_premium_screen_presentation.dart').readAsStringSync(),
+].join('\n');
+
 void main() {
   test('Companion uncertainty copy maps governed reason codes instead of exposing raw codes', () {
     final source = File(
@@ -17,9 +22,7 @@ void main() {
   });
 
   test('Companion screen renders only localized non-null uncertainty labels', () {
-    final screen = File(
-      'lib/features/companion/companion_premium_screen.dart',
-    ).readAsStringSync();
+    final screen = _readCompanionLibrary();
 
     expect(screen, contains('companionPatternLimitationLabel(context, code)'));
     expect(screen, contains('companionMissingDataLabel(context, code)'));
