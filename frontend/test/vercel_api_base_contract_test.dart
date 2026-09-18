@@ -57,6 +57,19 @@ void main() {
     );
   });
 
+  test('Hosted Vercel review cannot keep a stale cache-first app shell', () {
+    final bootstrap = File('web/flutter_bootstrap.js').readAsStringSync();
+    final worker = File('web/iamina_service_worker.js').readAsStringSync();
+
+    expect(bootstrap, contains("iamina-review.vercel.app"));
+    expect(bootstrap, contains('getRegistrations()'));
+    expect(bootstrap, contains('registration.unregister()'));
+    expect(worker, contains('IS_IAMINA_HOSTED_REVIEW'));
+    expect(worker, contains('self.skipWaiting()'));
+    expect(worker, contains('self.registration.unregister()'));
+    expect(worker, contains('client.navigate(client.url)'));
+  });
+
   test('Vercel build strips a legacy /api/v1 suffix defensively', () {
     final source = File('vercel_build.sh').readAsStringSync();
 
