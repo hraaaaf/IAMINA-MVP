@@ -13,13 +13,6 @@ const PRECACHE = [
   './drift_worker.js',
 ];
 
-const NETWORK_FIRST_FILES = new Set([
-  '/',
-  '/index.html',
-  '/flutter_bootstrap.js',
-  '/main.dart.js',
-]);
-
 const STATIC_FILES = new Set([
   '/',
   '/index.html',
@@ -49,29 +42,23 @@ async function precacheRelease() {
 }
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    (async () => {
-      await precacheRelease();
-      await self.skipWaiting();
-    })(),
-  );
+  event.waitUntil(precacheRelease());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    (async () => {
-      const names = await caches.keys();
-      await Promise.all(
+    caches.keys().then((names) =>
+      Promise.all(
         names
           .filter(
             (name) =>
               name.startsWith(IAMINA_CACHE_PREFIX) && name !== CACHE_NAME,
           )
           .map((name) => caches.delete(name)),
-      );
-      await self.clients.claim();
-    })(),
+      ),
+    ),
   );
+  self.clients.claim();
 });
 
 function isCacheableStaticPath(pathname) {
@@ -79,22 +66,6 @@ function isCacheableStaticPath(pathname) {
     STATIC_FILES.has(pathname) ||
     STATIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   );
-}
-
-async function networkFirstStatic(request) {
-  const cache = await caches.open(CACHE_NAME);
-  try {
-    const freshRequest = new Request(request, { cache: 'no-store' });
-    const response = await fetch(freshRequest);
-    if (response.ok) {
-      await cache.put(request, response.clone());
-    }
-    return response;
-  } catch (error) {
-    const cached = await cache.match(request, { ignoreSearch: true });
-    if (cached) return cached;
-    throw error;
-  }
 }
 
 async function cacheFirstStatic(request) {
@@ -109,21 +80,17 @@ async function cacheFirstStatic(request) {
   return response;
 }
 
-async function networkFirstNavigation(request) {
+async function cacheFirstNavigation(request) {
   const cache = await caches.open(CACHE_NAME);
-  try {
-    const freshRequest = new Request(request, { cache: 'no-store' });
-    const response = await fetch(freshRequest);
-    if (response.ok) {
-      await cache.put('./index.html', response.clone());
-    }
-    return response;
-  } catch (error) {
-    const cached =
-      (await cache.match('./index.html')) || (await cache.match('./'));
-    if (cached) return cached;
-    throw error;
+  const cached =
+    (await cache.match('./index.html')) || (await cache.match('./'));
+  if (cached) return cached;
+
+  const response = await fetch(request);
+  if (response.ok) {
+    await cache.put('./index.html', response.clone());
   }
+  return response;
 }
 
 self.addEventListener('fetch', (event) => {
@@ -137,12 +104,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirstNavigation(request));
-    return;
-  }
-
-  if (NETWORK_FIRST_FILES.has(url.pathname)) {
-    event.respondWith(networkFirstStatic(request));
+    event.respondWith(cacheFirstNavigation(request));
     return;
   }
 
