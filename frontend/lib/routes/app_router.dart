@@ -19,6 +19,18 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey =
     GlobalKey<NavigatorState>();
 
+bool hostedRemoteLoginRequired({
+  required bool remoteAccountEnrollmentEnabled,
+  required bool isLoggedIn,
+  required bool isAuditSession,
+  required bool hasRemoteApiCredential,
+}) {
+  return remoteAccountEnrollmentEnabled &&
+      isLoggedIn &&
+      !isAuditSession &&
+      !hasRemoteApiCredential;
+}
+
 class AppRouterHolder {
   final GoRouter router;
 
@@ -72,10 +84,12 @@ AppRouterHolder createAppRouterHolder({
       // Hosted DEV/TEST builds with remote account enrollment enabled must not
       // treat a local-only enrollment marker as sufficient for backend-gated
       // flows. Require a native IAMINA bearer before leaving the login route.
-      if (kRemoteAccountEnrollmentEnabled &&
-          isLoggedIn &&
-          !authService.isAuditSession &&
-          !authService.hasRemoteApiCredential &&
+      if (hostedRemoteLoginRequired(
+            remoteAccountEnrollmentEnabled: kRemoteAccountEnrollmentEnabled,
+            isLoggedIn: isLoggedIn,
+            isAuditSession: authService.isAuditSession,
+            hasRemoteApiCredential: authService.hasRemoteApiCredential,
+          ) &&
           !isLoginPage) {
         return '/login';
       }
