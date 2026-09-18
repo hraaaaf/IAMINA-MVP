@@ -25,6 +25,11 @@ const bool kRemoteAccountEnrollmentEnabled = bool.fromEnvironment(
   defaultValue: false,
 );
 
+bool demoUsesLocalAuditSession({
+  required bool offlineDemo,
+  required bool remoteAccountEnrollmentEnabled,
+}) => offlineDemo || remoteAccountEnrollmentEnabled;
+
 typedef AuthFailureLogger = void Function(
   String operation,
   String errorType,
@@ -296,7 +301,10 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signInAnonymously() async {
-    if (kOfflineDemo) {
+    if (demoUsesLocalAuditSession(
+      offlineDemo: kOfflineDemo,
+      remoteAccountEnrollmentEnabled: kRemoteAccountEnrollmentEnabled,
+    )) {
       enterAuditSession();
       return;
     }
