@@ -4,6 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
+String _readCompanionLibrary() => [
+  _read('lib/features/companion/companion_premium_screen.dart'),
+  _read('lib/features/companion/companion_premium_screen_presentation.dart'),
+].join('\n');
+
 void main() {
   test('app root applies the certified LOGIN-derived visual language', () {
     final main = _read('lib/main.dart');
@@ -48,9 +53,7 @@ void main() {
     final dashboard = _read(
       'lib/features/dashboard/dashboard_premium_screen.dart',
     );
-    final companion = _read(
-      'lib/features/companion/companion_premium_screen.dart',
-    );
+    final companion = _readCompanionLibrary();
     final header = _read('lib/core/widgets/mobile_page_header.dart');
     final bridge = _read('lib/core/widgets/legacy_page_header_bridge.dart');
     final addLog = _read('lib/features/journal/add_log_screen.dart');
