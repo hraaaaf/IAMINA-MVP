@@ -18,5 +18,15 @@ void main() {
     expect(source, contains('on TimeoutException catch'));
     expect(source, contains('setState(() => _saving = false)'));
     expect(source, contains("context.go('/dashboard')"));
+    expect(source, isNot(contains('FirebaseAuth.instance.currentUser')));
+    expect(source, contains('auth.localProfileUserId'));
+    expect(source, contains("activateModule('diabetes')"));
+    expect(source, contains("'diabetes_type':"));
+    expect(source, contains("'treatment_type':"));
+    expect(source, contains("'unit_preference':"));
+    expect(source, contains('patchLocalePreferences'));
+    expect(source, contains("'ui_language':"));
+    expect(source, contains("'country_code':"));
+    expect(source, contains("'glucose_unit':"));
   });
 }

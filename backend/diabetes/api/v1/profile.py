@@ -16,13 +16,14 @@ from pydantic import BaseModel, field_validator, model_validator
 
 from core.ai_egress import grant_media_consent, revoke_media_consent
 from core.models import AIMediaConsentGrant, BasePatientProfile
+from core.models.patient_module import PatientModule
 from diabetes.models import DiabetesProfile
 
 from .schemas import PatientProfileSchema
 
 router = Router(tags=["profile"])
 
-_VALID_LANGUAGES = {"fr", "ar-MA", "ar"}
+_VALID_LANGUAGES = {"fr", "ar-MA", "ar", "en"}
 _VALID_UNITS = {"mg_dl", "mmol_l"}
 _VALID_DIABETES_TYPES = {value for value, _ in DiabetesProfile.DIABETES_TYPE_CHOICES}
 _VALID_TREATMENTS = {value for value, _ in DiabetesProfile.TREATMENT_TYPE_CHOICES}
@@ -162,15 +163,31 @@ def _get_base_profile(user) -> BasePatientProfile:
         raise HttpError(404, "Profile not found") from exc
 
 
-def _get_diabetes_profile(user) -> DiabetesProfile:
-    """Resolve DiabetesProfile for a user, raise 404 if not found."""
+def _get_diabetes_profile(
+    user,
+    *,
+    create_if_active: bool = False,
+) -> DiabetesProfile:
+    """Resolve the diabetes extension; create its empty shell only after activation."""
     try:
         base = BasePatientProfile.objects.select_related("diabetes_profile").get(patient=user)
-        return base.diabetes_profile
     except BasePatientProfile.DoesNotExist as exc:
         raise HttpError(404, "Profile not found") from exc
+
+    try:
+        return base.diabetes_profile
     except DiabetesProfile.DoesNotExist as exc:
-        raise HttpError(404, "Diabetes profile not found") from exc
+        if not create_if_active:
+            raise HttpError(404, "Diabetes profile not found") from exc
+        module_is_active = PatientModule.objects.filter(
+            patient=base,
+            module_name="diabetes",
+            is_active=True,
+        ).exists()
+        if not module_is_active:
+            raise HttpError(404, "Diabetes module is not active") from exc
+        profile, _ = DiabetesProfile.objects.get_or_create(base_profile=base)
+        return profile
 
 
 def _validate_media_consent_option(purpose: str, modality: str) -> None:
@@ -200,7 +217,7 @@ def get_profile(request):
 @router.patch("/profile", response=PatientProfileSchema)
 def patch_profile(request, data: ProfilePatchSchema):
     """Persist only explicitly supplied patient-declared profile fields."""
-    profile = _get_diabetes_profile(request.user)
+    profile = _get_diabetes_profile(request.user, create_if_active=True)
     base = profile.base_profile
     payload = data.model_dump(exclude_unset=True)
 

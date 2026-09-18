@@ -47,12 +47,16 @@ AppRouterHolder createAppRouterHolder({
         ? refreshables.first
         : Listenable.merge(refreshables),
     redirect: (context, state) {
-      final isLoggedIn = authService.isAuthenticated;
+      final isLoggedIn = authService.isAuditSession ||
+          (kRemoteBackendAuthRequired
+              ? authService.hasRemoteCredential
+              : authService.isAuthenticated);
       final isAnonymous = authService.isAnonymous;
       final path = state.uri.path;
       final isLoginPage = path == '/login';
       final isPasswordResetPage = path == '/reset-password';
       final isConsentPage = path == '/consent';
+      final isOnboardingPage = path == '/onboarding';
       final isAppLockSetupPage = path == '/app-lock/setup';
       final isAppLockUnlockPage = path == '/app-lock/unlock';
       final isAppLockPage = isAppLockSetupPage || isAppLockUnlockPage;
@@ -92,7 +96,11 @@ AppRouterHolder createAppRouterHolder({
         final hasConsent = consent.hasConsent;
         final hasDeclined = consent.hasDeclinedLocally;
 
-        if (!hasConsent && !hasDeclined && !isConsentPage && !isAppLockPage) {
+        if (!hasConsent &&
+            !hasDeclined &&
+            !isConsentPage &&
+            !isOnboardingPage &&
+            !isAppLockPage) {
           return '/consent';
         }
         if (hasConsent && isConsentPage) return _homeRoute();

@@ -193,6 +193,18 @@ class ApiClient {
     }
   }
 
+  Future<bool> patchLocalePreferences(Map<String, dynamic> patch) async {
+    try {
+      final response = await _client.patch(
+        Uri.parse('/api/v1/profile/locale'),
+        body: patch,
+      );
+      return response.isSuccessful;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<PersonalResponseResult?> getPersonalResponse({int days = 90}) async {
     try {
       final response = await _client.get(

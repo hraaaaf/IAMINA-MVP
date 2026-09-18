@@ -1,5 +1,5 @@
 const IAMINA_CACHE_PREFIX = 'iamina-app-shell-';
-const IAMINA_CACHE_SCHEMA = '0.1.0+1';
+const IAMINA_CACHE_SCHEMA = '0.1.0+2';
 const CACHE_NAME = `${IAMINA_CACHE_PREFIX}${IAMINA_CACHE_SCHEMA}`;
 
 const PRECACHE = [

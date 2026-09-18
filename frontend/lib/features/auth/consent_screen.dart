@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../services/api_client.dart';
+import '../../services/auth_service.dart';
 import '../../services/consent_api_extension.dart';
 import '../../services/consent_evidence_store.dart';
 import '../../services/consent_notice_contract.dart';
@@ -42,7 +43,12 @@ class _ConsentScreenState extends State<ConsentScreen> {
       // The UI gate only opens after the exact server response is verified and
       // the same evidence is durably persisted locally.
       await evidenceStore.write(claim);
-      await db.setAiConsent(granted: true);
+      final auth = context.read<AuthService>();
+      await db.bindSingleProfileToUser(auth.localProfileUserId);
+      await db.setAiConsent(
+        granted: true,
+        userId: auth.localProfileUserId,
+      );
       consent.markVerifiedConsent();
       if (mounted) context.go('/dashboard');
     } catch (_) {

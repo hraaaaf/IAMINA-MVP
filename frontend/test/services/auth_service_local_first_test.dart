@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 const _tokenKey = 'iamina_native_access_token';
+const _nativeUserIdKey = 'iamina_native_user_id';
 const _localSessionKey = 'iamina_local_session_v1';
 const _localSessionValue = 'enrolled';
 const _localDeviceIdKey = 'iamina_local_device_id_v1';
@@ -142,11 +143,33 @@ void main() {
 
     expect(service.isAuthenticated, isTrue);
     expect(service.isRemoteCredentialVerified, isTrue);
+    expect(service.hasRemoteCredential, isTrue);
+    expect(service.nativeUserId, 1);
+    expect(service.localProfileUserId, 1);
     expect(await service.getIdToken(), _freshToken);
+    expect(
+      await const FlutterSecureStorage().read(key: _nativeUserIdKey),
+      '1',
+    );
     expect(
       await const FlutterSecureStorage().read(key: _localSessionKey),
       _localSessionValue,
     );
+    service.dispose();
+  });
+
+  test('stored native backend identity restores without boot network', () async {
+    seedStorage({
+      _tokenKey: _token,
+      _nativeUserIdKey: '42',
+      _localSessionKey: _localSessionValue,
+    });
+    final service = AuthService(httpClient: noBootNetworkClient());
+    await service.initialize();
+
+    expect(service.hasRemoteCredential, isTrue);
+    expect(service.nativeUserId, 42);
+    expect(service.localProfileUserId, 42);
     service.dispose();
   });
 
@@ -171,6 +194,7 @@ void main() {
   test('explicit sign-out clears local enrollment and device id even if remote logout fails', () async {
     seedStorage({
       _tokenKey: _token,
+      _nativeUserIdKey: '42',
       _localSessionKey: _localSessionValue,
       _localDeviceIdKey: 'device-id',
     });
@@ -184,6 +208,10 @@ void main() {
 
     expect(service.isAuthenticated, isFalse);
     expect(await const FlutterSecureStorage().read(key: _tokenKey), isNull);
+    expect(
+      await const FlutterSecureStorage().read(key: _nativeUserIdKey),
+      isNull,
+    );
     expect(await const FlutterSecureStorage().read(key: _localSessionKey), isNull);
     expect(await const FlutterSecureStorage().read(key: _localDeviceIdKey), isNull);
     service.dispose();
