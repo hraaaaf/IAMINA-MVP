@@ -19,4 +19,11 @@ void main() {
       ),
     );
   });
+
+  test('onboarding remains reachable before AI consent', () {
+    final source = File('lib/routes/app_router.dart').readAsStringSync();
+
+    expect(source, contains("final isOnboardingPage = path == '/onboarding';"));
+    expect(source, contains('!isOnboardingPage'));
+  });
 }
