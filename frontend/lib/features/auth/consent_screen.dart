@@ -39,10 +39,11 @@ class _ConsentScreenState extends State<ConsentScreen> {
       final accepted = await api.giveVersionedConsent(claim);
       if (!accepted) return;
 
-      // The UI gate only opens after the exact server response is verified and
-      // the same evidence is durably persisted locally.
-      await evidenceStore.write(claim);
+      // The UI gate opens only after the exact server response is verified and
+      // both local persistence layers succeed. Persist the profile timestamp
+      // first so a missing onboarding profile cannot leave orphan evidence.
       await db.setAiConsent(granted: true);
+      await evidenceStore.write(claim);
       consent.markVerifiedConsent();
       if (mounted) context.go('/dashboard');
     } catch (_) {
