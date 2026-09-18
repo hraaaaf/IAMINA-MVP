@@ -18,5 +18,10 @@ void main() {
     expect(source, contains('on TimeoutException catch'));
     expect(source, contains('setState(() => _saving = false)'));
     expect(source, contains("context.go('/dashboard')"));
+    expect(source, contains('kFirebaseMigrationEnabled'));
+    expect(
+      source,
+      contains('? FirebaseAuth.instance.currentUser'),
+    );
   });
 }
