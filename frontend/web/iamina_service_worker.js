@@ -2,6 +2,13 @@ const IAMINA_CACHE_PREFIX = 'iamina-app-shell-';
 const IAMINA_CACHE_SCHEMA = '0.1.0+1';
 const CACHE_NAME = `${IAMINA_CACHE_PREFIX}${IAMINA_CACHE_SCHEMA}`;
 
+const IAMINA_REVIEW_STABLE_HOST = 'iamina-review.vercel.app';
+const IAMINA_REVIEW_DEPLOYMENT_HOST_RE =
+  /^iamina-review-[a-z0-9-]+-achraf-benmoussa-s-projects\.vercel\.app$/i;
+const IS_IAMINA_HOSTED_REVIEW =
+  self.location.hostname === IAMINA_REVIEW_STABLE_HOST ||
+  IAMINA_REVIEW_DEPLOYMENT_HOST_RE.test(self.location.hostname);
+
 const PRECACHE = [
   './',
   './index.html',
@@ -42,10 +49,34 @@ async function precacheRelease() {
 }
 
 self.addEventListener('install', (event) => {
+  if (IS_IAMINA_HOSTED_REVIEW) {
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
   event.waitUntil(precacheRelease().then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
+  if (IS_IAMINA_HOSTED_REVIEW) {
+    event.waitUntil(
+      (async () => {
+        const names = await caches.keys();
+        await Promise.all(
+          names
+            .filter((name) => name.startsWith(IAMINA_CACHE_PREFIX))
+            .map((name) => caches.delete(name)),
+        );
+        await self.clients.claim();
+        await self.registration.unregister();
+        const windows = await self.clients.matchAll({ type: 'window' });
+        await Promise.all(
+          windows.map((client) => client.navigate(client.url)),
+        );
+      })(),
+    );
+    return;
+  }
+
   event.waitUntil(
     caches.keys().then((names) =>
       Promise.all(
@@ -94,6 +125,8 @@ async function cacheFirstNavigation(request) {
 }
 
 self.addEventListener('fetch', (event) => {
+  if (IS_IAMINA_HOSTED_REVIEW) return;
+
   const request = event.request;
   if (request.method !== 'GET') return;
 
