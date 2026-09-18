@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/consent_service.dart';
 import '../../services/firebase_migration_policy.dart';
 import '../../services/locale_preference_service.dart';
 
@@ -86,6 +87,11 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           .into(db.patientProfiles)
           .insertOnConflictUpdate(profile)
           .timeout(_persistenceTimeout);
+
+      if (!mounted) return;
+      if (context.read<ConsentService>().hasConsent) {
+        await db.setAiConsent(granted: true).timeout(_persistenceTimeout);
+      }
 
       if (mounted) context.go('/dashboard');
     } on TimeoutException catch (error, stackTrace) {
