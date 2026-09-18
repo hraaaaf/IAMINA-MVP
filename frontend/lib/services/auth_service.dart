@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
+import 'api_origin.dart';
 import 'auth_epoch.dart';
 import 'firebase_migration_policy.dart';
 
@@ -30,6 +31,17 @@ typedef AuthFailureLogger = void Function(
   String errorType,
   StackTrace stackTrace,
 );
+
+bool resolveAuthenticationState({
+  required bool auditSession,
+  required bool localSessionEnrolled,
+  required bool remoteAccountEnrollmentEnabled,
+  required bool hasRemoteCredential,
+}) {
+  if (auditSession) return true;
+  if (remoteAccountEnrollmentEnabled) return hasRemoteCredential;
+  return localSessionEnrolled || hasRemoteCredential;
+}
 
 class AuthService extends ChangeNotifier {
   static const _tokenKey = 'iamina_native_access_token';
@@ -98,10 +110,15 @@ class AuthService extends ChangeNotifier {
   static int get authEpoch => AuthEpoch.value;
 
   bool get isInitialized => _initialized;
-  bool get isAuthenticated =>
-      _auditSession ||
-      _localSessionEnrolled ||
+  bool get hasRemoteCredential =>
+      (_nativeToken != null && _nativeToken!.isNotEmpty) ||
       (_firebaseAuth?.currentUser != null);
+  bool get isAuthenticated => resolveAuthenticationState(
+        auditSession: _auditSession,
+        localSessionEnrolled: _localSessionEnrolled,
+        remoteAccountEnrollmentEnabled: kRemoteAccountEnrollmentEnabled,
+        hasRemoteCredential: hasRemoteCredential,
+      );
   bool get isRemoteCredentialVerified => _remoteCredentialVerified;
   bool get isAnonymous =>
       _auditSession ||
@@ -248,7 +265,7 @@ class AuthService extends ChangeNotifier {
     if (token != null) {
       try {
         await _httpClient.post(
-          Uri.parse('$kAuthBaseUrl/api/v1/auth/logout'),
+          Uri.parse('${normalizeApiOrigin(kAuthBaseUrl)}/api/v1/auth/logout'),
           headers: {'Authorization': 'Bearer $token'},
         );
       } catch (error, stackTrace) {
@@ -305,7 +322,7 @@ class AuthService extends ChangeNotifier {
 
   Future<http.Response> _postJson(String path, Map<String, dynamic> body) {
     return _httpClient.post(
-      Uri.parse('$kAuthBaseUrl$path'),
+      Uri.parse('${normalizeApiOrigin(kAuthBaseUrl)}$path'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
