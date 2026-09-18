@@ -38,6 +38,42 @@ void main() {
     );
   });
 
+  test('hosted local-only session cannot enter consent before remote login', () {
+    expect(
+      shouldApplyConsentGate(
+        isLoggedIn: true,
+        isAnonymous: false,
+        requiresHostedRemoteLogin: true,
+        hasConsentService: true,
+      ),
+      isFalse,
+    );
+  });
+
+  test('authenticated hosted session may enter consent after remote login', () {
+    expect(
+      shouldApplyConsentGate(
+        isLoggedIn: true,
+        isAnonymous: false,
+        requiresHostedRemoteLogin: false,
+        hasConsentService: true,
+      ),
+      isTrue,
+    );
+  });
+
+  test('anonymous demo session skips consent', () {
+    expect(
+      shouldApplyConsentGate(
+        isLoggedIn: true,
+        isAnonymous: true,
+        requiresHostedRemoteLogin: false,
+        hasConsentService: true,
+      ),
+      isFalse,
+    );
+  });
+
   test('hosted remote flow accepts session with native API credential', () {
     expect(
       hostedRemoteLoginRequired(
