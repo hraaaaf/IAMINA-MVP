@@ -31,6 +31,38 @@ typedef AuthFailureLogger = void Function(
   StackTrace stackTrace,
 );
 
+enum RegistrationFailureCode {
+  weakPassword,
+  accountExists,
+  rejected,
+}
+
+class RegistrationFailure implements Exception {
+  final RegistrationFailureCode code;
+  final int statusCode;
+
+  const RegistrationFailure(this.code, this.statusCode);
+}
+
+RegistrationFailure registrationFailureForStatus(int statusCode) {
+  if (statusCode == 400) {
+    return RegistrationFailure(
+      RegistrationFailureCode.weakPassword,
+      statusCode,
+    );
+  }
+  if (statusCode == 409) {
+    return RegistrationFailure(
+      RegistrationFailureCode.accountExists,
+      statusCode,
+    );
+  }
+  return RegistrationFailure(
+    RegistrationFailureCode.rejected,
+    statusCode,
+  );
+}
+
 class AuthService extends ChangeNotifier {
   static const _tokenKey = 'iamina_native_access_token';
   static const _localSessionKey = 'iamina_local_session_v1';
@@ -103,6 +135,8 @@ class AuthService extends ChangeNotifier {
       _localSessionEnrolled ||
       (_firebaseAuth?.currentUser != null);
   bool get isRemoteCredentialVerified => _remoteCredentialVerified;
+  bool get hasRemoteApiCredential =>
+      _nativeToken != null && _nativeToken!.isNotEmpty;
   bool get isAnonymous =>
       _auditSession ||
       (!_localSessionEnrolled &&
@@ -222,7 +256,7 @@ class AuthService extends ChangeNotifier {
       {'email': email.trim().toLowerCase(), 'password': password},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Registration failed');
+      throw registrationFailureForStatus(response.statusCode);
     }
     await _acceptAuthResponse(response);
   }

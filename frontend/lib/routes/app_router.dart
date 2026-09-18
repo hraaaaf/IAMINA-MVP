@@ -19,6 +19,18 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey =
     GlobalKey<NavigatorState>();
 
+bool hostedRemoteLoginRequired({
+  required bool remoteAccountEnrollmentEnabled,
+  required bool isLoggedIn,
+  required bool isAuditSession,
+  required bool hasRemoteApiCredential,
+}) {
+  return remoteAccountEnrollmentEnabled &&
+      isLoggedIn &&
+      !isAuditSession &&
+      !hasRemoteApiCredential;
+}
+
 class AppRouterHolder {
   final GoRouter router;
 
@@ -69,6 +81,19 @@ AppRouterHolder createAppRouterHolder({
       // ── Local enrollment gate ─────────────────────────────────────────────
       if (!isLoggedIn && !isLoginPage) return '/login';
 
+      // Hosted DEV/TEST builds with remote account enrollment enabled must not
+      // treat a local-only enrollment marker as sufficient for backend-gated
+      // flows. Require a native IAMINA bearer before leaving the login route.
+      if (hostedRemoteLoginRequired(
+            remoteAccountEnrollmentEnabled: kRemoteAccountEnrollmentEnabled,
+            isLoggedIn: isLoggedIn,
+            isAuditSession: authService.isAuditSession,
+            hasRemoteApiCredential: authService.hasRemoteApiCredential,
+          ) &&
+          !isLoginPage) {
+        return '/login';
+      }
+
       // Audit access is compile-time + loopback constrained. It may render the
       // lock screens for visual certification but never changes patient state.
       if (authService.isAuditSession && isAppLockPage) return null;
@@ -84,7 +109,13 @@ AppRouterHolder createAppRouterHolder({
         }
       }
 
-      if (isLoggedIn && isLoginPage) return _homeRoute();
+      if (isLoggedIn &&
+          isLoginPage &&
+          (!kRemoteAccountEnrollmentEnabled ||
+              authService.hasRemoteApiCredential ||
+              authService.isAuditSession)) {
+        return _homeRoute();
+      }
 
       // ── Consent gate (RGPD Art. 7) ────────────────────────────────────────
       // Skip for anonymous demo users and when ConsentService is not wired.
