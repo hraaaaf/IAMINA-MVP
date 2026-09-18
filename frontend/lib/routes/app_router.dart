@@ -150,14 +150,16 @@ AppRouterHolder createAppRouterHolder({
 
       // ── Consent gate (RGPD Art. 7) ────────────────────────────────────────
       // Skip for anonymous demo users and when ConsentService is not wired.
-      if (shouldApplyConsentGate(
-        isLoggedIn: isLoggedIn,
-        isAnonymous: isAnonymous,
-        requiresHostedRemoteLogin: requiresHostedRemoteLogin,
-        hasConsentService: consent != null,
-      )) {
-        final hasConsent = consent.hasConsent;
-        final hasDeclined = consent.hasDeclinedLocally;
+      final activeConsent = consent;
+      if (activeConsent != null &&
+          shouldApplyConsentGate(
+            isLoggedIn: isLoggedIn,
+            isAnonymous: isAnonymous,
+            requiresHostedRemoteLogin: requiresHostedRemoteLogin,
+            hasConsentService: true,
+          )) {
+        final hasConsent = activeConsent.hasConsent;
+        final hasDeclined = activeConsent.hasDeclinedLocally;
 
         if (!hasConsent && !hasDeclined && !isConsentPage && !isAppLockPage) {
           return '/consent';
