@@ -44,6 +44,25 @@ class RegistrationFailure implements Exception {
   const RegistrationFailure(this.code, this.statusCode);
 }
 
+RegistrationFailure registrationFailureForStatus(int statusCode) {
+  if (statusCode == 400) {
+    return RegistrationFailure(
+      RegistrationFailureCode.weakPassword,
+      statusCode,
+    );
+  }
+  if (statusCode == 409) {
+    return RegistrationFailure(
+      RegistrationFailureCode.accountExists,
+      statusCode,
+    );
+  }
+  return RegistrationFailure(
+    RegistrationFailureCode.rejected,
+    statusCode,
+  );
+}
+
 class AuthService extends ChangeNotifier {
   static const _tokenKey = 'iamina_native_access_token';
   static const _localSessionKey = 'iamina_local_session_v1';
@@ -237,22 +256,7 @@ class AuthService extends ChangeNotifier {
       {'email': email.trim().toLowerCase(), 'password': password},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      if (response.statusCode == 400) {
-        throw RegistrationFailure(
-          RegistrationFailureCode.weakPassword,
-          response.statusCode,
-        );
-      }
-      if (response.statusCode == 409) {
-        throw RegistrationFailure(
-          RegistrationFailureCode.accountExists,
-          response.statusCode,
-        );
-      }
-      throw RegistrationFailure(
-        RegistrationFailureCode.rejected,
-        response.statusCode,
-      );
+      throw registrationFailureForStatus(response.statusCode);
     }
     await _acceptAuthResponse(response);
   }
