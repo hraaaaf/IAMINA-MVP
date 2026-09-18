@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:drift/drift.dart' as drift;
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +9,8 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/api_client.dart';
+import '../../services/auth_service.dart';
 import '../../services/locale_preference_service.dart';
 
 class OnboardingChatScreen extends StatefulWidget {
@@ -66,8 +67,10 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       if (!mounted) return;
 
       final db = context.read<AppDatabase>();
-      final firebaseUser = FirebaseAuth.instance.currentUser;
-      final userId = firebaseUser?.uid.hashCode.abs() ?? 1;
+      final auth = context.read<AuthService>();
+      final userId = auth.localProfileUserId;
+      await db.bindSingleProfileToUser(userId).timeout(_persistenceTimeout);
+
       final profile = PatientProfilesCompanion.insert(
         userId: drift.Value(userId),
         preferredLanguage: drift.Value(_language!),
@@ -84,10 +87,37 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           .insertOnConflictUpdate(profile)
           .timeout(_persistenceTimeout);
 
+      if (kRemoteBackendAuthRequired) {
+        final api = context.read<ApiClient>();
+        final moduleActivated = await api
+            .activateModule('diabetes')
+            .timeout(_persistenceTimeout);
+        if (!moduleActivated) {
+          throw StateError('Diabetes backend module activation failed');
+        }
+
+        final remoteProfileSaved = await api
+            .patchProfile({
+              'preferred_language': _language!,
+              'diabetes_type':
+                  _diabetesType == 'pre' ? 'prediabetes' : _diabetesType!,
+              'treatment_type': switch (_treatment!) {
+                'tablets' => 'oral_meds',
+                'lifestyle' => 'diet_exercise',
+                _ => _treatment!,
+              },
+              'unit_preference': _unit == 'mmol/L' ? 'mmol_l' : 'mg_dl',
+            })
+            .timeout(_persistenceTimeout);
+        if (!remoteProfileSaved) {
+          throw StateError('Remote onboarding profile persistence failed');
+        }
+      }
+
       if (mounted) context.go('/dashboard');
     } on TimeoutException catch (error, stackTrace) {
       developer.log(
-        'Onboarding local persistence timed out.',
+        'Onboarding persistence timed out.',
         name: 'iamina.onboarding.finish',
         error: error,
         stackTrace: stackTrace,
@@ -95,7 +125,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       if (mounted) setState(() => _saving = false);
     } catch (error, stackTrace) {
       developer.log(
-        'Onboarding local persistence failed.',
+        'Onboarding persistence failed.',
         name: 'iamina.onboarding.finish',
         error: error,
         stackTrace: stackTrace,
