@@ -4,6 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
+String _readDocumentImportLibrary() => [
+  _read('lib/features/documents/document_import_screen.dart'),
+  _read('lib/features/documents/document_import_screen_presentation.dart'),
+].join('\n');
+
 void main() {
   test('Importer remains the acquisition entry without becoming a persistent root', () {
     final module = _read('lib/modules/diabetes_module.dart');
@@ -38,9 +43,7 @@ void main() {
   test(
     'document screen exposes the user task, not internal Pulper branding',
     () {
-      final screen = _read(
-        'lib/features/documents/document_import_screen.dart',
-      );
+      final screen = _readDocumentImportLibrary();
 
       expect(screen, contains('AuditedPageCopy.of(context).documentTitle'));
       expect(screen, contains('AuditedPageCopy.of(context).documentIntro'));
