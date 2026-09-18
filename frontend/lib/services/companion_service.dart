@@ -144,6 +144,10 @@ class CompanionService {
     final trimmed = message.trim();
     if (trimmed.isEmpty) return null;
 
+    if (_authService.isAuditSession) {
+      return _demoReply(trimmed);
+    }
+
     final token = await _authService.getIdToken();
     if (token == null || token.isEmpty) {
       throw const ProviderApiException(
@@ -229,6 +233,26 @@ class CompanionService {
         statusCode: 500,
       );
     }
+  }
+
+  CompanionChatReply _demoReply(String message) {
+    final normalized = message.toLowerCase();
+    final greeting = normalized == 'bonjour' ||
+        normalized == 'salut' ||
+        normalized == 'hello' ||
+        normalized == 'hi' ||
+        normalized == 'مرحبا' ||
+        normalized == 'السلام عليكم';
+
+    final reply = greeting
+        ? 'Bonjour 👋 Je suis IAmina en mode démo. Je peux te montrer comment la conversation fonctionne, sans envoyer de données à un serveur.'
+        : 'Mode démo : je peux illustrer la conversation IAmina localement. Pour une réponse personnalisée à partir de tes données, utilise une session authentifiée.';
+
+    return CompanionChatReply(
+      reply: reply,
+      conversationId: 'demo-local',
+      replyLanguage: 'fr',
+    );
   }
 
   void dispose() => _http.close();
