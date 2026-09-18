@@ -57,6 +57,18 @@ void main() {
     );
   });
 
+  test('Vercel review build requires a backend credential for protected flows', () {
+    final source = File('vercel_build.sh').readAsStringSync();
+
+    expect(source, contains('IAMINA_REQUIRE_REMOTE_BACKEND_AUTH=true'));
+    expect(
+      source,
+      contains(
+        r'--dart-define=IAMINA_REQUIRE_REMOTE_BACKEND_AUTH="${IAMINA_REQUIRE_REMOTE_BACKEND_AUTH:-false}"',
+      ),
+    );
+  });
+
   test('Vercel build strips a legacy /api/v1 suffix defensively', () {
     final source = File('vercel_build.sh').readAsStringSync();
 
