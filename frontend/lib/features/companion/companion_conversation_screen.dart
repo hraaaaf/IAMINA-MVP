@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/api_client.dart';
 import '../../services/companion_service.dart';
+import '../../services/auth_service.dart';
 
 String _chatText(BuildContext context, String fr, String en, String ar) {
   final code = Localizations.localeOf(context).languageCode;
@@ -59,7 +61,9 @@ class CompanionConversationScreen extends StatefulWidget {
 
 class _CompanionConversationScreenState
     extends State<CompanionConversationScreen> {
-  late final CompanionService _service = widget.service ?? CompanionService();
+  late CompanionService _service;
+  bool _serviceInitialized = false;
+  bool _ownsService = false;
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<_ConversationMessage> _messages = [];
@@ -67,10 +71,26 @@ class _CompanionConversationScreenState
   ProviderApiException? _failure;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_serviceInitialized) return;
+    final injected = widget.service;
+    if (injected != null) {
+      _service = injected;
+    } else {
+      _service = CompanionService(
+        authService: context.read<AuthService>(),
+      );
+      _ownsService = true;
+    }
+    _serviceInitialized = true;
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
-    if (widget.service == null) _service.dispose();
+    if (_ownsService) _service.dispose();
     super.dispose();
   }
 
