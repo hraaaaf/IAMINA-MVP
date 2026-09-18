@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:chopper/chopper.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'api_origin.dart';
 import 'auth_service.dart';
 import 'document_ingest_minimizer.dart';
 import 'sync_api_contract.dart';
@@ -165,8 +166,9 @@ class ApiClient {
   final PendingDocumentDeduplicator<PulperPreview> _documentDeduplicator =
       PendingDocumentDeduplicator<PulperPreview>();
 
-  ApiClient({this.baseUrl = kBaseUrl, AuthService? authService})
-    : _authService = authService ?? AuthService();
+  ApiClient({String baseUrl = kBaseUrl, AuthService? authService})
+    : baseUrl = normalizeApiOrigin(baseUrl),
+      _authService = authService ?? AuthService();
 
   late final ChopperClient _client = ChopperClient(
     baseUrl: Uri.parse(baseUrl),

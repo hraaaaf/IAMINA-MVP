@@ -42,9 +42,13 @@ class _ConsentScreenState extends State<ConsentScreen> {
       // The UI gate only opens after the exact server response is verified and
       // the same evidence is durably persisted locally.
       await evidenceStore.write(claim);
+      final hasLocalProfile =
+          await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull() != null;
       await db.setAiConsent(granted: true);
       consent.markVerifiedConsent();
-      if (mounted) context.go('/dashboard');
+      if (mounted) {
+        context.go(hasLocalProfile ? '/dashboard' : '/onboarding');
+      }
     } catch (_) {
       // Fail closed. The explicit "Continue without AI" route remains usable.
     } finally {

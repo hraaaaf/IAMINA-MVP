@@ -25,6 +25,36 @@ void main() {
         fail('Local-first operation must perform zero network requests');
       });
 
+  test('hosted account mode rejects marker-only local authentication', () {
+    expect(
+      resolveAuthenticationState(
+        auditSession: false,
+        localSessionEnrolled: true,
+        remoteAccountEnrollmentEnabled: true,
+        hasRemoteCredential: false,
+      ),
+      isFalse,
+    );
+    expect(
+      resolveAuthenticationState(
+        auditSession: false,
+        localSessionEnrolled: true,
+        remoteAccountEnrollmentEnabled: true,
+        hasRemoteCredential: true,
+      ),
+      isTrue,
+    );
+    expect(
+      resolveAuthenticationState(
+        auditSession: false,
+        localSessionEnrolled: true,
+        remoteAccountEnrollmentEnabled: false,
+        hasRemoteCredential: false,
+      ),
+      isTrue,
+    );
+  });
+
   test('first enrollment is device-local with zero network', () async {
     seedStorage({});
     final service = AuthService(httpClient: noBootNetworkClient());
@@ -94,6 +124,7 @@ void main() {
     await service.initialize();
 
     expect(service.isAuthenticated, isTrue);
+    expect(service.hasRemoteCredential, isTrue);
     expect(service.isRemoteCredentialVerified, isFalse);
     expect(await service.getIdToken(), _token);
     expect(await const FlutterSecureStorage().read(key: _tokenKey), _token);
@@ -110,6 +141,7 @@ void main() {
     await service.initialize();
 
     expect(service.isAuthenticated, isTrue);
+    expect(service.hasRemoteCredential, isTrue);
     expect(service.isRemoteCredentialVerified, isFalse);
     expect(await service.getIdToken(), _token);
     service.dispose();
@@ -121,6 +153,7 @@ void main() {
     await service.initialize();
 
     expect(service.isAuthenticated, isTrue);
+    expect(service.hasRemoteCredential, isFalse);
     expect(service.isRemoteCredentialVerified, isFalse);
     expect(await service.getIdToken(), isNull);
     service.dispose();
@@ -141,6 +174,7 @@ void main() {
     await service.signInWithEmail('patient@example.com', 'correct-password');
 
     expect(service.isAuthenticated, isTrue);
+    expect(service.hasRemoteCredential, isTrue);
     expect(service.isRemoteCredentialVerified, isTrue);
     expect(await service.getIdToken(), _freshToken);
     expect(
