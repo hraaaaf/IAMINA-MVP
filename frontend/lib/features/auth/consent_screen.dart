@@ -44,6 +44,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
       // the same evidence is durably persisted locally.
       await evidenceStore.write(claim);
       final auth = context.read<AuthService>();
+      await db.bindSingleProfileToUser(auth.localProfileUserId);
       await db.setAiConsent(
         granted: true,
         userId: auth.localProfileUserId,
