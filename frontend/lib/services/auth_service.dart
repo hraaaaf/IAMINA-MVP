@@ -31,6 +31,19 @@ typedef AuthFailureLogger = void Function(
   StackTrace stackTrace,
 );
 
+enum RegistrationFailureCode {
+  weakPassword,
+  accountExists,
+  rejected,
+}
+
+class RegistrationFailure implements Exception {
+  final RegistrationFailureCode code;
+  final int statusCode;
+
+  const RegistrationFailure(this.code, this.statusCode);
+}
+
 class AuthService extends ChangeNotifier {
   static const _tokenKey = 'iamina_native_access_token';
   static const _localSessionKey = 'iamina_local_session_v1';
@@ -224,7 +237,22 @@ class AuthService extends ChangeNotifier {
       {'email': email.trim().toLowerCase(), 'password': password},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Registration failed');
+      if (response.statusCode == 400) {
+        throw RegistrationFailure(
+          RegistrationFailureCode.weakPassword,
+          response.statusCode,
+        );
+      }
+      if (response.statusCode == 409) {
+        throw RegistrationFailure(
+          RegistrationFailureCode.accountExists,
+          response.statusCode,
+        );
+      }
+      throw RegistrationFailure(
+        RegistrationFailureCode.rejected,
+        response.statusCode,
+      );
     }
     await _acceptAuthResponse(response);
   }
