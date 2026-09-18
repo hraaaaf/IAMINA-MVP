@@ -1,0 +1,9 @@
+{
+  "batch": "B24",
+  "theme": "Morocco depth",
+  "baseline_count": 371,
+  "target_count": 374,
+  "fixture_query": "Amlou marocain",
+  "ids": ["moroccan_amlou", "moroccan_khlii", "moroccan_taktouka"],
+  "required_viewports": ["390x844", "768x1024", "1280x900"]
+}
