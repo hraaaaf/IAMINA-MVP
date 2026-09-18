@@ -13,9 +13,9 @@ void main() {
 
     expect(state, contains("part 'login_screen_fr_certified_presentation.dart';"));
     expect(state, contains('class _LoginScreenState'));
-    expect(state, contains('Future<void> _handleLogin()'));
+    expect(state, contains('Future<void> _handleLogin({bool isDemo = false})'));
     expect(state, contains('Future<void> _handleForgotPassword()'));
-    expect(state, contains('void _handleSignup()'));
+    expect(state, contains('Future<void> _handleSignup()'));
     expect(state, contains('AuthService'));
     expect(state, isNot(contains('class _LoginBackdrop')));
     expect(state, isNot(contains('class _LoginCard')));
@@ -24,7 +24,7 @@ void main() {
     expect(presentation, contains('class _LoginBackdrop'));
     expect(presentation, contains('class _LoginCard'));
     expect(presentation, contains('class _PrimaryLoginButton'));
-    expect(presentation, isNot(contains('Future<void> _handleLogin()')));
+    expect(presentation, isNot(contains('Future<void> _handleLogin({bool isDemo = false})')));
     expect(presentation, isNot(contains('AuthService')));
     expect(presentation, isNot(contains("import 'package:")));
   });
