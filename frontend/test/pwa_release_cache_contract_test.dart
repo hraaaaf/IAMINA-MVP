@@ -6,7 +6,7 @@ void main() {
   test('IAMINA review service worker rotates cache per release', () {
     final source = File('web/iamina_service_worker.js').readAsStringSync();
 
-    expect(source, contains("const IAMINA_CACHE_SCHEMA = '0.1.0+2';"));
+    expect(source, contains("const IAMINA_CACHE_SCHEMA = '0.1.0+1';"));
     expect(source, contains("searchParams.get('release')"));
     expect(source, contains(r'`${IAMINA_CACHE_PREFIX}${IAMINA_RELEASE}`'));
     expect(source, contains("self.location.hostname.startsWith('iamina-review')"));
