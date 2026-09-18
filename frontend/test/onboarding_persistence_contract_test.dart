@@ -23,5 +23,7 @@ void main() {
       source,
       contains('? FirebaseAuth.instance.currentUser'),
     );
+    expect(source, contains("context.read<ConsentService>().hasConsent"));
+    expect(source, contains('db.setAiConsent(granted: true)'));
   });
 }
