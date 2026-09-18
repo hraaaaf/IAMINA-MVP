@@ -42,7 +42,7 @@ async function precacheRelease() {
 }
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(precacheRelease());
+  event.waitUntil(precacheRelease().then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
