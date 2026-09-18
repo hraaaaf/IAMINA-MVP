@@ -324,7 +324,7 @@ Reconciliation retained through 2026-09-17:
 - historical TD-013 authentication abuse protection is CLOSED by PR #623, merged as `main@f045491a3e07db388067fe54c60fd0c4b543e050`; exact-head CI #4238 and drift #3760 succeeded, then exact-main post-merge CI #4241 and drift #3761 succeeded. Tracker #622 is closed. The retained limiter is PostgreSQL-backed, covers login/registration/password-reset, is independent of Redis availability, stores HMAC-derived identifiers rather than raw IP/email, and has typed 429/recovery tests;
 - TD-003 provider timeout/circuit-breaker/failure UX is CLOSED by backend breaker PR #628, frontend typed-error UX PR #629 and docs closeout PR #630. Exact-head #629 CI #4280, Companion E2E #98, UI browser #710, UI geometry #707 and missing-routes #66 succeeded; #630 exact-head CI #4291 and post-merge CI #4292 succeeded;
 - TD-014 patient local app-lock/re-authentication is CLOSED by PR #649 / merge `df457cfdcc574439adb791fbfc44d484a1224417`; final candidate `fd5bc4392ceda6b411b72f3ceb9254119024ac5c` passed 15/15 workflows and its fresh WebAuthn/offline/visual artifact was inspected. TD-014 is removed from the unresolved debt register.
-- TD-012 remains OPEN. AISummary phase 2 is merged by PR #689 / `fe73ebc656f1d45903e1e01c3f903556fa79ae8d`; DocumentImport is CLOSED by PR #692 / `1e88bf6ac9ab1206bf26401bd777092f46f75ef4`, reducing `document_import_screen.dart` from ~31.2k to ~14.7k characters while retaining `_pickFile` / `_ingest` / `_confirm` and ApiClient orchestration in the state file. Exact-head CI #4576, browser #954, geometry #840 and P5-5 #338 succeeded, and certified BEFORE/AFTER at 390×844 / 768×1024 / 1280×900 had 0 differing pixels. IAmina chat remains CLOSED by PR #671; Profile remains CLOSED by PR #675. Next verified orchestration/UI hotspot: `companion_premium_screen.dart` (~30.0k), followed by `reports_screen.dart` (~29.6k).
+- TD-012 remains OPEN. AISummary phase 2 is merged by PR #689; DocumentImport remains CLOSED by PR #692. Companion is CLOSED by PR #695 / `d0e95d90153d57401d63771bf125f75b6c941ca9`, reducing `companion_premium_screen.dart` from ~28.9k to ~3.6k characters while retaining CompanionService/future/reload orchestration in the state file. Exact-head CI #4585, browser #961, geometry #847, P5-5 #345, Companion E2E #134 and missing-routes #180 succeeded, and certified BEFORE/AFTER at 390×844 / 768×1024 / 1280×900 had 0 differing pixels. IAmina chat remains CLOSED by PR #671; Profile remains CLOSED by PR #675. Next verified orchestration/UI hotspot: `reports_screen.dart` (~29.6k).
 
 ---
 
@@ -381,7 +381,7 @@ No Vercel deployment is authorized by this execution order.
 ## Current canonical snapshot
 
 - repo: `hraaaaf/IAMINA-MVP`
-- main reconciled for this lot: `1e88bf6ac9ab1206bf26401bd777092f46f75ef4`
+- main reconciled for this lot: `d0e95d90153d57401d63771bf125f75b6c941ca9`
 - P5-4A AUTH-LOCAL-FIRST: **CLOSED**, PR #639 merged as `bd13e8ad0c6f3ff2c4376b00c43fb8c54068d053`
 - TD-014 strong local app-lock: **CLOSED**, PR #649 merged as `df457cfdcc574439adb791fbfc44d484a1224417`; final candidate `fd5bc4392ceda6b411b72f3ceb9254119024ac5c` had 15/15 SUCCESS
 - last explicitly frozen P5-6 SHA: `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b` — **historical freeze evidence, not current release candidate**
