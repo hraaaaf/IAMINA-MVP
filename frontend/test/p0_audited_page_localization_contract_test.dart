@@ -4,6 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 String read(String path) => File(path).readAsStringSync();
 
+String readProfileLibrary() => [
+  read('lib/features/profile/profile_screen.dart'),
+  read('lib/features/profile/profile_screen_presentation.dart'),
+].join('\n');
+
 void main() {
   test('audited pages expose explicit FR EN AR product copy', () {
     final adapter = read('lib/l10n/audited_page_copy.dart');
@@ -68,13 +73,15 @@ void main() {
   test('import and profile audited surfaces consume localized copy', () {
     final importer = read('lib/features/import/import_screen.dart');
     final document = read('lib/features/documents/document_import_screen.dart');
-    final profile = read('lib/features/profile/profile_screen.dart');
+    final profile = readProfileLibrary();
     final combined = '$importer\n$document\n$profile';
 
-    for (final source in <String>[importer, document, profile]) {
+    for (final source in <String>[importer, document]) {
       expect(source, contains('audited_page_copy.dart'));
       expect(source, contains('AuditedPageCopy.of(context)'));
     }
+    expect(profile, contains('audited_page_copy.dart'));
+    expect(profile, contains('AuditedPageCopy.of(context)'));
 
     for (final forbidden in <String>[
       "'Non disponible'",
