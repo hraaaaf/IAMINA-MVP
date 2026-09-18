@@ -45,6 +45,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   DateTime? _ramadanEndDate;
   bool _savingRamadan = false;
 
+  void _setPresentationState(VoidCallback fn) => setState(fn);
+
   @override
   void initState() {
     super.initState();
@@ -71,36 +73,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) => _buildPresentation(context);
 
-
-) {
-    return OutlinedButton(
-      key: key,
-      onPressed: _savingRamadan ? null : onTap,
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(52),
-        alignment: AlignmentDirectional.centerStart,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            value == null
-                ? AppLocalizations.of(context)!.ramadanChooseDate
-                : _dateLabel(value),
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              color: AminaTheme.ink900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _pickRamadanDate({required bool start}) async {
     final initial = start
@@ -182,60 +154,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final mm = value.month.toString().padLeft(2, '0');
     final dd = value.day.toString().padLeft(2, '0');
     return '${value.year}-$mm-$dd';
-  }
-
-
-) {
-    return Container(
-      key: key,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
-        border: Border.all(color: AminaTheme.ink100),
-        boxShadow: AminaTheme.shadowClinical,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          maintainState: true,
-          initiallyExpanded: initiallyExpanded,
-          tilePadding: const EdgeInsetsDirectional.fromSTEB(18, 10, 14, 10),
-          childrenPadding: const EdgeInsetsDirectional.fromSTEB(18, 0, 18, 20),
-          leading: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AminaTheme.primaryTeal.withValues(alpha: 0.09),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: AminaTheme.primaryTeal, size: 21),
-          ),
-          title: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: AminaTheme.ink900,
-            ),
-          ),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 3),
-            child: Text(
-              subtitle,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 12,
-                height: 1.35,
-                color: AminaTheme.ink500,
-              ),
-            ),
-          ),
-          children: children,
-        ),
-      ),
-    );
   }
 
 
