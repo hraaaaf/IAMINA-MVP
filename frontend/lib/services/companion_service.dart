@@ -237,21 +237,32 @@ class CompanionService {
 
   CompanionChatReply _demoReply(String message) {
     final normalized = message.toLowerCase();
-    final greeting = normalized == 'bonjour' ||
-        normalized == 'salut' ||
-        normalized == 'hello' ||
-        normalized == 'hi' ||
-        normalized == 'مرحبا' ||
-        normalized == 'السلام عليكم';
+    final isArabic = RegExp(r'[\u0600-\u06FF]').hasMatch(message);
+    final isEnglishGreeting = normalized == 'hello' || normalized == 'hi';
+    final isFrenchGreeting = normalized == 'bonjour' || normalized == 'salut';
+    final isArabicGreeting =
+        normalized == 'مرحبا' || normalized == 'السلام عليكم';
 
-    final reply = greeting
-        ? 'Bonjour 👋 Je suis IAmina en mode démo. Je peux te montrer comment la conversation fonctionne, sans envoyer de données à un serveur.'
-        : 'Mode démo : je peux illustrer la conversation IAmina localement. Pour une réponse personnalisée à partir de tes données, utilise une session authentifiée.';
+    final language = isArabic
+        ? 'ar'
+        : isEnglishGreeting
+            ? 'en'
+            : 'fr';
+
+    final reply = switch (language) {
+      'ar' => isArabicGreeting
+          ? 'مرحبًا 👋 أنا IAmina في وضع العرض. يمكنني إظهار طريقة عمل المحادثة محليًا دون إرسال بيانات إلى الخادم.'
+          : 'وضع العرض: يمكنني توضيح تجربة محادثة IAmina محليًا. للحصول على إجابة مخصصة اعتمادًا على بياناتك، استخدم جلسة مصادق عليها.',
+      'en' => 'Hello 👋 I’m IAmina in demo mode. I can show how the conversation works locally without sending data to a server.',
+      _ => isFrenchGreeting
+          ? 'Bonjour 👋 Je suis IAmina en mode démo. Je peux te montrer comment la conversation fonctionne, sans envoyer de données à un serveur.'
+          : 'Mode démo : je peux illustrer la conversation IAmina localement. Pour une réponse personnalisée à partir de tes données, utilise une session authentifiée.',
+    };
 
     return CompanionChatReply(
       reply: reply,
       conversationId: 'demo-local',
-      replyLanguage: 'fr',
+      replyLanguage: language,
     );
   }
 
