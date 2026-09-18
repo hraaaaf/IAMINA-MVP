@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/firebase_migration_policy.dart';
 import '../../services/locale_preference_service.dart';
 
 class OnboardingChatScreen extends StatefulWidget {
@@ -66,7 +67,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       if (!mounted) return;
 
       final db = context.read<AppDatabase>();
-      final firebaseUser = FirebaseAuth.instance.currentUser;
+      final firebaseUser = kFirebaseMigrationEnabled
+          ? FirebaseAuth.instance.currentUser
+          : null;
       final userId = firebaseUser?.uid.hashCode.abs() ?? 1;
       final profile = PatientProfilesCompanion.insert(
         userId: drift.Value(userId),
