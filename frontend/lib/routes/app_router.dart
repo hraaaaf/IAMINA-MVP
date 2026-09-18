@@ -83,14 +83,14 @@ AppRouterHolder createAppRouterHolder({
 
       // Hosted DEV/TEST builds with remote account enrollment enabled must not
       // treat a local-only enrollment marker as sufficient for backend-gated
-      // flows. Require a native IAMINA bearer before leaving the login route.
-      if (hostedRemoteLoginRequired(
-            remoteAccountEnrollmentEnabled: kRemoteAccountEnrollmentEnabled,
-            isLoggedIn: isLoggedIn,
-            isAuditSession: authService.isAuditSession,
-            hasRemoteApiCredential: authService.hasRemoteApiCredential,
-          ) &&
-          !isLoginPage) {
+      // flows. Require a native IAMINA bearer before any app-lock routing.
+      final requiresHostedRemoteLogin = hostedRemoteLoginRequired(
+        remoteAccountEnrollmentEnabled: kRemoteAccountEnrollmentEnabled,
+        isLoggedIn: isLoggedIn,
+        isAuditSession: authService.isAuditSession,
+        hasRemoteApiCredential: authService.hasRemoteApiCredential,
+      );
+      if (requiresHostedRemoteLogin && !isLoginPage) {
         return '/login';
       }
 
@@ -99,7 +99,10 @@ AppRouterHolder createAppRouterHolder({
       if (authService.isAuditSession && isAppLockPage) return null;
 
       // ── Strong local app-lock gate ────────────────────────────────────────
-      if (isLoggedIn && !authService.isAuditSession && lock != null) {
+      if (isLoggedIn &&
+          !requiresHostedRemoteLogin &&
+          !authService.isAuditSession &&
+          lock != null) {
         if (lock.recoveryRequired) {
           if (!isAppLockUnlockPage) return '/app-lock/unlock';
         } else if (!lock.isConfigured) {
