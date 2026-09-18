@@ -18,26 +18,27 @@ class DashboardCompanionEntryScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => KeyedSubtree(
-    key: const ValueKey('dashboard-companion-primary-entry'),
-    child: Stack(
-      children: [
-        DashboardPremiumScreen(
-          companionService: companionService,
-          scrollController: scrollController,
-        ),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final onTap = () => context.push('/companion/chat');
-            if (useMobileCompanionBar(constraints.maxWidth)) {
-              return PositionedDirectional(
-                start: 20,
-                end: 20,
-                bottom: 92,
-                child: _MobileCompanionBar(onTap: onTap),
-              );
-            }
-            return PositionedDirectional(
+  Widget build(BuildContext context) {
+    final onTap = () => context.push('/companion/chat');
+    final mobile = useMobileCompanionBar(MediaQuery.sizeOf(context).width);
+
+    return KeyedSubtree(
+      key: const ValueKey('dashboard-companion-primary-entry'),
+      child: Stack(
+        children: [
+          DashboardPremiumScreen(
+            companionService: companionService,
+            scrollController: scrollController,
+          ),
+          if (mobile)
+            PositionedDirectional(
+              start: 20,
+              end: 20,
+              bottom: 92,
+              child: _MobileCompanionBar(onTap: onTap),
+            )
+          else
+            PositionedDirectional(
               end: 20,
               bottom: 104,
               child: Semantics(
@@ -53,12 +54,11 @@ class DashboardCompanionEntryScreen extends StatelessWidget {
                   child: const Icon(Icons.forum_outlined),
                 ),
               ),
-            );
-          },
-        ),
-      ],
-    ),
-  );
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _MobileCompanionBar extends StatelessWidget {
