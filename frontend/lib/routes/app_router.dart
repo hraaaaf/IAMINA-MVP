@@ -47,7 +47,10 @@ AppRouterHolder createAppRouterHolder({
         ? refreshables.first
         : Listenable.merge(refreshables),
     redirect: (context, state) {
-      final isLoggedIn = authService.isAuthenticated;
+      final isLoggedIn = authService.isAuditSession ||
+          (kRemoteBackendAuthRequired
+              ? authService.hasRemoteCredential
+              : authService.isAuthenticated);
       final isAnonymous = authService.isAnonymous;
       final path = state.uri.path;
       final isLoginPage = path == '/login';
