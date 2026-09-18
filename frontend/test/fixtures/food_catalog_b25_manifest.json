@@ -1,0 +1,9 @@
+{
+  "batch": "B25",
+  "theme": "Saudi depth",
+  "baseline_count": 374,
+  "target_count": 377,
+  "fixture_query": "Jareesh saoudien",
+  "ids": ["saudi_jareesh", "saudi_saleeg", "saudi_marqooq"],
+  "required_viewports": ["390x844", "768x1024", "1280x900"]
+}
