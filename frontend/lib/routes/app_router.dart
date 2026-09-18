@@ -111,17 +111,19 @@ AppRouterHolder createAppRouterHolder({
       if (authService.isAuditSession && isAppLockPage) return null;
 
       // ── Strong local app-lock gate ────────────────────────────────────────
-      if (shouldApplyAppLockGate(
-        isLoggedIn: isLoggedIn,
-        requiresHostedRemoteLogin: requiresHostedRemoteLogin,
-        isAuditSession: authService.isAuditSession,
-        hasLockService: lock != null,
-      )) {
-        if (lock.recoveryRequired) {
+      final activeLock = lock;
+      if (activeLock != null &&
+          shouldApplyAppLockGate(
+            isLoggedIn: isLoggedIn,
+            requiresHostedRemoteLogin: requiresHostedRemoteLogin,
+            isAuditSession: authService.isAuditSession,
+            hasLockService: true,
+          )) {
+        if (activeLock.recoveryRequired) {
           if (!isAppLockUnlockPage) return '/app-lock/unlock';
-        } else if (!lock.isConfigured) {
+        } else if (!activeLock.isConfigured) {
           if (!isAppLockSetupPage) return '/app-lock/setup';
-        } else if (!lock.isUnlocked) {
+        } else if (!activeLock.isUnlocked) {
           if (!isAppLockUnlockPage) return '/app-lock/unlock';
         }
       }
