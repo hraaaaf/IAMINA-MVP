@@ -56,6 +56,37 @@ void main() {
     service.dispose();
   });
 
+
+  test('hosted demo uses local audit session without remote auth', () {
+    expect(
+      demoUsesLocalAuditSession(
+        offlineDemo: false,
+        remoteAccountEnrollmentEnabled: true,
+      ),
+      isTrue,
+    );
+  });
+
+  test('offline demo uses local audit session', () {
+    expect(
+      demoUsesLocalAuditSession(
+        offlineDemo: true,
+        remoteAccountEnrollmentEnabled: false,
+      ),
+      isTrue,
+    );
+  });
+
+  test('non-demo local build keeps legacy auth path', () {
+    expect(
+      demoUsesLocalAuditSession(
+        offlineDemo: false,
+        remoteAccountEnrollmentEnabled: false,
+      ),
+      isFalse,
+    );
+  });
+
   test('remote account enrollment fails closed by default', () async {
     seedStorage({});
     final service = AuthService(httpClient: noBootNetworkClient());
