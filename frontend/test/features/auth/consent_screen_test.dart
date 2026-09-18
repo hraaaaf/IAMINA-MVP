@@ -8,6 +8,7 @@ import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/auth/consent_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/api_client.dart';
+import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/consent_evidence_store.dart';
 import 'package:amina/services/consent_notice_contract.dart';
 import 'package:amina/services/consent_service.dart';
@@ -55,6 +56,7 @@ class _FakeConsentEvidenceStore extends ConsentEvidenceStore {
 Widget _makeApp({
   required AppDatabase db,
   required ApiClient apiClient,
+  required AuthService authService,
   required ConsentService consentService,
   required ConsentEvidenceStore evidenceStore,
 }) {
@@ -76,6 +78,7 @@ Widget _makeApp({
     providers: [
       Provider<AppDatabase>.value(value: db),
       Provider<ApiClient>.value(value: apiClient),
+      ChangeNotifierProvider<AuthService>.value(value: authService),
       Provider<ConsentEvidenceStore>.value(value: evidenceStore),
       ChangeNotifierProvider<ConsentService>.value(value: consentService),
     ],
@@ -97,6 +100,7 @@ void main() {
   late AppDatabase db;
   late ChopperClient chopper;
   late _TestApiClient apiClient;
+  late AuthService authService;
   late ConsentService consentService;
   late _FakeConsentEvidenceStore evidenceStore;
   late ConsentNoticeClaim claim;
@@ -121,6 +125,7 @@ void main() {
     capturedRequest = null;
     responseSuccess = true;
     responseCompleter = null;
+    authService = AuthService();
     consentService = ConsentService();
     evidenceStore = _FakeConsentEvidenceStore();
 
@@ -145,6 +150,7 @@ void main() {
   });
 
   tearDown(() async {
+    authService.dispose();
     consentService.dispose();
     chopper.dispose();
     await db.close();
@@ -153,6 +159,7 @@ void main() {
   Widget app() => _makeApp(
     db: db,
     apiClient: apiClient,
+    authService: authService,
     consentService: consentService,
     evidenceStore: evidenceStore,
   );
