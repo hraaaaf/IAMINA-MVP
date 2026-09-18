@@ -65,6 +65,16 @@ if _vercel_csrf_middleware not in MIDDLEWARE:
 _require_https_origins("CORS_ALLOWED_ORIGINS", CORS_ALLOWED_ORIGINS)  # noqa: F405
 _require_https_origins("CSRF_TRUSTED_ORIGINS", CSRF_TRUSTED_ORIGINS)  # noqa: F405
 
+# The shared Vercel app is a hosted dev/test runtime. Keep patient text local
+# unless a dedicated dev provider is explicitly selected and independently
+# passes the processor-policy gate. This prevents the base Gemini default from
+# attempting external patient-data egress during ordinary hosted testing.
+if not is_vercel_production():
+    LLM_PROVIDER = (
+        os.environ.get("IAMINA_DEV_LLM_PROVIDER", "fallback").strip().lower()
+        or "fallback"
+    )
+
 # Native password recovery is a production capability, so its delivery path
 # must be explicit in production. Preview deployments intentionally do not need
 # SMTP secrets just to boot and exercise unrelated integration paths.
