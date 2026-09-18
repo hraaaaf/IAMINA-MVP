@@ -8,6 +8,7 @@ import '../data/models/companion_models.dart';
 import '../data/models/companion_next_action_models.dart';
 import '../data/models/proactive_preview_models.dart';
 import 'api_client.dart';
+import 'api_origin.dart';
 import 'auth_service.dart';
 
 const String companionApiBaseUrl = kBaseUrl;
@@ -47,9 +48,10 @@ class CompanionService {
   CompanionService({
     AuthService? authService,
     http.Client? httpClient,
-    this.baseUrl = companionApiBaseUrl,
+    String baseUrl = companionApiBaseUrl,
     CompanionFailureLogger? failureLogger,
-  }) : _authService = authService ?? AuthService(),
+  }) : baseUrl = normalizeApiOrigin(baseUrl),
+       _authService = authService ?? AuthService(),
        _http = httpClient ?? http.Client(),
        _failureLogger = failureLogger ?? _defaultFailureLogger;
 
