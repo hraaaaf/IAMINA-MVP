@@ -130,8 +130,27 @@ class _LoginScreenState extends State<LoginScreen> {
                     final auth = context.read<AuthService>();
                     await auth.registerWithEmail(email, password);
                     if (mounted) context.go('/onboarding');
-                  } catch (e) {
-                    if (mounted) setState(() => _error = l10n.accountCreationFailed);
+                  } catch (error) {
+                    if (mounted) {
+                      final isArabic =
+                          Localizations.localeOf(context).languageCode == 'ar';
+                      final message = switch (error) {
+                        RegistrationFailure(
+                          code: RegistrationFailureCode.weakPassword,
+                        ) =>
+                          isArabic
+                              ? 'كلمة المرور ضعيفة: استخدم 8 أحرف على الأقل، وتجنب كلمة مرور شائعة أو رقمية فقط أو قريبة من بريدك الإلكتروني.'
+                              : 'Mot de passe trop faible : utilisez au moins 8 caractères, évitez un mot de passe courant, uniquement numérique ou trop proche de votre e-mail.',
+                        RegistrationFailure(
+                          code: RegistrationFailureCode.accountExists,
+                        ) =>
+                          isArabic
+                              ? 'يوجد حساب بالفعل بهذا البريد الإلكتروني. سجّل الدخول أو استخدم «نسيت كلمة المرور».'
+                              : 'Un compte existe déjà avec cette adresse e-mail. Connectez-vous ou utilisez « Mot de passe oublié ».',
+                        _ => l10n.accountCreationFailed,
+                      };
+                      setState(() => _error = message);
+                    }
                   } finally {
                     if (mounted) setState(() => _isLoading = false);
                   }
