@@ -4,7 +4,7 @@
 _flutter.loader.load();
 
 if ('serviceWorker' in navigator) {
-  const IAMINA_FALLBACK_RELEASE = '0.1.0+1';
+  const IAMINA_FALLBACK_RELEASE = '0.1.0+2';
 
   const readCurrentIaminaRelease = async () => {
     try {
@@ -60,8 +60,8 @@ if ('serviceWorker' in navigator) {
       })
       .then((registration) => {
         // Same-release changes are still checked without blocking startup.
-        // Normal releases change IAMINA_CACHE_SCHEMA, which changes scriptUrl
-        // and deterministically starts the browser update algorithm.
+        // Hosted review builds publish their Git SHA in iamina_release.txt,
+        // which changes scriptUrl and deterministically starts the update.
         window.setTimeout(() => {
           registration.update().catch((error) => {
             console.warn('IAMINA service worker update check failed', error);
