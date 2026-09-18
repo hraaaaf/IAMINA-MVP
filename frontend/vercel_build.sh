@@ -31,6 +31,7 @@ fi
 # stale project-level API_BASE_URL when Vercel exposes the expected project ID.
 if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
   API_BASE_URL="$IAMINA_CERTIFIED_API_BASE_URL"
+  IAMINA_REMOTE_ACCOUNT_ENROLLMENT=true
 fi
 
 # Defensive normalization: some Vercel builds can inherit a legacy project-
@@ -43,7 +44,9 @@ fi
 
 if [ -n "${API_BASE_URL:-}" ]; then
   echo "Building IAMINA web with configured backend: $API_BASE_URL"
-  flutter build web --release --dart-define=API_BASE_URL="$API_BASE_URL"
+  flutter build web --release \
+    --dart-define=API_BASE_URL="$API_BASE_URL" \
+    --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT="${IAMINA_REMOTE_ACCOUNT_ENROLLMENT:-false}"
 else
   echo "Building IAMINA frontend-only demo: no API_BASE_URL configured"
   flutter build web --release --dart-define=IAMINA_OFFLINE_DEMO=true
