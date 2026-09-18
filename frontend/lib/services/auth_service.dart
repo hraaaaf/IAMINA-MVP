@@ -103,6 +103,8 @@ class AuthService extends ChangeNotifier {
       _localSessionEnrolled ||
       (_firebaseAuth?.currentUser != null);
   bool get isRemoteCredentialVerified => _remoteCredentialVerified;
+  bool get hasRemoteApiCredential =>
+      _nativeToken != null && _nativeToken!.isNotEmpty;
   bool get isAnonymous =>
       _auditSession ||
       (!_localSessionEnrolled &&
