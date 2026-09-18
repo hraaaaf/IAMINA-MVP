@@ -2,6 +2,11 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+String _readDocumentImportLibrary() => [
+  File('lib/features/documents/document_import_screen.dart').readAsStringSync(),
+  File('lib/features/documents/document_import_screen_presentation.dart').readAsStringSync(),
+].join('\n');
+
 void main() {
   test('Document preview confirms only data the store actually persists', () {
     final model = File(
@@ -32,9 +37,7 @@ void main() {
   });
 
   test('Privacy copy matches local extraction and pseudonymized text egress', () {
-    final screen = File(
-      'lib/features/documents/document_import_screen.dart',
-    ).readAsStringSync();
+    final screen = _readDocumentImportLibrary();
     final copy = File(
       'lib/core/localization/document_import_localized_copy.dart',
     ).readAsStringSync();
