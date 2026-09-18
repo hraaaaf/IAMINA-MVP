@@ -1,6 +1,6 @@
 const IAMINA_CACHE_PREFIX = 'iamina-app-shell-';
 // Static marker retained for one-release migration from older cached bootstrap code.
-const IAMINA_CACHE_SCHEMA = '0.1.0+2';
+const IAMINA_CACHE_SCHEMA = '0.1.0+1';
 const IAMINA_RELEASE =
   new URL(self.location.href).searchParams.get('release') || IAMINA_CACHE_SCHEMA;
 const CACHE_NAME = `${IAMINA_CACHE_PREFIX}${IAMINA_RELEASE}`;
