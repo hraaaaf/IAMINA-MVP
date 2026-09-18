@@ -31,6 +31,18 @@ bool hostedRemoteLoginRequired({
       !hasRemoteApiCredential;
 }
 
+bool shouldApplyAppLockGate({
+  required bool isLoggedIn,
+  required bool requiresHostedRemoteLogin,
+  required bool isAuditSession,
+  required bool hasLockService,
+}) {
+  return isLoggedIn &&
+      !requiresHostedRemoteLogin &&
+      !isAuditSession &&
+      hasLockService;
+}
+
 class AppRouterHolder {
   final GoRouter router;
 
@@ -99,10 +111,12 @@ AppRouterHolder createAppRouterHolder({
       if (authService.isAuditSession && isAppLockPage) return null;
 
       // ── Strong local app-lock gate ────────────────────────────────────────
-      if (isLoggedIn &&
-          !requiresHostedRemoteLogin &&
-          !authService.isAuditSession &&
-          lock != null) {
+      if (shouldApplyAppLockGate(
+        isLoggedIn: isLoggedIn,
+        requiresHostedRemoteLogin: requiresHostedRemoteLogin,
+        isAuditSession: authService.isAuditSession,
+        hasLockService: lock != null,
+      )) {
         if (lock.recoveryRequired) {
           if (!isAppLockUnlockPage) return '/app-lock/unlock';
         } else if (!lock.isConfigured) {
