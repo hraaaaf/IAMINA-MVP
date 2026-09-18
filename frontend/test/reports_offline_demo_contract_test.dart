@@ -2,12 +2,15 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+String _readReportsLibrary() => [
+  File('lib/features/journal/reports_screen.dart').readAsStringSync(),
+  File('lib/features/journal/reports_screen_presentation.dart').readAsStringSync(),
+].join('\n');
+
 void main() {
   test('Reports route selects a local-only surface in offline demo mode', () {
     final module = File('lib/modules/diabetes_module.dart').readAsStringSync();
-    final reports = File(
-      'lib/features/journal/reports_screen.dart',
-    ).readAsStringSync();
+    final reports = _readReportsLibrary();
 
     expect(module, contains("path: '/summary'"));
     expect(module, contains('builder: () => const ReportsScreen()'));
@@ -22,9 +25,7 @@ void main() {
   });
 
   test('Offline report states its truth boundary instead of inventing analysis', () {
-    final reports = File(
-      'lib/features/journal/reports_screen.dart',
-    ).readAsStringSync();
+    final reports = _readReportsLibrary();
 
     expect(reports, contains('Ce rapport reste descriptif'));
     expect(reports, contains('ni cause, ni diagnostic, ni analyse IA avancée'));
