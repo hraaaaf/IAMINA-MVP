@@ -12,6 +12,7 @@ import 'package:amina/services/consent_evidence_store.dart';
 import 'package:amina/services/consent_notice_contract.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:chopper/chopper.dart';
+import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -22,6 +23,15 @@ import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 
 AppDatabase _openDb() => AppDatabase(NativeDatabase.memory());
+
+Future<void> _seedProfile(AppDatabase db) async {
+  await db.into(db.patientProfiles).insert(
+    PatientProfilesCompanion.insert(
+      userId: const drift.Value(1),
+      updatedAt: DateTime.now(),
+    ),
+  );
+}
 
 final class _TestApiClient extends ApiClient {
   _TestApiClient(this._testClient) : super(baseUrl: 'http://localhost:8000');
@@ -208,6 +218,7 @@ void main() {
   });
 
   testWidgets('accept posts exact claim and persists verified evidence', (tester) async {
+    await _seedProfile(db);
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
@@ -235,6 +246,7 @@ void main() {
   });
 
   testWidgets('loading indicator shown while accepting', (tester) async {
+    await _seedProfile(db);
     final completer = Completer<http.Response>();
     responseCompleter = completer;
 
@@ -251,6 +263,21 @@ void main() {
     completer.complete(successResponse());
     await tester.pumpAndSettle();
     expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('server acceptance without local profile stays fail-closed', (tester) async {
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final acceptBtn = find.text('Accepter et continuer');
+    await tester.ensureVisible(acceptBtn);
+    await tester.tap(acceptBtn);
+    await tester.pumpAndSettle();
+
+    expect(capturedRequest?.url.path, '/api/v1/account/consent');
+    expect(evidenceStore.written, isNull);
+    expect(consentService.hasConsent, isFalse);
+    expect(find.byType(ConsentScreen), findsOneWidget);
   });
 
   testWidgets('failed consent response stays fail-closed', (tester) async {
