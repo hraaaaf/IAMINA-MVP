@@ -112,6 +112,17 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         if (!remoteProfileSaved) {
           throw StateError('Remote onboarding profile persistence failed');
         }
+
+        final remoteLocaleSaved = await api
+            .patchLocalePreferences({
+              'ui_language': _language!,
+              'country_code': _country == 'OTHER' ? null : _country!,
+              'glucose_unit': _unit,
+            }..removeWhere((_, value) => value == null))
+            .timeout(_persistenceTimeout);
+        if (!remoteLocaleSaved) {
+          throw StateError('Remote onboarding locale persistence failed');
+        }
       }
 
       if (mounted) context.go('/dashboard');
