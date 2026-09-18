@@ -12,8 +12,17 @@ void main() {
     expect(source, contains("self.location.hostname.startsWith('iamina-review')"));
   });
 
-  test('IAMINA review service worker activates fresh code immediately', () {
+  test('canonical service worker keeps safe waiting activation', () {
     final source = File('web/iamina_service_worker.js').readAsStringSync();
+
+    expect(source, isNot(contains('self.skipWaiting()')));
+    expect(source, contains('self.clients.claim()'));
+  });
+
+  test('Vercel review worker eagerly activates fresh hosted code', () {
+    final source = File(
+      'web/iamina_service_worker_review.js',
+    ).readAsStringSync();
 
     expect(source, contains('self.skipWaiting()'));
     expect(source, contains('await self.clients.claim()'));
