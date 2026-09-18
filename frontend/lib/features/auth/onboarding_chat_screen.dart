@@ -9,6 +9,8 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/api_client.dart';
+import '../../services/auth_service.dart';
 import '../../services/locale_preference_service.dart';
 
 class OnboardingChatScreen extends StatefulWidget {
