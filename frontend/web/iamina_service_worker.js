@@ -1,6 +1,12 @@
 const IAMINA_CACHE_PREFIX = 'iamina-app-shell-';
-const IAMINA_CACHE_SCHEMA = '0.1.0+1';
-const CACHE_NAME = `${IAMINA_CACHE_PREFIX}${IAMINA_CACHE_SCHEMA}`;
+// Static marker retained for one-release migration from older cached bootstrap code.
+const IAMINA_CACHE_SCHEMA = '0.1.0+2';
+const IAMINA_RELEASE =
+  new URL(self.location.href).searchParams.get('release') || IAMINA_CACHE_SCHEMA;
+const CACHE_NAME = `${IAMINA_CACHE_PREFIX}${IAMINA_RELEASE}`;
+const IS_IAMINA_VERCEL_REVIEW =
+  self.location.hostname.startsWith('iamina-review') &&
+  self.location.hostname.endsWith('.vercel.app');
 
 const PRECACHE = [
   './',
@@ -42,23 +48,41 @@ async function precacheRelease() {
 }
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(precacheRelease());
+  event.waitUntil(
+    (async () => {
+      await precacheRelease();
+      if (IS_IAMINA_VERCEL_REVIEW) self.skipWaiting();
+    })(),
+  );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(
+    (async () => {
+      const names = await caches.keys();
+      await Promise.all(
         names
           .filter(
             (name) =>
               name.startsWith(IAMINA_CACHE_PREFIX) && name !== CACHE_NAME,
           )
           .map((name) => caches.delete(name)),
-      ),
-    ),
+      );
+      await self.clients.claim();
+
+      // The hosted Vercel app is a dev/test surface: once a new exact release
+      // is active, reload open clients so they cannot continue executing an old
+      // main.dart.js against the new backend contract.
+      if (IS_IAMINA_VERCEL_REVIEW) {
+        const clients = await self.clients.matchAll({ type: 'window' });
+        await Promise.all(
+          clients.map((client) =>
+            client.url && 'navigate' in client ? client.navigate(client.url) : null,
+          ),
+        );
+      }
+    })(),
   );
-  self.clients.claim();
 });
 
 function isCacheableStaticPath(pathname) {
