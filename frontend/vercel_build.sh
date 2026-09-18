@@ -52,6 +52,7 @@ if [ -n "${API_BASE_URL:-}" ]; then
       echo "ERROR: VERCEL_GIT_COMMIT_SHA is required for review cache versioning" >&2
       exit 65
     fi
+    cp web/iamina_service_worker_review.js build/web/iamina_service_worker.js
     printf "%s\n" "$VERCEL_GIT_COMMIT_SHA" > build/web/iamina_release.txt
     echo "IAMINA review release: $VERCEL_GIT_COMMIT_SHA"
   fi
