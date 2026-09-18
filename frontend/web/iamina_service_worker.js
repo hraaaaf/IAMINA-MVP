@@ -1,5 +1,5 @@
 const IAMINA_CACHE_PREFIX = 'iamina-app-shell-';
-const IAMINA_CACHE_SCHEMA = '0.1.0+1';
+const IAMINA_CACHE_SCHEMA = '0.1.0+2';
 const CACHE_NAME = `${IAMINA_CACHE_PREFIX}${IAMINA_CACHE_SCHEMA}`;
 
 const PRECACHE = [
@@ -12,6 +12,13 @@ const PRECACHE = [
   './sqlite3.wasm',
   './drift_worker.js',
 ];
+
+const NETWORK_FIRST_FILES = new Set([
+  '/',
+  '/index.html',
+  '/flutter_bootstrap.js',
+  '/main.dart.js',
+]);
 
 const STATIC_FILES = new Set([
   '/',
@@ -42,23 +49,29 @@ async function precacheRelease() {
 }
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(precacheRelease());
+  event.waitUntil(
+    (async () => {
+      await precacheRelease();
+      await self.skipWaiting();
+    })(),
+  );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(
+    (async () => {
+      const names = await caches.keys();
+      await Promise.all(
         names
           .filter(
             (name) =>
               name.startsWith(IAMINA_CACHE_PREFIX) && name !== CACHE_NAME,
           )
           .map((name) => caches.delete(name)),
-      ),
-    ),
+      );
+      await self.clients.claim();
+    })(),
   );
-  self.clients.claim();
 });
 
 function isCacheableStaticPath(pathname) {
@@ -66,6 +79,22 @@ function isCacheableStaticPath(pathname) {
     STATIC_FILES.has(pathname) ||
     STATIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   );
+}
+
+async function networkFirstStatic(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const freshRequest = new Request(request, { cache: 'no-store' });
+    const response = await fetch(freshRequest);
+    if (response.ok) {
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    const cached = await cache.match(request, { ignoreSearch: true });
+    if (cached) return cached;
+    throw error;
+  }
 }
 
 async function cacheFirstStatic(request) {
@@ -80,17 +109,21 @@ async function cacheFirstStatic(request) {
   return response;
 }
 
-async function cacheFirstNavigation(request) {
+async function networkFirstNavigation(request) {
   const cache = await caches.open(CACHE_NAME);
-  const cached =
-    (await cache.match('./index.html')) || (await cache.match('./'));
-  if (cached) return cached;
-
-  const response = await fetch(request);
-  if (response.ok) {
-    await cache.put('./index.html', response.clone());
+  try {
+    const freshRequest = new Request(request, { cache: 'no-store' });
+    const response = await fetch(freshRequest);
+    if (response.ok) {
+      await cache.put('./index.html', response.clone());
+    }
+    return response;
+  } catch (error) {
+    const cached =
+      (await cache.match('./index.html')) || (await cache.match('./'));
+    if (cached) return cached;
+    throw error;
   }
-  return response;
 }
 
 self.addEventListener('fetch', (event) => {
@@ -104,7 +137,12 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {
-    event.respondWith(cacheFirstNavigation(request));
+    event.respondWith(networkFirstNavigation(request));
+    return;
+  }
+
+  if (NETWORK_FIRST_FILES.has(url.pathname)) {
+    event.respondWith(networkFirstStatic(request));
     return;
   }
 
