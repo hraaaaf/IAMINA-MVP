@@ -1,6 +1,10 @@
 const IAMINA_CACHE_PREFIX = 'iamina-app-shell-';
 const IAMINA_CACHE_SCHEMA = '0.1.0+1';
 const CACHE_NAME = `${IAMINA_CACHE_PREFIX}${IAMINA_CACHE_SCHEMA}`;
+const IAMINA_HOSTED_REVIEW =
+  self.location.hostname === 'iamina-review.vercel.app' ||
+  (self.location.hostname.startsWith('iamina-review-') &&
+    self.location.hostname.endsWith('.vercel.app'));
 
 const PRECACHE = [
   './',
@@ -41,74 +45,108 @@ async function precacheRelease() {
   );
 }
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(precacheRelease());
-});
+async function cleanupHostedReviewCaches() {
+  const names = await caches.keys();
+  await Promise.all(
+    names
+      .filter((name) => name.startsWith(IAMINA_CACHE_PREFIX))
+      .map((name) => caches.delete(name)),
+  );
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(
-        names
-          .filter(
-            (name) =>
-              name.startsWith(IAMINA_CACHE_PREFIX) && name !== CACHE_NAME,
-          )
-          .map((name) => caches.delete(name)),
+  try {
+    await self.registration.unregister();
+  } catch (error) {
+    console.warn('IAMINA hosted-review service worker unregister failed', error);
+  }
+
+  const clients = await self.clients.matchAll({ type: 'window' });
+  for (const client of clients) {
+    if (client.url && 'navigate' in client) {
+      client.navigate(client.url);
+    }
+  }
+}
+
+if (IAMINA_HOSTED_REVIEW) {
+  // Vercel is the shared dev/test surface. Never let an old offline shell mask
+  // a freshly deployed frontend there.
+  self.addEventListener('install', (event) => {
+    event.waitUntil(self.skipWaiting());
+  });
+
+  self.addEventListener('activate', (event) => {
+    event.waitUntil(cleanupHostedReviewCaches());
+  });
+} else {
+  self.addEventListener('install', (event) => {
+    event.waitUntil(precacheRelease());
+  });
+
+  self.addEventListener('activate', (event) => {
+    event.waitUntil(
+      caches.keys().then((names) =>
+        Promise.all(
+          names
+            .filter(
+              (name) =>
+                name.startsWith(IAMINA_CACHE_PREFIX) && name !== CACHE_NAME,
+            )
+            .map((name) => caches.delete(name)),
+        ),
       ),
-    ),
-  );
-  self.clients.claim();
-});
+    );
+    self.clients.claim();
+  });
 
-function isCacheableStaticPath(pathname) {
-  return (
-    STATIC_FILES.has(pathname) ||
-    STATIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
-  );
+  function isCacheableStaticPath(pathname) {
+    return (
+      STATIC_FILES.has(pathname) ||
+      STATIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+    );
+  }
+
+  async function cacheFirstStatic(request) {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(request, { ignoreSearch: true });
+    if (cached) return cached;
+
+    const response = await fetch(request);
+    if (response.ok) {
+      await cache.put(request, response.clone());
+    }
+    return response;
+  }
+
+  async function cacheFirstNavigation(request) {
+    const cache = await caches.open(CACHE_NAME);
+    const cached =
+      (await cache.match('./index.html')) || (await cache.match('./'));
+    if (cached) return cached;
+
+    const response = await fetch(request);
+    if (response.ok) {
+      await cache.put('./index.html', response.clone());
+    }
+    return response;
+  }
+
+  self.addEventListener('fetch', (event) => {
+    const request = event.request;
+    if (request.method !== 'GET') return;
+
+    const url = new URL(request.url);
+    if (url.origin !== self.location.origin) return;
+
+    // Patient/backend responses are never stored in the app-shell cache.
+    if (url.pathname.startsWith('/api/')) return;
+
+    if (request.mode === 'navigate') {
+      event.respondWith(cacheFirstNavigation(request));
+      return;
+    }
+
+    if (isCacheableStaticPath(url.pathname)) {
+      event.respondWith(cacheFirstStatic(request));
+    }
+  });
 }
-
-async function cacheFirstStatic(request) {
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request, { ignoreSearch: true });
-  if (cached) return cached;
-
-  const response = await fetch(request);
-  if (response.ok) {
-    await cache.put(request, response.clone());
-  }
-  return response;
-}
-
-async function cacheFirstNavigation(request) {
-  const cache = await caches.open(CACHE_NAME);
-  const cached =
-    (await cache.match('./index.html')) || (await cache.match('./'));
-  if (cached) return cached;
-
-  const response = await fetch(request);
-  if (response.ok) {
-    await cache.put('./index.html', response.clone());
-  }
-  return response;
-}
-
-self.addEventListener('fetch', (event) => {
-  const request = event.request;
-  if (request.method !== 'GET') return;
-
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
-
-  // Patient/backend responses are never stored in the app-shell cache.
-  if (url.pathname.startsWith('/api/')) return;
-
-  if (request.mode === 'navigate') {
-    event.respondWith(cacheFirstNavigation(request));
-    return;
-  }
-
-  if (isCacheableStaticPath(url.pathname)) {
-    event.respondWith(cacheFirstStatic(request));
-  }
-});

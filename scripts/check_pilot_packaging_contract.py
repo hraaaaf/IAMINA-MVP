@@ -226,6 +226,13 @@ def main() -> int:
             errors,
         )
         require(
+            "IAMINA_HOSTED_REVIEW" in bootstrap
+            and "cleanupHostedReviewCaches" in bootstrap
+            and "iamina-app-shell-" in bootstrap,
+            "Hosted Vercel review does not explicitly remove stale PWA shell state",
+            errors,
+        )
+        require(
             "release_probe=" in bootstrap
             and "cache: 'no-store'" in bootstrap
             and "encodeURIComponent(release)" in bootstrap,
@@ -264,8 +271,11 @@ def main() -> int:
             errors,
         )
         require(
-            "self.skipWaiting()" not in service_worker,
-            "IAMINA service worker must not force a mid-session update takeover",
+            "IAMINA_HOSTED_REVIEW" in service_worker
+            and "cleanupHostedReviewCaches" in service_worker
+            and "if (IAMINA_HOSTED_REVIEW)" in service_worker
+            and "self.skipWaiting()" in service_worker,
+            "Hosted Vercel review cleanup is not isolated from the normal PWA update path",
             errors,
         )
         require(
