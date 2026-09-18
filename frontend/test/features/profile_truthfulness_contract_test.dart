@@ -4,6 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
+String _readProfileLibrary() => [
+  _read('lib/features/profile/profile_screen.dart'),
+  _read('lib/features/profile/profile_screen_presentation.dart'),
+].join('\n');
+
 void main() {
   test('new profile does not preselect medical facts or inject target defaults', () {
     final source = _read('lib/features/profile/profile_screen.dart');
@@ -38,7 +43,7 @@ void main() {
   });
 
   test('profile persists the active locale and keeps FR EN AR choice available', () {
-    final profile = _read('lib/features/profile/profile_screen.dart');
+    final profile = _readProfileLibrary();
     final onboarding = _read('lib/features/auth/onboarding_chat_screen.dart');
 
     expect(profile, isNot(contains("preferredLanguage: const drift.Value('fr')")));
