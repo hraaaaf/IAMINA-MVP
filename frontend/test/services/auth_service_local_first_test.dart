@@ -72,6 +72,24 @@ void main() {
     service.dispose();
   });
 
+  test('registration status 400 maps to weak password', () {
+    final failure = registrationFailureForStatus(400);
+    expect(failure.code, RegistrationFailureCode.weakPassword);
+    expect(failure.statusCode, 400);
+  });
+
+  test('registration status 409 maps to account exists', () {
+    final failure = registrationFailureForStatus(409);
+    expect(failure.code, RegistrationFailureCode.accountExists);
+    expect(failure.statusCode, 409);
+  });
+
+  test('unexpected registration status maps to rejected', () {
+    final failure = registrationFailureForStatus(503);
+    expect(failure.code, RegistrationFailureCode.rejected);
+    expect(failure.statusCode, 503);
+  });
+
   test('local enrollment is exposed only after secure marker persistence', () {
     final source = File('lib/services/auth_service.dart').readAsStringSync();
     final methodStart = source.indexOf('Future<void> _ensureLocalEnrollment()');
