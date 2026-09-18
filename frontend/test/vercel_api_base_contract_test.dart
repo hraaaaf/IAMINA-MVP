@@ -57,6 +57,14 @@ void main() {
     );
   });
 
+  test('Vercel review build publishes an exact Git release marker', () {
+    final source = File('vercel_build.sh').readAsStringSync();
+
+    expect(source, contains('VERCEL_GIT_COMMIT_SHA'));
+    expect(source, contains('build/web/iamina_release.txt'));
+    expect(source, contains('IAMINA review release:'));
+  });
+
   test('Vercel build strips a legacy /api/v1 suffix defensively', () {
     final source = File('vercel_build.sh').readAsStringSync();
 

@@ -8,6 +8,21 @@ if ('serviceWorker' in navigator) {
 
   const readCurrentIaminaRelease = async () => {
     try {
+      const releaseResponse = await fetch(
+        `iamina_release.txt?release_probe=${Date.now()}`,
+        {
+          cache: 'no-store',
+          credentials: 'same-origin',
+        },
+      );
+      if (releaseResponse.ok) {
+        const release = (await releaseResponse.text()).trim();
+        if (/^[A-Za-z0-9._+-]{7,80}$/.test(release)) return release;
+      }
+
+      // Transition fallback for clients that still run a bootstrap cached by an
+      // older app-shell release. The service-worker marker is intentionally
+      // retained so one deploy can migrate those clients to commit-based keys.
       const response = await fetch(
         `iamina_service_worker.js?release_probe=${Date.now()}`,
         {
@@ -45,8 +60,8 @@ if ('serviceWorker' in navigator) {
       })
       .then((registration) => {
         // Same-release changes are still checked without blocking startup.
-        // Normal releases change IAMINA_CACHE_SCHEMA, which changes scriptUrl
-        // and deterministically starts the browser update algorithm.
+        // Hosted review builds publish their Git SHA in iamina_release.txt,
+        // which changes scriptUrl and deterministically starts the update.
         window.setTimeout(() => {
           registration.update().catch((error) => {
             console.warn('IAMINA service worker update check failed', error);

@@ -1,9 +1,9 @@
 const IAMINA_CACHE_PREFIX = 'iamina-app-shell-';
-// Static marker retained for one-release migration from older cached bootstrap code.
 const IAMINA_CACHE_SCHEMA = '0.1.0+1';
 const IAMINA_RELEASE =
   new URL(self.location.href).searchParams.get('release') || IAMINA_CACHE_SCHEMA;
 const CACHE_NAME = `${IAMINA_CACHE_PREFIX}${IAMINA_RELEASE}`;
+
 const PRECACHE = [
   './',
   './index.html',
@@ -36,7 +36,7 @@ async function precacheRelease() {
       });
       const response = await fetch(request);
       if (!response.ok) {
-        throw new Error(`IAMINA precache failed for ${path}: HTTP ${response.status}`);
+        throw new Error(`IAMINA review precache failed for ${path}: HTTP ${response.status}`);
       }
       await cache.put(request, response);
     }),
@@ -44,23 +44,35 @@ async function precacheRelease() {
 }
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(precacheRelease());
+  event.waitUntil(
+    (async () => {
+      await precacheRelease();
+      self.skipWaiting();
+    })(),
+  );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(
+    (async () => {
+      const names = await caches.keys();
+      await Promise.all(
         names
           .filter(
             (name) =>
               name.startsWith(IAMINA_CACHE_PREFIX) && name !== CACHE_NAME,
           )
           .map((name) => caches.delete(name)),
-      ),
-    ),
+      );
+      await self.clients.claim();
+      const clients = await self.clients.matchAll({ type: 'window' });
+      await Promise.all(
+        clients.map((client) =>
+          client.url && 'navigate' in client ? client.navigate(client.url) : null,
+        ),
+      );
+    })(),
   );
-  self.clients.claim();
 });
 
 function isCacheableStaticPath(pathname) {
@@ -101,8 +113,6 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-
-  // Patient/backend responses are never stored in the app-shell cache.
   if (url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {

@@ -34,6 +34,7 @@ void main() {
 
     expect(service.isAuthenticated, isTrue);
     expect(service.isRemoteCredentialVerified, isFalse);
+    expect(service.hasRemoteCredential, isFalse);
     expect(await service.getIdToken(), isNull);
     expect(
       await const FlutterSecureStorage().read(key: _localSessionKey),
@@ -111,6 +112,7 @@ void main() {
 
     expect(service.isAuthenticated, isTrue);
     expect(service.isRemoteCredentialVerified, isFalse);
+    expect(service.hasRemoteCredential, isTrue);
     expect(await service.getIdToken(), _token);
     service.dispose();
   });
@@ -122,6 +124,7 @@ void main() {
 
     expect(service.isAuthenticated, isTrue);
     expect(service.isRemoteCredentialVerified, isFalse);
+    expect(service.hasRemoteCredential, isFalse);
     expect(await service.getIdToken(), isNull);
     service.dispose();
   });
@@ -142,6 +145,7 @@ void main() {
 
     expect(service.isAuthenticated, isTrue);
     expect(service.isRemoteCredentialVerified, isTrue);
+    expect(service.hasRemoteCredential, isTrue);
     expect(await service.getIdToken(), _freshToken);
     expect(
       await const FlutterSecureStorage().read(key: _localSessionKey),

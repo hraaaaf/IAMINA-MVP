@@ -47,6 +47,15 @@ if [ -n "${API_BASE_URL:-}" ]; then
   flutter build web --release \
     --dart-define=API_BASE_URL="$API_BASE_URL" \
     --dart-define=IAMINA_REMOTE_ACCOUNT_ENROLLMENT="${IAMINA_REMOTE_ACCOUNT_ENROLLMENT:-false}"
+  if [ "${VERCEL_PROJECT_ID:-}" = "$IAMINA_REVIEW_VERCEL_PROJECT_ID" ]; then
+    if [ -z "${VERCEL_GIT_COMMIT_SHA:-}" ]; then
+      echo "ERROR: VERCEL_GIT_COMMIT_SHA is required for review cache versioning" >&2
+      exit 65
+    fi
+    cp web/iamina_service_worker_review.js build/web/iamina_service_worker.js
+    printf "%s\n" "$VERCEL_GIT_COMMIT_SHA" > build/web/iamina_release.txt
+    echo "IAMINA review release: $VERCEL_GIT_COMMIT_SHA"
+  fi
 else
   echo "Building IAMINA frontend-only demo: no API_BASE_URL configured"
   flutter build web --release --dart-define=IAMINA_OFFLINE_DEMO=true
