@@ -19,4 +19,23 @@ void main() {
     expect(source, contains('setState(() => _saving = false)'));
     expect(source, contains("context.go('/dashboard')"));
   });
+
+  test('native onboarding completes before consent and never requires Firebase', () {
+    final onboarding = File(
+      'lib/features/auth/onboarding_chat_screen.dart',
+    ).readAsStringSync();
+    final router = File('lib/routes/app_router.dart').readAsStringSync();
+
+    expect(onboarding, contains('if (!kFirebaseMigrationEnabled) return 1;'));
+    expect(onboarding, contains('final userId = _localProfileUserId();'));
+    expect(
+      onboarding,
+      isNot(contains('final firebaseUser = FirebaseAuth.instance.currentUser;')),
+    );
+
+    expect(router, contains("final isOnboardingPage = path == '/onboarding';"));
+    expect(router, contains('!isOnboardingPage'));
+    expect(router, contains("return '/consent';"));
+  });
+
 }
