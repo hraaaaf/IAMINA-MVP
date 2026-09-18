@@ -20,5 +20,10 @@ void main() {
     expect(source, contains('await self.skipWaiting()'));
     expect(source, contains('await self.clients.claim()'));
     expect(source, contains("if (url.pathname.startsWith('/api/')) return;"));
+
+    final bootstrap = File('web/flutter_bootstrap.js').readAsStringSync();
+    expect(bootstrap, contains("const IAMINA_FALLBACK_RELEASE = '0.1.0+2';"));
+    expect(bootstrap, contains("addEventListener('controllerchange'"));
+    expect(bootstrap, contains('window.location.reload()'));
   });
 }
