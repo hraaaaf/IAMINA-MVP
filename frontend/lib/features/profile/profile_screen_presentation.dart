@@ -90,7 +90,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           ],
           ['type1', 'type2', 'gestational', 'pre'],
           _diabetesType,
-          (val) => setState(() => _diabetesType = val),
+          (val) => _setPresentationState(() => _diabetesType = val),
         ),
         const SizedBox(height: 28),
         _buildSectionTitle(Icons.science_outlined, l10n.treatment),
@@ -103,7 +103,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           ],
           ['insulin', 'tablets', 'lifestyle'],
           _treatment,
-          (val) => setState(() => _treatment = val),
+          (val) => _setPresentationState(() => _treatment = val),
         ),
         const SizedBox(height: 28),
         _buildSectionTitle(Icons.show_chart, l10n.glucoseTarget),
@@ -140,7 +140,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           ['mg/dL', 'mmol/L'],
           ['mg/dL', 'mmol/L'],
           _unit,
-          (val) => setState(() => _unit = val),
+          (val) => _setPresentationState(() => _unit = val),
         ),
         const SizedBox(height: 28),
         SizedBox(
@@ -267,6 +267,34 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
     required String label,
     required DateTime? value,
     required VoidCallback onTap,
+  }) {
+    return OutlinedButton(
+      key: key,
+      onPressed: _savingRamadan ? null : onTap,
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(52),
+        alignment: AlignmentDirectional.centerStart,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value == null
+                ? AppLocalizations.of(context)!.ramadanChooseDate
+                : _dateLabel(value),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AminaTheme.ink900,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String _dateLabel(DateTime value) {
@@ -376,6 +404,57 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
     required String subtitle,
     required bool initiallyExpanded,
     required List<Widget> children,
+  }) {
+    return Container(
+      key: key,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
+        border: Border.all(color: AminaTheme.ink100),
+        boxShadow: AminaTheme.shadowClinical,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          maintainState: true,
+          initiallyExpanded: initiallyExpanded,
+          tilePadding: const EdgeInsetsDirectional.fromSTEB(18, 10, 14, 10),
+          childrenPadding: const EdgeInsetsDirectional.fromSTEB(18, 0, 18, 20),
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AminaTheme.primaryTeal.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: AminaTheme.primaryTeal, size: 21),
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AminaTheme.ink900,
+            ),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                height: 1.35,
+                color: AminaTheme.ink500,
+              ),
+            ),
+          ),
+          children: children,
+        ),
+      ),
+    );
   }
 
   String _medicalSummary(AppLocalizations l10n) {
