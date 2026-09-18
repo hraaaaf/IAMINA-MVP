@@ -30,6 +30,7 @@ class BasePatientProfile(models.Model):
         ('fr',    'Français'),
         ('ar-MA', 'Darija (dialecte marocain)'),
         ('ar',    'Arabe classique (Fusha)'),
+        ('en',    'English'),
     ]
 
     GENDER_CHOICES = [
