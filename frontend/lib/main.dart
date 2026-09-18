@@ -12,6 +12,7 @@ import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'routes/app_router.dart';
 import 'services/api_client.dart';
+import 'services/app_lock_protected_state_policy.dart';
 import 'services/app_lock_service.dart';
 import 'services/audit_access_policy.dart';
 import 'services/auth_service.dart';
@@ -28,7 +29,13 @@ Future<bool> _hasProtectedLocalState({
   required AuthService authService,
   required bool auditAllowed,
 }) async {
-  if (!auditAllowed && authService.isAuthenticated) return true;
+  if (authSessionCountsAsProtectedLocalState(
+    auditAllowed: auditAllowed,
+    isAuthenticated: authService.isAuthenticated,
+    hasRemoteApiCredential: authService.hasRemoteApiCredential,
+  )) {
+    return true;
+  }
 
   if (await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull() != null) {
     return true;
