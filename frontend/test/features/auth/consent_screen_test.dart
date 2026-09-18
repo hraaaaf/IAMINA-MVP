@@ -12,6 +12,7 @@ import 'package:amina/services/consent_evidence_store.dart';
 import 'package:amina/services/consent_notice_contract.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:chopper/chopper.dart';
+import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -68,6 +69,10 @@ Widget _makeApp({
       GoRoute(
         path: '/dashboard',
         builder: (_, __) => const Scaffold(body: Text('Dashboard')),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (_, __) => const Scaffold(body: Text('Onboarding')),
       ),
     ],
   );
@@ -231,7 +236,28 @@ void main() {
     expect(evidenceStore.written?.noticeHash, claim.noticeHash);
     expect(evidenceStore.written?.locale, claim.locale);
     expect(consentService.hasConsent, isTrue);
+    expect(find.text('Onboarding'), findsOneWidget);
+  });
+
+  testWidgets('existing local profile returns to dashboard after consent', (tester) async {
+    await db.into(db.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: const drift.Value(1),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final acceptBtn = find.text('Accepter et continuer');
+    await tester.ensureVisible(acceptBtn);
+    await tester.tap(acceptBtn);
+    await tester.pumpAndSettle();
+
     expect(find.text('Dashboard'), findsOneWidget);
+    final profile = await (db.select(db.patientProfiles)..limit(1)).getSingle();
+    expect(profile.aiConsentGivenAt, isNotNull);
   });
 
   testWidgets('loading indicator shown while accepting', (tester) async {
