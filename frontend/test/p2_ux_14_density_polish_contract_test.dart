@@ -4,6 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
+String _readProfileLibrary() => [
+  _read('lib/features/profile/profile_screen.dart'),
+  _read('lib/features/profile/profile_screen_presentation.dart'),
+].join('\n');
+
 void main() {
   test(
     'summary degraded state preserves a focal wide composition without harming mobile',
@@ -36,7 +41,7 @@ void main() {
   test(
     'profile desktop groups progressive sections with shared clinical surfaces',
     () {
-      final source = _read('lib/features/profile/profile_screen.dart');
+      final source = _readProfileLibrary();
       expect(source, contains('maxWidth: 1040'));
       expect(source, contains('constraints.maxWidth < 900'));
       expect(
