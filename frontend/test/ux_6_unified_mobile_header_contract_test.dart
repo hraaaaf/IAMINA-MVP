@@ -4,12 +4,17 @@ import 'package:flutter_test/flutter_test.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
+String _readProfileLibrary() => [
+  _read('lib/features/profile/profile_screen.dart'),
+  _read('lib/features/profile/profile_screen_presentation.dart'),
+].join('\n');
+
 void main() {
   final header = _read('lib/core/widgets/mobile_page_header.dart');
   final dashboard = _read('lib/features/dashboard/widgets/top_bar.dart');
   final journal = _read('lib/features/journal/journal_screen.dart');
   final importer = _read('lib/features/import/import_screen.dart');
-  final profile = _read('lib/features/profile/profile_screen.dart');
+  final profile = _readProfileLibrary();
   final summary = _read('lib/features/journal/ai_summary_screen.dart');
 
   test('canonical mobile header owns hierarchy, safe area and RTL spacing', () {

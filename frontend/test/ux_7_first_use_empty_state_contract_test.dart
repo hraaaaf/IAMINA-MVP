@@ -4,6 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
+String _readProfileLibrary() => [
+  _read('lib/features/profile/profile_screen.dart'),
+  _read('lib/features/profile/profile_screen_presentation.dart'),
+].join('\n');
+
 String _readSummaryLibrary() => [
   _read('lib/features/journal/ai_summary_screen.dart'),
   _read('lib/features/journal/ai_summary_screen_presentation.dart'),
@@ -86,7 +91,7 @@ void main() {
   );
 
   test('profile first-use guides but never auto-saves medical defaults', () {
-    final source = _read('lib/features/profile/profile_screen.dart');
+    final source = _readProfileLibrary();
     expect(source, contains('if (!_hasPersistedProfile)'));
     expect(source, contains("ValueKey('profile-first-use')"));
     expect(source, contains('.profileCompletionPrompt'));

@@ -4,11 +4,16 @@ import 'package:flutter_test/flutter_test.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
+String _readProfileLibrary() => [
+  _read('lib/features/profile/profile_screen.dart'),
+  _read('lib/features/profile/profile_screen_presentation.dart'),
+].join('\n');
+
 void main() {
   test(
     'profile uses progressive thematic sections with truthful medical summary',
     () {
-      final source = _read('lib/features/profile/profile_screen.dart');
+      final source = _readProfileLibrary();
       expect(source, contains("ValueKey('profile-medical-section')"));
       expect(source, contains("ValueKey('profile-iamina-section')"));
       expect(source, contains("ValueKey('profile-account-section')"));
@@ -22,7 +27,7 @@ void main() {
   test(
     'all sections start collapsed while medical summary remains truthful',
     () {
-      final source = _read('lib/features/profile/profile_screen.dart');
+      final source = _readProfileLibrary();
       final medical = source.indexOf('Widget _buildMedicalSection');
       final account = source.indexOf('Widget _buildAccountSection');
       final section = source.indexOf('Widget _buildProfileSection');
@@ -40,7 +45,7 @@ void main() {
   );
 
   test('sensitive actions stay grouped in a distinct account section', () {
-    final source = _read('lib/features/profile/profile_screen.dart');
+    final source = _readProfileLibrary();
     final account = source.indexOf('Widget _buildAccountSection');
     final generic = source.indexOf('Widget _buildProfileSection');
     final block = source.substring(account, generic);
