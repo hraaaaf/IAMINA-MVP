@@ -25,6 +25,11 @@ const bool kRemoteAccountEnrollmentEnabled = bool.fromEnvironment(
   defaultValue: false,
 );
 
+const bool kRemoteBackendAuthRequired = bool.fromEnvironment(
+  'IAMINA_REQUIRE_REMOTE_BACKEND_AUTH',
+  defaultValue: false,
+);
+
 typedef AuthFailureLogger = void Function(
   String operation,
   String errorType,
@@ -33,6 +38,7 @@ typedef AuthFailureLogger = void Function(
 
 class AuthService extends ChangeNotifier {
   static const _tokenKey = 'iamina_native_access_token';
+  static const _nativeUserIdKey = 'iamina_native_user_id';
   static const _localSessionKey = 'iamina_local_session_v1';
   static const _localSessionValue = 'enrolled';
   static const _localDeviceIdKey = 'iamina_local_device_id_v1';
@@ -45,6 +51,7 @@ class AuthService extends ChangeNotifier {
   final http.Client _httpClient;
   final AuthFailureLogger _failureLogger;
   String? _nativeToken;
+  int? _nativeUserId;
   bool _localSessionEnrolled = false;
   bool _initialized = false;
   bool _auditSession = false;
@@ -103,6 +110,10 @@ class AuthService extends ChangeNotifier {
       _localSessionEnrolled ||
       (_firebaseAuth?.currentUser != null);
   bool get isRemoteCredentialVerified => _remoteCredentialVerified;
+  bool get hasRemoteCredential =>
+      _nativeToken != null || (_firebaseAuth?.currentUser != null);
+  int? get nativeUserId => _nativeUserId;
+  int get localProfileUserId => _nativeUserId ?? 1;
   bool get isAnonymous =>
       _auditSession ||
       (!_localSessionEnrolled &&
@@ -116,13 +127,22 @@ class AuthService extends ChangeNotifier {
       _localSessionEnrolled =
           await _storage.read(key: _localSessionKey) == _localSessionValue;
       final storedToken = await _storage.read(key: _tokenKey);
+      final storedUserIdRaw = await _storage.read(key: _nativeUserIdKey);
+      final storedUserId = int.tryParse(storedUserIdRaw ?? '');
       if (_isExpectedNativeBearerShape(storedToken)) {
         _nativeToken = storedToken;
+        _nativeUserId = storedUserId;
         _remoteCredentialVerified = false;
         await _ensureLocalEnrollment();
-      } else if (storedToken != null) {
-        await _storage.delete(key: _tokenKey);
+      } else {
+        if (storedToken != null) {
+          await _storage.delete(key: _tokenKey);
+        }
+        if (storedUserIdRaw != null) {
+          await _storage.delete(key: _nativeUserIdKey);
+        }
         _nativeToken = null;
+        _nativeUserId = null;
         _remoteCredentialVerified = false;
       }
     } catch (error, stackTrace) {
@@ -132,6 +152,7 @@ class AuthService extends ChangeNotifier {
         stackTrace,
       );
       _nativeToken = null;
+      _nativeUserId = null;
       _localSessionEnrolled = false;
       _remoteCredentialVerified = false;
     } finally {
@@ -174,8 +195,10 @@ class AuthService extends ChangeNotifier {
     if (_auditSession) return null;
     if (_nativeToken != null) {
       _nativeToken = null;
+      _nativeUserId = null;
       _remoteCredentialVerified = false;
       await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _nativeUserIdKey);
       _notifyAuthChanged();
       return null;
     }
@@ -234,10 +257,12 @@ class AuthService extends ChangeNotifier {
     // Local sign-out is authoritative. Never let optional remote revocation keep
     // an enrolled device authenticated while the network is slow or unavailable.
     _nativeToken = null;
+    _nativeUserId = null;
     _localSessionEnrolled = false;
     _remoteCredentialVerified = false;
     try {
       await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _nativeUserIdKey);
       await _storage.delete(key: _localSessionKey);
       await _storage.delete(key: _localDeviceIdKey);
       await _firebaseAuth?.signOut();
@@ -317,12 +342,19 @@ class AuthService extends ChangeNotifier {
       throw StateError('Malformed authentication response');
     }
     final token = payload['access_token'];
+    final user = payload['user'];
+    final userId = user is Map ? user['id'] : null;
     if (token is! String || !_isExpectedNativeBearerShape(token)) {
       throw StateError('Missing IAMINA access token');
     }
+    if (userId is! int || userId <= 0) {
+      throw StateError('Missing IAMINA user id');
+    }
     await _storage.write(key: _tokenKey, value: token);
+    await _storage.write(key: _nativeUserIdKey, value: userId.toString());
     await _storage.write(key: _localSessionKey, value: _localSessionValue);
     _nativeToken = token;
+    _nativeUserId = userId;
     _localSessionEnrolled = true;
     _remoteCredentialVerified = true;
     _notifyAuthChanged();
