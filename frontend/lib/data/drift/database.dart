@@ -274,14 +274,31 @@ class AppDatabase extends _$AppDatabase {
   /// RGPD Art. 7 — record explicit AI consent in the local DB.
   /// [granted] true = consent given, false = consent withdrawn.
   Future<void> setAiConsent({required bool granted}) async {
-    final ts = granted ? DateTime.now() : null;
+    final now = DateTime.now();
+    final ts = granted ? now : null;
     final existing = await (select(
       patientProfiles,
     )..limit(1)).getSingleOrNull();
     if (existing != null) {
       await (update(patientProfiles)
             ..where((t) => t.userId.equals(existing.userId)))
-          .write(PatientProfilesCompanion(aiConsentGivenAt: Value(ts)));
+          .write(
+            PatientProfilesCompanion(
+              aiConsentGivenAt: Value(ts),
+              updatedAt: Value(now),
+            ),
+          );
+      return;
+    }
+
+    if (granted) {
+      await into(patientProfiles).insert(
+        PatientProfilesCompanion.insert(
+          userId: const Value(1),
+          updatedAt: now,
+          aiConsentGivenAt: Value(ts),
+        ),
+      );
     }
   }
 

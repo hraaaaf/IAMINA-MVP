@@ -18,5 +18,7 @@ void main() {
     expect(source, contains('on TimeoutException catch'));
     expect(source, contains('setState(() => _saving = false)'));
     expect(source, contains("context.go('/dashboard')"));
+    expect(source, isNot(contains('FirebaseAuth.instance.currentUser')));
+    expect(source, contains('existingProfile?.aiConsentGivenAt'));
   });
 }

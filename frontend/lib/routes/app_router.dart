@@ -69,6 +69,15 @@ AppRouterHolder createAppRouterHolder({
       // ── Local enrollment gate ─────────────────────────────────────────────
       if (!isLoggedIn && !isLoginPage) return '/login';
 
+      // Hosted Vercel review enables remote account enrollment explicitly.
+      // A marker-only local session must not reach protected server flows
+      // without a verified IAMINA bearer credential.
+      if (kRemoteAccountEnrollmentEnabled &&
+          !authService.isAuditSession &&
+          !authService.isRemoteCredentialVerified) {
+        return isLoginPage ? null : '/login';
+      }
+
       // Audit access is compile-time + loopback constrained. It may render the
       // lock screens for visual certification but never changes patient state.
       if (authService.isAuditSession && isAppLockPage) return null;

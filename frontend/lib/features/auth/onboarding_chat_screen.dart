@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:drift/drift.dart' as drift;
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -66,10 +65,11 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       if (!mounted) return;
 
       final db = context.read<AppDatabase>();
-      final firebaseUser = FirebaseAuth.instance.currentUser;
-      final userId = firebaseUser?.uid.hashCode.abs() ?? 1;
+      final existingProfile = await (db.select(
+        db.patientProfiles,
+      )..limit(1)).getSingleOrNull().timeout(_persistenceTimeout);
       final profile = PatientProfilesCompanion.insert(
-        userId: drift.Value(userId),
+        userId: drift.Value(existingProfile?.userId ?? 1),
         preferredLanguage: drift.Value(_language!),
         updatedAt: DateTime.now(),
         diabetesType: drift.Value(_diabetesType!),
@@ -77,6 +77,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         unitPreference: drift.Value(_unit),
         targetRangeLow: const drift.Value(70),
         targetRangeHigh: const drift.Value(180),
+        aiConsentGivenAt: drift.Value(existingProfile?.aiConsentGivenAt),
       );
 
       await db

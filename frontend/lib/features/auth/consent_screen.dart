@@ -2,8 +2,9 @@
 // Explicit AI processing consent gate bound to one exact notice version/hash/locale.
 //
 // Routes:
-//   Accept  → exact server receipt → secure local evidence → Drift gate → dashboard
-//   Decline → dashboard (external AI features remain unavailable)
+//   First accept/decline → onboarding
+//   Returning accept/decline → dashboard
+//   External AI stays gated unless exact versioned consent is verified.
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -36,6 +37,9 @@ class _ConsentScreenState extends State<ConsentScreen> {
       Localizations.localeOf(context).toLanguageTag(),
     );
     try {
+      final hadLocalProfile =
+          await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull() !=
+          null;
       final accepted = await api.giveVersionedConsent(claim);
       if (!accepted) return;
 
@@ -44,7 +48,9 @@ class _ConsentScreenState extends State<ConsentScreen> {
       await evidenceStore.write(claim);
       await db.setAiConsent(granted: true);
       consent.markVerifiedConsent();
-      if (mounted) context.go('/dashboard');
+      if (mounted) {
+        context.go(hadLocalProfile ? '/dashboard' : '/onboarding');
+      }
     } catch (_) {
       // Fail closed. The explicit "Continue without AI" route remains usable.
     } finally {
@@ -52,9 +58,14 @@ class _ConsentScreenState extends State<ConsentScreen> {
     }
   }
 
-  void _declineWithoutAI() {
+  Future<void> _declineWithoutAI() async {
+    final db = context.read<AppDatabase>();
+    final hadLocalProfile =
+        await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull() !=
+        null;
+    if (!mounted) return;
     context.read<ConsentService>().declineLocally();
-    context.go('/dashboard');
+    context.go(hadLocalProfile ? '/dashboard' : '/onboarding');
   }
 
   @override
