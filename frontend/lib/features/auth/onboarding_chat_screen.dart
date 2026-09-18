@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:drift/drift.dart' as drift;
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +9,8 @@ import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/api_client.dart';
+import '../../services/auth_service.dart';
 import '../../services/locale_preference_service.dart';
 
 class OnboardingChatScreen extends StatefulWidget {
@@ -66,10 +67,11 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       if (!mounted) return;
 
       final db = context.read<AppDatabase>();
-      final firebaseUser = FirebaseAuth.instance.currentUser;
-      final userId = firebaseUser?.uid.hashCode.abs() ?? 1;
+      final existingProfile = await (db.select(
+        db.patientProfiles,
+      )..limit(1)).getSingleOrNull().timeout(_persistenceTimeout);
       final profile = PatientProfilesCompanion.insert(
-        userId: drift.Value(userId),
+        userId: drift.Value(existingProfile?.userId ?? 1),
         preferredLanguage: drift.Value(_language!),
         updatedAt: DateTime.now(),
         diabetesType: drift.Value(_diabetesType!),
@@ -77,12 +79,47 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         unitPreference: drift.Value(_unit),
         targetRangeLow: const drift.Value(70),
         targetRangeHigh: const drift.Value(180),
+        aiConsentGivenAt: drift.Value(existingProfile?.aiConsentGivenAt),
       );
 
       await db
           .into(db.patientProfiles)
           .insertOnConflictUpdate(profile)
           .timeout(_persistenceTimeout);
+
+      if (kRemoteAccountEnrollmentEnabled) {
+        final api = context.read<ApiClient>();
+        final backendDiabetesType = _diabetesType == 'pre'
+            ? 'prediabetes'
+            : _diabetesType!;
+        final backendTreatment = switch (_treatment!) {
+          'insulin' => 'insulin',
+          'tablets' => 'oral_meds',
+          'lifestyle' => 'diet_exercise',
+          _ => throw StateError('Unsupported treatment mapping'),
+        };
+        final backendUnit = _unit == 'mmol/L' ? 'mmol_l' : 'mg_dl';
+        final localePatch = <String, dynamic>{
+          'ui_language': _language!,
+          'response_language': _language!,
+          'glucose_unit': _unit,
+          if (_country != 'OTHER') 'country_code': _country!,
+        };
+
+        final localeSynced = await api
+            .patchLocalePreferences(localePatch)
+            .timeout(_persistenceTimeout);
+        final profileSynced = await api
+            .patchProfile({
+              'diabetes_type': backendDiabetesType,
+              'treatment_type': backendTreatment,
+              'unit_preference': backendUnit,
+            })
+            .timeout(_persistenceTimeout);
+        if (!localeSynced || !profileSynced) {
+          throw StateError('Hosted onboarding sync failed');
+        }
+      }
 
       if (mounted) context.go('/dashboard');
     } on TimeoutException catch (error, stackTrace) {

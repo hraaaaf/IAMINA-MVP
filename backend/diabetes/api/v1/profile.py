@@ -173,6 +173,16 @@ def _get_diabetes_profile(user) -> DiabetesProfile:
         raise HttpError(404, "Diabetes profile not found") from exc
 
 
+def _get_or_create_diabetes_profile(user) -> DiabetesProfile:
+    """Materialize the diabetes extension only when the patient declares module data."""
+    try:
+        base = BasePatientProfile.objects.get(patient=user)
+    except BasePatientProfile.DoesNotExist as exc:
+        raise HttpError(404, "Profile not found") from exc
+    profile, _ = DiabetesProfile.objects.get_or_create(base_profile=base)
+    return profile
+
+
 def _validate_media_consent_option(purpose: str, modality: str) -> None:
     if (purpose, modality) not in _MEDIA_CONSENT_OPTION_SET:
         raise HttpError(422, "Unsupported media consent purpose/modality pair")
@@ -200,7 +210,7 @@ def get_profile(request):
 @router.patch("/profile", response=PatientProfileSchema)
 def patch_profile(request, data: ProfilePatchSchema):
     """Persist only explicitly supplied patient-declared profile fields."""
-    profile = _get_diabetes_profile(request.user)
+    profile = _get_or_create_diabetes_profile(request.user)
     base = profile.base_profile
     payload = data.model_dump(exclude_unset=True)
 

@@ -12,6 +12,7 @@ import 'package:amina/services/consent_evidence_store.dart';
 import 'package:amina/services/consent_notice_contract.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:chopper/chopper.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -68,6 +69,10 @@ Widget _makeApp({
       GoRoute(
         path: '/dashboard',
         builder: (_, __) => const Scaffold(body: Text('Dashboard')),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (_, __) => const Scaffold(body: Text('Onboarding')),
       ),
     ],
   );
@@ -195,19 +200,20 @@ void main() {
     expect(find.textContaining('😴'), findsOneWidget);
   });
 
-  testWidgets('tapping decline marks service declined', (tester) async {
+  testWidgets('fresh decline enters onboarding without AI', (tester) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
     final declineBtn = find.text('Continuer sans IA');
     await tester.ensureVisible(declineBtn);
     await tester.tap(declineBtn);
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(consentService.hasDeclinedLocally, isTrue);
+    expect(find.text('Onboarding'), findsOneWidget);
   });
 
-  testWidgets('accept posts exact claim and persists verified evidence', (tester) async {
+  testWidgets('fresh accept persists consent shell and enters onboarding', (tester) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
@@ -230,6 +236,31 @@ void main() {
     expect(evidenceStore.written?.version, claim.version);
     expect(evidenceStore.written?.noticeHash, claim.noticeHash);
     expect(evidenceStore.written?.locale, claim.locale);
+    expect(consentService.hasConsent, isTrue);
+
+    final localProfile =
+        await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull();
+    expect(localProfile, isNotNull);
+    expect(localProfile!.aiConsentGivenAt, isNotNull);
+    expect(find.text('Onboarding'), findsOneWidget);
+  });
+
+  testWidgets('returning accept goes directly to dashboard', (tester) async {
+    await db.into(db.patientProfiles).insert(
+      PatientProfilesCompanion.insert(
+        userId: const Value(7),
+        updatedAt: DateTime(2026, 9, 18),
+      ),
+    );
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final acceptBtn = find.text('Accepter et continuer');
+    await tester.ensureVisible(acceptBtn);
+    await tester.tap(acceptBtn);
+    await tester.pumpAndSettle();
+
     expect(consentService.hasConsent, isTrue);
     expect(find.text('Dashboard'), findsOneWidget);
   });
