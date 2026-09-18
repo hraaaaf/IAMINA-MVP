@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "repository": "hraaaaf/IAMINA-MVP",
+  "doctrine": {
+    "version": "1.0.0",
+    "commit_sha": "4c0ed295cc095fc5e7f9d0ddde3b1af95ac8dba9"
+  },
+  "adopted_at": "2026-09-18",
+  "local_governance": [
+    "AGENTS.md",
+    "docs/ROADMAP.md",
+    "docs/CONTRIBUTING.md",
+    "docs/QUALITY_SCORING_POLICY.md",
+    "docs/architecture/ARCHITECTURE.md"
+  ],
+  "exceptions": [],
+  "notes": "Central doctrine is a minimum baseline. IAmina's patient-companion authority ceiling, deterministic clinical/safety authority, privacy/data-egress controls, local-first patient-runtime boundary, Builder-Reviewer-Certifier chain, and stricter scoring/release gates remain authoritative additions."
+}
