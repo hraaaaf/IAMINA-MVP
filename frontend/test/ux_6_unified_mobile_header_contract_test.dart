@@ -4,6 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 String _read(String path) => File(path).readAsStringSync();
 
+String _readSummaryLibrary() => [
+  _read('lib/features/journal/ai_summary_screen.dart'),
+  _read('lib/features/journal/ai_summary_screen_presentation.dart'),
+].join('\n');
+
 String _readProfileLibrary() => [
   _read('lib/features/profile/profile_screen.dart'),
   _read('lib/features/profile/profile_screen_presentation.dart'),
@@ -15,7 +20,7 @@ void main() {
   final journal = _read('lib/features/journal/journal_screen.dart');
   final importer = _read('lib/features/import/import_screen.dart');
   final profile = _readProfileLibrary();
-  final summary = _read('lib/features/journal/ai_summary_screen.dart');
+  final summary = _readSummaryLibrary();
 
   test('canonical mobile header owns hierarchy, safe area and RTL spacing', () {
     expect(header, contains('class AminaMobilePageHeader'));

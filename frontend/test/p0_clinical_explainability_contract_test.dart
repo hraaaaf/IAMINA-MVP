@@ -4,6 +4,11 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 String _read(String path) => File(path).readAsStringSync();
+String _readSummaryLibrary() => [
+  _read('lib/features/journal/ai_summary_screen.dart'),
+  _read('lib/features/journal/ai_summary_screen_presentation.dart'),
+].join('\n');
+
 Map<String, dynamic> _arb(String locale) =>
     jsonDecode(_read('lib/l10n/app_$locale.arb')) as Map<String, dynamic>;
 
@@ -11,7 +16,7 @@ void main() {
   test(
     'summary exposes coverage and never fabricates confidence or trends',
     () {
-      final source = _read('lib/features/journal/ai_summary_screen.dart');
+      final source = _readSummaryLibrary();
       final localizedCopy =
           _read('lib/core/localization/ai_summary_localized_copy.dart');
 
