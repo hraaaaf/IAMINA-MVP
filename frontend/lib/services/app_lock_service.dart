@@ -112,6 +112,31 @@ class AppLockService extends ChangeNotifier {
 
   Future<AppLockCapability> capability() => _authenticator.capability();
 
+  Future<void> recoverWithVerifiedRemoteAccount() async {
+    if (!_initialized) {
+      throw StateError('App lock requires initialized state');
+    }
+    final auth = _authService;
+    if (!_recoveryRequired ||
+        auth == null ||
+        !auth.isRemoteCredentialVerified ||
+        !auth.hasRemoteApiCredential) {
+      throw const AppLockException('verified_remote_recovery_required');
+    }
+
+    // A fresh, server-verified account login is the recovery authority. Remove
+    // only the unverifiable app-lock material; patient-local clinical state is
+    // retained and remains inaccessible until a new strong device lock enrolls.
+    await _storage.delete(key: _credentialKey);
+    await _storage.delete(key: _requiredKey);
+    _credential = null;
+    _configured = false;
+    _required = false;
+    _recoveryRequired = false;
+    _unlocked = false;
+    notifyListeners();
+  }
+
   Future<void> configure() async {
     if (!_initialized) {
       throw StateError('App lock requires initialized state');
