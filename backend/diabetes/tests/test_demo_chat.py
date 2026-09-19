@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.test import Client, TestCase
 
 from diabetes.models import LogEntry
@@ -10,6 +11,7 @@ from diabetes.models import LogEntry
 
 class DemoChatContractTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = Client()
 
     def _post(self, message: str, language: str = "fr"):
