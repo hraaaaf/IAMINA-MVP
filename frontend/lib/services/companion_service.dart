@@ -145,7 +145,7 @@ class CompanionService {
     if (trimmed.isEmpty) return null;
 
     if (_authService.isAuditSession) {
-      return _demoReply(trimmed);
+      return _sendDemoChat(trimmed);
     }
 
     final token = await _authService.getIdToken();
@@ -232,6 +232,37 @@ class CompanionService {
         retryable: false,
         statusCode: 500,
       );
+    }
+  }
+
+  Future<CompanionChatReply> _sendDemoChat(String message) async {
+    try {
+      final response = await _http
+          .post(
+            Uri.parse('$baseUrl/api/v1/demo/chat'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'message': message}),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        return _demoReply(message);
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) return _demoReply(message);
+      final reply = CompanionChatReply.fromJson(
+        Map<String, dynamic>.from(decoded),
+      );
+      if (reply.reply.trim().isEmpty) return _demoReply(message);
+      return reply;
+    } catch (error, stackTrace) {
+      _failureLogger(
+        'demo_chat',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
+      return _demoReply(message);
     }
   }
 
