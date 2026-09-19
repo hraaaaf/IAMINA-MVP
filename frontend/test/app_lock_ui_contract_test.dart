@@ -38,6 +38,10 @@ void main() {
     }
     expect(unlock, contains('if (!recovery)'));
     expect(unlock, contains('recoveryRequired'));
+    expect(unlock, contains("appLockPreview'] == 'recovery'"));
+    expect(unlock, contains('appLockRecoveryReauthenticate'));
+    expect(unlock, contains('appLockRecoveryReenroll'));
+    expect(unlock, contains('recoverWithVerifiedRemoteAccount()'));
   });
 
   test('missing app-lock state is cross-checked against all local patient state', () {
