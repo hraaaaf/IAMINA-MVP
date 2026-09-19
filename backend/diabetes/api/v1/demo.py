@@ -37,10 +37,7 @@ def _authorize_demo_chat_request(request) -> None:
         return
     if int(count) >= _DEMO_CHAT_MAX_REQUESTS:
         raise HttpError(429, "Demo chat rate limit exceeded")
-    try:
-        cache.incr(key)
-    except ValueError:
-        cache.set(key, int(count) + 1, timeout=_DEMO_CHAT_WINDOW_SECONDS)
+    cache.set(key, int(count) + 1, timeout=_DEMO_CHAT_WINDOW_SECONDS)
 
 
 class DemoScenarioResponse(BaseModel):
