@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import re
 
-from companion.output_guard import safe_fallback
 from companion.demo_model import DemoModelUnavailable, DemoPayloadDenied, generate_demo_reply
+from companion.output_guard import safe_fallback
 from companion.zero_model_router import exact_chitchat_reply
 from core.emergency_response import compose_emergency_for_patient
 from core.input_safety import (
