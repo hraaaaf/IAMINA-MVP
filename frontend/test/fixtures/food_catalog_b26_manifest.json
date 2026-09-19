@@ -1,0 +1,9 @@
+{
+  "batch": "B26",
+  "theme": "Libya depth",
+  "baseline_count": 377,
+  "target_count": 380,
+  "fixture_query": "Bazin libyen",
+  "ids": ["libyan_bazin", "libyan_mbakbaka", "libyan_shorba"],
+  "required_viewports": ["390x844", "768x1024", "1280x900"]
+}
