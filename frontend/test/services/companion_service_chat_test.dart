@@ -77,6 +77,7 @@ void main() {
             'reply_language': 'ar',
           }),
           200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
         ),
       ),
       baseUrl: 'http://127.0.0.1:8000',
