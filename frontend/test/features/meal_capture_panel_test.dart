@@ -24,7 +24,7 @@ void main() {
   Widget harness({Locale locale = const Locale('fr'),required List<String> selected,required ValueChanged<List<String>> onChanged,MealPhotoRecognition? photoRecognition,bool canUsePhoto = true,MealFoodFavoritesRepository? favoritesRepository,}) => MaterialApp(locale:locale,localizationsDelegates:AppLocalizations.localizationsDelegates,supportedLocales:AppLocalizations.supportedLocales,home:Scaffold(body:Provider<AppDatabase>.value(value:db,child:SingleChildScrollView(child:MealCapturePanel(selectedIds:selected,onChanged:onChanged,canUsePhotoRecognition:canUsePhoto,photoRecognition:photoRecognition,favoritesRepository:favoritesRepository)))));
 
   test('catalog v3 is broad, unique and Morocco + GCC aware', () {
-    expect(mealFoodCatalogVersion, '3.11.0-saudi-depth-b25');
+    expect(mealFoodCatalogVersion, '3.12.0-libya-depth-b26');
     expect(mealFoodCatalog.length, greaterThanOrEqualTo(300));
     final ids = mealFoodCatalog.map((item) => item.id).toSet();
     expect(ids.length, mealFoodCatalog.length, reason: 'Duplicate food IDs');
