@@ -7,17 +7,18 @@ POST /api/v1/demo/seed      — Injects realistic test data for the current user
 
 import hashlib
 import random
+from datetime import UTC, datetime
 from datetime import timedelta
 from typing import List
 
-from django.core.cache import cache
 from django.utils import timezone
 from ninja import Router
+from django.db import transaction
 from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from companion.demo import reply_to_demo_message
-from core.models import BasePatientProfile
+from core.models import AIUserThrottleWindow, BasePatientProfile
 from diabetes.api.v1.security import firebase_auth_backend
 from diabetes.models import DiabetesProfile, LogEntry
 
@@ -29,15 +30,23 @@ _DEMO_CHAT_MAX_REQUESTS = 10
 
 def _authorize_demo_chat_request(request) -> None:
     raw = request.META.get("REMOTE_ADDR", "unknown")
-    subject = hashlib.sha256(f"iamina-demo|{raw}".encode()).hexdigest()[:24]
-    key = f"iamina:demo-chat:{subject}"
-    count = cache.get(key)
-    if count is None:
-        cache.set(key, 1, timeout=_DEMO_CHAT_WINDOW_SECONDS)
-        return
-    if int(count) >= _DEMO_CHAT_MAX_REQUESTS:
-        raise HttpError(429, "Demo chat rate limit exceeded")
-    cache.set(key, int(count) + 1, timeout=_DEMO_CHAT_WINDOW_SECONDS)
+    subject = hashlib.sha256(f"iamina-demo|{raw}".encode()).hexdigest()
+    now = timezone.now()
+    epoch = int(now.timestamp())
+    window_epoch = epoch - (epoch % _DEMO_CHAT_WINDOW_SECONDS)
+    window_start = datetime.fromtimestamp(window_epoch, tz=UTC)
+
+    with transaction.atomic():
+        row, _ = AIUserThrottleWindow.objects.get_or_create(
+            subject_key=f"demo:{subject[:59]}",
+            window_start=window_start,
+            defaults={"request_count": 0},
+        )
+        row = AIUserThrottleWindow.objects.select_for_update().get(pk=row.pk)
+        if row.request_count >= _DEMO_CHAT_MAX_REQUESTS:
+            raise HttpError(429, "Demo chat rate limit exceeded")
+        row.request_count += 1
+        row.save(update_fields=("request_count", "updated_at"))
 
 
 class DemoScenarioResponse(BaseModel):
