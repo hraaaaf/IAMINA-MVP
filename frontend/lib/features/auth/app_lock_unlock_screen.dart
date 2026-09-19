@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/localization/app_lock_localized_copy.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/app_lock_service.dart';
+import '../../services/auth_service.dart';
 
 class AppLockUnlockScreen extends StatefulWidget {
   const AppLockUnlockScreen({super.key});
@@ -28,6 +29,42 @@ class _AppLockUnlockScreenState extends State<AppLockUnlockScreen> {
       if (mounted) context.go('/');
     } catch (_) {
       if (mounted) setState(() => _error = AppLocalizations.of(context)!.appLockUnlockFailed);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _recover() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final lock = context.read<AppLockService>();
+      await lock.recoverWithVerifiedRemoteAccount();
+      await lock.configure();
+      if (mounted) context.go('/');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = AppLocalizations.of(context)!.appLockRecoveryFailed);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _reauthenticate() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await context.read<AuthService>().signOut();
+      if (mounted) context.go('/login');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = AppLocalizations.of(context)!.appLockRecoveryFailed);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -168,6 +205,34 @@ class _AppLockUnlockScreenState extends State<AppLockUnlockScreen> {
                                       )
                                     : const Icon(Icons.lock_open_rounded),
                                 label: Text(_error == null ? l10n.appLockUnlock : l10n.appLockRetry),
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(52),
+                                  backgroundColor: AminaTheme.teal700,
+                                  foregroundColor: Colors.white,
+                                  textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                                ),
+                              )
+                            else
+                              FilledButton.icon(
+                                key: const Key('app-lock-recovery'),
+                                onPressed: _busy
+                                    ? null
+                                    : (context.watch<AuthService>().isRemoteCredentialVerified
+                                        ? _recover
+                                        : _reauthenticate),
+                                icon: _busy
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : const Icon(Icons.verified_user_outlined),
+                                label: Text(
+                                  context.watch<AuthService>().isRemoteCredentialVerified
+                                      ? l10n.appLockRecoveryReenroll
+                                      : l10n.appLockRecoveryReauthenticate,
+                                ),
                                 style: FilledButton.styleFrom(
                                   minimumSize: const Size.fromHeight(52),
                                   backgroundColor: AminaTheme.teal700,
