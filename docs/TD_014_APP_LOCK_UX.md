@@ -62,3 +62,15 @@ The TD-014 workflow must build BEFORE and AFTER independently, then capture:
 - image digests proving distinct rendered states.
 
 Final visual score is assigned only after inspecting the generated artifact. A green workflow status alone is not a visual review.
+
+
+## Recovery amendment — 2026-09-19
+
+Exact candidate: `a72a8d7f17f65ee980a09e6b82efe51e0a3d67aa`.
+
+Verified CI: all six exact-head workflows succeeded, including TD-014 run `35430581283`.
+Artifact: `10580592564`, digest `sha256:c15b570276a5e78a6d1327104255ce366f3abb74144b65bcf3705861f33693f9`.
+
+Visual inspection of the recovery state passed at `390×844`, `768×1024`, and `1280×900`: primary CTA visible, no clipping, no horizontal overflow, no page errors, and distinct image digests at all three viewports. Retained visual score: **9.3/10**.
+
+Browser security proof also passed: local public key, offline unlock, fail-closed user-verification check, fail-closed tampered-key check, and no application-network requirement for unlock. The browser proof records a locale-related console error; it did not invalidate the WebAuthn assertions and is retained here rather than silently omitted.
