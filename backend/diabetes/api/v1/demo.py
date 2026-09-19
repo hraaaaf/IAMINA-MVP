@@ -5,10 +5,12 @@ POST /api/v1/demo/chat      — Stateless governed demo conversation (public)
 POST /api/v1/demo/seed      — Injects realistic test data for the current user (dev only)
 """
 
+import hashlib
 import random
 from datetime import timedelta
 from typing import List
 
+from django.core.cache import cache
 from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
@@ -20,6 +22,25 @@ from diabetes.api.v1.security import firebase_auth_backend
 from diabetes.models import DiabetesProfile, LogEntry
 
 router = Router(tags=["demo"])
+
+_DEMO_CHAT_WINDOW_SECONDS = 60
+_DEMO_CHAT_MAX_REQUESTS = 10
+
+
+def _authorize_demo_chat_request(request) -> None:
+    raw = request.META.get("REMOTE_ADDR", "unknown")
+    subject = hashlib.sha256(f"iamina-demo|{raw}".encode()).hexdigest()[:24]
+    key = f"iamina:demo-chat:{subject}"
+    count = cache.get(key)
+    if count is None:
+        cache.set(key, 1, timeout=_DEMO_CHAT_WINDOW_SECONDS)
+        return
+    if int(count) >= _DEMO_CHAT_MAX_REQUESTS:
+        raise HttpError(429, "Demo chat rate limit exceeded")
+    try:
+        cache.incr(key)
+    except ValueError:
+        cache.set(key, int(count) + 1, timeout=_DEMO_CHAT_WINDOW_SECONDS)
 
 
 class DemoScenarioResponse(BaseModel):
@@ -64,6 +85,7 @@ def list_demo_scenarios(request):
 @router.post("/demo/chat", response=DemoChatResponse)
 def demo_chat(request, data: DemoChatRequest):
     """Public, stateless IAMINA demo conversation with deterministic safety."""
+    _authorize_demo_chat_request(request)
     message = data.message.strip()
     if not message:
         raise HttpError(400, "Demo message must not be empty")
