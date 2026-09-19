@@ -286,6 +286,39 @@
         ]
       }
     },
+    "/api/v1/demo/chat": {
+      "post": {
+        "operationId": "diabetes_api_v1_demo_demo_chat",
+        "summary": "Demo Chat",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoChatResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Public, stateless IAMINA demo conversation with deterministic safety.",
+        "tags": [
+          "demo"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoChatRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/v1/demo/seed": {
       "post": {
         "operationId": "diabetes_api_v1_demo_seed_demo_data",
@@ -2420,6 +2453,57 @@
           "description"
         ],
         "title": "DemoScenarioResponse",
+        "type": "object"
+      },
+      "DemoChatResponse": {
+        "properties": {
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
+          "conversation_id": {
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "is_emergency": {
+            "default": false,
+            "title": "Is Emergency",
+            "type": "boolean"
+          },
+          "reply_language": {
+            "default": "fr",
+            "title": "Reply Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reply",
+          "conversation_id",
+          "timestamp"
+        ],
+        "title": "DemoChatResponse",
+        "type": "object"
+      },
+      "DemoChatRequest": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "language": {
+            "default": "fr",
+            "title": "Language",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "DemoChatRequest",
         "type": "object"
       },
       "SeedResponse": {

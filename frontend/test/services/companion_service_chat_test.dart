@@ -25,11 +25,21 @@ class _AuditAuthService extends AuthService {
 }
 
 void main() {
-  test('demo audit chat replies locally without backend or bearer', () async {
-    var networkCalls = 0;
+  test('demo audit chat posts to public demo endpoint without bearer', () async {
+    late http.Request captured;
     final client = MockClient((request) async {
-      networkCalls += 1;
-      return http.Response('unexpected', 500);
+      captured = request;
+      return http.Response(
+        jsonEncode({
+          'reply': 'Bonjour 👋 Je suis là. Que puis-je faire pour toi ?',
+          'conversation_id': 'demo-governed',
+          'timestamp': '2026-09-19T00:00:00Z',
+          'is_emergency': false,
+          'reply_language': 'fr',
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
     });
     final service = CompanionService(
       authService: _AuditAuthService(),
@@ -39,26 +49,61 @@ void main() {
 
     final reply = await service.sendChatMessage('bonjour');
 
-    expect(networkCalls, 0);
-    expect(reply?.conversationId, 'demo-local');
+    expect(captured.method, 'POST');
+    expect(captured.url.path, '/api/v1/demo/chat');
+    expect(captured.headers['authorization'], isNull);
+    expect(captured.headers['content-type'], 'application/json');
+    expect(jsonDecode(captured.body), {
+      'message': 'bonjour',
+      'language': 'fr',
+    });
+    expect(reply?.conversationId, 'demo-governed');
     expect(reply?.replyLanguage, 'fr');
-    expect(reply?.reply, contains('mode démo'));
+    expect(reply?.reply, contains('Que puis-je faire'));
 
     service.dispose();
   });
 
-  test('demo audit chat keeps Arabic local', () async {
+  test('demo audit chat decodes governed Arabic reply', () async {
     final service = CompanionService(
       authService: _AuditAuthService(),
-      httpClient: MockClient((_) async => http.Response('unexpected', 500)),
+      httpClient: MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'reply': 'مرحباً 👋 أنا هنا. كيف يمكنني مساعدتك؟',
+            'conversation_id': 'demo-governed',
+            'timestamp': '2026-09-19T00:00:00Z',
+            'is_emergency': false,
+            'reply_language': 'ar',
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        ),
+      ),
       baseUrl: 'http://127.0.0.1:8000',
     );
 
     final reply = await service.sendChatMessage('مرحبا');
 
-    expect(reply?.conversationId, 'demo-local');
+    expect(reply?.conversationId, 'demo-governed');
     expect(reply?.replyLanguage, 'ar');
-    expect(reply?.reply, contains('وضع العرض'));
+    expect(reply?.reply, contains('مرحباً'));
+
+    service.dispose();
+  });
+
+  test('demo audit chat falls back locally when backend is unavailable', () async {
+    final service = CompanionService(
+      authService: _AuditAuthService(),
+      httpClient: MockClient((_) async => throw http.ClientException('offline')),
+      baseUrl: 'http://127.0.0.1:8000',
+    );
+
+    final reply = await service.sendChatMessage('bonjour');
+
+    expect(reply?.conversationId, 'demo-local');
+    expect(reply?.replyLanguage, 'fr');
+    expect(reply?.reply, contains('mode démo'));
 
     service.dispose();
   });
