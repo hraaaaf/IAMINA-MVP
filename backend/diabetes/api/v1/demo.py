@@ -7,13 +7,12 @@ POST /api/v1/demo/seed      — Injects realistic test data for the current user
 
 import hashlib
 import random
-from datetime import UTC, datetime
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import List
 
+from django.db import transaction
 from django.utils import timezone
 from ninja import Router
-from django.db import transaction
 from ninja.errors import HttpError
 from pydantic import BaseModel
 
