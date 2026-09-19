@@ -53,7 +53,10 @@ void main() {
     expect(captured.url.path, '/api/v1/demo/chat');
     expect(captured.headers['authorization'], isNull);
     expect(captured.headers['content-type'], 'application/json');
-    expect(jsonDecode(captured.body), {'message': 'bonjour'});
+    expect(jsonDecode(captured.body), {
+      'message': 'bonjour',
+      'language': 'fr',
+    });
     expect(reply?.conversationId, 'demo-governed');
     expect(reply?.replyLanguage, 'fr');
     expect(reply?.reply, contains('Que puis-je faire'));
