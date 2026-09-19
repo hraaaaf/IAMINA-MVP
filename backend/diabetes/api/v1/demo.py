@@ -1,6 +1,7 @@
 """
 Demo scenarios endpoint — Pre-configured patient data for testing.
 GET  /api/v1/demo/scenarios — Returns 8 demo scenarios (A–H)
+POST /api/v1/demo/chat      — Stateless governed demo conversation (public)
 POST /api/v1/demo/seed      — Injects realistic test data for the current user (dev only)
 """
 
@@ -10,8 +11,10 @@ from typing import List
 
 from django.utils import timezone
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
+from companion.demo import reply_to_demo_message
 from core.models import BasePatientProfile
 from diabetes.api.v1.security import firebase_auth_backend
 from diabetes.models import DiabetesProfile, LogEntry
@@ -23,6 +26,19 @@ class DemoScenarioResponse(BaseModel):
     id: str
     name: str
     description: str
+
+
+class DemoChatRequest(BaseModel):
+    message: str
+    language: str = "fr"
+
+
+class DemoChatResponse(BaseModel):
+    reply: str
+    conversation_id: str
+    timestamp: str
+    is_emergency: bool = False
+    reply_language: str = "fr"
 
 
 class SeedResponse(BaseModel):
@@ -43,6 +59,20 @@ def list_demo_scenarios(request):
         {"id": "H", "name": "Type 1 — Hypomania Behavior",       "description": "Patient with inconsistent logging & missed insulin"},
     ]
     return scenarios
+
+
+@router.post("/demo/chat", response=DemoChatResponse)
+def demo_chat(request, data: DemoChatRequest):
+    """Public, stateless IAMINA demo conversation with deterministic safety."""
+    message = data.message.strip()
+    if not message:
+        raise HttpError(400, "Demo message must not be empty")
+    if len(message) > 1000:
+        raise HttpError(400, "Demo message exceeds 1000 characters")
+
+    payload = reply_to_demo_message(message, language=data.language)
+    payload["timestamp"] = timezone.now().isoformat()
+    return payload
 
 
 @router.post("/demo/seed", auth=firebase_auth_backend, response=SeedResponse)

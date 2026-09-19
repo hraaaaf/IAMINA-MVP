@@ -80,6 +80,7 @@ class _CompanionConversationScreenState
     } else {
       _service = CompanionService(
         authService: context.read<AuthService>(),
+        demoLanguage: Localizations.localeOf(context).languageCode,
       );
       _ownsService = true;
     }

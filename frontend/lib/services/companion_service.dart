@@ -42,12 +42,14 @@ class CompanionService {
   final AuthService _authService;
   final http.Client _http;
   final String baseUrl;
+  final String demoLanguage;
   final CompanionFailureLogger _failureLogger;
 
   CompanionService({
     AuthService? authService,
     http.Client? httpClient,
     this.baseUrl = companionApiBaseUrl,
+    this.demoLanguage = 'fr',
     CompanionFailureLogger? failureLogger,
   }) : _authService = authService ?? AuthService(),
        _http = httpClient ?? http.Client(),
@@ -145,7 +147,7 @@ class CompanionService {
     if (trimmed.isEmpty) return null;
 
     if (_authService.isAuditSession) {
-      return _demoReply(trimmed);
+      return _sendDemoChat(trimmed);
     }
 
     final token = await _authService.getIdToken();
@@ -235,6 +237,37 @@ class CompanionService {
     }
   }
 
+  Future<CompanionChatReply> _sendDemoChat(String message) async {
+    try {
+      final response = await _http
+          .post(
+            Uri.parse('$baseUrl/api/v1/demo/chat'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'message': message, 'language': demoLanguage}),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) {
+        return _demoReply(message);
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) return _demoReply(message);
+      final reply = CompanionChatReply.fromJson(
+        Map<String, dynamic>.from(decoded),
+      );
+      if (reply.reply.trim().isEmpty) return _demoReply(message);
+      return reply;
+    } catch (error, stackTrace) {
+      _failureLogger(
+        'demo_chat',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
+      return _demoReply(message);
+    }
+  }
+
   CompanionChatReply _demoReply(String message) {
     final normalized = message.toLowerCase();
     final isArabic = RegExp(r'[\u0600-\u06FF]').hasMatch(message);
@@ -251,12 +284,12 @@ class CompanionService {
 
     final reply = switch (language) {
       'ar' => isArabicGreeting
-          ? 'مرحبًا 👋 أنا IAmina في وضع العرض. يمكنني إظهار طريقة عمل المحادثة محليًا دون إرسال بيانات إلى الخادم.'
-          : 'وضع العرض: يمكنني توضيح تجربة محادثة IAmina محليًا. للحصول على إجابة مخصصة اعتمادًا على بياناتك، استخدم جلسة مصادق عليها.',
-      'en' => 'Hello 👋 I’m IAmina in demo mode. I can show how the conversation works locally without sending data to a server.',
+          ? 'مرحبًا 👋 أنا IAmina في وضع العرض المحلي. محادثة الخادم غير متاحة الآن، لكن يمكنني متابعة عرض الواجهة هنا.'
+          : 'وضع العرض المحلي: محادثة الخادم غير متاحة الآن. يمكنني متابعة عرض الواجهة، ثم حاول مجددًا لاحقًا.',
+      'en' => 'Hello 👋 I’m IAmina in local demo fallback. The server conversation is unavailable right now, but the demo interface still works.',
       _ => isFrenchGreeting
-          ? 'Bonjour 👋 Je suis IAmina en mode démo. Je peux te montrer comment la conversation fonctionne, sans envoyer de données à un serveur.'
-          : 'Mode démo : je peux illustrer la conversation IAmina localement. Pour une réponse personnalisée à partir de tes données, utilise une session authentifiée.',
+          ? 'Bonjour 👋 Je suis IAmina en mode démo local. La conversation serveur est indisponible pour le moment, mais l’interface reste utilisable.'
+          : 'Mode démo local : la conversation serveur est indisponible pour le moment. Je peux continuer à montrer l’interface, puis réessaie plus tard.',
     };
 
     return CompanionChatReply(
