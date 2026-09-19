@@ -284,12 +284,12 @@ class CompanionService {
 
     final reply = switch (language) {
       'ar' => isArabicGreeting
-          ? 'مرحبًا 👋 أنا IAmina في وضع العرض. يمكنني إظهار طريقة عمل المحادثة محليًا دون إرسال بيانات إلى الخادم.'
-          : 'وضع العرض: يمكنني توضيح تجربة محادثة IAmina محليًا. للحصول على إجابة مخصصة اعتمادًا على بياناتك، استخدم جلسة مصادق عليها.',
-      'en' => 'Hello 👋 I’m IAmina in demo mode. I can show how the conversation works locally without sending data to a server.',
+          ? 'مرحبًا 👋 أنا IAmina في وضع العرض المحلي. محادثة الخادم غير متاحة الآن، لكن يمكنني متابعة عرض الواجهة هنا.'
+          : 'وضع العرض المحلي: محادثة الخادم غير متاحة الآن. يمكنني متابعة عرض الواجهة، ثم حاول مجددًا لاحقًا.',
+      'en' => 'Hello 👋 I’m IAmina in local demo fallback. The server conversation is unavailable right now, but the demo interface still works.',
       _ => isFrenchGreeting
-          ? 'Bonjour 👋 Je suis IAmina en mode démo. Je peux te montrer comment la conversation fonctionne, sans envoyer de données à un serveur.'
-          : 'Mode démo : je peux illustrer la conversation IAmina localement. Pour une réponse personnalisée à partir de tes données, utilise une session authentifiée.',
+          ? 'Bonjour 👋 Je suis IAmina en mode démo local. La conversation serveur est indisponible pour le moment, mais l’interface reste utilisable.'
+          : 'Mode démo local : la conversation serveur est indisponible pour le moment. Je peux continuer à montrer l’interface, puis réessaie plus tard.',
     };
 
     return CompanionChatReply(
