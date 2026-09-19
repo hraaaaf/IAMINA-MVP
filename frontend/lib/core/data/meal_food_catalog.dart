@@ -52,7 +52,7 @@ const List<base.MealFoodItem> mealFoodCatalog = <base.MealFoodItem>[
 final Map<String, base.MealFoodItem> _mealFoodById = <String, base.MealFoodItem>{for (final item in mealFoodCatalog) item.id: item};
 base.MealFoodItem? mealFoodById(String id) => _mealFoodById[id];
 List<base.MealFoodItem> mealFoodsForRegion(base.MealFoodRegion region) => mealFoodCatalog.where((item) => item.regions.contains(region)).toList(growable: false);
-List<base.MealFoodItem> mealFoodsForCategory(base.MealFoodCategory category) => mealFoodCatalog.where((item) => item.category == region).toList(growable: false);
+List<base.MealFoodItem> mealFoodsForCategory(base.MealFoodCategory category) => mealFoodCatalog.where((item) => item.category == category).toList(growable: false);
 List<base.MealFoodItem> mealFoodsForMoment(base.MealFoodMoment moment) => mealFoodCatalog.where((item) => item.moments.contains(moment)).toList(growable: false);
 List<String> decodeMealItemIds(String? raw) {if(raw==null||raw.trim().isEmpty)return const <String>[];try{final decoded=jsonDecode(raw);if(decoded is! List)return const <String>[];return decoded.whereType<String>().where(_mealFoodById.containsKey).toList(growable:false);}catch(_){return const <String>[];}}
 String encodeMealItemIds(Iterable<String> ids)=>jsonEncode(ids.where(_mealFoodById.containsKey).toSet().toList(growable:false));
