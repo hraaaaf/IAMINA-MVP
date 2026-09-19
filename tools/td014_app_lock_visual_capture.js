@@ -42,6 +42,14 @@ const withAuditRoute = (base, route, extra = '') => {
           name: 'locked',
           url: withAuditRoute(afterBase, '/app-lock/unlock'),
         },
+        {
+          name: 'recovery',
+          url: withAuditRoute(
+            afterBase,
+            '/app-lock/unlock',
+            '&appLockPreview=recovery',
+          ),
+        },
       ];
 
       for (const target of targets) {
@@ -97,12 +105,15 @@ const withAuditRoute = (base, route, extra = '') => {
         await context.close();
       }
 
-      const { before, setup, locked } = report[viewport.name];
+      const { before, setup, locked, recovery } = report[viewport.name];
       if (before.sha256 === setup.sha256) {
         throw new Error(`BEFORE and setup are pixel-identical at ${viewport.name}`);
       }
       if (setup.sha256 === locked.sha256) {
         throw new Error(`Setup and locked states are pixel-identical at ${viewport.name}`);
+      }
+      if (locked.sha256 === recovery.sha256) {
+        throw new Error(`Locked and recovery states are pixel-identical at ${viewport.name}`);
       }
     }
 
