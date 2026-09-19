@@ -3,7 +3,7 @@
   "theme": "Oman depth II",
   "baseline_count": 380,
   "target_count": 383,
-  "fixture_query": "Halwa omani",
-  "ids": ["omani_halwa", "omani_mishkak", "omani_qabooli"],
+  "fixture_query": "Madrouba omanaise",
+  "ids": ["omani_madrouba", "omani_arsia", "omani_paplou"],
   "required_viewports": ["390x844", "768x1024", "1280x900"]
 }
