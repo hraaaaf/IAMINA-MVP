@@ -235,3 +235,21 @@ Future P2-COMPANION LOTs must prove at minimum that:
 - source deletion/erasure cannot leave stale derived companion conclusions;
 - emergency routing remains independent from non-urgent companion prioritization;
 - all patient-facing wording preserves the identity: **companion that helps understand and prepare, never physician replacement**.
+
+
+## 11. Public demo conversation boundary
+
+The public demo may demonstrate a live IAMINA conversation without creating a patient identity.
+
+This path is deliberately narrower than authenticated Companion:
+
+- `POST /api/v1/demo/chat` is public and stateless;
+- it does not read a patient record, clinical context, conversation memory or durable chat history;
+- it does not create a user, patient profile, clinical row or conversation row;
+- deterministic input-safety and the canonical emergency response run before any ordinary demo reply;
+- prescription/dose requests reuse the existing no-prescription boundary;
+- exact chitchat and bounded demo/organization responses are deterministic;
+- the public demo has **no external generative-model egress authority** and must not bypass the authenticated AI consent/processor/FinOps boundaries;
+- the Flutter demo client may fall back to its local demo responder if the public demo endpoint is unavailable.
+
+A richer personalized or model-narrated conversation remains an authenticated capability subject to the normal patient-consent and AI-egress governance.
