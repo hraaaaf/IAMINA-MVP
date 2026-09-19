@@ -11,10 +11,11 @@ A rendered patient flow shows, at the same `390×844`, `768×1024`, and `1280×9
 1. the retained P5-4A local enrollment reference;
 2. a dedicated strong-lock setup screen;
 3. a dedicated locked/re-authentication screen;
-4. no email/password/PIN fallback owned by IAMINA;
-5. no patient-visible DEV/provider jargon;
-6. no horizontal overflow or clipped primary CTA;
-7. EN/FR/AR copy parity preserved by source contract tests.
+4. a fail-closed recovery screen with a verified-account recovery action;
+5. no email/password/PIN fallback owned by IAMINA;
+6. no patient-visible DEV/provider jargon;
+7. no horizontal overflow or clipped primary CTA;
+8. EN/FR/AR copy parity preserved by source contract tests.
 
 ## BEFORE reference
 
@@ -41,7 +42,9 @@ TD-014 deliberately extends the existing local-enrollment language instead of in
 
 ### Recovery state
 
-`logo → security-warning icon → “Récupération de sécurité requise” → explicit fail-closed explanation → no bypass CTA`
+`logo → security-warning icon → “Récupération de sécurité requise” → explicit fail-closed explanation → primary “Se reconnecter pour récupérer” CTA before fresh remote verification → primary “Créer un nouveau verrou sécurisé” CTA only after fresh server-verified account authentication`
+
+Recovery never opens clinical content directly: successful account verification only authorizes removal of unverifiable app-lock material, then strong WebAuthn/device-lock enrollment is required before the clinical space opens.
 
 ## Interaction reference
 
@@ -54,6 +57,7 @@ The TD-014 workflow must build BEFORE and AFTER independently, then capture:
 - BEFORE local enrollment at the three canonical viewports;
 - AFTER app-lock setup at the same three viewports;
 - AFTER locked state at the same three viewports;
+- AFTER recovery state at the same three viewports;
 - horizontal overflow metrics for every AFTER capture;
 - image digests proving distinct rendered states.
 
