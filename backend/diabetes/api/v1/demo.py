@@ -1,7 +1,8 @@
 """
 Demo scenarios endpoint — Pre-configured patient data for testing.
 GET  /api/v1/demo/scenarios — Returns 8 demo scenarios (A–H)
-POST /api/v1/demo/chat      — Stateless governed demo conversation (public)\nPOST /api/v1/demo/seed      — Injects realistic test data for the current user (dev only)
+POST /api/v1/demo/chat      — Stateless governed demo conversation (public)
+POST /api/v1/demo/seed      — Injects realistic test data for the current user (dev only)
 """
 
 import random
@@ -9,10 +10,12 @@ from datetime import timedelta
 from typing import List
 
 from django.utils import timezone
-from ninja import Router\nfrom ninja.errors import HttpError
+from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
-from companion.demo import reply_to_demo_message\nfrom core.models import BasePatientProfile
+from companion.demo import reply_to_demo_message
+from core.models import BasePatientProfile
 from diabetes.api.v1.security import firebase_auth_backend
 from diabetes.models import DiabetesProfile, LogEntry
 
