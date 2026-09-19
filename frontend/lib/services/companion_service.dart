@@ -42,12 +42,14 @@ class CompanionService {
   final AuthService _authService;
   final http.Client _http;
   final String baseUrl;
+  final String demoLanguage;
   final CompanionFailureLogger _failureLogger;
 
   CompanionService({
     AuthService? authService,
     http.Client? httpClient,
     this.baseUrl = companionApiBaseUrl,
+    this.demoLanguage = 'fr',
     CompanionFailureLogger? failureLogger,
   }) : _authService = authService ?? AuthService(),
        _http = httpClient ?? http.Client(),
@@ -241,7 +243,7 @@ class CompanionService {
           .post(
             Uri.parse('$baseUrl/api/v1/demo/chat'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'message': message}),
+            body: jsonEncode({'message': message, 'language': demoLanguage}),
           )
           .timeout(const Duration(seconds: 15));
 
