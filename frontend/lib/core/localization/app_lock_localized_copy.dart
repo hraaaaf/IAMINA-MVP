@@ -111,6 +111,24 @@ extension AppLockLocalizedCopy on AppLocalizations {
         ar: 'لم يعد من الممكن التحقق من القفل المحلي الذي تم إعداده سابقاً. لن يتجاوزه IAmina ولن يفتح المساحة السريرية.',
       );
 
+  String get appLockRecoveryReauthenticate => _appLockPick(
+        en: 'Sign in again to recover',
+        fr: 'Se reconnecter pour récupérer',
+        ar: 'تسجيل الدخول مجدداً للاستعادة',
+      );
+
+  String get appLockRecoveryReenroll => _appLockPick(
+        en: 'Create a new secure lock',
+        fr: 'Créer un nouveau verrou sécurisé',
+        ar: 'إنشاء قفل آمن جديد',
+      );
+
+  String get appLockRecoveryFailed => _appLockPick(
+        en: 'Security recovery failed. The clinical space remains locked.',
+        fr: 'La récupération de sécurité a échoué. L’espace clinique reste verrouillé.',
+        ar: 'فشلت استعادة الأمان. تبقى المساحة السريرية مقفلة.',
+      );
+
   String get appLockRetry => _appLockPick(
         en: 'Try again',
         fr: 'Réessayer',
