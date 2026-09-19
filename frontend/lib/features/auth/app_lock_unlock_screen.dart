@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/localization/app_lock_localized_copy.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/app_lock_service.dart';
+import '../../services/audit_access_policy.dart';
 import '../../services/auth_service.dart';
 
 class AppLockUnlockScreen extends StatefulWidget {
@@ -75,7 +76,9 @@ class _AppLockUnlockScreenState extends State<AppLockUnlockScreen> {
     final l10n = AppLocalizations.of(context)!;
     final lock = context.watch<AppLockService>();
     final dark = AminaTheme.isDark(context);
-    final recovery = lock.recoveryRequired;
+    final recovery = lock.recoveryRequired ||
+        (AuditAccessPolicy.isAllowed(Uri.base) &&
+            Uri.base.queryParameters['appLockPreview'] == 'recovery');
 
     return Scaffold(
       backgroundColor: AminaTheme.bg(context),
