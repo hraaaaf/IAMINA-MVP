@@ -1,0 +1,9 @@
+{
+  "batch": "B30",
+  "theme": "International basics I — Italy",
+  "baseline_count": 389,
+  "target_count": 392,
+  "fixture_query": "Pizza Margherita",
+  "ids": ["pizza_margherita", "spaghetti_carbonara", "lasagne_bolognese"],
+  "required_viewports": ["390x844", "768x1024", "1280x900"]
+}
