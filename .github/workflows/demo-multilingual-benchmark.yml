@@ -22,9 +22,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install OpenAI client
-        run: pip install "openai>=1.0,<2"
-      - name: Run bounded synthetic comparison
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Run bounded synthetic comparison through production path
+        env:
+          DJANGO_SETTINGS_MODULE: amina.settings
+          SECRET_KEY: demo-benchmark-nonproduction
+          DEBUG: "True"
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          DATABASE_URL: sqlite:///demo-benchmark.db
         run: python backend/evaluation/demo_multilingual_benchmark.py --output artifacts/demo-multilingual-benchmark.json
       - uses: actions/upload-artifact@v4
         if: always()
