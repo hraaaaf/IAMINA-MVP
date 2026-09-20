@@ -31,7 +31,8 @@ jobs:
           DEBUG: "True"
           ALLOWED_HOSTS: localhost,127.0.0.1
           DATABASE_URL: sqlite:///demo-benchmark.db
-        run: python backend/evaluation/demo_multilingual_benchmark.py --output artifacts/demo-multilingual-benchmark.json
+        working-directory: backend
+        run: python evaluation/demo_multilingual_benchmark.py --output ../artifacts/demo-multilingual-benchmark.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
