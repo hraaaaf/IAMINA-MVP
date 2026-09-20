@@ -248,8 +248,13 @@ This path is deliberately narrower than authenticated Companion:
 - it does not create a user, patient profile, clinical row or conversation row;
 - deterministic input-safety and the canonical emergency response run before any ordinary demo reply;
 - prescription/dose requests reuse the existing no-prescription boundary;
-- exact chitchat and bounded demo/organization responses are deterministic;
-- the public demo has **no external generative-model egress authority** and must not bypass the authenticated AI consent/processor/FinOps boundaries;
+- exact chitchat remains deterministic;
+- ordinary free-form turns may use the dedicated public-demo narrator only when `IAMINA_DEMO_EXTERNAL_AI_ENABLED` is explicitly enabled;
+- the narrator receives only the current demo message: no patient object, dossier, clinical context, account identity, memory or previous turns;
+- common identifying data is rejected before external egress; emergency and prescription/dose boundaries remain deterministic and never reach the narrator;
+- anonymous ingress is capped at 10 requests per 60-second window per hashed network subject;
+- narrator output is bounded and rejected when it selects unapproved behavior actions; any provider/configuration/safety failure falls back to the deterministic responder;
+- the demo narrator is not authorization for authenticated patient-data egress and must not weaken the patient consent/processor/FinOps boundaries;
 - the Flutter demo client may fall back to its local demo responder if the public demo endpoint is unavailable.
 
-A richer personalized or model-narrated conversation remains an authenticated capability subject to the normal patient-consent and AI-egress governance.
+Personalized model narration remains an authenticated capability subject to the normal patient-consent and AI-egress governance.

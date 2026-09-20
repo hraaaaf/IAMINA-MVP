@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 
+from companion.demo_model import DemoModelUnavailable, DemoPayloadDenied, generate_demo_reply
 from companion.output_guard import safe_fallback
 from companion.zero_model_router import exact_chitchat_reply
 from core.emergency_response import compose_emergency_for_patient
@@ -164,24 +165,30 @@ def reply_to_demo_message(message: str, language: str = "fr") -> dict:
             "reply_language": reply_language,
         }
 
-    if _EMOTIONAL_RE.search(text):
-        reply = safe_fallback(
-            reply_language,
-            mode="emotional",
-            prefer_latin_script=False,
-        )
-    elif _CLINICIAN_RE.search(text):
-        reply = safe_fallback(
-            reply_language,
-            mode="clinician_prep",
-            prefer_latin_script=False,
-        )
+    if _PERSONAL_DATA_RE.search(text):
+        reply = _DEMO_COPY[reply_language]["personal"]
     elif _CAPABILITY_RE.search(text):
         reply = _DEMO_COPY[reply_language]["capability"]
-    elif _PERSONAL_DATA_RE.search(text):
-        reply = _DEMO_COPY[reply_language]["personal"]
     else:
-        reply = _DEMO_COPY[reply_language]["general"]
+        try:
+            reply = generate_demo_reply(text, reply_language)
+        except DemoPayloadDenied:
+            reply = _DEMO_COPY[reply_language]["personal"]
+        except DemoModelUnavailable:
+            if _EMOTIONAL_RE.search(text):
+                reply = safe_fallback(
+                    reply_language,
+                    mode="emotional",
+                    prefer_latin_script=False,
+                )
+            elif _CLINICIAN_RE.search(text):
+                reply = safe_fallback(
+                    reply_language,
+                    mode="clinician_prep",
+                    prefer_latin_script=False,
+                )
+            else:
+                reply = _DEMO_COPY[reply_language]["general"]
 
     return {
         "reply": reply,

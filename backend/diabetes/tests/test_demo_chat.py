@@ -19,14 +19,14 @@ class DemoChatContractTests(TestCase):
             content_type="application/json",
         )
 
-    def test_demo_chat_is_public_stateless_and_zero_model(self):
+    def test_demo_chat_is_public_and_stateless_with_bounded_narrator(self):
         with patch(
-            "core.llm_gateway.get_gateway_llm",
-            side_effect=AssertionError("demo must not invoke the LLM gateway"),
-        ):
-            response = self._post(
-                "Peux-tu m'aider à préparer ma consultation avec le médecin ?"
-            )
+            "companion.demo.generate_demo_reply",
+            return_value="Je t'ai compris. Tu dis que tu as des vertiges. Depuis quand ?",
+        ) as narrator:
+            response = self._post("fia doukha")
+
+        narrator.assert_called_once_with("fia doukha", "fr")
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
@@ -37,6 +37,14 @@ class DemoChatContractTests(TestCase):
         self.assertEqual(User.objects.count(), 0)
         self.assertEqual(LogEntry.objects.count(), 0)
 
+    def test_demo_chat_does_not_call_model_for_dose_boundary(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=AssertionError("dose boundary must stay deterministic"),
+        ):
+            response = self._post("Combien d'unités d'insuline dois-je prendre ?")
+        self.assertEqual(response.status_code, 200)
+
     def test_demo_chat_keeps_dose_requests_inside_no_prescription_boundary(self):
         response = self._post("Combien d'unités d'insuline dois-je prendre ?")
 
@@ -44,6 +52,14 @@ class DemoChatContractTests(TestCase):
         payload = response.json()
         self.assertFalse(payload["is_emergency"])
         self.assertIn("Je ne peux pas prescrire", payload["reply"])
+
+    def test_demo_chat_rate_limits_anonymous_ingress(self):
+        with patch("companion.demo.generate_demo_reply", return_value="Réponse démo."):
+            for _ in range(10):
+                response = self._post("question libre")
+                self.assertEqual(response.status_code, 200)
+            blocked = self._post("encore")
+        self.assertEqual(blocked.status_code, 429)
 
     def test_demo_chat_reuses_canonical_emergency_boundary_without_patient(self):
         response = self._post("Je veux mourir")

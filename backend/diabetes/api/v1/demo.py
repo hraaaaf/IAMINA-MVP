@@ -5,21 +5,47 @@ POST /api/v1/demo/chat      — Stateless governed demo conversation (public)
 POST /api/v1/demo/seed      — Injects realistic test data for the current user (dev only)
 """
 
+import hashlib
 import random
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import List
 
+from django.db import transaction
 from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from companion.demo import reply_to_demo_message
-from core.models import BasePatientProfile
+from core.models import AIUserThrottleWindow, BasePatientProfile
 from diabetes.api.v1.security import firebase_auth_backend
 from diabetes.models import DiabetesProfile, LogEntry
 
 router = Router(tags=["demo"])
+
+_DEMO_CHAT_WINDOW_SECONDS = 60
+_DEMO_CHAT_MAX_REQUESTS = 10
+
+
+def _authorize_demo_chat_request(request) -> None:
+    raw = request.META.get("REMOTE_ADDR", "unknown")
+    subject = hashlib.sha256(f"iamina-demo|{raw}".encode()).hexdigest()
+    now = timezone.now()
+    epoch = int(now.timestamp())
+    window_epoch = epoch - (epoch % _DEMO_CHAT_WINDOW_SECONDS)
+    window_start = datetime.fromtimestamp(window_epoch, tz=UTC)
+
+    with transaction.atomic():
+        row, _ = AIUserThrottleWindow.objects.get_or_create(
+            subject_key=f"demo:{subject[:59]}",
+            window_start=window_start,
+            defaults={"request_count": 0},
+        )
+        row = AIUserThrottleWindow.objects.select_for_update().get(pk=row.pk)
+        if row.request_count >= _DEMO_CHAT_MAX_REQUESTS:
+            raise HttpError(429, "Demo chat rate limit exceeded")
+        row.request_count += 1
+        row.save(update_fields=("request_count", "updated_at"))
 
 
 class DemoScenarioResponse(BaseModel):
@@ -64,6 +90,7 @@ def list_demo_scenarios(request):
 @router.post("/demo/chat", response=DemoChatResponse)
 def demo_chat(request, data: DemoChatRequest):
     """Public, stateless IAMINA demo conversation with deterministic safety."""
+    _authorize_demo_chat_request(request)
     message = data.message.strip()
     if not message:
         raise HttpError(400, "Demo message must not be empty")
