@@ -228,3 +228,14 @@ def test_contextual_fallback_preserves_target_dialect(language, message, dialect
 
     assert fallback is not None
     assert dialect_marker in fallback
+
+
+def test_narrator_system_prompt_does_not_trip_identifier_dlp():
+    from core.ai_egress import _detect_sensitive_text
+
+    rendered = narrator_prompts.SYSTEM_WITH_STATE.format(
+        language="français",
+        tone="encouraging",
+        state="état relationnel sûr",
+    )
+    assert "firebase_uid" not in _detect_sensitive_text(rendered)
