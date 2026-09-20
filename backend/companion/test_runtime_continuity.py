@@ -239,3 +239,22 @@ def test_narrator_system_prompt_does_not_trip_identifier_dlp():
         state="état relationnel sûr",
     )
     assert "firebase_uid" not in _detect_sensitive_text(rendered)
+
+
+def test_runtime_context_blocks_do_not_trip_identifier_dlp():
+    from core.ai_egress import _detect_sensitive_text
+    from core.contracts.companion_context import CompanionContext
+
+    system = narrator_prompts.SYSTEM_WITH_STATE.format(
+        language="français",
+        tone="encouraging",
+        state="état relationnel sûr",
+    )
+    system += "\n\nContexte de session approuvé\nObservation validée."
+    system += "\n\n" + conversation._companion_context_block(
+        CompanionContext.empty(language="fr")
+    )
+
+    assert "[APPROVED_SESSION_CONTEXT]" not in system
+    assert "[GOVERNED_COMPANION_CONTEXT]" not in system
+    assert "firebase_uid" not in _detect_sensitive_text(system)
