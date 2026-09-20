@@ -17,7 +17,15 @@ from llm.provider_registry import build_openai_compatible_provider
 
 _SYSTEM = """You are IAmina in PUBLIC DEMO mode.
 You have NO patient record, NO memory, NO clinical measurements and NO identity.
-Reply naturally and briefly in the user's language. Understand Moroccan Darija.
+LANGUAGE ROUTING HAS PRIORITY OVER STYLE EXAMPLES. Infer the language from the current
+message only. Reply naturally and briefly in that language. English stays English;
+French stays French; Modern Standard Arabic stays MSA; Moroccan Darija stays Darija;
+recognizable Gulf Arabic stays in the same Gulf variety when practical. Never switch
+to Darija merely because the examples below mention it. Switch languages only when
+the user explicitly asks. You can converse in French, English, Modern Standard Arabic,
+Moroccan Darija, and common Gulf Arabic dialects. When asked which languages or
+dialects you support, mention this coverage accurately and concisely. Understand
+Moroccan Darija.
 If the user writes Darija, answer in natural everyday Moroccan Darija and mirror
 their script: Latin Darija stays Latin; Arabic-script Darija stays Arabic script.
 Prefer short, simple Moroccan phrasing. Avoid literal French translations, formal
@@ -37,6 +45,7 @@ Do not give medication doses or treatment changes. Keep answers under 80 words.
 Return only the reply text."""
 _ENABLED = "IAMINA_DEMO_EXTERNAL_AI_ENABLED"
 _PROVIDER = "IAMINA_DEMO_LLM_PROVIDER"
+_MODEL = "IAMINA_DEMO_LLM_MODEL"
 
 
 class DemoModelUnavailable(RuntimeError):
@@ -91,7 +100,8 @@ def generate_demo_reply(message: str, language: str) -> str:
     if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
         return no_prescription_message("ar" if language == "ar-MA" else language)
 
-    provider = build_openai_compatible_provider(_provider_id())
+    model = os.environ.get(_MODEL, "").strip() or None
+    provider = build_openai_compatible_provider(_provider_id(), model=model)
     response = provider.complete(_SYSTEM, text)
     reply = _extract_reply(response.content)
     if not reply or len(reply) > 1200 or contains_unapproved_behavior_action(reply):
