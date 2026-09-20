@@ -333,7 +333,7 @@ def _trim_history(history_turns, char_budget: int, patient=None) -> str:
 def _companion_context_block(context: CompanionContext) -> str:
     """Serialize approved longitudinal state without inventing interpretation."""
     lines = [
-        "[GOVERNED_COMPANION_CONTEXT]",
+        "Contexte compagnon gouverné",
         f"pattern_status={context.pattern_status}",
         f"review_status={context.review_status}",
         f"source_version={context.source_version}",
@@ -435,7 +435,7 @@ def _build_runtime_prompt(
 
     if not emotional:
         if ctx.pivot_text:
-            system += f"\n\n[APPROVED_SESSION_CONTEXT]\n{ctx.pivot_text}"
+            system += f"\n\nContexte de session approuvé\n{ctx.pivot_text}"
         system += "\n\n" + _companion_context_block(companion_ctx)
 
     memory_summary = _safe_text(
