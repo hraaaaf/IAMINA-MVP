@@ -1,0 +1,9 @@
+{
+  "batch": "B28",
+  "theme": "Morocco depth II",
+  "baseline_count": 383,
+  "target_count": 386,
+  "ids": ["moroccan_pastilla", "marrakech_tanjia", "moroccan_mrouzia"],
+  "fixture_query": "Pastilla marocaine",
+  "required_viewports": ["390x844", "768x1024", "1280x900"]
+}
