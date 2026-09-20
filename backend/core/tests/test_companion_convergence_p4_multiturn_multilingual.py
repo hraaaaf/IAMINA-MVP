@@ -91,7 +91,7 @@ def test_multiturn_current_correction_overrides_history_only_for_patient_declare
     assert "Correction : aujourd'hui je ne suis plus fatigué." in user_prompt
     assert "le message courant prévaut" in system
     assert "contexte clinique gouverné" in system
-    assert "[GOVERNED_COMPANION_CONTEXT]" in system
+    assert "contexte compagnon gouverné" in system
 
 
 def test_multiturn_rule_does_not_turn_history_into_clinical_authority():
@@ -102,7 +102,7 @@ def test_multiturn_rule_does_not_turn_history_into_clinical_authority():
     )
 
     assert "Tout fait de santé doit provenir explicitement" in formatted
-    assert "[APPROVED_SESSION_CONTEXT]" in formatted
-    assert "[GOVERNED_COMPANION_CONTEXT]" in formatted
+    assert "contexte de session approuvé" in formatted
+    assert "contexte compagnon gouverné" in formatted
     assert "historique conversationnel" in formatted
     assert "contexte clinique gouverné" in formatted
