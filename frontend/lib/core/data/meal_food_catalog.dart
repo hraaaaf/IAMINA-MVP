@@ -15,42 +15,13 @@ import 'meal_food_saudi_depth_b25.dart';
 import 'meal_food_libya_depth_b26.dart';
 import 'meal_food_oman_depth_b27.dart';
 import 'meal_food_morocco_depth_b28.dart';
+import 'meal_food_jordan_depth_b29.dart';
 
-export 'meal_food_catalog_v3.dart'
-    hide
-        mealFoodCatalogVersion,
-        mealFoodCatalog,
-        mealFoodById,
-        mealFoodsForRegion,
-        mealFoodsForCategory,
-        mealFoodsForMoment,
-        decodeMealItemIds,
-        encodeMealItemIds,
-        searchMealFoods,
-        matchRecognizedMealFoods;
-
-/// Catalog facade preserving the certified 322-item V3 baseline byte-for-byte
-/// while allowing reviewed regional extensions to remain modular.
-const String mealFoodCatalogVersion = '3.14.0-morocco-depth-b28';
-
+export 'meal_food_catalog_v3.dart' hide mealFoodCatalogVersion,mealFoodCatalog,mealFoodById,mealFoodsForRegion,mealFoodsForCategory,mealFoodsForMoment,decodeMealItemIds,encodeMealItemIds,searchMealFoods,matchRecognizedMealFoods;
+const String mealFoodCatalogVersion = '3.15.0-jordan-depth-b29';
 const List<base.MealFoodItem> mealFoodCatalog = <base.MealFoodItem>[
-  ...base.mealFoodCatalog,
-  ...gulfCoreFoodCatalog,
-  ...moroccoRegionalB16FoodCatalog,
-  ...moroccoDepthB17FoodCatalog,
-  ...moroccoAmazighB18FoodCatalog,
-  ...qatarDepthB19FoodCatalog,
-  ...omanDepthB20FoodCatalog,
-  ...tunisiaDepthB21FoodCatalog,
-  ...algeriaDepthB22FoodCatalog,
-  ...yemenDepthB23FoodCatalog,
-  ...moroccoDepthB24FoodCatalog,
-  ...saudiDepthB25FoodCatalog,
-  ...libyaDepthB26FoodCatalog,
-  ...omanDepthB27FoodCatalog,
-  ...moroccoDepthB28FoodCatalog,
+  ...base.mealFoodCatalog,...gulfCoreFoodCatalog,...moroccoRegionalB16FoodCatalog,...moroccoDepthB17FoodCatalog,...moroccoAmazighB18FoodCatalog,...qatarDepthB19FoodCatalog,...omanDepthB20FoodCatalog,...tunisiaDepthB21FoodCatalog,...algeriaDepthB22FoodCatalog,...yemenDepthB23FoodCatalog,...moroccoDepthB24FoodCatalog,...saudiDepthB25FoodCatalog,...libyaDepthB26FoodCatalog,...omanDepthB27FoodCatalog,...moroccoDepthB28FoodCatalog,...jordanDepthB29FoodCatalog,
 ];
-
 final Map<String, base.MealFoodItem> _mealFoodById = <String, base.MealFoodItem>{for (final item in mealFoodCatalog) item.id: item};
 base.MealFoodItem? mealFoodById(String id) => _mealFoodById[id];
 List<base.MealFoodItem> mealFoodsForRegion(base.MealFoodRegion region) => mealFoodCatalog.where((item) => item.regions.contains(region)).toList(growable: false);
