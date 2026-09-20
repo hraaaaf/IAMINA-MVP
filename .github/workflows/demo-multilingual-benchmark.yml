@@ -1,0 +1,29 @@
+name: Demo multilingual Groq benchmark
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install OpenAI client
+        run: pip install "openai>=1.0,<2"
+      - name: Run bounded synthetic comparison
+        run: python backend/evaluation/demo_multilingual_benchmark.py --output artifacts/demo-multilingual-benchmark.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-multilingual-benchmark
+          path: artifacts/demo-multilingual-benchmark.json
+          retention-days: 14
