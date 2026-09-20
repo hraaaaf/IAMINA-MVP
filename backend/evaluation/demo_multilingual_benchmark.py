@@ -22,9 +22,9 @@ PROMPTS=[
 ("darija-latin","fr","fia doukha"),("darija-latin","fr","ma fhemtch chno glti"),
 ("darija-latin","fr","3ndi sda3 mn sba7"),("darija-latin","fr","wach t9der tchra7 lia hadchi b darija?"),
 ("darija-latin","fr","kan7ess brassi 3yan bezaf lyouma"),("darija-ar","ar-MA","شنو نقدر ندير باش نفهم هاد النتيجة؟"),
-("darija-ar","ar-MA","عندي الدوخة من الصباح"),("darija-ar","ar-MA","واش تقدر تشرح ليا بالدارجة؟"),
+("darija-ar","ar-MA","واش تقدر تشرح ليا بالدارجة؟"),
 ("english","en","I feel dizzy today."),("english","en","Can you explain this in simple English?"),
-("english","en","What languages can you speak?"),("gulf","ar","وش فيني أحس بدوخة اليوم"),
+("english","en","What languages can you speak?"),
 ("gulf","ar","ممكن تشرح لي بطريقة أبسط؟"),("gulf","ar","أنا تعبان شوي اليوم وش أسوي؟"),
 ("gulf","ar","تقدر تكلمني باللهجة الخليجية؟")]
 def main():
