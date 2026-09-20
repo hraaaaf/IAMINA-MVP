@@ -1,0 +1,9 @@
+{
+  "batch": "B31",
+  "theme": "Egypt core",
+  "baseline_count": 392,
+  "target_count": 395,
+  "fixture_query": "Kochari égyptien",
+  "ids": ["egyptian_koshary", "egyptian_ful_medames", "egyptian_molokhiya"],
+  "required_viewports": ["390x844", "768x1024", "1280x900"]
+}
