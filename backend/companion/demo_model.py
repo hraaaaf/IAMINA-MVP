@@ -42,6 +42,7 @@ Do not give medication doses or treatment changes. Keep answers under 80 words.
 Return only the reply text."""
 _ENABLED = "IAMINA_DEMO_EXTERNAL_AI_ENABLED"
 _PROVIDER = "IAMINA_DEMO_LLM_PROVIDER"
+_MODEL = "IAMINA_DEMO_LLM_MODEL"
 
 
 class DemoModelUnavailable(RuntimeError):
@@ -96,7 +97,8 @@ def generate_demo_reply(message: str, language: str) -> str:
     if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
         return no_prescription_message("ar" if language == "ar-MA" else language)
 
-    provider = build_openai_compatible_provider(_provider_id())
+    model = os.environ.get(_MODEL, "").strip() or None
+    provider = build_openai_compatible_provider(_provider_id(), model=model)
     response = provider.complete(_SYSTEM, text)
     reply = _extract_reply(response.content)
     if not reply or len(reply) > 1200 or contains_unapproved_behavior_action(reply):
