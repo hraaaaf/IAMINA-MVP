@@ -35,6 +35,7 @@ class AIProcessorPolicy:
     allowed_purposes: frozenset[str]
     status: str
     external_egress: bool = True
+    approval_conditions: tuple[str, ...] = ()
 
     def validate(self) -> None:
         if self.status not in {APPROVED, PENDING, FORBIDDEN}:
@@ -44,6 +45,11 @@ class AIProcessorPolicy:
         if not self.processor.strip():
             raise AIProcessorPolicyDenied(
                 f"Provider {self.provider} has no declared processor"
+            )
+        if self.status == APPROVED and self.approval_conditions:
+            raise AIProcessorPolicyDenied(
+                f"Provider {self.provider} has outstanding approval conditions: "
+                f"{list(self.approval_conditions)}"
             )
         if not self.allowed_modalities or not self.allowed_purposes:
             raise AIProcessorPolicyDenied(
@@ -163,14 +169,31 @@ _POLICIES: Mapping[str, AIProcessorPolicy] = MappingProxyType(
             processor="Groq, Inc.",
             subprocessors=(),
             processing_regions=("United States",),
-            data_residency="US GCP when retained per provider documentation",
-            retention_policy="up to 30 days unless IAMINA account-level ZDR is verified",
+            data_residency=(
+                "retained customer data is stored in United States GCP buckets "
+                "per Groq documentation"
+            ),
+            retention_policy=(
+                "inference customer data is not retained by default; temporary "
+                "reliability/abuse logs may be retained up to 30 days unless "
+                "Zero Data Retention is enabled"
+            ),
             max_retention_days=30,
-            training_use="not used for training unless explicitly permitted by customer",
+            training_use=(
+                "inputs and outputs are not used for model training or fine-tuning "
+                "unless explicitly permitted by the customer"
+            ),
             legal_basis="",
             allowed_modalities=frozenset({"text"}),
             allowed_purposes=_ALL_TEXT_PURPOSES,
             status=PENDING,
+            approval_conditions=(
+                "cndp_health_processing_authorization_reference",
+                "cndp_cross_border_transfer_basis_or_authorization_reference",
+                "groq_dpa_accepted_for_iamina_data_controller",
+                "groq_zero_data_retention_verified_for_production_org",
+                "patient_consent_notice_identifies_groq_and_us_transfer",
+            ),
         ),
         "fallback": AIProcessorPolicy(
             provider="fallback",
