@@ -12,7 +12,7 @@ def test_p3_chassis_conversation_has_no_diabetes_semantic_authority():
     assert "companion.prompts" not in conversation
     assert "get_companion_context" in conversation
     assert "get_offline_fallback" in conversation
-    assert "GOVERNED_COMPANION_CONTEXT" in conversation
+    assert "Contexte compagnon gouverné" in conversation
 
     assert "TIR_GOOD_THRESHOLD" not in tone
     assert "TIR_STRUGGLE_THRESHOLD" not in tone
@@ -154,7 +154,7 @@ def test_chat_keeps_clinical_patterns_out_of_relationship_memory():
 
     class LLM:
         def complete(self, system, user):
-            assert "GOVERNED_COMPANION_CONTEXT" in system
+            assert "Contexte compagnon gouverné" in system
             assert "legacy_pattern" not in user
             return types_module.SimpleNamespace(
                 content='{"reply":"Bonjour.","concern_detected":"clinical_alarm"}'
