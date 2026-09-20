@@ -1,6 +1,12 @@
 """Synthetic, non-patient benchmark through the exact IAMINA demo model path."""
-import argparse, json, os
+import argparse, json, os, sys
 from pathlib import Path
+
+# Running a file inside backend/evaluation puts only that subdirectory on sys.path.
+# Add backend explicitly so Django settings and production modules resolve exactly as in manage.py.
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "amina.settings")
 os.environ["IAMINA_DEMO_EXTERNAL_AI_ENABLED"] = "true"
