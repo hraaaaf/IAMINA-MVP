@@ -4,11 +4,11 @@ import 'package:amina/features/journal/widgets/food_pictogram_painter_batch30.da
 
 void main(){
   const ids=<String>['pizza_margherita','spaghetti_carbonara','lasagne_bolognese'];
-  test('B30 appends three international Italy concepts after certified B29 baseline',(){
-    expect(mealFoodCatalog.length,392);
+  test('B30 remains the certified 392-item prefix after B31',(){
+    expect(mealFoodCatalog.length,greaterThanOrEqualTo(392));
     expect(mealFoodCatalog.take(389).length,389);
-    expect(mealFoodCatalog.skip(389).map((e)=>e.id).toList(),ids);
-    expect(mealFoodCatalog.map((e)=>e.id).toSet().length,392);
+    expect(mealFoodCatalog.skip(389).take(3).map((e)=>e.id).toList(),ids);
+    expect(mealFoodCatalog.take(392).map((e)=>e.id).toSet().length,392);
   });
   test('B30 labels search categories region and native pictograms are complete',(){
     for(final id in ids){
