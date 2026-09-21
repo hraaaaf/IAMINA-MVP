@@ -16,9 +16,9 @@ The output is deterministic and contains no reversible mapping.
 
 from __future__ import annotations
 
+import collections.abc
 import re
 import unicodedata
-from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
 
@@ -37,7 +37,7 @@ class AnonymizationRiskDenied(PermissionError):
 class AnonymizationResult:
     """Immutable minimized payload plus non-sensitive transformation metadata."""
 
-    fields: Mapping[str, str]
+    fields: collections.abc.Mapping[str, str]
     transformations: tuple[str, ...]
     residual_findings: frozenset[str]
     # Deliberately non-initializable: this layer can never self-certify legal anonymity.
@@ -222,7 +222,7 @@ def minimize_external_text(text: str) -> tuple[str, tuple[str, ...]]:
     return value, tuple(transformations)
 
 
-def minimize_external_text_payload(payload: Mapping[str, str]) -> AnonymizationResult:
+def minimize_external_text_payload(payload: collections.abc.Mapping[str, str]) -> AnonymizationResult:
     """Minimize an exact provider-bound text payload and fail closed on residues."""
 
     expected = frozenset({"system_prompt", "user_prompt"})
