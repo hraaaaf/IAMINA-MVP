@@ -16,6 +16,8 @@ def test_food_eval_corpus_has_required_adversarial_dimensions():
         "SCRIPT",
         "BYPASS",
         "FALSE_POSITIVE",
+        "TYPO_ABBREVIATION",
+        "MISSING_DATA",
     } <= dimensions
 
 
@@ -41,3 +43,10 @@ def test_food_observations_are_machine_readable_and_explain_failures():
     assert len(observations) == len(FOOD_CASES)
     assert all(obs.passed for obs in observations)
     assert all(obs.reason == "ok" for obs in observations)
+
+
+def test_food_hard_corpus_keeps_structural_provenance_complete():
+    observations = evaluate_food_corpus()
+
+    assert all(obs.reason != "missing_evidence_refs" for obs in observations)
+    assert all(obs.reason != "missing_limitations" for obs in observations)
