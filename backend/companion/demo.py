@@ -51,7 +51,8 @@ _CASUAL_CHAT_RE = re.compile(
     r"(?:just keep me company|just talk|keep it casual|don't turn it into advice|"
     r"pas besoin d['’]un plan|juste discuter|parle-moi normalement|"
     r"ghir (?:nhder|hdar|n9ssr)|ma bghit ta chi 7al|ma bghitch conseils|"
-    r"ما أبي حلول|ما أبغى نصائح|بس ودي أسولف|بس أسولف|بس كلمني)",
+    r"ما أبي حلول|ما أبغى نصائح|بدون حلول|بدون نصائح|بلا نصائح|"
+    r"بغيت غير نهضر|بس ودي أسولف|بس أسولف|بس كلمني)",
     re.IGNORECASE,
 )
 _LATIN_DARIJA_RE = re.compile(
