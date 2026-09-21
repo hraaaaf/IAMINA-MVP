@@ -12,10 +12,14 @@ class DemoChatContractTests(TestCase):
     def setUp(self):
         self.client = Client()
 
-    def _post(self, message: str, language: str = "fr"):
+    def _post(self, message: str, language: str = "fr", history=None):
         return self.client.post(
             "/api/v1/demo/chat",
-            data={"message": message, "language": language},
+            data={
+                "message": message,
+                "language": language,
+                "history": history or [],
+            },
             content_type="application/json",
         )
 
@@ -26,7 +30,7 @@ class DemoChatContractTests(TestCase):
         ) as narrator:
             response = self._post("fia doukha")
 
-        narrator.assert_called_once_with("fia doukha", "fr")
+        narrator.assert_called_once_with("fia doukha", "fr", history=[])
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
@@ -36,6 +40,43 @@ class DemoChatContractTests(TestCase):
         self.assertTrue(payload["reply"])
         self.assertEqual(User.objects.count(), 0)
         self.assertEqual(LogEntry.objects.count(), 0)
+
+
+    def test_demo_chat_forwards_bounded_history_without_persisting_it(self):
+        history = [
+            {"role": "user", "content": "Je veux mieux dormir."},
+            {"role": "assistant", "content": "D'accord, gardons cet objectif en tête."},
+        ]
+        with patch(
+            "companion.demo.generate_demo_reply",
+            return_value="Ton objectif précédent était de mieux dormir.",
+        ) as narrator:
+            response = self._post(
+                "Quel était mon objectif ?",
+                history=history,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        narrator.assert_called_once_with(
+            "Quel était mon objectif ?",
+            "fr",
+            history=history,
+        )
+        self.assertEqual(User.objects.count(), 0)
+        self.assertEqual(LogEntry.objects.count(), 0)
+
+    def test_demo_chat_rejects_history_above_bounded_limits(self):
+        too_many = [
+            {"role": "user" if index % 2 == 0 else "assistant", "content": "x"}
+            for index in range(22)
+        ]
+        too_large = [
+            {"role": "user", "content": "a" * 4000},
+            {"role": "assistant", "content": "b" * 3000},
+        ]
+
+        self.assertEqual(self._post("hello", history=too_many).status_code, 400)
+        self.assertEqual(self._post("hello", history=too_large).status_code, 400)
 
     def test_demo_chat_does_not_call_model_for_dose_boundary(self):
         with patch(

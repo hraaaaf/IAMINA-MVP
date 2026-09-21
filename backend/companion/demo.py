@@ -1,8 +1,8 @@
-"""Stateless, zero-model conversation for public demo mode.
+"""Stateless governed conversation for public demo mode.
 
-The demo endpoint deliberately shares IAMINA's deterministic safety authority
-without creating a patient identity, reading clinical data, persisting turns, or
-opening an external-model egress path.
+The demo endpoint shares IAMINA's deterministic safety authority without creating
+a patient identity, reading clinical data or persisting turns. Ordinary free-form
+demo turns may use the dedicated bounded external narrator when explicitly enabled.
 """
 
 from __future__ import annotations
@@ -120,11 +120,15 @@ def resolve_demo_language(message: str, requested: str = "fr") -> str:
     return "fr"
 
 
-def reply_to_demo_message(message: str, language: str = "fr") -> dict:
+def reply_to_demo_message(
+    message: str,
+    language: str = "fr",
+    history: list[dict[str, str]] | None = None,
+) -> dict:
     """Return one stateless governed demo turn.
 
-    No patient object, ORM lookup, conversation persistence, or LLM/provider call
-    is permitted in this function.
+    No patient object, ORM lookup or durable conversation persistence is permitted.
+    Optional history is request-scoped and bounded by the demo model gate.
     """
     text = (message or "").strip()
     if not text:
@@ -171,7 +175,11 @@ def reply_to_demo_message(message: str, language: str = "fr") -> dict:
         reply = _DEMO_COPY[reply_language]["capability"]
     else:
         try:
-            reply = generate_demo_reply(text, reply_language)
+            reply = generate_demo_reply(
+                text,
+                reply_language,
+                history=history or [],
+            )
         except DemoPayloadDenied:
             reply = _DEMO_COPY[reply_language]["personal"]
         except DemoModelUnavailable:

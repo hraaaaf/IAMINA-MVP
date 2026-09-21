@@ -244,13 +244,15 @@ The public demo may demonstrate a live IAMINA conversation without creating a pa
 This path is deliberately narrower than authenticated Companion:
 
 - `POST /api/v1/demo/chat` is public and stateless;
-- it does not read a patient record, clinical context, conversation memory or durable chat history;
+- it does not read a patient record, clinical context or durable chat history;
 - it does not create a user, patient profile, clinical row or conversation row;
 - deterministic input-safety and the canonical emergency response run before any ordinary demo reply;
 - prescription/dose requests reuse the existing no-prescription boundary;
 - exact chitchat remains deterministic;
 - ordinary free-form turns may use the dedicated public-demo narrator only when `IAMINA_DEMO_EXTERNAL_AI_ENABLED` is explicitly enabled;
-- the narrator receives only the current demo message: no patient object, dossier, clinical context, account identity, memory or previous turns;
+- the narrator may receive a bounded request-scoped history supplied by the Flutter demo client: at most 20 messages / 6000 characters, with no patient object, dossier, clinical context, account identity or server-side persistence;
+- history is held only in the in-memory Demo Companion service, sent without bearer, and trimmed as complete user/assistant pairs;
+- history pairs containing detected identifiers or prior urgent/prescription/dose content are removed before external narration;
 - common identifying data is rejected before external egress; emergency and prescription/dose boundaries remain deterministic and never reach the narrator;
 - anonymous ingress is capped at 10 requests per 60-second window per hashed network subject;
 - narrator output is bounded and rejected when it selects unapproved behavior actions; any provider/configuration/safety failure falls back to the deterministic responder;

@@ -303,7 +303,7 @@
             }
           }
         },
-        "description": "Public, stateless IAMINA demo conversation with deterministic safety.",
+        "description": "Public, stateless IAMINA demo conversation with request-scoped history.",
         "tags": [
           "demo"
         ],
@@ -2488,6 +2488,24 @@
         "title": "DemoChatResponse",
         "type": "object"
       },
+      "DemoChatHistoryTurn": {
+        "properties": {
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "DemoChatHistoryTurn",
+        "type": "object"
+      },
       "DemoChatRequest": {
         "properties": {
           "message": {
@@ -2498,6 +2516,13 @@
             "default": "fr",
             "title": "Language",
             "type": "string"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/DemoChatHistoryTurn"
+            },
+            "title": "History",
+            "type": "array"
           }
         },
         "required": [
