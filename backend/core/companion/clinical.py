@@ -98,14 +98,9 @@ def get_advice_resolution(
     engine = _resolve_engine(patient_id)
     if engine is None:
         return None
-    try:
-        resolution = engine.resolve_advice(message, context, language=language)
-    except Exception:
-        logger.exception("Advice resolution failed closed for patient=%s", patient_id)
-        return None
+    resolution = engine.resolve_advice(message, context, language=language)
     if resolution is not None and not isinstance(resolution, AdviceResolution):
-        logger.error("Invalid advice resolution type for patient=%s", patient_id)
-        return None
+        raise TypeError("active module returned an invalid AdviceResolution")
     return resolution
 
 
