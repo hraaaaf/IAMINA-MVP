@@ -24,6 +24,7 @@ from core.clinical_policy import (
     narration_policy_block,
 )
 from core.companion.clinical import (
+    get_advice_resolution,
     get_companion_context,
     get_domain_context,
     get_offline_fallback,
@@ -513,11 +514,21 @@ def _authorize_runtime_narration(
     patient,
     language: str,
     context_days: int,
-) -> tuple[str, DomainContext, AdviceDecision]:
+):
     """Resolve deterministic narration authority before any LLM is acquired/called."""
 
     detected_language = detect_language(message, language)
     ctx = _get_context(patient, context_days, detected_language)
+
+    module_resolution = get_advice_resolution(
+        patient.id if patient else None,
+        message,
+        ctx,
+        language=detected_language,
+    )
+    if module_resolution is not None:
+        return detected_language, ctx, module_resolution.decision, module_resolution
+
     try:
         decision = authorize_narration(
             NarrationPolicyRequest(
@@ -531,7 +542,7 @@ def _authorize_runtime_narration(
     except Exception:
         logger.exception("IAmina clinical policy evaluation failed closed")
         decision = AdviceDecision.fail_closed(language=detected_language)
-    return detected_language, ctx, decision
+    return detected_language, ctx, decision, None
 
 
 def _policy_denied_reply(
@@ -699,12 +710,20 @@ def chat(
         _update_relationship_memory(message, memory)
         return zero_model_reply
 
-    language, ctx, advice_decision = _authorize_runtime_narration(
+    language, ctx, advice_decision, advice_resolution = _authorize_runtime_narration(
         message,
         patient,
         language,
         context_days,
     )
+    if advice_resolution is not None:
+        record_companion_route("policy_rule")
+        reply = advice_resolution.reply
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", reply)
+        _update_relationship_memory(message, memory)
+        return reply
+
     if not narration_authorized(advice_decision):
         record_companion_route("policy_denied")
         reply = _policy_denied_reply(patient, ctx, language)
@@ -804,12 +823,21 @@ def stream_chat(
         yield zero_model_reply
         return
 
-    language, ctx, advice_decision = _authorize_runtime_narration(
+    language, ctx, advice_decision, advice_resolution = _authorize_runtime_narration(
         message,
         patient,
         language,
         context_days,
     )
+    if advice_resolution is not None:
+        record_companion_route("policy_rule")
+        reply = advice_resolution.reply
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", reply)
+        _update_relationship_memory(message, memory)
+        yield reply
+        return
+
     if not narration_authorized(advice_decision):
         record_companion_route("policy_denied")
         reply = _policy_denied_reply(patient, ctx, language)
