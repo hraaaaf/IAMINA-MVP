@@ -187,3 +187,18 @@ class AdviceDecisionContractTests(TestCase):
 
         self.assertEqual(decision.rule_id, "core.advice.fail_closed")
         self.assertEqual(decision.authority_level, AdviceAuthorityLevel.L5_PROHIBITED)
+
+
+    def test_system_may_fail_closed_but_cannot_authorize_advice(self):
+        self.assertEqual(AdviceDecision.fail_closed().issued_by, Authority.SYSTEM)
+
+        with self.assertRaises(PermissionError):
+            AdviceDecision(
+                intent="education",
+                authority_level=AdviceAuthorityLevel.L1_EDUCATION,
+                decision=AdviceDisposition.ALLOW,
+                rule_id="core.education.001",
+                rule_version="1",
+                allowed_actions=("explain_approved_data",),
+                issued_by=Authority.SYSTEM,
+            )
