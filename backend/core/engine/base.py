@@ -81,13 +81,14 @@ class BaseEngine(abc.ABC):
         message: str,
         context: "DomainContext",
         language: str = "fr",
+        previous_user_message: str | None = None,
     ) -> "AdviceResolution | None":
         """Resolve an optional module-owned deterministic advice rule.
 
         The default grants no additional authority. Condition modules may
         override this only by returning a governed AdviceResolution.
         """
-        del message, context, language
+        del message, context, language, previous_user_message
         return None
 
     def verify_advice_reply(
