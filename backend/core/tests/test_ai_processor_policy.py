@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 from django.contrib.auth.models import User
 
@@ -39,6 +41,31 @@ def test_unknown_provider_is_denied():
 def test_pending_network_provider_is_denied():
     with pytest.raises(AIProcessorPolicyDenied, match="not approved"):
         authorize_processor_policy("gemini", "companion_chat", "text")
+
+
+
+def test_groq_patient_egress_stays_pending_until_governance_evidence_exists():
+    policy = get_processor_policy("groq")
+
+    assert policy.status == PENDING
+    assert policy.processing_regions == ("United States",)
+    assert policy.max_retention_days == 30
+    assert "Zero Data Retention" in policy.retention_policy
+    assert "cndp_health_processing_authorization_reference" in policy.approval_conditions
+    assert "cndp_cross_border_transfer_basis_or_authorization_reference" in policy.approval_conditions
+    assert "groq_dpa_accepted_for_iamina_data_controller" in policy.approval_conditions
+    assert "groq_zero_data_retention_verified_for_production_org" in policy.approval_conditions
+    assert "patient_consent_notice_identifies_groq_and_us_transfer" in policy.approval_conditions
+
+    with pytest.raises(AIProcessorPolicyDenied, match="not approved"):
+        authorize_processor_policy("groq", "companion_chat", "text")
+
+
+def test_groq_status_flip_alone_cannot_open_patient_egress():
+    policy = replace(get_processor_policy("groq"), status=APPROVED)
+
+    with pytest.raises(AIProcessorPolicyDenied, match="outstanding approval conditions"):
+        policy.validate()
 
 
 def test_local_fallback_is_approved_for_registered_text_purpose():
