@@ -414,3 +414,33 @@ def test_module_advice_exception_fails_closed_and_never_calls_llm():
 
     assert "Difficulté technique momentanée" in reply
     record_route.assert_called_once_with("policy_denied")
+
+
+def test_runtime_passes_previous_user_turn_to_module_advice_resolution():
+    patient = SimpleNamespace(id=42, first_name="")
+    previous = SimpleNamespace(role="user", message="Je peux manger un gâteau ?")
+    captured = {}
+
+    def resolve(*args, **kwargs):
+        captured["previous_user_message"] = kwargs.get("previous_user_message")
+        return _food_resolution()
+
+    with (
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation._recent_turns", return_value=[previous]),
+        patch("companion.conversation.get_advice_resolution", side_effect=resolve),
+    ):
+        _language, _ctx, _decision, resolution = (
+            conversation._authorize_runtime_narration(
+                "Et du riz ?",
+                patient,
+                "fr",
+                14,
+            )
+        )
+
+    assert resolution is not None
+    assert captured["previous_user_message"] == "Je peux manger un gâteau ?"
