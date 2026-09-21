@@ -258,5 +258,4 @@ def minimize_external_text_payload(payload: Mapping[str, str]) -> AnonymizationR
         fields=MappingProxyType(minimized),
         transformations=tuple(all_transformations),
         residual_findings=frozenset(),
-        certified_anonymous=False,
     )
