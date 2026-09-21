@@ -23,14 +23,28 @@ from companion.demo_model import generate_demo_reply  # noqa: E402
 
 MODELS = ["openai/gpt-oss-120b","allam-2-7b"]
 PROMPTS = [
-("darija-latin","fr","fia doukha"),("darija-latin","fr","ma fhemtch chno glti"),
-("darija-latin","fr","3ndi sda3 mn sba7"),("darija-latin","fr","wach t9der tchra7 lia hadchi b darija?"),
-("darija-latin","fr","kan7ess brassi 3yan bezaf lyouma"),("darija-ar","ar-MA","شنو نقدر ندير باش نفهم هاد النتيجة؟"),
-("darija-ar","ar-MA","واش تقدر تشرح ليا بالدارجة؟"),
-("english","en","I feel dizzy today."),("english","en","Can you explain this in simple English?"),
-("english","en","What languages can you speak?"),
-("gulf","ar","ممكن تشرح لي بطريقة أبسط؟"),("gulf","ar","أنا تعبان شوي اليوم وش أسوي؟"),
-("gulf","ar","تقدر تكلمني باللهجة الخليجية؟")]
+    ("darija-latin", "fr", "fia doukha"),
+    ("darija-latin", "fr", "ma fhemtch chno glti"),
+    ("darija-latin", "fr", "3ndi sda3 mn sba7"),
+    ("darija-latin", "fr", "wach t9der tchra7 lia hadchi b darija?"),
+    ("darija-latin", "fr", "kan7ess brassi 3yan bezaf lyouma"),
+    ("darija-ar", "ar-MA", "شنو نقدر ندير باش نفهم هاد النتيجة؟"),
+    ("darija-ar", "ar-MA", "واش تقدر تشرح ليا بالدارجة؟"),
+    ("english", "en", "I feel dizzy today."),
+    ("english", "en", "Can you explain this in simple English?"),
+    ("english", "en", "What languages can you speak?"),
+    ("gulf", "ar", "ممكن تشرح لي بطريقة أبسط؟"),
+    ("gulf", "ar", "أنا تعبان شوي اليوم وش أسوي؟"),
+    ("gulf", "ar", "تقدر تكلمني باللهجة الخليجية؟"),
+]
+
+MULTITURN_SCENARIO = [
+    ("fr", "Je veux mieux dormir et marcher davantage."),
+    ("en", "What were the two goals I mentioned?"),
+    ("fr", "Ajoute boire plus d'eau, mais garde les deux premiers objectifs."),
+    ("en", "Which habit did I add later?"),
+    ("fr", "Résume mes trois habitudes sans en inventer."),
+]
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)
@@ -40,6 +54,7 @@ def main():
         raise SystemExit("GROQ_API_KEY missing")
 
     rows = []
+    continuity = []
     for model in MODELS:
         os.environ["IAMINA_DEMO_LLM_MODEL"] = model
         for locale, language, prompt in PROMPTS:
@@ -65,6 +80,41 @@ def main():
                     }
                 )
 
+        history = []
+        turn_rows = []
+        for turn_index, (language, prompt) in enumerate(MULTITURN_SCENARIO, start=1):
+            try:
+                reply = generate_demo_reply(prompt, language, history=history)
+                turn_rows.append(
+                    {
+                        "turn": turn_index,
+                        "language": language,
+                        "prompt": prompt,
+                        "reply": reply,
+                        "history_items_sent": len(history),
+                        "error": None,
+                    }
+                )
+                history.extend(
+                    [
+                        {"role": "user", "content": prompt},
+                        {"role": "assistant", "content": reply},
+                    ]
+                )
+            except Exception as exc:
+                turn_rows.append(
+                    {
+                        "turn": turn_index,
+                        "language": language,
+                        "prompt": prompt,
+                        "reply": "",
+                        "history_items_sent": len(history),
+                        "error": type(exc).__name__ + ": " + str(exc)[:300],
+                    }
+                )
+                break
+        continuity.append({"model": model, "turns": turn_rows})
+
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
@@ -74,6 +124,7 @@ def main():
                 "production_path": True,
                 "models": MODELS,
                 "rows": rows,
+                "multiturn": continuity,
             },
             ensure_ascii=False,
             indent=2,
