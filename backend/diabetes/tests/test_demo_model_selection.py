@@ -187,3 +187,87 @@ class DemoModelSelectionTests(SimpleTestCase):
 
         reply = generate_demo_reply("هلا، اليوم كان طويل شوي وأبغى بس أسولف.", "ar")
         self.assertEqual(reply, "هلا والله، خذ راحتك. وش ودك نسولف عنه؟")
+
+    @patch.dict(
+        os.environ,
+        {
+            "IAMINA_DEMO_EXTERNAL_AI_ENABLED": "true",
+            "IAMINA_DEMO_LLM_PROVIDER": "groq",
+            "IAMINA_DEMO_LLM_MODEL": "",
+        },
+        clear=False,
+    )
+    @patch("companion.demo_model.build_openai_compatible_provider")
+    def test_casual_darija_rejects_help_desk_framing(self, build):
+        provider = MagicMock()
+        provider.complete.return_value.content = "Salam. Kifash n9dar n3awnk lyouma?"
+        build.return_value = provider
+
+        with self.assertRaisesRegex(Exception, "dialect/script guard"):
+            generate_demo_reply(
+                "salam, lyouma t3yit chwia bghit ghir nhder chwia",
+                "fr",
+            )
+
+    @patch.dict(
+        os.environ,
+        {
+            "IAMINA_DEMO_EXTERNAL_AI_ENABLED": "true",
+            "IAMINA_DEMO_LLM_PROVIDER": "groq",
+            "IAMINA_DEMO_LLM_MODEL": "",
+        },
+        clear=False,
+    )
+    @patch("companion.demo_model.build_openai_compatible_provider")
+    def test_casual_darija_allows_plain_conversation(self, build):
+        provider = MagicMock()
+        provider.complete.return_value.content = "Fhmtek. N9dro ghir nhdro chwia b rahatk."
+        build.return_value = provider
+
+        reply = generate_demo_reply(
+            "salam, lyouma t3yit chwia bghit ghir nhder chwia",
+            "fr",
+        )
+        self.assertEqual(reply, "Fhmtek. N9dro ghir nhdro chwia b rahatk.")
+
+    @patch.dict(
+        os.environ,
+        {
+            "IAMINA_DEMO_EXTERNAL_AI_ENABLED": "true",
+            "IAMINA_DEMO_LLM_PROVIDER": "groq",
+            "IAMINA_DEMO_LLM_MODEL": "",
+        },
+        clear=False,
+    )
+    @patch("companion.demo_model.build_openai_compatible_provider")
+    def test_casual_french_rejects_help_desk_framing(self, build):
+        provider = MagicMock()
+        provider.complete.return_value.content = "Bien sûr. Comment puis-je t'aider ?"
+        build.return_value = provider
+
+        with self.assertRaisesRegex(Exception, "dialect/script guard"):
+            generate_demo_reply(
+                "Pas besoin d'un plan, juste parle-moi normalement.",
+                "fr",
+            )
+
+    @patch.dict(
+        os.environ,
+        {
+            "IAMINA_DEMO_EXTERNAL_AI_ENABLED": "true",
+            "IAMINA_DEMO_LLM_PROVIDER": "groq",
+            "IAMINA_DEMO_LLM_MODEL": "",
+        },
+        clear=False,
+    )
+    @patch("companion.demo_model.build_openai_compatible_provider")
+    def test_latin_darija_rejects_observed_awkward_phrase(self, build):
+        provider = MagicMock()
+        provider.complete.return_value.content = "Fhmtek, ghadi nbdaw ndardak."
+        build.return_value = provider
+
+        with self.assertRaisesRegex(Exception, "dialect/script guard"):
+            generate_demo_reply(
+                "salam, lyouma t3yit chwia bghit ghir nhder chwia",
+                "fr",
+            )
