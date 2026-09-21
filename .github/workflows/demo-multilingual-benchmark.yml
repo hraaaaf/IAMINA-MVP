@@ -40,3 +40,105 @@ jobs:
           name: demo-multilingual-benchmark
           path: artifacts/demo-multilingual-benchmark.json
           retention-days: 14
+
+
+  prod-smoke-10turn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Smoke production demo 10-turn multilingual continuity
+        env:
+          BASE_URL: https://iamina-certified.vercel.app
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          base = os.environ["BASE_URL"].rstrip("/")
+          turns = [
+              ("fr", "Pour cette démo, retiens deux mots-clés initiaux : Atlas et Cèdre."),
+              ("en", "What were the two initial keywords?"),
+              ("fr", "chno kan awel mot-clé men jouj?"),
+              ("fr", "Ajoute maintenant Rivage après les deux mots-clés initiaux."),
+              ("ar", "وش الكلمة اللي ضفتها بعدين؟"),
+              ("en", "Give me the three keywords in the order they appeared."),
+              ("fr", "ch7al men mot-clé 3andna daba?"),
+              ("ar-MA", "شنو هو الكلمة الثانية من اللائحة؟"),
+              ("en", "Which keywords were initial, and which one was added later?"),
+              ("fr", "Résumé final : distingue les deux mots-clés initiaux de celui ajouté ensuite, sans en inventer."),
+          ]
+
+          history = []
+          replies = []
+          for index, (language, message) in enumerate(turns, start=1):
+              payload = json.dumps(
+                  {"message": message, "language": language, "history": history},
+                  ensure_ascii=False,
+              ).encode("utf-8")
+              request = urllib.request.Request(
+                  base + "/api/v1/demo/chat",
+                  data=payload,
+                  headers={"Content-Type": "application/json"},
+                  method="POST",
+              )
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  body = json.loads(response.read().decode("utf-8"))
+
+              if not body.get("reply"):
+                  raise SystemExit(f"turn {index}: empty reply")
+              if body.get("is_emergency"):
+                  raise SystemExit(f"turn {index}: unexpected emergency route")
+
+              reply = body["reply"]
+              replies.append(reply)
+              history.extend([
+                  {"role": "user", "content": message},
+                  {"role": "assistant", "content": reply},
+              ])
+
+          checks = {
+              "turn2_initial_pair": "atlas" in replies[1].lower() and "cèdre" in replies[1].lower(),
+              "turn3_first_keyword": "atlas" in replies[2].lower(),
+              "turn5_added_keyword": "rivage" in replies[4].lower(),
+              "turn6_order": (
+                  replies[5].lower().find("atlas") >= 0
+                  and replies[5].lower().find("cèdre") >= 0
+                  and replies[5].lower().find("rivage") >= 0
+                  and [
+                      replies[5].lower().find("atlas"),
+                      replies[5].lower().find("cèdre"),
+                      replies[5].lower().find("rivage"),
+                  ] == sorted([
+                      replies[5].lower().find("atlas"),
+                      replies[5].lower().find("cèdre"),
+                      replies[5].lower().find("rivage"),
+                  ])
+              ),
+              "turn8_second_keyword": "cèdre" in replies[7].lower(),
+              "turn9_initial_vs_added": (
+                  "atlas" in replies[8].lower()
+                  and "cèdre" in replies[8].lower()
+                  and "rivage" in replies[8].lower()
+              ),
+              "turn10_final_recap": (
+                  "atlas" in replies[9].lower()
+                  and "cèdre" in replies[9].lower()
+                  and "rivage" in replies[9].lower()
+              ),
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          result = {
+              "production": True,
+              "synthetic": True,
+              "turns": len(turns),
+              "history_items_final": len(history),
+              "checks": checks,
+              "failed_checks": failed,
+              "replies": replies,
+          }
+          print(json.dumps(result, ensure_ascii=False))
+          if failed:
+              raise SystemExit("failed checks: " + ", ".join(failed))
+          PY
