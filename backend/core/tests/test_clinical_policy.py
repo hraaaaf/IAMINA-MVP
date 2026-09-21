@@ -2,6 +2,7 @@ from core.clinical_policy import (
     NarrationMode,
     NarrationPolicyRequest,
     authorize_narration,
+    clinical_context_authorized,
     narration_authorized,
     narration_policy_block,
 )
@@ -114,3 +115,15 @@ def test_degraded_analysis_without_approved_context_stays_l0_not_clinical():
 
     assert decision.authority_level is AdviceAuthorityLevel.L0_CONVERSATION
     assert narration_authorized(decision)
+
+
+def test_clinician_prep_does_not_authorize_patient_clinical_context():
+    decision = authorize_narration(_request(mode=NarrationMode.CLINICIAN_PREP))
+    assert not clinical_context_authorized(decision)
+
+
+def test_approved_data_explanation_explicitly_authorizes_clinical_context():
+    decision = authorize_narration(
+        _request(has_approved_context=True, has_sufficient_data=True)
+    )
+    assert clinical_context_authorized(decision)
