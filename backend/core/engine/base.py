@@ -90,6 +90,25 @@ class BaseEngine(abc.ABC):
         del message, context, language
         return None
 
+    def verify_advice_reply(
+        self,
+        resolution: "AdviceResolution",
+        candidate: str,
+    ) -> str:
+        """Verify module-owned governed copy before patient-visible emission.
+
+        The default permits only the exact deterministic reply returned by the
+        module. Modules that support alternate narration must override this hook
+        with their own condition-specific verifier.
+        """
+        if not isinstance(candidate, str) or not candidate.strip():
+            raise PermissionError("governed advice reply must be non-empty")
+        if candidate.strip() != resolution.reply:
+            raise PermissionError(
+                "active module has no verifier for altered governed advice"
+            )
+        return candidate.strip()
+
     def offline_fallback(
         self,
         context: "DomainContext",

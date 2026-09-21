@@ -28,6 +28,7 @@ from core.medical_safety import sanitize_patient_visible
 from .sql_analytics import AnalyticalKPIs
 
 if TYPE_CHECKING:
+    from core.contracts.advice_resolution import AdviceResolution
     from core.contracts.alert import DomainAlert
     from core.contracts.domain_context import DomainContext
 
@@ -821,6 +822,22 @@ class DiabetesEngine(BaseEngine):
         from diabetes.services.clinical.food_decision import resolve_food_decision
 
         return resolve_food_decision(message, language=language)
+
+    def verify_advice_reply(
+        self,
+        resolution: "AdviceResolution",
+        candidate: str,
+    ) -> str:
+        """Verify FOOD governed copy inside the diabetes capsule."""
+        from diabetes.services.clinical.food_narration_verifier import (
+            verified_food_narration_or_fallback,
+        )
+
+        return verified_food_narration_or_fallback(
+            resolution.decision,
+            candidate,
+            resolution.reply,
+        )
 
     def evaluate_alert(self, entry, language: str = "fr") -> "DomainAlert | None":
         from core.contracts.alert import DomainAlert

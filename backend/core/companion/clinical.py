@@ -104,6 +104,26 @@ def get_advice_resolution(
     return resolution
 
 
+def verify_advice_reply(
+    patient_id: int | None,
+    resolution: AdviceResolution,
+    candidate: str,
+) -> str:
+    """Verify governed module copy through the active engine before emission."""
+
+    if patient_id is None:
+        raise PermissionError("governed advice verification requires an active patient module")
+    if not isinstance(resolution, AdviceResolution):
+        raise TypeError("resolution must be an AdviceResolution")
+    engine = _resolve_engine(patient_id)
+    if engine is None:
+        raise PermissionError("no active module available to verify governed advice")
+    verified = engine.verify_advice_reply(resolution, candidate)
+    if not isinstance(verified, str) or not verified.strip():
+        raise PermissionError("active module returned an invalid verified advice reply")
+    return verified.strip()
+
+
 def get_offline_fallback(
     patient_id: int | None,
     context: DomainContext,

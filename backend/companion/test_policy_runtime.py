@@ -237,6 +237,158 @@ def test_module_food_decision_short_circuits_llm_in_stream():
     record_route.assert_called_once_with("policy_rule")
 
 
+def test_module_food_reply_is_verified_before_chat_storage():
+    patient = SimpleNamespace(id=42, first_name="")
+    events = []
+
+    def verify(_patient_id, _resolution, candidate):
+        events.append("verify")
+        return candidate
+
+    def append(_patient, role, _message):
+        if role == "assistant":
+            events.append("assistant_store")
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_food_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch("companion.conversation._append_turn", side_effect=append),
+    ):
+        reply = conversation.chat(
+            "je peux manger un mille feuille !?",
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            language="fr",
+            patient=patient,
+        )
+
+    assert reply == "Réponse FOOD déterministe."
+    assert events == ["verify", "assistant_store"]
+
+
+def test_module_food_reply_is_verified_before_stream_storage_and_emit():
+    patient = SimpleNamespace(id=42, first_name="")
+    events = []
+
+    def verify(_patient_id, _resolution, candidate):
+        events.append("verify")
+        return candidate
+
+    def append(_patient, role, _message):
+        if role == "assistant":
+            events.append("assistant_store")
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_food_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch("companion.conversation._append_turn", side_effect=append),
+    ):
+        chunks = list(
+            conversation.stream_chat(
+                "je peux manger un mille feuille !?",
+                memory=None,
+                deep=object(),
+                llm=ExplodingLLM(),
+                language="fr",
+                patient=patient,
+            )
+        )
+
+    events.append("observed_emit")
+    assert chunks == ["Réponse FOOD déterministe."]
+    assert events == ["verify", "assistant_store", "observed_emit"]
+
+
+def test_module_verifier_failure_blocks_governed_reply_in_chat():
+    patient = SimpleNamespace(id=42, first_name="")
+    stored = []
+
+    def append(_patient, role, message):
+        if role == "assistant":
+            stored.append(message)
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_food_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch(
+            "companion.conversation.verify_advice_reply",
+            side_effect=PermissionError("verifier rejected"),
+        ),
+        patch("companion.conversation._append_turn", side_effect=append),
+        patch("companion.conversation.record_companion_route") as record_route,
+    ):
+        reply = conversation.chat(
+            "je peux manger un mille feuille !?",
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            language="fr",
+            patient=patient,
+        )
+
+    assert reply != "Réponse FOOD déterministe."
+    assert "Difficulté technique momentanée" in reply
+    assert stored == [reply]
+    record_route.assert_called_once_with("policy_denied")
+
+
+def test_module_verifier_failure_blocks_governed_reply_before_stream_emit():
+    patient = SimpleNamespace(id=42, first_name="")
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_food_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch(
+            "companion.conversation.verify_advice_reply",
+            side_effect=PermissionError("verifier rejected"),
+        ),
+        patch("companion.conversation._append_turn"),
+        patch("companion.conversation.record_companion_route") as record_route,
+    ):
+        chunks = list(
+            conversation.stream_chat(
+                "je peux manger un mille feuille !?",
+                memory=None,
+                deep=object(),
+                llm=ExplodingLLM(),
+                language="fr",
+                patient=patient,
+            )
+        )
+
+    assert chunks != ["Réponse FOOD déterministe."]
+    assert len(chunks) == 1
+    assert "Difficulté technique momentanée" in chunks[0]
+    record_route.assert_called_once_with("policy_denied")
+
+
 def test_module_advice_exception_fails_closed_and_never_calls_llm():
     patient = SimpleNamespace(id=42, first_name="")
     with (
