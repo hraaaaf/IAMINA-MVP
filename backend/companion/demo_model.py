@@ -88,6 +88,45 @@ def _extract_reply(content: str) -> str:
 _MAX_HISTORY_ITEMS = 20
 _MAX_HISTORY_CHARS = 6000
 
+_ARABIC_SCRIPT = set(chr(code) for code in range(0x0600, 0x0700))
+_LATIN_DARIJA_MARKERS = (
+    "salam",
+    "lyouma",
+    "bghit",
+    "bghitch",
+    "nhder",
+    "m3aya",
+    "khlliha",
+    "tabi3iya",
+    "ghir",
+    "3and",
+    "chno",
+    "wach",
+)
+_GULF_MARKERS = ("أبغى", "وش", "هلا", "الحين", "خلك", "أسولف", "شوي")
+_NON_GULF_MARKERS = ("شو", "بدك", "عنو", "شنو", "واش", "بغيت")
+
+
+def _looks_latin_darija(text: str) -> bool:
+    lower = text.lower()
+    return not any(char in _ARABIC_SCRIPT for char in text) and any(
+        marker in lower for marker in _LATIN_DARIJA_MARKERS
+    )
+
+
+def _looks_gulf_arabic(text: str) -> bool:
+    return any(marker in text for marker in _GULF_MARKERS)
+
+
+def _reply_matches_requested_style(message: str, reply: str) -> bool:
+    if _looks_latin_darija(message):
+        if any(char in _ARABIC_SCRIPT for char in reply):
+            return False
+    if _looks_gulf_arabic(message):
+        if any(marker in reply for marker in _NON_GULF_MARKERS):
+            return False
+    return True
+
 
 def _safe_demo_history(history: list[dict[str, str]], language: str) -> list[dict[str, str]]:
     """Return model-eligible history pairs, dropping sensitive/safety-bound pairs."""
@@ -173,4 +212,6 @@ def generate_demo_reply(
     reply = _extract_reply(response.content)
     if not reply or len(reply) > 1200 or contains_unapproved_behavior_action(reply):
         raise DemoModelUnavailable("demo model output rejected by safety guard")
+    if not _reply_matches_requested_style(text, reply):
+        raise DemoModelUnavailable("demo model output rejected by dialect/script guard")
     return reply
