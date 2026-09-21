@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from core.ai_egress import ai_egress_scope
 from core.ai_processor_policy import AIProcessorPolicyDenied
 from core.anonymization_gateway import (
+    AnonymizationResult,
     AnonymizationRiskDenied,
     minimize_external_text,
     minimize_external_text_payload,
@@ -100,6 +101,16 @@ def test_payload_result_is_deterministic_immutable_and_never_claims_certified_an
 
     with pytest.raises(TypeError):
         first.fields["system_prompt"] = "mutated"  # type: ignore[index]
+
+
+def test_legal_anonymity_flag_cannot_be_opted_in():
+    with pytest.raises(TypeError):
+        AnonymizationResult(
+            fields={},
+            transformations=(),
+            residual_findings=frozenset(),
+            certified_anonymous=True,  # type: ignore[call-arg]
+        )
 
 
 def test_payload_shape_is_fail_closed():
