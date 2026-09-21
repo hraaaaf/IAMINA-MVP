@@ -47,3 +47,15 @@ def test_policy_denied_is_a_supported_content_free_route(monkeypatch):
     record_companion_route("policy_denied")
 
     assert events == [{"event": "companion_route", "route": "policy_denied"}]
+
+
+def test_policy_rule_is_a_supported_content_free_route(monkeypatch):
+    events = []
+    monkeypatch.setattr(
+        "companion.route_telemetry.persist_cost_event",
+        lambda event: events.append(event),
+    )
+
+    record_companion_route("policy_rule")
+
+    assert events == [{"event": "companion_route", "route": "policy_rule"}]
