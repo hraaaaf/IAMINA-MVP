@@ -145,6 +145,18 @@ def clinical_context_authorized(decision: AdviceDecision) -> bool:
     )
 
 
+def policy_denied_reply(language: str = "fr") -> str:
+    """Condition-agnostic copy for a policy evaluation failure/denial."""
+
+    if language == "ar-MA":
+        return "كاين مشكل تقني مؤقت فالتقييم. عاود جرّب من بعد شوية."
+    if language.startswith("ar"):
+        return "حدث خلل تقني مؤقت في التقييم. حاول مجدداً بعد لحظة."
+    if language == "en":
+        return "Temporary evaluation issue. Please try again shortly."
+    return "Difficulté technique momentanée pendant l’évaluation. Réessaie dans un instant."
+
+
 def narration_policy_block(decision: AdviceDecision) -> str:
     """Compact PHI-free contract passed to the narrator as a constraint."""
 
@@ -168,4 +180,5 @@ __all__ = [
     "clinical_context_authorized",
     "narration_authorized",
     "narration_policy_block",
+    "policy_denied_reply",
 ]
