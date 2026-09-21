@@ -56,10 +56,17 @@ _FOOD_PERMISSION_RE = re.compile(
     r")",
     re.IGNORECASE,
 )
+_LATIN_DARIJA_FOOD_RE = re.compile(
+    r"\b(?:wach\s+)?n9dar\s+nakol\b",
+    re.IGNORECASE,
+)
 
 
 def _food_permission_reply(text: str, reply_language: str) -> str:
-    if _LATIN_DARIJA_RE.search(text) and not _ARABIC_RE.search(text):
+    if (
+        (_LATIN_DARIJA_FOOD_RE.search(text) or _LATIN_DARIJA_RE.search(text))
+        and not _ARABIC_RE.search(text)
+    ):
         return (
             "Ma n9drch ngolik yes/no b tari9a chakhssiya 3la chi makla. "
             "N9dro nchofo lportion w lcarbs, w ila bghiti n3awnk tqra l'étiquette "
