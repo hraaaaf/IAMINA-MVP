@@ -59,6 +59,30 @@ def test_current_deterministic_food_replies_pass_verifier(message, language):
             "Plus de 30 g de glucides, évite ce dessert.",
             "unauthorized:introduce_unapproved_threshold",
         ),
+        (
+            "Prends 4 unités avec ce dessert.",
+            "forbidden:calculate_insulin_dose",
+        ),
+        (
+            "Réduis ta dose de moitié.",
+            "forbidden:change_treatment",
+        ),
+        (
+            "Évite ce dessert.",
+            "forbidden:forbid_food_personally",
+        ),
+        (
+            "Garde les glucides sous 30 g.",
+            "unauthorized:introduce_unapproved_threshold",
+        ),
+        (
+            "Mange ce dessert maintenant.",
+            "unauthorized:unclassified_food_directive",
+        ),
+        (
+            "Ta glycémie est haute, donc ce dessert est mauvais pour toi.",
+            "unauthorized:infer_patient_specific_causality",
+        ),
     ],
 )
 def test_food_verifier_rejects_actions_or_claims_outside_decision(candidate, expected):
