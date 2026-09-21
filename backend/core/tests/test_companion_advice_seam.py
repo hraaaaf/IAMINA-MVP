@@ -21,7 +21,13 @@ def test_diabetes_engine_exposes_food_decision_through_base_engine_seam():
 
 def test_core_advice_resolver_rejects_invalid_module_resolution_type():
     class BadEngine:
-        def resolve_advice(self, message, context, language="fr"):
+        def resolve_advice(
+            self,
+            message,
+            context,
+            language="fr",
+            previous_user_message=None,
+        ):
             return {"decision": "not-governed"}
 
     with patch("core.companion.clinical._resolve_engine", return_value=BadEngine()):
