@@ -194,3 +194,56 @@ class DemoChatContractTests(TestCase):
         reply = response.json()["reply"]
         self.assertIn("سوالف خفيفة", reply)
         self.assertNotIn("وضع العرض", reply)
+
+    def test_demo_food_permission_boundary_blocks_yes_no_approval_in_french(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=AssertionError("food permission must stay deterministic"),
+        ):
+            response = self._post("je peux manger un mille feuille !?")
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"]
+        self.assertIn("Je ne peux pas te donner un feu vert/rouge personnalisé", reply)
+        self.assertIn("glucides", reply)
+        self.assertNotIn("Oui", reply)
+        self.assertNotIn("allerg", reply.lower())
+
+    def test_demo_food_permission_boundary_blocks_yes_no_approval_in_english(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=AssertionError("food permission must stay deterministic"),
+        ):
+            response = self._post("Can I eat a slice of cake?", language="en")
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"]
+        self.assertIn("can’t give a personalized yes/no approval", reply)
+        self.assertIn("carbohydrate", reply.lower())
+        self.assertNotIn("Sure", reply)
+
+    def test_demo_food_permission_boundary_stays_latin_in_darija(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=AssertionError("food permission must stay deterministic"),
+        ):
+            response = self._post("wach n9dar nakol gateau?", language="fr")
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"]
+        self.assertIn("Ma n9drch ngolik yes/no", reply)
+        self.assertFalse(any("\u0600" <= ch <= "\u06ff" for ch in reply))
+        self.assertNotIn("activité", reply.lower())
+
+    def test_demo_food_permission_boundary_blocks_yes_no_approval_in_arabic(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=AssertionError("food permission must stay deterministic"),
+        ):
+            response = self._post("هل أقدر آكل قطعة حلوى؟", language="ar")
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"]
+        self.assertIn("ما أقدر أعطيك موافقة شخصية", reply)
+        self.assertIn("الكربوهيدرات", reply)
+        self.assertNotIn("أكيد", reply)
