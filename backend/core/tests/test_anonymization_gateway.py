@@ -61,6 +61,29 @@ def test_minimizer_coarsens_known_reidentification_signals_without_mapping():
     assert "exact_clinical_value" in transformations
 
 
+def test_minimizer_covers_arabic_digits_age_location_and_clinical_units():
+    raw = (
+        "عمري ٢٩ سنة. أسكن في الرباط. "
+        "القياس ٢٤٨ ملغ/دل الساعة ٢٢:٤١ يوم ٢١/٠٩/٢٠٢٦."
+    )
+
+    minimized, transformations = minimize_external_text(raw)
+
+    assert "٢٩" not in minimized
+    assert "الرباط" not in minimized
+    assert "٢٤٨ ملغ/دل" not in minimized
+    assert "٢٢:٤١" not in minimized
+    assert "٢١/٠٩/٢٠٢٦" not in minimized
+    assert "[age band: adult]" in minimized
+    assert "[location withheld]" in minimized
+    assert "[clinical value withheld]" in minimized
+    assert "[time coarsened]" in minimized
+    assert "[date coarsened]" in minimized
+    assert "exact_age" in transformations
+    assert "location_phrase" in transformations
+    assert "exact_clinical_value" in transformations
+
+
 def test_payload_result_is_deterministic_immutable_and_never_claims_certified_anonymity():
     payload = {
         "system_prompt": "Review anchor 2026-09-20 at 22:41.",
