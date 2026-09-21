@@ -25,7 +25,9 @@ _ACTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
         re.compile(
             r"(?:\btu\s+ne\s+peux\s+pas\s+(?:manger|prendre|boire)\b"
             r"|\bne\s+(?:mange|prends|bois)\s+pas\b"
+            r"|\b(?:évite|evite)\s+(?:ce|cet|cette|le|la|les)\b"
             r"|\byou\s+(?:cannot|can't|must\s+not)\s+(?:eat|have|drink)\b"
+            r"|\bavoid\s+(?:this|that|the)\b"
             r"|(?:لا\s+(?:تأكل|تاكل|تشرب)|ممنوع\s+عليك))",
             re.IGNORECASE,
         ),
@@ -34,19 +36,21 @@ _ACTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
         "calculate_insulin_dose",
         re.compile(
             r"(?:\b(?:insulin(?:e)?|انسولين|أنسولين)\b.{0,48}"
-            r"\b(?:dose|unit(?:s)?|unité(?:s)?|وحد(?:ة|ات))\b"
-            r"|\b(?:dose|unit(?:s)?|unité(?:s)?|وحد(?:ة|ات))\b.{0,48}"
-            r"\b(?:insulin(?:e)?|انسولين|أنسولين)\b)",
+            r"\b(?:dose|unit(?:s)?|unité(?:s)?|u|وحد(?:ة|ات))\b"
+            r"|\b(?:dose|unit(?:s)?|unité(?:s)?|u|وحد(?:ة|ات))\b.{0,48}"
+            r"\b(?:insulin(?:e)?|انسولين|أنسولين)\b"
+            r"|\b\d+(?:[.,]\d+)?\s*(?:u|unit(?:s)?|unité(?:s)?|وحد(?:ة|ات))\b)",
             re.IGNORECASE,
         ),
     ),
     (
         "change_treatment",
         re.compile(
-            r"\b(?:change|changez|modifie|modifiez|arrête|arrêtez|stop|increase|"
-            r"decrease|augmente|augmentez|diminue|diminuez)\b.{0,48}"
-            r"\b(?:ton|votre|your)\s+(?:traitement|treatment|insulin(?:e)?|"
-            r"médicament|medication)\b",
+            r"\b(?:change|changez|modifie|modifiez|arrête|arrêtez|stop|skip|"
+            r"saute|sauter|increase|decrease|reduce|réduis|reduis|augmente|"
+            r"augmentez|diminue|diminuez|double|halve)\b.{0,48}"
+            r"\b(?:ton|ta|tes|votre|your)\s+(?:traitement|treatment|insulin(?:e)?|"
+            r"médicament|medication|dose)\b",
             re.IGNORECASE,
         ),
     ),
@@ -65,6 +69,8 @@ _ACTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
         re.compile(
             r"(?:\b(?:because|parce\s+que|car)\b.{0,64}"
             r"\b(?:glyc(?:é|e)mie|glucose)\b"
+            r"|\b(?:glyc(?:é|e)mie|glucose)\b.{0,64}"
+            r"\b(?:donc|therefore|means?|implique)\b"
             r"|(?:بسبب).{0,64}(?:سكر|جلوكوز))",
             re.IGNORECASE,
         ),
@@ -74,7 +80,8 @@ _ACTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
         re.compile(
             r"(?:[<>]=?\s*\d+\s*(?:g)?"
             r"|\b(?:plus|moins)\s+de\s+\d+\s*(?:g)?"
-            r"|\b(?:more|less)\s+than\s+\d+\s*(?:g)?)"
+            r"|\b(?:more|less)\s+than\s+\d+\s*(?:g)?"
+            r"|\b(?:sous|under|below|maximum|max)\s+\d+\s*(?:g)?)"
             r"\s*(?:de\s+)?(?:glucides?|carbs?|carbohydrates?)",
             re.IGNORECASE,
         ),
@@ -115,6 +122,14 @@ _ACTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ),
 )
 
+_UNCLASSIFIED_FOOD_DIRECTIVE_RE = re.compile(
+    r"(?:^|[.!?]\s*)(?:mange|prends|bois|eat|drink|take|skip|injecte?|"
+    r"réduis|reduis|augmente|double|halve)\b"
+    r"|\b(?:tu\s+devrais|you\s+should)\s+"
+    r"(?:manger|prendre|boire|eat|have|drink)\b",
+    re.IGNORECASE,
+)
+
 
 def observe_food_narration_actions(text: str) -> tuple[str, ...]:
     if not isinstance(text, str) or not text.strip():
@@ -124,6 +139,8 @@ def observe_food_narration_actions(text: str) -> tuple[str, ...]:
     for action, pattern in _ACTION_PATTERNS:
         if pattern.search(text) and action not in observed:
             observed.append(action)
+    if _UNCLASSIFIED_FOOD_DIRECTIVE_RE.search(text):
+        observed.append("unclassified_food_directive")
     return tuple(observed)
 
 
