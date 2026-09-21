@@ -47,6 +47,69 @@ _CAPABILITY_RE = re.compile(
     r"شنو كتقدر|ماذا يمكنك|من أنت)",
     re.IGNORECASE,
 )
+_CASUAL_CHAT_RE = re.compile(
+    r"(?:just keep me company|just talk|keep it casual|don't turn it into advice|"
+    r"pas besoin d['’]un plan|juste discuter|parle-moi normalement|"
+    r"ghir (?:nhder|hdar|n9ssr)|ma bghit ta chi 7al|ma bghitch conseils|"
+    r"ما أبي حلول|ما أبغى نصائح|بس ودي أسولف|بس أسولف|بس كلمني)",
+    re.IGNORECASE,
+)
+_LATIN_DARIJA_RE = re.compile(
+    r"(?:salam|lyouma|bghit|bghitch|ghir|nhder|hdar|n9ssr|m3ak|chwia|hakka|khlli)",
+    re.IGNORECASE,
+)
+_GULF_RE = re.compile(r"(?:هلا|أبغى|أبي|ودي|الحين|أسولف|سوالف|خلك|شوي)")
+
+
+def _history_is_casual(history: list[dict[str, str]]) -> bool:
+    return any(
+        turn.get("role") == "user"
+        and _CASUAL_CHAT_RE.search(str(turn.get("content", "")))
+        for turn in history
+    )
+
+
+def _casual_fallback(
+    text: str,
+    reply_language: str,
+    history: list[dict[str, str]],
+) -> str:
+    continuation = bool(history)
+    if reply_language == "en":
+        return (
+            "Sure — we can just keep it light. What’s on your mind now?"
+            if continuation
+            else "Sure — no fixing, no advice. We can just chat for a bit."
+        )
+    if reply_language == "ar":
+        if _GULF_RE.search(text):
+            return (
+                "أكيد، نخليها سوالف خفيفة وبس. وش على بالك الحين؟"
+                if continuation
+                else "تمام، نخليها سوالف خفيفة وبس. وش ودك تسولف عنه؟"
+            )
+        return (
+            "أكيد، نخليها دردشة خفيفة فقط. ما الذي يدور في بالك الآن؟"
+            if continuation
+            else "تمام، نتحدث ببساطة ومن دون نصائح."
+        )
+    if reply_language == "ar-MA":
+        return (
+            "واخا، نخليوها غير هدرة خفيفة. شنو جا فبالك دابا؟"
+            if continuation
+            else "واخا، غير نهضرو بشوية وعلى راحتك."
+        )
+    if _LATIN_DARIJA_RE.search(text) and not _ARABIC_RE.search(text):
+        return (
+            "Wakha, nkhelliwha ghir hdra khfifa. Chno jay f balk daba?"
+            if continuation
+            else "Wakha, ghir nhdro chwia b rahatk."
+        )
+    return (
+        "D’accord, on reste léger et on discute tranquillement. Qu’est-ce qui te passe par la tête ?"
+        if continuation
+        else "D’accord, pas de plan ni de conseils. On peut juste discuter tranquillement."
+    )
 
 _DEMO_COPY = {
     "fr": {
@@ -183,7 +246,10 @@ def reply_to_demo_message(
         except DemoPayloadDenied:
             reply = _DEMO_COPY[reply_language]["personal"]
         except DemoModelUnavailable:
-            if _EMOTIONAL_RE.search(text):
+            bounded_history = history or []
+            if _CASUAL_CHAT_RE.search(text) or _history_is_casual(bounded_history):
+                reply = _casual_fallback(text, reply_language, bounded_history)
+            elif _EMOTIONAL_RE.search(text):
                 reply = safe_fallback(
                     reply_language,
                     mode="emotional",

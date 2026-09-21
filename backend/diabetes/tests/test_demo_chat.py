@@ -5,6 +5,7 @@ from unittest.mock import patch
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 
+from companion.demo_model import DemoModelUnavailable
 from diabetes.models import LogEntry
 
 
@@ -126,3 +127,70 @@ class DemoChatContractTests(TestCase):
 
         self.assertEqual(empty.status_code, 400)
         self.assertEqual(oversized.status_code, 400)
+
+    def test_demo_chat_uses_gulf_casual_fallback_when_model_is_rejected(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=DemoModelUnavailable("dialect/script guard"),
+        ):
+            response = self._post("هلا، ما أبي حلول الحين، بس ودي أسولف شوي.", language="ar")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["reply_language"], "ar")
+        self.assertIn("سوالف خفيفة", payload["reply"])
+        self.assertNotIn("وضع العرض", payload["reply"])
+
+    def test_demo_chat_varies_gulf_casual_fallback_on_continuation(self):
+        history = [
+            {"role": "user", "content": "هلا، ما أبي حلول الحين، بس ودي أسولف شوي."},
+            {"role": "assistant", "content": "تمام، نخليها سوالف خفيفة وبس."},
+        ]
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=DemoModelUnavailable("dialect/script guard"),
+        ):
+            first = self._post("هلا، ما أبي حلول الحين، بس ودي أسولف شوي.", language="ar")
+            followup = self._post(
+                "إيه كذا أحسن، خلك خفيف وبسيط.",
+                language="ar",
+                history=history,
+            )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(followup.status_code, 200)
+        self.assertNotEqual(first.json()["reply"], followup.json()["reply"])
+        self.assertNotIn("وضع العرض", followup.json()["reply"])
+
+    def test_demo_chat_uses_latin_darija_casual_fallback(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=DemoModelUnavailable("dialect/script guard"),
+        ):
+            response = self._post("salam, ma bghit ta chi 7al daba, ghir n9ssr m3ak chwia")
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"]
+        self.assertIn("nhdro", reply)
+        self.assertFalse(any("\u0600" <= ch <= "\u06ff" for ch in reply))
+        self.assertNotIn("mode démo", reply.lower())
+
+    def test_demo_chat_inherits_casual_mode_from_history_on_followup(self):
+        history = [
+            {"role": "user", "content": "هلا، ما أبي حلول الحين، بس ودي أسولف شوي."},
+            {"role": "assistant", "content": "تمام، نخليها سوالف خفيفة وبس."},
+        ]
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=DemoModelUnavailable("dialect/script guard"),
+        ):
+            response = self._post(
+                "إيه كذا أحسن، خلك خفيف وبسيط.",
+                language="ar",
+                history=history,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"]
+        self.assertIn("سوالف خفيفة", reply)
+        self.assertNotIn("وضع العرض", reply)
