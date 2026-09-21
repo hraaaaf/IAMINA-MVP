@@ -5,9 +5,9 @@ import pytest
 from core.contracts.advice_decision import AdviceAuthorityLevel, AdviceDisposition
 from diabetes.services.clinical.food_decision import (
     ADA_2026_NUTRITION,
-    FoodDecisionIntent,
     NICE_NG17_DIETARY,
     NICE_NG28_DIETARY,
+    FoodDecisionIntent,
     classify_food_decision,
     resolve_food_decision,
 )
