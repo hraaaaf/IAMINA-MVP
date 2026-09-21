@@ -247,3 +247,34 @@ class DemoChatContractTests(TestCase):
         self.assertIn("ما أقدر أعطيك موافقة شخصية", reply)
         self.assertIn("الكربوهيدرات", reply)
         self.assertNotIn("أكيد", reply)
+
+
+    def test_demo_chat_recognizes_gulf_casual_variant_without_solutions(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=DemoModelUnavailable("dialect/script guard"),
+        ):
+            response = self._post(
+                "هلا، ودي أسولف شوي بدون حلول.",
+                language="ar",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"]
+        self.assertIn("سوالف خفيفة", reply)
+        self.assertNotIn("وضع العرض", reply)
+
+    def test_demo_chat_recognizes_arabic_darija_casual_variant(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=DemoModelUnavailable("dialect/script guard"),
+        ):
+            response = self._post(
+                "سلام، بغيت غير نهضر شوية بلا نصائح.",
+                language="ar-MA",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"]
+        self.assertIn("نهضرو", reply)
+        self.assertNotIn("فالوضع التجريبي", reply)
