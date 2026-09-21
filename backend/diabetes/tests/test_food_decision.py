@@ -135,3 +135,12 @@ def test_arabic_darija_food_reply_stays_arabic_script():
     assert resolution is not None
     assert _ARABIC_RE.search(resolution.reply)
     assert "الكربوهيدرات" in resolution.reply
+
+
+def test_gulf_food_reply_does_not_drift_to_moroccan_markers():
+    resolution = resolve_food_decision("عادي آكل كيك؟", language="ar-SA")
+
+    assert resolution is not None
+    assert "أقدر" in resolution.reply
+    for marker in ("شنو", "واش", "بغيت", "مزيان", "إيوا"):
+        assert marker not in resolution.reply
