@@ -47,6 +47,49 @@ _CAPABILITY_RE = re.compile(
     r"شنو كتقدر|ماذا يمكنك|من أنت)",
     re.IGNORECASE,
 )
+_FOOD_PERMISSION_RE = re.compile(
+    r"(?:"
+    r"\b(?:est[- ]?ce que\s+)?(?:je|j['’])\s+peux\s+manger\b"
+    r"|\bcan\s+i\s+(?:eat|have)\b"
+    r"|\b(?:wach\s+)?n9dar\s+nakol\b"
+    r"|(?:هل\s+)?(?:أقدر|اقدر|ممكن)\s+آكل"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _food_permission_reply(text: str, reply_language: str) -> str:
+    if reply_language == "en":
+        return (
+            "I can’t give a personalized yes/no approval for a food. "
+            "For a dessert or meal, the useful things to look at are the portion "
+            "and carbohydrate content. If you want, I can help you read the label "
+            "or prepare a question for your care team."
+        )
+    if reply_language == "ar":
+        return (
+            "ما أقدر أعطيك موافقة شخصية بنعم أو لا على طعام معيّن. "
+            "الأفضل ننظر إلى الكمية ومحتوى الكربوهيدرات، وإذا تحب أساعدك "
+            "تقرأ الملصق الغذائي أو تجهّز سؤالًا لفريقك الصحي."
+        )
+    if reply_language == "ar-MA":
+        return (
+            "ما نقدرش نعطيك جواب شخصي بنعم ولا لا على شي ماكلة. "
+            "نقدرو غير نشوفو الكمية والكربوهيدرات، وإذا بغيتي نعاونك "
+            "تقرا لابيتيكيت ولا توجد سؤال للطبيب."
+        )
+    if _LATIN_DARIJA_RE.search(text) and not _ARABIC_RE.search(text):
+        return (
+            "Ma n9drch ngolik yes/no b tari9a chakhssiya 3la chi makla. "
+            "N9dro nchofo lportion w lcarbs, w ila bghiti n3awnk tqra l'étiquette "
+            "wla twjjed sou2al ltbib."
+        )
+    return (
+        "Je ne peux pas te donner un feu vert/rouge personnalisé pour un aliment. "
+        "Pour un dessert ou un repas, le plus utile est de regarder la portion et "
+        "la teneur en glucides. Si tu veux, je peux t’aider à lire l’étiquette ou "
+        "à préparer une question pour ton soignant."
+    )
 _CASUAL_CHAT_RE = re.compile(
     r"(?:just keep me company|just talk|keep it casual|don't turn it into advice|"
     r"pas besoin d['’]un plan|juste discuter|parle-moi normalement|"
@@ -218,6 +261,14 @@ def reply_to_demo_message(
     if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
         return {
             "reply": no_prescription_message(deterministic_language),
+            "conversation_id": "demo-governed",
+            "is_emergency": False,
+            "reply_language": reply_language,
+        }
+
+    if _FOOD_PERMISSION_RE.search(text):
+        return {
+            "reply": _food_permission_reply(text, reply_language),
             "conversation_id": "demo-governed",
             "is_emergency": False,
             "reply_language": reply_language,
