@@ -22,6 +22,7 @@ from core.clinical_policy import (
     clinical_context_authorized,
     narration_authorized,
     narration_policy_block,
+    policy_denied_reply,
 )
 from core.companion.clinical import (
     get_advice_resolution,
@@ -556,11 +557,8 @@ def _policy_denied_reply(
     ctx: DomainContext,
     language: str,
 ) -> str:
-    return get_offline_fallback(
-        patient.id if patient else None,
-        ctx,
-        _deterministic_language(language),
-    )
+    del patient, ctx
+    return policy_denied_reply(_deterministic_language(language))
 
 
 def _safety_reply(message: str, patient, language: str) -> str | None:
