@@ -20,6 +20,14 @@ from core.companion.clinical import (
     get_domain_context,
     get_offline_fallback,
 )
+from core.clinical_policy import (
+    NarrationMode,
+    NarrationPolicyRequest,
+    authorize_narration,
+    narration_authorized,
+    narration_policy_block,
+)
+from core.contracts.advice_decision import AdviceDecision
 from core.companion.ports import get_conversation_store
 from core.contracts.companion_context import CompanionContext
 from core.contracts.domain_context import DomainContext
@@ -398,6 +406,8 @@ def _build_runtime_prompt(
     patient,
     context_days: int,
     streaming: bool,
+    preloaded_context: DomainContext | None = None,
+    advice_decision: AdviceDecision | None = None,
 ):
     language = detect_language(message, language)
     pseudonymizer = PHIPseudonymizer()
@@ -409,7 +419,7 @@ def _build_runtime_prompt(
         _HISTORY_CHAR_BUDGET,
         patient=patient,
     )
-    ctx = _get_context(patient, context_days, language)
+    ctx = preloaded_context or _get_context(patient, context_days, language)
     companion_ctx = _get_companion_context(patient, language)
     emotional = _is_emotional(message)
     mode = _response_mode(message)
@@ -432,6 +442,8 @@ def _build_runtime_prompt(
         )
         system += _STREAM_SUFFIX
     system += "\n" + get_tone_instruction(tone_ctx)
+    if advice_decision is not None:
+        system += "\n\n" + narration_policy_block(advice_decision)
 
     if not emotional:
         if ctx.pivot_text:
@@ -480,6 +492,44 @@ def _build_runtime_prompt(
             variety_hint = "\n[STYLE: " + "; ".join(hints) + "]"
 
     return language, ctx, system, base_prompt + variety_hint
+
+
+def _authorize_runtime_narration(
+    message: str,
+    patient,
+    language: str,
+    context_days: int,
+) -> tuple[str, DomainContext, AdviceDecision]:
+    """Resolve deterministic narration authority before any LLM is acquired/called."""
+
+    detected_language = detect_language(message, language)
+    ctx = _get_context(patient, context_days, detected_language)
+    try:
+        decision = authorize_narration(
+            NarrationPolicyRequest(
+                mode=NarrationMode(_response_mode(message)),
+                language=detected_language,
+                has_approved_context=bool(ctx.pivot_text),
+                has_sufficient_data=ctx.has_sufficient_data,
+                analysis_status=ctx.analysis_status,
+            )
+        )
+    except Exception:
+        logger.exception("IAmina clinical policy evaluation failed closed")
+        decision = AdviceDecision.fail_closed(language=detected_language)
+    return detected_language, ctx, decision
+
+
+def _policy_denied_reply(
+    patient,
+    ctx: DomainContext,
+    language: str,
+) -> str:
+    return get_offline_fallback(
+        patient.id if patient else None,
+        ctx,
+        _deterministic_language(language),
+    )
 
 
 def _safety_reply(message: str, patient, language: str) -> str | None:
@@ -635,6 +685,20 @@ def chat(
         _update_relationship_memory(message, memory)
         return zero_model_reply
 
+    language, ctx, advice_decision = _authorize_runtime_narration(
+        message,
+        patient,
+        language,
+        context_days,
+    )
+    if not narration_authorized(advice_decision):
+        record_companion_route("policy_denied")
+        reply = _policy_denied_reply(patient, ctx, language)
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", reply)
+        _update_relationship_memory(message, memory)
+        return reply
+
     record_companion_route("llm")
     if llm is None:
         llm = get_gateway_llm()
@@ -647,6 +711,8 @@ def chat(
         patient=patient,
         context_days=context_days,
         streaming=False,
+        preloaded_context=ctx,
+        advice_decision=advice_decision,
     )
     _append_turn(patient, "user", message)
     prefer_latin_script = language == "ar-MA" and not _ARABIC_RE.search(message)
@@ -724,6 +790,21 @@ def stream_chat(
         yield zero_model_reply
         return
 
+    language, ctx, advice_decision = _authorize_runtime_narration(
+        message,
+        patient,
+        language,
+        context_days,
+    )
+    if not narration_authorized(advice_decision):
+        record_companion_route("policy_denied")
+        reply = _policy_denied_reply(patient, ctx, language)
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", reply)
+        _update_relationship_memory(message, memory)
+        yield reply
+        return
+
     record_companion_route("llm")
     if llm is None:
         llm = get_gateway_llm()
@@ -736,6 +817,8 @@ def stream_chat(
         patient=patient,
         context_days=context_days,
         streaming=True,
+        preloaded_context=ctx,
+        advice_decision=advice_decision,
     )
     _append_turn(patient, "user", message)
     prefer_latin_script = language == "ar-MA" and not _ARABIC_RE.search(message)
