@@ -133,6 +133,18 @@ def narration_authorized(decision: AdviceDecision) -> bool:
     )
 
 
+def clinical_context_authorized(decision: AdviceDecision) -> bool:
+    """Whether this decision explicitly allows patient clinical context in narration."""
+
+    return bool(
+        {
+            Capability.EXPLAIN_APPROVED_DATA.value,
+            Capability.SUMMARIZE_APPROVED_DATA.value,
+        }
+        & set(decision.allowed_actions)
+    )
+
+
 def narration_policy_block(decision: AdviceDecision) -> str:
     """Compact PHI-free contract passed to the narrator as a constraint."""
 
@@ -153,6 +165,7 @@ __all__ = [
     "NarrationMode",
     "NarrationPolicyRequest",
     "authorize_narration",
+    "clinical_context_authorized",
     "narration_authorized",
     "narration_policy_block",
 ]
