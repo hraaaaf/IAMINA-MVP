@@ -810,6 +810,18 @@ class DiabetesEngine(BaseEngine):
             ],
         )
 
+    def resolve_advice(
+        self,
+        message: str,
+        context: "DomainContext",
+        language: str = "fr",
+    ):
+        """Resolve governed diabetes advice families without LLM authority."""
+        del context
+        from diabetes.services.clinical.food_decision import resolve_food_decision
+
+        return resolve_food_decision(message, language=language)
+
     def evaluate_alert(self, entry, language: str = "fr") -> "DomainAlert | None":
         from core.contracts.alert import DomainAlert
         from diabetes.services.clinical.alerts import AlertLevel
