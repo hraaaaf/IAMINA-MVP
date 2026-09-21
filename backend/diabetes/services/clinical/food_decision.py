@@ -42,7 +42,7 @@ _LATIN_DARIJA_RE = re.compile(
 
 _FOOD_CONTEXT_RE = re.compile(
     r"(?:"
-    r"\b(?:manger|boire|repas|aliment|dessert|g[âa]teau|pain|riz|p[aâ]tes|"
+    r"\b(?:manger|boire|repas|aliment|dessert|g[âa]teau|gateu|gato|pain|riz|p[aâ]tes|"
     r"eat|drink|food|meal|dessert|cake|bread|rice|pasta|"
     r"nakol|nchrob|makla|gateau|7lowa|khobz)\b"
     r"|(?:طعام|أكل|اكل|آكل|اكل|تناول|وجبة|حلوى|كيك|خبز|رز|ناكل|نشرب|الماكلة)"
@@ -53,7 +53,7 @@ _FOOD_CONTEXT_RE = re.compile(
 _PERMISSION_PATTERNS = (
     re.compile(
         r"\b(?:(?:est[- ]?ce que|est ce que)\s+)?(?:je\s+peux|puis[- ]?je|"
-        r"j['’]?ai\s+le\s+droit\s+de)\s+(?:manger|prendre|boire)\b",
+        r"j['’]?ai\s+le\s+droit\s+de|je\s+peu)\s+(?:manger|prendre|boire)\b",
         re.IGNORECASE,
     ),
     re.compile(
@@ -80,7 +80,7 @@ _PERMISSION_PATTERNS = (
 )
 
 _STRONG_NUTRITION_RE = re.compile(
-    r"(?:\b(?:glucides?|carbohydrates?|carbs?|nutrition(?:nel|nelle)?s?)\b"
+    r"(?:\b(?:glucides?|gluc|carbohydrates?|carbs?|nutrition(?:nel|nelle)?s?)\b"
     r"|(?:كربوهيدرات|الكربوهيدرات))",
     re.IGNORECASE,
 )
