@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Mapping
 
@@ -40,8 +40,8 @@ class AnonymizationResult:
     fields: Mapping[str, str]
     transformations: tuple[str, ...]
     residual_findings: frozenset[str]
-    # Deliberately false: this technical layer alone cannot certify legal anonymity.
-    certified_anonymous: bool = False
+    # Deliberately non-initializable: this layer can never self-certify legal anonymity.
+    certified_anonymous: bool = field(init=False, default=False)
 
 
 _EMAIL = re.compile(
