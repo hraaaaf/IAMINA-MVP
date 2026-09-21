@@ -24,6 +24,7 @@ import abc
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from core.contracts.advice_resolution import AdviceResolution
     from core.contracts.alert import DomainAlert
     from core.contracts.companion_context import CompanionContext
     from core.contracts.domain_context import DomainContext
@@ -74,6 +75,20 @@ class BaseEngine(abc.ABC):
         from core.contracts.companion_context import CompanionContext
 
         return CompanionContext.empty(language=language)
+
+    def resolve_advice(
+        self,
+        message: str,
+        context: "DomainContext",
+        language: str = "fr",
+    ) -> "AdviceResolution | None":
+        """Resolve an optional module-owned deterministic advice rule.
+
+        The default grants no additional authority. Condition modules may
+        override this only by returning a governed AdviceResolution.
+        """
+        del message, context, language
+        return None
 
     def offline_fallback(
         self,

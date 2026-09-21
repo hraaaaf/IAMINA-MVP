@@ -7,7 +7,12 @@ from core.clinical_policy import (
     NarrationPolicyRequest,
     authorize_narration,
 )
-from core.contracts.advice_decision import AdviceDecision
+from core.contracts.advice_decision import (
+    AdviceAuthorityLevel,
+    AdviceDecision,
+    AdviceDisposition,
+)
+from core.contracts.advice_resolution import AdviceResolution
 from core.contracts.domain_context import DomainContext
 
 
@@ -49,7 +54,9 @@ def test_stream_policy_denial_blocks_llm_before_any_chunk():
             )
         )
 
-    assert chunks == ["Difficulté technique momentanée. Réessaie dans un instant."]
+    assert len(chunks) == 1
+    assert "Difficulté technique momentanée" in chunks[0]
+    assert "évaluation" in chunks[0]
 
 
 def test_policy_exception_fails_closed_before_llm():
@@ -156,3 +163,102 @@ def test_l0_prompt_never_loads_companion_clinical_context():
     assert "Contexte de session approuvé" not in system
     assert "Contexte compagnon gouverné" not in system
     assert "[ADVICE_AUTHORITY]" in system
+
+
+def _food_resolution():
+    return AdviceResolution(
+        decision=AdviceDecision(
+            intent="food_permission",
+            authority_level=AdviceAuthorityLevel.L2_LOW_RISK_PRACTICAL,
+            decision=AdviceDisposition.CONSTRAIN,
+            rule_id="diabetes.food.permission",
+            rule_version="1",
+            allowed_actions=("review_portion_and_carbohydrate_context",),
+            forbidden_actions=("approve_food_personally",),
+            evidence_refs=("ADA_SOC_2026_SECTION_5",),
+        ),
+        reply="Réponse FOOD déterministe.",
+    )
+
+
+def test_module_food_decision_short_circuits_llm_in_chat():
+    patient = SimpleNamespace(id=42, first_name="")
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_food_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.record_companion_route") as record_route,
+        patch("companion.conversation._append_turn"),
+    ):
+        reply = conversation.chat(
+            "je peux manger un mille feuille !?",
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            language="fr",
+            patient=patient,
+        )
+
+    assert reply == "Réponse FOOD déterministe."
+    record_route.assert_called_once_with("policy_rule")
+
+
+def test_module_food_decision_short_circuits_llm_in_stream():
+    patient = SimpleNamespace(id=42, first_name="")
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_food_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.record_companion_route") as record_route,
+        patch("companion.conversation._append_turn"),
+    ):
+        chunks = list(
+            conversation.stream_chat(
+                "je peux manger un mille feuille !?",
+                memory=None,
+                deep=object(),
+                llm=ExplodingLLM(),
+                language="fr",
+                patient=patient,
+            )
+        )
+
+    assert chunks == ["Réponse FOOD déterministe."]
+    record_route.assert_called_once_with("policy_rule")
+
+
+def test_module_advice_exception_fails_closed_and_never_calls_llm():
+    patient = SimpleNamespace(id=42, first_name="")
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            side_effect=RuntimeError("food rule unavailable"),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.record_companion_route") as record_route,
+        patch("companion.conversation._append_turn"),
+    ):
+        reply = conversation.chat(
+            "je peux manger un mille feuille !?",
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            language="fr",
+            patient=patient,
+        )
+
+    assert "Difficulté technique momentanée" in reply
+    record_route.assert_called_once_with("policy_denied")
