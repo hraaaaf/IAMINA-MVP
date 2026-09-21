@@ -233,3 +233,30 @@ def test_module_food_decision_short_circuits_llm_in_stream():
 
     assert chunks == ["Réponse FOOD déterministe."]
     record_route.assert_called_once_with("policy_rule")
+
+
+def test_module_advice_exception_fails_closed_and_never_calls_llm():
+    patient = SimpleNamespace(id=42, first_name="")
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            side_effect=RuntimeError("food rule unavailable"),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.record_companion_route") as record_route,
+        patch("companion.conversation._append_turn"),
+    ):
+        reply = conversation.chat(
+            "je peux manger un mille feuille !?",
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            language="fr",
+            patient=patient,
+        )
+
+    assert "Difficulté technique momentanée" in reply
+    record_route.assert_called_once_with("policy_denied")
