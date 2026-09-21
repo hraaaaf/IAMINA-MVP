@@ -36,7 +36,17 @@ _FORBIDDEN = (
 
 _ARABIC_RE = re.compile(r"[\u0600-\u06ff\u0750-\u077f]")
 _LATIN_DARIJA_RE = re.compile(
-    r"\b(?:wach|n9dar|nqder|nkdar|nakol|nchrob|makla|gateau|7lowa|khobz)\b",
+    r"\b(?:wach|wash|n9dar|nqder|nkdar|nakol|nchrob|makla|gateau|7lowa|khobz)\b",
+    re.IGNORECASE,
+)
+
+_FOOD_CONTEXT_RE = re.compile(
+    r"(?:"
+    r"\b(?:manger|boire|repas|aliment|dessert|g[âa]teau|pain|riz|p[aâ]tes|"
+    r"eat|drink|food|meal|dessert|cake|bread|rice|pasta|"
+    r"nakol|nchrob|makla|gateau|7lowa|khobz)\b"
+    r"|(?:طعام|أكل|اكل|آكل|اكل|تناول|وجبة|حلوى|كيك|خبز|رز|ناكل|نشرب|الماكلة)"
+    r")",
     re.IGNORECASE,
 )
 
@@ -46,16 +56,27 @@ _PERMISSION_PATTERNS = (
         r"j['’]?ai\s+le\s+droit\s+de)\s+(?:manger|prendre|boire)\b",
         re.IGNORECASE,
     ),
+    re.compile(
+        r"\b(?:est[- ]?ce que|est ce que)\b.{0,48}"
+        r"\b(?:autorisé|autorisee?|permis|ok|okay)\b",
+        re.IGNORECASE,
+    ),
     re.compile(r"\bcan\s+i\s+(?:eat|have|drink)\b", re.IGNORECASE),
+    re.compile(r"\bam\s+i\s+allowed\s+to\s+(?:eat|have|drink)\b", re.IGNORECASE),
     re.compile(r"\bis\s+it\s+(?:ok|okay)\s+if\s+i\s+(?:eat|have|drink)\b", re.IGNORECASE),
     re.compile(
-        r"\b(?:wach\s+)?(?:n9dar|nqder|nkdar)\s+(?:nakol|nchrob)\b",
+        r"\b(?:wach|wash)?\s*(?:n9dar|nqder|nkdar)\s+(?:nakol|nchrob)\b",
         re.IGNORECASE,
     ),
     re.compile(
         r"(?:هل\s+)?(?:أقدر|اقدر|نقدر|ممكن)\s+(?:آكل|اكل|ناكل|أشرب|اشرب|نشرب)"
     ),
-    re.compile(r"واش\s+نقدر\s+(?:ناكل|نشرب)"),
+    re.compile(
+        r"هل\s+(?:يمكنني|أستطيع|استطيع)\s+(?:أن\s+)?"
+        r"(?:آكل|اكل|أتناول|اتناول|أشرب|اشرب|تناول)"
+    ),
+    re.compile(r"(?:واش\s+)?نقدر\s+(?:ناكل|نشرب)"),
+    re.compile(r"(?:عادي|ينفع|مسموح)\s+(?:لي\s+)?(?:آكل|اكل|أشرب|اشرب)"),
 )
 
 _PORTION_CARB_PATTERNS = (
@@ -92,9 +113,15 @@ def classify_food_decision(message: str) -> FoodDecisionIntent | None:
 
     if any(pattern.search(text) for pattern in _PERMISSION_PATTERNS):
         return FoodDecisionIntent.PERMISSION
-    if any(pattern.search(text) for pattern in _COMPARISON_PATTERNS):
+    if (
+        any(pattern.search(text) for pattern in _COMPARISON_PATTERNS)
+        and _FOOD_CONTEXT_RE.search(text)
+    ):
         return FoodDecisionIntent.COMPARISON
-    if any(pattern.search(text) for pattern in _PORTION_CARB_PATTERNS):
+    if (
+        any(pattern.search(text) for pattern in _PORTION_CARB_PATTERNS)
+        and _FOOD_CONTEXT_RE.search(text)
+    ):
         return FoodDecisionIntent.PORTION_CARBOHYDRATE
     return None
 
