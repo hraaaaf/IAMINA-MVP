@@ -53,6 +53,20 @@ def _clean_tuple(values: tuple[str, ...], *, field_name: str) -> tuple[str, ...]
     return tuple(cleaned)
 
 
+def _mapping_text(payload: Mapping[str, Any], key: str, *, default: str | None = None) -> str:
+    raw = payload.get(key, default)
+    if not isinstance(raw, str) or not raw.strip():
+        raise ValueError(f"{key} must be a non-empty string")
+    return raw.strip()
+
+
+def _mapping_tuple(payload: Mapping[str, Any], key: str) -> tuple[str, ...]:
+    raw = payload.get(key, ())
+    if not isinstance(raw, (list, tuple)):
+        raise ValueError(f"{key} must be a list or tuple")
+    return tuple(raw)
+
+
 @dataclass(frozen=True, slots=True)
 class AdviceDecision:
     """One versioned authorization decision produced before narration."""
@@ -208,22 +222,31 @@ class AdviceDecision:
         """Parse an untrusted serialized decision or return a safe refusal."""
 
         try:
+            escalation = payload.get("escalation")
+            if escalation is not None and not isinstance(escalation, str):
+                raise ValueError("escalation must be a string or null")
             return cls(
-                intent=str(payload["intent"]),
-                authority_level=AdviceAuthorityLevel(str(payload["authority_level"])),
-                decision=AdviceDisposition(str(payload["decision"])),
-                rule_id=str(payload["rule_id"]),
-                rule_version=str(payload["rule_version"]),
-                allowed_actions=tuple(payload.get("allowed_actions", ())),
-                forbidden_actions=tuple(payload.get("forbidden_actions", ())),
-                required_facts=tuple(payload.get("required_facts", ())),
-                missing_facts=tuple(payload.get("missing_facts", ())),
-                evidence_refs=tuple(payload.get("evidence_refs", ())),
-                limitations=tuple(payload.get("limitations", ())),
-                escalation=payload.get("escalation"),
-                language=str(payload.get("language", language)),
+                intent=_mapping_text(payload, "intent"),
+                authority_level=AdviceAuthorityLevel(
+                    _mapping_text(payload, "authority_level")
+                ),
+                decision=AdviceDisposition(_mapping_text(payload, "decision")),
+                rule_id=_mapping_text(payload, "rule_id"),
+                rule_version=_mapping_text(payload, "rule_version"),
+                allowed_actions=_mapping_tuple(payload, "allowed_actions"),
+                forbidden_actions=_mapping_tuple(payload, "forbidden_actions"),
+                required_facts=_mapping_tuple(payload, "required_facts"),
+                missing_facts=_mapping_tuple(payload, "missing_facts"),
+                evidence_refs=_mapping_tuple(payload, "evidence_refs"),
+                limitations=_mapping_tuple(payload, "limitations"),
+                escalation=escalation,
+                language=_mapping_text(payload, "language", default=language),
                 issued_by=Authority(
-                    str(payload.get("issued_by", Authority.DETERMINISTIC_ENGINE.value))
+                    _mapping_text(
+                        payload,
+                        "issued_by",
+                        default=Authority.DETERMINISTIC_ENGINE.value,
+                    )
                 ),
             )
         except (KeyError, TypeError, ValueError, PermissionError):
