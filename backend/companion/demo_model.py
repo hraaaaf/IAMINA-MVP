@@ -108,6 +108,8 @@ _LATIN_DARIJA_MARKERS = (
 )
 _GULF_MARKERS = ("أبغى", "وش", "هلا", "الحين", "خلك", "أسولف", "شوي")
 _NON_GULF_MARKERS = ("شو", "بدك", "عنو", "شنو", "واش", "بغيت")
+_MOROCCAN_ARABIC_MARKERS = ("شنو", "واش", "بغيت", "نهضر", "مزيان", "إيوا", "دابا")
+_NON_MSA_DIALECT_MARKERS = _MOROCCAN_ARABIC_MARKERS + ("وش", "ودي", "أبي", "خلك", "سوالف")
 _CASUAL_CHAT_MARKERS = (
     "just want a normal conversation",
     "just talk",
@@ -153,7 +155,7 @@ def _looks_casual_chat(text: str) -> bool:
     return any(marker.lower() in lower for marker in _CASUAL_CHAT_MARKERS)
 
 
-def _reply_matches_requested_style(message: str, reply: str) -> bool:
+def _reply_matches_requested_style(message: str, reply: str, language: str) -> bool:
     if _looks_latin_darija(message):
         if any(char in _ARABIC_SCRIPT for char in reply):
             return False
@@ -164,6 +166,9 @@ def _reply_matches_requested_style(message: str, reply: str) -> bool:
             return False
     if _looks_gulf_arabic(message):
         if any(marker in reply for marker in _NON_GULF_MARKERS):
+            return False
+    elif language == "ar":
+        if any(marker in reply for marker in _NON_MSA_DIALECT_MARKERS):
             return False
     return True
 
@@ -252,6 +257,6 @@ def generate_demo_reply(
     reply = _extract_reply(response.content)
     if not reply or len(reply) > 1200 or contains_unapproved_behavior_action(reply):
         raise DemoModelUnavailable("demo model output rejected by safety guard")
-    if not _reply_matches_requested_style(text, reply):
+    if not _reply_matches_requested_style(text, reply, language):
         raise DemoModelUnavailable("demo model output rejected by dialect/script guard")
     return reply
