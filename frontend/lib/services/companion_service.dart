@@ -22,11 +22,13 @@ class CompanionChatReply {
   final String reply;
   final String conversationId;
   final String replyLanguage;
+  final bool isEmergency;
 
   const CompanionChatReply({
     required this.reply,
     required this.conversationId,
     required this.replyLanguage,
+    this.isEmergency = false,
   });
 
   factory CompanionChatReply.fromJson(Map<String, dynamic> json) {
@@ -34,8 +36,18 @@ class CompanionChatReply {
       reply: json['reply'] as String? ?? '',
       conversationId: json['conversation_id'] as String? ?? '',
       replyLanguage: json['reply_language'] as String? ?? 'fr',
+      isEmergency: json['is_emergency'] as bool? ?? false,
     );
   }
+}
+
+class _DemoHistoryTurn {
+  final String role;
+  final String content;
+
+  const _DemoHistoryTurn(this.role, this.content);
+
+  Map<String, String> toJson() => {'role': role, 'content': content};
 }
 
 class CompanionService {
@@ -44,6 +56,10 @@ class CompanionService {
   final String baseUrl;
   final String demoLanguage;
   final CompanionFailureLogger _failureLogger;
+  final List<_DemoHistoryTurn> _demoHistory = <_DemoHistoryTurn>[];
+
+  static const int _demoMaxHistoryItems = 20;
+  static const int _demoMaxHistoryChars = 6000;
 
   CompanionService({
     AuthService? authService,
@@ -243,7 +259,11 @@ class CompanionService {
           .post(
             Uri.parse('$baseUrl/api/v1/demo/chat'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'message': message, 'language': demoLanguage}),
+            body: jsonEncode({
+              'message': message,
+              'language': demoLanguage,
+              'history': _demoHistory.map((turn) => turn.toJson()).toList(),
+            }),
           )
           .timeout(const Duration(seconds: 15));
 
@@ -257,6 +277,9 @@ class CompanionService {
         Map<String, dynamic>.from(decoded),
       );
       if (reply.reply.trim().isEmpty) return _demoReply(message);
+      if (!reply.isEmergency) {
+        _rememberDemoExchange(message, reply.reply);
+      }
       return reply;
     } catch (error, stackTrace) {
       _failureLogger(
@@ -265,6 +288,24 @@ class CompanionService {
         stackTrace,
       );
       return _demoReply(message);
+    }
+  }
+
+  void _rememberDemoExchange(String userMessage, String assistantReply) {
+    _demoHistory
+      ..add(_DemoHistoryTurn('user', userMessage))
+      ..add(_DemoHistoryTurn('assistant', assistantReply));
+
+    int totalChars() =>
+        _demoHistory.fold(0, (sum, turn) => sum + turn.content.length);
+
+    while (_demoHistory.length > _demoMaxHistoryItems ||
+        totalChars() > _demoMaxHistoryChars) {
+      if (_demoHistory.length >= 2) {
+        _demoHistory.removeRange(0, 2);
+      } else {
+        _demoHistory.clear();
+      }
     }
   }
 

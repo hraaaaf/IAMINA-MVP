@@ -14,7 +14,7 @@ from django.db import transaction
 from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from companion.demo import reply_to_demo_message
 from core.models import AIUserThrottleWindow, BasePatientProfile
@@ -54,9 +54,15 @@ class DemoScenarioResponse(BaseModel):
     description: str
 
 
+class DemoChatHistoryTurn(BaseModel):
+    role: str
+    content: str
+
+
 class DemoChatRequest(BaseModel):
     message: str
     language: str = "fr"
+    history: List[DemoChatHistoryTurn] = Field(default_factory=list)
 
 
 class DemoChatResponse(BaseModel):
@@ -89,15 +95,28 @@ def list_demo_scenarios(request):
 
 @router.post("/demo/chat", response=DemoChatResponse)
 def demo_chat(request, data: DemoChatRequest):
-    """Public, stateless IAMINA demo conversation with deterministic safety."""
+    """Public, stateless IAMINA demo conversation with request-scoped history."""
     _authorize_demo_chat_request(request)
     message = data.message.strip()
     if not message:
         raise HttpError(400, "Demo message must not be empty")
     if len(message) > 1000:
         raise HttpError(400, "Demo message exceeds 1000 characters")
+    if len(data.history) > 20:
+        raise HttpError(400, "Demo history exceeds 20 turns")
 
-    payload = reply_to_demo_message(message, language=data.language)
+    history = [
+        {"role": turn.role.strip(), "content": turn.content.strip()}
+        for turn in data.history
+    ]
+    if sum(len(turn["content"]) for turn in history) > 6000:
+        raise HttpError(400, "Demo history exceeds total size limit")
+
+    payload = reply_to_demo_message(
+        message,
+        language=data.language,
+        history=history,
+    )
     payload["timestamp"] = timezone.now().isoformat()
     return payload
 
