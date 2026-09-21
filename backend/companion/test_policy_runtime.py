@@ -2,7 +2,13 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from companion import conversation
+from core.clinical_policy import (
+    NarrationMode,
+    NarrationPolicyRequest,
+    authorize_narration,
+)
 from core.contracts.advice_decision import AdviceDecision
+from core.contracts.domain_context import DomainContext
 
 
 class ExplodingLLM:
@@ -106,3 +112,47 @@ def test_valid_policy_is_passed_into_prompt_builder_before_model_call():
     assert captured["decision"].rule_id == "core.narration.conversation"
     assert captured["decision"].authority_level.value == "L0"
     assert captured["context"].analysis_status == "insufficient_data"
+
+
+def test_l0_prompt_never_loads_companion_clinical_context():
+    decision = authorize_narration(
+        NarrationPolicyRequest(
+            mode=NarrationMode.PRACTICAL,
+            language="fr",
+            has_approved_context=False,
+            has_sufficient_data=False,
+            analysis_status="insufficient_data",
+        )
+    )
+    deep = SimpleNamespace(consecutive_log_days=0)
+
+    with (
+        patch("companion.conversation._recent_turns", return_value=[]),
+        patch(
+            "companion.conversation._get_companion_context",
+            side_effect=AssertionError("L0 must not load clinical companion context"),
+        ),
+        patch("companion.conversation.compute_state", return_value=object()),
+        patch("companion.conversation.state_to_prompt", return_value="safe-state"),
+        patch(
+            "companion.conversation.get_tone_instruction",
+            return_value="safe-tone",
+        ),
+    ):
+        language, ctx, system, _prompt = conversation._build_runtime_prompt(
+            message="Parlons simplement.",
+            memory=None,
+            deep=deep,
+            language="fr",
+            patient=None,
+            context_days=14,
+            streaming=False,
+            preloaded_context=DomainContext.empty(language="fr"),
+            advice_decision=decision,
+        )
+
+    assert language == "fr"
+    assert ctx.analysis_status == "insufficient_data"
+    assert "Contexte de session approuvé" not in system
+    assert "Contexte compagnon gouverné" not in system
+    assert "[ADVICE_AUTHORITY]" in system
