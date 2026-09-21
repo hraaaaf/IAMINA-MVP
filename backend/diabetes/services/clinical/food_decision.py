@@ -125,7 +125,7 @@ _PERMISSION_REPLY = {
         "help interpret it without calculating a dose or changing treatment."
     ),
     "darija_latin": (
-        "Ma ghanch ngolik yes/no بو7dha 3la chi makla. "
+        "Ma ghanch ngolik yes/no bo7dha 3la chi makla. "
         "Lahsan nchoufo lportion w ch7al men glucides kaynin f siyak dyal lmakla. "
         "Ila 3titini lportion wla l'étiquette, n9dar n3awnk tfesserhom bla dose w bla tbdel l3ilaj."
     ),
