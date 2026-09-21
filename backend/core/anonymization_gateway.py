@@ -13,6 +13,10 @@ The gateway deliberately:
 
 The output is deterministic and contains no reversible mapping.
 """
+# Ruff 0.15.17 reports a stable I001 false-positive on this stdlib-only block.
+# Scope the suppression to import sorting in this module only; all other lint remains active.
+# ruff: noqa: I001
+
 
 from __future__ import annotations
 
