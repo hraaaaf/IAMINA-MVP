@@ -154,7 +154,12 @@ def test_chat_keeps_clinical_patterns_out_of_relationship_memory():
 
     class LLM:
         def complete(self, system, user):
-            assert "Contexte compagnon gouverné" in system
+            # CI-2: this turn has no authorized clinical context, so L0 narration
+            # must not receive DomainContext/CompanionContext at all.
+            assert "Contexte compagnon gouverné" not in system
+            assert "Contexte de session approuvé" not in system
+            assert "[ADVICE_AUTHORITY]" in system
+            assert "level=L0" in system
             assert "legacy_pattern" not in user
             return types_module.SimpleNamespace(
                 content='{"reply":"Bonjour.","concern_detected":"clinical_alarm"}'

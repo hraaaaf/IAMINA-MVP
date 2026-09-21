@@ -1,0 +1,158 @@
+from types import SimpleNamespace
+from unittest.mock import patch
+
+from companion import conversation
+from core.clinical_policy import (
+    NarrationMode,
+    NarrationPolicyRequest,
+    authorize_narration,
+)
+from core.contracts.advice_decision import AdviceDecision
+from core.contracts.domain_context import DomainContext
+
+
+class ExplodingLLM:
+    def complete(self, *_args, **_kwargs):
+        raise AssertionError("LLM must not be called when policy denies narration")
+
+
+def test_chat_policy_denial_blocks_llm_before_narration():
+    with patch(
+        "companion.conversation.authorize_narration",
+        return_value=AdviceDecision.fail_closed(language="fr"),
+    ):
+        reply = conversation.chat(
+            "Explique-moi ce que je dois faire.",
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            language="fr",
+            patient=None,
+        )
+
+    assert "Difficulté technique momentanée" in reply
+
+
+def test_stream_policy_denial_blocks_llm_before_any_chunk():
+    with patch(
+        "companion.conversation.authorize_narration",
+        return_value=AdviceDecision.fail_closed(language="fr"),
+    ):
+        chunks = list(
+            conversation.stream_chat(
+                "Explique-moi ce que je dois faire.",
+                memory=None,
+                deep=object(),
+                llm=ExplodingLLM(),
+                language="fr",
+                patient=None,
+            )
+        )
+
+    assert chunks == ["Difficulté technique momentanée. Réessaie dans un instant."]
+
+
+def test_policy_exception_fails_closed_before_llm():
+    with patch(
+        "companion.conversation.authorize_narration",
+        side_effect=RuntimeError("policy unavailable"),
+    ):
+        reply = conversation.chat(
+            "Question libre",
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            language="fr",
+            patient=None,
+        )
+
+    assert "Difficulté technique momentanée" in reply
+
+
+def test_valid_policy_is_passed_into_prompt_builder_before_model_call():
+    captured = {}
+
+    def build_prompt(**kwargs):
+        captured["decision"] = kwargs["advice_decision"]
+        captured["context"] = kwargs["preloaded_context"]
+        return (
+            "fr",
+            kwargs["preloaded_context"],
+            "system",
+            "user",
+        )
+
+    llm = SimpleNamespace(
+        complete=lambda *_args, **_kwargs: SimpleNamespace(
+            content='{"reply":"Réponse descriptive."}'
+        )
+    )
+
+    with (
+        patch("companion.conversation._build_runtime_prompt", side_effect=build_prompt),
+        patch(
+            "companion.conversation._finalize_reply",
+            return_value="Réponse descriptive.",
+        ),
+        patch(
+            "companion.conversation._retry_finalized_repeat",
+            return_value="Réponse descriptive.",
+        ),
+    ):
+        reply = conversation.chat(
+            "Peux-tu m'expliquer cette situation ?",
+            memory=None,
+            deep=object(),
+            llm=llm,
+            language="fr",
+            patient=None,
+        )
+
+    assert reply == "Réponse descriptive."
+    assert captured["decision"].rule_id == "core.narration.conversation"
+    assert captured["decision"].authority_level.value == "L0"
+    assert captured["context"].analysis_status == "insufficient_data"
+
+
+def test_l0_prompt_never_loads_companion_clinical_context():
+    decision = authorize_narration(
+        NarrationPolicyRequest(
+            mode=NarrationMode.PRACTICAL,
+            language="fr",
+            has_approved_context=False,
+            has_sufficient_data=False,
+            analysis_status="insufficient_data",
+        )
+    )
+    deep = SimpleNamespace(consecutive_log_days=0)
+
+    with (
+        patch("companion.conversation._recent_turns", return_value=[]),
+        patch(
+            "companion.conversation._get_companion_context",
+            side_effect=AssertionError("L0 must not load clinical companion context"),
+        ),
+        patch("companion.conversation.compute_state", return_value=object()),
+        patch("companion.conversation.state_to_prompt", return_value="safe-state"),
+        patch(
+            "companion.conversation.get_tone_instruction",
+            return_value="safe-tone",
+        ),
+    ):
+        language, ctx, system, _prompt = conversation._build_runtime_prompt(
+            message="Parlons simplement.",
+            memory=None,
+            deep=deep,
+            language="fr",
+            patient=None,
+            context_days=14,
+            streaming=False,
+            preloaded_context=DomainContext.empty(language="fr"),
+            advice_decision=decision,
+        )
+
+    assert language == "fr"
+    assert ctx.analysis_status == "insufficient_data"
+    assert "Contexte de session approuvé" not in system
+    assert "Contexte compagnon gouverné" not in system
+    assert "[ADVICE_AUTHORITY]" in system

@@ -33,3 +33,17 @@ def test_companion_route_telemetry_is_content_free(caplog):
 def test_companion_route_telemetry_rejects_unbounded_labels():
     with pytest.raises(ValueError, match="unsupported companion route"):
         record_companion_route("patient-42")
+
+
+def test_policy_denied_is_a_supported_content_free_route(monkeypatch):
+    events = []
+    monkeypatch.setattr(
+        "companion.route_telemetry.persist_cost_event",
+        lambda event: events.append(event),
+    )
+
+    from companion.route_telemetry import record_companion_route
+
+    record_companion_route("policy_denied")
+
+    assert events == [{"event": "companion_route", "route": "policy_denied"}]
