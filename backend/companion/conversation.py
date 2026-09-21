@@ -420,7 +420,20 @@ def _build_runtime_prompt(
         patient=patient,
     )
     ctx = preloaded_context or _get_context(patient, context_days, language)
-    companion_ctx = _get_companion_context(patient, language)
+    clinical_context_authorized = (
+        advice_decision is None
+        or advice_decision.authority_level.value != "L0"
+    )
+    prompt_ctx = (
+        ctx
+        if clinical_context_authorized
+        else DomainContext.empty(language=language)
+    )
+    companion_ctx = (
+        _get_companion_context(patient, language)
+        if clinical_context_authorized
+        else CompanionContext.empty(language=language)
+    )
     emotional = _is_emotional(message)
     mode = _response_mode(message)
 
@@ -428,7 +441,7 @@ def _build_runtime_prompt(
         emotional=emotional,
         streak_days=deep.consecutive_log_days,
     )
-    state = compute_state(memory, deep, ctx)
+    state = compute_state(memory, deep, prompt_ctx)
 
     system = SYSTEM_WITH_STATE.format(
         language=get_language_label(language),
@@ -445,9 +458,9 @@ def _build_runtime_prompt(
     if advice_decision is not None:
         system += "\n\n" + narration_policy_block(advice_decision)
 
-    if not emotional:
-        if ctx.pivot_text:
-            system += f"\n\nContexte de session approuvé\n{ctx.pivot_text}"
+    if not emotional and clinical_context_authorized:
+        if prompt_ctx.pivot_text:
+            system += f"\n\nContexte de session approuvé\n{prompt_ctx.pivot_text}"
         system += "\n\n" + _companion_context_block(companion_ctx)
 
     memory_summary = _safe_text(
