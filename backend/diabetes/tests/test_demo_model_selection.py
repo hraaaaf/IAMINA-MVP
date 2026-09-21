@@ -115,3 +115,75 @@ class DemoModelSelectionTests(SimpleTestCase):
         decoded = json.loads(user_payload)
         self.assertEqual(decoded["bounded_demo_history"], [])
 
+
+    @patch.dict(
+        os.environ,
+        {
+            "IAMINA_DEMO_EXTERNAL_AI_ENABLED": "true",
+            "IAMINA_DEMO_LLM_PROVIDER": "groq",
+            "IAMINA_DEMO_LLM_MODEL": "",
+        },
+        clear=False,
+    )
+    @patch("companion.demo_model.build_openai_compatible_provider")
+    def test_latin_darija_rejects_arabic_script_drift(self, build):
+        provider = MagicMock()
+        provider.complete.return_value.content = "Salam 👋 Labas? شنو بغيتي نهدروا عليه؟"
+        build.return_value = provider
+
+        with self.assertRaisesRegex(Exception, "dialect/script guard"):
+            generate_demo_reply("salam, lyouma t3yit chwia bghit ghir nhder", "fr")
+
+    @patch.dict(
+        os.environ,
+        {
+            "IAMINA_DEMO_EXTERNAL_AI_ENABLED": "true",
+            "IAMINA_DEMO_LLM_PROVIDER": "groq",
+            "IAMINA_DEMO_LLM_MODEL": "",
+        },
+        clear=False,
+    )
+    @patch("companion.demo_model.build_openai_compatible_provider")
+    def test_latin_darija_allows_latin_only_reply(self, build):
+        provider = MagicMock()
+        provider.complete.return_value.content = "Salam 👋 labas? N9dro nhdro chwia b rahatk."
+        build.return_value = provider
+
+        reply = generate_demo_reply("salam, lyouma t3yit chwia bghit ghir nhder", "fr")
+        self.assertEqual(reply, "Salam 👋 labas? N9dro nhdro chwia b rahatk.")
+
+    @patch.dict(
+        os.environ,
+        {
+            "IAMINA_DEMO_EXTERNAL_AI_ENABLED": "true",
+            "IAMINA_DEMO_LLM_PROVIDER": "groq",
+            "IAMINA_DEMO_LLM_MODEL": "",
+        },
+        clear=False,
+    )
+    @patch("companion.demo_model.build_openai_compatible_provider")
+    def test_gulf_arabic_rejects_levantine_or_moroccan_markers(self, build):
+        provider = MagicMock()
+        provider.complete.return_value.content = "هلا! شو صار معاك اليوم؟ شنو بدك تحكي؟"
+        build.return_value = provider
+
+        with self.assertRaisesRegex(Exception, "dialect/script guard"):
+            generate_demo_reply("هلا، اليوم كان طويل شوي وأبغى بس أسولف.", "ar")
+
+    @patch.dict(
+        os.environ,
+        {
+            "IAMINA_DEMO_EXTERNAL_AI_ENABLED": "true",
+            "IAMINA_DEMO_LLM_PROVIDER": "groq",
+            "IAMINA_DEMO_LLM_MODEL": "",
+        },
+        clear=False,
+    )
+    @patch("companion.demo_model.build_openai_compatible_provider")
+    def test_gulf_arabic_allows_gulf_reply(self, build):
+        provider = MagicMock()
+        provider.complete.return_value.content = "هلا والله، خذ راحتك. وش ودك نسولف عنه؟"
+        build.return_value = provider
+
+        reply = generate_demo_reply("هلا، اليوم كان طويل شوي وأبغى بس أسولف.", "ar")
+        self.assertEqual(reply, "هلا والله، خذ راحتك. وش ودك نسولف عنه؟")
