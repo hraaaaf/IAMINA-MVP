@@ -157,3 +157,33 @@ class AdviceDecisionContractTests(TestCase):
         decision = AdviceDecision.fail_closed()
         with self.assertRaises(PermissionError):
             decision.assert_action_allowed("change_treatment")
+
+
+    def test_scalar_action_collection_fails_closed_instead_of_splitting_string(self):
+        decision = AdviceDecision.from_mapping_fail_closed(
+            {
+                "intent": "education",
+                "authority_level": "L1",
+                "decision": "allow",
+                "rule_id": "core.education.001",
+                "rule_version": "1",
+                "allowed_actions": "explain_approved_data",
+            }
+        )
+
+        self.assertEqual(decision.rule_id, "core.advice.fail_closed")
+        self.assertEqual(decision.decision, AdviceDisposition.REFUSE)
+
+    def test_non_string_required_field_fails_closed(self):
+        decision = AdviceDecision.from_mapping_fail_closed(
+            {
+                "intent": None,
+                "authority_level": "L1",
+                "decision": "allow",
+                "rule_id": "core.education.001",
+                "rule_version": "1",
+            }
+        )
+
+        self.assertEqual(decision.rule_id, "core.advice.fail_closed")
+        self.assertEqual(decision.authority_level, AdviceAuthorityLevel.L5_PROHIBITED)
