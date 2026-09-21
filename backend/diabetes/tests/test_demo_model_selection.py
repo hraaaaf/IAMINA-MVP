@@ -271,3 +271,45 @@ class DemoModelSelectionTests(SimpleTestCase):
                 "salam, lyouma t3yit chwia bghit ghir nhder chwia",
                 "fr",
             )
+
+    @patch.dict(
+        os.environ,
+        {
+            "IAMINA_DEMO_EXTERNAL_AI_ENABLED": "true",
+            "IAMINA_DEMO_LLM_PROVIDER": "groq",
+            "IAMINA_DEMO_LLM_MODEL": "",
+        },
+        clear=False,
+    )
+    @patch("companion.demo_model.build_openai_compatible_provider")
+    def test_msa_rejects_moroccan_drift(self, build):
+        provider = MagicMock()
+        provider.complete.return_value.content = "تمام، شنو جديدك اليوم؟"
+        build.return_value = provider
+
+        with self.assertRaisesRegex(Exception, "dialect/script guard"):
+            generate_demo_reply(
+                "نعم، لنبقها محادثة بسيطة.",
+                "ar",
+            )
+
+    @patch.dict(
+        os.environ,
+        {
+            "IAMINA_DEMO_EXTERNAL_AI_ENABLED": "true",
+            "IAMINA_DEMO_LLM_PROVIDER": "groq",
+            "IAMINA_DEMO_LLM_MODEL": "",
+        },
+        clear=False,
+    )
+    @patch("companion.demo_model.build_openai_compatible_provider")
+    def test_msa_allows_standard_arabic_reply(self, build):
+        provider = MagicMock()
+        provider.complete.return_value.content = "بالتأكيد، لنبقها محادثة بسيطة وخفيفة."
+        build.return_value = provider
+
+        reply = generate_demo_reply(
+            "نعم، لنبقها محادثة بسيطة.",
+            "ar",
+        )
+        self.assertEqual(reply, "بالتأكيد، لنبقها محادثة بسيطة وخفيفة.")
