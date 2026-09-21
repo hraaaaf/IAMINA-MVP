@@ -62,6 +62,19 @@ def test_minimizer_coarsens_known_reidentification_signals_without_mapping():
     assert "exact_clinical_value" in transformations
 
 
+def test_minimizer_removes_international_phone_and_disposable_patient_token():
+    raw = "Contact +33 6 12 34 56 78. Ref PATIENT_deadbeef."
+
+    minimized, transformations = minimize_external_text(raw)
+
+    assert "+33 6 12 34 56 78" not in minimized
+    assert "PATIENT_deadbeef" not in minimized
+    assert "[identifier withheld]" in minimized
+    assert "[patient reference withheld]" in minimized
+    assert "direct_identifier" in transformations
+    assert "patient_reference_token" in transformations
+
+
 def test_minimizer_covers_arabic_digits_age_location_and_clinical_units():
     raw = (
         "عمري ٢٩ سنة. أسكن في الرباط. "
