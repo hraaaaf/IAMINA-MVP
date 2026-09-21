@@ -130,6 +130,14 @@ FOOD_CASES = (
         "latin",
     ),
     FoodEvalCase(
+        "food.permission.history-contradiction",
+        "HISTORY_CONTRADICTION",
+        "Hier on m'a dit que ce gâteau était interdit ; aujourd'hui je peux manger ce gâteau ?",
+        "fr",
+        "diabetes.food.permission",
+        "latin",
+    ),
+    FoodEvalCase(
         "food.portion.fr",
         "PARAPHRASE",
         "Combien de glucides contient ce mille-feuille ?",

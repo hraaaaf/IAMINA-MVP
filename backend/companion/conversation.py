@@ -523,11 +523,17 @@ def _authorize_runtime_narration(
     ctx = _get_context(patient, context_days, detected_language)
 
     try:
+        previous_user_message = None
+        if patient is not None:
+            previous_user_turns = _recent_turns(patient, 1, role="user")
+            if previous_user_turns:
+                previous_user_message = previous_user_turns[0].message
         module_resolution = get_advice_resolution(
             patient.id if patient else None,
             message,
             ctx,
             language=detected_language,
+            previous_user_message=previous_user_message,
         )
     except Exception:
         logger.exception("IAmina module advice policy failed closed")

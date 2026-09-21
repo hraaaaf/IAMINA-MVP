@@ -10,6 +10,7 @@ from diabetes.services.clinical.food_decision import (
     FoodDecisionIntent,
     classify_food_decision,
     resolve_food_decision,
+    resolve_food_followup,
 )
 
 _ARABIC_RE = re.compile(r"[\u0600-\u06ff\u0750-\u077f]")
@@ -152,3 +153,51 @@ def test_gulf_food_reply_does_not_drift_to_moroccan_markers():
     assert "أقدر" in resolution.reply
     for marker in ("شنو", "واش", "بغيت", "مزيان", "إيوا"):
         assert marker not in resolution.reply
+
+
+def test_food_followup_inherits_only_bounded_permission_intent():
+    resolution = resolve_food_followup(
+        "Et du riz ?",
+        "Je peux manger un gâteau ?",
+        language="fr",
+    )
+
+    assert resolution is not None
+    assert resolution.decision.intent == FoodDecisionIntent.PERMISSION.value
+    assert resolution.decision.rule_id == "diabetes.food.permission"
+    assert "approve_food_personally" in resolution.decision.forbidden_actions
+
+
+def test_food_followup_fails_closed_without_food_anchor():
+    assert (
+        resolve_food_followup(
+            "Et demain ?",
+            "Je peux manger un gâteau ?",
+            language="fr",
+        )
+        is None
+    )
+
+
+def test_food_followup_does_not_inherit_comparison_intent():
+    assert (
+        resolve_food_followup(
+            "Et du couscous ?",
+            "Quel est le meilleur à manger, riz ou pâtes ?",
+            language="fr",
+        )
+        is None
+    )
+
+
+def test_historical_contradiction_stays_current_governed_permission():
+    resolution = resolve_food_decision(
+        "Hier on m'a dit que ce gâteau était interdit ; aujourd'hui je peux manger ce gâteau ?",
+        language="fr",
+    )
+
+    assert resolution is not None
+    assert resolution.decision.intent == FoodDecisionIntent.PERMISSION.value
+    assert resolution.decision.decision is AdviceDisposition.CONSTRAIN
+    assert "approve_food_personally" in resolution.decision.forbidden_actions
+    assert "forbid_food_personally" in resolution.decision.forbidden_actions

@@ -18,6 +18,7 @@ def test_food_eval_corpus_has_required_adversarial_dimensions():
         "FALSE_POSITIVE",
         "TYPO_ABBREVIATION",
         "MISSING_DATA",
+        "HISTORY_CONTRADICTION",
     } <= dimensions
 
 
