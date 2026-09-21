@@ -46,9 +46,6 @@ _CLINICAL_ACTION_BARRIER = (
 def authorize_narration(request: NarrationPolicyRequest) -> AdviceDecision:
     """Return the highest authority allowed before narration begins."""
 
-    if request.analysis_status in {"partial", "unavailable"}:
-        return AdviceDecision.fail_closed(language=request.language)
-
     if request.mode is NarrationMode.EMOTIONAL:
         return AdviceDecision(
             intent="conversation_emotional_support",
@@ -73,6 +70,12 @@ def authorize_narration(request: NarrationPolicyRequest) -> AdviceDecision:
             limitations=("questions_only", "no_treatment_selection"),
             language=request.language,
         )
+
+    if (
+        request.analysis_status in {"partial", "unavailable"}
+        and request.has_approved_context
+    ):
+        return AdviceDecision.fail_closed(language=request.language)
 
     if (
         request.has_approved_context
