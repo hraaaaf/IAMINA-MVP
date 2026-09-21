@@ -21,7 +21,8 @@ django.setup()
 
 from companion.demo_model import generate_demo_reply  # noqa: E402
 
-MODELS = ["openai/gpt-oss-120b","allam-2-7b"]
+PRIMARY_MODEL = "openai/gpt-oss-120b"
+MODELS = [PRIMARY_MODEL, "allam-2-7b"]
 PROMPTS = [
     ("darija-latin", "fr", "fia doukha"),
     ("darija-latin", "fr", "ma fhemtch chno glti"),
@@ -55,6 +56,45 @@ def main():
 
     rows = []
     continuity = []
+
+    # Run the retained production candidate first so quota used by the wider
+    # multilingual comparison cannot invalidate the continuity proof.
+    os.environ["IAMINA_DEMO_LLM_MODEL"] = PRIMARY_MODEL
+    history = []
+    primary_turns = []
+    for turn_index, (language, prompt) in enumerate(MULTITURN_SCENARIO, start=1):
+        try:
+            reply = generate_demo_reply(prompt, language, history=history)
+            primary_turns.append(
+                {
+                    "turn": turn_index,
+                    "language": language,
+                    "prompt": prompt,
+                    "reply": reply,
+                    "history_items_sent": len(history),
+                    "error": None,
+                }
+            )
+            history.extend(
+                [
+                    {"role": "user", "content": prompt},
+                    {"role": "assistant", "content": reply},
+                ]
+            )
+        except Exception as exc:
+            primary_turns.append(
+                {
+                    "turn": turn_index,
+                    "language": language,
+                    "prompt": prompt,
+                    "reply": "",
+                    "history_items_sent": len(history),
+                    "error": type(exc).__name__ + ": " + str(exc)[:300],
+                }
+            )
+            break
+    continuity.append({"model": PRIMARY_MODEL, "turns": primary_turns})
+
     for model in MODELS:
         os.environ["IAMINA_DEMO_LLM_MODEL"] = model
         for locale, language, prompt in PROMPTS:
@@ -80,49 +120,21 @@ def main():
                     }
                 )
 
-        history = []
-        turn_rows = []
-        for turn_index, (language, prompt) in enumerate(MULTITURN_SCENARIO, start=1):
-            try:
-                reply = generate_demo_reply(prompt, language, history=history)
-                turn_rows.append(
-                    {
-                        "turn": turn_index,
-                        "language": language,
-                        "prompt": prompt,
-                        "reply": reply,
-                        "history_items_sent": len(history),
-                        "error": None,
-                    }
-                )
-                history.extend(
-                    [
-                        {"role": "user", "content": prompt},
-                        {"role": "assistant", "content": reply},
-                    ]
-                )
-            except Exception as exc:
-                turn_rows.append(
-                    {
-                        "turn": turn_index,
-                        "language": language,
-                        "prompt": prompt,
-                        "reply": "",
-                        "history_items_sent": len(history),
-                        "error": type(exc).__name__ + ": " + str(exc)[:300],
-                    }
-                )
-                break
-        continuity.append({"model": model, "turns": turn_rows})
-
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
+    primary_complete = (
+        len(primary_turns) == len(MULTITURN_SCENARIO)
+        and all(turn["error"] is None for turn in primary_turns)
+    )
+
     output.write_text(
         json.dumps(
             {
                 "synthetic": True,
                 "production_path": True,
                 "models": MODELS,
+                "primary_model": PRIMARY_MODEL,
+                "primary_multiturn_complete": primary_complete,
                 "rows": rows,
                 "multiturn": continuity,
             },
@@ -131,6 +143,9 @@ def main():
         ),
         encoding="utf-8",
     )
+
+    if not primary_complete:
+        raise SystemExit("primary multi-turn continuity proof incomplete")
 
 
 if __name__ == "__main__":
