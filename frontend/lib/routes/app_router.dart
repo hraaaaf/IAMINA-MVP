@@ -89,6 +89,7 @@ AppRouterHolder createAppRouterHolder({
       final isLoginPage = path == '/login';
       final isPasswordResetPage = path == '/reset-password';
       final isConsentPage = path == '/consent';
+      final isOnboardingPage = path == '/onboarding';
       final isAppLockSetupPage = path == '/app-lock/setup';
       final isAppLockUnlockPage = path == '/app-lock/unlock';
       final isAppLockPage = isAppLockSetupPage || isAppLockUnlockPage;
@@ -161,7 +162,11 @@ AppRouterHolder createAppRouterHolder({
         final hasConsent = activeConsent.hasConsent;
         final hasDeclined = activeConsent.hasDeclinedLocally;
 
-        if (!hasConsent && !hasDeclined && !isConsentPage && !isAppLockPage) {
+        if (!hasConsent &&
+            !hasDeclined &&
+            !isConsentPage &&
+            !isOnboardingPage &&
+            !isAppLockPage) {
           return '/consent';
         }
         if (hasConsent && isConsentPage) return _homeRoute();
