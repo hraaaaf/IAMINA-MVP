@@ -17,10 +17,10 @@ The output is deterministic and contains no reversible mapping.
 from __future__ import annotations
 
 import collections.abc
+import dataclasses
 import re
+import types
 import unicodedata
-from dataclasses import dataclass, field
-from types import MappingProxyType
 
 
 _DIGIT_TRANSLATION = str.maketrans(
@@ -33,7 +33,7 @@ class AnonymizationRiskDenied(PermissionError):
     """Raised when provider-bound text still contains known re-identification risk."""
 
 
-@dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class AnonymizationResult:
     """Immutable minimized payload plus non-sensitive transformation metadata."""
 
@@ -41,7 +41,7 @@ class AnonymizationResult:
     transformations: tuple[str, ...]
     residual_findings: frozenset[str]
     # Deliberately non-initializable: this layer can never self-certify legal anonymity.
-    certified_anonymous: bool = field(init=False, default=False)
+    certified_anonymous: bool = dataclasses.field(init=False, default=False)
 
 
 _EMAIL = re.compile(
@@ -259,7 +259,7 @@ def minimize_external_text_payload(payload: collections.abc.Mapping[str, str]) -
         )
 
     return AnonymizationResult(
-        fields=MappingProxyType(minimized),
+        fields=types.MappingProxyType(minimized),
         transformations=tuple(all_transformations),
         residual_findings=frozenset(),
     )
