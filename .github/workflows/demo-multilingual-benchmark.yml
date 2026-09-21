@@ -40,3 +40,137 @@ jobs:
           name: demo-multilingual-benchmark
           path: artifacts/demo-multilingual-benchmark.json
           retention-days: 14
+
+
+  prod-quality-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Audit production demo conversational quality
+        env:
+          BASE_URL: https://iamina-certified.vercel.app
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import urllib.request
+
+          base = os.environ["BASE_URL"].rstrip("/")
+          scenarios = [
+              {
+                  "name": "fr-natural",
+                  "turns": [
+                      ("fr", "Salut, j’ai eu une longue journée et j’ai juste envie de souffler un peu."),
+                      ("fr", "Pas besoin d’un plan, juste parle-moi normalement."),
+                      ("fr", "Tu peux être un peu plus naturel et moins formel ?"),
+                  ],
+              },
+              {
+                  "name": "en-natural",
+                  "turns": [
+                      ("en", "Hey, today was a bit much. I just want a normal conversation."),
+                      ("en", "No advice please, just talk to me like a person."),
+                      ("en", "That’s better. Keep it short and natural."),
+                  ],
+              },
+              {
+                  "name": "darija-natural",
+                  "turns": [
+                      ("fr", "salam, lyouma t3yit chwia bghit ghir nhder chwia"),
+                      ("fr", "ma bghitch conseils daba, ghir hdar m3aya normal"),
+                      ("fr", "khlliha basita o tabi3iya"),
+                  ],
+              },
+              {
+                  "name": "arabic-natural",
+                  "turns": [
+                      ("ar", "هلا، اليوم كان طويل شوي وأبغى بس أسولف."),
+                      ("ar", "ما أبغى نصائح الحين، بس كلمني بشكل طبيعي."),
+                      ("ar", "خلك مختصر وعفوي."),
+                  ],
+              },
+          ]
+
+          result = {"production": True, "synthetic": True, "scenarios": []}
+          all_failures = []
+
+          for scenario in scenarios:
+              history = []
+              replies = []
+              for language, message in scenario["turns"]:
+                  payload = json.dumps(
+                      {"message": message, "language": language, "history": history},
+                      ensure_ascii=False,
+                  ).encode("utf-8")
+                  req = urllib.request.Request(
+                      base + "/api/v1/demo/chat",
+                      data=payload,
+                      headers={"Content-Type": "application/json"},
+                      method="POST",
+                  )
+                  with urllib.request.urlopen(req, timeout=60) as response:
+                      body = json.loads(response.read().decode("utf-8"))
+                  reply = body.get("reply", "").strip()
+                  if not reply:
+                      raise SystemExit(f"{scenario['name']}: empty reply")
+                  replies.append(reply)
+                  history.extend([
+                      {"role": "user", "content": message},
+                      {"role": "assistant", "content": reply},
+                  ])
+
+              joined = " ".join(replies)
+              lower = joined.lower()
+              repeated_prefixes = 0
+              prefixes = []
+              for reply in replies:
+                  words = re.findall(r"\w+", reply.lower())[:4]
+                  prefix = " ".join(words)
+                  prefixes.append(prefix)
+              repeated_prefixes = len(prefixes) - len(set(prefixes))
+
+              too_long = [len(reply) for reply in replies if len(reply) > 500]
+              unwanted_advice = any(
+                  token in lower
+                  for token in [
+                      "you should",
+                      "i recommend",
+                      "je te conseille",
+                      "tu devrais",
+                      "أنصحك",
+                      "لازم",
+                  ]
+              )
+              robotic = any(
+                  token in lower
+                  for token in [
+                      "as an ai",
+                      "en tant qu",
+                      "je suis une ia",
+                      "language routing",
+                      "public demo mode",
+                  ]
+              )
+
+              checks = {
+                  "non_empty": len(replies) == 3,
+                  "no_robotic_meta": not robotic,
+                  "no_repeated_prefix": repeated_prefixes == 0,
+                  "concise": not too_long,
+                  "respects_no_advice": not unwanted_advice,
+              }
+              failures = [k for k, v in checks.items() if not v]
+              all_failures.extend([scenario["name"] + ":" + x for x in failures])
+              result["scenarios"].append({
+                  "name": scenario["name"],
+                  "checks": checks,
+                  "failures": failures,
+                  "replies": replies,
+              })
+
+          result["failed_checks"] = all_failures
+          print(json.dumps(result, ensure_ascii=False))
+          if all_failures:
+              raise SystemExit("quality audit failed: " + ", ".join(all_failures))
+          PY
