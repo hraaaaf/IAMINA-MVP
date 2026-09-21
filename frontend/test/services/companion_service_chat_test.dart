@@ -56,10 +56,53 @@ void main() {
     expect(jsonDecode(captured.body), {
       'message': 'bonjour',
       'language': 'fr',
+      'history': <dynamic>[],
     });
     expect(reply?.conversationId, 'demo-governed');
     expect(reply?.replyLanguage, 'fr');
     expect(reply?.reply, contains('Que puis-je faire'));
+
+    service.dispose();
+  });
+
+  test('demo audit chat sends prior governed exchange on the next turn', () async {
+    final captured = <http.Request>[];
+    var call = 0;
+    final service = CompanionService(
+      authService: _AuditAuthService(),
+      httpClient: MockClient((request) async {
+        captured.add(request);
+        call += 1;
+        return http.Response(
+          jsonEncode({
+            'reply': call == 1
+                ? 'Tu veux mieux dormir.'
+                : 'Ton objectif précédent était de mieux dormir.',
+            'conversation_id': 'demo-governed',
+            'timestamp': '2026-09-21T00:00:00Z',
+            'is_emergency': false,
+            'reply_language': 'fr',
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+      baseUrl: 'http://127.0.0.1:8000',
+    );
+
+    await service.sendChatMessage('Je veux mieux dormir.');
+    await service.sendChatMessage('Quel était mon objectif ?');
+
+    expect(captured, hasLength(2));
+    expect(captured[1].headers['authorization'], isNull);
+    expect(jsonDecode(captured[1].body), {
+      'message': 'Quel était mon objectif ?',
+      'language': 'fr',
+      'history': [
+        {'role': 'user', 'content': 'Je veux mieux dormir.'},
+        {'role': 'assistant', 'content': 'Tu veux mieux dormir.'},
+      ],
+    });
 
     service.dispose();
   });
