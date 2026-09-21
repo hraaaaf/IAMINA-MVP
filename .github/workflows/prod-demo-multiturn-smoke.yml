@@ -8,7 +8,8 @@ on:
       - ".github/workflows/prod-demo-multiturn-smoke.yml"
 
 permissions:
-  contents: write
+  contents: read
+  issues: write
 
 jobs:
   smoke:
@@ -108,14 +109,12 @@ jobs:
               raise SystemExit(1)
           PY
 
-      - name: Commit smoke evidence to technical branch
+      - name: Publish smoke evidence as GitHub issue
         if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add artifacts/prod-demo-smoke-result.json
-          git commit -m "chore(smoke): record production demo result" || exit 0
-          git push origin HEAD
+          gh issue create             --title "PROD_DEMO_SMOKE_20260921"             --body-file artifacts/prod-demo-smoke-result.json
 
       - name: Enforce smoke result
         if: steps.smoke.outcome != 'success'
