@@ -42,7 +42,9 @@ _EMAIL = re.compile(
     r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+(?![\w.-])",
     re.IGNORECASE,
 )
-_PHONE = re.compile(r"(?<!\w)(?:(?:\+|00)?\d[\s.()/-]*){8,15}(?!\w)")
+_PHONE = re.compile(
+    r"(?<!\\w)(?:(?:\\+|00)212[\\s.()/-]*|0)[5-7](?:[\\s.()/-]*\\d){8}(?!\\w)"
+)
 _CIN = re.compile(r"(?<!\w)[A-Z]{1,2}[\s-]?\d{5,8}(?!\w)", re.IGNORECASE)
 _UUID = re.compile(
     r"(?<![0-9a-f])[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-"
