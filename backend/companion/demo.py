@@ -61,6 +61,14 @@ _LATIN_DARIJA_RE = re.compile(
 _GULF_RE = re.compile(r"(?:هلا|أبغى|أبي|ودي|الحين|أسولف|سوالف|خلك|شوي)")
 
 
+def _history_is_casual(history: list[dict[str, str]]) -> bool:
+    return any(
+        turn.get("role") == "user"
+        and _CASUAL_CHAT_RE.search(str(turn.get("content", "")))
+        for turn in history
+    )
+
+
 def _casual_fallback(
     text: str,
     reply_language: str,
@@ -238,8 +246,9 @@ def reply_to_demo_message(
         except DemoPayloadDenied:
             reply = _DEMO_COPY[reply_language]["personal"]
         except DemoModelUnavailable:
-            if _CASUAL_CHAT_RE.search(text):
-                reply = _casual_fallback(text, reply_language, history or [])
+            bounded_history = history or []
+            if _CASUAL_CHAT_RE.search(text) or _history_is_casual(bounded_history):
+                reply = _casual_fallback(text, reply_language, bounded_history)
             elif _EMOTIONAL_RE.search(text):
                 reply = safe_fallback(
                     reply_language,
