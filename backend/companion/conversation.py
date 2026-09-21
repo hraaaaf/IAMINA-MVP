@@ -520,12 +520,18 @@ def _authorize_runtime_narration(
     detected_language = detect_language(message, language)
     ctx = _get_context(patient, context_days, detected_language)
 
-    module_resolution = get_advice_resolution(
-        patient.id if patient else None,
-        message,
-        ctx,
-        language=detected_language,
-    )
+    try:
+        module_resolution = get_advice_resolution(
+            patient.id if patient else None,
+            message,
+            ctx,
+            language=detected_language,
+        )
+    except Exception:
+        logger.exception("IAmina module advice policy failed closed")
+        decision = AdviceDecision.fail_closed(language=detected_language)
+        return detected_language, ctx, decision, None
+
     if module_resolution is not None:
         return detected_language, ctx, module_resolution.decision, module_resolution
 
