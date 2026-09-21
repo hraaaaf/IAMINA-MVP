@@ -198,6 +198,11 @@ def _snapshot(resolution) -> ClinicalDecisionSnapshot:
             "rule_id": decision.rule_id,
             "rule_version": decision.rule_version,
             "language": decision.language,
+            "required_facts": decision.required_facts,
+            "missing_facts": decision.missing_facts,
+            "evidence_refs": decision.evidence_refs,
+            "limitations": decision.limitations,
+            "escalation": decision.escalation,
         }
     )
 
