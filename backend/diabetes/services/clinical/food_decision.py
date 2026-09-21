@@ -79,13 +79,16 @@ _PERMISSION_PATTERNS = (
     re.compile(r"(?:عادي|ينفع|مسموح)\s+(?:لي\s+)?(?:آكل|اكل|أشرب|اشرب)"),
 )
 
-_PORTION_CARB_PATTERNS = (
-    re.compile(
-        r"\b(?:portion|glucides?|carbohydrates?|carbs?|étiquette|etiquette|label"
-        r"|nutrition(?:nel|nelle)?s?)\b",
-        re.IGNORECASE,
-    ),
-    re.compile(r"(?:كربوهيدرات|الكربوهيدرات|الحصة|الكمية|الملصق الغذائي|ليبيتيكيت)"),
+_STRONG_NUTRITION_RE = re.compile(
+    r"(?:\b(?:glucides?|carbohydrates?|carbs?|nutrition(?:nel|nelle)?s?)\b"
+    r"|(?:كربوهيدرات|الكربوهيدرات))",
+    re.IGNORECASE,
+)
+
+_PORTION_LABEL_RE = re.compile(
+    r"(?:\b(?:portion|étiquette|etiquette|label)\b"
+    r"|(?:الحصة|الكمية|الملصق الغذائي|ليبيتيكيت))",
+    re.IGNORECASE,
 )
 
 _COMPARISON_PATTERNS = (
@@ -111,17 +114,19 @@ def classify_food_decision(message: str) -> FoodDecisionIntent | None:
     if not text:
         return None
 
-    if any(pattern.search(text) for pattern in _PERMISSION_PATTERNS):
+    if (
+        any(pattern.search(text) for pattern in _PERMISSION_PATTERNS)
+        and _FOOD_CONTEXT_RE.search(text)
+    ):
         return FoodDecisionIntent.PERMISSION
     if (
         any(pattern.search(text) for pattern in _COMPARISON_PATTERNS)
         and _FOOD_CONTEXT_RE.search(text)
     ):
         return FoodDecisionIntent.COMPARISON
-    if (
-        any(pattern.search(text) for pattern in _PORTION_CARB_PATTERNS)
-        and _FOOD_CONTEXT_RE.search(text)
-    ):
+    if _STRONG_NUTRITION_RE.search(text):
+        return FoodDecisionIntent.PORTION_CARBOHYDRATE
+    if _PORTION_LABEL_RE.search(text) and _FOOD_CONTEXT_RE.search(text):
         return FoodDecisionIntent.PORTION_CARBOHYDRATE
     return None
 
