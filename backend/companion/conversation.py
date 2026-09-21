@@ -15,11 +15,6 @@ from companion.route_telemetry import record_companion_route
 from companion.state import compute_state, state_to_prompt
 from companion.tone import get_tone_instruction, select_relationship_tone
 from companion.zero_model_router import exact_chitchat_reply
-from core.companion.clinical import (
-    get_companion_context,
-    get_domain_context,
-    get_offline_fallback,
-)
 from core.clinical_policy import (
     NarrationMode,
     NarrationPolicyRequest,
@@ -28,8 +23,13 @@ from core.clinical_policy import (
     narration_authorized,
     narration_policy_block,
 )
-from core.contracts.advice_decision import AdviceDecision
+from core.companion.clinical import (
+    get_companion_context,
+    get_domain_context,
+    get_offline_fallback,
+)
 from core.companion.ports import get_conversation_store
+from core.contracts.advice_decision import AdviceDecision
 from core.contracts.companion_context import CompanionContext
 from core.contracts.domain_context import DomainContext
 from core.emergency_response import compose_emergency_for_patient
