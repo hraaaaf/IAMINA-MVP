@@ -29,6 +29,7 @@ from core.companion.clinical import (
     get_companion_context,
     get_domain_context,
     get_offline_fallback,
+    verify_advice_reply,
 )
 from core.companion.ports import get_conversation_store
 from core.contracts.advice_decision import AdviceDecision
@@ -721,8 +722,21 @@ def chat(
         context_days,
     )
     if advice_resolution is not None:
+        try:
+            reply = verify_advice_reply(
+                patient.id if patient else None,
+                advice_resolution,
+                advice_resolution.reply,
+            )
+        except Exception:
+            logger.exception("IAmina governed advice verification failed closed")
+            record_companion_route("policy_denied")
+            reply = _policy_denied_reply(patient, ctx, language)
+            _append_turn(patient, "user", message)
+            _append_turn(patient, "assistant", reply)
+            _update_relationship_memory(message, memory)
+            return reply
         record_companion_route("policy_rule")
-        reply = advice_resolution.reply
         _append_turn(patient, "user", message)
         _append_turn(patient, "assistant", reply)
         _update_relationship_memory(message, memory)
@@ -834,8 +848,22 @@ def stream_chat(
         context_days,
     )
     if advice_resolution is not None:
+        try:
+            reply = verify_advice_reply(
+                patient.id if patient else None,
+                advice_resolution,
+                advice_resolution.reply,
+            )
+        except Exception:
+            logger.exception("IAmina governed advice verification failed closed")
+            record_companion_route("policy_denied")
+            reply = _policy_denied_reply(patient, ctx, language)
+            _append_turn(patient, "user", message)
+            _append_turn(patient, "assistant", reply)
+            _update_relationship_memory(message, memory)
+            yield reply
+            return
         record_companion_route("policy_rule")
-        reply = advice_resolution.reply
         _append_turn(patient, "user", message)
         _append_turn(patient, "assistant", reply)
         _update_relationship_memory(message, memory)
