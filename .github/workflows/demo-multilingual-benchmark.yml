@@ -40,3 +40,123 @@ jobs:
           name: demo-multilingual-benchmark
           path: artifacts/demo-multilingual-benchmark.json
           retention-days: 14
+
+
+  prod-arabic-variant-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Audit production Arabic/Darija variant routing
+        env:
+          BASE_URL: https://iamina-certified.vercel.app
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import urllib.request
+
+          base = os.environ["BASE_URL"].rstrip("/")
+          scenarios = [
+              {
+                  "name": "msa",
+                  "language": "ar",
+                  "turns": [
+                      "مرحبا، أريد فقط أن نتحدث قليلا بدون نصائح.",
+                      "نعم، لنبقها محادثة بسيطة.",
+                  ],
+              },
+              {
+                  "name": "gulf",
+                  "language": "ar",
+                  "turns": [
+                      "هلا، ودي أسولف شوي بدون حلول.",
+                      "إيه تمام، خلك بسيط.",
+                  ],
+              },
+              {
+                  "name": "darija-ar",
+                  "language": "ar-MA",
+                  "turns": [
+                      "سلام، بغيت غير نهضر شوية بلا نصائح.",
+                      "إيوا مزيان، خليه كلام خفيف.",
+                  ],
+              },
+              {
+                  "name": "darija-latin",
+                  "language": "fr",
+                  "turns": [
+                      "salam, bghit ghir nhder chwia bla conseils",
+                      "iwa mzyan, khlliha hdra khfifa",
+                  ],
+              },
+          ]
+
+          failures = []
+          results = []
+          gulf_bad = ("شنو", "واش", "بغيت", "كتشوف")
+          msa_bad = ("وش", "ودي", "أبي", "خلك", "سوالف")
+
+          for scenario in scenarios:
+              history = []
+              replies = []
+              for message in scenario["turns"]:
+                  payload = json.dumps({
+                      "message": message,
+                      "language": scenario["language"],
+                      "history": history,
+                  }, ensure_ascii=False).encode("utf-8")
+                  req = urllib.request.Request(
+                      base + "/api/v1/demo/chat",
+                      data=payload,
+                      headers={"Content-Type": "application/json"},
+                      method="POST",
+                  )
+                  with urllib.request.urlopen(req, timeout=60) as response:
+                      body = json.loads(response.read().decode("utf-8"))
+                  reply = body.get("reply", "").strip()
+                  if not reply:
+                      failures.append(scenario["name"] + ":empty")
+                      break
+                  replies.append(reply)
+                  history.extend([
+                      {"role": "user", "content": message},
+                      {"role": "assistant", "content": reply},
+                  ])
+
+              joined = " ".join(replies)
+              lower = joined.lower()
+              if len(replies) == 2 and replies[0] == replies[1]:
+                  failures.append(scenario["name"] + ":repeated-identical")
+              if "وضع العرض" in joined or "mode démo" in lower:
+                  failures.append(scenario["name"] + ":generic-demo-fallback")
+
+              if scenario["name"] == "gulf":
+                  if any(x in joined for x in gulf_bad):
+                      failures.append("gulf:moroccan-drift")
+              elif scenario["name"] == "msa":
+                  if any(x in joined for x in msa_bad):
+                      failures.append("msa:gulf-drift")
+              elif scenario["name"] == "darija-ar":
+                  if not any(x in joined for x in ("شنو", "بغيت", "نهضر", "مزيان", "إيوا")):
+                      failures.append("darija-ar:not-recognizably-moroccan")
+              elif scenario["name"] == "darija-latin":
+                  if any("\u0600" <= ch <= "\u06ff" for ch in joined):
+                      failures.append("darija-latin:arabic-script-drift")
+
+              if any(x in lower for x in ("how can i help", "comment puis-je t'aider", "n9dar n3awnk")):
+                  failures.append(scenario["name"] + ":help-desk-framing")
+
+              results.append({"name": scenario["name"], "replies": replies})
+
+          print(json.dumps({
+              "production": True,
+              "synthetic": True,
+              "request_count": 8,
+              "status": "PASS" if not failures else "FAIL",
+              "failures": failures,
+              "results": results,
+          }, ensure_ascii=False))
+          if failures:
+              raise SystemExit("arabic variant failures: " + ", ".join(failures))
+          PY
