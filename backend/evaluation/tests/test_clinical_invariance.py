@@ -17,6 +17,11 @@ def _snapshot(**overrides):
         "rule_id": "diabetes.food.permission",
         "rule_version": "1",
         "language": "fr",
+        "evidence_refs": ["ADA_SOC_2026_SECTION_5"],
+        "required_facts": [],
+        "missing_facts": [],
+        "limitations": ["no_treatment_change"],
+        "escalation": None,
     }
     values.update(overrides)
     return ClinicalDecisionSnapshot.from_mapping(values)
@@ -50,6 +55,19 @@ def test_rule_version_drift_is_visible():
 
     assert not result.passed
     assert result.mismatches == ("rule_version",)
+
+
+def test_provenance_and_limitations_are_hard_invariants():
+    result = compare_clinical_decisions(
+        _snapshot(),
+        _snapshot(
+            evidence_refs=["NICE_NG28_DIETARY_ADVICE_2026"],
+            limitations=["no_binary_food_permission"],
+        ),
+    )
+
+    assert not result.passed
+    assert set(result.mismatches) == {"evidence_refs", "limitations"}
 
 
 def test_hard_gate_requires_every_candidate_to_match():
