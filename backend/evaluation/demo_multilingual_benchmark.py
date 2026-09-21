@@ -40,11 +40,11 @@ PROMPTS = [
 ]
 
 MULTITURN_SCENARIO = [
-    ("fr", "Je veux mieux dormir et marcher davantage."),
-    ("en", "What were the two goals I mentioned?"),
-    ("fr", "Ajoute boire plus d'eau, mais garde les deux premiers objectifs."),
-    ("en", "Which habit did I add later?"),
-    ("fr", "Résume mes trois habitudes sans en inventer."),
+    ("fr", "Pour cette démo, retiens deux mots-clés : Atlas et Cèdre."),
+    ("en", "What were the two keywords I mentioned?"),
+    ("fr", "Ajoute maintenant Rivage aux deux mots-clés précédents."),
+    ("en", "Which keyword did I add later?"),
+    ("fr", "Rappelle les trois mots-clés dans leur ordre d'apparition, sans en inventer."),
 ]
 def main():
     parser = argparse.ArgumentParser()
