@@ -36,7 +36,7 @@ _FORBIDDEN = (
 
 _ARABIC_RE = re.compile(r"[\u0600-\u06ff\u0750-\u077f]")
 _LATIN_DARIJA_RE = re.compile(
-    r"\b(?:wach|wash|n9dar|nqder|nkdar|nakol|nchrob|makla|gateau|7lowa|khobz)\b",
+    r"\b(?:wach|wash|n9dar|nqder|nkdar|n9dr|nakol|nchrob|makla|gateau|7lowa|khobz)\b",
     re.IGNORECASE,
 )
 
@@ -52,7 +52,7 @@ _FOOD_CONTEXT_RE = re.compile(
 
 _PERMISSION_PATTERNS = (
     re.compile(
-        r"\b(?:(?:est[- ]?ce que|est ce que)\s+)?(?:je\s+peux|puis[- ]?je|"
+        r"\b(?:(?:est[- ]?ce que|est ce que)\s+)?(?:je\s+peux|j['’]?\s*peux|puis[- ]?je|"
         r"j['’]?ai\s+le\s+droit\s+de)\s+(?:manger|prendre|boire)\b",
         re.IGNORECASE,
     ),
@@ -65,7 +65,7 @@ _PERMISSION_PATTERNS = (
     re.compile(r"\bam\s+i\s+allowed\s+to\s+(?:eat|have|drink)\b", re.IGNORECASE),
     re.compile(r"\bis\s+it\s+(?:ok|okay)\s+if\s+i\s+(?:eat|have|drink)\b", re.IGNORECASE),
     re.compile(
-        r"\b(?:wach|wash)?\s*(?:n9dar|nqder|nkdar)\s+(?:nakol|nchrob)\b",
+        r"\b(?:wach|wash)?\s*(?:n9dar|nqder|nkdar|n9dr)\s+(?:nakol|nchrob)\b",
         re.IGNORECASE,
     ),
     re.compile(
@@ -80,7 +80,7 @@ _PERMISSION_PATTERNS = (
 )
 
 _STRONG_NUTRITION_RE = re.compile(
-    r"(?:\b(?:glucides?|carbohydrates?|carbs?|nutrition(?:nel|nelle)?s?)\b"
+    r"(?:\b(?:gluc(?:ides?)?|carbohydrates?|carbs?|nutrition(?:nel|nelle)?s?)\b"
     r"|(?:كربوهيدرات|الكربوهيدرات))",
     re.IGNORECASE,
 )
@@ -315,6 +315,7 @@ def resolve_food_decision(
             "request_food_label_or_portion",
         ),
         forbidden_actions=_FORBIDDEN,
+        evidence_refs=_EVIDENCE,
         limitations=("no_dose", "no_treatment_change"),
         language=language,
     )
