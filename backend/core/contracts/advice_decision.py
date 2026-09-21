@@ -104,6 +104,13 @@ class AdviceDecision:
             raise PermissionError(
                 "AdviceDecision may only be issued by deterministic_engine or system"
             )
+        if (
+            self.decision in {AdviceDisposition.ALLOW, AdviceDisposition.CONSTRAIN}
+            and self.issued_by is not Authority.DETERMINISTIC_ENGINE
+        ):
+            raise PermissionError(
+                "only deterministic_engine may authorize patient-facing advice"
+            )
 
         for field_name in (
             "allowed_actions",
