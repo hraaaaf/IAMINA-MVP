@@ -109,6 +109,18 @@ class FoodDecisionIntent(StrEnum):
     COMPARISON = "food_comparison"
 
 
+_ELLIPTICAL_FOOD_FOLLOWUP_RE = re.compile(
+    r"^\s*(?:"
+    r"et(?:\s+(?:pour|du|de\s+la|de\s+l['’]|le|la|les))?"
+    r"|and(?:\s+what\s+about)?"
+    r"|what\s+about"
+    r"|w|ou"
+    r"|وماذا\s+عن|ماذا\s+عن"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
 def classify_food_decision(message: str) -> FoodDecisionIntent | None:
     text = (message or "").strip()
     if not text:
@@ -249,15 +261,12 @@ _COMPARISON_REPLY = {
 }
 
 
-def resolve_food_decision(
+def _resolve_food_intent(
+    intent: FoodDecisionIntent,
     message: str,
     *,
     language: str = "fr",
-) -> AdviceResolution | None:
-    intent = classify_food_decision(message)
-    if intent is None:
-        return None
-
+) -> AdviceResolution:
     variant = _script_variant(message, language)
 
     if intent is FoodDecisionIntent.PERMISSION:
@@ -322,6 +331,49 @@ def resolve_food_decision(
     return AdviceResolution(decision=decision, reply=_PORTION_REPLY[variant])
 
 
+def resolve_food_decision(
+    message: str,
+    *,
+    language: str = "fr",
+) -> AdviceResolution | None:
+    intent = classify_food_decision(message)
+    if intent is None:
+        return None
+    return _resolve_food_intent(intent, message, language=language)
+
+
+def resolve_food_followup(
+    message: str,
+    previous_user_message: str,
+    *,
+    language: str = "fr",
+) -> AdviceResolution | None:
+    """Resolve a bounded elliptical FOOD continuation from prior user intent.
+
+    The current message must still contain a food anchor and an explicit
+    continuation marker. Comparison intent is not inherited because it requires
+    an explicit pair of options.
+    """
+    text = (message or "").strip()
+    previous = (previous_user_message or "").strip()
+    if not text or not previous:
+        return None
+    if classify_food_decision(text) is not None:
+        return resolve_food_decision(text, language=language)
+    if not _ELLIPTICAL_FOOD_FOLLOWUP_RE.search(text):
+        return None
+    if not _FOOD_CONTEXT_RE.search(text):
+        return None
+
+    previous_intent = classify_food_decision(previous)
+    if previous_intent not in {
+        FoodDecisionIntent.PERMISSION,
+        FoodDecisionIntent.PORTION_CARBOHYDRATE,
+    }:
+        return None
+    return _resolve_food_intent(previous_intent, text, language=language)
+
+
 __all__ = [
     "ADA_2026_NUTRITION",
     "FoodDecisionIntent",
@@ -329,4 +381,5 @@ __all__ = [
     "NICE_NG28_DIETARY",
     "classify_food_decision",
     "resolve_food_decision",
+    "resolve_food_followup",
 ]
