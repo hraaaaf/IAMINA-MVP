@@ -40,3 +40,89 @@ jobs:
           name: demo-multilingual-benchmark
           path: artifacts/demo-multilingual-benchmark.json
           retention-days: 14
+
+
+  prod-casual-fallback-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Smoke production casual fallback continuity
+        env:
+          BASE_URL: https://iamina-certified.vercel.app
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          base = os.environ["BASE_URL"].rstrip("/")
+          scenarios = [
+              {
+                  "name": "gulf",
+                  "language": "ar",
+                  "turns": [
+                      "هلا، ما أبي حلول الحين، بس ودي أسولف شوي.",
+                      "إيه كذا أحسن، خلك خفيف وبسيط.",
+                  ],
+              },
+              {
+                  "name": "darija",
+                  "language": "fr",
+                  "turns": [
+                      "salam, ma bghit ta chi 7al daba, ghir n9ssr m3ak chwia",
+                      "iwa hakka mzyan, khlli lhdra khfifa",
+                  ],
+              },
+          ]
+
+          failures = []
+          results = []
+
+          for scenario in scenarios:
+              history = []
+              replies = []
+              for message in scenario["turns"]:
+                  payload = json.dumps({
+                      "message": message,
+                      "language": scenario["language"],
+                      "history": history,
+                  }, ensure_ascii=False).encode("utf-8")
+                  req = urllib.request.Request(
+                      base + "/api/v1/demo/chat",
+                      data=payload,
+                      headers={"Content-Type": "application/json"},
+                      method="POST",
+                  )
+                  with urllib.request.urlopen(req, timeout=60) as response:
+                      body = json.loads(response.read().decode("utf-8"))
+                  reply = body.get("reply", "").strip()
+                  if not reply:
+                      failures.append(scenario["name"] + ":empty")
+                      break
+                  replies.append(reply)
+                  history.extend([
+                      {"role": "user", "content": message},
+                      {"role": "assistant", "content": reply},
+                  ])
+
+              if len(replies) == 2 and replies[0] == replies[1]:
+                  failures.append(scenario["name"] + ":repeated-identical")
+              joined = " ".join(replies)
+              if "وضع العرض" in joined or "mode démo" in joined.lower():
+                  failures.append(scenario["name"] + ":generic-demo-fallback")
+              if scenario["name"] == "darija":
+                  if any("\u0600" <= ch <= "\u06ff" for ch in joined):
+                      failures.append("darija:arabic-script-drift")
+
+              results.append({"name": scenario["name"], "replies": replies})
+
+          print(json.dumps({
+              "production": True,
+              "synthetic": True,
+              "status": "PASS" if not failures else "FAIL",
+              "failures": failures,
+              "results": results,
+          }, ensure_ascii=False))
+          if failures:
+              raise SystemExit("casual fallback smoke failures: " + ", ".join(failures))
+          PY
