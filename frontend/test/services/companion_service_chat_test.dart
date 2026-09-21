@@ -107,6 +107,52 @@ void main() {
     service.dispose();
   });
 
+  test('demo audit chat preserves nine prior exchanges on turn ten', () async {
+    final capturedBodies = <Map<String, dynamic>>[];
+    final service = CompanionService(
+      authService: _AuditAuthService(),
+      httpClient: MockClient((request) async {
+        capturedBodies.add(
+          Map<String, dynamic>.from(jsonDecode(request.body) as Map),
+        );
+        return http.Response(
+          jsonEncode({
+            'reply': 'Réponse démo ' + capturedBodies.length.toString() + '.',
+            'conversation_id': 'demo-governed',
+            'timestamp': '2026-09-21T00:00:00Z',
+            'is_emergency': false,
+            'reply_language': 'fr',
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+      baseUrl: 'http://127.0.0.1:8000',
+    );
+
+    for (var turn = 1; turn <= 10; turn += 1) {
+      await service.sendChatMessage('Message ' + turn.toString());
+    }
+
+    expect(capturedBodies, hasLength(10));
+    final tenthHistory = capturedBodies.last['history'] as List<dynamic>;
+    expect(tenthHistory, hasLength(18));
+    expect(tenthHistory.first, {
+      'role': 'user',
+      'content': 'Message 1',
+    });
+    expect(tenthHistory[1], {
+      'role': 'assistant',
+      'content': 'Réponse démo 1.',
+    });
+    expect(tenthHistory.last, {
+      'role': 'assistant',
+      'content': 'Réponse démo 9.',
+    });
+
+    service.dispose();
+  });
+
   test('demo audit chat decodes governed Arabic reply', () async {
     final service = CompanionService(
       authService: _AuditAuthService(),
