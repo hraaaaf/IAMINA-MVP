@@ -8,7 +8,7 @@ import logging
 from llm.cost_event_store import persist_cost_event
 
 logger = logging.getLogger("iamina.cost")
-_ALLOWED_ROUTES = frozenset({"safety", "zero_model", "llm"})
+_ALLOWED_ROUTES = frozenset({"safety", "zero_model", "policy_denied", "llm"})
 
 
 def record_companion_route(route: str) -> None:
