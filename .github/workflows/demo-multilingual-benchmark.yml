@@ -40,3 +40,51 @@ jobs:
           name: demo-multilingual-benchmark
           path: artifacts/demo-multilingual-benchmark.json
           retention-days: 14
+
+
+  prod-food-permission-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Reproduce food permission gap in production demo
+        env:
+          BASE_URL: https://iamina-certified.vercel.app
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          base = os.environ["BASE_URL"].rstrip("/")
+          cases = [
+              ("fr", "je peux manger un mille feuille !?"),
+              ("en", "Can I eat a slice of cake?"),
+              ("fr", "wach n9dar nakol gateau?"),
+              ("ar", "هل أقدر آكل قطعة حلوى؟"),
+          ]
+          results = []
+          for language, message in cases:
+              payload = json.dumps({
+                  "message": message,
+                  "language": language,
+                  "history": [],
+              }, ensure_ascii=False).encode("utf-8")
+              req = urllib.request.Request(
+                  base + "/api/v1/demo/chat",
+                  data=payload,
+                  headers={"Content-Type":"application/json"},
+                  method="POST",
+              )
+              with urllib.request.urlopen(req, timeout=60) as response:
+                  body = json.loads(response.read().decode("utf-8"))
+              results.append({
+                  "language": language,
+                  "message": message,
+                  "reply": body.get("reply", "").strip(),
+              })
+          print(json.dumps({
+              "production": True,
+              "synthetic": True,
+              "results": results,
+          }, ensure_ascii=False))
+          PY
