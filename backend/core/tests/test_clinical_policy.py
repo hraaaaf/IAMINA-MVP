@@ -87,3 +87,30 @@ def test_policy_block_contains_versioned_authority_without_patient_data():
     assert "core.narration.approved_context@1" in block
     assert "explain_approved_data" in block
     assert "patient_facing_clinical_action" in block
+
+
+def test_emotional_l0_stays_available_when_clinical_analysis_is_degraded():
+    decision = authorize_narration(
+        _request(
+            mode=NarrationMode.EMOTIONAL,
+            analysis_status="partial",
+            has_approved_context=True,
+            has_sufficient_data=True,
+        )
+    )
+
+    assert decision.authority_level is AdviceAuthorityLevel.L0_CONVERSATION
+    assert narration_authorized(decision)
+
+
+def test_degraded_analysis_without_approved_context_stays_l0_not_clinical():
+    decision = authorize_narration(
+        _request(
+            analysis_status="unavailable",
+            has_approved_context=False,
+            has_sufficient_data=False,
+        )
+    )
+
+    assert decision.authority_level is AdviceAuthorityLevel.L0_CONVERSATION
+    assert narration_authorized(decision)
