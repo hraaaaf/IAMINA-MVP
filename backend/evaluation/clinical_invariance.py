@@ -20,6 +20,11 @@ class ClinicalDecisionSnapshot:
     rule_id: str
     rule_version: str
     language: str
+    required_facts: tuple[str, ...]
+    missing_facts: tuple[str, ...]
+    evidence_refs: tuple[str, ...]
+    limitations: tuple[str, ...]
+    escalation: str | None
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]) -> "ClinicalDecisionSnapshot":
@@ -40,6 +45,12 @@ class ClinicalDecisionSnapshot:
                 cleaned.append(item.strip())
             return tuple(sorted(set(cleaned)))
 
+        escalation = payload.get("escalation")
+        if escalation is not None:
+            if not isinstance(escalation, str) or not escalation.strip():
+                raise ValueError("escalation must be null or a non-empty string")
+            escalation = escalation.strip()
+
         return cls(
             intent=text("intent"),
             authority_level=text("authority_level"),
@@ -49,6 +60,11 @@ class ClinicalDecisionSnapshot:
             rule_id=text("rule_id"),
             rule_version=text("rule_version"),
             language=text("language"),
+            required_facts=items("required_facts"),
+            missing_facts=items("missing_facts"),
+            evidence_refs=items("evidence_refs"),
+            limitations=items("limitations"),
+            escalation=escalation,
         )
 
 
@@ -60,6 +76,11 @@ _HARD_INVARIANTS = (
     "forbidden_actions",
     "rule_id",
     "rule_version",
+    "required_facts",
+    "missing_facts",
+    "evidence_refs",
+    "limitations",
+    "escalation",
 )
 
 
