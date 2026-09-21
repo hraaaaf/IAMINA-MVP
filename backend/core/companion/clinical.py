@@ -90,6 +90,7 @@ def get_advice_resolution(
     message: str,
     context: DomainContext,
     language: str = "fr",
+    previous_user_message: str | None = None,
 ) -> AdviceResolution | None:
     """Resolve optional module-owned advice without importing condition semantics."""
 
@@ -98,7 +99,12 @@ def get_advice_resolution(
     engine = _resolve_engine(patient_id)
     if engine is None:
         return None
-    resolution = engine.resolve_advice(message, context, language=language)
+    resolution = engine.resolve_advice(
+        message,
+        context,
+        language=language,
+        previous_user_message=previous_user_message,
+    )
     if resolution is not None and not isinstance(resolution, AdviceResolution):
         raise TypeError("active module returned an invalid AdviceResolution")
     return resolution
