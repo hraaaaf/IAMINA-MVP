@@ -7,7 +7,7 @@ on:
       - main
     paths:
       - backend/requirements.txt
-      - backend/diabetes/evals/**
+      - backend/diabetes/evals/pulper_qualification.py
       - backend/diabetes/services/documents/**
       - backend/diabetes/tests/test_pulper*.py
       - backend/media/documents/**
