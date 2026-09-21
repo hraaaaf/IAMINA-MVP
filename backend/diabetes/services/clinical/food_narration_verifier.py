@@ -78,11 +78,13 @@ _ACTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "introduce_unapproved_threshold",
         re.compile(
-            r"(?:[<>]=?\s*\d+\s*(?:g)?"
+            r"(?:(?:[<>]=?\s*\d+\s*(?:g)?"
             r"|\b(?:plus|moins)\s+de\s+\d+\s*(?:g)?"
             r"|\b(?:more|less)\s+than\s+\d+\s*(?:g)?"
             r"|\b(?:sous|under|below|maximum|max)\s+\d+\s*(?:g)?)"
-            r"\s*(?:de\s+)?(?:glucides?|carbs?|carbohydrates?)",
+            r"\s*(?:de\s+)?(?:glucides?|carbs?|carbohydrates?)"
+            r"|\b(?:glucides?|carbs?|carbohydrates?)\b.{0,24}"
+            r"\b(?:sous|under|below|maximum|max)\s+\d+\s*(?:g)?)",
             re.IGNORECASE,
         ),
     ),
