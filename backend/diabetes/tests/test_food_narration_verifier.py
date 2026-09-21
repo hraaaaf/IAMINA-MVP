@@ -56,7 +56,7 @@ def test_current_deterministic_food_replies_pass_verifier(message, language):
             "unauthorized:infer_patient_specific_causality",
         ),
         (
-            "Au-dessus de 30 g de glucides, évite ce dessert.",
+            "Plus de 30 g de glucides, évite ce dessert.",
             "unauthorized:introduce_unapproved_threshold",
         ),
     ],
