@@ -40,3 +40,73 @@ jobs:
           name: demo-multilingual-benchmark
           path: artifacts/demo-multilingual-benchmark.json
           retention-days: 14
+
+
+  prod-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Smoke production demo continuity
+        env:
+          BASE_URL: https://iamina-certified.vercel.app
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          base = os.environ["BASE_URL"].rstrip("/")
+          with urllib.request.urlopen(base + "/api/v1/demo/scenarios", timeout=30) as response:
+              assert response.status == 200, response.status
+
+          history = []
+          turns = [
+              ("fr", "Pour cette démo, retiens deux mots-clés : Atlas et Cèdre."),
+              ("en", "What were the two keywords I mentioned?"),
+              ("fr", "Ajoute maintenant Rivage aux deux mots-clés précédents."),
+              ("en", "Which keyword did I add later?"),
+              ("fr", "Rappelle les trois mots-clés dans leur ordre d'apparition, sans en inventer."),
+          ]
+          replies = []
+
+          for index, (language, message) in enumerate(turns, start=1):
+              payload = json.dumps(
+                  {"message": message, "language": language, "history": history},
+                  ensure_ascii=False,
+              ).encode("utf-8")
+              request = urllib.request.Request(
+                  base + "/api/v1/demo/chat",
+                  data=payload,
+                  headers={"Content-Type": "application/json"},
+                  method="POST",
+              )
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  body = json.loads(response.read().decode("utf-8"))
+              assert body.get("reply"), f"turn {index}: empty reply"
+              assert not body.get("is_emergency"), f"turn {index}: emergency"
+              replies.append(body["reply"])
+              history.extend(
+                  [
+                      {"role": "user", "content": message},
+                      {"role": "assistant", "content": body["reply"]},
+                  ]
+              )
+
+          second = replies[1].lower()
+          fourth = replies[3].lower()
+          fifth = replies[4].lower()
+          assert "atlas" in second and "cèdre" in second, second
+          assert "rivage" in fourth, fourth
+          positions = [fifth.find("atlas"), fifth.find("cèdre"), fifth.find("rivage")]
+          assert all(position >= 0 for position in positions), fifth
+          assert positions == sorted(positions), fifth
+
+          print(json.dumps({
+              "production": True,
+              "synthetic": True,
+              "continuity": "PASS",
+              "turns": 5,
+              "history_items_final": len(history),
+              "replies": replies,
+          }, ensure_ascii=False))
+          PY
