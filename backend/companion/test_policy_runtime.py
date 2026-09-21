@@ -54,7 +54,9 @@ def test_stream_policy_denial_blocks_llm_before_any_chunk():
             )
         )
 
-    assert chunks == ["Difficulté technique momentanée. Réessaie dans un instant."]
+    assert len(chunks) == 1
+    assert "Difficulté technique momentanée" in chunks[0]
+    assert "évaluation" in chunks[0]
 
 
 def test_policy_exception_fails_closed_before_llm():
