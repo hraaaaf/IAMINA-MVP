@@ -21,9 +21,11 @@ _ARABIC_RE = re.compile(r"[\u0600-\u06ff\u0750-\u077f]")
         ("je peux manger un mille feuille !?", "fr"),
         ("Est-ce que ce dessert est autorisé ?", "fr"),
         ("Puis-je manger du couscous ?", "fr"),
+        ("jpeux manger du gateau ?", "fr"),
         ("Can I eat a slice of cake?", "en"),
         ("Is it okay if I have cake?", "en"),
         ("wash nqder nakol gateau?", "fr"),
+        ("wach n9dr nakol gateau?", "ar-MA"),
         ("wach n9dar nchrob jus?", "fr"),
         ("واش نقدر ناكل الحلوى؟", "ar-MA"),
         ("هل أقدر آكل قطعة حلوى؟", "ar"),
@@ -57,6 +59,7 @@ def test_food_permission_paraphrases_converge_to_same_governed_decision(message,
     ("message", "language"),
     [
         ("Combien de glucides contient ce mille-feuille ?", "fr"),
+        ("Combien de gluc dans ce gateau ?", "fr"),
         ("How many carbs are in this?", "en"),
         ("ch7al men glucides f had lmakla?", "fr"),
         ("كم كربوهيدرات في هذه الوجبة؟", "ar"),
@@ -69,6 +72,11 @@ def test_food_nutrition_questions_are_education_not_binary_permission(message, l
     assert resolution.decision.intent == FoodDecisionIntent.PORTION_CARBOHYDRATE.value
     assert resolution.decision.authority_level is AdviceAuthorityLevel.L1_EDUCATION
     assert resolution.decision.rule_id == "diabetes.food.portion_carbohydrate"
+    assert set(resolution.decision.evidence_refs) == {
+        ADA_2026_NUTRITION,
+        NICE_NG17_DIETARY,
+        NICE_NG28_DIETARY,
+    }
     assert "approve_food_personally" in resolution.decision.forbidden_actions
 
 
