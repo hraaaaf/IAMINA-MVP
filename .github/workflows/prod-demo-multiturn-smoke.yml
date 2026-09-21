@@ -1,0 +1,85 @@
+name: Production Demo multi-turn smoke
+
+on:
+  push:
+    branches:
+      - "smoke/prod-demo-multiturn-20260921"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Smoke public demo production
+        env:
+          BASE_URL: https://iamina-certified.vercel.app
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          base = os.environ["BASE_URL"].rstrip("/")
+
+          with urllib.request.urlopen(base + "/api/v1/demo/scenarios", timeout=30) as response:
+              if response.status != 200:
+                  raise SystemExit(f"scenario smoke failed: {response.status}")
+
+          history = []
+          turns = [
+              ("fr", "Pour cette démo, retiens deux mots-clés : Atlas et Cèdre."),
+              ("en", "What were the two keywords I mentioned?"),
+              ("fr", "Ajoute maintenant Rivage aux deux mots-clés précédents."),
+              ("en", "Which keyword did I add later?"),
+              ("fr", "Rappelle les trois mots-clés dans leur ordre d'apparition, sans en inventer."),
+          ]
+          replies = []
+
+          for index, (language, message) in enumerate(turns, start=1):
+              payload = json.dumps(
+                  {"message": message, "language": language, "history": history},
+                  ensure_ascii=False,
+              ).encode("utf-8")
+              request = urllib.request.Request(
+                  base + "/api/v1/demo/chat",
+                  data=payload,
+                  headers={"Content-Type": "application/json"},
+                  method="POST",
+              )
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  body = json.loads(response.read().decode("utf-8"))
+              if not body.get("reply"):
+                  raise SystemExit(f"turn {index}: empty reply")
+              if body.get("is_emergency"):
+                  raise SystemExit(f"turn {index}: unexpected emergency route")
+              replies.append(body["reply"])
+              history.extend(
+                  [
+                      {"role": "user", "content": message},
+                      {"role": "assistant", "content": body["reply"]},
+                  ]
+              )
+
+          second = replies[1].lower()
+          fourth = replies[3].lower()
+          fifth = replies[4].lower()
+          if "atlas" not in second or "cèdre" not in second:
+              raise SystemExit("turn 2 did not recall Atlas + Cèdre")
+          if "rivage" not in fourth:
+              raise SystemExit("turn 4 did not identify Rivage")
+          positions = [fifth.find("atlas"), fifth.find("cèdre"), fifth.find("rivage")]
+          if any(position < 0 for position in positions) or positions != sorted(positions):
+              raise SystemExit("turn 5 did not preserve Atlas → Cèdre → Rivage order")
+
+          print(json.dumps({
+              "production": True,
+              "synthetic": True,
+              "turns": 5,
+              "history_items_final": len(history),
+              "continuity": "PASS",
+              "replies": replies,
+          }, ensure_ascii=False))
+          PY
