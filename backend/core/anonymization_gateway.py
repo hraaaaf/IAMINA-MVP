@@ -23,6 +23,12 @@ from types import MappingProxyType
 from typing import Mapping
 
 
+_DIGIT_TRANSLATION = str.maketrans(
+    "٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹",
+    "01234567890123456789",
+)
+
+
 class AnonymizationRiskDenied(PermissionError):
     """Raised when provider-bound text still contains known re-identification risk."""
 
@@ -67,33 +73,44 @@ _COORDINATES = re.compile(
 _CLINICAL_VALUE = re.compile(
     r"(?<!\w)\d{1,4}(?:[.,]\d+)?\s*(?:"
     r"mg\s*/\s*d[lL]|mmol\s*/\s*[lL]|g\s*/\s*[lL]|mm\s*Hg|"
-    r"bpm|kg|cm|%|(?:IU|UI|U)\b|unit(?:s|és?)?\b"
+    r"bpm|kg|cm|%|(?:IU|UI|U)\b|unit(?:s|és?)?\b|"
+    r"ملغ\s*/\s*دل|مليمول\s*/\s*ل|وحد(?:ة|ات)"
     r")",
     re.IGNORECASE,
 )
 _EXPLICIT_LOCATION_FIELD = re.compile(
     r"(?im)^\s*(?:adresse|address|ville|city|quartier|neighbou?rhood|"
-    r"localisation|location|lieu|postal\s*code|code\s*postal)\s*[:=\-–—]\s*[^\n]+$"
+    r"localisation|location|lieu|postal\s*code|code\s*postal|"
+    r"العنوان|المدينة|الحي|الموقع|الرمز\s+البريدي)\s*[:=\-–—]\s*[^\n]+$"
 )
 _LOCATION_PHRASE = re.compile(
     r"(?i)\b(?:j['’]?habite\s+(?:à|a)|je\s+vis\s+(?:à|a)|"
-    r"i\s+live\s+in|i\s+am\s+from|based\s+in)\s+"
-    r"[^\n,.;]{2,80}"
+    r"i\s+live\s+in|i\s+am\s+from|based\s+in|"
+    r"(?:أسكن|اسكن|أعيش|اعيش)\s+(?:في|ب)|"
+    r"(?:kan3ich|saken|sakn)\s+(?:f|fi))\s+"
+    r"[^\n,.;،؛]{2,80}"
 )
 _EXPLICIT_ID_FIELD = re.compile(
     r"(?im)^\s*(?:patient[_\s-]*id|user[_\s-]*id|firebase[_\s-]*uid|"
     r"identifiant|identifier|username|nom|name|pr[ée]nom|first\s+name|"
-    r"last\s+name)\s*[:=\-–—]\s*[^\n]+$"
+    r"last\s+name|الاسم|رقم\s+المريض|معرف\s+المستخدم|"
+    r"رقم\s+البطاقة\s+الوطنية|البريد\s+الإلكتروني)\s*[:=\-–—]\s*[^\n]+$"
 )
 _AGE_LABEL = re.compile(
     r"(?i)\b(?:age|âge|aged|âgé(?:e)?\s+de)\s*[:=]?\s*(\d{1,3})"
     r"(?:\s*(?:ans|years?(?:\s+old)?))?\b"
 )
 _AGE_SUFFIX = re.compile(r"(?i)(?<!\d)(\d{1,3})\s+(?:ans|years?\s+old)\b")
+_AGE_ARABIC = re.compile(
+    r"(?:عمري|العمر)\s*[:=]?\s*(\d{1,3})\s*(?:سنة|عام)?"
+)
+_AGE_DARIJA = re.compile(
+    r"(?i)\b(?:3omri|omri)\s*[:=]?\s*(\d{1,3})\s*(?:3am|sna|ans?)?\b"
+)
 
 
 def _normalise(value: str) -> str:
-    normalized = unicodedata.normalize("NFKC", value)
+    normalized = unicodedata.normalize("NFKC", value).translate(_DIGIT_TRANSLATION)
     return "".join(
         " " if unicodedata.category(char) in {"Zl", "Zp", "Zs"} else char
         for char in normalized
@@ -152,6 +169,8 @@ def _known_residual_findings(text: str) -> frozenset[str]:
         ("explicit_identifier_field", _EXPLICIT_ID_FIELD),
         ("exact_age", _AGE_LABEL),
         ("exact_age", _AGE_SUFFIX),
+        ("exact_age", _AGE_ARABIC),
+        ("exact_age", _AGE_DARIJA),
     )
     return frozenset(name for name, pattern in checks if pattern.search(text))
 
@@ -187,6 +206,12 @@ def minimize_external_text(text: str) -> tuple[str, tuple[str, ...]]:
     if changed:
         transformations.append("exact_age")
     value, changed = _coarsen_age(_AGE_SUFFIX, value)
+    if changed and "exact_age" not in transformations:
+        transformations.append("exact_age")
+    value, changed = _coarsen_age(_AGE_ARABIC, value)
+    if changed and "exact_age" not in transformations:
+        transformations.append("exact_age")
+    value, changed = _coarsen_age(_AGE_DARIJA, value)
     if changed and "exact_age" not in transformations:
         transformations.append("exact_age")
 
