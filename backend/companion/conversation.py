@@ -24,6 +24,7 @@ from core.clinical_policy import (
     NarrationMode,
     NarrationPolicyRequest,
     authorize_narration,
+    clinical_context_authorized,
     narration_authorized,
     narration_policy_block,
 )
@@ -420,18 +421,18 @@ def _build_runtime_prompt(
         patient=patient,
     )
     ctx = preloaded_context or _get_context(patient, context_days, language)
-    clinical_context_authorized = (
+    may_use_clinical_context = (
         advice_decision is None
-        or advice_decision.authority_level.value != "L0"
+        or clinical_context_authorized(advice_decision)
     )
     prompt_ctx = (
         ctx
-        if clinical_context_authorized
+        if may_use_clinical_context
         else DomainContext.empty(language=language)
     )
     companion_ctx = (
         _get_companion_context(patient, language)
-        if clinical_context_authorized
+        if may_use_clinical_context
         else CompanionContext.empty(language=language)
     )
     emotional = _is_emotional(message)
@@ -458,7 +459,7 @@ def _build_runtime_prompt(
     if advice_decision is not None:
         system += "\n\n" + narration_policy_block(advice_decision)
 
-    if not emotional and clinical_context_authorized:
+    if not emotional and may_use_clinical_context:
         if prompt_ctx.pivot_text:
             system += f"\n\nContexte de session approuvé\n{prompt_ctx.pivot_text}"
         system += "\n\n" + _companion_context_block(companion_ctx)
