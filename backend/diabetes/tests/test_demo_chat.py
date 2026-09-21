@@ -174,3 +174,23 @@ class DemoChatContractTests(TestCase):
         self.assertIn("nhdro", reply)
         self.assertFalse(any("\u0600" <= ch <= "\u06ff" for ch in reply))
         self.assertNotIn("mode démo", reply.lower())
+
+    def test_demo_chat_inherits_casual_mode_from_history_on_followup(self):
+        history = [
+            {"role": "user", "content": "هلا، ما أبي حلول الحين، بس ودي أسولف شوي."},
+            {"role": "assistant", "content": "تمام، نخليها سوالف خفيفة وبس."},
+        ]
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=DemoModelUnavailable("dialect/script guard"),
+        ):
+            response = self._post(
+                "إيه كذا أحسن، خلك خفيف وبسيط.",
+                language="ar",
+                history=history,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"]
+        self.assertIn("سوالف خفيفة", reply)
+        self.assertNotIn("وضع العرض", reply)
