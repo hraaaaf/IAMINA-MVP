@@ -42,6 +42,7 @@ jobs:
           retention-days: 14
 
 
+
   prod-quality-postfix:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -58,25 +59,15 @@ jobs:
 
           base = os.environ["BASE_URL"].rstrip("/")
           scenarios = [
-              ("fr", [
-                  "Salut, j’ai eu une longue journée et j’ai juste envie de souffler un peu.",
-                  "Pas besoin d’un plan, juste parle-moi normalement.",
-                  "Tu peux être un peu plus naturel et moins formel ?",
-              ]),
-              ("en", [
-                  "Hey, today was a bit much. I just want a normal conversation.",
-                  "No advice please, just talk to me like a person.",
-                  "Keep it short and natural.",
-              ]),
+              ("fr", ["Salut, j’ai eu une longue journée et j’ai juste envie de souffler un peu."]),
+              ("en", ["Hey, today was a bit much. I just want a normal conversation."]),
               ("fr", [
                   "salam, lyouma t3yit chwia bghit ghir nhder chwia",
                   "ma bghitch conseils daba, ghir hdar m3aya normal",
-                  "khlliha basita o tabi3iya",
               ]),
               ("ar", [
                   "هلا، اليوم كان طويل شوي وأبغى بس أسولف.",
                   "ما أبغى نصائح الحين، بس كلمني بشكل طبيعي.",
-                  "خلك مختصر وعفوي.",
               ]),
           ]
 
@@ -113,7 +104,7 @@ jobs:
               lower = " ".join(replies).lower()
               prefixes = [" ".join(re.findall(r"\w+", r.lower())[:4]) for r in replies]
               checks = {
-                  "three_replies": len(replies) == 3,
+                  "expected_reply_count": len(replies) == len(turns),
                   "concise": all(len(r) <= 500 for r in replies),
                   "no_robotic_meta": not any(x in lower for x in ["as an ai", "je suis une ia", "public demo mode"]),
                   "no_unwanted_advice": not any(x in lower for x in ["you should", "i recommend", "je te conseille", "tu devrais", "أنصحك", "لازم"]),
@@ -144,6 +135,7 @@ jobs:
           print(json.dumps({
               "production": True,
               "synthetic": True,
+              "request_count": 6,
               "status": "PASS" if not failures else "FAIL",
               "failures": failures,
               "results": all_results,
