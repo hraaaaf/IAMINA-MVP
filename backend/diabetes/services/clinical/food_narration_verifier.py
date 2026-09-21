@@ -82,8 +82,9 @@ _ACTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "review_portion_and_carbohydrate_context",
         re.compile(
-            r"(?:\bportion\b.{0,48}\b(?:glucides?|carbs?|carbohydrates?)\b"
-            r"|\b(?:glucides?|carbs?|carbohydrates?)\b.{0,48}\bportion\b)",
+            r"(?:\b(?:regard(?:e|er|ons)|look\s+at|nchoufo)\b.{0,72}"
+            r"\b(?:portion|glucides?|carbs?|carbohydrates?)\b"
+            r"|(?:نشوفو|نشوف|النظر\s+إلى).{0,72}(?:الكمية|الكربوهيدرات))",
             re.IGNORECASE,
         ),
     ),
