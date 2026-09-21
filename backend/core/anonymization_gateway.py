@@ -43,7 +43,7 @@ _EMAIL = re.compile(
     re.IGNORECASE,
 )
 _PHONE = re.compile(
-    r"(?<!\\w)(?:(?:\\+|00)212[\\s.()/-]*|0)[5-7](?:[\\s.()/-]*\\d){8}(?!\\w)"
+    r"(?<!\w)(?:(?:\+|00)212[\s.()/-]*|0)[5-7](?:[\s.()/-]*\d){8}(?!\w)"
 )
 _CIN = re.compile(r"(?<!\w)[A-Z]{1,2}[\s-]?\d{5,8}(?!\w)", re.IGNORECASE)
 _UUID = re.compile(
