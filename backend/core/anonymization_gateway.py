@@ -49,7 +49,8 @@ _EMAIL = re.compile(
     re.IGNORECASE,
 )
 _PHONE = re.compile(
-    r"(?<!\w)(?:(?:\+|00)212[\s.()/-]*|0)[5-7](?:[\s.()/-]*\d){8}(?!\w)"
+    r"(?<!\w)(?:(?:\+|00)\d{1,3}(?:[\s.()/-]*\d){7,12}|"
+    r"0[5-7](?:[\s.()/-]*\d){8})(?!\w)"
 )
 _CIN = re.compile(r"(?<!\w)[A-Z]{1,2}[\s-]?\d{5,8}(?!\w)", re.IGNORECASE)
 _UUID = re.compile(
@@ -60,6 +61,7 @@ _UUID = re.compile(
 _STABLE_TOKEN = re.compile(
     r"(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{24,128}(?![A-Za-z0-9_-])"
 )
+_DISPOSABLE_PATIENT_TOKEN = re.compile(r"(?i)\bPATIENT_[0-9a-f]{8}\b")
 _EXACT_DATE = re.compile(
     r"(?<!\d)(?:"
     r"(?:19|20)\d{2}[-/.](?:0?[1-9]|1[0-2])[-/.](?:0?[1-9]|[12]\d|3[01])"
@@ -160,6 +162,7 @@ def _known_residual_findings(text: str) -> frozenset[str]:
         ("national_id", _CIN),
         ("uuid", _UUID),
         ("stable_identifier", _STABLE_TOKEN),
+        ("patient_reference_token", _DISPOSABLE_PATIENT_TOKEN),
         ("exact_date", _EXACT_DATE),
         ("exact_time", _EXACT_TIME),
         ("coordinates", _COORDINATES),
@@ -190,6 +193,7 @@ def minimize_external_text(text: str) -> tuple[str, tuple[str, ...]]:
         ("direct_identifier", _CIN, "[identifier withheld]"),
         ("direct_identifier", _UUID, "[identifier withheld]"),
         ("direct_identifier", _STABLE_TOKEN, "[identifier withheld]"),
+        ("patient_reference_token", _DISPOSABLE_PATIENT_TOKEN, "[patient reference withheld]"),
         ("explicit_identifier_field", _EXPLICIT_ID_FIELD, "[identifier field withheld]"),
         ("precise_date", _EXACT_DATE, "[date coarsened]"),
         ("precise_time", _EXACT_TIME, "[time coarsened]"),
