@@ -59,6 +59,12 @@ _FOOD_PERMISSION_RE = re.compile(
 
 
 def _food_permission_reply(text: str, reply_language: str) -> str:
+    if _LATIN_DARIJA_RE.search(text) and not _ARABIC_RE.search(text):
+        return (
+            "Ma n9drch ngolik yes/no b tari9a chakhssiya 3la chi makla. "
+            "N9dro nchofo lportion w lcarbs, w ila bghiti n3awnk tqra l'étiquette "
+            "wla twjjed sou2al ltbib."
+        )
     if reply_language == "en":
         return (
             "I can’t give a personalized yes/no approval for a food. "
@@ -77,12 +83,6 @@ def _food_permission_reply(text: str, reply_language: str) -> str:
             "ما نقدرش نعطيك جواب شخصي بنعم ولا لا على شي ماكلة. "
             "نقدرو غير نشوفو الكمية والكربوهيدرات، وإذا بغيتي نعاونك "
             "تقرا لابيتيكيت ولا توجد سؤال للطبيب."
-        )
-    if _LATIN_DARIJA_RE.search(text) and not _ARABIC_RE.search(text):
-        return (
-            "Ma n9drch ngolik yes/no b tari9a chakhssiya 3la chi makla. "
-            "N9dro nchofo lportion w lcarbs, w ila bghiti n3awnk tqra l'étiquette "
-            "wla twjjed sou2al ltbib."
         )
     return (
         "Je ne peux pas te donner un feu vert/rouge personnalisé pour un aliment. "
