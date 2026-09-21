@@ -1,8 +1,8 @@
-"""Stateless, zero-model conversation for public demo mode.
+"""Stateless governed conversation for public demo mode.
 
-The demo endpoint deliberately shares IAMINA's deterministic safety authority
-without creating a patient identity, reading clinical data, persisting turns, or
-opening an external-model egress path.
+The demo endpoint shares IAMINA's deterministic safety authority without creating
+a patient identity, reading clinical data or persisting turns. Ordinary free-form
+demo turns may use the dedicated bounded external narrator when explicitly enabled.
 """
 
 from __future__ import annotations
