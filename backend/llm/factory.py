@@ -17,7 +17,12 @@ from django.utils import timezone
 
 from core.ai_egress import TEXT, assert_ai_egress_allowed, authorize_text_payload
 from core.ai_operation_identity import next_operation_reference
-from core.ai_processor_policy import authorize_processor_policy
+from core.ai_processor_policy import (
+    AIProcessorPolicyDenied,
+    authorize_processor_policy,
+    get_processor_policy,
+)
+from core.anonymization_gateway import minimize_external_text_payload
 
 from .base import BaseLLMProvider
 from .circuit_breaker import (
@@ -212,9 +217,15 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
     provider_name = _provider_policy_name(provider)
 
     def _authorize(system: str, user: str):
-        payload = authorize_text_payload(
-            {"system_prompt": system, "user_prompt": user}
-        )
+        fields = {"system_prompt": system, "user_prompt": user}
+        try:
+            policy_hint = get_processor_policy(provider_name)
+        except AIProcessorPolicyDenied:
+            policy_hint = None
+        if policy_hint is not None and policy_hint.external_egress:
+            minimized = minimize_external_text_payload(fields)
+            fields = dict(minimized.fields)
+        payload = authorize_text_payload(fields)
         policy = authorize_processor_policy(provider_name, payload.purpose, TEXT)
         return payload, policy
 
