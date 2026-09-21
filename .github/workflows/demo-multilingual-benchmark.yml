@@ -40,3 +40,70 @@ jobs:
           name: demo-multilingual-benchmark
           path: artifacts/demo-multilingual-benchmark.json
           retention-days: 14
+
+
+  prod-dialect-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Smoke production Darija/Gulf output guard
+        env:
+          BASE_URL: https://iamina-certified.vercel.app
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          base = os.environ["BASE_URL"].rstrip("/")
+
+          cases = [
+              {
+                  "name": "latin-darija",
+                  "language": "fr",
+                  "message": "salam, lyouma t3yit chwia bghit ghir nhder chwia",
+              },
+              {
+                  "name": "gulf",
+                  "language": "ar",
+                  "message": "هلا، اليوم كان طويل شوي وأبغى بس أسولف.",
+              },
+          ]
+
+          results = []
+          for case in cases:
+              payload = json.dumps({
+                  "message": case["message"],
+                  "language": case["language"],
+                  "history": [],
+              }, ensure_ascii=False).encode("utf-8")
+              req = urllib.request.Request(
+                  base + "/api/v1/demo/chat",
+                  data=payload,
+                  headers={"Content-Type": "application/json"},
+                  method="POST",
+              )
+              with urllib.request.urlopen(req, timeout=60) as response:
+                  body = json.loads(response.read().decode("utf-8"))
+
+              reply = body.get("reply", "").strip()
+              if not reply:
+                  raise SystemExit(case["name"] + ": empty reply")
+              results.append({"name": case["name"], "reply": reply})
+
+          darija = results[0]["reply"]
+          if any("\u0600" <= ch <= "\u06ff" for ch in darija):
+              raise SystemExit("latin-darija: Arabic script drift: " + darija)
+
+          gulf = results[1]["reply"]
+          bad = [token for token in ("شو", "شنو", "بدك", "عنو", "واش", "بغيت") if token in gulf]
+          if bad:
+              raise SystemExit("gulf: non-Gulf markers " + repr(bad) + ": " + gulf)
+
+          print(json.dumps({
+              "production": True,
+              "synthetic": True,
+              "status": "PASS",
+              "results": results,
+          }, ensure_ascii=False))
+          PY
