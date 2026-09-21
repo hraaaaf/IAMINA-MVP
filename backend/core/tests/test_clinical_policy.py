@@ -5,6 +5,7 @@ from core.clinical_policy import (
     clinical_context_authorized,
     narration_authorized,
     narration_policy_block,
+    policy_denied_reply,
 )
 from core.contracts.advice_decision import AdviceAuthorityLevel, AdviceDisposition
 
@@ -127,3 +128,9 @@ def test_approved_data_explanation_explicitly_authorizes_clinical_context():
         _request(has_approved_context=True, has_sufficient_data=True)
     )
     assert clinical_context_authorized(decision)
+
+
+def test_policy_denied_copy_is_condition_agnostic():
+    assert "évaluation" in policy_denied_reply("fr")
+    assert "evaluation" in policy_denied_reply("en").lower()
+    assert "البيانات" not in policy_denied_reply("ar")
