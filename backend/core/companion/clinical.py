@@ -12,6 +12,7 @@ from dataclasses import asdict
 
 from django.core.cache import cache
 
+from core.contracts.advice_resolution import AdviceResolution
 from core.contracts.companion_context import CompanionContext
 from core.contracts.domain_context import DomainContext
 
@@ -82,6 +83,30 @@ def get_companion_context(
     if engine is None:
         return CompanionContext.empty(language=language)
     return engine.companion_context(patient_id, language=language)
+
+
+def get_advice_resolution(
+    patient_id: int | None,
+    message: str,
+    context: DomainContext,
+    language: str = "fr",
+) -> AdviceResolution | None:
+    """Resolve optional module-owned advice without importing condition semantics."""
+
+    if patient_id is None:
+        return None
+    engine = _resolve_engine(patient_id)
+    if engine is None:
+        return None
+    try:
+        resolution = engine.resolve_advice(message, context, language=language)
+    except Exception:
+        logger.exception("Advice resolution failed closed for patient=%s", patient_id)
+        return None
+    if resolution is not None and not isinstance(resolution, AdviceResolution):
+        logger.error("Invalid advice resolution type for patient=%s", patient_id)
+        return None
+    return resolution
 
 
 def get_offline_fallback(
