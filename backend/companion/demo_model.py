@@ -38,10 +38,13 @@ Arabic, awkward invented expressions, and unnecessary French mixing. In Latin
 Darija, use familiar chat spelling without overloading numerals.
 
 Style examples only:
-- "salam" -> "Salam 👋 kif n9dar n3awnk?"
+- "salam" -> "Salam 👋 labas? Kidayr lyouma?"
 - "fia doukha" -> "Fahmtk. Kat7ess b doukha daba? Bdat lik daba wela men ch7al hadi?"
 - "ma fhemtch" -> "Ma kayn mochkil. N9dar n3awed nchra7 lik b tari9a sahl."
 Do not copy examples mechanically, and keep the user's script consistent.
+When the user explicitly asks only to chat, to avoid advice, or to keep things casual,
+stay in conversation mode: do not ask how you can help and do not turn the exchange
+into problem-solving.
 
 For symptoms, acknowledge what the user said and ask at most one useful,
 non-diagnostic follow-up question. Never diagnose, prescribe, calculate doses,
@@ -105,6 +108,33 @@ _LATIN_DARIJA_MARKERS = (
 )
 _GULF_MARKERS = ("أبغى", "وش", "هلا", "الحين", "خلك", "أسولف", "شوي")
 _NON_GULF_MARKERS = ("شو", "بدك", "عنو", "شنو", "واش", "بغيت")
+_CASUAL_CHAT_MARKERS = (
+    "just want a normal conversation",
+    "just talk",
+    "no advice",
+    "pas besoin d’un plan",
+    "pas besoin d'un plan",
+    "parle-moi normalement",
+    "juste envie de souffler",
+    "ghir nhder",
+    "ghir hdar",
+    "ma bghitch conseils",
+    "بس أسولف",
+    "ما أبغى نصائح",
+    "بس كلمني بشكل طبيعي",
+)
+_HELP_FRAMING_MARKERS = (
+    "how can i help",
+    "what can i help",
+    "comment puis-je t'aider",
+    "comment je peux t'aider",
+    "n9dar n3awnk",
+    "kifash n9dar n3awnk",
+    "كيف أقدر أساعدك",
+    "كيف اقدر اساعدك",
+    "كيف يمكنني مساعدتك",
+)
+_AWKWARD_LATIN_DARIJA_MARKERS = ("ndardak",)
 
 
 def _looks_latin_darija(text: str) -> bool:
@@ -118,9 +148,19 @@ def _looks_gulf_arabic(text: str) -> bool:
     return any(marker in text for marker in _GULF_MARKERS)
 
 
+def _looks_casual_chat(text: str) -> bool:
+    lower = text.lower()
+    return any(marker.lower() in lower for marker in _CASUAL_CHAT_MARKERS)
+
+
 def _reply_matches_requested_style(message: str, reply: str) -> bool:
     if _looks_latin_darija(message):
         if any(char in _ARABIC_SCRIPT for char in reply):
+            return False
+        if any(marker in reply.lower() for marker in _AWKWARD_LATIN_DARIJA_MARKERS):
+            return False
+    if _looks_casual_chat(message):
+        if any(marker in reply.lower() for marker in _HELP_FRAMING_MARKERS):
             return False
     if _looks_gulf_arabic(message):
         if any(marker in reply for marker in _NON_GULF_MARKERS):
