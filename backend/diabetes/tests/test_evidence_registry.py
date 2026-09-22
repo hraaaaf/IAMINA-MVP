@@ -93,6 +93,10 @@ class EvidenceRegistryInvariantTests(SimpleTestCase):
             "supersession_state",
             "clinical_authority",
             "regulatory_status",
+            "reviewer",
+            "next_review_at",
+            "assumptions",
+            "exclusions",
         ):
             self.assertIn(field, metadata)
         self.assertEqual(metadata["supersession_state"], "current")
@@ -188,3 +192,80 @@ def test_clinician_prep_rule_is_registered_as_governed_product_rule():
     assert rule.clinical_authority == ClinicalAuthority.GOVERNED_RULE
     assert "review support" in rule.limitations.lower()
     assert "treatment change" in rule.limitations.lower()
+
+
+
+def test_all_runtime_rules_have_structured_review_governance():
+    rules = [
+        record
+        for record in EVIDENCE_REGISTRY.values()
+        if record.kind == RecordKind.RULE
+    ]
+    assert rules
+    for record in rules:
+        assert record.reviewer == "IAmina Clinical Governance"
+        assert record.next_review_at == "2027-02-12"
+        assert record.assumptions
+        assert record.exclusions
+        assert record.next_review_at > record.reviewed_at
+
+
+def test_runtime_rule_metadata_exposes_review_governance():
+    metadata = get_evidence("rule.personal-response.repetition.v1").to_metadata()
+    assert metadata["reviewer"] == "IAmina Clinical Governance"
+    assert metadata["next_review_at"] == "2027-02-12"
+    assert metadata["assumptions"] == [
+        "declared population and modality applicability are satisfied"
+    ]
+    assert metadata["exclusions"] == [
+        "use outside the declared population or modality without separate review"
+    ]
+
+
+def test_registry_validation_rejects_missing_rule_governance(monkeypatch):
+    source = get_evidence("rule.personal-response.repetition.v1")
+    broken = type(source)(
+        evidence_id=source.evidence_id,
+        kind=source.kind,
+        topic=source.topic,
+        claim_or_rule=source.claim_or_rule,
+        evidence_maturity=source.evidence_maturity,
+        source_organization=source.source_organization,
+        source_title=source.source_title,
+        identifier=source.identifier,
+        publication_or_version_date=source.publication_or_version_date,
+        finality_status=source.finality_status,
+        population=source.population,
+        modality=source.modality,
+        jurisdiction=source.jurisdiction,
+        regulatory_status=source.regulatory_status,
+        reviewed_at=source.reviewed_at,
+        clinical_authority=source.clinical_authority,
+        limitations=source.limitations,
+        reviewer="",
+        next_review_at="2026-01-01",
+        assumptions=(),
+        exclusions=(),
+        supporting_evidence_ids=source.supporting_evidence_ids,
+    )
+
+    import diabetes.services.clinical.evidence_registry as registry
+
+    monkeypatch.setattr(
+        registry,
+        "_RECORDS",
+        tuple(
+            broken if record.evidence_id == broken.evidence_id else record
+            for record in registry._RECORDS
+        ),
+    )
+    monkeypatch.setattr(
+        registry,
+        "EVIDENCE_REGISTRY",
+        {record.evidence_id: record for record in registry._RECORDS},
+    )
+    errors = registry.validate_registry()
+    assert f"{broken.evidence_id}: reviewer missing" in errors
+    assert f"{broken.evidence_id}: assumptions missing" in errors
+    assert f"{broken.evidence_id}: exclusions missing" in errors
+    assert f"{broken.evidence_id}: next_review_at must be after reviewed_at" in errors
