@@ -144,3 +144,26 @@ def test_l4_symptom_escalation_remains_human_gated_and_passes():
         disposition=AdviceDisposition.ESCALATE,
     )
     assert enforce_clinical_validation(resolution) is resolution
+
+
+
+def test_l3_is_blocked_without_dedicated_clinical_validation():
+    l3_policy = (
+        RuleFamilyValidation(
+            prefix="diabetes.food.",
+            status=ValidationStatus.VALIDATED,
+            max_authority=AdviceAuthorityLevel.L3_CONTEXTUAL_CLINICAL,
+            evidence_basis=("software_evals_only",),
+            limitation="test",
+        ),
+    )
+    resolution = _resolution(
+        rule_id="diabetes.food.contextual",
+        level=AdviceAuthorityLevel.L3_CONTEXTUAL_CLINICAL,
+    )
+    with patch(
+        "diabetes.services.clinical.clinical_validation.RULE_FAMILY_VALIDATION",
+        l3_policy,
+    ):
+        with pytest.raises(PermissionError, match="L3 requires dedicated clinical validation"):
+            enforce_clinical_validation(resolution)
