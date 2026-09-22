@@ -303,3 +303,41 @@ def test_unknown_or_quarantined_observation_key_fails_closed():
             _context(bad),
             language="fr",
         )
+
+
+def test_general_multiple_patterns_request_requires_scope():
+    resolution = resolve_longitudinal_personalization_from_context(
+        "Qu’est-ce que tu remarques chez moi sur la durée dans mes données ?",
+        _context(_pattern("context:stress"), _pattern("context:activity")),
+        language="fr",
+    )
+
+    assert resolution is not None
+    assert resolution.decision.rule_id == "diabetes.longitudinal.multiple_patterns"
+    assert resolution.decision.allowed_actions == ("request_longitudinal_scope",)
+    assert "priorité" in resolution.reply
+
+
+def test_broad_meal_focus_with_multiple_patterns_requires_exact_meal():
+    resolution = resolve_longitudinal_personalization_from_context(
+        "Est-ce que les repas se répètent souvent chez moi dans mes données ?",
+        _context(_pattern("meal:breakfast"), _pattern("meal:dinner")),
+        language="fr",
+    )
+
+    assert resolution is not None
+    assert resolution.decision.rule_id == "diabetes.longitudinal.multiple_patterns"
+    assert "petit-déjeuner" in resolution.reply
+    assert "dîner" in resolution.reply
+
+
+def test_multiple_patterns_latin_darija_stays_latin():
+    resolution = resolve_longitudinal_personalization_from_context(
+        "Wach kayn chi pattern kayt3awd 3ndi f data dyali?",
+        _context(_pattern("context:stress"), _pattern("context:activity")),
+        language="ar-MA",
+    )
+
+    assert resolution is not None
+    assert resolution.decision.rule_id == "diabetes.longitudinal.multiple_patterns"
+    assert not any("\u0600" <= ch <= "\u06ff" for ch in resolution.reply)
