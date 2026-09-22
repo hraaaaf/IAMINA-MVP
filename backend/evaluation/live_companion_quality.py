@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -180,7 +181,7 @@ def validate_scenario() -> dict[str, int]:
 def _synthetic_clinician_brief() -> ConsultationBriefEnvelope:
     now = timezone.now()
     return ConsultationBriefEnvelope(
-        window_start=now,
+        window_start=now - timedelta(days=1),
         window_end=now,
         comparison_basis=ConsultationComparisonBasis.CURRENT_SNAPSHOT,
         items=(
