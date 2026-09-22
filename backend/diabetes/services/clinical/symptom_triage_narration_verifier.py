@@ -70,7 +70,7 @@ _ACTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "attribute_symptom_to_glucose",
         re.compile(
-            r"\b(?:fatigue|fatigu[eé]|naus[eé]e|vomit\w*|sympt[oô]me|tired|nausea)\b"
+            r"\b(?:fatigue|fatigu[eé]|naus[eé]es?|vomit\w*|sympt[oô]me|tired|nausea)\b"
             r".{0,56}\b(?:caus[eé]|cause|because\s+of|à\s+cause\s+de|explique)\b"
             r".{0,40}\b(?:glucose|glyc[eé]mie|sugar|sucre|diab[eè]te|diabetes)\b",
             re.IGNORECASE,
