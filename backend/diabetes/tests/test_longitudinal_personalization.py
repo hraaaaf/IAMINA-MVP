@@ -247,7 +247,6 @@ def test_engine_does_not_fetch_companion_context_for_unrelated_message():
     assert resolution is None
 
 
-
 def test_latin_darija_longitudinal_reply_keeps_latin_script():
     resolution = resolve_longitudinal_personalization_from_context(
         "Wach kayn chi pattern kayt3awd 3ndi f data dyali?",
@@ -279,7 +278,6 @@ def test_inconsistent_pattern_status_fails_closed():
             bad,
             language="fr",
         )
-
 
 
 def test_unknown_or_quarantined_observation_key_fails_closed():
