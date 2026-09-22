@@ -24,7 +24,7 @@ _MONITORING_METRIC_RE = re.compile(
     re.IGNORECASE,
 )
 _GLUCOSE_RE = re.compile(
-    r"(?:\b(?:glyc[eé]mie|glucose|sucre|sugar|cgm)\b|(?:سكر|جلوكوز))",
+    r"(?:\b(?:glyc[eé]mi(?:e|que)|glucose|sucre|sugar|cgm)\b|(?:سكر|جلوكوز))",
     re.IGNORECASE,
 )
 _TREND_RE = re.compile(
