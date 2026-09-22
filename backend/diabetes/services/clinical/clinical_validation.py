@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from core.contracts.advice_decision import AdviceAuthorityLevel
+from core.contracts.advice_decision import AdviceAuthorityLevel, AdviceDisposition
 from core.contracts.advice_resolution import AdviceResolution
 
 
@@ -97,20 +97,24 @@ def enforce_clinical_validation(resolution: AdviceResolution) -> AdviceResolutio
             f"clinical rule family disabled: {resolution.decision.rule_id}"
         )
 
-    actual = _AUTHORITY_ORDER[resolution.decision.authority_level]
-    maximum = _AUTHORITY_ORDER[policy.max_authority]
-    if actual > maximum:
-        raise PermissionError(
-            f"clinical authority exceeds validated scope for {resolution.decision.rule_id}"
-        )
+    if resolution.decision.decision in {
+        AdviceDisposition.ALLOW,
+        AdviceDisposition.CONSTRAIN,
+    }:
+        actual = _AUTHORITY_ORDER[resolution.decision.authority_level]
+        maximum = _AUTHORITY_ORDER[policy.max_authority]
+        if actual > maximum:
+            raise PermissionError(
+                f"clinical authority exceeds validated scope for {resolution.decision.rule_id}"
+            )
 
-    if (
-        policy.status is ValidationStatus.EXPERIMENTAL
-        and actual > _AUTHORITY_ORDER[AdviceAuthorityLevel.L1_EDUCATION]
-    ):
-        raise PermissionError(
-            f"experimental clinical family cannot exceed L1: {resolution.decision.rule_id}"
-        )
+        if (
+            policy.status is ValidationStatus.EXPERIMENTAL
+            and actual > _AUTHORITY_ORDER[AdviceAuthorityLevel.L1_EDUCATION]
+        ):
+            raise PermissionError(
+                f"experimental clinical family cannot exceed L1: {resolution.decision.rule_id}"
+            )
 
     return resolution
 
