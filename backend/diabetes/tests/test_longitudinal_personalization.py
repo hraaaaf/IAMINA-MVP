@@ -279,3 +279,29 @@ def test_inconsistent_pattern_status_fails_closed():
             bad,
             language="fr",
         )
+
+
+
+def test_unknown_or_quarantined_observation_key_fails_closed():
+    pattern = _pattern()
+    bad = CompanionPattern(
+        observation_key="legacy:food_sensitivity",
+        current_state=pattern.current_state,
+        markers=pattern.markers,
+        evidence_density=pattern.evidence_density,
+        recurrence_count=pattern.recurrence_count,
+        baseline_direction=pattern.baseline_direction,
+        baseline_movement=pattern.baseline_movement,
+        first_observed_at=pattern.first_observed_at,
+        last_observed_at=pattern.last_observed_at,
+        evidence_id=pattern.evidence_id,
+        source_version=pattern.source_version,
+        limitations=pattern.limitations,
+    )
+
+    with pytest.raises(ValueError, match="unapproved longitudinal observation key"):
+        resolve_longitudinal_personalization_from_context(
+            "Qu’est-ce que tu remarques chez moi sur la durée dans mes données ?",
+            _context(bad),
+            language="fr",
+        )
