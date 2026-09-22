@@ -550,3 +550,88 @@ def test_module_monitoring_decision_short_circuits_llm_and_verifies_before_strea
     assert chunks == ["Réponse MONITORING déterministe."]
     assert events == ["verify", "assistant_store", "observed_emit"]
     record_route.assert_called_once_with("policy_rule")
+
+
+def _activity_resolution():
+    return AdviceResolution(
+        decision=AdviceDecision(
+            intent="activity_context",
+            authority_level=AdviceAuthorityLevel.L2_LOW_RISK_PRACTICAL,
+            decision=AdviceDisposition.CONSTRAIN,
+            rule_id="diabetes.activity.descriptive_context",
+            rule_version="1",
+            allowed_actions=("explain_recorded_activity_context",),
+            forbidden_actions=(
+                "infer_activity_causality",
+                "prescribe_exercise",
+                "recommend_compensatory_activity",
+                "calculate_insulin_dose",
+                "change_treatment",
+                "diagnose_from_activity",
+            ),
+            evidence_refs=("rule.pattern.low-with-recorded-activity.v1",),
+            limitations=("temporal_or_longitudinal_association_does_not_establish_causality",),
+        ),
+        reply="Réponse ACTIVITY déterministe.",
+    )
+
+
+def test_module_activity_decision_short_circuits_llm_and_verifies_before_chat_storage():
+    patient = SimpleNamespace(id=42, first_name="")
+    events = []
+
+    def verify(_patient_id, resolution, candidate):
+        assert resolution.decision.rule_id.startswith("diabetes.activity.")
+        events.append("verify")
+        return candidate
+
+    def append(_patient, role, _message):
+        if role == "assistant":
+            events.append("assistant_store")
+
+    with (
+        patch("companion.conversation.get_advice_resolution", return_value=_activity_resolution()),
+        patch("companion.conversation._get_context", return_value=DomainContext.empty(language="fr")),
+        patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch("companion.conversation._append_turn", side_effect=append),
+        patch("companion.conversation.record_companion_route") as record_route,
+    ):
+        reply = conversation.chat(
+            "Est-ce que le sport est lié à mes baisses de glycémie ?",
+            memory=None, deep=object(), llm=ExplodingLLM(), language="fr", patient=patient,
+        )
+
+    assert reply == "Réponse ACTIVITY déterministe."
+    assert events == ["verify", "assistant_store"]
+    record_route.assert_called_once_with("policy_rule")
+
+
+def test_module_activity_decision_short_circuits_llm_and_verifies_before_stream_emit():
+    patient = SimpleNamespace(id=42, first_name="")
+    events = []
+
+    def verify(_patient_id, resolution, candidate):
+        assert resolution.decision.rule_id.startswith("diabetes.activity.")
+        events.append("verify")
+        return candidate
+
+    def append(_patient, role, _message):
+        if role == "assistant":
+            events.append("assistant_store")
+
+    with (
+        patch("companion.conversation.get_advice_resolution", return_value=_activity_resolution()),
+        patch("companion.conversation._get_context", return_value=DomainContext.empty(language="fr")),
+        patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch("companion.conversation._append_turn", side_effect=append),
+        patch("companion.conversation.record_companion_route") as record_route,
+    ):
+        chunks = list(conversation.stream_chat(
+            "Est-ce que le sport est lié à mes baisses de glycémie ?",
+            memory=None, deep=object(), llm=ExplodingLLM(), language="fr", patient=patient,
+        ))
+
+    events.append("observed_emit")
+    assert chunks == ["Réponse ACTIVITY déterministe."]
+    assert events == ["verify", "assistant_store", "observed_emit"]
+    record_route.assert_called_once_with("policy_rule")
