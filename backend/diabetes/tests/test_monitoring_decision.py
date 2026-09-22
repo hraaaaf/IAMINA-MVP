@@ -60,11 +60,32 @@ def test_monitoring_interpretation_fails_closed_when_data_are_insufficient():
 
 
 def test_unrelated_message_is_not_claimed_by_monitoring_family():
-    assert (
-        resolve_monitoring_interpretation(
-            "Bonjour, comment vas-tu ?",
-            _context(),
-            language="fr",
+    for message, language in (
+        ("Bonjour, comment vas-tu ?", "fr"),
+        ("What is the weather trend this week?", "en"),
+        ("Peux-tu relire mon CV cette semaine ?", "fr"),
+    ):
+        assert (
+            resolve_monitoring_interpretation(
+                message,
+                _context(),
+                language=language,
+            )
+            is None
         )
-        is None
-    )
+
+
+def test_monitoring_family_supports_english_and_arabic_glucose_trend_queries():
+    for message, language in (
+        ("Explain my glucose trend this week", "en"),
+        ("اشرح لي اتجاه السكر هذا الأسبوع", "ar-MA"),
+    ):
+        resolution = resolve_monitoring_interpretation(
+            message,
+            _context(),
+            language=language,
+        )
+
+        assert resolution is not None
+        assert resolution.decision.rule_id == "diabetes.monitoring.descriptive_interpretation"
+        assert resolution.decision.language == language
