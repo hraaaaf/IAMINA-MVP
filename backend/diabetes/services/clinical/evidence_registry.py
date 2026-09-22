@@ -127,6 +127,32 @@ _SOURCE_ADA_2026_SECTION6 = EvidenceRecord(
     ),
 )
 
+_SOURCE_NICE_NG17_DKA = EvidenceRecord(
+    evidence_id="source.nice.ng17.dka",
+    kind=RecordKind.SOURCE,
+    topic="type 1 diabetes sick-day rules and suspected diabetic ketoacidosis",
+    claim_or_rule=(
+        "NICE NG17 recommends ketone monitoring as part of sick-day rules and "
+        "formal emergency assessment when diabetic ketoacidosis is suspected."
+    ),
+    evidence_maturity=EvidenceMaturity.STANDARD_OF_CARE,
+    source_organization="National Institute for Health and Care Excellence",
+    source_title="Type 1 diabetes in adults: diagnosis and management — NG17",
+    identifier="NICE NG17, recommendations 1.10.1–1.10.4",
+    publication_or_version_date="2015; current recommendations accessed 2026-09-22",
+    finality_status=FinalityStatus.FINAL,
+    population=("adults with type 1 diabetes",),
+    modality=("symptom report, illness context, blood or urine ketone assessment",),
+    jurisdiction="United Kingdom guidance; product rule remains jurisdiction-neutral",
+    regulatory_status="not_applicable",
+    reviewed_at="2026-09-22",
+    clinical_authority=ClinicalAuthority.NONE,
+    limitations=(
+        "The guideline is adult type 1 diabetes guidance. It supports conservative "
+        "professional escalation and emergency ownership, not autonomous diagnosis."
+    ),
+)
+
 _SOURCE_GMI_2018 = EvidenceRecord(
     evidence_id="source.bergenstal.2018.gmi",
     kind=RecordKind.SOURCE,
@@ -497,6 +523,23 @@ _RULE_PRE_POST_MEAL = _internal_rule(
     authority=ClinicalAuthority.NARRATIVE_ONLY,
 )
 
+_RULE_SYMPTOM_TRIAGE = _internal_rule(
+    evidence_id="rule.triage.symptom-professional-escalation.v1",
+    topic="patient-reported diabetes symptom triage",
+    claim_or_rule=(
+        "For current patient-reported symptoms that are not already captured by the shared "
+        "urgent safety gate, escalate to professional assessment without diagnosis, treatment "
+        "advice, reassurance of safety, or urgency downgrade."
+    ),
+    population=("people with diabetes reporting current symptoms",),
+    modality=("patient-authored text symptom report after shared emergency gate",),
+    limitations=(
+        "This rule does not diagnose a cause or determine that a symptom is benign. "
+        "The shared core emergency authority always has precedence."
+    ),
+    supporting=("source.ada.2026.section6", "source.nice.ng17.dka"),
+)
+
 _RULE_PERSONAL_RESPONSE = _internal_rule(
     evidence_id="rule.personal-response.repetition.v1",
     topic="longitudinal personal response observations",
@@ -512,6 +555,7 @@ _RULE_PERSONAL_RESPONSE = _internal_rule(
 
 _RECORDS = (
     _SOURCE_ADA_2026_SECTION6,
+    _SOURCE_NICE_NG17_DKA,
     _SOURCE_GMI_2018,
     _SOURCE_UGMI_2026,
     _SOURCE_PHNH_2025,
@@ -531,6 +575,7 @@ _RECORDS = (
     _RULE_CONTEXT,
     _RULE_FOOD,
     _RULE_PRE_POST_MEAL,
+    _RULE_SYMPTOM_TRIAGE,
     _RULE_PERSONAL_RESPONSE,
 )
 

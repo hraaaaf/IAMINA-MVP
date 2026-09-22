@@ -68,6 +68,24 @@ _GLYCEMIC_FR = frozenset(
     }
 )
 
+_GLYCEMIC_EN = frozenset(
+    {
+        "loss of consciousness",
+        "unconscious",
+        "i am going to faint",
+        "i'm going to faint",
+        "about to faint",
+        "seizure",
+        "seizures",
+        "convulsion",
+        "convulsions",
+        "confusion",
+        "blurred vision",
+        "cold sweats",
+        "severe hypo",
+    }
+)
+
 _GLYCEMIC_DARIJA = frozenset(
     {
         "ghadi ntih",
@@ -139,6 +157,7 @@ def glycemic_emergency_variant_inventory() -> tuple[GlycemicSafetyVariant, ...]:
     """
     variants = [
         *(GlycemicSafetyVariant("fr", "native_script", text) for text in _GLYCEMIC_FR),
+        *(GlycemicSafetyVariant("en", "native_script", text) for text in _GLYCEMIC_EN),
         *(
             GlycemicSafetyVariant("ar-MA", "latin_transliteration", text)
             for text in _GLYCEMIC_DARIJA
@@ -185,6 +204,8 @@ def classify(message: str) -> TriageClass:
     if _NUMERIC_GLUCOSE.search(normalized):
         return TriageClass.GLYCEMIC_EMERGENCY
     if any(keyword in normalized for keyword in _GLYCEMIC_FR):
+        return TriageClass.GLYCEMIC_EMERGENCY
+    if any(keyword in normalized for keyword in _GLYCEMIC_EN):
         return TriageClass.GLYCEMIC_EMERGENCY
     if any(keyword in normalized for keyword in _GLYCEMIC_DARIJA):
         return TriageClass.GLYCEMIC_EMERGENCY

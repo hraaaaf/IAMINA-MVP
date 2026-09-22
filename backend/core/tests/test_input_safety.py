@@ -85,3 +85,16 @@ def test_sse_insulin_fast_path_does_not_initialize_iamina(monkeypatch):
     request.user = SimpleNamespace(id=1)
     response = ai.chat_stream(request, "dose")
     assert list(response.streaming_content)[-1] == b"data: [DONE]\n\n"
+
+
+def test_english_glycemic_distress_phrases_are_urgent():
+    messages = (
+        "I am going to faint and my vision is blurred",
+        "I am unconscious",
+        "I have cold sweats and confusion",
+        "I am having a seizure",
+    )
+    for message in messages:
+        decision = evaluate_input_safety(message)
+        assert decision.action == URGENT, message
+        assert decision.reason == "glycemic_emergency"
