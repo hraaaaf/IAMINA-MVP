@@ -134,22 +134,15 @@ def _reply(language: str, *, topics: tuple[str, ...], has_items: bool) -> str:
     )
 
 
-def resolve_clinician_prep(
-    patient_id: int,
+def resolve_clinician_prep_from_brief(
     message: str,
+    brief,
     *,
     language: str = "fr",
 ) -> AdviceResolution | None:
     if not classify_clinician_prep(message):
         return None
 
-    window_end = timezone.now()
-    window_start = window_end - timedelta(days=_WINDOW_DAYS)
-    brief = assemble_consultation_brief(
-        patient_id=patient_id,
-        window_start=window_start,
-        window_end=window_end,
-    )
     topics = _brief_topics(brief)
     has_items = bool(brief.items)
 
@@ -185,4 +178,31 @@ def resolve_clinician_prep(
     )
 
 
-__all__ = ["classify_clinician_prep", "resolve_clinician_prep"]
+def resolve_clinician_prep(
+    patient_id: int,
+    message: str,
+    *,
+    language: str = "fr",
+) -> AdviceResolution | None:
+    if not classify_clinician_prep(message):
+        return None
+
+    window_end = timezone.now()
+    window_start = window_end - timedelta(days=_WINDOW_DAYS)
+    brief = assemble_consultation_brief(
+        patient_id=patient_id,
+        window_start=window_start,
+        window_end=window_end,
+    )
+    return resolve_clinician_prep_from_brief(
+        message,
+        brief,
+        language=language,
+    )
+
+
+__all__ = [
+    "classify_clinician_prep",
+    "resolve_clinician_prep",
+    "resolve_clinician_prep_from_brief",
+]
