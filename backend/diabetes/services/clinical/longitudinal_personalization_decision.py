@@ -162,7 +162,7 @@ def _reply(message: str, pattern: CompanionPattern, language: str) -> str:
     active = pattern.current_state == "active"
 
     if language == "ar-MA" and not _ARABIC_RE.search(message):
-        state = "mazal active f projection longitudinal الحالية" if active else "ma b9ach active f projection longitudinal الحالية"
+        state = "mazal active f projection longitudinal daba" if active else "ma b9ach active f projection longitudinal daba"
         return (
             f"F l'historique gouverné dyalk, « {_label(pattern, language, message)} » {state}. "
             f"Tban mn {first} 7tta {last}, f {episodes} episode(s), b repeatability density {density}. "
@@ -199,7 +199,7 @@ def _insufficient_reply(message: str, language: str) -> str:
     if language == "ar-MA" and not _ARABIC_RE.search(message):
         return (
             "Ma 3ndich daba observations longitudinales gouvernées kafiin bach njawb bla ma nkhmen. "
-            "Donc ma ghadi نستنتج sabab, effet dyal traitement, wala future outcome."
+            "Donc ma ghadi nstنتj sabab, effet dyal traitement, wala future outcome."
         )
     if language.startswith("ar"):
         return (
