@@ -31,7 +31,7 @@ _PREP_RE = re.compile(
     r"(?:\b(?:prépar\w*|prepar\w*|rendez[- ]?vous|appointment|visit|"
     r"question\w*|ask|discuss|parler|dire|résum\w*|resum\w*|summary|"
     r"bring|apporter|montrer|show)\b|"
-    r"(?:نوجد|نحضّر|نحضر|موعد|أسئلة|اسئلة|نسول|نهضر|نوري|نلخص|نلخّص))",
+    r"(?:نوجد|نحضّر|نحضر|أسئلة|اسئلة|نسول|نهضر|نوري|نلخص|نلخّص))",
     re.IGNORECASE,
 )
 
