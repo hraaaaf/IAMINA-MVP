@@ -14,6 +14,9 @@ def _context(*, sufficient=True):
             "tar_pct": 28.0,
             "tbr_pct": 4.0,
         },
+        detected_patterns=[],
+        insights=[],
+        pivot_text="",
         trend={
             "current_week_tir": 68.0,
             "prev_week_tir": 64.0,
