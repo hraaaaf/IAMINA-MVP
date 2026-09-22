@@ -16,7 +16,7 @@ from core.contracts.advice_decision import (
 )
 from core.contracts.advice_resolution import AdviceResolution
 from core.contracts.domain_context import DomainContext
-from core.input_safety import URGENT, evaluate_input_safety
+from core.input_safety import ALLOW, evaluate_input_safety
 
 _PERSONAL_RE = re.compile(
     r"(?:\b(?:je|j['’]?ai|me|mon|ma|mes|i|i['’]?m|my|me|3ndi|fiya|ana)\b|"
@@ -55,7 +55,7 @@ def classify_symptom_triage(message: str) -> bool:
     text = (message or "").strip()
     if not text:
         return False
-    if evaluate_input_safety(text).action == URGENT:
+    if evaluate_input_safety(text).action != ALLOW:
         return False
     return bool(_PERSONAL_RE.search(text) and _SYMPTOM_RE.search(text))
 
