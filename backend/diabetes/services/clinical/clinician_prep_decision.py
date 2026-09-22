@@ -18,6 +18,7 @@ from core.contracts.advice_decision import (
     AdviceDisposition,
 )
 from core.contracts.advice_resolution import AdviceResolution
+from core.input_safety import ALLOW, evaluate_input_safety
 from diabetes.services.clinical.consultation_brief_assembler import (
     assemble_consultation_brief,
 )
@@ -57,7 +58,9 @@ _WINDOW_DAYS = 14
 
 def classify_clinician_prep(message: str) -> bool:
     text = (message or "").strip()
-    return bool(text and _CLINICIAN_RE.search(text) and _PREP_RE.search(text))
+    if not text or evaluate_input_safety(text).action != ALLOW:
+        return False
+    return bool(_CLINICIAN_RE.search(text) and _PREP_RE.search(text))
 
 
 def _brief_topics(brief) -> tuple[str, ...]:
