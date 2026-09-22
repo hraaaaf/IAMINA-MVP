@@ -164,3 +164,18 @@ class RuntimeEvidenceCoverageTests(SimpleTestCase):
         self.assertIn("product", combined)
         self.assertIn("not diagnostic", combined)
         self.assertIn("do not present 250/300 mg/dl as universal", combined)
+
+
+def test_symptom_triage_rule_has_cross_checked_standard_sources():
+    nice = get_evidence("source.nice.ng17.dka")
+    rule = get_evidence("rule.triage.symptom-professional-escalation.v1")
+
+    assert nice.kind == RecordKind.SOURCE
+    assert nice.evidence_maturity == EvidenceMaturity.STANDARD_OF_CARE
+    assert nice.clinical_authority == ClinicalAuthority.NONE
+    assert rule.kind == RecordKind.RULE
+    assert rule.clinical_authority == ClinicalAuthority.GOVERNED_RULE
+    assert set(rule.supporting_evidence_ids) == {
+        "source.ada.2026.section6",
+        "source.nice.ng17.dka",
+    }
