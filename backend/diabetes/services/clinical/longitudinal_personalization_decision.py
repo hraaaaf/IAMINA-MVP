@@ -8,6 +8,7 @@ outcomes or medication/dose changes.
 from __future__ import annotations
 
 import re
+from datetime import datetime
 
 from core.contracts.advice_decision import (
     AdviceAuthorityLevel,
@@ -104,10 +105,17 @@ def _focus_keys(message: str) -> tuple[str, ...] | None:
     return None
 
 
-def _date(value: str | None) -> str:
-    if not isinstance(value, str) or len(value) < 10:
+def _parse_datetime(value: str | None) -> datetime:
+    if not isinstance(value, str) or not value.strip():
         raise ValueError("longitudinal pattern requires an observation date")
-    return value[:10]
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError("longitudinal pattern requires a valid ISO observation date") from exc
+
+
+def _date(value: str | None) -> str:
+    return _parse_datetime(value).date().isoformat()
 
 
 def _dedupe(values: tuple[str, ...]) -> tuple[str, ...]:
@@ -127,8 +135,16 @@ def _validate_pattern(pattern: CompanionPattern) -> None:
         raise ValueError("longitudinal pattern has unapproved evidence density")
     if type(pattern.recurrence_count) is not int or pattern.recurrence_count < 1:
         raise ValueError("longitudinal pattern requires a positive recurrence count")
-    _date(pattern.first_observed_at)
-    _date(pattern.last_observed_at)
+    first = _parse_datetime(pattern.first_observed_at)
+    last = _parse_datetime(pattern.last_observed_at)
+    if first > last:
+        raise ValueError("longitudinal pattern has contradictory observation dates")
+    required_limitations = {
+        "observational_association_only",
+        "no_diagnosis_causality_treatment_response_or_future_prediction",
+    }
+    if not required_limitations.issubset(set(pattern.limitations)):
+        raise ValueError("longitudinal pattern is missing required safety limitations")
 
 
 def _approved_patterns(context: CompanionContext) -> tuple[CompanionPattern, ...]:
