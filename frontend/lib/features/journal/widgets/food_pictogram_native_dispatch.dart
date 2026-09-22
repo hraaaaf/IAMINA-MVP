@@ -1,0 +1,39 @@
+import 'package:flutter/material.dart';
+import 'food_pictogram_painter.dart';import 'food_pictogram_painter_batch2.dart';import 'food_pictogram_painter_batch3.dart';import 'food_pictogram_painter_batch4.dart';import 'food_pictogram_painter_batch5.dart';import 'food_pictogram_painter_batch6.dart';import 'food_pictogram_painter_batch7.dart';import 'food_pictogram_painter_batch8.dart';import 'food_pictogram_painter_batch9.dart';import 'food_pictogram_painter_batch10.dart';import 'food_pictogram_painter_batch11.dart';import 'food_pictogram_painter_batch12.dart';import 'food_pictogram_painter_batch13.dart';import 'food_pictogram_painter_batch14.dart';import 'food_pictogram_painter_batch15.dart';import 'food_pictogram_painter_batch16.dart';import 'food_pictogram_painter_batch17.dart';import 'food_pictogram_painter_batch18.dart';import 'food_pictogram_painter_batch19.dart';import 'food_pictogram_painter_batch20.dart';import 'food_pictogram_painter_batch21.dart';import 'food_pictogram_painter_batch22.dart';import 'food_pictogram_painter_batch23.dart';import 'food_pictogram_painter_batch24.dart';import 'food_pictogram_painter_batch25.dart';import 'food_pictogram_painter_batch26.dart';import 'food_pictogram_painter_batch27.dart';import 'food_pictogram_painter_batch28.dart';import 'food_pictogram_painter_batch29.dart';import 'food_pictogram_painter_batch30.dart';import 'food_pictogram_painter_batch31.dart';import 'food_pictogram_painter_batch32.dart';
+
+CustomPainter? nativeFoodPictogramPainter(String key){
+  if(hasCodeFoodPictogramBatch32(key))return FoodPictogramPainterBatch32(key);
+  if(hasCodeFoodPictogramBatch31(key))return FoodPictogramPainterBatch31(key);
+  if(hasCodeFoodPictogramBatch30(key))return FoodPictogramPainterBatch30(key);
+  if(hasCodeFoodPictogramBatch29(key))return FoodPictogramPainterBatch29(key);
+  if(hasCodeFoodPictogramBatch28(key))return FoodPictogramPainterBatch28(key);
+  if(hasCodeFoodPictogramBatch27(key))return FoodPictogramPainterBatch27(key);
+  if(hasCodeFoodPictogramBatch26(key))return FoodPictogramPainterBatch26(key);
+  if(hasCodeFoodPictogramBatch25(key))return FoodPictogramPainterBatch25(key);
+  if(hasCodeFoodPictogramBatch24(key))return FoodPictogramPainterBatch24(key);
+  if(hasCodeFoodPictogramBatch23(key))return FoodPictogramPainterBatch23(key);
+  if(hasCodeFoodPictogramBatch22(key))return FoodPictogramPainterBatch22(key);
+  if(hasCodeFoodPictogramBatch21(key))return FoodPictogramPainterBatch21(key);
+  if(hasCodeFoodPictogramBatch20(key))return FoodPictogramPainterBatch20(key);
+  if(hasCodeFoodPictogramBatch19(key))return FoodPictogramPainterBatch19(key);
+  if(hasCodeFoodPictogramBatch18(key))return FoodPictogramPainterBatch18(key);
+  if(hasCodeFoodPictogramBatch17(key))return FoodPictogramPainterBatch17(key);
+  if(hasCodeFoodPictogramBatch16(key))return FoodPictogramPainterBatch16(key);
+  if(hasCodeFoodPictogramBatch15(key))return FoodPictogramPainterBatch15(key);
+  if(hasCodeFoodPictogramBatch14(key))return FoodPictogramPainterBatch14(key);
+  if(hasCodeFoodPictogramBatch13(key))return FoodPictogramPainterBatch13(key);
+  if(hasCodeFoodPictogramBatch12(key))return FoodPictogramPainterBatch12(key);
+  if(hasCodeFoodPictogramBatch11(key))return FoodPictogramPainterBatch11(key);
+  if(hasCodeFoodPictogramBatch10(key))return FoodPictogramPainterBatch10(key);
+  if(hasCodeFoodPictogramBatch9(key))return FoodPictogramPainterBatch9(key);
+  if(hasCodeFoodPictogramBatch8(key))return FoodPictogramPainterBatch8(key);
+  if(hasCodeFoodPictogramBatch7(key))return FoodPictogramPainterBatch7(key);
+  if(hasCodeFoodPictogramBatch6(key))return FoodPictogramPainterBatch6(key);
+  if(hasCodeFoodPictogramBatch5(key))return FoodPictogramPainterBatch5(key);
+  if(hasCodeFoodPictogramBatch4(key))return FoodPictogramPainterBatch4(key);
+  if(hasCodeFoodPictogramBatch3(key))return FoodPictogramPainterBatch3(key);
+  if(hasCodeFoodPictogramBatch2(key))return FoodPictogramPainterBatch2(key);
+  if(hasCodeFoodPictogram(key))return FoodPictogramPainter(key);
+  return null;
+}
+bool hasNativeFoodPictogram(String key)=>nativeFoodPictogramPainter(key)!=null;
