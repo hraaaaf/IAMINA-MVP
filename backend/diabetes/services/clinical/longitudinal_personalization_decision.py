@@ -166,7 +166,7 @@ def _reply(message: str, pattern: CompanionPattern, language: str) -> str:
         return (
             f"F l'historique gouverné dyalk, « {_label(pattern, language, message)} » {state}. "
             f"Tban mn {first} 7tta {last}, f {episodes} episode(s), b repeatability density {density}. "
-            "Hadchi association wasfiya faqat: ma kaytbetch sabab, effet dyal traitement, wala chno ghadi yوقع."
+            "Hadchi association wasfiya faqat: ma kaytbetch sabab, effet dyal traitement, wala chno ghadi ytra."
         )
 
     if language.startswith("ar"):
@@ -199,7 +199,7 @@ def _insufficient_reply(message: str, language: str) -> str:
     if language == "ar-MA" and not _ARABIC_RE.search(message):
         return (
             "Ma 3ndich daba observations longitudinales gouvernées kafiin bach njawb bla ma nkhmen. "
-            "Donc ma ghadi nstنتj sabab, effet dyal traitement, wala future outcome."
+            "Donc ma ghadi nstntj sabab, effet dyal traitement, wala future outcome."
         )
     if language.startswith("ar"):
         return (
