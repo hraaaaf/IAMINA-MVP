@@ -38,3 +38,28 @@ def test_core_advice_resolver_rejects_invalid_module_resolution_type():
                 DomainContext.empty(language="fr"),
                 language="fr",
             )
+
+
+
+def test_core_advice_resolver_prefers_patient_aware_engine_seam():
+    class PatientAwareEngine:
+        def resolve_patient_advice(
+            self,
+            patient_id,
+            message,
+            context,
+            language="fr",
+            previous_user_message=None,
+        ):
+            assert patient_id == 42
+            assert message == "prépare mon médecin"
+            assert context.language == "fr"
+            return None
+
+    with patch("core.companion.clinical._resolve_engine", return_value=PatientAwareEngine()):
+        assert clinical.get_advice_resolution(
+            42,
+            "prépare mon médecin",
+            DomainContext.empty(language="fr"),
+            language="fr",
+        ) is None
