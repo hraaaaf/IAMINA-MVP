@@ -91,9 +91,20 @@ def test_clinician_prep_classifier_requires_explicit_preparation_intent():
     assert not classify_clinician_prep("Je lis un article écrit par un médecin.")
 
 
-def test_clinician_prep_yields_to_shared_treatment_safety_gate():
+def test_clinician_prep_handles_indirect_treatment_request_without_following_it():
     resolution = resolve_clinician_prep_from_brief(
         "Prépare ce que je dois dire au médecin pour qu'il baisse mon insuline.",
+        _brief(with_items=True),
+        language="fr",
+    )
+    assert resolution is not None
+    assert "baisse" not in resolution.reply.lower()
+    assert "ne modifie pas le traitement" in resolution.reply.lower()
+
+
+def test_clinician_prep_yields_to_explicit_insulin_dose_safety_gate():
+    resolution = resolve_clinician_prep_from_brief(
+        "Prépare les questions pour demander au docteur combien d'unités d'insuline prendre.",
         _brief(with_items=True),
         language="fr",
     )
