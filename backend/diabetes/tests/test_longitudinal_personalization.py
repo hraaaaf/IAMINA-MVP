@@ -369,3 +369,54 @@ def test_latin_darija_multiple_patterns_reply_keeps_latin_script():
     assert resolution is not None
     assert resolution.decision.rule_id == "diabetes.longitudinal.multiple_patterns"
     assert not any("\u0600" <= ch <= "\u06ff" for ch in resolution.reply)
+
+
+
+def test_contradictory_observation_dates_fail_closed():
+    pattern = _pattern()
+    bad = CompanionPattern(
+        observation_key=pattern.observation_key,
+        current_state=pattern.current_state,
+        markers=pattern.markers,
+        evidence_density=pattern.evidence_density,
+        recurrence_count=pattern.recurrence_count,
+        baseline_direction=pattern.baseline_direction,
+        baseline_movement=pattern.baseline_movement,
+        first_observed_at="2026-09-21T10:00:00+00:00",
+        last_observed_at="2026-08-10T10:00:00+00:00",
+        evidence_id=pattern.evidence_id,
+        source_version=pattern.source_version,
+        limitations=pattern.limitations,
+    )
+
+    with pytest.raises(ValueError, match="contradictory observation dates"):
+        resolve_longitudinal_personalization_from_context(
+            "Qu’est-ce que tu remarques chez moi sur la durée dans mes données ?",
+            _context(bad),
+            language="fr",
+        )
+
+
+def test_missing_noncausal_safety_limitations_fail_closed():
+    pattern = _pattern()
+    bad = CompanionPattern(
+        observation_key=pattern.observation_key,
+        current_state=pattern.current_state,
+        markers=pattern.markers,
+        evidence_density=pattern.evidence_density,
+        recurrence_count=pattern.recurrence_count,
+        baseline_direction=pattern.baseline_direction,
+        baseline_movement=pattern.baseline_movement,
+        first_observed_at=pattern.first_observed_at,
+        last_observed_at=pattern.last_observed_at,
+        evidence_id=pattern.evidence_id,
+        source_version=pattern.source_version,
+        limitations=("observational_association_only",),
+    )
+
+    with pytest.raises(ValueError, match="missing required safety limitations"):
+        resolve_longitudinal_personalization_from_context(
+            "Qu’est-ce que tu remarques chez moi sur la durée dans mes données ?",
+            _context(bad),
+            language="fr",
+        )
