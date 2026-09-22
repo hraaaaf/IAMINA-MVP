@@ -637,7 +637,6 @@ def test_module_activity_decision_short_circuits_llm_and_verifies_before_stream_
     record_route.assert_called_once_with("policy_rule")
 
 
-
 def _symptom_triage_resolution():
     return AdviceResolution(
         decision=AdviceDecision(
@@ -745,7 +744,6 @@ def test_module_symptom_triage_short_circuits_llm_and_verifies_before_stream_emi
     assert chunks == ["Réponse SYMPTOM_TRIAGE déterministe."]
     assert events == ["verify", "assistant_store", "observed_emit"]
     record_route.assert_called_once_with("policy_rule")
-
 
 
 def _clinician_prep_resolution():
@@ -858,7 +856,6 @@ def test_module_clinician_prep_short_circuits_llm_and_verifies_before_stream_emi
     assert chunks == ["Réponse CLINICIAN_PREP déterministe."]
     assert events == ["verify", "assistant_store", "observed_emit"]
     record_route.assert_called_once_with("policy_rule")
-
 
 
 def _longitudinal_resolution():
