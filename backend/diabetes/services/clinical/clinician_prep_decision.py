@@ -30,7 +30,7 @@ _CLINICIAN_RE = re.compile(
 _PREP_RE = re.compile(
     r"(?:\b(?:prépar\w*|prepar\w*|rendez[- ]?vous|appointment|visit|"
     r"question\w*|ask|discuss|parler|dire|résum\w*|resum\w*|summary|"
-    r"bring|apporter|montrer|show)\b|"
+    r"bring|apporter|montrer|show|nwjdo|n7der|nswel|nsoul|swal|nhder|nweri|nlkhs|nlkhes)\b|"
     r"(?:نوجد|نحضّر|نحضر|أسئلة|اسئلة|نسول|نهضر|نوري|نلخص|نلخّص))",
     re.IGNORECASE,
 )
