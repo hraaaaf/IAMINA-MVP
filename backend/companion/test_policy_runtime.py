@@ -635,3 +635,113 @@ def test_module_activity_decision_short_circuits_llm_and_verifies_before_stream_
     assert chunks == ["Réponse ACTIVITY déterministe."]
     assert events == ["verify", "assistant_store", "observed_emit"]
     record_route.assert_called_once_with("policy_rule")
+
+
+
+def _symptom_triage_resolution():
+    return AdviceResolution(
+        decision=AdviceDecision(
+            intent="symptom_triage",
+            authority_level=AdviceAuthorityLevel.L4_PROFESSIONAL_VALIDATION,
+            decision=AdviceDisposition.ESCALATE,
+            rule_id="diabetes.symptom.professional_triage",
+            rule_version="1",
+            forbidden_actions=(
+                "diagnose_from_symptom",
+                "attribute_symptom_to_glucose",
+                "reassure_symptom_is_benign",
+                "downgrade_emergency_urgency",
+                "delay_professional_assessment",
+                "calculate_insulin_dose",
+                "change_treatment",
+                "prescribe_symptom_treatment",
+            ),
+            evidence_refs=("rule.triage.symptom-professional-escalation.v1",),
+            limitations=("shared_core_emergency_gate_has_precedence",),
+            escalation="contact_clinical_team_for_symptom_assessment",
+        ),
+        reply="Réponse SYMPTOM_TRIAGE déterministe.",
+    )
+
+
+def test_module_symptom_triage_short_circuits_llm_and_verifies_before_chat_storage():
+    patient = SimpleNamespace(id=42, first_name="")
+    events = []
+
+    def verify(_patient_id, resolution, candidate):
+        assert resolution.decision.rule_id.startswith("diabetes.symptom.")
+        events.append("verify")
+        return candidate
+
+    def append(_patient, role, _message):
+        if role == "assistant":
+            events.append("assistant_store")
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_symptom_triage_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch("companion.conversation._append_turn", side_effect=append),
+        patch("companion.conversation.record_companion_route") as record_route,
+    ):
+        reply = conversation.chat(
+            "J'ai des nausées et mal au ventre aujourd'hui.",
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            language="fr",
+            patient=patient,
+        )
+
+    assert reply == "Réponse SYMPTOM_TRIAGE déterministe."
+    assert events == ["verify", "assistant_store"]
+    record_route.assert_called_once_with("policy_rule")
+
+
+def test_module_symptom_triage_short_circuits_llm_and_verifies_before_stream_emit():
+    patient = SimpleNamespace(id=42, first_name="")
+    events = []
+
+    def verify(_patient_id, resolution, candidate):
+        assert resolution.decision.rule_id.startswith("diabetes.symptom.")
+        events.append("verify")
+        return candidate
+
+    def append(_patient, role, _message):
+        if role == "assistant":
+            events.append("assistant_store")
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_symptom_triage_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch("companion.conversation._append_turn", side_effect=append),
+        patch("companion.conversation.record_companion_route") as record_route,
+    ):
+        chunks = list(
+            conversation.stream_chat(
+                "J'ai des nausées et mal au ventre aujourd'hui.",
+                memory=None,
+                deep=object(),
+                llm=ExplodingLLM(),
+                language="fr",
+                patient=patient,
+            )
+        )
+
+    events.append("observed_emit")
+    assert chunks == ["Réponse SYMPTOM_TRIAGE déterministe."]
+    assert events == ["verify", "assistant_store", "observed_emit"]
+    record_route.assert_called_once_with("policy_rule")
