@@ -143,6 +143,7 @@ def resolve_activity_context(
             ),
             forbidden_actions=_FORBIDDEN,
             evidence_refs=_EVIDENCE,
+            required_facts=("sufficient_recorded_activity_context",),
             limitations=_LIMITATIONS,
             language=language,
         )
