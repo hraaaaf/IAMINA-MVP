@@ -100,6 +100,7 @@ def resolve_symptom_triage(
         rule_version="1",
         forbidden_actions=_FORBIDDEN,
         evidence_refs=_EVIDENCE,
+        required_facts=("current_patient_reported_symptom",),
         limitations=_LIMITATIONS,
         escalation="contact_clinical_team_for_symptom_assessment",
         language=language,
