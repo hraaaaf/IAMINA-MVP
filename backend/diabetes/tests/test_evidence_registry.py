@@ -179,3 +179,12 @@ def test_symptom_triage_rule_has_cross_checked_standard_sources():
         "source.ada.2026.section6",
         "source.nice.ng17.dka",
     }
+
+
+
+def test_clinician_prep_rule_is_registered_as_governed_product_rule():
+    rule = get_evidence("rule.consultation.preparation.v1")
+    assert rule.kind == RecordKind.RULE
+    assert rule.clinical_authority == ClinicalAuthority.GOVERNED_RULE
+    assert "review support" in rule.limitations.lower()
+    assert "treatment change" in rule.limitations.lower()

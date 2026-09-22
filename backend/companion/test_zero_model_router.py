@@ -41,12 +41,6 @@ def test_exact_non_clinical_turns_are_eligible(message, language):
             "Réduis au minimum",
         ),
         (
-            "D'accord, ne me donne pas de dose. Aide-moi plutôt à préparer "
-            "ce que je dois demander à mon médecin.",
-            "fr",
-            "Quelles informations dois-je apporter",
-        ),
-        (
             "Ok, je ne touche pas au traitement. Aide-moi juste à organiser "
             "un suivi très simple pour cette semaine.",
             "fr",
@@ -94,6 +88,7 @@ def test_latin_darija_practical_reply_stays_latin():
         "bonjour merci",
         "salam chokran",
         "Aide-moi à préparer mes doses pour mon médecin",
+        "D'accord, ne me donne pas de dose. Aide-moi plutôt à préparer ce que je dois demander à mon médecin.",
         "Je veux une routine d'insuline simple",
         "ok",
         "yes",

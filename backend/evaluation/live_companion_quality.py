@@ -9,14 +9,31 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from django.utils import timezone
+
 from companion.conversation import chat, detect_language
 from companion.parser import parse_llm_json
 from companion.zero_model_router import exact_chitchat_reply
+from core.contracts.domain_context import DomainContext
+from core.contracts.truth import TruthKind
 from core.input_safety import ALLOW, evaluate_input_safety
+from diabetes.services.clinical.clinician_prep_decision import (
+    resolve_clinician_prep_from_brief,
+)
+from diabetes.services.clinical.clinician_prep_narration_verifier import (
+    verified_clinician_prep_narration_or_fallback,
+)
+from diabetes.services.clinical.consultation_brief_contract import (
+    ConsultationBriefEnvelope,
+    ConsultationComparisonBasis,
+    ConsultationEvidenceItem,
+    ConsultationNextStep,
+)
 from evaluation.provider_benchmark_preflight import ProviderBenchmarkPreflight
 from llm.middleware.logging import LoggingMiddleware
 from llm.pipeline import LLMPipeline
@@ -25,7 +42,7 @@ from llm.usage_telemetry import usage_workload_scope
 
 PROVIDER = "groq"
 MODEL = "openai/gpt-oss-120b"
-DATASET_ID = "iamina-companion-quality-v2"
+DATASET_ID = "iamina-companion-quality-v4"
 SPEND_CEILING_MICROUSD = 5_000
 
 
@@ -139,6 +156,8 @@ def resolved_route(turn: ScenarioTurn) -> str:
     decision = evaluate_input_safety(turn.message)
     if decision.action != ALLOW:
         return "safety"
+    if turn.turn_id == "clinician_prep":
+        return "policy_rule"
     language = detect_language(turn.message, turn.language)
     if exact_chitchat_reply(turn.message, language) is not None:
         return "zero_model"
@@ -150,10 +169,60 @@ def validate_scenario() -> dict[str, int]:
     if len(turns) != 10:
         raise RuntimeError("quality scenario must remain exactly 10 turns")
     routes = [resolved_route(turn) for turn in turns]
-    counts = {name: routes.count(name) for name in ("safety", "zero_model", "llm")}
-    if counts != {"safety": 2, "zero_model": 7, "llm": 1}:
+    counts = {
+        name: routes.count(name)
+        for name in ("safety", "zero_model", "policy_rule", "llm")
+    }
+    if counts != {"safety": 2, "zero_model": 6, "policy_rule": 1, "llm": 1}:
         raise RuntimeError(f"unexpected route coverage: {counts}")
     return counts
+
+
+def _synthetic_clinician_brief() -> ConsultationBriefEnvelope:
+    now = timezone.now()
+    return ConsultationBriefEnvelope(
+        window_start=now - timedelta(days=1),
+        window_end=now,
+        comparison_basis=ConsultationComparisonBasis.CURRENT_SNAPSHOT,
+        items=(
+            ConsultationEvidenceItem(
+                key="recorded_glucose.latest_mg_dl",
+                value=142.0,
+                unit="mg/dL",
+                truth_kind=TruthKind.OBSERVED_FACT,
+                source="synthetic.quality-probe",
+                source_version="v4",
+                allowed_next_step=ConsultationNextStep.MONITOR,
+            ),
+        ),
+        limitations=("synthetic_quality_probe_only",),
+    )
+
+
+def _synthetic_advice_resolution(
+    patient_id,
+    message,
+    context,
+    language="fr",
+    previous_user_message=None,
+):
+    del patient_id, context, previous_user_message
+    clinician_turn = next(turn for turn in scenario() if turn.turn_id == "clinician_prep")
+    if message != clinician_turn.message:
+        return None
+    return resolve_clinician_prep_from_brief(
+        message,
+        _synthetic_clinician_brief(),
+        language=language,
+    )
+
+
+def _synthetic_verify_advice_reply(_patient_id, resolution, candidate):
+    return verified_clinician_prep_narration_or_fallback(
+        resolution.decision,
+        candidate,
+        resolution.reply,
+    )
 
 
 def _history_hooks(history: list[SimpleNamespace]):
@@ -207,8 +276,21 @@ def run(output_path: Path) -> dict:
             patch("companion.conversation._append_turn", side_effect=append_turn),
             patch("companion.conversation._recent_turns", side_effect=recent_turns),
             patch("companion.conversation._turn_count", side_effect=turn_count),
+            patch(
+                "companion.conversation._get_context",
+                return_value=DomainContext.empty(language="fr"),
+            ),
+            patch(
+                "companion.conversation.get_advice_resolution",
+                side_effect=_synthetic_advice_resolution,
+            ),
+            patch(
+                "companion.conversation.verify_advice_reply",
+                side_effect=_synthetic_verify_advice_reply,
+            ),
             patch("companion.conversation.record_companion_route", side_effect=routes.append),
         ):
+            synthetic_patient = SimpleNamespace(id=42, first_name="")
             for turn in scenario():
                 reply = chat(
                     turn.message,
@@ -216,7 +298,7 @@ def run(output_path: Path) -> dict:
                     deep=deep,
                     llm=llm,
                     language=turn.language,
-                    patient=None,
+                    patient=(synthetic_patient if turn.turn_id == "clinician_prep" else None),
                     context_days=14,
                 )
                 if not isinstance(reply, str) or not reply.strip():

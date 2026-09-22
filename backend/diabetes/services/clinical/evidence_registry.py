@@ -540,6 +540,21 @@ _RULE_SYMPTOM_TRIAGE = _internal_rule(
     supporting=("source.ada.2026.section6", "source.nice.ng17.dka"),
 )
 
+_RULE_CLINICIAN_PREP = _internal_rule(
+    evidence_id="rule.consultation.preparation.v1",
+    topic="patient consultation preparation",
+    claim_or_rule=(
+        "Transform only the certified consultation-brief.v1 structured envelope into "
+        "non-prescriptive discussion preparation for a qualified clinician."
+    ),
+    population=("patients preparing a clinician consultation",),
+    modality=("approved structured consultation brief fields only",),
+    limitations=(
+        "Review support only. No diagnosis, causality, urgency decision, clinician override, "
+        "prescription, insulin dose, or treatment change authority."
+    ),
+)
+
 _RULE_PERSONAL_RESPONSE = _internal_rule(
     evidence_id="rule.personal-response.repetition.v1",
     topic="longitudinal personal response observations",
@@ -576,6 +591,7 @@ _RECORDS = (
     _RULE_FOOD,
     _RULE_PRE_POST_MEAL,
     _RULE_SYMPTOM_TRIAGE,
+    _RULE_CLINICIAN_PREP,
     _RULE_PERSONAL_RESPONSE,
 )
 

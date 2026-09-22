@@ -99,12 +99,22 @@ def get_advice_resolution(
     engine = _resolve_engine(patient_id)
     if engine is None:
         return None
-    resolution = engine.resolve_advice(
-        message,
-        context,
-        language=language,
-        previous_user_message=previous_user_message,
-    )
+    resolver = getattr(engine, "resolve_patient_advice", None)
+    if callable(resolver):
+        resolution = resolver(
+            patient_id,
+            message,
+            context,
+            language=language,
+            previous_user_message=previous_user_message,
+        )
+    else:
+        resolution = engine.resolve_advice(
+            message,
+            context,
+            language=language,
+            previous_user_message=previous_user_message,
+        )
     if resolution is not None and not isinstance(resolution, AdviceResolution):
         raise TypeError("active module returned an invalid AdviceResolution")
     return resolution

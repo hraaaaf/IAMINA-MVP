@@ -63,9 +63,6 @@ _FR_HELP_RE = re.compile(
     r"\b(?:aide-moi|aide moi|aidez-moi|aidez moi)\b",
     re.IGNORECASE,
 )
-_FR_PREP_RE = re.compile(r"\bpr[ée]parer\b", re.IGNORECASE)
-_FR_CLINICIAN_RE = re.compile(r"\b(?:m[ée]decin|docteur)\b", re.IGNORECASE)
-_FR_ASK_RE = re.compile(r"\b(?:demander|questions?)\b", re.IGNORECASE)
 _FR_ORGANIZE_RE = re.compile(r"\borganis(?:e|er|ation)\b", re.IGNORECASE)
 _FR_ROUTINE_START_RE = re.compile(
     r"\bdu mal [àa] [êe]tre r[ée]gulier\b.*\b(?:j'oublie|oublie)\b",
@@ -88,13 +85,6 @@ def _normalize(message: str) -> str:
 def _exact_practical_reply(normalized: str, language: str) -> str | None:
     if language == "fr":
         helper = bool(_FR_HELP_RE.search(normalized))
-        if (
-            helper
-            and _FR_PREP_RE.search(normalized)
-            and _FR_CLINICIAN_RE.search(normalized)
-            and _FR_ASK_RE.search(normalized)
-        ):
-            return safe_fallback("fr", mode="clinician_prep")
         if (
             helper
             and _FR_ORGANIZE_RE.search(normalized)

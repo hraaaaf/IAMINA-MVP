@@ -870,6 +870,34 @@ class DiabetesEngine(BaseEngine):
             language=language,
         )
 
+    def resolve_patient_advice(
+        self,
+        patient_id: int,
+        message: str,
+        context: "DomainContext",
+        language: str = "fr",
+        previous_user_message: str | None = None,
+    ):
+        """Resolve patient-aware families after all context-only governed families."""
+        resolution = self.resolve_advice(
+            message,
+            context,
+            language=language,
+            previous_user_message=previous_user_message,
+        )
+        if resolution is not None:
+            return resolution
+
+        from diabetes.services.clinical.clinician_prep_decision import (
+            resolve_clinician_prep,
+        )
+
+        return resolve_clinician_prep(
+            patient_id,
+            message,
+            language=language,
+        )
+
     def verify_advice_reply(
         self,
         resolution: "AdviceResolution",
@@ -917,6 +945,17 @@ class DiabetesEngine(BaseEngine):
             )
 
             return verified_symptom_triage_narration_or_fallback(
+                resolution.decision,
+                candidate,
+                resolution.reply,
+            )
+
+        if rule_id.startswith("diabetes.clinician_prep."):
+            from diabetes.services.clinical.clinician_prep_narration_verifier import (
+                verified_clinician_prep_narration_or_fallback,
+            )
+
+            return verified_clinician_prep_narration_or_fallback(
                 resolution.decision,
                 candidate,
                 resolution.reply,
