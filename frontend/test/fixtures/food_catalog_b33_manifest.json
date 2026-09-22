@@ -1,0 +1,9 @@
+{
+  "batch": "B33",
+  "theme": "Palestine core",
+  "baseline_count": 398,
+  "target_count": 401,
+  "fixture_query": "Musakhan palestinien",
+  "ids": ["palestinian_musakhan", "palestinian_qidreh", "jerusalem_kaak"],
+  "required_viewports": ["390x844", "768x1024", "1280x900"]
+}
