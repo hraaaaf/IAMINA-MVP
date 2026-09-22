@@ -76,6 +76,19 @@ _COMMON_LIMITATIONS = (
 
 
 @dataclass(frozen=True, slots=True)
+class CompanionSuggestionPatientFacts:
+    observation_key: str
+    observations: int
+    distinct_days: int
+    recurrence_count: int
+    first_observed_at: datetime
+    last_observed_at: datetime
+    evidence_density: str
+    evidence_window_days: int
+    personal_baseline_comparison_mg_dl: float
+
+
+@dataclass(frozen=True, slots=True)
 class CompanionSmartSuggestion:
     suggestion_class: SuggestionClass
     observation_key: str
@@ -83,6 +96,7 @@ class CompanionSmartSuggestion:
     proactive_state: str
     change_since_review: str | None
     evidence_context: CompanionEvidenceContext
+    patient_facts: CompanionSuggestionPatientFacts
     missing_data: tuple[str, ...]
     limitations: tuple[str, ...]
     proactive_source_version: str
@@ -196,6 +210,47 @@ def _dedupe(values: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(values))
 
 
+def _patient_facts(
+    *,
+    pattern: CompanionPatternItem,
+    proactive_item: ProactiveInsight,
+) -> CompanionSuggestionPatientFacts:
+    """Expose the exact governed patient facts used by the existing action authority."""
+
+    checks = (
+        (pattern.observation_key, proactive_item.observation_key, "observation key"),
+        (pattern.observations, proactive_item.observations, "observation count"),
+        (pattern.distinct_days, proactive_item.distinct_days, "distinct-day count"),
+        (pattern.evidence_density, proactive_item.evidence_density, "evidence density"),
+        (pattern.evidence_window_days, proactive_item.evidence_window_days, "evidence window"),
+        (
+            pattern.baseline_delta_mg_dl,
+            proactive_item.personal_baseline_comparison_mg_dl,
+            "personal-baseline comparison",
+        ),
+    )
+    for pattern_value, proactive_value, label in checks:
+        if pattern_value != proactive_value:
+            raise ValueError(
+                f"proactive insight and governed pattern {label} differ"
+            )
+
+    if pattern.first_observed_at > pattern.last_observed_at:
+        raise ValueError("governed pattern patient facts have contradictory dates")
+
+    return CompanionSuggestionPatientFacts(
+        observation_key=pattern.observation_key,
+        observations=pattern.observations,
+        distinct_days=pattern.distinct_days,
+        recurrence_count=pattern.recurrence_count,
+        first_observed_at=pattern.first_observed_at,
+        last_observed_at=pattern.last_observed_at,
+        evidence_density=pattern.evidence_density,
+        evidence_window_days=pattern.evidence_window_days,
+        personal_baseline_comparison_mg_dl=pattern.baseline_delta_mg_dl,
+    )
+
+
 @transaction.atomic
 def evaluate_companion_smart_suggestion(
     *,
@@ -236,6 +291,10 @@ def evaluate_companion_smart_suggestion(
         raise ValueError("suggestion class is not active in P2-COMPANION-4 V1")
 
     evidence_context = pattern.evidence_context
+    patient_facts = _patient_facts(
+        pattern=pattern,
+        proactive_item=proactive.item,
+    )
     return CompanionSmartSuggestionResult(
         status="suggested",
         attention_budget=ATTENTION_BUDGET,
@@ -250,6 +309,7 @@ def evaluate_companion_smart_suggestion(
                 pattern=pattern,
             ),
             evidence_context=evidence_context,
+            patient_facts=patient_facts,
             missing_data=evidence_context.uncertainty.missing_data,
             limitations=_dedupe(pattern.limitations + _COMMON_LIMITATIONS),
             proactive_source_version=proactive.item.source_version,

@@ -97,6 +97,16 @@ class CompanionSmartSuggestionTests(TestCase):
             suggestion.evidence_context.provenance.producer,
             "diabetes.personal_response.v1",
         )
+        self.assertEqual(suggestion.patient_facts.observation_key, "context:stress")
+        self.assertEqual(suggestion.patient_facts.observations, 3)
+        self.assertEqual(suggestion.patient_facts.distinct_days, 3)
+        self.assertEqual(suggestion.patient_facts.recurrence_count, 1)
+        self.assertEqual(suggestion.patient_facts.evidence_density, "limited")
+        self.assertEqual(suggestion.patient_facts.evidence_window_days, 90)
+        self.assertLessEqual(
+            suggestion.patient_facts.first_observed_at,
+            suggestion.patient_facts.last_observed_at,
+        )
         self.assertIn(
             "no_medication_or_insulin_dose_change_authority",
             suggestion.limitations,

@@ -65,6 +65,18 @@ class CompanionOverviewOut(BaseModel):
     source_version: Literal["companion-overview.v1"]
 
 
+class CompanionNextActionPatientFactsOut(BaseModel):
+    observation_key: str
+    observations: int
+    distinct_days: int
+    recurrence_count: int
+    first_observed_at: datetime
+    last_observed_at: datetime
+    evidence_density: str
+    evidence_window_days: int
+    personal_baseline_comparison_mg_dl: float
+
+
 class CompanionNextActionSuggestionOut(BaseModel):
     suggestion_class: Literal[
         "UNDERSTAND_DATA",
@@ -75,6 +87,7 @@ class CompanionNextActionSuggestionOut(BaseModel):
     reason: str
     proactive_state: str
     change_since_review: str | None
+    patient_facts: CompanionNextActionPatientFactsOut
     missing_data: list[str]
     limitations: list[str]
     proactive_source_version: str
@@ -120,6 +133,19 @@ def companion_next_action(request):
             "reason": suggestion.reason,
             "proactive_state": suggestion.proactive_state,
             "change_since_review": suggestion.change_since_review,
+            "patient_facts": {
+                "observation_key": suggestion.patient_facts.observation_key,
+                "observations": suggestion.patient_facts.observations,
+                "distinct_days": suggestion.patient_facts.distinct_days,
+                "recurrence_count": suggestion.patient_facts.recurrence_count,
+                "first_observed_at": suggestion.patient_facts.first_observed_at,
+                "last_observed_at": suggestion.patient_facts.last_observed_at,
+                "evidence_density": suggestion.patient_facts.evidence_density,
+                "evidence_window_days": suggestion.patient_facts.evidence_window_days,
+                "personal_baseline_comparison_mg_dl": (
+                    suggestion.patient_facts.personal_baseline_comparison_mg_dl
+                ),
+            },
             "missing_data": list(suggestion.missing_data),
             "limitations": list(suggestion.limitations),
             "proactive_source_version": suggestion.proactive_source_version,
