@@ -245,3 +245,37 @@ def test_engine_does_not_fetch_companion_context_for_unrelated_message():
 
     companion.assert_not_called()
     assert resolution is None
+
+
+
+def test_latin_darija_longitudinal_reply_keeps_latin_script():
+    resolution = resolve_longitudinal_personalization_from_context(
+        "Wach kayn chi pattern kayt3awd 3ndi f data dyali?",
+        _context(_pattern()),
+        language="ar-MA",
+    )
+
+    assert resolution is not None
+    assert not any("\u0600" <= ch <= "\u06ff" for ch in resolution.reply)
+
+
+def test_inconsistent_pattern_status_fails_closed():
+    context = _context(_pattern())
+    bad = CompanionContext(
+        pattern_status="available",
+        review_status=context.review_status,
+        review_anchor_captured_at=context.review_anchor_captured_at,
+        patterns=context.patterns,
+        changes_since_review=context.changes_since_review,
+        after_visit=context.after_visit,
+        safety_notice=context.safety_notice,
+        source_version=context.source_version,
+        language=context.language,
+    )
+
+    with pytest.raises(ValueError, match="governed pattern status"):
+        resolve_longitudinal_personalization_from_context(
+            "Qu’est-ce que tu remarques chez moi sur la durée dans mes données ?",
+            bad,
+            language="fr",
+        )
