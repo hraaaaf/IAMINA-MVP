@@ -39,6 +39,11 @@ def clinical_decision_audit_metadata(
         "rule_version": decision.rule_version,
         "allowed_actions": list(decision.allowed_actions),
         "forbidden_actions": list(decision.forbidden_actions),
+        "constraints_applied": {
+            "allowed_actions": list(decision.allowed_actions),
+            "forbidden_actions": list(decision.forbidden_actions),
+            "limitations": list(decision.limitations),
+        },
         "required_fact_keys": list(required),
         "used_fact_keys": list(used),
         "missing_fact_keys": list(decision.missing_facts),
@@ -48,6 +53,34 @@ def clinical_decision_audit_metadata(
         "verifier_status": verifier_status,
         "final_reply_sha256": sha256(final_reply.strip().encode("utf-8")).hexdigest(),
     }
+
+
+def clinician_audit_detail(entry: AuditLog) -> dict[str, object]:
+    """Return the complete PHI-safe decision basis for clinician review."""
+    if not isinstance(entry, AuditLog):
+        raise ValueError("entry must be an AuditLog")
+    if entry.resource_type != "ClinicalAdviceDecision":
+        raise ValueError("not a clinical advice audit entry")
+    metadata = entry.metadata
+    if not isinstance(metadata, dict):
+        raise ValueError("clinical advice audit metadata must be an object")
+    if metadata.get("schema_version") != AUDIT_SCHEMA_VERSION:
+        raise ValueError("unsupported clinical advice audit schema")
+    required = {
+        "rule_id",
+        "rule_version",
+        "authority_level",
+        "disposition",
+        "used_fact_keys",
+        "missing_fact_keys",
+        "constraints_applied",
+        "verifier_status",
+        "final_reply_sha256",
+    }
+    missing = sorted(required - set(metadata))
+    if missing:
+        raise ValueError("incomplete clinical advice audit: " + ", ".join(missing))
+    return dict(metadata)
 
 
 def record_clinical_decision_audit(
@@ -79,5 +112,6 @@ def record_clinical_decision_audit(
 __all__ = [
     "AUDIT_SCHEMA_VERSION",
     "clinical_decision_audit_metadata",
+    "clinician_audit_detail",
     "record_clinical_decision_audit",
 ]
