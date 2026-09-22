@@ -892,9 +892,24 @@ class DiabetesEngine(BaseEngine):
             resolve_clinician_prep,
         )
 
-        return resolve_clinician_prep(
+        resolution = resolve_clinician_prep(
             patient_id,
             message,
+            language=language,
+        )
+        if resolution is not None:
+            return resolution
+
+        from diabetes.services.clinical.longitudinal_personalization_decision import (
+            classify_longitudinal_personalization,
+            resolve_longitudinal_personalization_from_context,
+        )
+
+        if not classify_longitudinal_personalization(message):
+            return None
+        return resolve_longitudinal_personalization_from_context(
+            message,
+            self.companion_context(patient_id, language=language),
             language=language,
         )
 
@@ -956,6 +971,17 @@ class DiabetesEngine(BaseEngine):
             )
 
             return verified_clinician_prep_narration_or_fallback(
+                resolution.decision,
+                candidate,
+                resolution.reply,
+            )
+
+        if rule_id.startswith("diabetes.longitudinal."):
+            from diabetes.services.clinical.longitudinal_personalization_narration_verifier import (
+                verified_longitudinal_narration_or_fallback,
+            )
+
+            return verified_longitudinal_narration_or_fallback(
                 resolution.decision,
                 candidate,
                 resolution.reply,

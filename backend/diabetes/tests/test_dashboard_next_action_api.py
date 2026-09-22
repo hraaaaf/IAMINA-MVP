@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
+from django.utils import timezone
 
 
 class DashboardNextActionApiTests(TestCase):
@@ -27,6 +28,17 @@ class DashboardNextActionApiTests(TestCase):
                 reason="existing_proactive_authority_marks_observation_review_worthy",
                 proactive_state="persisting",
                 change_since_review="persisting",
+                patient_facts=SimpleNamespace(
+                    observation_key="context:stress",
+                    observations=5,
+                    distinct_days=4,
+                    recurrence_count=2,
+                    first_observed_at=timezone.now(),
+                    last_observed_at=timezone.now(),
+                    evidence_density="moderate",
+                    evidence_window_days=90,
+                    personal_baseline_comparison_mg_dl=25.0,
+                ),
                 missing_data=("meal_context",),
                 limitations=(
                     "no_diagnosis_causality_prediction_or_treatment_inference",
@@ -49,6 +61,14 @@ class DashboardNextActionApiTests(TestCase):
             "PREPARE_CLINICIAN_DISCUSSION",
         )
         self.assertEqual(payload["suggestion"]["observation_key"], "context:stress")
+        self.assertEqual(
+            payload["suggestion"]["patient_facts"]["observation_key"],
+            "context:stress",
+        )
+        self.assertEqual(
+            payload["suggestion"]["patient_facts"]["recurrence_count"],
+            2,
+        )
         self.assertIn("may consume", payload["safety_notice"])
         self.assertIn("never diagnoses", payload["safety_notice"])
 
