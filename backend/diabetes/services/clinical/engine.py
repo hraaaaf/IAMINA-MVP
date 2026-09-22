@@ -851,16 +851,32 @@ class DiabetesEngine(BaseEngine):
         resolution: "AdviceResolution",
         candidate: str,
     ) -> str:
-        """Verify FOOD governed copy inside the diabetes capsule."""
-        from diabetes.services.clinical.food_narration_verifier import (
-            verified_food_narration_or_fallback,
-        )
+        """Verify governed copy inside the diabetes capsule by rule family."""
+        rule_id = resolution.decision.rule_id
 
-        return verified_food_narration_or_fallback(
-            resolution.decision,
-            candidate,
-            resolution.reply,
-        )
+        if rule_id.startswith("diabetes.food."):
+            from diabetes.services.clinical.food_narration_verifier import (
+                verified_food_narration_or_fallback,
+            )
+
+            return verified_food_narration_or_fallback(
+                resolution.decision,
+                candidate,
+                resolution.reply,
+            )
+
+        if rule_id.startswith("diabetes.monitoring."):
+            from diabetes.services.clinical.monitoring_narration_verifier import (
+                verified_monitoring_narration_or_fallback,
+            )
+
+            return verified_monitoring_narration_or_fallback(
+                resolution.decision,
+                candidate,
+                resolution.reply,
+            )
+
+        raise PermissionError(f"unsupported governed advice verifier: {rule_id}")
 
     def evaluate_alert(self, entry, language: str = "fr") -> "DomainAlert | None":
         from core.contracts.alert import DomainAlert
