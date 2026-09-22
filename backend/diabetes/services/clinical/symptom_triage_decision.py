@@ -25,7 +25,7 @@ _PERSONAL_RE = re.compile(
     re.IGNORECASE,
 )
 _SYMPTOM_RE = re.compile(
-    r"(?:\b(?:fatigu[eé]?|fatigue|tired|nausea|nauseous|naus[eé]e|vomit\w*|"
+    r"(?:\b(?:fatigu[eé]?|fatigue|tired|nausea|nauseous|naus[eé]es?|vomit\w*|"
     r"vomissement\w*|soif|thirsty|urine\w*|uriner|peeing|urinating|"
     r"malade|unwell|sick|mal\s+au\s+ventre|douleur\s+abdominale|"
     r"abdominal\s+pain|stomach\s+pain|headache|mal\s+de\s+t[eê]te)\b|"
