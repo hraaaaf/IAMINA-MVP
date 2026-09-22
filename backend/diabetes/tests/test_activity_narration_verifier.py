@@ -1,9 +1,9 @@
+from core.contracts.domain_context import DomainContext
 from diabetes.services.clinical.activity_decision import resolve_activity_context
 from diabetes.services.clinical.activity_narration_verifier import (
-    verify_activity_narration,
     verified_activity_narration_or_fallback,
+    verify_activity_narration,
 )
-from core.contracts.domain_context import DomainContext
 
 
 def _resolution():
