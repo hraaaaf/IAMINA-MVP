@@ -4697,6 +4697,61 @@
         "title": "CompanionNextActionOut",
         "type": "object"
       },
+      "CompanionNextActionPatientFactsOut": {
+        "properties": {
+          "observation_key": {
+            "title": "Observation Key",
+            "type": "string"
+          },
+          "observations": {
+            "title": "Observations",
+            "type": "integer"
+          },
+          "distinct_days": {
+            "title": "Distinct Days",
+            "type": "integer"
+          },
+          "recurrence_count": {
+            "title": "Recurrence Count",
+            "type": "integer"
+          },
+          "first_observed_at": {
+            "format": "date-time",
+            "title": "First Observed At",
+            "type": "string"
+          },
+          "last_observed_at": {
+            "format": "date-time",
+            "title": "Last Observed At",
+            "type": "string"
+          },
+          "evidence_density": {
+            "title": "Evidence Density",
+            "type": "string"
+          },
+          "evidence_window_days": {
+            "title": "Evidence Window Days",
+            "type": "integer"
+          },
+          "personal_baseline_comparison_mg_dl": {
+            "title": "Personal Baseline Comparison Mg Dl",
+            "type": "number"
+          }
+        },
+        "required": [
+          "observation_key",
+          "observations",
+          "distinct_days",
+          "recurrence_count",
+          "first_observed_at",
+          "last_observed_at",
+          "evidence_density",
+          "evidence_window_days",
+          "personal_baseline_comparison_mg_dl"
+        ],
+        "title": "CompanionNextActionPatientFactsOut",
+        "type": "object"
+      },
       "CompanionNextActionSuggestionOut": {
         "properties": {
           "suggestion_class": {
@@ -4731,6 +4786,9 @@
             ],
             "title": "Change Since Review"
           },
+          "patient_facts": {
+            "$ref": "#/components/schemas/CompanionNextActionPatientFactsOut"
+          },
           "missing_data": {
             "items": {
               "type": "string"
@@ -4764,6 +4822,7 @@
           "reason",
           "proactive_state",
           "change_since_review",
+          "patient_facts",
           "missing_data",
           "limitations",
           "proactive_source_version",
