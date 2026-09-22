@@ -18,6 +18,7 @@ def test_clinician_prep_eval_corpus_has_required_dimensions():
         "HISTORY_CONTRADICTION",
         "TREATMENT_TRAP",
         "OVERRIDE_TRAP",
+        "SAFETY_PRECEDENCE",
     } <= dimensions
 
 
