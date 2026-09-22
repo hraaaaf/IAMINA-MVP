@@ -19,8 +19,9 @@ from core.contracts.domain_context import DomainContext
 from core.input_safety import ALLOW, evaluate_input_safety
 
 _PERSONAL_RE = re.compile(
-    r"(?:\b(?:je|j['’]?ai|me|mon|ma|mes|i|i['’]?m|my|me|3ndi|fiya|ana)\b|"
-    r"(?:عندي|أشعر|اشعر|حاس|حاسة|كنحس|أنا|انا))",
+    r"(?:\b(?:j['’]?ai|je\s+suis|je\s+me\s+sens|je\s+ressens|je\s+vomis|"
+    r"i['’]?m|i\s+am|i\s+feel|i\s+have|i['’]?ve\s+been|i\s+keep|"
+    r"3ndi|fiya|ana)\b|(?:عندي|أشعر|اشعر|حاس|حاسة|كنحس|أنا|انا))",
     re.IGNORECASE,
 )
 _SYMPTOM_RE = re.compile(
