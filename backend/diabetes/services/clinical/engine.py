@@ -852,7 +852,19 @@ class DiabetesEngine(BaseEngine):
             resolve_activity_context,
         )
 
-        return resolve_activity_context(
+        resolution = resolve_activity_context(
+            message,
+            context,
+            language=language,
+        )
+        if resolution is not None:
+            return resolution
+
+        from diabetes.services.clinical.symptom_triage_decision import (
+            resolve_symptom_triage,
+        )
+
+        return resolve_symptom_triage(
             message,
             context,
             language=language,
@@ -894,6 +906,17 @@ class DiabetesEngine(BaseEngine):
             )
 
             return verified_activity_narration_or_fallback(
+                resolution.decision,
+                candidate,
+                resolution.reply,
+            )
+
+        if rule_id.startswith("diabetes.symptom."):
+            from diabetes.services.clinical.symptom_triage_narration_verifier import (
+                verified_symptom_triage_narration_or_fallback,
+            )
+
+            return verified_symptom_triage_narration_or_fallback(
                 resolution.decision,
                 candidate,
                 resolution.reply,
