@@ -19,11 +19,12 @@ import 'meal_food_jordan_depth_b29.dart';
 import 'meal_food_international_italy_b30.dart';
 import 'meal_food_egypt_core_b31.dart';
 import 'meal_food_sudan_core_b32.dart';
+import 'meal_food_palestine_core_b33.dart';
 
 export 'meal_food_catalog_v3.dart' hide mealFoodCatalogVersion,mealFoodCatalog,mealFoodById,mealFoodsForRegion,mealFoodsForCategory,mealFoodsForMoment,decodeMealItemIds,encodeMealItemIds,searchMealFoods,matchRecognizedMealFoods;
-const String mealFoodCatalogVersion = '3.18.0-sudan-core-b32';
+const String mealFoodCatalogVersion = '3.19.0-palestine-core-b33';
 const List<base.MealFoodItem> mealFoodCatalog = <base.MealFoodItem>[
-  ...base.mealFoodCatalog,...gulfCoreFoodCatalog,...moroccoRegionalB16FoodCatalog,...moroccoDepthB17FoodCatalog,...moroccoAmazighB18FoodCatalog,...qatarDepthB19FoodCatalog,...omanDepthB20FoodCatalog,...tunisiaDepthB21FoodCatalog,...algeriaDepthB22FoodCatalog,...yemenDepthB23FoodCatalog,...moroccoDepthB24FoodCatalog,...saudiDepthB25FoodCatalog,...libyaDepthB26FoodCatalog,...omanDepthB27FoodCatalog,...moroccoDepthB28FoodCatalog,...jordanDepthB29FoodCatalog,...internationalItalyB30FoodCatalog,...egyptCoreB31FoodCatalog,...sudanCoreB32FoodCatalog,
+  ...base.mealFoodCatalog,...gulfCoreFoodCatalog,...moroccoRegionalB16FoodCatalog,...moroccoDepthB17FoodCatalog,...moroccoAmazighB18FoodCatalog,...qatarDepthB19FoodCatalog,...omanDepthB20FoodCatalog,...tunisiaDepthB21FoodCatalog,...algeriaDepthB22FoodCatalog,...yemenDepthB23FoodCatalog,...moroccoDepthB24FoodCatalog,...saudiDepthB25FoodCatalog,...libyaDepthB26FoodCatalog,...omanDepthB27FoodCatalog,...moroccoDepthB28FoodCatalog,...jordanDepthB29FoodCatalog,...internationalItalyB30FoodCatalog,...egyptCoreB31FoodCatalog,...sudanCoreB32FoodCatalog,...palestineCoreB33FoodCatalog,
 ];
 final Map<String, base.MealFoodItem> _mealFoodById = <String, base.MealFoodItem>{for (final item in mealFoodCatalog) item.id: item};
 base.MealFoodItem? mealFoodById(String id) => _mealFoodById[id];
