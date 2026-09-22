@@ -21,16 +21,32 @@ _ACTION_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("prescribe_exercise", re.compile(
         r"\b(?:tu\s+dois|vous\s+devez|you\s+should|fais|faites|do)\b.{0,40}"
         r"\b(?:marche|marcher|walk|exercise|exercice|sport|activité)\b", re.IGNORECASE)),
-    ("infer_activity_causality", re.compile(
-        r"\b(?:sport|exercise|exercice|activité|marche)\b.{0,64}"
-        r"\b(?:cause|causes|causé|provoque|responsable|explains?|explique)\b"
-        r"|\b(?:cause|causes|causé|provoque)\b.{0,64}"
-        r"\b(?:glyc[eé]mi(?:e|que)|glucose|sucre|hypo|baisse)\b", re.IGNORECASE)),
     ("diagnose_from_activity", re.compile(
         r"\b(?:sport|exercise|exercice|activité)\b.{0,64}"
         r"\b(?:prouve|prove|confirme|confirm)\b.{0,48}"
         r"\b(?:hypoglycémie|hypoglycemia|diabète|diabetes)\b", re.IGNORECASE)),
 )
+
+
+_CAUSALITY_RE = re.compile(
+    r"\b(?:sport|exercise|exercice|activité|marche)\b.{0,72}"
+    r"\b(?:cause|causes|causé|provoque|responsable|explains?|explique)\b"
+    r"|\b(?:cause|causes|causé|provoque)\b.{0,72}"
+    r"\b(?:glyc[eé]mi(?:e|que)|glucose|sucre|hypo|baisse)\b",
+    re.IGNORECASE,
+)
+_CAUSALITY_NEGATION_RE = re.compile(
+    r"(?:ne\s+(?:prouve|démontre)\s+pas|does\s+not\s+(?:prove|establish)|"
+    r"doesn't\s+(?:prove|establish)|لا\s+يثبت)",
+    re.IGNORECASE,
+)
+
+
+def _claims_activity_causality(text: str) -> bool:
+    for sentence in re.split(r"[.!?\n]+", text):
+        if _CAUSALITY_RE.search(sentence) and not _CAUSALITY_NEGATION_RE.search(sentence):
+            return True
+    return False
 
 
 def observe_activity_narration_actions(text: str) -> tuple[str, ...]:
@@ -40,6 +56,8 @@ def observe_activity_narration_actions(text: str) -> tuple[str, ...]:
     for action, pattern in _ACTION_PATTERNS:
         if pattern.search(text) and action not in observed:
             observed.append(action)
+    if _claims_activity_causality(text):
+        observed.append("infer_activity_causality")
     return tuple(observed)
 
 
