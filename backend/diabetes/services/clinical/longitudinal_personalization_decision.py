@@ -40,7 +40,7 @@ _OBSERVATION_TERMS = (
     "donnée", "donnee", "data", "glyc", "glucose", "activité", "activite",
     "sport", "stress", "sommeil", "fatigue", "malade", "maladie", "repas",
     "observe", "remarque", "pattern", "exercise", "activity", "sleep", "illness",
-    "meal", "notice", "قياس", "سكر", "رياض", "توتر", "نوم", "تعب", "مرض", "أكل",
+    "meal", "notice", "قياس", "سكر", "رياض", "توتر", "نوم", "تعب", "مرض", "أكل", "نمط", "بيانات",
 )
 
 _FOCUS_TERMS: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
@@ -230,6 +230,10 @@ def resolve_longitudinal_personalization_from_context(
         pattern = None
     elif context.source_version != _APPROVED_CONTEXT_VERSION:
         raise ValueError("longitudinal personalization requires certified companion overview")
+    elif context.pattern_status == "no_governed_patterns":
+        pattern = None
+    elif context.pattern_status != "ready":
+        raise ValueError("longitudinal personalization requires governed pattern status")
     else:
         pattern = _select_pattern(context, message)
 
