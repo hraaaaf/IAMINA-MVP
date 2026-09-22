@@ -235,6 +235,8 @@ def resolve_longitudinal_personalization_from_context(
     elif context.pattern_status != "ready":
         raise ValueError("longitudinal personalization requires governed pattern status")
     else:
+        for item in context.patterns:
+            _validate_pattern(item)
         pattern = _select_pattern(context, message)
 
     if pattern is None:
@@ -265,7 +267,6 @@ def resolve_longitudinal_personalization_from_context(
             reply=_insufficient_reply(message, language),
         )
 
-    _validate_pattern(pattern)
     return AdviceResolution(
         decision=AdviceDecision(
             intent="longitudinal_personalization",
