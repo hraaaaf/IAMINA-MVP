@@ -135,16 +135,24 @@ def _approved_patterns(context: CompanionContext) -> tuple[CompanionPattern, ...
     return tuple(item for item in context.patterns if item.observation_key in _LABELS)
 
 
-def _select_pattern(context: CompanionContext, message: str) -> CompanionPattern | None:
+def _matching_patterns(
+    context: CompanionContext,
+    message: str,
+) -> tuple[CompanionPattern, ...]:
     approved = _approved_patterns(context)
     focus = _focus_keys(message)
-    if focus is not None:
-        if len(focus) == 1 and focus[0].endswith(":"):
-            candidates = tuple(item for item in approved if item.observation_key.startswith(focus[0]))
-        else:
-            candidates = tuple(item for item in approved if item.observation_key in focus)
-        return candidates[0] if candidates else None
-    return approved[0] if len(approved) == 1 else None
+    if focus is None:
+        return approved
+    if len(focus) == 1 and focus[0].endswith(":"):
+        return tuple(
+            item for item in approved if item.observation_key.startswith(focus[0])
+        )
+    return tuple(item for item in approved if item.observation_key in focus)
+
+
+def _select_pattern(context: CompanionContext, message: str) -> CompanionPattern | None:
+    candidates = _matching_patterns(context, message)
+    return candidates[0] if len(candidates) == 1 else None
 
 
 def _label(pattern: CompanionPattern, language: str, message: str) -> str:
@@ -200,20 +208,43 @@ def _reply(message: str, pattern: CompanionPattern, language: str) -> str:
 
 
 def _multiple_patterns_reply(message: str, language: str) -> str:
+    meal_focus = _focus_keys(message) == ("meal:",)
     if language == "ar-MA" and not _ARABIC_RE.search(message):
+        if meal_focus:
+            return (
+                "3ndi ktar mn observation longitudinale gouvernée 3la lmakla, "
+                "w tartib dyalhom machi priorité clinique. "
+                "9olli wach bghiti lftor, lghda, l3cha, snack, s7or, wala ftar Ramadan."
+            )
         return (
-            "3ndi ktar mn observation longitudinale gouvernée, w tartib dyalhom maشي priorité clinique. "
+            "3ndi ktar mn observation longitudinale gouvernée, "
+            "w tartib dyalhom machi priorité clinique. "
             "9olli wach bghiti activité, stress, sommeil, fatigue, maladie, wala repas."
         )
     if language.startswith("ar"):
+        if meal_focus:
+            return (
+                "لديّ أكثر من ملاحظة طولية منظّمة عن الوجبات، وترتيبها لا يعني أولوية سريرية. "
+                "حدّد الفطور أو الغداء أو العشاء أو الوجبة الخفيفة أو السحور أو الإفطار."
+            )
         return (
             "لديّ أكثر من ملاحظة طولية منظّمة، وترتيبها لا يعني أولوية سريرية. "
             "حدّد إن كنت تريد النشاط أو التوتر أو النوم أو التعب أو المرض أو الوجبات."
         )
     if language.startswith("en"):
+        if meal_focus:
+            return (
+                "I have more than one governed longitudinal meal observation, and their order is not a clinical priority. "
+                "Specify breakfast, lunch, dinner, snack, suhoor, or iftar."
+            )
         return (
             "I have more than one governed longitudinal observation, and their order is not a clinical priority. "
             "Tell me whether you want activity, stress, sleep, fatigue, illness, or meals."
+        )
+    if meal_focus:
+        return (
+            "J’ai plusieurs observations longitudinales gouvernées sur les repas, et leur ordre ne constitue pas une priorité clinique. "
+            "Précise : petit-déjeuner, déjeuner, dîner, collation, suhoor ou iftar."
         )
     return (
         "J’ai plusieurs observations longitudinales gouvernées, et leur ordre ne constitue pas une priorité clinique. "
@@ -263,9 +294,8 @@ def resolve_longitudinal_personalization_from_context(
     else:
         for item in context.patterns:
             _validate_pattern(item)
-        focus = _focus_keys(message)
-        approved = _approved_patterns(context)
-        if focus is None and len(approved) > 1:
+        matches = _matching_patterns(context, message)
+        if len(matches) > 1:
             return AdviceResolution(
                 decision=AdviceDecision(
                     intent="longitudinal_personalization",
