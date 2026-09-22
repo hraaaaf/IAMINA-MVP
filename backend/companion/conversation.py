@@ -15,6 +15,7 @@ from companion.route_telemetry import record_companion_route
 from companion.state import compute_state, state_to_prompt
 from companion.tone import get_tone_instruction, select_relationship_tone
 from companion.zero_model_router import exact_chitchat_reply
+from core.clinical_decision_audit import record_clinical_decision_audit
 from core.clinical_policy import (
     NarrationMode,
     NarrationPolicyRequest,
@@ -734,10 +735,25 @@ def chat(
                 advice_resolution,
                 advice_resolution.reply,
             )
+            record_clinical_decision_audit(
+                patient=patient,
+                decision=advice_resolution.decision,
+                verifier_status="passed",
+                final_reply=reply,
+            )
         except Exception:
-            logger.exception("IAmina governed advice verification failed closed")
+            logger.exception("IAmina governed advice verification/audit failed closed")
             record_companion_route("policy_denied")
             reply = _policy_denied_reply(patient, ctx, language)
+            try:
+                record_clinical_decision_audit(
+                    patient=patient,
+                    decision=advice_resolution.decision,
+                    verifier_status="rejected",
+                    final_reply=reply,
+                )
+            except Exception:
+                logger.exception("IAmina rejected advice audit persistence failed")
             _append_turn(patient, "user", message)
             _append_turn(patient, "assistant", reply)
             _update_relationship_memory(message, memory)
@@ -860,10 +876,25 @@ def stream_chat(
                 advice_resolution,
                 advice_resolution.reply,
             )
+            record_clinical_decision_audit(
+                patient=patient,
+                decision=advice_resolution.decision,
+                verifier_status="passed",
+                final_reply=reply,
+            )
         except Exception:
-            logger.exception("IAmina governed advice verification failed closed")
+            logger.exception("IAmina governed advice verification/audit failed closed")
             record_companion_route("policy_denied")
             reply = _policy_denied_reply(patient, ctx, language)
+            try:
+                record_clinical_decision_audit(
+                    patient=patient,
+                    decision=advice_resolution.decision,
+                    verifier_status="rejected",
+                    final_reply=reply,
+                )
+            except Exception:
+                logger.exception("IAmina rejected advice audit persistence failed")
             _append_turn(patient, "user", message)
             _append_turn(patient, "assistant", reply)
             _update_relationship_memory(message, memory)
