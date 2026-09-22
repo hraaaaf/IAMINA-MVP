@@ -17,10 +17,19 @@ from core.contracts.advice_decision import (
 from core.contracts.advice_resolution import AdviceResolution
 from core.contracts.domain_context import DomainContext
 
-_MONITORING_RE = re.compile(
-    r"(?:\b(?:tir|time in range|temps dans la cible|temps dans la plage|"
-    r"glyc[eé]mie moyenne|average glucose|variabilit[eé]|variability|cv|"
-    r"tendance|trend|semaine|week)\b|(?:الوقت في النطاق|متوسط السكر|تقلب|اتجاه))",
+_MONITORING_METRIC_RE = re.compile(
+    r"(?:\\b(?:tir|time in range|temps dans la cible|temps dans la plage|"
+    r"glyc[eé]mie moyenne|average glucose|variabilit[eé] glyc[eé]mique|"
+    r"glucose variability)\\b|(?:الوقت في النطاق|متوسط السكر|تقلب السكر))",
+    re.IGNORECASE,
+)
+_GLUCOSE_RE = re.compile(
+    r"(?:\\b(?:glyc[eé]mie|glucose|sucre|sugar|cgm)\\b|(?:سكر|جلوكوز))",
+    re.IGNORECASE,
+)
+_TREND_RE = re.compile(
+    r"(?:\\b(?:tendance|trend|évolution|evolution|semaine|week|compare|comparer|cv)\\b"
+    r"|(?:اتجاه|أسبوع|اسبوع|قارن))",
     re.IGNORECASE,
 )
 
@@ -46,7 +55,12 @@ _LIMITATIONS = (
 
 
 def classify_monitoring_interpretation(message: str) -> bool:
-    return bool(_MONITORING_RE.search((message or "").strip()))
+    text = (message or "").strip()
+    if not text:
+        return False
+    if _MONITORING_METRIC_RE.search(text):
+        return True
+    return bool(_GLUCOSE_RE.search(text) and _TREND_RE.search(text))
 
 
 def _has_monitoring_data(context: DomainContext) -> bool:
