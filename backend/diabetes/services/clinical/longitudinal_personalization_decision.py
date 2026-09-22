@@ -131,8 +131,12 @@ def _validate_pattern(pattern: CompanionPattern) -> None:
     _date(pattern.last_observed_at)
 
 
+def _approved_patterns(context: CompanionContext) -> tuple[CompanionPattern, ...]:
+    return tuple(item for item in context.patterns if item.observation_key in _LABELS)
+
+
 def _select_pattern(context: CompanionContext, message: str) -> CompanionPattern | None:
-    approved = tuple(item for item in context.patterns if item.observation_key in _LABELS)
+    approved = _approved_patterns(context)
     focus = _focus_keys(message)
     if focus is not None:
         if len(focus) == 1 and focus[0].endswith(":"):
@@ -140,7 +144,7 @@ def _select_pattern(context: CompanionContext, message: str) -> CompanionPattern
         else:
             candidates = tuple(item for item in approved if item.observation_key in focus)
         return candidates[0] if candidates else None
-    return approved[0] if approved else None
+    return approved[0] if len(approved) == 1 else None
 
 
 def _label(pattern: CompanionPattern, language: str, message: str) -> str:
@@ -195,6 +199,28 @@ def _reply(message: str, pattern: CompanionPattern, language: str) -> str:
     )
 
 
+def _multiple_patterns_reply(message: str, language: str) -> str:
+    if language == "ar-MA" and not _ARABIC_RE.search(message):
+        return (
+            "3ndi ktar mn observation longitudinale gouvernée, w tartib dyalhom maشي priorité clinique. "
+            "9olli wach bghiti activité, stress, sommeil, fatigue, maladie, wala repas."
+        )
+    if language.startswith("ar"):
+        return (
+            "لديّ أكثر من ملاحظة طولية منظّمة، وترتيبها لا يعني أولوية سريرية. "
+            "حدّد إن كنت تريد النشاط أو التوتر أو النوم أو التعب أو المرض أو الوجبات."
+        )
+    if language.startswith("en"):
+        return (
+            "I have more than one governed longitudinal observation, and their order is not a clinical priority. "
+            "Tell me whether you want activity, stress, sleep, fatigue, illness, or meals."
+        )
+    return (
+        "J’ai plusieurs observations longitudinales gouvernées, et leur ordre ne constitue pas une priorité clinique. "
+        "Précise si tu veux regarder l’activité, le stress, le sommeil, la fatigue, la maladie ou les repas."
+    )
+
+
 def _insufficient_reply(message: str, language: str) -> str:
     if language == "ar-MA" and not _ARABIC_RE.search(message):
         return (
@@ -237,6 +263,35 @@ def resolve_longitudinal_personalization_from_context(
     else:
         for item in context.patterns:
             _validate_pattern(item)
+        focus = _focus_keys(message)
+        approved = _approved_patterns(context)
+        if focus is None and len(approved) > 1:
+            return AdviceResolution(
+                decision=AdviceDecision(
+                    intent="longitudinal_personalization",
+                    authority_level=AdviceAuthorityLevel.L1_EDUCATION,
+                    decision=AdviceDisposition.CONSTRAIN,
+                    rule_id="diabetes.longitudinal.multiple_patterns",
+                    rule_version="1",
+                    allowed_actions=("request_longitudinal_scope",),
+                    forbidden_actions=(
+                        "infer_clinical_priority",
+                        "infer_causality",
+                        "infer_treatment_response",
+                        "predict_future_outcome",
+                        "diagnose_from_longitudinal_history",
+                        "calculate_insulin_dose",
+                        "change_treatment",
+                        "promote_heuristic_inference",
+                        "invent_longitudinal_facts",
+                    ),
+                    required_facts=("governed_longitudinal_pattern",),
+                    evidence_refs=(_RULE_EVIDENCE_ID,),
+                    limitations=("presentation_order_is_not_clinical_priority",),
+                    language=language,
+                ),
+                reply=_multiple_patterns_reply(message, language),
+            )
         pattern = _select_pattern(context, message)
 
     if pattern is None:
