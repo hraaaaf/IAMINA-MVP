@@ -91,6 +91,23 @@ class BaseEngine(abc.ABC):
         del message, context, language, previous_user_message
         return None
 
+    def resolve_patient_advice(
+        self,
+        patient_id: int,
+        message: str,
+        context: "DomainContext",
+        language: str = "fr",
+        previous_user_message: str | None = None,
+    ) -> "AdviceResolution | None":
+        """Resolve patient-aware module advice without exposing condition semantics to chassis."""
+        del patient_id
+        return self.resolve_advice(
+            message,
+            context,
+            language=language,
+            previous_user_message=previous_user_message,
+        )
+
     def verify_advice_reply(
         self,
         resolution: "AdviceResolution",
