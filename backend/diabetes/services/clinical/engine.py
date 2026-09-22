@@ -819,7 +819,6 @@ class DiabetesEngine(BaseEngine):
         previous_user_message: str | None = None,
     ):
         """Resolve governed diabetes advice families without LLM authority."""
-        del context
         from diabetes.services.clinical.food_decision import (
             resolve_food_decision,
             resolve_food_followup,
@@ -829,12 +828,23 @@ class DiabetesEngine(BaseEngine):
         if resolution is not None:
             return resolution
         if previous_user_message:
-            return resolve_food_followup(
+            resolution = resolve_food_followup(
                 message,
                 previous_user_message,
                 language=language,
             )
-        return None
+            if resolution is not None:
+                return resolution
+
+        from diabetes.services.clinical.monitoring_decision import (
+            resolve_monitoring_interpretation,
+        )
+
+        return resolve_monitoring_interpretation(
+            message,
+            context,
+            language=language,
+        )
 
     def verify_advice_reply(
         self,
