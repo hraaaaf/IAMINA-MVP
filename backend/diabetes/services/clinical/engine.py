@@ -840,7 +840,19 @@ class DiabetesEngine(BaseEngine):
             resolve_monitoring_interpretation,
         )
 
-        return resolve_monitoring_interpretation(
+        resolution = resolve_monitoring_interpretation(
+            message,
+            context,
+            language=language,
+        )
+        if resolution is not None:
+            return resolution
+
+        from diabetes.services.clinical.activity_decision import (
+            resolve_activity_context,
+        )
+
+        return resolve_activity_context(
             message,
             context,
             language=language,
