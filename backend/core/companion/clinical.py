@@ -99,7 +99,8 @@ def get_advice_resolution(
     engine = _resolve_engine(patient_id)
     if engine is None:
         return None
-    resolution = engine.resolve_advice(
+    resolution = engine.resolve_patient_advice(
+        patient_id,
         message,
         context,
         language=language,
