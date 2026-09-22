@@ -123,7 +123,7 @@ def _reply(language: str, *, topics: tuple[str, ...], has_items: bool) -> str:
         else "Les informations structurées autorisées sont limitées pour l’instant, donc la préparation reste générale."
     )
     labels = {
-        "recorded_glucose": "tes mesures de glycémie enregistrées",
+        "recorded_glucose": "tes données de glycémie enregistrées",
         "governed_context_observations": "les observations de contexte déjà gouvernées",
         "descriptive_changes_since_review": "les changements descriptifs depuis le dernier point",
         "missing_or_limited_data": "les données manquantes ou limitées",
