@@ -888,6 +888,17 @@ class DiabetesEngine(BaseEngine):
                 resolution.reply,
             )
 
+        if rule_id.startswith("diabetes.activity."):
+            from diabetes.services.clinical.activity_narration_verifier import (
+                verified_activity_narration_or_fallback,
+            )
+
+            return verified_activity_narration_or_fallback(
+                resolution.decision,
+                candidate,
+                resolution.reply,
+            )
+
         raise PermissionError(f"unsupported governed advice verifier: {rule_id}")
 
     def evaluate_alert(self, entry, language: str = "fr") -> "DomainAlert | None":
