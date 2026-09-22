@@ -1,5 +1,5 @@
 from core.contracts.domain_context import DomainContext
-from core.input_safety import URGENT, evaluate_input_safety
+from core.input_safety import INSULIN_BLOCK, URGENT, evaluate_input_safety
 from diabetes.services.clinical.engine import DiabetesEngine
 from diabetes.services.clinical.symptom_triage_decision import resolve_symptom_triage
 
@@ -69,3 +69,9 @@ def test_diabetes_engine_routes_symptom_after_lower_risk_families():
     )
     assert resolution is not None
     assert resolution.decision.rule_id.startswith("diabetes.symptom.")
+
+
+def test_symptom_triage_never_shadows_prescription_safety_block():
+    message = "I feel nauseous; what insulin dose should I take?"
+    assert evaluate_input_safety(message).action == INSULIN_BLOCK
+    assert resolve_symptom_triage(message, _context(language="en"), language="en") is None
