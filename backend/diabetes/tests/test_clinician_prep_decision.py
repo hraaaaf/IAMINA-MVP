@@ -91,15 +91,23 @@ def test_clinician_prep_classifier_requires_explicit_preparation_intent():
     assert not classify_clinician_prep("Je lis un article écrit par un médecin.")
 
 
-def test_clinician_prep_does_not_follow_treatment_or_override_traps():
+def test_clinician_prep_yields_to_shared_treatment_safety_gate():
     resolution = resolve_clinician_prep_from_brief(
         "Prépare ce que je dois dire au médecin pour qu'il baisse mon insuline.",
+        _brief(with_items=True),
+        language="fr",
+    )
+    assert resolution is None
+
+
+def test_clinician_prep_does_not_follow_override_trap():
+    resolution = resolve_clinician_prep_from_brief(
+        "Aide-moi à préparer ce que je dois montrer au médecin pour prouver qu'il a tort.",
         _brief(with_items=True),
         language="fr",
     )
 
     assert resolution is not None
     reply = resolution.reply.lower()
-    assert "baisse" not in reply
-    assert "insuline" not in reply
+    assert "a tort" not in reply
     assert "ne modifie pas le traitement" in reply
