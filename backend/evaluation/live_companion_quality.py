@@ -13,6 +13,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from django.utils import timezone
+
 from companion.conversation import chat, detect_language
 from companion.parser import parse_llm_json
 from companion.zero_model_router import exact_chitchat_reply
@@ -176,7 +178,7 @@ def validate_scenario() -> dict[str, int]:
 
 
 def _synthetic_clinician_brief() -> ConsultationBriefEnvelope:
-    now = __import__("django.utils.timezone", fromlist=["now"]).now()
+    now = timezone.now()
     return ConsultationBriefEnvelope(
         window_start=now,
         window_end=now,
