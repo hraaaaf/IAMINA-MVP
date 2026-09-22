@@ -444,3 +444,109 @@ def test_runtime_passes_previous_user_turn_to_module_advice_resolution():
 
     assert resolution is not None
     assert captured["previous_user_message"] == "Je peux manger un gâteau ?"
+
+
+def _monitoring_resolution():
+    return AdviceResolution(
+        decision=AdviceDecision(
+            intent="monitoring_interpretation",
+            authority_level=AdviceAuthorityLevel.L2_LOW_RISK_PRACTICAL,
+            decision=AdviceDisposition.CONSTRAIN,
+            rule_id="diabetes.monitoring.descriptive_interpretation",
+            rule_version="1",
+            allowed_actions=("explain_recorded_monitoring_summary",),
+            forbidden_actions=(
+                "diagnose_from_monitoring",
+                "declare_clinical_improvement_or_deterioration",
+                "calculate_insulin_dose",
+                "change_treatment",
+                "recommend_compensatory_activity",
+            ),
+            evidence_refs=("rule.metric.recorded-range-fractions.v1",),
+            limitations=("descriptive_monitoring_only",),
+        ),
+        reply="Réponse MONITORING déterministe.",
+    )
+
+
+def test_module_monitoring_decision_short_circuits_llm_and_verifies_before_chat_storage():
+    patient = SimpleNamespace(id=42, first_name="")
+    events = []
+
+    def verify(_patient_id, resolution, candidate):
+        assert resolution.decision.rule_id.startswith("diabetes.monitoring.")
+        events.append("verify")
+        return candidate
+
+    def append(_patient, role, _message):
+        if role == "assistant":
+            events.append("assistant_store")
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_monitoring_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch("companion.conversation._append_turn", side_effect=append),
+        patch("companion.conversation.record_companion_route") as record_route,
+    ):
+        reply = conversation.chat(
+            "Explique-moi ma tendance glycémique cette semaine.",
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            language="fr",
+            patient=patient,
+        )
+
+    assert reply == "Réponse MONITORING déterministe."
+    assert events == ["verify", "assistant_store"]
+    record_route.assert_called_once_with("policy_rule")
+
+
+def test_module_monitoring_decision_short_circuits_llm_and_verifies_before_stream_emit():
+    patient = SimpleNamespace(id=42, first_name="")
+    events = []
+
+    def verify(_patient_id, resolution, candidate):
+        assert resolution.decision.rule_id.startswith("diabetes.monitoring.")
+        events.append("verify")
+        return candidate
+
+    def append(_patient, role, _message):
+        if role == "assistant":
+            events.append("assistant_store")
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_monitoring_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch("companion.conversation._append_turn", side_effect=append),
+        patch("companion.conversation.record_companion_route") as record_route,
+    ):
+        chunks = list(
+            conversation.stream_chat(
+                "Explique-moi ma tendance glycémique cette semaine.",
+                memory=None,
+                deep=object(),
+                llm=ExplodingLLM(),
+                language="fr",
+                patient=patient,
+            )
+        )
+
+    events.append("observed_emit")
+    assert chunks == ["Réponse MONITORING déterministe."]
+    assert events == ["verify", "assistant_store", "observed_emit"]
+    record_route.assert_called_once_with("policy_rule")
