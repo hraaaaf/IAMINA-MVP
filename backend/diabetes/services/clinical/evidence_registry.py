@@ -12,6 +12,7 @@ Regulatory status is orthogonal to evidence maturity.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from enum import StrEnum
 from types import MappingProxyType
 from typing import Mapping
@@ -61,6 +62,10 @@ class EvidenceRecord:
     reviewed_at: str
     clinical_authority: ClinicalAuthority
     limitations: str
+    reviewer: str = ""
+    next_review_at: str = ""
+    assumptions: tuple[str, ...] = ()
+    exclusions: tuple[str, ...] = ()
     supporting_evidence_ids: tuple[str, ...] = ()
     supersedes: tuple[str, ...] = ()
     superseded_by: tuple[str, ...] = ()
@@ -87,11 +92,23 @@ class EvidenceRecord:
             "clinical_authority": self.clinical_authority.value,
             "supersession_state": self.supersession_state,
             "limitations": self.limitations,
+            "reviewer": self.reviewer,
+            "next_review_at": self.next_review_at,
+            "assumptions": list(self.assumptions),
+            "exclusions": list(self.exclusions),
             "supporting_evidence_ids": list(self.supporting_evidence_ids),
         }
 
 
 REVIEWED_AT = "2026-08-12"
+RULE_REVIEWER = "IAmina Clinical Governance"
+RULE_NEXT_REVIEW_AT = "2027-02-12"
+RULE_DEFAULT_ASSUMPTIONS = (
+    "declared population and modality applicability are satisfied",
+)
+RULE_DEFAULT_EXCLUSIONS = (
+    "use outside the declared population or modality without separate review",
+)
 
 # External source records -----------------------------------------------------
 
@@ -286,6 +303,10 @@ def _internal_rule(
     limitations: str,
     supporting: tuple[str, ...] = (),
     authority: ClinicalAuthority = ClinicalAuthority.GOVERNED_RULE,
+    reviewer: str = RULE_REVIEWER,
+    next_review_at: str = RULE_NEXT_REVIEW_AT,
+    assumptions: tuple[str, ...] = RULE_DEFAULT_ASSUMPTIONS,
+    exclusions: tuple[str, ...] = RULE_DEFAULT_EXCLUSIONS,
 ) -> EvidenceRecord:
     return EvidenceRecord(
         evidence_id=evidence_id,
@@ -305,6 +326,10 @@ def _internal_rule(
         reviewed_at=REVIEWED_AT,
         clinical_authority=authority,
         limitations=limitations,
+        reviewer=reviewer,
+        next_review_at=next_review_at,
+        assumptions=assumptions,
+        exclusions=exclusions,
         supporting_evidence_ids=supporting,
     )
 
@@ -708,6 +733,29 @@ def validate_registry() -> tuple[str, ...]:
                 errors.append(f"{record.evidence_id}: IAmina rule must use internal_governed_rule maturity")
             if record.finality_status != FinalityStatus.VERSIONED_PRODUCT_RULE:
                 errors.append(f"{record.evidence_id}: IAmina rule must be versioned_product_rule")
+            if not record.reviewer.strip():
+                errors.append(f"{record.evidence_id}: reviewer missing")
+            if not record.next_review_at.strip():
+                errors.append(f"{record.evidence_id}: next_review_at missing")
+            else:
+                try:
+                    reviewed = date.fromisoformat(record.reviewed_at)
+                    next_review = date.fromisoformat(record.next_review_at)
+                except ValueError:
+                    errors.append(f"{record.evidence_id}: review dates must be ISO dates")
+                else:
+                    if next_review <= reviewed:
+                        errors.append(
+                            f"{record.evidence_id}: next_review_at must be after reviewed_at"
+                        )
+            if not record.assumptions:
+                errors.append(f"{record.evidence_id}: assumptions missing")
+            elif any(not value.strip() for value in record.assumptions):
+                errors.append(f"{record.evidence_id}: assumptions must be non-empty strings")
+            if not record.exclusions:
+                errors.append(f"{record.evidence_id}: exclusions missing")
+            elif any(not value.strip() for value in record.exclusions):
+                errors.append(f"{record.evidence_id}: exclusions must be non-empty strings")
         if (
             record.evidence_maturity in {EvidenceMaturity.EMERGING_EVIDENCE, EvidenceMaturity.INVESTIGATIONAL}
             and record.clinical_authority == ClinicalAuthority.GOVERNED_RULE
