@@ -1,5 +1,6 @@
 from datetime import timedelta
 from inspect import signature
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -15,6 +16,7 @@ from diabetes.services.clinical.companion_smart_suggestions import (
     ACTIVE_V1_SUGGESTION_CLASSES,
     ALLOWED_SUGGESTION_CLASSES,
     SOURCE_VERSION,
+    _patient_facts,
     evaluate_companion_smart_suggestion,
 )
 from diabetes.services.clinical.observation_memory import (
@@ -282,3 +284,37 @@ class CompanionSmartSuggestionTests(TestCase):
         for value in (0, -1, True, "1", None):
             with self.assertRaises(ValueError):
                 evaluate_companion_smart_suggestion(patient_id=value)  # type: ignore[arg-type]
+
+
+
+class CompanionSmartSuggestionPatientFactsContractTests(TestCase):
+    def test_patient_facts_crosscheck_rejects_proactive_pattern_mismatch(self):
+        now = timezone.now()
+        pattern = SimpleNamespace(
+            observation_key="context:stress",
+            observations=5,
+            distinct_days=4,
+            recurrence_count=2,
+            first_observed_at=now - timedelta(days=10),
+            last_observed_at=now,
+            evidence_density="moderate",
+            evidence_window_days=90,
+            baseline_delta_mg_dl=25.0,
+        )
+        proactive = SimpleNamespace(
+            observation_key="context:stress",
+            observations=5,
+            distinct_days=3,
+            evidence_density="moderate",
+            evidence_window_days=90,
+            personal_baseline_comparison_mg_dl=25.0,
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "proactive insight and governed pattern distinct-day count differ",
+        ):
+            _patient_facts(
+                pattern=pattern,
+                proactive_item=proactive,
+            )
