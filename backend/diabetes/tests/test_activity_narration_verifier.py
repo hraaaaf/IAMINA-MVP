@@ -28,6 +28,10 @@ def test_activity_fallback_passes_its_own_verifier():
     assert resolution is not None
     check = verify_activity_narration(resolution.decision, resolution.reply)
     assert check.passed
+    assert verify_activity_narration(
+        resolution.decision,
+        "This does not establish that exercise caused the glucose change.",
+    ).passed
 
 
 def test_activity_verifier_rejects_adversarial_actions():
