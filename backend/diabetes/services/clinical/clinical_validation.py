@@ -1,4 +1,5 @@
 """Progressive clinical validation policy for diabetes advice families."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
