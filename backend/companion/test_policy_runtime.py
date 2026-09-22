@@ -745,3 +745,116 @@ def test_module_symptom_triage_short_circuits_llm_and_verifies_before_stream_emi
     assert chunks == ["Réponse SYMPTOM_TRIAGE déterministe."]
     assert events == ["verify", "assistant_store", "observed_emit"]
     record_route.assert_called_once_with("policy_rule")
+
+
+
+def _clinician_prep_resolution():
+    return AdviceResolution(
+        decision=AdviceDecision(
+            intent="clinician_prep",
+            authority_level=AdviceAuthorityLevel.L2_LOW_RISK_PRACTICAL,
+            decision=AdviceDisposition.CONSTRAIN,
+            rule_id="diabetes.clinician_prep.structured_brief",
+            rule_version="1",
+            allowed_actions=(
+                "prepare_clinician_discussion",
+                "summarize_approved_consultation_brief",
+            ),
+            forbidden_actions=(
+                "diagnose_from_consultation_brief",
+                "infer_causality_from_consultation_brief",
+                "calculate_insulin_dose",
+                "change_treatment",
+                "prescribe_treatment",
+                "override_clinician",
+                "decide_urgency",
+                "invent_missing_clinical_data",
+            ),
+            evidence_refs=("rule.consultation.preparation.v1",),
+            limitations=("consultation_brief_structured_fields_only",),
+        ),
+        reply="Réponse CLINICIAN_PREP déterministe.",
+    )
+
+
+def test_module_clinician_prep_short_circuits_llm_and_verifies_before_chat_storage():
+    patient = SimpleNamespace(id=42, first_name="")
+    events = []
+
+    def verify(_patient_id, resolution, candidate):
+        assert resolution.decision.rule_id.startswith("diabetes.clinician_prep.")
+        events.append("verify")
+        return candidate
+
+    def append(_patient, role, _message):
+        if role == "assistant":
+            events.append("assistant_store")
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_clinician_prep_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch("companion.conversation._append_turn", side_effect=append),
+        patch("companion.conversation.record_companion_route") as record_route,
+    ):
+        reply = conversation.chat(
+            "Aide-moi à préparer les questions pour mon médecin.",
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            language="fr",
+            patient=patient,
+        )
+
+    assert reply == "Réponse CLINICIAN_PREP déterministe."
+    assert events == ["verify", "assistant_store"]
+    record_route.assert_called_once_with("policy_rule")
+
+
+def test_module_clinician_prep_short_circuits_llm_and_verifies_before_stream_emit():
+    patient = SimpleNamespace(id=42, first_name="")
+    events = []
+
+    def verify(_patient_id, resolution, candidate):
+        assert resolution.decision.rule_id.startswith("diabetes.clinician_prep.")
+        events.append("verify")
+        return candidate
+
+    def append(_patient, role, _message):
+        if role == "assistant":
+            events.append("assistant_store")
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_clinician_prep_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch("companion.conversation._append_turn", side_effect=append),
+        patch("companion.conversation.record_companion_route") as record_route,
+    ):
+        chunks = list(
+            conversation.stream_chat(
+                "Aide-moi à préparer les questions pour mon médecin.",
+                memory=None,
+                deep=object(),
+                llm=ExplodingLLM(),
+                language="fr",
+                patient=patient,
+            )
+        )
+
+    events.append("observed_emit")
+    assert chunks == ["Réponse CLINICIAN_PREP déterministe."]
+    assert events == ["verify", "assistant_store", "observed_emit"]
+    record_route.assert_called_once_with("policy_rule")
