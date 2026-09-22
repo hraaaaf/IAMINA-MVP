@@ -343,7 +343,6 @@ def test_multiple_patterns_latin_darija_stays_latin():
     assert not any("\u0600" <= ch <= "\u06ff" for ch in resolution.reply)
 
 
-
 def test_generic_question_with_multiple_patterns_does_not_infer_priority():
     resolution = resolve_longitudinal_personalization_from_context(
         "Qu’est-ce que tu remarques chez moi sur la durée dans mes données ?",
