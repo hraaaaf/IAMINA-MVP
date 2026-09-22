@@ -858,3 +858,113 @@ def test_module_clinician_prep_short_circuits_llm_and_verifies_before_stream_emi
     assert chunks == ["Réponse CLINICIAN_PREP déterministe."]
     assert events == ["verify", "assistant_store", "observed_emit"]
     record_route.assert_called_once_with("policy_rule")
+
+
+
+def _longitudinal_resolution():
+    return AdviceResolution(
+        decision=AdviceDecision(
+            intent="longitudinal_personalization",
+            authority_level=AdviceAuthorityLevel.L1_EDUCATION,
+            decision=AdviceDisposition.CONSTRAIN,
+            rule_id="diabetes.longitudinal.descriptive_personalization",
+            rule_version="1",
+            allowed_actions=("describe_governed_longitudinal_observation",),
+            forbidden_actions=(
+                "infer_causality",
+                "infer_treatment_response",
+                "predict_future_outcome",
+                "diagnose_from_longitudinal_history",
+                "calculate_insulin_dose",
+                "change_treatment",
+                "promote_heuristic_inference",
+                "invent_longitudinal_facts",
+            ),
+            evidence_refs=("rule.personal-response.repetition.v1",),
+            limitations=("certified_companion_context_only",),
+        ),
+        reply="Réponse LONGITUDINAL déterministe.",
+    )
+
+
+def test_module_longitudinal_personalization_short_circuits_llm_and_verifies_before_chat_storage():
+    patient = SimpleNamespace(id=42, first_name="")
+    events = []
+
+    def verify(_patient_id, resolution, candidate):
+        assert resolution.decision.rule_id.startswith("diabetes.longitudinal.")
+        events.append("verify")
+        return candidate
+
+    def append(_patient, role, _message):
+        if role == "assistant":
+            events.append("assistant_store")
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_longitudinal_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch("companion.conversation._append_turn", side_effect=append),
+        patch("companion.conversation.record_companion_route") as record_route,
+    ):
+        reply = conversation.chat(
+            "Qu’est-ce que tu remarques chez moi sur la durée dans mes données ?",
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            language="fr",
+            patient=patient,
+        )
+
+    assert reply == "Réponse LONGITUDINAL déterministe."
+    assert events == ["verify", "assistant_store"]
+    record_route.assert_called_once_with("policy_rule")
+
+
+def test_module_longitudinal_personalization_short_circuits_llm_and_verifies_before_stream_emit():
+    patient = SimpleNamespace(id=42, first_name="")
+    events = []
+
+    def verify(_patient_id, resolution, candidate):
+        assert resolution.decision.rule_id.startswith("diabetes.longitudinal.")
+        events.append("verify")
+        return candidate
+
+    def append(_patient, role, _message):
+        if role == "assistant":
+            events.append("assistant_store")
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=_longitudinal_resolution(),
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch("companion.conversation._append_turn", side_effect=append),
+        patch("companion.conversation.record_companion_route") as record_route,
+    ):
+        chunks = list(
+            conversation.stream_chat(
+                "Qu’est-ce que tu remarques chez moi sur la durée dans mes données ?",
+                memory=None,
+                deep=object(),
+                llm=ExplodingLLM(),
+                language="fr",
+                patient=patient,
+            )
+        )
+
+    events.append("observed_emit")
+    assert chunks == ["Réponse LONGITUDINAL déterministe."]
+    assert events == ["verify", "assistant_store", "observed_emit"]
+    record_route.assert_called_once_with("policy_rule")
