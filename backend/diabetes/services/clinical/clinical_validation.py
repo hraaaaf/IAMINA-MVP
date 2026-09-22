@@ -2,16 +2,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
-
 from core.contracts.advice_decision import AdviceAuthorityLevel, AdviceDisposition
 from core.contracts.advice_resolution import AdviceResolution
-
-
-class ValidationStatus(StrEnum):
-    EXPERIMENTAL = "experimental"
-    VALIDATED = "validated"
-    DISABLED = "disabled"
+from diabetes.services.clinical.evidence_registry import ValidationStatus
 
 
 _AUTHORITY_ORDER = {
