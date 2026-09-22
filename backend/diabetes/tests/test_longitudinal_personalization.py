@@ -371,7 +371,6 @@ def test_latin_darija_multiple_patterns_reply_keeps_latin_script():
     assert not any("\u0600" <= ch <= "\u06ff" for ch in resolution.reply)
 
 
-
 def test_contradictory_observation_dates_fail_closed():
     pattern = _pattern()
     bad = CompanionPattern(
