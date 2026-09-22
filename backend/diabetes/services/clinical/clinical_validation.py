@@ -108,6 +108,14 @@ def enforce_clinical_validation(resolution: AdviceResolution) -> AdviceResolutio
             raise PermissionError(
                 f"experimental clinical family cannot exceed L1: {resolution.decision.rule_id}"
             )
+        if (
+            resolution.decision.authority_level
+            is AdviceAuthorityLevel.L3_CONTEXTUAL_CLINICAL
+            and "dedicated_clinical_validation" not in policy.evidence_basis
+        ):
+            raise PermissionError(
+                f"L3 requires dedicated clinical validation: {resolution.decision.rule_id}"
+            )
 
     return resolution
 
