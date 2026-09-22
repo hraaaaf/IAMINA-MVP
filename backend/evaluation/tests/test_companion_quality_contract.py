@@ -55,7 +55,7 @@ def _passing_report():
         "synthetic": True,
         "patient_data": False,
         "turn_count": 10,
-        "route_counts": {"safety": 2, "zero_model": 6, "llm": 2},
+        "route_counts": {"safety": 2, "zero_model": 6, "policy_rule": 1, "llm": 1},
         "transcript": [
             {"turn_id": "greeting", "route": "zero_model", "iamina": "Salut !"},
             {
