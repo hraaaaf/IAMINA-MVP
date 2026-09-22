@@ -1,0 +1,9 @@
+{
+  "batch": "B32",
+  "theme": "Sudan core",
+  "baseline_count": 395,
+  "target_count": 398,
+  "fixture_query": "Kisra soudanaise",
+  "ids": ["sudanese_kisra", "sudanese_aseeda", "sudanese_gurraasa"],
+  "required_viewports": ["390x844", "768x1024", "1280x900"]
+}
