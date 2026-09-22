@@ -341,3 +341,32 @@ def test_multiple_patterns_latin_darija_stays_latin():
     assert resolution is not None
     assert resolution.decision.rule_id == "diabetes.longitudinal.multiple_patterns"
     assert not any("\u0600" <= ch <= "\u06ff" for ch in resolution.reply)
+
+
+
+def test_generic_question_with_multiple_patterns_does_not_infer_priority():
+    resolution = resolve_longitudinal_personalization_from_context(
+        "Qu’est-ce que tu remarques chez moi sur la durée dans mes données ?",
+        _context(_pattern("context:stress"), _pattern("context:activity")),
+        language="fr",
+    )
+
+    assert resolution is not None
+    assert resolution.decision.rule_id == "diabetes.longitudinal.multiple_patterns"
+    assert resolution.decision.allowed_actions == ("request_longitudinal_scope",)
+    assert "infer_clinical_priority" in resolution.decision.forbidden_actions
+    assert "leur ordre ne constitue pas une priorité clinique" in resolution.reply
+    assert "activité enregistrée" not in resolution.reply
+    assert "stress enregistré" not in resolution.reply
+
+
+def test_latin_darija_multiple_patterns_reply_keeps_latin_script():
+    resolution = resolve_longitudinal_personalization_from_context(
+        "Wach kayn chi pattern kayt3awd 3ndi f data dyali?",
+        _context(_pattern("context:stress"), _pattern("context:activity")),
+        language="ar-MA",
+    )
+
+    assert resolution is not None
+    assert resolution.decision.rule_id == "diabetes.longitudinal.multiple_patterns"
+    assert not any("\u0600" <= ch <= "\u06ff" for ch in resolution.reply)
