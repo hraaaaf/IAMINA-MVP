@@ -249,6 +249,46 @@ class DemoChatContractTests(TestCase):
         self.assertNotIn("أكيد", reply)
 
 
+    def test_demo_reported_food_context_uses_governed_food_rule_from_history(self):
+        history = [
+            {"role": "user", "content": "j ai très faim et je viens de manger"},
+            {
+                "role": "assistant",
+                "content": "Je comprends. Qu'est-ce que tu as mangé ?",
+            },
+        ]
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=AssertionError("reported food context must stay deterministic"),
+        ):
+            response = self._post(
+                "mille feuilles et jus dananas",
+                history=history,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        reply = payload["reply"].lower()
+        self.assertEqual(payload["conversation_id"], "demo-governed")
+        self.assertIn("portion", reply)
+        self.assertIn("glucides", reply)
+        self.assertNotIn("gourmand", reply)
+
+    def test_demo_non_food_history_does_not_force_food_governance(self):
+        history = [
+            {"role": "user", "content": "Je suis fatigué aujourd'hui."},
+            {"role": "assistant", "content": "Tu veux en parler ?"},
+        ]
+        with patch(
+            "companion.demo.generate_demo_reply",
+            return_value="Oui, raconte-moi.",
+        ) as narrator:
+            response = self._post("Pas grand-chose.", history=history)
+
+        self.assertEqual(response.status_code, 200)
+        narrator.assert_called_once_with("Pas grand-chose.", "fr", history=history)
+        self.assertEqual(response.json()["reply"], "Oui, raconte-moi.")
+
     def test_demo_chat_recognizes_gulf_casual_variant_without_solutions(self):
         with patch(
             "companion.demo.generate_demo_reply",
