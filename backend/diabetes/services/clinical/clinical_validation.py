@@ -8,7 +8,6 @@ from core.contracts.advice_decision import AdviceAuthorityLevel, AdviceDispositi
 from core.contracts.advice_resolution import AdviceResolution
 from diabetes.services.clinical.evidence_registry import ValidationStatus
 
-
 _AUTHORITY_ORDER = {
     AdviceAuthorityLevel.L0_CONVERSATION: 0,
     AdviceAuthorityLevel.L1_EDUCATION: 1,
