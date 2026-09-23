@@ -108,6 +108,13 @@ class BaseEngine(abc.ABC):
             previous_user_message=previous_user_message,
         )
 
+    def validate_advice_resolution(
+        self,
+        resolution: "AdviceResolution",
+    ) -> "AdviceResolution":
+        """Apply module-owned progressive validation without condition semantics in chassis."""
+        return resolution
+
     def verify_advice_reply(
         self,
         resolution: "AdviceResolution",

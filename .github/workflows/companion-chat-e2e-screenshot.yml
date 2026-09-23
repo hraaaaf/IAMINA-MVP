@@ -11,6 +11,10 @@ on:
       - 'frontend/test/services/companion_service_chat_test.dart'
       - 'backend/ai/api/v1/ai.py'
       - 'backend/companion/**'
+      - 'backend/core/companion/clinical.py'
+      - 'backend/core/engine/base.py'
+      - 'backend/diabetes/services/clinical/engine.py'
+      - 'backend/diabetes/services/clinical/clinical_validation.py'
       - '.github/workflows/companion-chat-e2e-screenshot.yml'
 
 permissions:

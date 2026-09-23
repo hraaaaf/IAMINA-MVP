@@ -117,6 +117,13 @@ def get_advice_resolution(
         )
     if resolution is not None and not isinstance(resolution, AdviceResolution):
         raise TypeError("active module returned an invalid AdviceResolution")
+    if resolution is None:
+        return None
+    validator = getattr(engine, "validate_advice_resolution", None)
+    if callable(validator):
+        resolution = validator(resolution)
+    if not isinstance(resolution, AdviceResolution):
+        raise TypeError("active module returned an invalid validated AdviceResolution")
     return resolution
 
 

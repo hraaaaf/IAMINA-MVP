@@ -913,6 +913,17 @@ class DiabetesEngine(BaseEngine):
             language=language,
         )
 
+    def validate_advice_resolution(
+        self,
+        resolution: "AdviceResolution",
+    ) -> "AdviceResolution":
+        """Apply release-governed family validation before any patient-visible advice."""
+        from diabetes.services.clinical.clinical_validation import (
+            enforce_clinical_validation,
+        )
+
+        return enforce_clinical_validation(resolution)
+
     def verify_advice_reply(
         self,
         resolution: "AdviceResolution",
