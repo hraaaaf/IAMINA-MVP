@@ -242,7 +242,7 @@ _REPORTED_CONTEXT_REPLY = {
         "changing treatment."
     ),
     "darija_latin": (
-        "Chokran. Bach nfessro chno kliti bla ma nstنتjou bzaf, l'ahamm howa "
+        "Chokran. Bach nfessro chno kliti bla ma nstntjou bzaf, l'ahamm howa "
         "lportion ta9riban dyal kol haja w ila kaynin lglucides mktoubin. "
         "N9dar n3awnk n7ethom f siyak bla dose w bla tbdel l3ilaj."
     ),
