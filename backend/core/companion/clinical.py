@@ -127,6 +127,43 @@ def get_advice_resolution(
     return resolution
 
 
+def get_demo_advice_resolution(
+    message: str,
+    *,
+    language: str = "fr",
+    context_kind: str = "",
+) -> AdviceResolution | None:
+    """Resolve bounded public-demo advice through the active module engine.
+
+    Demo mode has no patient identity. The current deployment is single-module;
+    if that invariant stops holding, fail closed rather than guessing a module.
+    """
+    from core.registry import ModuleRegistry
+
+    modules = ModuleRegistry.all()
+    if len(modules) != 1:
+        return None
+    engine = modules[0].engine_class()
+    resolver = getattr(engine, "resolve_demo_advice", None)
+    if not callable(resolver):
+        return None
+    resolution = resolver(
+        message,
+        language=language,
+        context_kind=context_kind,
+    )
+    if resolution is None:
+        return None
+    if not isinstance(resolution, AdviceResolution):
+        raise TypeError("active module returned an invalid demo AdviceResolution")
+    validator = getattr(engine, "validate_advice_resolution", None)
+    if callable(validator):
+        resolution = validator(resolution)
+    if not isinstance(resolution, AdviceResolution):
+        raise TypeError("active module returned an invalid validated demo AdviceResolution")
+    return resolution
+
+
 def verify_advice_reply(
     patient_id: int | None,
     resolution: AdviceResolution,

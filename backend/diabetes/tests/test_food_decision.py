@@ -11,6 +11,7 @@ from diabetes.services.clinical.food_decision import (
     classify_food_decision,
     resolve_food_decision,
     resolve_food_followup,
+    resolve_reported_food_context,
 )
 
 _ARABIC_RE = re.compile(r"[\u0600-\u06ff\u0750-\u077f]")
@@ -127,6 +128,23 @@ def test_exact_mille_feuille_regression_does_not_give_binary_permission_or_activ
     assert "marche" not in reply
     assert "portion" in reply
     assert "glucides" in reply
+
+
+def test_reported_food_context_is_l1_and_requires_declared_portion():
+    resolution = resolve_reported_food_context(
+        "mille feuilles et jus dananas",
+        language="fr",
+    )
+
+    assert resolution.decision.intent == FoodDecisionIntent.REPORTED_CONTEXT.value
+    assert resolution.decision.authority_level is AdviceAuthorityLevel.L1_EDUCATION
+    assert resolution.decision.decision is AdviceDisposition.CONSTRAIN
+    assert resolution.decision.rule_id == "diabetes.food.reported_context"
+    assert "request_food_portion" in resolution.decision.allowed_actions
+    assert "no_quantity_inference_without_portion" in resolution.decision.limitations
+    assert "calculate_insulin_dose" in resolution.decision.forbidden_actions
+    assert "portion" in resolution.reply.lower()
+    assert "glucides" in resolution.reply.lower()
 
 
 def test_latin_darija_food_reply_is_script_clean():

@@ -108,6 +108,17 @@ class BaseEngine(abc.ABC):
             previous_user_message=previous_user_message,
         )
 
+    def resolve_demo_advice(
+        self,
+        message: str,
+        *,
+        language: str = "fr",
+        context_kind: str = "",
+    ) -> "AdviceResolution | None":
+        """Resolve bounded public-demo advice without patient identity or condition semantics."""
+        del message, language, context_kind
+        return None
+
     def validate_advice_resolution(
         self,
         resolution: "AdviceResolution",

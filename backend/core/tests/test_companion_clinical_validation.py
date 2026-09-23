@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from core.companion.clinical import get_advice_resolution
+from core.companion.clinical import get_advice_resolution, get_demo_advice_resolution
 from core.contracts.advice_decision import (
     AdviceAuthorityLevel,
     AdviceDecision,
@@ -62,3 +62,33 @@ def test_validation_rejection_propagates_fail_closed():
                 DomainContext.empty(language="fr"),
                 language="fr",
             )
+
+
+def test_get_demo_advice_resolution_uses_single_active_module_and_validates():
+    resolution = _resolution()
+    engine = SimpleNamespace(
+        resolve_demo_advice=lambda *args, **kwargs: resolution,
+        validate_advice_resolution=lambda value: value,
+    )
+    module = SimpleNamespace(engine_class=lambda: engine)
+
+    with patch("core.registry.ModuleRegistry.all", return_value=[module]):
+        result = get_demo_advice_resolution(
+            "reported food",
+            language="fr",
+            context_kind="reported_food",
+        )
+
+    assert result is resolution
+
+
+def test_get_demo_advice_resolution_fails_closed_with_multiple_modules():
+    module = SimpleNamespace(engine_class=lambda: SimpleNamespace())
+    with patch("core.registry.ModuleRegistry.all", return_value=[module, module]):
+        result = get_demo_advice_resolution(
+            "reported food",
+            language="fr",
+            context_kind="reported_food",
+        )
+
+    assert result is None

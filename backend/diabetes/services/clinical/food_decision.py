@@ -107,6 +107,7 @@ class FoodDecisionIntent(StrEnum):
     PERMISSION = "food_permission"
     PORTION_CARBOHYDRATE = "food_portion_carbohydrate"
     COMPARISON = "food_comparison"
+    REPORTED_CONTEXT = "food_reported_context"
 
 
 _ELLIPTICAL_FOOD_FOLLOWUP_RE = re.compile(
@@ -227,6 +228,42 @@ _PORTION_REPLY = {
     ),
 }
 
+_REPORTED_CONTEXT_REPLY = {
+    "fr": (
+        "Merci. Pour interpréter ce que tu as mangé sans tirer de conclusion trop vite, "
+        "le plus utile est la portion approximative de chaque élément et, si tu les as, "
+        "les glucides indiqués. Je peux t’aider à les mettre en contexte, sans calculer "
+        "de dose ni modifier ton traitement."
+    ),
+    "en": (
+        "Thanks. To interpret what you ate without jumping to conclusions, the useful "
+        "next details are the approximate portions and, if available, the stated "
+        "carbohydrates. I can help put those in context without calculating a dose or "
+        "changing treatment."
+    ),
+    "darija_latin": (
+        "Chokran. Bach nfessro chno kliti bla ma nstntjou bzaf, l'ahamm howa "
+        "lportion ta9riban dyal kol haja w ila kaynin lglucides mktoubin. "
+        "N9dar n3awnk n7ethom f siyak bla dose w bla tbdel l3ilaj."
+    ),
+    "darija_ar": (
+        "شكراً. باش نفسرو شنو كلّيتي بلا ما نستنتجو بزاف، الأهم هو الكمية تقريباً "
+        "ديال كل حاجة وإذا كانت مكتوبة الكربوهيدرات. نقدر نعاونك نحطهم فالسياق، "
+        "بلا حساب الجرعة وبلا تبديل العلاج."
+    ),
+    "gulf": (
+        "شكراً. عشان نفهم اللي أكلته من غير ما نستنتج أكثر من اللازم، نحتاج تقريباً "
+        "كمية كل شيء، وإذا موجودة كمية الكربوهيدرات المكتوبة. أقدر أساعدك نحطها "
+        "في سياقها من غير حساب جرعة أو تغيير علاج."
+    ),
+    "ar": (
+        "شكراً. لفهم ما تناولته من دون استنتاج زائد، نحتاج تقريباً إلى كمية كل عنصر "
+        "وإلى محتوى الكربوهيدرات إن كان متاحاً. أستطيع مساعدتك في وضع ذلك في سياقه، "
+        "من دون حساب جرعة أو تغيير العلاج."
+    ),
+}
+
+
 _COMPARISON_REPLY = {
     "fr": (
         "Je peux comparer deux options sur des éléments concrets comme la portion "
@@ -331,6 +368,39 @@ def _resolve_food_intent(
     return AdviceResolution(decision=decision, reply=_PORTION_REPLY[variant])
 
 
+def resolve_reported_food_context(
+    message: str,
+    *,
+    language: str = "fr",
+) -> AdviceResolution:
+    """Resolve a food report only after the caller has established food context."""
+    variant = _script_variant(message, language)
+    decision = AdviceDecision(
+        intent=FoodDecisionIntent.REPORTED_CONTEXT.value,
+        authority_level=AdviceAuthorityLevel.L1_EDUCATION,
+        decision=AdviceDisposition.CONSTRAIN,
+        rule_id="diabetes.food.reported_context",
+        rule_version="1",
+        allowed_actions=(
+            "request_food_portion",
+            "interpret_declared_food_and_carbohydrate_context",
+        ),
+        forbidden_actions=_FORBIDDEN,
+        evidence_refs=_EVIDENCE,
+        limitations=(
+            "food_context_established_by_conversation",
+            "no_quantity_inference_without_portion",
+            "no_dose",
+            "no_treatment_change",
+        ),
+        language=language,
+    )
+    return AdviceResolution(
+        decision=decision,
+        reply=_REPORTED_CONTEXT_REPLY[variant],
+    )
+
+
 def resolve_food_decision(
     message: str,
     *,
@@ -382,4 +452,5 @@ __all__ = [
     "classify_food_decision",
     "resolve_food_decision",
     "resolve_food_followup",
+    "resolve_reported_food_context",
 ]

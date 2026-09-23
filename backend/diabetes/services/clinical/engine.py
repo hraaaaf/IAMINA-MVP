@@ -913,6 +913,25 @@ class DiabetesEngine(BaseEngine):
             language=language,
         )
 
+    def resolve_demo_advice(
+        self,
+        message: str,
+        *,
+        language: str = "fr",
+        context_kind: str = "",
+    ) -> "AdviceResolution | None":
+        """Resolve bounded public-demo advice inside the diabetes capsule."""
+        if context_kind != "reported_food":
+            return None
+        from diabetes.services.clinical.food_decision import (
+            resolve_reported_food_context,
+        )
+
+        return resolve_reported_food_context(
+            message,
+            language=language,
+        )
+
     def validate_advice_resolution(
         self,
         resolution: "AdviceResolution",

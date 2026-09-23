@@ -12,6 +12,7 @@ import re
 from companion.demo_model import DemoModelUnavailable, DemoPayloadDenied, generate_demo_reply
 from companion.output_guard import safe_fallback
 from companion.zero_model_router import exact_chitchat_reply
+from core.companion.clinical import get_demo_advice_resolution
 from core.emergency_response import compose_emergency_for_patient
 from core.input_safety import (
     INSULIN_BLOCK,
@@ -60,6 +61,28 @@ _LATIN_DARIJA_FOOD_RE = re.compile(
     r"\b(?:wach\s+)?n9dar\s+nakol\b",
     re.IGNORECASE,
 )
+_FOOD_REPORT_PROMPT_RE = re.compile(
+    r"(?:"
+    r"qu['’]est[- ]?ce que tu as mang[ée]|qu['’]as[- ]?tu mang[ée]|tu as mang[ée] quoi"
+    r"|what did you eat|what have you eaten"
+    r"|chno kliti|ach kliti"
+    r"|شنو كليتي|شنو كلّيتي|ماذا أكلت|شو أكلت"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _history_invites_food_report(history: list[dict[str, str]]) -> bool:
+    """True only when the latest assistant turn explicitly asks what was eaten."""
+    for turn in reversed(history):
+        role = str(turn.get("role", "")).strip()
+        content = str(turn.get("content", "")).strip()
+        if role == "assistant":
+            return bool(_FOOD_REPORT_PROMPT_RE.search(content))
+        if role == "user":
+            continue
+        break
+    return False
 
 
 def _food_permission_reply(text: str, reply_language: str) -> str:
@@ -281,6 +304,20 @@ def reply_to_demo_message(
             "is_emergency": False,
             "reply_language": reply_language,
         }
+
+    if _history_invites_food_report(history or []):
+        resolution = get_demo_advice_resolution(
+            text,
+            language=reply_language,
+            context_kind="reported_food",
+        )
+        if resolution is not None:
+            return {
+                "reply": resolution.reply,
+                "conversation_id": "demo-governed",
+                "is_emergency": False,
+                "reply_language": reply_language,
+            }
 
     exact = exact_chitchat_reply(text, reply_language)
     if exact is not None:
