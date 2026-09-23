@@ -1,0 +1,9 @@
+{
+  "batch": "B34",
+  "theme": "Bahrain core",
+  "baseline_count": 401,
+  "target_count": 404,
+  "ids": ["bahraini_muhammar", "bahraini_mumawwash", "bahraini_halwa"],
+  "fixture_query": "Muhammar bahreïni",
+  "required_viewports": ["390x844", "768x1024", "1280x900"]
+}
