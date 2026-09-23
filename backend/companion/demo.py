@@ -20,6 +20,8 @@ from core.input_safety import (
     evaluate_input_safety,
 )
 from core.medical_safety import no_prescription_message
+from diabetes.services.clinical.clinical_validation import enforce_clinical_validation
+from diabetes.services.clinical.food_decision import resolve_reported_food_context
 
 _ARABIC_RE = re.compile(r"[\u0600-\u06FF]")
 _ENGLISH_HINT_RE = re.compile(
@@ -60,6 +62,30 @@ _LATIN_DARIJA_FOOD_RE = re.compile(
     r"\b(?:wach\s+)?n9dar\s+nakol\b",
     re.IGNORECASE,
 )
+_FOOD_REPORT_PROMPT_RE = re.compile(
+    r"(?:"
+    r"qu['’]est[- ]?ce que tu as mang[ée]|qu['’]as[- ]?tu mang[ée]|tu as mang[ée] quoi"
+    r"|what did you eat|what have you eaten"
+    r"|chno kliti|ach kliti"
+    r"|شنو كليتي|شنو كلّيتي|ماذا أكلت|شو أكلت"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _history_invites_food_report(history: list[dict[str, str]]) -> bool:
+    """True only when the latest assistant turn explicitly asks what was eaten."""
+    for turn in reversed(history):
+        role = str(turn.get("role", "")).strip()
+        content = str(turn.get("content", "")).strip()
+        if role == "assistant":
+            return bool(_FOOD_REPORT_PROMPT_RE.search(content))
+        if role == "user":
+            continue
+        break
+    return False
+
+
 
 
 def _food_permission_reply(text: str, reply_language: str) -> str:
@@ -277,6 +303,19 @@ def reply_to_demo_message(
     if _FOOD_PERMISSION_RE.search(text):
         return {
             "reply": _food_permission_reply(text, reply_language),
+            "conversation_id": "demo-governed",
+            "is_emergency": False,
+            "reply_language": reply_language,
+        }
+
+    if _history_invites_food_report(history or []):
+        resolution = resolve_reported_food_context(
+            text,
+            language=reply_language,
+        )
+        resolution = enforce_clinical_validation(resolution)
+        return {
+            "reply": resolution.reply,
             "conversation_id": "demo-governed",
             "is_emergency": False,
             "reply_language": reply_language,
