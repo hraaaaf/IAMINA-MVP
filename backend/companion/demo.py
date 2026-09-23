@@ -86,8 +86,6 @@ def _history_invites_food_report(history: list[dict[str, str]]) -> bool:
     return False
 
 
-
-
 def _food_permission_reply(text: str, reply_language: str) -> str:
     if (
         (_LATIN_DARIJA_FOOD_RE.search(text) or _LATIN_DARIJA_RE.search(text))
