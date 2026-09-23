@@ -19,9 +19,8 @@ from core.input_safety import (
     URGENT,
     evaluate_input_safety,
 )
+from core.companion.clinical import get_demo_advice_resolution
 from core.medical_safety import no_prescription_message
-from diabetes.services.clinical.clinical_validation import enforce_clinical_validation
-from diabetes.services.clinical.food_decision import resolve_reported_food_context
 
 _ARABIC_RE = re.compile(r"[\u0600-\u06FF]")
 _ENGLISH_HINT_RE = re.compile(
@@ -307,17 +306,18 @@ def reply_to_demo_message(
         }
 
     if _history_invites_food_report(history or []):
-        resolution = resolve_reported_food_context(
+        resolution = get_demo_advice_resolution(
             text,
             language=reply_language,
+            context_kind="reported_food",
         )
-        resolution = enforce_clinical_validation(resolution)
-        return {
-            "reply": resolution.reply,
-            "conversation_id": "demo-governed",
-            "is_emergency": False,
-            "reply_language": reply_language,
-        }
+        if resolution is not None:
+            return {
+                "reply": resolution.reply,
+                "conversation_id": "demo-governed",
+                "is_emergency": False,
+                "reply_language": reply_language,
+            }
 
     exact = exact_chitchat_reply(text, reply_language)
     if exact is not None:
