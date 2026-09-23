@@ -12,6 +12,7 @@ import re
 from companion.demo_model import DemoModelUnavailable, DemoPayloadDenied, generate_demo_reply
 from companion.output_guard import safe_fallback
 from companion.zero_model_router import exact_chitchat_reply
+from core.companion.clinical import get_demo_advice_resolution
 from core.emergency_response import compose_emergency_for_patient
 from core.input_safety import (
     INSULIN_BLOCK,
@@ -19,7 +20,6 @@ from core.input_safety import (
     URGENT,
     evaluate_input_safety,
 )
-from core.companion.clinical import get_demo_advice_resolution
 from core.medical_safety import no_prescription_message
 
 _ARABIC_RE = re.compile(r"[\u0600-\u06FF]")
