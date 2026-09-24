@@ -81,7 +81,7 @@ class AddLogSheet extends StatefulWidget {
 class _AddLogSheetState extends State<AddLogSheet> {
   final TextEditingController _glucoseController = TextEditingController();
   final TextEditingController _mealNoteController = TextEditingController();
-  final AudioRecorder _mealVoiceRecorder = AudioRecorder();
+  AudioRecorder? _mealVoiceRecorder;
   final List<Uint8List> _mealVoiceChunks = <Uint8List>[];
   StreamSubscription<Uint8List>? _mealVoiceSubscription;
   bool _mealVoiceRecording = false;
@@ -114,7 +114,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
   @override
   void dispose() {
     unawaited(_mealVoiceSubscription?.cancel() ?? Future<void>.value());
-    unawaited(_mealVoiceRecorder.dispose());
+    final recorder = _mealVoiceRecorder;
+    if (recorder != null) unawaited(recorder.dispose());
     _glucoseController.dispose();
     _mealNoteController.dispose();
     super.dispose();
@@ -154,16 +155,21 @@ class _AddLogSheetState extends State<AddLogSheet> {
     return fr;
   }
 
+  AudioRecorder get _defaultMealVoiceRecorder =>
+      _mealVoiceRecorder ??= AudioRecorder();
+
   Future<bool> _hasMealVoicePermission() async {
     final check = widget.voicePermissionCheck;
-    return check != null ? check() : _mealVoiceRecorder.hasPermission();
+    return check != null
+        ? check()
+        : _defaultMealVoiceRecorder.hasPermission();
   }
 
   Future<Stream<Uint8List>> _startMealVoiceStream(RecordConfig config) {
     final start = widget.voiceStartStream;
     return start != null
         ? start(config)
-        : _mealVoiceRecorder.startStream(config);
+        : _defaultMealVoiceRecorder.startStream(config);
   }
 
   Future<void> _stopMealVoiceRecorder() async {
@@ -172,7 +178,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
       await stop();
       return;
     }
-    await _mealVoiceRecorder.stop();
+    await _mealVoiceRecorder?.stop();
   }
 
   Future<String?> _transcribeMealVoice(
