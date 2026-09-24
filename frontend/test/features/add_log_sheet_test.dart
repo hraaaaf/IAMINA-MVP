@@ -170,6 +170,8 @@ void main() {
         final voiceButton = find.byKey(
           const Key('meal-note-voice-button'),
         );
+        await tester.ensureVisible(voiceButton);
+        await tester.pumpAndSettle();
         await tester.tap(voiceButton);
         await tester.pump();
 
