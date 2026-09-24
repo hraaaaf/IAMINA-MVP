@@ -1,4 +1,10 @@
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:record/record.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/amina_visual_language.dart';
@@ -49,6 +55,8 @@ String _failureText(BuildContext context, ProviderApiException failure) {
   };
 }
 
+enum _VoiceState { idle, recording, processing }
+
 class CompanionConversationScreen extends StatefulWidget {
   final CompanionService? service;
 
@@ -60,7 +68,8 @@ class CompanionConversationScreen extends StatefulWidget {
 }
 
 class _CompanionConversationScreenState
-    extends State<CompanionConversationScreen> {
+    extends State<CompanionConversationScreen>
+    with SingleTickerProviderStateMixin {
   late CompanionService _service;
   bool _serviceInitialized = false;
   bool _ownsService = false;
@@ -69,6 +78,24 @@ class _CompanionConversationScreenState
   final List<_ConversationMessage> _messages = [];
   bool _sending = false;
   ProviderApiException? _failure;
+
+  final AudioRecorder _recorder = AudioRecorder();
+  final FlutterTts _tts = FlutterTts();
+  final List<Uint8List> _audioChunks = <Uint8List>[];
+  StreamSubscription<Uint8List>? _recordSubscription;
+  late final AnimationController _voicePulseController;
+  _VoiceState _voiceState = _VoiceState.idle;
+
+  @override
+  void initState() {
+    super.initState();
+    _voicePulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+    unawaited(_initializeTts());
+  }
+
 
   @override
   void didChangeDependencies() {
@@ -89,10 +116,203 @@ class _CompanionConversationScreenState
 
   @override
   void dispose() {
+    unawaited(_recordSubscription?.cancel() ?? Future<void>.value());
+    unawaited(_recorder.dispose());
+    unawaited(_tts.stop());
+    _voicePulseController.dispose();
     _controller.dispose();
     _scrollController.dispose();
     if (_ownsService) _service.dispose();
     super.dispose();
+  }
+
+  Future<void> _initializeTts() async {
+    try {
+      await _tts.setSpeechRate(0.85);
+      await _tts.setVolume(1.0);
+      await _tts.setPitch(1.0);
+      await _tts.awaitSpeakCompletion(true);
+    } catch (_) {
+      // TTS is an optional local playback enhancement. Voice input stays usable.
+    }
+  }
+
+  Future<void> _speakVoiceReply(
+    String text, {
+    required String replyLanguage,
+  }) async {
+    if (text.trim().isEmpty) return;
+    try {
+      final language = replyLanguage == 'ar-MA' || replyLanguage == 'ar'
+          ? 'ar'
+          : replyLanguage == 'en'
+          ? 'en-US'
+          : 'fr-FR';
+      await _tts.setLanguage(language);
+      await _tts.speak(text);
+    } catch (_) {
+      // A missing local TTS engine must not fail the governed chat response.
+    }
+  }
+
+  Future<void> _toggleVoice() async {
+    if (_sending || _voiceState == _VoiceState.processing) return;
+    if (_voiceState == _VoiceState.recording) {
+      await _stopAndSendVoice();
+      return;
+    }
+    await _startVoiceRecording();
+  }
+
+  Future<void> _startVoiceRecording() async {
+    if (!kIsWeb) {
+      final granted = await _recorder.hasPermission();
+      if (!granted) {
+        if (mounted) {
+          _showVoiceMessage(
+            _chatText(
+              context,
+              'Accès au micro refusé. Vérifie les permissions.',
+              'Microphone access was denied. Check your permissions.',
+              'تم رفض الوصول إلى الميكروفون. تحقّق من الأذونات.',
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    _audioChunks.clear();
+    const config = RecordConfig(
+      encoder: kIsWeb ? AudioEncoder.opus : AudioEncoder.aacLc,
+      sampleRate: 16000,
+      numChannels: 1,
+    );
+
+    try {
+      final stream = await _recorder.startStream(config);
+      await _recordSubscription?.cancel();
+      _recordSubscription = stream.listen(
+        _audioChunks.add,
+        onError: (_) {
+          if (!mounted) return;
+          setState(() => _voiceState = _VoiceState.idle);
+          _showVoiceMessage(
+            _chatText(
+              context,
+              'Le micro a rencontré une erreur. Réessaie.',
+              'The microphone encountered an error. Try again.',
+              'حدث خطأ في الميكروفون. حاول مجددًا.',
+            ),
+          );
+        },
+      );
+      if (mounted) {
+        setState(() {
+          _failure = null;
+          _voiceState = _VoiceState.recording;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _voiceState = _VoiceState.idle);
+      _showVoiceMessage(
+        _chatText(
+          context,
+          'Impossible de démarrer le micro. Vérifie les permissions.',
+          'Unable to start the microphone. Check your permissions.',
+          'تعذر تشغيل الميكروفون. تحقّق من الأذونات.',
+        ),
+      );
+    }
+  }
+
+  Future<void> _stopAndSendVoice() async {
+    await _recordSubscription?.cancel();
+    _recordSubscription = null;
+    await _recorder.stop();
+
+    if (!mounted) return;
+    setState(() {
+      _voiceState = _VoiceState.processing;
+      _failure = null;
+    });
+
+    final totalLength = _audioChunks.fold<int>(
+      0,
+      (total, chunk) => total + chunk.length,
+    );
+    final audioBytes = Uint8List(totalLength);
+    var offset = 0;
+    for (final chunk in _audioChunks) {
+      audioBytes.setRange(offset, offset + chunk.length, chunk);
+      offset += chunk.length;
+    }
+    _audioChunks.clear();
+
+    if (audioBytes.isEmpty) {
+      if (mounted) {
+        setState(() => _voiceState = _VoiceState.idle);
+        _showVoiceMessage(
+          _chatText(
+            context,
+            'Aucun son détecté. Réessaie.',
+            'No audio was detected. Try again.',
+            'لم يتم اكتشاف صوت. حاول مجددًا.',
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final result = await _service.sendVoiceMessage(
+        audioBytes,
+        kIsWeb ? 'audio/webm' : 'audio/mp4',
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _voiceState = _VoiceState.idle;
+        if (result == null) {
+          _failure = const ProviderApiException(
+            code: 'provider_unknown_failure',
+            message: 'The AI request could not be completed safely.',
+            retryable: false,
+            statusCode: 500,
+          );
+          return;
+        }
+        if (result.transcript.trim().isNotEmpty) {
+          _messages.add(
+            _ConversationMessage.user('🎤 ${result.transcript.trim()}'),
+          );
+        }
+        _messages.add(_ConversationMessage.assistant(result.reply));
+      });
+      _scrollToBottom();
+
+      if (result != null && !result.isEmergency) {
+        unawaited(
+          _speakVoiceReply(
+            result.reply,
+            replyLanguage: result.replyLanguage,
+          ),
+        );
+      }
+    } on ProviderApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _voiceState = _VoiceState.idle;
+        _failure = error;
+      });
+    }
+  }
+
+  void _showVoiceMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _send() async {
@@ -154,6 +374,8 @@ class _CompanionConversationScreenState
         child: LayoutBuilder(
           builder: (context, constraints) {
             final desktop = constraints.maxWidth >= 900;
+            final waitingForReply =
+                _sending || _voiceState == _VoiceState.processing;
             final conversation = Column(
               children: [
                 _ConversationHeader(
@@ -171,11 +393,11 @@ class _CompanionConversationScreenState
                             24,
                             24,
                           ),
-                          itemCount: _messages.length + (_sending ? 1 : 0),
+                          itemCount: _messages.length + (waitingForReply ? 1 : 0),
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: 12),
                           itemBuilder: (context, index) {
-                            if (_sending && index == _messages.length) {
+                            if (waitingForReply && index == _messages.length) {
                               return const _TypingBubble();
                             }
                             return _MessageBubble(message: _messages[index]);
@@ -204,6 +426,9 @@ class _CompanionConversationScreenState
                 _Composer(
                   controller: _controller,
                   sending: _sending,
+                  voiceState: _voiceState,
+                  voicePulse: _voicePulseController,
+                  onVoice: _toggleVoice,
                   onSend: _send,
                 ),
               ],
@@ -408,16 +633,23 @@ class _EmptyConversation extends StatelessWidget {
 class _Composer extends StatelessWidget {
   final TextEditingController controller;
   final bool sending;
+  final _VoiceState voiceState;
+  final Animation<double> voicePulse;
+  final Future<void> Function() onVoice;
   final Future<void> Function() onSend;
 
   const _Composer({
     required this.controller,
     required this.sending,
+    required this.voiceState,
+    required this.voicePulse,
+    required this.onVoice,
     required this.onSend,
   });
 
   @override
   Widget build(BuildContext context) {
+    final voiceBusy = voiceState != _VoiceState.idle;
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 12, 14),
       decoration: BoxDecoration(
@@ -431,11 +663,18 @@ class _Composer extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          _VoiceButton(
+            state: voiceState,
+            pulse: voicePulse,
+            disabled: sending,
+            onPressed: onVoice,
+          ),
+          const SizedBox(width: 9),
           Expanded(
             child: TextField(
               key: const Key('companion-chat-input'),
               controller: controller,
-              enabled: !sending,
+              enabled: !sending && !voiceBusy,
               minLines: 1,
               maxLines: 4,
               textInputAction: TextInputAction.send,
@@ -482,7 +721,7 @@ class _Composer extends StatelessWidget {
             excludeSemantics: true,
             child: IconButton.filled(
               key: const Key('companion-chat-send'),
-              onPressed: sending ? null : onSend,
+              onPressed: sending || voiceBusy ? null : onSend,
               icon: sending
                   ? const SizedBox(
                       width: 18,
@@ -499,6 +738,102 @@ class _Composer extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _VoiceButton extends StatelessWidget {
+  final _VoiceState state;
+  final Animation<double> pulse;
+  final bool disabled;
+  final Future<void> Function() onPressed;
+
+  const _VoiceButton({
+    required this.state,
+    required this.pulse,
+    required this.disabled,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final label = switch (state) {
+      _VoiceState.idle => _chatText(
+        context,
+        'Envoyer un message vocal',
+        'Send a voice message',
+        'إرسال رسالة صوتية',
+      ),
+      _VoiceState.recording => _chatText(
+        context,
+        'Arrêter l’enregistrement',
+        'Stop recording',
+        'إيقاف التسجيل',
+      ),
+      _VoiceState.processing => _chatText(
+        context,
+        'Traitement du message vocal',
+        'Processing voice message',
+        'جارٍ معالجة الرسالة الصوتية',
+      ),
+    };
+
+    Widget child;
+    switch (state) {
+      case _VoiceState.processing:
+        child = SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AminaVisualLanguage.actionGreen,
+              ),
+            ),
+          ),
+        );
+      case _VoiceState.recording:
+        child = AnimatedBuilder(
+          animation: pulse,
+          builder: (context, _) => Transform.scale(
+            scale: 1 + (0.08 * pulse.value),
+            child: IconButton.filled(
+              key: const Key('companion-chat-voice-stop'),
+              onPressed: disabled ? null : onPressed,
+              icon: const Icon(Icons.stop_rounded),
+              style: IconButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                backgroundColor: const Color(0xFFC94B45),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ),
+        );
+      case _VoiceState.idle:
+        child = IconButton(
+          key: const Key('companion-chat-voice'),
+          onPressed: disabled ? null : onPressed,
+          icon: const Icon(Icons.mic_rounded),
+          style: IconButton.styleFrom(
+            minimumSize: const Size(48, 48),
+            backgroundColor: AminaVisualLanguage.controlSurface(context),
+            foregroundColor: AminaVisualLanguage.actionGreen,
+            side: BorderSide(
+              color: AminaVisualLanguage.controlBorder(context),
+            ),
+          ),
+        );
+    }
+
+    return Semantics(
+      label: label,
+      button: true,
+      enabled: state != _VoiceState.processing && !disabled,
+      excludeSemantics: true,
+      child: child,
     );
   }
 }
