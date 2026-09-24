@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
+import '../data/models/ai_models.dart';
 import '../data/models/companion_models.dart';
 import '../data/models/companion_next_action_models.dart';
 import '../data/models/proactive_preview_models.dart';
@@ -253,6 +256,122 @@ class CompanionService {
     }
   }
 
+  Future<VoiceResponse?> sendVoiceMessage(
+    Uint8List audioBytes,
+    String mimeType, {
+    int contextDays = 14,
+  }) async {
+    if (audioBytes.isEmpty) return null;
+
+    if (_authService.isAuditSession) {
+      throw const ProviderApiException(
+        code: 'authentication_required',
+        message: 'Authentication is required.',
+        retryable: false,
+        statusCode: 401,
+      );
+    }
+
+    String? token;
+    try {
+      token = await _authService.getIdToken();
+    } catch (_) {
+      throw const ProviderApiException(
+        code: 'authentication_required',
+        message: 'Authentication is required.',
+        retryable: false,
+        statusCode: 401,
+      );
+    }
+    if (token == null || token.isEmpty) {
+      throw const ProviderApiException(
+        code: 'authentication_required',
+        message: 'Authentication is required.',
+        retryable: false,
+        statusCode: 401,
+      );
+    }
+
+    final uri = Uri.parse(
+      '$baseUrl/api/v1/ai/voice?context_days=$contextDays',
+    );
+    final request = http.MultipartRequest('POST', uri)
+      ..headers['Authorization'] = 'Bearer $token'
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          'audio',
+          audioBytes,
+          filename: 'voice.${_voiceExtensionFromMime(mimeType)}',
+          contentType: MediaType.parse(mimeType),
+        ),
+      );
+
+    try {
+      final streamed = await _http
+          .send(request)
+          .timeout(const Duration(seconds: 45));
+      final body = await streamed.stream.bytesToString();
+
+      if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+        try {
+          final decoded = jsonDecode(body);
+          if (decoded is Map) {
+            throw ProviderApiException.fromJson(
+              Map<String, dynamic>.from(decoded),
+              statusCode: streamed.statusCode,
+            );
+          }
+        } on ProviderApiException {
+          rethrow;
+        } catch (_) {}
+        throw ProviderApiException.unknown(statusCode: streamed.statusCode);
+      }
+
+      final decoded = jsonDecode(body);
+      if (decoded is! Map) {
+        throw const ProviderApiException(
+          code: 'provider_malformed_response',
+          message: 'The AI service returned an invalid response.',
+          retryable: true,
+          statusCode: 502,
+        );
+      }
+      final reply = VoiceResponse.fromJson(Map<String, dynamic>.from(decoded));
+      if (reply.reply.trim().isEmpty) {
+        throw const ProviderApiException(
+          code: 'provider_malformed_response',
+          message: 'The AI service returned an invalid response.',
+          retryable: true,
+          statusCode: 502,
+        );
+      }
+      return reply;
+    } on ProviderApiException {
+      rethrow;
+    } on TimeoutException {
+      throw const ProviderApiException(
+        code: 'provider_timeout',
+        message: 'The AI service did not respond in time.',
+        retryable: true,
+        statusCode: 503,
+      );
+    } on http.ClientException {
+      throw const ProviderApiException(
+        code: 'provider_unavailable',
+        message: 'The AI service is temporarily unavailable.',
+        retryable: true,
+        statusCode: 503,
+      );
+    } catch (_) {
+      throw const ProviderApiException(
+        code: 'provider_internal_failure',
+        message: 'The AI request could not be completed safely.',
+        retryable: false,
+        statusCode: 500,
+      );
+    }
+  }
+
   Future<CompanionChatReply> _sendDemoChat(String message) async {
     try {
       final response = await _http
@@ -338,6 +457,17 @@ class CompanionService {
       conversationId: 'demo-local',
       replyLanguage: language,
     );
+  }
+
+  static String _voiceExtensionFromMime(String mimeType) {
+    return switch (mimeType.split(';').first.trim().toLowerCase()) {
+      'audio/webm' => 'webm',
+      'audio/mp4' || 'audio/m4a' || 'audio/x-m4a' => 'm4a',
+      'audio/wav' || 'audio/x-wav' => 'wav',
+      'audio/ogg' || 'audio/x-ogg' => 'ogg',
+      'audio/mpeg' || 'audio/mp3' => 'mp3',
+      _ => 'audio',
+    };
   }
 
   void dispose() => _http.close();

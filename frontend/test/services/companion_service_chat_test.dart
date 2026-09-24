@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:amina/services/api_client.dart';
 import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/companion_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -238,4 +240,79 @@ void main() {
 
     service.dispose();
   });
+
+  test('sendVoiceMessage posts authenticated multipart audio and decodes reply', () async {
+    late http.Request captured;
+    final client = MockClient((request) async {
+      captured = request;
+      return http.Response(
+        jsonEncode({
+          'transcript': 'J ai mangé une pomme.',
+          'reply': 'Merci. Quelle portion environ ?',
+          'conversation_id': 'conv-1',
+          'timestamp': '2026-09-24T10:00:00Z',
+          'is_emergency': false,
+          'reply_language': 'fr',
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    final service = CompanionService(
+      authService: _TokenAuthService(),
+      httpClient: client,
+      baseUrl: 'http://127.0.0.1:8000',
+    );
+
+    final reply = await service.sendVoiceMessage(
+      Uint8List.fromList('synthetic-audio'.codeUnits),
+      'audio/webm',
+      contextDays: 21,
+    );
+
+    expect(captured.method, 'POST');
+    expect(captured.url.path, '/api/v1/ai/voice');
+    expect(captured.url.queryParameters['context_days'], '21');
+    expect(captured.headers['authorization'], 'Bearer synthetic-token');
+    expect(
+      captured.headers['content-type'],
+      startsWith('multipart/form-data; boundary='),
+    );
+    final multipartBody = String.fromCharCodes(captured.bodyBytes);
+    expect(multipartBody, contains('name="audio"'));
+    expect(multipartBody, contains('filename="voice.webm"'));
+    expect(multipartBody, contains('synthetic-audio'));
+    expect(reply?.transcript, 'J ai mangé une pomme.');
+    expect(reply?.reply, 'Merci. Quelle portion environ ?');
+    expect(reply?.replyLanguage, 'fr');
+
+    service.dispose();
+  });
+
+  test('sendVoiceMessage requires an authenticated patient session', () async {
+    final service = CompanionService(
+      authService: _AuditAuthService(),
+      httpClient: MockClient(
+        (_) async => throw StateError('network must not be reached'),
+      ),
+      baseUrl: 'http://127.0.0.1:8000',
+    );
+
+    await expectLater(
+      service.sendVoiceMessage(
+        Uint8List.fromList(<int>[1, 2, 3]),
+        'audio/mp4',
+      ),
+      throwsA(
+        isA<ProviderApiException>().having(
+          (failure) => failure.code,
+          'code',
+          'authentication_required',
+        ),
+      ),
+    );
+
+    service.dispose();
+  });
+
 }

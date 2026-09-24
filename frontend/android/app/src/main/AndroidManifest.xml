@@ -1,6 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Phase 11-B: OCR glucometer reader -->
     <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <!-- READ_MEDIA_IMAGES replaces READ_EXTERNAL_STORAGE on API 33+ -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <!-- Fallback for API < 33 -->
