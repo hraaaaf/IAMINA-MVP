@@ -106,3 +106,134 @@ def test_multiturn_rule_does_not_turn_history_into_clinical_authority():
     assert "contexte compagnon gouverné" in formatted
     assert "historique conversationnel" in formatted
     assert "contexte clinique gouverné" in formatted
+
+
+def test_history_qa_prompt_contains_older_user_fact_for_recall():
+    old_turns = [
+        SimpleNamespace(role="assistant", message="D'accord, je garde ça en tête."),
+        SimpleNamespace(role="user", message="Mon petit déjeuner préféré est yaourt et cajou."),
+        SimpleNamespace(role="assistant", message="Noté."),
+        SimpleNamespace(role="user", message="Je préfère marcher le soir."),
+    ]
+    tone = SimpleNamespace(mode=SimpleNamespace(value="neutral"))
+    patient = SimpleNamespace(id=42, first_name="")
+
+    with (
+        patch("companion.conversation._recent_turns", return_value=old_turns),
+        patch("companion.conversation._turn_count", return_value=4),
+        patch(
+            "companion.conversation._get_companion_context",
+            return_value=CompanionContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.select_relationship_tone", return_value=tone),
+        patch("companion.conversation.get_tone_instruction", return_value=""),
+        patch(
+            "companion.conversation.compute_state",
+            return_value=SimpleNamespace(concern_level=0.0),
+        ),
+        patch("companion.conversation.state_to_prompt", return_value=""),
+    ):
+        _, _, _, user_prompt = _build_runtime_prompt(
+            message="Qu'est-ce que je t'avais dit sur mon petit déjeuner ?",
+            memory=_Memory(),
+            deep=_Deep(),
+            language="fr",
+            patient=patient,
+            context_days=14,
+            streaming=False,
+            preloaded_context=DomainContext.empty(language="fr"),
+        )
+
+    assert "Mon petit déjeuner préféré est yaourt et cajou." in user_prompt
+    assert "Je préfère marcher le soir." in user_prompt
+    assert "Qu'est-ce que je t'avais dit sur mon petit déjeuner ?" in user_prompt
+
+
+def test_history_qa_recap_can_receive_two_distinct_prior_user_facts():
+    old_turns = [
+        SimpleNamespace(role="assistant", message="Très bien."),
+        SimpleNamespace(role="user", message="Je préfère les rappels après le dîner."),
+        SimpleNamespace(role="assistant", message="Compris."),
+        SimpleNamespace(role="user", message="Je veux préparer mes questions avant le rendez-vous."),
+    ]
+    tone = SimpleNamespace(mode=SimpleNamespace(value="neutral"))
+    patient = SimpleNamespace(id=42, first_name="")
+
+    with (
+        patch("companion.conversation._recent_turns", return_value=old_turns),
+        patch("companion.conversation._turn_count", return_value=4),
+        patch(
+            "companion.conversation._get_companion_context",
+            return_value=CompanionContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.select_relationship_tone", return_value=tone),
+        patch("companion.conversation.get_tone_instruction", return_value=""),
+        patch(
+            "companion.conversation.compute_state",
+            return_value=SimpleNamespace(concern_level=0.0),
+        ),
+        patch("companion.conversation.state_to_prompt", return_value=""),
+    ):
+        _, _, _, user_prompt = _build_runtime_prompt(
+            message="Résume ce qu'on avait décidé.",
+            memory=_Memory(),
+            deep=_Deep(),
+            language="fr",
+            patient=patient,
+            context_days=14,
+            streaming=False,
+            preloaded_context=DomainContext.empty(language="fr"),
+        )
+
+    assert "Je préfère les rappels après le dîner." in user_prompt
+    assert "Je veux préparer mes questions avant le rendez-vous." in user_prompt
+    assert "[MODE: RECAP]" in user_prompt
+
+
+def test_patient_history_question_receives_governed_clinical_context_separately_from_chat_history():
+    old_turns = [
+        SimpleNamespace(role="assistant", message="On peut regarder tes données."),
+        SimpleNamespace(role="user", message="J'ai l'impression que mes matinées sont difficiles."),
+    ]
+    governed = DomainContext(
+        kpi_summary={"entries": 42},
+        detected_patterns=["morning_glucose_pattern"],
+        insights=["Repeated morning readings were higher than nighttime readings."],
+        pivot_text="Approved longitudinal observation: repeated morning-vs-night glucose difference.",
+        language="fr",
+        has_sufficient_data=True,
+        analysis_status="complete",
+    )
+    tone = SimpleNamespace(mode=SimpleNamespace(value="neutral"))
+    patient = SimpleNamespace(id=42, first_name="")
+
+    with (
+        patch("companion.conversation._recent_turns", return_value=old_turns),
+        patch("companion.conversation._turn_count", return_value=2),
+        patch(
+            "companion.conversation._get_companion_context",
+            return_value=CompanionContext.empty(language="fr"),
+        ),
+        patch("companion.conversation.select_relationship_tone", return_value=tone),
+        patch("companion.conversation.get_tone_instruction", return_value=""),
+        patch(
+            "companion.conversation.compute_state",
+            return_value=SimpleNamespace(concern_level=0.0),
+        ),
+        patch("companion.conversation.state_to_prompt", return_value=""),
+    ):
+        _, _, system, user_prompt = _build_runtime_prompt(
+            message="Qu'est-ce que mon historique montre le matin ?",
+            memory=_Memory(),
+            deep=_Deep(),
+            language="fr",
+            patient=patient,
+            context_days=14,
+            streaming=False,
+            preloaded_context=governed,
+        )
+
+    assert "J'ai l'impression que mes matinées sont difficiles." in user_prompt
+    assert "Approved longitudinal observation: repeated morning-vs-night glucose difference." in system
+    assert "Contexte de session approuvé" in system
+    assert "contexte clinique gouverné" in system
