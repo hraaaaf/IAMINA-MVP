@@ -73,6 +73,55 @@ class ProactiveSourceWriteFreshnessTests(TestCase):
         self.assertEqual(len(response.json()["synced_ids"]), 3)
         refresh.assert_called_once_with(self.patient.id)
 
+    def test_mixed_batch_reconciliation_includes_new_rows_in_fresh_twin(self):
+        existing_uuid = uuid4()
+        LogEntry.objects.create(
+            patient=self.patient,
+            logged_at=self.now,
+            blood_sugar=120,
+            stressed="",
+            source="manual",
+            client_uuid=existing_uuid,
+        )
+        payload = [
+            {
+                "logged_at": self.now.isoformat(),
+                "blood_sugar": 150,
+                "stressed": "yes",
+                "source": "manual",
+                "client_uuid": str(existing_uuid),
+            },
+            {
+                "logged_at": (self.now - timedelta(days=1)).isoformat(),
+                "blood_sugar": 160,
+                "stressed": "yes",
+                "source": "manual",
+                "client_uuid": str(uuid4()),
+            },
+            {
+                "logged_at": (self.now - timedelta(days=2)).isoformat(),
+                "blood_sugar": 170,
+                "stressed": "yes",
+                "source": "manual",
+                "client_uuid": str(uuid4()),
+            },
+        ]
+
+        response = self.client.post(
+            "/api/v1/logs/batch",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        preview = self.client.get("/api/v1/proactive-insights/preview/")
+        self.assertEqual(preview.status_code, 200)
+        item = preview.json()["item"]
+        self.assertIsNotNone(item)
+        self.assertEqual(item["observation_key"], "context:stress")
+        self.assertEqual(item["observations"], 3)
+        self.assertEqual(ProactiveInsightState.objects.count(), 0)
+
     def test_derived_refresh_failure_does_not_undo_authoritative_journal_write(self):
         with patch(
             "diabetes.api.v1.logs.refresh_personal_response_memory",
