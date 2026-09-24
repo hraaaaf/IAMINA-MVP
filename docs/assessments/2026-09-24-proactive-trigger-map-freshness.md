@@ -30,6 +30,10 @@ Keep the governed Clinical Twin fresh after authoritative Journal writes so the 
 | GET companion/overview | no mutation | not consumed | Dashboard Today / Companion | existing read-only projection |
 | Dashboard Insight load | calls proactive preview | not consumed | passive read-only insight | existing |
 | Dashboard Next Action button | explicit POST smart-suggestion evaluation | may consume non-urgent attention budget | bounded next action | existing explicit action |
+| Manual Journal create/sync | stores authoritative LogEntry rows | no proactive delivery | Dashboard / Journal | covered by V2-A freshness |
+| Structured CSV/import | stores LogEntry(source=import) rows | no proactive delivery | import + downstream analytics | gap: import paths need the same automatic Twin freshness contract |
+| Photo/document confirmation | persists confirmed extracted document data/facts | no proactive delivery | document/import surfaces | gap: accepted/reviewed facts are not yet universally projected into the proactive Twin |
+| Voice chat | transcript enters governed conversation | no proactive delivery | Companion conversation | gap: free-form transcript is not a Clinical Twin fact; active voice-to-LogEntry persistence path not proven |
 | CGM sync | stores normalized CGM rows | no proactive delivery | CGM surfaces | gap: current personal-response Clinical Twin does not consume CGMReadingRecord directly |
 | Local-only Drift write before server sync | server Clinical Twin cannot see it yet | none server-side | local UI only | expected local-first boundary |
 | Background scheduler / worker | none identified in current proactive path | none | none | gap |
@@ -43,9 +47,17 @@ The existing proactive engine is already deterministic and governed. The main mi
 
 Event-driven Clinical Twin refresh after authoritative Journal writes. This remediation implements the smallest safe version of this layer.
 
-### V2-B — Multi-source longitudinal inputs
+### V2-B — Multi-source Clinical Intelligence
 
-Future work may add additional already-qualified source families such as verified CGM observations, but only through explicit eligibility/provenance rules. CGM transport rows must not be silently treated as the same evidence population as sparse Journal rows.
+The next integration unit must cover every approved patient-data source rather than treating CGM as the only missing input:
+
+- manual Journal entries and synchronized local writes;
+- structured imports such as CSV/LibreLink;
+- confirmed photo/document extraction through Pulper/DocumentExtraction;
+- voice-derived structured observations when an explicit voice-to-clinical-fact persistence path is qualified;
+- verified CGM readings with modality-specific sufficiency/coverage rules.
+
+All sources converge through governed canonical facts/provenance before they can contribute to Clinical Twin or proactive state. Source families are not interchangeable: verified CGM time-series eligibility must remain distinct from sparse Journal sampling, document-derived facts requiring review cannot be silently promoted, and free-form voice conversation must not become clinical truth merely because it was spoken.
 
 ### V2-C — Background trigger orchestration
 
@@ -65,7 +77,7 @@ Push/OS notification semantics are not part of this remediation. Any future unso
 - no new detector or threshold;
 - no new suggestion class;
 - no notification or push delivery;
-- no CGM-to-Clinical-Twin promotion;
+- no new manual/import/document/voice/CGM-to-Clinical-Twin promotion beyond the Journal freshness remediation;
 - no UI change;
 - no Vercel deployment;
 - no database migration;
