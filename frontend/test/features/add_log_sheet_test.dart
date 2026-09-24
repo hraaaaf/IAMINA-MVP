@@ -196,8 +196,9 @@ void main() {
         audio.add(Uint8List.fromList(<int>[1, 2, 3, 4]));
         await tester.pump();
         await tester.tap(voiceButton);
-        await tester.pump();
-        await tester.pump();
+        await tester.pumpUntilFound(
+          find.byKey(const Key('meal-note-transcribing-indicator')),
+        );
 
         expect(transcribedBytes, isNotNull);
         expect(transcribedBytes, hasLength(4));
