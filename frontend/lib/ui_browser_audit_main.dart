@@ -10,6 +10,7 @@ import 'core/widgets/mobile_page_header.dart';
 import 'data/drift/database.dart';
 import 'data/models/companion_models.dart';
 import 'data/models/proactive_preview_models.dart';
+import 'features/companion/companion_conversation_screen.dart';
 import 'features/companion/companion_premium_screen.dart';
 import 'features/dashboard/dashboard_companion_entry_screen.dart';
 import 'features/dashboard/widgets/dashboard_adaptive_kpi_section.dart';
@@ -20,7 +21,6 @@ import 'features/documents/document_import_premium_screen.dart';
 import 'features/import/import_screen.dart';
 import 'features/journal/add_log_screen.dart';
 import 'features/journal/ai_summary_screen.dart';
-import 'features/journal/widgets/amina_chat_view.dart';
 import 'features/journal/journal_screen.dart';
 import 'features/journal/widgets/food_pictogram_audit_fixture.dart';
 import 'features/journal/widgets/meal_capture_panel.dart';
@@ -231,12 +231,8 @@ class _BrowserAuditApp extends StatelessWidget {
         ),
         GoRoute(
           path: '/amina-chat',
-          builder: (context, state) => Scaffold(
-            backgroundColor: AminaTheme.bg(context),
-            body: SafeArea(
-              child: AminaChatView(onClose: () {}),
-            ),
-          ),
+          builder: (context, state) =>
+              CompanionConversationScreen(service: visualCompanion),
         ),
         GoRoute(
           path: '/trend',
