@@ -60,7 +60,6 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
 
         final semantics = tester.ensureSemantics();
-        addTearDown(semantics.dispose);
 
         await tester.pumpWidget(_harness());
         await tester.pumpAndSettle();
@@ -74,13 +73,13 @@ void main() {
         expect(find.byKey(const Key('companion-chat-input')), findsOneWidget);
         expect(find.byKey(const Key('companion-chat-send')), findsOneWidget);
         expect(tester.takeException(), isNull);
+        semantics.dispose();
       },
     );
   }
 
   testWidgets('emergency reply keeps prominent live-region rendering', (tester) async {
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -118,6 +117,7 @@ void main() {
       find.byKey(const Key('companion-assistant-bubble')),
       findsNothing,
     );
+    semantics.dispose();
   });
 
 }
