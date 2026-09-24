@@ -2,6 +2,7 @@
 LogEntry CRUD under /api/v1/logs — patient-scoped reads and writes.
 """
 
+import logging
 from typing import List
 
 from django.db import IntegrityError, transaction
@@ -14,6 +15,9 @@ from diabetes.contracts import log_entry as log_input
 from diabetes.models import LogEntry
 from diabetes.services.clinical.observation_erasure import (
     reconcile_personal_response_memory_after_source_erasure,
+)
+from diabetes.services.clinical.observation_memory import (
+    refresh_personal_response_memory,
 )
 from diabetes.services.session_cache import invalidate as _invalidate_ctx
 
@@ -30,6 +34,8 @@ from .schemas import (
 )
 
 router = Router(tags=["logs"])
+
+logger = logging.getLogger(__name__)
 
 # Only fields consumed by the canonical personal-response derivation can make a
 # persisted ClinicalObservationState stale when an existing source is replaced.
@@ -54,6 +60,21 @@ def _changes_clinical_twin_source(log: LogEntry, values: dict) -> bool:
         field in _CLINICAL_TWIN_SOURCE_FIELDS and getattr(log, field) != value
         for field, value in values.items()
     )
+
+
+def _refresh_clinical_twin_after_source_write(patient_id: int) -> None:
+    """Refresh derived Clinical Twin state after a successful authoritative write.
+
+    The Journal row remains the source of truth. A derived refresh failure is
+    observable but must not make a committed source write look unsuccessful.
+    """
+    try:
+        refresh_personal_response_memory(patient_id=patient_id)
+    except Exception:
+        logger.exception(
+            "Clinical Twin refresh failed after Journal source write for patient=%s",
+            patient_id,
+        )
 
 
 @router.get("/logs", response=PaginatedLogsResponse)
@@ -90,6 +111,8 @@ def create_log(request, data: LogEntryCreateSchema):
         patient_id=request.user.id,
         props={"log_id": log.id, "meal_type": log.meal_type or ""},
     )
+    if log.source != "demo":
+        _refresh_clinical_twin_after_source_write(request.user.id)
     return log
 
 
@@ -101,6 +124,7 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
     synced_uuids = []
     errors = []
     mutated_existing_source = False
+    inserted_new_source = False
 
     with transaction.atomic():
         for entry_data in data:
@@ -135,6 +159,9 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
                         )
                     else:
                         LogEntry.objects.create(patient=request.user, **entry_data.dict())
+                        inserted_new_source = (
+                            inserted_new_source or entry_data.source != "demo"
+                        )
                         track(
                             EVT_LOG_CREATED,
                             patient_id=request.user.id,
@@ -156,6 +183,8 @@ def batch_create_logs(request, data: List[LogEntryCreateSchema]):
     if synced_uuids:
         _invalidate_ctx(request.user.id)
         _invalidate_kpis(request.user.id)
+    if inserted_new_source and not mutated_existing_source:
+        _refresh_clinical_twin_after_source_write(request.user.id)
     return {"synced_ids": synced_uuids, "errors": errors}
 
 
