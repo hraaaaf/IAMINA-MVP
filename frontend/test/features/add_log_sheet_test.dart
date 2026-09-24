@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
 import 'package:amina/l10n/app_localizations.dart';
@@ -5,10 +8,15 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:record/record.dart';
 
 AppDatabase _openDb() => AppDatabase(NativeDatabase.memory());
 
-Widget _sheet(AppDatabase db, {Locale locale = const Locale('fr')}) {
+Widget _sheet(
+  AppDatabase db, {
+  Locale locale = const Locale('fr'),
+  AddLogSheet sheet = const AddLogSheet(),
+}) {
   return MaterialApp(
     locale: locale,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -19,7 +27,7 @@ Widget _sheet(AppDatabase db, {Locale locale = const Locale('fr')}) {
           Provider<AppDatabase>.value(value: db),
           Provider<PatientProfileData?>.value(value: null),
         ],
-        child: const AddLogSheet(),
+        child: sheet,
       ),
     ),
   );
@@ -49,6 +57,19 @@ void main() {
       expect(classifyGlucoseEntrySafety(54), GlucoseEntrySafety.level1Low);
       expect(classifyGlucoseEntrySafety(69), GlucoseEntrySafety.level1Low);
       expect(classifyGlucoseEntrySafety(70), GlucoseEntrySafety.nonLow);
+    });
+
+    test('uses Opus/WebM on web and AAC/MP4 on mobile', () {
+      expect(
+        mealVoiceRecordConfig(isWeb: true).encoder,
+        AudioEncoder.opus,
+      );
+      expect(
+        mealVoiceRecordConfig(isWeb: false).encoder,
+        AudioEncoder.aacLc,
+      );
+      expect(mealVoiceMimeType(isWeb: true), 'audio/webm');
+      expect(mealVoiceMimeType(isWeb: false), 'audio/mp4');
     });
 
     testWidgets('starts blank with save disabled and no inferred context', (
@@ -114,6 +135,110 @@ void main() {
       expect(find.byKey(const Key('meal-type-dinner')), findsOneWidget);
       expect(find.byKey(const Key('meal-type-snack')), findsOneWidget);
     });
+
+    testWidgets(
+      'voice dictation stays draft-only, locks actions, then remains editable',
+      (tester) async {
+        _narrow(tester);
+        final audio = StreamController<Uint8List>();
+        final transcript = Completer<String?>();
+        RecordConfig? startConfig;
+        Uint8List? transcribedBytes;
+        String? transcribedMime;
+        addTearDown(audio.close);
+
+        final sheet = AddLogSheet(
+          voicePermissionCheck: () async => true,
+          voiceStartStream: (config) async {
+            startConfig = config;
+            return audio.stream;
+          },
+          voiceStop: () async {},
+          voiceTranscriber: (bytes, mimeType) {
+            transcribedBytes = bytes;
+            transcribedMime = mimeType;
+            return transcript.future;
+          },
+        );
+
+        await tester.pumpWidget(_sheet(db, sheet: sheet));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byKey(const Key('glucose-input')), '126');
+        await tester.tap(find.byKey(const Key('add-meal-button')));
+        await tester.pumpAndSettle();
+
+        final voiceButton = find.byKey(
+          const Key('meal-note-voice-button'),
+        );
+        await tester.tap(voiceButton);
+        await tester.pump();
+
+        expect(startConfig?.encoder, AudioEncoder.aacLc);
+        expect(
+          tester
+              .widget<FilledButton>(
+                find.byKey(const Key('save-log-button')),
+              )
+              .onPressed,
+          isNull,
+        );
+        expect(
+          tester
+              .widget<TextButton>(
+                find.byKey(const Key('remove-meal-button')),
+              )
+              .onPressed,
+          isNull,
+        );
+
+        audio.add(Uint8List.fromList(<int>[1, 2, 3, 4]));
+        await tester.pump();
+        await tester.tap(voiceButton);
+        await tester.pump();
+
+        expect(transcribedBytes, isNotNull);
+        expect(transcribedBytes, hasLength(4));
+        expect(transcribedMime, 'audio/mp4');
+        expect(
+          tester
+              .widget<FilledButton>(
+                find.byKey(const Key('save-log-button')),
+              )
+              .onPressed,
+          isNull,
+        );
+        expect(await db.select(db.logEntries).get(), isEmpty);
+
+        transcript.complete('Salade et pain');
+        await tester.pumpAndSettle();
+
+        final note = tester.widget<TextField>(
+          find.byKey(const Key('meal-note-input')),
+        );
+        expect(note.controller?.text, 'Salade et pain');
+        expect(note.readOnly, isFalse);
+        expect(
+          tester
+              .widget<FilledButton>(
+                find.byKey(const Key('save-log-button')),
+              )
+              .onPressed,
+          isNotNull,
+        );
+        expect(await db.select(db.logEntries).get(), isEmpty);
+
+        await tester.enterText(
+          find.byKey(const Key('meal-note-input')),
+          'Salade et pain + yaourt',
+        );
+        await tester.tap(find.byKey(const Key('save-log-button')));
+        await tester.pumpAndSettle();
+
+        final logs = await db.select(db.logEntries).get();
+        expect(logs, hasLength(1));
+        expect(logs.single.mealDescription, 'Salade et pain + yaourt');
+      },
+    );
 
     testWidgets('mobile hides rare details and never exposes insulin intake', (
       tester,
@@ -212,6 +337,9 @@ void main() {
       expect(find.text('سياق القياس'), findsOneWidget);
       expect(find.text('إضافة وجبة · اختياري'), findsOneWidget);
       expect(find.text('Nouvelle mesure'), findsNothing);
+      await tester.tap(find.byKey(const Key('add-meal-button')));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('إملاء ملاحظة الوجبة'), findsOneWidget);
       expect(
         Directionality.of(tester.element(find.text('قياس جديد'))),
         TextDirection.rtl,
