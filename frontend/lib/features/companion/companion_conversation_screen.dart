@@ -92,7 +92,7 @@ class _CompanionConversationScreenState
     _voicePulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
-    )..repeat(reverse: true);
+    );
     unawaited(_initializeTts());
   }
 
@@ -118,7 +118,7 @@ class _CompanionConversationScreenState
   void dispose() {
     unawaited(_recordSubscription?.cancel() ?? Future<void>.value());
     unawaited(_recorder.dispose());
-    unawaited(_tts.stop());
+    unawaited(_tts.stop().then<void>((_) {}));
     _voicePulseController.dispose();
     _controller.dispose();
     _scrollController.dispose();
@@ -196,6 +196,9 @@ class _CompanionConversationScreenState
         _audioChunks.add,
         onError: (_) {
           if (!mounted) return;
+          _voicePulseController
+            ..stop()
+            ..reset();
           setState(() => _voiceState = _VoiceState.idle);
           _showVoiceMessage(
             _chatText(
@@ -212,9 +215,13 @@ class _CompanionConversationScreenState
           _failure = null;
           _voiceState = _VoiceState.recording;
         });
+        _voicePulseController.repeat(reverse: true);
       }
     } catch (_) {
       if (!mounted) return;
+      _voicePulseController
+        ..stop()
+        ..reset();
       setState(() => _voiceState = _VoiceState.idle);
       _showVoiceMessage(
         _chatText(
@@ -233,6 +240,9 @@ class _CompanionConversationScreenState
     await _recorder.stop();
 
     if (!mounted) return;
+    _voicePulseController
+      ..stop()
+      ..reset();
     setState(() {
       _voiceState = _VoiceState.processing;
       _failure = null;
