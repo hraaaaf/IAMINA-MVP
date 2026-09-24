@@ -197,6 +197,7 @@ void main() {
         await tester.pump();
         await tester.tap(voiceButton);
         await tester.pump();
+        await tester.pump();
 
         expect(transcribedBytes, isNotNull);
         expect(transcribedBytes, hasLength(4));
