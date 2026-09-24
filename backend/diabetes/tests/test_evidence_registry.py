@@ -11,6 +11,7 @@ from diabetes.services.clinical.evidence_registry import (
     EvidenceMaturity,
     FinalityStatus,
     RecordKind,
+    ValidationStatus,
     evidence_for_alert,
     evidence_for_kpi,
     evidence_for_pattern,
@@ -97,6 +98,8 @@ class EvidenceRegistryInvariantTests(SimpleTestCase):
             "next_review_at",
             "assumptions",
             "exclusions",
+            "validation_status",
+            "validation_scope",
         ):
             self.assertIn(field, metadata)
         self.assertEqual(metadata["supersession_state"], "current")
@@ -269,3 +272,47 @@ def test_registry_validation_rejects_missing_rule_governance(monkeypatch):
     assert f"{broken.evidence_id}: assumptions missing" in errors
     assert f"{broken.evidence_id}: exclusions missing" in errors
     assert f"{broken.evidence_id}: next_review_at must be after reviewed_at" in errors
+
+
+
+def test_internal_rules_have_explicit_progressive_validation_status():
+    rules = [
+        record
+        for record in EVIDENCE_REGISTRY.values()
+        if record.kind == RecordKind.RULE
+    ]
+    assert rules
+    for record in rules:
+        assert record.validation_status in {
+            ValidationStatus.EXPERIMENTAL.value,
+            ValidationStatus.VALIDATED.value,
+            ValidationStatus.DISABLED.value,
+        }
+        assert record.validation_scope
+
+
+def test_candidate_rules_are_never_marked_validated():
+    candidates = [
+        record
+        for record in EVIDENCE_REGISTRY.values()
+        if record.clinical_authority == ClinicalAuthority.GOVERNED_RULE_CANDIDATE
+    ]
+    assert candidates
+    assert all(
+        record.validation_status == ValidationStatus.EXPERIMENTAL.value
+        for record in candidates
+    )
+
+
+def test_governed_runtime_rules_default_to_release_validated_status():
+    governed = [
+        record
+        for record in EVIDENCE_REGISTRY.values()
+        if record.kind == RecordKind.RULE
+        and record.clinical_authority == ClinicalAuthority.GOVERNED_RULE
+    ]
+    assert governed
+    assert all(
+        record.validation_status == ValidationStatus.VALIDATED.value
+        for record in governed
+    )

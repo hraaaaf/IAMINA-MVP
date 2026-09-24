@@ -43,6 +43,12 @@ class ClinicalAuthority(StrEnum):
     GOVERNED_RULE = "governed_rule"
 
 
+class ValidationStatus(StrEnum):
+    EXPERIMENTAL = "experimental"
+    VALIDATED = "validated"
+    DISABLED = "disabled"
+
+
 @dataclass(frozen=True)
 class EvidenceRecord:
     evidence_id: str
@@ -62,6 +68,8 @@ class EvidenceRecord:
     reviewed_at: str
     clinical_authority: ClinicalAuthority
     limitations: str
+    validation_status: str = ""
+    validation_scope: str = ""
     reviewer: str = ""
     next_review_at: str = ""
     assumptions: tuple[str, ...] = ()
@@ -92,6 +100,8 @@ class EvidenceRecord:
             "clinical_authority": self.clinical_authority.value,
             "supersession_state": self.supersession_state,
             "limitations": self.limitations,
+            "validation_status": self.validation_status,
+            "validation_scope": self.validation_scope,
             "reviewer": self.reviewer,
             "next_review_at": self.next_review_at,
             "assumptions": list(self.assumptions),
@@ -108,6 +118,9 @@ RULE_DEFAULT_ASSUMPTIONS = (
 )
 RULE_DEFAULT_EXCLUSIONS = (
     "use outside the declared population or modality without separate review",
+)
+RULE_VALIDATION_SCOPE = (
+    "release-governed software and clinical-rule scope; not independent proof of clinical efficacy"
 )
 
 # External source records -----------------------------------------------------
@@ -307,7 +320,14 @@ def _internal_rule(
     next_review_at: str = RULE_NEXT_REVIEW_AT,
     assumptions: tuple[str, ...] = RULE_DEFAULT_ASSUMPTIONS,
     exclusions: tuple[str, ...] = RULE_DEFAULT_EXCLUSIONS,
+    validation_status: ValidationStatus | None = None,
 ) -> EvidenceRecord:
+    if validation_status is None:
+        validation_status = (
+            ValidationStatus.VALIDATED
+            if authority == ClinicalAuthority.GOVERNED_RULE
+            else ValidationStatus.EXPERIMENTAL
+        )
     return EvidenceRecord(
         evidence_id=evidence_id,
         kind=RecordKind.RULE,
@@ -326,6 +346,8 @@ def _internal_rule(
         reviewed_at=REVIEWED_AT,
         clinical_authority=authority,
         limitations=limitations,
+        validation_status=validation_status.value,
+        validation_scope=RULE_VALIDATION_SCOPE,
         reviewer=reviewer,
         next_review_at=next_review_at,
         assumptions=assumptions,
@@ -733,6 +755,17 @@ def validate_registry() -> tuple[str, ...]:
                 errors.append(f"{record.evidence_id}: IAmina rule must use internal_governed_rule maturity")
             if record.finality_status != FinalityStatus.VERSIONED_PRODUCT_RULE:
                 errors.append(f"{record.evidence_id}: IAmina rule must be versioned_product_rule")
+            if record.validation_status not in {item.value for item in ValidationStatus}:
+                errors.append(f"{record.evidence_id}: invalid validation_status")
+            if not record.validation_scope.strip():
+                errors.append(f"{record.evidence_id}: validation_scope missing")
+            if (
+                record.clinical_authority == ClinicalAuthority.GOVERNED_RULE_CANDIDATE
+                and record.validation_status == ValidationStatus.VALIDATED.value
+            ):
+                errors.append(
+                    f"{record.evidence_id}: governed rule candidate cannot be validated"
+                )
             if not record.reviewer.strip():
                 errors.append(f"{record.evidence_id}: reviewer missing")
             if not record.next_review_at.strip():
