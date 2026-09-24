@@ -298,7 +298,12 @@ class _CompanionConversationScreenState
             _ConversationMessage.user('🎤 ${result.transcript.trim()}'),
           );
         }
-        _messages.add(_ConversationMessage.assistant(result.reply));
+        _messages.add(
+          _ConversationMessage.assistant(
+            result.reply,
+            isEmergency: result.isEmergency,
+          ),
+        );
       });
       _scrollToBottom();
 
@@ -358,7 +363,12 @@ class _CompanionConversationScreenState
           statusCode: 500,
         );
       } else {
-        _messages.add(_ConversationMessage.assistant(result.reply));
+        _messages.add(
+          _ConversationMessage.assistant(
+            result.reply,
+            isEmergency: result.isEmergency,
+          ),
+        );
       }
     });
     _scrollToBottom();
@@ -859,44 +869,70 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == _ConversationRole.user;
+    final emergency = message.isEmergency;
     final desktop = MediaQuery.sizeOf(context).width >= 900;
+
+    final bubble = Container(
+      key: Key(
+        emergency
+            ? 'companion-emergency-bubble'
+            : isUser
+            ? 'companion-user-bubble'
+            : 'companion-assistant-bubble',
+      ),
+      padding: const EdgeInsetsDirectional.fromSTEB(15, 12, 15, 12),
+      decoration: BoxDecoration(
+        color: emergency
+            ? const Color(0xFFFFF0ED)
+            : isUser
+            ? AminaVisualLanguage.forestDeep
+            : AminaVisualLanguage.controlSurface(context),
+        borderRadius: BorderRadiusDirectional.only(
+          topStart: const Radius.circular(19),
+          topEnd: const Radius.circular(19),
+          bottomStart: Radius.circular(isUser ? 19 : 6),
+          bottomEnd: Radius.circular(isUser ? 6 : 19),
+        ),
+        border: emergency
+            ? Border.all(color: const Color(0xFFC94B45), width: 1.5)
+            : isUser
+            ? null
+            : Border.all(color: AminaVisualLanguage.controlBorder(context)),
+        boxShadow: isUser ? null : AminaVisualLanguage.cardShadowLight,
+      ),
+      child: Text(
+        message.text,
+        style: TextStyle(
+          height: 1.42,
+          fontSize: 14,
+          fontWeight: emergency ? FontWeight.w700 : FontWeight.w400,
+          color: emergency
+              ? const Color(0xFF8B2E28)
+              : isUser
+              ? Colors.white
+              : AminaVisualLanguage.primaryText(context),
+        ),
+      ),
+    );
+
     return Align(
       alignment: isUser
           ? AlignmentDirectional.centerEnd
           : AlignmentDirectional.centerStart,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: desktop ? 520 : 310),
-        child: Container(
-          key: Key(
-            isUser ? 'companion-user-bubble' : 'companion-assistant-bubble',
-          ),
-          padding: const EdgeInsetsDirectional.fromSTEB(15, 12, 15, 12),
-          decoration: BoxDecoration(
-            color: isUser
-                ? AminaVisualLanguage.forestDeep
-                : AminaVisualLanguage.controlSurface(context),
-            borderRadius: BorderRadiusDirectional.only(
-              topStart: const Radius.circular(19),
-              topEnd: const Radius.circular(19),
-              bottomStart: Radius.circular(isUser ? 19 : 6),
-              bottomEnd: Radius.circular(isUser ? 6 : 19),
-            ),
-            border: isUser
-                ? null
-                : Border.all(color: AminaVisualLanguage.controlBorder(context)),
-            boxShadow: isUser ? null : AminaVisualLanguage.cardShadowLight,
-          ),
-          child: Text(
-            message.text,
-            style: TextStyle(
-              height: 1.42,
-              fontSize: 14,
-              color: isUser
-                  ? Colors.white
-                  : AminaVisualLanguage.primaryText(context),
-            ),
-          ),
-        ),
+        child: emergency
+            ? Semantics(
+                liveRegion: true,
+                label: _chatText(
+                  context,
+                  'Alerte urgente IAmina. ${message.text}',
+                  'Urgent IAmina alert. ${message.text}',
+                  'تنبيه عاجل من IAmina. ${message.text}',
+                ),
+                child: ExcludeSemantics(child: bubble),
+              )
+            : bubble,
       ),
     );
   }
@@ -931,12 +967,23 @@ enum _ConversationRole { user, assistant }
 class _ConversationMessage {
   final _ConversationRole role;
   final String text;
+  final bool isEmergency;
 
-  const _ConversationMessage._(this.role, this.text);
+  const _ConversationMessage._(
+    this.role,
+    this.text, {
+    this.isEmergency = false,
+  });
 
   factory _ConversationMessage.user(String text) =>
       _ConversationMessage._(_ConversationRole.user, text);
 
-  factory _ConversationMessage.assistant(String text) =>
-      _ConversationMessage._(_ConversationRole.assistant, text);
+  factory _ConversationMessage.assistant(
+    String text, {
+    bool isEmergency = false,
+  }) => _ConversationMessage._(
+    _ConversationRole.assistant,
+    text,
+    isEmergency: isEmergency,
+  );
 }
