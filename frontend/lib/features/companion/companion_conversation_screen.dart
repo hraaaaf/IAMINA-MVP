@@ -795,6 +795,7 @@ class _VoiceButton extends StatelessWidget {
             ),
           ),
         );
+        break;
       case _VoiceState.recording:
         child = AnimatedBuilder(
           animation: pulse,
@@ -812,6 +813,7 @@ class _VoiceButton extends StatelessWidget {
             ),
           ),
         );
+        break;
       case _VoiceState.idle:
         child = IconButton(
           key: const Key('companion-chat-voice'),
@@ -826,6 +828,7 @@ class _VoiceButton extends StatelessWidget {
             ),
           ),
         );
+        break;
     }
 
     return Semantics(
