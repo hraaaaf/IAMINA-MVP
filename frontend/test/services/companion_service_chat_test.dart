@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:amina/services/api_client.dart';
 import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/companion_service.dart';
 import 'package:flutter_test/flutter_test.dart';
