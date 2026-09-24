@@ -263,7 +263,26 @@ class CompanionService {
   }) async {
     if (audioBytes.isEmpty) return null;
 
-    final token = await _authService.getIdToken();
+    if (_authService.isAuditSession) {
+      throw const ProviderApiException(
+        code: 'authentication_required',
+        message: 'Authentication is required.',
+        retryable: false,
+        statusCode: 401,
+      );
+    }
+
+    String? token;
+    try {
+      token = await _authService.getIdToken();
+    } catch (_) {
+      throw const ProviderApiException(
+        code: 'authentication_required',
+        message: 'Authentication is required.',
+        retryable: false,
+        statusCode: 401,
+      );
+    }
     if (token == null || token.isEmpty) {
       throw const ProviderApiException(
         code: 'authentication_required',
