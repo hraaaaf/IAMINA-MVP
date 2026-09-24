@@ -40,6 +40,9 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
         addTearDown(tester.view.resetPhysicalSize);
 
+        final semantics = tester.ensureSemantics();
+        addTearDown(semantics.dispose);
+
         await tester.pumpWidget(_harness());
         await tester.pumpAndSettle();
 
