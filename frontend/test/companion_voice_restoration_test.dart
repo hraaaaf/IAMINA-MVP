@@ -10,6 +10,25 @@ class _IdleCompanionService extends CompanionService {
   void dispose() {}
 }
 
+class _EmergencyCompanionService extends CompanionService {
+  @override
+  Future<CompanionChatReply?> sendChatMessage(
+    String message, {
+    int contextDays = 14,
+  }) async {
+    return const CompanionChatReply(
+      reply: 'Appelle immédiatement les services d’urgence.',
+      conversationId: 'emergency-test',
+      replyLanguage: 'fr',
+      isEmergency: true,
+    );
+  }
+
+  @override
+  void dispose() {}
+}
+
+
 Widget _harness() => MaterialApp(
   locale: const Locale('fr'),
   supportedLocales: const [Locale('fr'), Locale('en'), Locale('ar')],
@@ -58,4 +77,47 @@ void main() {
       },
     );
   }
+
+  testWidgets('emergency reply keeps prominent live-region rendering', (tester) async {
+    final semantics = tester.ensureSemantics();
+    addTearDown(semantics.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('fr'),
+        supportedLocales: const [Locale('fr'), Locale('en'), Locale('ar')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: CompanionConversationScreen(
+          service: _EmergencyCompanionService(),
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('companion-chat-input')),
+      'Je me sens très mal.',
+    );
+    await tester.tap(find.byKey(const Key('companion-chat-send')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('companion-emergency-bubble')),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(
+        'Alerte urgente IAmina. Appelle immédiatement les services d’urgence.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('companion-assistant-bubble')),
+      findsNothing,
+    );
+  });
+
 }
