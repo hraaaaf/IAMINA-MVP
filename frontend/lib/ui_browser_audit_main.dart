@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -212,7 +213,11 @@ class _BrowserAuditApp extends StatelessWidget {
         ),
         GoRoute(
           path: '/add-log',
-          builder: (context, state) => const AddLogScreen(focus: AddLogFocus.meal),
+          builder: (context, state) => const AddLogScreen(),
+        ),
+        GoRoute(
+          path: '/add-log-meal',
+          builder: (context, state) => const _BrowserAddLogMealSurface(),
         ),
         GoRoute(
           path: '/meal-picker',
@@ -276,6 +281,59 @@ class _BrowserAuditApp extends StatelessWidget {
   }
 }
 
+class _BrowserAddLogMealSurface extends StatefulWidget {
+  const _BrowserAddLogMealSurface();
+
+  @override
+  State<_BrowserAddLogMealSurface> createState() =>
+      _BrowserAddLogMealSurfaceState();
+}
+
+class _BrowserAddLogMealSurfaceState extends State<_BrowserAddLogMealSurface> {
+  var _attempts = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _revealMealNote());
+  }
+
+  void _revealMealNote() {
+    if (!mounted) return;
+    Element? target;
+
+    void visit(Element element) {
+      if (target != null) return;
+      if (element.widget.key == const Key('meal-note-input')) {
+        target = element;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    context.visitChildElements(visit);
+    if (target != null) {
+      unawaited(
+        Scrollable.ensureVisible(
+          target!,
+          alignment: 0.72,
+          duration: Duration.zero,
+        ),
+      );
+      return;
+    }
+
+    _attempts += 1;
+    if (_attempts < 12) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _revealMealNote());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      const AddLogScreen(focus: AddLogFocus.meal);
+}
+
 String _pathForSurface(String surface) => switch (surface) {
   'dashboard' => '/dashboard',
   'journal' => '/journal',
@@ -284,6 +342,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'importer' => '/importer',
   'document-import' => '/document-import',
   'add-log' => '/add-log',
+  'add-log-meal' => '/add-log-meal',
   'meal-picker' => '/meal-picker',
   'medications' => '/medications',
   'reminders' => '/reminders',
