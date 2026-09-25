@@ -13,6 +13,7 @@ import 'data/models/proactive_preview_models.dart';
 import 'features/companion/companion_conversation_screen.dart';
 import 'features/companion/companion_premium_screen.dart';
 import 'features/dashboard/dashboard_companion_entry_screen.dart';
+import 'features/dashboard/widgets/add_log_sheet.dart';
 import 'features/dashboard/widgets/dashboard_adaptive_kpi_section.dart';
 import 'features/dashboard/widgets/dashboard_insight_section.dart';
 import 'features/dashboard/widgets/dashboard_next_action_section.dart';
