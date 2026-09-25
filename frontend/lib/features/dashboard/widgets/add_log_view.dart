@@ -455,7 +455,7 @@ class AddLogMealCapture extends StatelessWidget {
   final bool canUsePhotoRecognition;
   final bool voiceRecording;
   final bool voiceTranscribing;
-  final VoidCallback onVoiceToggle;
+  final Future<void> Function() onVoiceToggle;
   final VoidCallback onExpand;
   final VoidCallback? onRemove;
   final ValueChanged<String?> onMealTypeChanged;
@@ -608,7 +608,9 @@ class AddLogMealCapture extends StatelessWidget {
                           'Dictate meal note',
                           'إملاء ملاحظة الوجبة',
                         ),
-                  onPressed: voiceTranscribing ? null : onVoiceToggle,
+                  onPressed: voiceTranscribing
+                      ? null
+                      : () => unawaited(onVoiceToggle()),
                   icon: voiceTranscribing
                       ? const SizedBox.square(
                           dimension: 18,
