@@ -140,7 +140,7 @@ void main() {
       'voice dictation stays draft-only, locks actions, then remains editable',
       (tester) async {
         _narrow(tester);
-        final audio = StreamController<Uint8List>();
+        final audio = StreamController<Uint8List>(sync: true);
         final transcript = Completer<String?>();
         RecordConfig? startConfig;
         Uint8List? transcribedBytes;
