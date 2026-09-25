@@ -194,7 +194,6 @@ void main() {
 
         audio.add(Uint8List.fromList(<int>[1, 2, 3, 4]));
         await tester.pump();
-        await audio.close();
         await tester.tap(voiceButton);
         await tester.pump();
 
@@ -213,6 +212,7 @@ void main() {
 
         transcript.complete('Salade et pain');
         await tester.pumpAndSettle();
+        await audio.close();
 
         final note = tester.widget<TextField>(
           find.byKey(const Key('meal-note-input')),
