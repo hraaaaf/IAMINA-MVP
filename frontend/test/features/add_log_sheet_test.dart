@@ -194,7 +194,11 @@ void main() {
 
         audio.add(Uint8List.fromList(<int>[1, 2, 3, 4]));
         await tester.pump();
-        await tester.tap(voiceButton);
+        final stopCallback = tester
+            .widget<IconButton>(voiceButton)
+            .onPressed;
+        expect(stopCallback, isNotNull);
+        stopCallback!();
         for (var i = 0; i < 20 && transcribedBytes == null; i++) {
           await tester.pump(const Duration(milliseconds: 10));
         }
