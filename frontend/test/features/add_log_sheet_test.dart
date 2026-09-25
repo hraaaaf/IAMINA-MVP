@@ -142,7 +142,7 @@ void main() {
       (tester) async {
         _narrow(tester);
         final audioBytes = Uint8List.fromList(<int>[1, 2, 3, 4]);
-        final audio = StreamController<Uint8List>();
+        final audio = StreamController<Uint8List>(sync: true);
         final transcript = Completer<String?>();
         RecordConfig? startConfig;
         Uint8List? transcribedBytes;
