@@ -214,6 +214,11 @@ class _BrowserAuditApp extends StatelessWidget {
           builder: (context, state) => const AddLogScreen(),
         ),
         GoRoute(
+          path: '/add-log-meal',
+          builder: (context, state) =>
+              const AddLogScreen(focus: AddLogFocus.meal),
+        ),
+        GoRoute(
           path: '/meal-picker',
           builder: (context, state) => const _BrowserMealPickerSurface(),
         ),
@@ -283,6 +288,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'importer' => '/importer',
   'document-import' => '/document-import',
   'add-log' => '/add-log',
+  'add-log-meal' => '/add-log-meal',
   'meal-picker' => '/meal-picker',
   'medications' => '/medications',
   'reminders' => '/reminders',
