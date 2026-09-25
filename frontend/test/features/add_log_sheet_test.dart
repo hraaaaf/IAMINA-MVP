@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
+import 'package:amina/features/dashboard/widgets/add_log_view.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -141,8 +142,7 @@ void main() {
       (tester) async {
         _narrow(tester);
         final audioBytes = Uint8List.fromList(<int>[1, 2, 3, 4]);
-        final audio = StreamController<Uint8List>(sync: true);
-        final audioDelivered = Completer<void>();
+        final audio = StreamController<Uint8List>();
         final transcript = Completer<String?>();
         RecordConfig? startConfig;
         Uint8List? transcribedBytes;
@@ -152,15 +152,9 @@ void main() {
           voicePermissionCheck: () async => true,
           voiceStartStream: (config) async {
             startConfig = config;
-            return audio.stream.map((chunk) {
-              if (!audioDelivered.isCompleted) audioDelivered.complete();
-              return chunk;
-            });
+            return audio.stream;
           },
-          voiceStop: () async {
-            audio.add(audioBytes);
-            await audioDelivered.future;
-          },
+          voiceStop: () async {},
           voiceTranscriber: (bytes, mimeType) {
             transcribedBytes = bytes;
             transcribedMime = mimeType;
@@ -179,7 +173,10 @@ void main() {
         );
         await tester.ensureVisible(voiceButton);
         await tester.pumpAndSettle();
-        await tester.tap(voiceButton);
+        final capture = tester.widget<AddLogMealCapture>(
+          find.byType(AddLogMealCapture),
+        );
+        await capture.onVoiceToggle();
         await tester.pumpAndSettle();
         expect(startConfig?.encoder, AudioEncoder.aacLc);
         expect(
@@ -199,11 +196,12 @@ void main() {
           isNull,
         );
 
-        final stopCallback = tester
-            .widget<IconButton>(voiceButton)
-            .onPressed;
-        expect(stopCallback, isNotNull);
-        stopCallback!();
+        audio.add(audioBytes);
+        await tester.pump();
+
+        final stopFuture = tester
+            .widget<AddLogMealCapture>(find.byType(AddLogMealCapture))
+            .onVoiceToggle();
         for (var i = 0; i < 20 && transcribedBytes == null; i++) {
           await tester.pump(const Duration(milliseconds: 10));
         }
@@ -222,6 +220,7 @@ void main() {
         expect(await db.select(db.logEntries).get(), isEmpty);
 
         transcript.complete('Salade et pain');
+        await stopFuture;
         await tester.pumpAndSettle();
         await audio.close();
 
