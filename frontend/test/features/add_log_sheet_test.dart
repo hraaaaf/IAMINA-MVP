@@ -141,7 +141,6 @@ void main() {
       (tester) async {
         _narrow(tester);
         final audioBytes = Uint8List.fromList(<int>[1, 2, 3, 4]);
-        final audio = StreamController<Uint8List>();
         final transcript = Completer<String?>();
         RecordConfig? startConfig;
         Uint8List? transcribedBytes;
@@ -151,11 +150,14 @@ void main() {
           voicePermissionCheck: () async => true,
           voiceStartStream: (config) async {
             startConfig = config;
-            return audio.stream;
+            return Stream<Uint8List>.multi(
+              (controller) {
+                controller.addSync(audioBytes);
+              },
+              isBroadcast: false,
+            );
           },
-          voiceStop: () async {
-            await audio.close();
-          },
+          voiceStop: () async {},
           voiceTranscriber: (bytes, mimeType) {
             transcribedBytes = bytes;
             transcribedMime = mimeType;
@@ -193,9 +195,6 @@ void main() {
               .onPressed,
           isNull,
         );
-
-        audio.add(audioBytes);
-        await tester.pump();
 
         final stopCallback = tester
             .widget<IconButton>(voiceButton)
