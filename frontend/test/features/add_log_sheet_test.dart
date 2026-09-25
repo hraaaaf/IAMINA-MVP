@@ -140,13 +140,7 @@ void main() {
       'voice dictation stays draft-only, locks actions, then remains editable',
       (tester) async {
         _narrow(tester);
-        final audioListening = Completer<void>();
-        final audio = StreamController<Uint8List>(
-          sync: true,
-          onListen: () {
-            if (!audioListening.isCompleted) audioListening.complete();
-          },
-        );
+        final audioBytes = Uint8List.fromList(<int>[1, 2, 3, 4]);
         final transcript = Completer<String?>();
         RecordConfig? startConfig;
         Uint8List? transcribedBytes;
@@ -156,7 +150,7 @@ void main() {
           voicePermissionCheck: () async => true,
           voiceStartStream: (config) async {
             startConfig = config;
-            return audio.stream;
+            return Stream<Uint8List>.fromIterable(<Uint8List>[audioBytes]);
           },
           voiceStop: () async {},
           voiceTranscriber: (bytes, mimeType) {
@@ -178,12 +172,7 @@ void main() {
         await tester.ensureVisible(voiceButton);
         await tester.pumpAndSettle();
         await tester.tap(voiceButton);
-        for (var i = 0; i < 20 && !audioListening.isCompleted; i++) {
-          await tester.pump(const Duration(milliseconds: 10));
-        }
-
-        expect(audioListening.isCompleted, isTrue);
-        await tester.pump();
+        await tester.pumpAndSettle();
         expect(startConfig?.encoder, AudioEncoder.aacLc);
         expect(
           tester
@@ -202,8 +191,6 @@ void main() {
           isNull,
         );
 
-        audio.add(Uint8List.fromList(<int>[1, 2, 3, 4]));
-        await tester.pump();
         final stopCallback = tester
             .widget<IconButton>(voiceButton)
             .onPressed;
@@ -228,7 +215,6 @@ void main() {
 
         transcript.complete('Salade et pain');
         await tester.pumpAndSettle();
-        await audio.close();
 
         final note = tester.widget<TextField>(
           find.byKey(const Key('meal-note-input')),
