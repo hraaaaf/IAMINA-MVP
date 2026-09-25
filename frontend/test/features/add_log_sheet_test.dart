@@ -183,6 +183,7 @@ void main() {
         }
 
         expect(audioListening.isCompleted, isTrue);
+        await tester.pump();
         expect(startConfig?.encoder, AudioEncoder.aacLc);
         expect(
           tester
