@@ -145,7 +145,6 @@ void main() {
         RecordConfig? startConfig;
         Uint8List? transcribedBytes;
         String? transcribedMime;
-        addTearDown(audio.close);
 
         final sheet = AddLogSheet(
           voicePermissionCheck: () async => true,
@@ -195,10 +194,10 @@ void main() {
 
         audio.add(Uint8List.fromList(<int>[1, 2, 3, 4]));
         await tester.pump();
+        await audio.close();
+        await tester.pump();
         await tester.tap(voiceButton);
-        for (var i = 0; i < 20 && transcribedBytes == null; i++) {
-          await tester.pump(const Duration(milliseconds: 10));
-        }
+        await tester.pump();
 
         expect(transcribedBytes, isNotNull);
         expect(transcribedBytes, hasLength(4));
