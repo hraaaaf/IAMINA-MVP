@@ -141,6 +141,7 @@ void main() {
       (tester) async {
         _narrow(tester);
         final audioBytes = Uint8List.fromList(<int>[1, 2, 3, 4]);
+        final audio = StreamController<Uint8List>(sync: true);
         final transcript = Completer<String?>();
         RecordConfig? startConfig;
         Uint8List? transcribedBytes;
@@ -150,14 +151,11 @@ void main() {
           voicePermissionCheck: () async => true,
           voiceStartStream: (config) async {
             startConfig = config;
-            return Stream<Uint8List>.multi(
-              (controller) {
-                controller.addSync(audioBytes);
-              },
-              isBroadcast: false,
-            );
+            return audio.stream;
           },
-          voiceStop: () async {},
+          voiceStop: () async {
+            audio.add(audioBytes);
+          },
           voiceTranscriber: (bytes, mimeType) {
             transcribedBytes = bytes;
             transcribedMime = mimeType;
@@ -220,6 +218,7 @@ void main() {
 
         transcript.complete('Salade et pain');
         await tester.pumpAndSettle();
+        await audio.close();
 
         final note = tester.widget<TextField>(
           find.byKey(const Key('meal-note-input')),
