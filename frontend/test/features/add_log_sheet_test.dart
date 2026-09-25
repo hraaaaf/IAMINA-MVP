@@ -140,7 +140,13 @@ void main() {
       'voice dictation stays draft-only, locks actions, then remains editable',
       (tester) async {
         _narrow(tester);
-        final audio = StreamController<Uint8List>(sync: true);
+        final audioListening = Completer<void>();
+        final audio = StreamController<Uint8List>(
+          sync: true,
+          onListen: () {
+            if (!audioListening.isCompleted) audioListening.complete();
+          },
+        );
         final transcript = Completer<String?>();
         RecordConfig? startConfig;
         Uint8List? transcribedBytes;
@@ -172,8 +178,11 @@ void main() {
         await tester.ensureVisible(voiceButton);
         await tester.pumpAndSettle();
         await tester.tap(voiceButton);
-        await tester.pump();
+        for (var i = 0; i < 20 && !audioListening.isCompleted; i++) {
+          await tester.pump(const Duration(milliseconds: 10));
+        }
 
+        expect(audioListening.isCompleted, isTrue);
         expect(startConfig?.encoder, AudioEncoder.aacLc);
         expect(
           tester
