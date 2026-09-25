@@ -390,7 +390,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
           canUsePhotoRecognition: profile?.aiConsentGivenAt != null,
           voiceRecording: _mealVoiceRecording,
           voiceTranscribing: _mealVoiceTranscribing,
-          onVoiceToggle: () => unawaited(_toggleMealVoice()),
+          onVoiceToggle: _toggleMealVoice,
           onExpand: () => setState(() => _mealExpanded = true),
           onRemove: _mealVoiceBusy
               ? null
