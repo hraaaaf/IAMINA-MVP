@@ -104,6 +104,35 @@ class PersonalResponseServiceTests(TestCase):
         self.assertEqual(result.patterns, ())
         self.assertEqual(result.total_readings, 3)
 
+    def test_cgm_and_import_rows_never_enter_journal_longitudinal_patterns(self):
+        for source in ("cgm", "import"):
+            for index in range(3):
+                self._log(
+                    days_ago=index,
+                    glucose=200 + index,
+                    stressed="yes",
+                    source=source,
+                )
+        self._log(days_ago=0, glucose=110)
+        self._log(days_ago=1, glucose=115)
+        self._log(days_ago=2, glucose=120)
+
+        result = compute_personal_response(patient_id=self.patient.id)
+
+        self.assertEqual(result.status, "insufficient_data")
+        self.assertEqual(result.patterns, ())
+        self.assertEqual(result.total_readings, 3)
+
+    def test_voice_rows_remain_eligible_patient_authored_journal_evidence(self):
+        self._log(days_ago=0, glucose=150, stressed="yes", source="voice")
+        self._log(days_ago=1, glucose=160, stressed="yes", source="voice")
+        self._log(days_ago=2, glucose=170, stressed="yes", source="voice")
+
+        result = compute_personal_response(patient_id=self.patient.id)
+
+        self.assertEqual(result.status, "ready")
+        self.assertTrue(any(item.key == "context:stress" for item in result.patterns))
+
     def test_other_patient_data_is_isolated(self):
         for index in range(4):
             self._log(
