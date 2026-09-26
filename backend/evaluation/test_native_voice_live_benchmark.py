@@ -1,15 +1,15 @@
 from datetime import date
 
-from evaluation.frug5_multilingual_quality_benchmark import load_controlled_price
 from evaluation.native_voice_live_benchmark import (
     SPEND_CEILING_MICROUSD,
+    load_native_voice_price,
     machine_review,
     projected_spend_microusd,
 )
 
 
 def test_current_controlled_price_is_fresh_and_matches_target_model():
-    price = load_controlled_price(today=date(2026, 9, 26))
+    price = load_native_voice_price(today=date(2026, 9, 26))
 
     assert price.provider == "groq"
     assert price.model == "openai/gpt-oss-120b"
@@ -19,7 +19,7 @@ def test_current_controlled_price_is_fresh_and_matches_target_model():
 
 
 def test_native_voice_projected_spend_is_bounded_by_hard_ceiling():
-    price = load_controlled_price(today=date(2026, 9, 26))
+    price = load_native_voice_price(today=date(2026, 9, 26))
     projected = projected_spend_microusd(price)
 
     assert projected > 0
