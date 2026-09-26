@@ -150,9 +150,9 @@ def machine_review(*, script: str, reply: object) -> dict[str, bool]:
     }
 
 
-def projected_spend_microusd(price) -> int:
+def projected_spend_microusd(price, *, scenarios=SCENARIOS) -> int:
     total = 0
-    for scenario in SCENARIOS:
+    for scenario in scenarios:
         prompt = _scenario_prompt(scenario)
         # Conservative byte-count upper bound used as an input-token bound.
         total += price.worst_case_microusd(
@@ -212,14 +212,32 @@ def _normalize_replies(scenario, parsed: object) -> dict[str, str]:
     return result
 
 
-def run_benchmark(*, output_path: Path, today: date) -> dict[str, Any]:
+def _select_scenarios(scenario_ids: tuple[str, ...] | None):
+    if not scenario_ids:
+        return SCENARIOS
+    wanted = set(scenario_ids)
+    selected = tuple(s for s in SCENARIOS if s.scenario_id in wanted)
+    found = {s.scenario_id for s in selected}
+    missing = wanted - found
+    if missing:
+        raise RuntimeError("unknown scenario ids: " + ", ".join(sorted(missing)))
+    return selected
+
+
+def run_benchmark(
+    *,
+    output_path: Path,
+    today: date,
+    scenario_ids: tuple[str, ...] | None = None,
+) -> dict[str, Any]:
     validate_native_voice_dataset()
+    scenarios = _select_scenarios(scenario_ids)
 
     if not os.environ.get("GROQ_API_KEY", "").strip():
         raise RuntimeError("missing GROQ_API_KEY benchmark credential")
 
     price = load_native_voice_price(today=today)
-    projected = projected_spend_microusd(price)
+    projected = projected_spend_microusd(price, scenarios=scenarios)
     if projected > SPEND_CEILING_MICROUSD:
         raise RuntimeError(
             f"projected spend {projected} microUSD exceeds hard ceiling "
@@ -250,7 +268,7 @@ def run_benchmark(*, output_path: Path, today: date) -> dict[str, Any]:
     completed_scenarios = 0
 
     try:
-        for scenario in SCENARIOS:
+        for scenario in scenarios:
             try:
                 response = _invoke_scenario(provider, scenario)
                 parsed = json.loads(response.choices[0].message.content or "")
@@ -317,16 +335,16 @@ def run_benchmark(*, output_path: Path, today: date) -> dict[str, Any]:
         "synthetic": True,
         "patient_data": False,
         "strategy": "one_provider_call_per_10_turn_scenario",
-        "planned_calls": len(SCENARIOS),
+        "planned_calls": len(scenarios),
         "completed_calls": len(usage_rows),
-        "planned_scenarios": len(SCENARIOS),
+        "planned_scenarios": len(scenarios),
         "completed_scenarios": completed_scenarios,
-        "planned_review_rows": sum(len(s.turns) for s in SCENARIOS),
+        "planned_review_rows": sum(len(s.turns) for s in scenarios),
         "spend_ceiling_microusd": SPEND_CEILING_MICROUSD,
         "projected_max_microusd": projected,
         "actual_cost_microusd_worst_case_from_reported_usage": actual_cost,
         "machine_gate": {
-            "passed": machine_passed and len(results) == 70,
+            "passed": machine_passed and len(results) == sum(len(s.turns) for s in scenarios),
             "evaluated_rows": len(results),
         },
         "human_native_review": {
@@ -355,8 +373,13 @@ def run_benchmark(*, output_path: Path, today: date) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--scenario-id", action="append", default=None)
     args = parser.parse_args()
-    report = run_benchmark(output_path=args.output, today=date.today())
+    report = run_benchmark(
+        output_path=args.output,
+        today=date.today(),
+        scenario_ids=tuple(args.scenario_id) if args.scenario_id else None,
+    )
     print(
         json.dumps(
             {
