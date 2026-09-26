@@ -31,3 +31,15 @@ Tests déterministes couvrant : contrat invalide, fusion Journal+CGM+import, con
 - changement UI ;
 - déploiement Vercel ;
 - autorisation real-patient.
+
+## Closeout certifié
+
+- PR produit : #797 — `V2-C: governed multi-source glucose fusion`.
+- HEAD candidat certifié : `08367fb57ef425fa9d17b752c61a08d8f90dd2d0`.
+- Pré-merge : CI #5032 SUCCESS ; Django migration drift #4082 SUCCESS.
+- Merge commit exact : `70c14005a3def61b203a88b64045479858705c43`.
+- Post-merge sur ce SHA : CI #5033 SUCCESS ; Django migration drift #4083 SUCCESS ; Dashboard global certification v2 #49 SUCCESS.
+- Résultat : V2-C certifié post-merge.
+- UI : aucun changement.
+- Schéma DB : aucune migration.
+- Déploiement Vercel : aucun.
