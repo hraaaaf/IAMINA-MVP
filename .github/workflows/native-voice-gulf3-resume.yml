@@ -1,0 +1,65 @@
+name: Native Voice Gulf3 resume benchmark
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/native-voice-gulf3-resume.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-voice-gulf3-resume
+  cancel-in-progress: false
+
+jobs:
+  groq-native-voice-gulf3:
+    name: Groq Native Voice resume Kuwait Qatar Oman
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: native-voice-gulf3-resume-nonproduction
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: sqlite:///native-voice-gulf3-resume.db
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      NATIVE_VOICE_NETWORK_AUTHORIZED: "true"
+
+    steps:
+      - name: Checkout exact main
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Validate Gulf3 resume contracts before network
+        working-directory: backend
+        run: |
+          pytest -q             evaluation/test_native_voice_batched_benchmark.py             evaluation/test_native_voice_resume_gulf3.py
+
+      - name: Run Gulf3 resume benchmark
+        working-directory: backend
+        run: |
+          mkdir -p ../artifacts
+          python -m evaluation.native_voice_batched_benchmark             --scenario-id kuwaiti             --scenario-id qatari             --scenario-id omani             --output ../artifacts/native-voice-gulf3-resume.json
+
+      - name: Upload Gulf3 review packet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-voice-gulf3-resume
+          path: artifacts/native-voice-gulf3-resume.json
+          if-no-files-found: warn
+          retention-days: 14
