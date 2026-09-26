@@ -72,3 +72,18 @@ Le LLM n'est ni un moteur analytique ni une autorité clinique.
 - suppression d'un privacy gate ;
 - certification linguistique native ;
 - déploiement Vercel.
+
+
+## Closeout certifié
+
+- PR produit : #801 — `Conversation: add Narration Envelope shadow mode`.
+- HEAD candidat certifié : `d1aede65aef262a0ca6af5cff196a51176d3c2c2`.
+- Pré-merge : CI #5040 SUCCESS ; Django migration drift #4086 SUCCESS ; Companion real-chat E2E #275 SUCCESS.
+- Merge commit exact : `df1ed532460ae124b566685da6d53776c2d82e73`.
+- Post-merge sur ce SHA : CI #5041 SUCCESS ; Django migration drift #4087 SUCCESS.
+- Résultat : Narration Envelope shadow certifié post-merge.
+- Patient-visible behavior : inchangé.
+- Nouvel egress : aucun.
+- UI : aucun changement.
+- Schéma DB : aucune migration.
+- Déploiement Vercel : aucun.
