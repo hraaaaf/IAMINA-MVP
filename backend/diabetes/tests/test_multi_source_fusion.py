@@ -4,6 +4,9 @@ import datetime as dt
 
 from django.contrib.auth.models import User
 from django.test import SimpleTestCase, TestCase
+from pydantic import ValidationError
+
+from diabetes.api.v1.schemas import LogEntryCreateSchema
 
 from diabetes.contracts.multi_source_fusion import (
     FusionContractError,
@@ -50,6 +53,22 @@ class GovernedGlucoseFusionContractTests(SimpleTestCase):
                     {"journal", "import"}  # type: ignore[arg-type]
                 )
             )
+
+    def test_patient_log_schema_cannot_claim_ingestion_owned_provenance(self):
+        for reserved_source in ("cgm", "import"):
+            with self.subTest(source=reserved_source):
+                with self.assertRaises(ValidationError):
+                    LogEntryCreateSchema(
+                        blood_sugar=120,
+                        source=reserved_source,
+                    )
+
+        for journal_source in ("manual", "voice"):
+            schema = LogEntryCreateSchema(
+                blood_sugar=120,
+                source=journal_source,
+            )
+            self.assertEqual(schema.source, journal_source)
 
     def test_cross_source_deduplication_cannot_be_enabled_implicitly(self):
         with self.assertRaises(FusionContractError):
