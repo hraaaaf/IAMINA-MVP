@@ -20,6 +20,7 @@ from diabetes.contracts.multi_source_fusion import (
 )
 from diabetes.models import CGMReadingRecord, LogEntry
 from diabetes.services.canonical_facts import from_cgm_reading, from_log_entry
+from diabetes.services.import_identity import make_import_client_uuid
 
 
 class FusionInputError(ValueError):
@@ -57,6 +58,7 @@ _LIMITATIONS = (
     "provenance_preserved_per_fact",
     "cross_source_duplicates_preserved_not_deduplicated",
     "legacy_logentry_cgm_rows_excluded",
+    "import_requires_server_ingestion_identity",
     "cgm_requires_valid_session_linkage",
     "fusion_is_descriptive_not_causal_or_treatment_authority",
 )
@@ -116,8 +118,8 @@ def _import_facts(
     patient_id: int,
     window_start: datetime,
     window_end: datetime,
-) -> tuple[GovernedFusionFact, ...]:
-    rows = (
+) -> tuple[tuple[GovernedFusionFact, ...], int]:
+    rows = list(
         LogEntry.objects.filter(patient_id=patient_id, source="import")
         .filter(
             Q(logged_at__gte=window_start, logged_at__lte=window_end)
@@ -129,13 +131,30 @@ def _import_facts(
         )
         .order_by("logged_at", "created_at", "id")
     )
-    return tuple(
-        GovernedFusionFact(
-            population=FusionPopulation.IMPORT,
-            observed_at=_event_at(row),
-            fact=from_log_entry(row),
+
+    eligible: list[LogEntry] = []
+    for row in rows:
+        if row.logged_at is None or row.client_uuid is None:
+            continue
+        expected_uuid = make_import_client_uuid(
+            patient_id,
+            row.logged_at,
+            row.blood_sugar,
         )
-        for row in rows
+        if str(row.client_uuid) != expected_uuid:
+            continue
+        eligible.append(row)
+
+    return (
+        tuple(
+            GovernedFusionFact(
+                population=FusionPopulation.IMPORT,
+                observed_at=_event_at(row),
+                fact=from_log_entry(row),
+            )
+            for row in eligible
+        ),
+        len(rows) - len(eligible),
     )
 
 
@@ -254,7 +273,7 @@ def fuse_governed_glucose_sources(
         )
 
     if FusionPopulation.IMPORT in contract.requested_populations:
-        imported = _import_facts(
+        imported, excluded_imports = _import_facts(
             patient_id=patient_id,
             window_start=window_start,
             window_end=window_end,
@@ -264,7 +283,12 @@ def fuse_governed_glucose_sources(
             FusionPopulationSummary(
                 population=FusionPopulation.IMPORT,
                 included_count=len(imported),
-                excluded_count=0,
+                excluded_count=excluded_imports,
+                exclusion_reason=(
+                    "missing_or_invalid_server_import_identity"
+                    if excluded_imports
+                    else None
+                ),
             )
         )
 
