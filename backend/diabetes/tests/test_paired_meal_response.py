@@ -254,6 +254,24 @@ class PairedMealResponseTests(TestCase):
         self.assertEqual(result.explicit_episode_count, 0)
         self.assertEqual(result.complete_pair_count, 0)
 
+    def test_cgm_and_import_episodes_never_enter_paired_journal_analytics(self):
+        self._pair(source="cgm", pre=100, post=220)
+        self._pair(source="import", pre=105, post=230)
+
+        result = compute_paired_meal_response(patient_id=self.patient.id)
+
+        self.assertEqual(result.explicit_episode_count, 0)
+        self.assertEqual(result.complete_pair_count, 0)
+
+    def test_voice_episode_remains_eligible_for_paired_journal_analytics(self):
+        episode_id = self._pair(source="voice", pre=105, post=155)
+
+        result = compute_paired_meal_response(patient_id=self.patient.id)
+
+        self.assertEqual(result.explicit_episode_count, 1)
+        self.assertEqual(result.complete_pair_count, 1)
+        self.assertEqual(result.pairs[0].episode_id, episode_id)
+
     def test_repeated_exact_pairs_build_descriptive_meal_pattern(self):
         self._pair(days_ago=0, pre=100, post=140)
         self._pair(days_ago=1, pre=110, post=160)
