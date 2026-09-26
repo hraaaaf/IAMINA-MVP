@@ -80,7 +80,7 @@ def test_provider_view_omits_local_fact_value_and_provenance():
     fact = provider["facts"][0]
 
     assert fact["token"] == "{{FACT_GLUCOSE}}"
-    assert fact["provider_value"] is None
+    assert fact["provider_hint"] is None
     assert "187 mg/dL" not in repr(provider)
     assert "log_entry:synthetic" not in repr(provider)
 
@@ -128,7 +128,7 @@ def test_candidate_cannot_expose_or_invent_untokenized_clinical_number():
         facts=(_fact(),),
     )
 
-    with pytest.raises(NarrationVerificationError, match="local-only"):
+    with pytest.raises(NarrationVerificationError, match="exact local"):
         verify_and_reinject_narration(
             "القياس 187 mg/dL و {{FACT_GLUCOSE}}.",
             envelope,
