@@ -46,6 +46,7 @@ typedef MealVoiceStartStream =
 typedef MealVoiceStop = Future<void> Function();
 typedef MealVoiceTranscriber =
     Future<String?> Function(Uint8List audioBytes, String mimeType);
+typedef MealVoiceChunkObserver = void Function(Uint8List chunk);
 
 RecordConfig mealVoiceRecordConfig({required bool isWeb}) => RecordConfig(
   encoder: isWeb ? AudioEncoder.opus : AudioEncoder.aacLc,
@@ -63,6 +64,7 @@ class AddLogSheet extends StatefulWidget {
   final MealVoiceStartStream? voiceStartStream;
   final MealVoiceStop? voiceStop;
   final MealVoiceTranscriber? voiceTranscriber;
+  final MealVoiceChunkObserver? voiceChunkObserver;
 
   const AddLogSheet({
     super.key,
@@ -72,6 +74,7 @@ class AddLogSheet extends StatefulWidget {
     this.voiceStartStream,
     this.voiceStop,
     this.voiceTranscriber,
+    this.voiceChunkObserver,
   });
 
   @override
@@ -223,7 +226,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
         mealVoiceRecordConfig(isWeb: kIsWeb),
       );
       _mealVoiceSubscription = stream.listen(
-        _mealVoiceChunks.add,
+        (chunk) {
+          _mealVoiceChunks.add(chunk);
+          widget.voiceChunkObserver?.call(chunk);
+        },
         onError: (_) {
           if (!mounted) return;
           _mealVoiceChunks.clear();
