@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -31,6 +32,18 @@ String addLogDetailsLabel(BuildContext context) {
   if (code == 'ar') return 'تفاصيل: الوقت والسياق…';
   if (code == 'en') return 'Details: time and context…';
   return 'Détails : heure et contexte…';
+}
+
+String addLogVoiceCopy(
+  BuildContext context,
+  String fr,
+  String en,
+  String ar,
+) {
+  final code = Localizations.localeOf(context).languageCode;
+  if (code == 'ar') return ar;
+  if (code == 'en') return en;
+  return fr;
 }
 
 String addLogTimeLabel(AppLocalizations l10n, DateTime selectedTime) {
@@ -441,8 +454,11 @@ class AddLogMealCapture extends StatelessWidget {
   final Map<String, MealPortionSelection> mealPortionSelections;
   final TextEditingController mealNoteController;
   final bool canUsePhotoRecognition;
+  final bool voiceRecording;
+  final bool voiceTranscribing;
+  final Future<void> Function() onVoiceToggle;
   final VoidCallback onExpand;
-  final VoidCallback onRemove;
+  final VoidCallback? onRemove;
   final ValueChanged<String?> onMealTypeChanged;
   final ValueChanged<List<String>> onSelectedMealItemIdsChanged;
   final ValueChanged<Map<String, MealPortionSelection>> onPortionsChanged;
@@ -457,6 +473,9 @@ class AddLogMealCapture extends StatelessWidget {
     required this.mealPortionSelections,
     required this.mealNoteController,
     required this.canUsePhotoRecognition,
+    required this.voiceRecording,
+    required this.voiceTranscribing,
+    required this.onVoiceToggle,
     required this.onExpand,
     required this.onRemove,
     required this.onMealTypeChanged,
@@ -500,6 +519,7 @@ class AddLogMealCapture extends StatelessWidget {
                 child: _sectionLabel(context, l10n.journalMealOptional),
               ),
               TextButton(
+                key: const Key('remove-meal-button'),
                 onPressed: onRemove,
                 child: Text(l10n.journalRemoveMeal),
               ),
@@ -547,9 +567,71 @@ class AddLogMealCapture extends StatelessWidget {
             controller: mealNoteController,
             minLines: 2,
             maxLines: 4,
+            readOnly: voiceRecording || voiceTranscribing,
             decoration: InputDecoration(
               labelText: l10n.journalMealNoteLabel,
-              hintText: l10n.journalMealNoteHint,
+              hintText: voiceRecording
+                  ? addLogVoiceCopy(
+                      context,
+                      'Enregistrement… Appuie pour arrêter.',
+                      'Recording… Tap to stop.',
+                      'جارٍ التسجيل… اضغط للإيقاف.',
+                    )
+                  : voiceTranscribing
+                  ? addLogVoiceCopy(
+                      context,
+                      'Transcription en cours…',
+                      'Transcribing…',
+                      'جارٍ النسخ الصوتي…',
+                    )
+                  : l10n.journalMealNoteHint,
+              suffixIcon: Padding(
+                padding: const EdgeInsets.all(4),
+                child: IconButton(
+                  key: const Key('meal-note-voice-button'),
+                  tooltip: voiceRecording
+                      ? addLogVoiceCopy(
+                          context,
+                          'Arrêter l’enregistrement',
+                          'Stop recording',
+                          'إيقاف التسجيل',
+                        )
+                      : voiceTranscribing
+                      ? addLogVoiceCopy(
+                          context,
+                          'Transcription en cours',
+                          'Transcription in progress',
+                          'النسخ الصوتي جارٍ',
+                        )
+                      : addLogVoiceCopy(
+                          context,
+                          'Dicter la note du repas',
+                          'Dictate meal note',
+                          'إملاء ملاحظة الوجبة',
+                        ),
+                  onPressed: voiceTranscribing
+                      ? null
+                      : () => unawaited(onVoiceToggle()),
+                  icon: voiceTranscribing
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          voiceRecording
+                              ? Icons.stop_rounded
+                              : Icons.mic_none_rounded,
+                          color: voiceRecording
+                              ? AminaTheme.dangerFg
+                              : AminaTheme.textSecondary(context),
+                        ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: voiceRecording
+                        ? AminaTheme.dangerBg
+                        : Colors.transparent,
+                  ),
+                ),
+              ),
               border: const OutlineInputBorder(),
             ),
           ),

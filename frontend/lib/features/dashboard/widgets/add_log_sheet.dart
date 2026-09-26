@@ -1,8 +1,13 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:drift/drift.dart' as drift;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:record/record.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/data/meal_food_catalog.dart';
@@ -10,6 +15,7 @@ import '../../../core/data/nutrition_catalog.dart';
 import '../../../core/data/ramadan_context.dart';
 import '../../../data/drift/database.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../services/api_client.dart';
 import '../../journal/widgets/post_save_receipt.dart';
 import 'add_log_view.dart';
 
@@ -34,14 +40,41 @@ GlucoseEntrySafety classifyGlucoseEntrySafety(double mgdl) {
 /// reading and only contextual facts that belong to that reading.
 enum AddLogFocus { none, meal, activity }
 
+typedef MealVoicePermissionCheck = Future<bool> Function();
+typedef MealVoiceStartStream =
+    Future<Stream<Uint8List>> Function(RecordConfig config);
+typedef MealVoiceStop = Future<void> Function();
+typedef MealVoiceTranscriber =
+    Future<String?> Function(Uint8List audioBytes, String mimeType);
+typedef MealVoiceStopAndRead = Future<Uint8List> Function();
+
+RecordConfig mealVoiceRecordConfig({required bool isWeb}) => RecordConfig(
+  encoder: isWeb ? AudioEncoder.opus : AudioEncoder.aacLc,
+  sampleRate: 16000,
+  numChannels: 1,
+);
+
+String mealVoiceMimeType({required bool isWeb}) =>
+    isWeb ? 'audio/webm' : 'audio/mp4';
+
 class AddLogSheet extends StatefulWidget {
   final bool isPage;
   final AddLogFocus focus;
+  final MealVoicePermissionCheck? voicePermissionCheck;
+  final MealVoiceStartStream? voiceStartStream;
+  final MealVoiceStop? voiceStop;
+  final MealVoiceTranscriber? voiceTranscriber;
+  final MealVoiceStopAndRead? voiceStopAndRead;
 
   const AddLogSheet({
     super.key,
     this.isPage = false,
     this.focus = AddLogFocus.none,
+    this.voicePermissionCheck,
+    this.voiceStartStream,
+    this.voiceStop,
+    this.voiceTranscriber,
+    this.voiceStopAndRead,
   });
 
   @override
@@ -51,6 +84,11 @@ class AddLogSheet extends StatefulWidget {
 class _AddLogSheetState extends State<AddLogSheet> {
   final TextEditingController _glucoseController = TextEditingController();
   final TextEditingController _mealNoteController = TextEditingController();
+  AudioRecorder? _mealVoiceRecorder;
+  final List<Uint8List> _mealVoiceChunks = <Uint8List>[];
+  StreamSubscription<Uint8List>? _mealVoiceSubscription;
+  bool _mealVoiceRecording = false;
+  bool _mealVoiceTranscribing = false;
   final List<String> _selectedMealItemIds = <String>[];
   final Map<String, MealPortionSelection> _mealPortionSelections =
       <String, MealPortionSelection>{};
@@ -78,10 +116,15 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
   @override
   void dispose() {
+    unawaited(_mealVoiceSubscription?.cancel() ?? Future<void>.value());
+    final recorder = _mealVoiceRecorder;
+    if (recorder != null) unawaited(recorder.dispose());
     _glucoseController.dispose();
     _mealNoteController.dispose();
     super.dispose();
   }
+
+  bool get _mealVoiceBusy => _mealVoiceRecording || _mealVoiceTranscribing;
 
   double? _displayGlucose() =>
       double.tryParse(_glucoseController.text.trim().replaceAll(',', '.'));
@@ -107,6 +150,204 @@ class _AddLogSheetState extends State<AddLogSheet> {
       _isStressed ||
       _isActive ||
       _badSleep;
+
+  String _voiceCopy(String fr, String en, String ar) {
+    final code = Localizations.localeOf(context).languageCode;
+    if (code == 'ar') return ar;
+    if (code == 'en') return en;
+    return fr;
+  }
+
+  AudioRecorder get _defaultMealVoiceRecorder =>
+      _mealVoiceRecorder ??= AudioRecorder();
+
+  Future<bool> _hasMealVoicePermission() async {
+    final check = widget.voicePermissionCheck;
+    return check != null
+        ? check()
+        : _defaultMealVoiceRecorder.hasPermission();
+  }
+
+  Future<Stream<Uint8List>> _startMealVoiceStream(RecordConfig config) {
+    final start = widget.voiceStartStream;
+    return start != null
+        ? start(config)
+        : _defaultMealVoiceRecorder.startStream(config);
+  }
+
+  Future<void> _stopMealVoiceRecorder() async {
+    final stop = widget.voiceStop;
+    if (stop != null) {
+      await stop();
+      return;
+    }
+    await _mealVoiceRecorder?.stop();
+  }
+
+  Future<String?> _transcribeMealVoice(
+    Uint8List audioBytes,
+    String mimeType,
+  ) {
+    final transcriber = widget.voiceTranscriber;
+    return transcriber != null
+        ? transcriber(audioBytes, mimeType)
+        : ApiClient().transcribeAudio(audioBytes, mimeType);
+  }
+
+  Future<void> _toggleMealVoice() async {
+    if (_mealVoiceTranscribing) return;
+    if (_mealVoiceRecording) {
+      await _stopAndTranscribeMealVoice();
+      return;
+    }
+    await _startMealVoice();
+  }
+
+  Future<void> _startMealVoice() async {
+    try {
+      if (!kIsWeb && !await _hasMealVoicePermission()) {
+        if (mounted) {
+          _message(
+            _voiceCopy(
+              'Accès au micro refusé. Vérifie les permissions.',
+              'Microphone access was denied. Check your permissions.',
+              'تم رفض الوصول إلى الميكروفون. تحقّق من الأذونات.',
+            ),
+          );
+        }
+        return;
+      }
+
+      await _mealVoiceSubscription?.cancel();
+      _mealVoiceSubscription = null;
+      _mealVoiceChunks.clear();
+
+      final stream = await _startMealVoiceStream(
+        mealVoiceRecordConfig(isWeb: kIsWeb),
+      );
+      if (widget.voiceStopAndRead == null) {
+        _mealVoiceSubscription = stream.listen(
+          _mealVoiceChunks.add,
+          onError: (_) {
+            if (!mounted) return;
+            _mealVoiceChunks.clear();
+            unawaited(_stopMealVoiceRecorder());
+            setState(() => _mealVoiceRecording = false);
+            _message(
+              _voiceCopy(
+                'Le micro a rencontré une erreur. Réessaie.',
+                'The microphone encountered an error. Try again.',
+                'حدث خطأ في الميكروفون. حاول مجددًا.',
+              ),
+            );
+          },
+        );
+      }
+
+      if (mounted) setState(() => _mealVoiceRecording = true);
+    } catch (_) {
+      if (!mounted) return;
+      _mealVoiceChunks.clear();
+      setState(() => _mealVoiceRecording = false);
+      _message(
+        _voiceCopy(
+          'Impossible de démarrer le micro. Vérifie les permissions.',
+          'Unable to start the microphone. Check your permissions.',
+          'تعذر تشغيل الميكروفون. تحقّق من الأذونات.',
+        ),
+      );
+    }
+  }
+
+  Future<void> _stopAndTranscribeMealVoice() async {
+    try {
+      final injectedStopAndRead = widget.voiceStopAndRead;
+      late final Uint8List audioBytes;
+      if (injectedStopAndRead != null) {
+        audioBytes = await injectedStopAndRead();
+        await _mealVoiceSubscription?.cancel();
+        _mealVoiceSubscription = null;
+        _mealVoiceChunks.clear();
+      } else {
+        await _stopMealVoiceRecorder();
+        await _mealVoiceSubscription?.cancel();
+        _mealVoiceSubscription = null;
+
+        final totalLength = _mealVoiceChunks.fold<int>(
+          0,
+          (total, chunk) => total + chunk.length,
+        );
+        audioBytes = Uint8List(totalLength);
+        var offset = 0;
+        for (final chunk in _mealVoiceChunks) {
+          audioBytes.setRange(offset, offset + chunk.length, chunk);
+          offset += chunk.length;
+        }
+        _mealVoiceChunks.clear();
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _mealVoiceRecording = false;
+        _mealVoiceTranscribing = true;
+      });
+
+      if (audioBytes.isEmpty) {
+        if (!mounted) return;
+        setState(() => _mealVoiceTranscribing = false);
+        _message(
+          _voiceCopy(
+            'Aucun son détecté. Réessaie.',
+            'No audio was detected. Try again.',
+            'لم يتم اكتشاف صوت. حاول مجددًا.',
+          ),
+        );
+        return;
+      }
+
+      final transcript = await _transcribeMealVoice(
+        audioBytes,
+        mealVoiceMimeType(isWeb: kIsWeb),
+      );
+      if (!mounted) return;
+
+      final cleanTranscript = transcript?.trim() ?? '';
+      if (cleanTranscript.isEmpty) {
+        _message(
+          _voiceCopy(
+            'La transcription est indisponible. Réessaie.',
+            'Transcription is unavailable. Try again.',
+            'النسخ الصوتي غير متاح. حاول مجددًا.',
+          ),
+        );
+      } else {
+        final current = _mealNoteController.text.trimRight();
+        final next = current.isEmpty
+            ? cleanTranscript
+            : '$current $cleanTranscript';
+        _mealNoteController.value = TextEditingValue(
+          text: next,
+          selection: TextSelection.collapsed(offset: next.length),
+        );
+      }
+
+      setState(() => _mealVoiceTranscribing = false);
+    } catch (_) {
+      if (!mounted) return;
+      _mealVoiceChunks.clear();
+      setState(() {
+        _mealVoiceRecording = false;
+        _mealVoiceTranscribing = false;
+      });
+      _message(
+        _voiceCopy(
+          'La dictée vocale a échoué. Réessaie.',
+          'Voice dictation failed. Try again.',
+          'فشل الإملاء الصوتي. حاول مجددًا.',
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -161,14 +402,19 @@ class _AddLogSheetState extends State<AddLogSheet> {
           mealPortionSelections: _mealPortionSelections,
           mealNoteController: _mealNoteController,
           canUsePhotoRecognition: profile?.aiConsentGivenAt != null,
+          voiceRecording: _mealVoiceRecording,
+          voiceTranscribing: _mealVoiceTranscribing,
+          onVoiceToggle: _toggleMealVoice,
           onExpand: () => setState(() => _mealExpanded = true),
-          onRemove: () => setState(() {
-            _mealExpanded = false;
-            _mealType = null;
-            _selectedMealItemIds.clear();
-            _mealPortionSelections.clear();
-            _mealNoteController.clear();
-          }),
+          onRemove: _mealVoiceBusy
+              ? null
+              : () => setState(() {
+                  _mealExpanded = false;
+                  _mealType = null;
+                  _selectedMealItemIds.clear();
+                  _mealPortionSelections.clear();
+                  _mealNoteController.clear();
+                }),
           onMealTypeChanged: (value) => setState(() => _mealType = value),
           onSelectedMealItemIdsChanged: (ids) => setState(() {
             _selectedMealItemIds
@@ -220,7 +466,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
         onShowDetails: () => setState(() => _detailsExpanded = true),
         saveBar: AddLogSaveBar(
           saving: _saving,
-          enabled: _hasValidGlucose,
+          enabled: _hasValidGlucose && !_mealVoiceBusy,
           onSave: () => _saveLog(db, unit, l10n),
         ),
       ),
@@ -294,6 +540,17 @@ class _AddLogSheetState extends State<AddLogSheet> {
     String unit,
     AppLocalizations l10n,
   ) async {
+    if (_mealVoiceBusy) {
+      _message(
+        _voiceCopy(
+          'Termine la dictée avant d’enregistrer.',
+          'Finish voice dictation before saving.',
+          'أكمل الإملاء الصوتي قبل الحفظ.',
+        ),
+      );
+      return;
+    }
+
     final glucose = _displayGlucose();
     final mgdl = _mgdlGlucose(unit);
     if (glucose == null || mgdl == null || glucose <= 0) {
@@ -392,6 +649,16 @@ class _AddLogSheetState extends State<AddLogSheet> {
   }
 
   Future<bool> _confirmLeave(AppLocalizations l10n) async {
+    if (_mealVoiceBusy) {
+      _message(
+        _voiceCopy(
+          'Termine la dictée avant de quitter.',
+          'Finish voice dictation before leaving.',
+          'أكمل الإملاء الصوتي قبل المغادرة.',
+        ),
+      );
+      return false;
+    }
     if (!_hasUnsavedData) return true;
     final leave = await showDialog<bool>(
       context: context,
