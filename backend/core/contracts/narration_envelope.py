@@ -33,7 +33,7 @@ class NarrationSpeechAct(StrEnum):
 
 class FactEgressPolicy(StrEnum):
     LOCAL_ONLY = "local_only"
-    PROVIDER_ALLOWED = "provider_allowed"
+    COARSENED_ONLY = "coarsened_only"
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +42,7 @@ class NarrationFact:
     semantic_type: str
     rendered_value: str
     egress_policy: FactEgressPolicy = FactEgressPolicy.LOCAL_ONLY
+    provider_hint: str | None = None
     required: bool = True
     provenance_ref: str | None = None
 
@@ -54,6 +55,22 @@ class NarrationFact:
             raise NarrationEnvelopeError("rendered_value is required")
         if not isinstance(self.egress_policy, FactEgressPolicy):
             raise NarrationEnvelopeError("egress_policy must be explicit")
+        if self.provider_hint is not None and not self.provider_hint.strip():
+            raise NarrationEnvelopeError("provider_hint cannot be blank")
+        if (
+            self.egress_policy is FactEgressPolicy.LOCAL_ONLY
+            and self.provider_hint is not None
+        ):
+            raise NarrationEnvelopeError(
+                "local-only fact cannot expose a provider_hint"
+            )
+        if (
+            self.egress_policy is FactEgressPolicy.COARSENED_ONLY
+            and self.provider_hint is None
+        ):
+            raise NarrationEnvelopeError(
+                "coarsened-only fact requires a provider_hint"
+            )
         if self.provenance_ref is not None and not self.provenance_ref.strip():
             raise NarrationEnvelopeError("provenance_ref cannot be blank")
 
@@ -163,11 +180,7 @@ class NarrationEnvelope:
                     "token": fact.token,
                     "semantic_type": fact.semantic_type,
                     "required": fact.required,
-                    "provider_value": (
-                        fact.rendered_value
-                        if fact.egress_policy is FactEgressPolicy.PROVIDER_ALLOWED
-                        else None
-                    ),
+                    "provider_hint": fact.provider_hint,
                 }
                 for fact in self.facts
             ),
