@@ -227,6 +227,46 @@ class GovernedMultiSourceFusionTests(TestCase):
             "missing_or_invalid_sensor_session_linkage",
         )
 
+    def test_cgm_session_from_another_patient_is_rejected(self):
+        when = self.start + dt.timedelta(hours=4, minutes=30)
+        foreign_session = CGMSensorSession.objects.create(
+            patient=self.other_patient,
+            source="linx",
+            session_key="v2c-foreign-session",
+            started_at=self.start,
+            ended_at=self.end,
+            expected_interval_minutes=5,
+            timezone_name="UTC",
+            end_reason=CGMSensorSession.EndReason.REPLACED,
+        )
+        CGMReadingRecord.objects.create(
+            patient=self.patient,
+            source="linx",
+            session=foreign_session,
+            recorded_at=when,
+            glucose_mg_dl=171,
+            dedupe_key="v2c-foreign-session-reading",
+        )
+        self._log(source="manual", when=when, glucose=131)
+
+        result = fuse_governed_glucose_sources(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=self.end,
+            contract=GovernedGlucoseFusionContract.journal_with(
+                FusionPopulation.CGM
+            ),
+        )
+
+        self.assertEqual(len(result.facts), 1)
+        cgm_summary = next(
+            summary
+            for summary in result.population_summaries
+            if summary.population is FusionPopulation.CGM
+        )
+        self.assertEqual(cgm_summary.included_count, 0)
+        self.assertEqual(cgm_summary.excluded_count, 1)
+
     def test_patient_scope_is_never_crossed(self):
         when = self.start + dt.timedelta(hours=5)
         self._log(source="manual", when=when, glucose=125)
