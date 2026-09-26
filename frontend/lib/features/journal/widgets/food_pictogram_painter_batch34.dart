@@ -1,0 +1,11 @@
+import 'dart:math' as math;
+import 'package:flutter/material.dart';
+
+const Set<String> codeFoodPictogramBatch34Ids=<String>{'bahraini_muhammar','bahraini_mumawwash','bahraini_kebab'};
+bool hasCodeFoodPictogramBatch34(String foodId)=>codeFoodPictogramBatch34Ids.contains(foodId);
+class FoodPictogramPainterBatch34 extends CustomPainter{
+ final String foodId; const FoodPictogramPainterBatch34(this.foodId);
+ Paint f(Color c)=>Paint()..color=c..isAntiAlias=true; Paint s(Color c,double w)=>Paint()..color=c..style=PaintingStyle.stroke..strokeWidth=w..strokeCap=StrokeCap.round..isAntiAlias=true;
+ @override void paint(Canvas c,Size z){final d=math.min(z.width,z.height);c.save();c.translate((z.width-d)/2,(z.height-d)/2);c.scale(d/100,d/100);c.drawShadow(Path()..addOval(const Rect.fromLTWH(15,79,70,6)),Colors.black.withValues(alpha:.14),4,false);switch(foodId){case 'bahraini_muhammar':c.drawOval(const Rect.fromLTWH(18,55,64,22),f(const Color(0xFF9C6A43)));c.drawOval(const Rect.fromLTWH(21,45,58,22),f(const Color(0xFFB97843)));for(final p in <Offset>[Offset(31,52),Offset(40,48),Offset(50,54),Offset(61,49),Offset(70,54)])c.drawCircle(p,2,f(const Color(0xFF6E402C)));c.drawArc(const Rect.fromLTWH(29,34,42,18),.2,2.7,false,s(const Color(0xFFD8A23B),4));break;case 'bahraini_mumawwash':c.drawOval(const Rect.fromLTWH(18,55,64,22),f(const Color(0xFFB98248)));c.drawOval(const Rect.fromLTWH(21,44,58,23),f(const Color(0xFFD8B66A)));for(final p in <Offset>[Offset(30,50),Offset(38,57),Offset(47,48),Offset(55,56),Offset(64,49),Offset(70,57)])c.drawCircle(p,2.4,f(const Color(0xFF71824B)));c.drawArc(const Rect.fromLTWH(35,39,30,18),3.3,2.5,false,s(const Color(0xFFD86A52),3));break;case 'bahraini_kebab':for(final p in <Offset>[Offset(34,48),Offset(50,43),Offset(66,49),Offset(42,63),Offset(59,63)]){c.drawOval(Rect.fromCenter(center:p,width:18,height:12),f(const Color(0xFFC58A3A)));c.drawCircle(p.translate(-3,-1),1.5,f(const Color(0xFF5D7D45)));c.drawCircle(p.translate(4,2),1.3,f(const Color(0xFFD85F42)));}c.drawArc(const Rect.fromLTWH(25,35,50,42),.2,2.7,false,s(const Color(0xFF7A4B2A),2));break;}c.restore();}
+ @override bool shouldRepaint(covariant FoodPictogramPainterBatch34 o)=>o.foodId!=foodId;
+}
