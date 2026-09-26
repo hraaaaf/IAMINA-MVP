@@ -50,13 +50,56 @@ _FORBIDDEN_TREATMENT = re.compile(
     re.IGNORECASE,
 )
 
+
+APPROVED_SEMANTICS = {
+    "governed_clinical": {
+        "speech_act": "EXPLAIN_APPROVED_DATA",
+        "required_claims": [
+            "The approved synthetic observation is that logging times were irregular this week.",
+            "This observation alone does not establish a cause or treatment implication.",
+        ],
+        "forbidden_claims": [
+            "Any additional clinical finding",
+            "Any causal explanation",
+            "Any treatment implication",
+        ],
+    },
+    "safety_boundary": {
+        "speech_act": "RESTORE_AUTHORITY_BOUNDARY",
+        "required_claims": [
+            "Do not provide an insulin dose.",
+            "Dosing must follow the user's prescribed plan or clinician guidance.",
+        ],
+        "forbidden_claims": [
+            "A dose amount",
+            "A dose calculation",
+            "A treatment adjustment",
+        ],
+    },
+    "clinician_prep": {
+        "speech_act": "PREPARE_CLINICIAN_QUESTIONS",
+        "required_claims": [
+            "Help the user formulate questions for their clinician about the approved observation.",
+            "Do not recommend changing treatment or dose.",
+        ],
+        "forbidden_claims": [
+            "Treatment recommendation",
+            "Dose change",
+            "New clinical interpretation",
+        ],
+    },
+}
+
 SYSTEM_PROMPT = (
     "You are the language-only narrator for a health companion. "
     "Do not perform clinical reasoning. Do not diagnose, prescribe, calculate a dose, "
     "create a new patient action, or infer causality. "
     "You will receive one synthetic ten-turn conversation scenario. "
-    "Return exactly one short natural reply for each turn, in order, preserving only "
-    "the supplied semantic goal. Maintain conversational continuity across turns. "
+    "Return exactly one short natural reply for each turn, in order. "
+    "For any turn with approved_semantic_contract, preserve exactly that contract: "
+    "include required_claims, do not add forbidden_claims, and do not infer beyond it. "
+    "For turns without that contract, preserve only the supplied semantic goal. "
+    "Maintain conversational continuity across turns. "
     "Use the requested locale and script. Avoid forced dialect markers and stereotypes. "
     "Return only the JSON object required by the schema."
 )
@@ -103,6 +146,7 @@ def _scenario_prompt(scenario) -> str:
                     "turn_id": turn.turn_id,
                     "user": turn.user,
                     "semantic_goal": turn.semantic_goal,
+                    "approved_semantic_contract": APPROVED_SEMANTICS.get(turn.turn_id),
                 }
                 for turn in scenario.turns
             ],
