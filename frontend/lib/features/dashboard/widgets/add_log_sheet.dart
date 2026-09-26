@@ -46,7 +46,7 @@ typedef MealVoiceStartStream =
 typedef MealVoiceStop = Future<void> Function();
 typedef MealVoiceTranscriber =
     Future<String?> Function(Uint8List audioBytes, String mimeType);
-typedef MealVoiceChunkObserver = void Function(Uint8List chunk);
+typedef MealVoiceStopAndRead = Future<Uint8List> Function();
 
 RecordConfig mealVoiceRecordConfig({required bool isWeb}) => RecordConfig(
   encoder: isWeb ? AudioEncoder.opus : AudioEncoder.aacLc,
@@ -64,7 +64,7 @@ class AddLogSheet extends StatefulWidget {
   final MealVoiceStartStream? voiceStartStream;
   final MealVoiceStop? voiceStop;
   final MealVoiceTranscriber? voiceTranscriber;
-  final MealVoiceChunkObserver? voiceChunkObserver;
+  final MealVoiceStopAndRead? voiceStopAndRead;
 
   const AddLogSheet({
     super.key,
@@ -74,7 +74,7 @@ class AddLogSheet extends StatefulWidget {
     this.voiceStartStream,
     this.voiceStop,
     this.voiceTranscriber,
-    this.voiceChunkObserver,
+    this.voiceStopAndRead,
   });
 
   @override
@@ -226,10 +226,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
         mealVoiceRecordConfig(isWeb: kIsWeb),
       );
       _mealVoiceSubscription = stream.listen(
-        (chunk) {
-          _mealVoiceChunks.add(chunk);
-          widget.voiceChunkObserver?.call(chunk);
-        },
+        _mealVoiceChunks.add,
         onError: (_) {
           if (!mounted) return;
           _mealVoiceChunks.clear();
@@ -262,27 +259,36 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
   Future<void> _stopAndTranscribeMealVoice() async {
     try {
-      await _stopMealVoiceRecorder();
-      await _mealVoiceSubscription?.cancel();
-      _mealVoiceSubscription = null;
+      final injectedStopAndRead = widget.voiceStopAndRead;
+      late final Uint8List audioBytes;
+      if (injectedStopAndRead != null) {
+        audioBytes = await injectedStopAndRead();
+        await _mealVoiceSubscription?.cancel();
+        _mealVoiceSubscription = null;
+        _mealVoiceChunks.clear();
+      } else {
+        await _stopMealVoiceRecorder();
+        await _mealVoiceSubscription?.cancel();
+        _mealVoiceSubscription = null;
+
+        final totalLength = _mealVoiceChunks.fold<int>(
+          0,
+          (total, chunk) => total + chunk.length,
+        );
+        audioBytes = Uint8List(totalLength);
+        var offset = 0;
+        for (final chunk in _mealVoiceChunks) {
+          audioBytes.setRange(offset, offset + chunk.length, chunk);
+          offset += chunk.length;
+        }
+        _mealVoiceChunks.clear();
+      }
 
       if (!mounted) return;
       setState(() {
         _mealVoiceRecording = false;
         _mealVoiceTranscribing = true;
       });
-
-      final totalLength = _mealVoiceChunks.fold<int>(
-        0,
-        (total, chunk) => total + chunk.length,
-      );
-      final audioBytes = Uint8List(totalLength);
-      var offset = 0;
-      for (final chunk in _mealVoiceChunks) {
-        audioBytes.setRange(offset, offset + chunk.length, chunk);
-        offset += chunk.length;
-      }
-      _mealVoiceChunks.clear();
 
       if (audioBytes.isEmpty) {
         if (!mounted) return;
