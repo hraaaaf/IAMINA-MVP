@@ -150,7 +150,7 @@ def machine_review(*, script: str, reply: object) -> dict[str, bool]:
     }
 
 
-def projected_spend_microusd(price) -> int:
+def projected_spend_microusd(price, *, scenarios=SCENARIOS) -> int:
     total = 0
     for scenario in scenarios:
         prompt = _scenario_prompt(scenario)
@@ -237,7 +237,7 @@ def run_benchmark(
         raise RuntimeError("missing GROQ_API_KEY benchmark credential")
 
     price = load_native_voice_price(today=today)
-    projected = projected_spend_microusd(price)
+    projected = projected_spend_microusd(price, scenarios=scenarios)
     if projected > SPEND_CEILING_MICROUSD:
         raise RuntimeError(
             f"projected spend {projected} microUSD exceeds hard ceiling "
