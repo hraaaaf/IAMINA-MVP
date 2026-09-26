@@ -15,6 +15,7 @@ from typing import Iterable, Literal
 from django.db.models import Q, QuerySet
 from django.utils import timezone
 
+from diabetes.contracts import log_entry as log_input
 from diabetes.models.entry import LogEntry
 
 EvidenceStrength = Literal["limited", "moderate", "strong"]
@@ -115,7 +116,7 @@ def _window_queryset(patient_id: int, window_days: int) -> QuerySet[LogEntry]:
     cutoff = now - timedelta(days=window_days)
     return (
         LogEntry.objects.filter(patient_id=patient_id)
-        .exclude(source="demo")
+        .filter(source__in=log_input.JOURNAL_LONGITUDINAL_SOURCE_VALUES)
         .filter(Q(logged_at__gte=cutoff) | Q(logged_at__isnull=True, created_at__gte=cutoff))
         .order_by("logged_at", "created_at", "id")
     )

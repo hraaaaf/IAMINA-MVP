@@ -95,8 +95,8 @@ def _window_entries(*, patient_id: int, window_days: int) -> list[LogEntry]:
             patient_id=patient_id,
             meal_episode_id__isnull=False,
             glycemic_context__in=log_input.PAIRED_MEAL_CONTEXT_VALUES,
+            source__in=log_input.JOURNAL_LONGITUDINAL_SOURCE_VALUES,
         )
-        .exclude(source="demo")
         .filter(
             Q(logged_at__gte=cutoff, logged_at__lte=now)
             | Q(
