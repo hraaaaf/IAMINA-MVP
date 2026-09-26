@@ -252,6 +252,57 @@ class GovernedMultiSourceFusionTests(TestCase):
             "missing_or_invalid_sensor_session_linkage",
         )
 
+    def test_cgm_source_mismatch_and_outside_session_are_rejected(self):
+        short_session = CGMSensorSession.objects.create(
+            patient=self.patient,
+            source="linx",
+            session_key="v2c-short-session",
+            started_at=self.start + dt.timedelta(hours=6),
+            ended_at=self.start + dt.timedelta(hours=7),
+            expected_interval_minutes=5,
+            timezone_name="UTC",
+            end_reason=CGMSensorSession.EndReason.REPLACED,
+        )
+        CGMReadingRecord.objects.create(
+            patient=self.patient,
+            source="libre",
+            session=short_session,
+            recorded_at=self.start + dt.timedelta(hours=6, minutes=30),
+            glucose_mg_dl=172,
+            dedupe_key="v2c-source-mismatch",
+        )
+        CGMReadingRecord.objects.create(
+            patient=self.patient,
+            source="linx",
+            session=short_session,
+            recorded_at=self.start + dt.timedelta(hours=8),
+            glucose_mg_dl=173,
+            dedupe_key="v2c-outside-session",
+        )
+        self._log(
+            source="manual",
+            when=self.start + dt.timedelta(hours=6),
+            glucose=132,
+        )
+
+        result = fuse_governed_glucose_sources(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=self.end,
+            contract=GovernedGlucoseFusionContract.journal_with(
+                FusionPopulation.CGM
+            ),
+        )
+
+        self.assertEqual(len(result.facts), 1)
+        cgm_summary = next(
+            summary
+            for summary in result.population_summaries
+            if summary.population is FusionPopulation.CGM
+        )
+        self.assertEqual(cgm_summary.included_count, 0)
+        self.assertEqual(cgm_summary.excluded_count, 2)
+
     def test_cgm_session_from_another_patient_is_rejected(self):
         when = self.start + dt.timedelta(hours=4, minutes=30)
         foreign_session = CGMSensorSession.objects.create(
