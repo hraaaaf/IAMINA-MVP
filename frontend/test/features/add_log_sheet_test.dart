@@ -202,6 +202,7 @@ void main() {
 
         audio.add(audioBytes);
         await audioCaptured.future;
+        await audio.close();
 
         final stopFuture = tester
             .widget<AddLogMealCapture>(find.byType(AddLogMealCapture))
@@ -226,7 +227,6 @@ void main() {
         transcript.complete('Salade et pain');
         await stopFuture;
         await tester.pumpAndSettle();
-        await audio.close();
 
         final note = tester.widget<TextField>(
           find.byKey(const Key('meal-note-input')),
