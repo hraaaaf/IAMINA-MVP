@@ -51,6 +51,10 @@ class GovernedGlucoseFusionContract:
             raise FusionContractError("V2-C contract only authorizes glucose fusion")
         if not populations:
             raise FusionContractError("requested_populations must not be empty")
+        if not all(isinstance(item, FusionPopulation) for item in populations):
+            raise FusionContractError(
+                "requested_populations must contain FusionPopulation values only"
+            )
         if not populations.issubset(_ALLOWED_POPULATIONS):
             raise FusionContractError("unsupported fusion population")
         if FusionPopulation.JOURNAL not in populations:
