@@ -17,7 +17,6 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from evaluation.frug5_multilingual_quality_benchmark import load_controlled_price
 from evaluation.native_voice_shadow_benchmark import (
     SCENARIOS,
     reviewer_template,
@@ -58,6 +57,31 @@ SYSTEM_PROMPT = (
     "Avoid forced dialect markers or stereotypes. "
     "Return only the reply field required by the JSON schema."
 )
+
+
+def _price_fixture_path() -> Path:
+    return Path(__file__).parent / "fixtures" / "native_voice_groq_text_price.json"
+
+
+def load_native_voice_price(*, today: date):
+    from llm.pricing import TextTokenPrice
+
+    raw = json.loads(_price_fixture_path().read_text(encoding="utf-8"))
+    price = TextTokenPrice(
+        provider=raw["provider"],
+        model=raw["model"],
+        currency=raw["currency"],
+        input_microusd_per_million=int(raw["input_microusd_per_million"]),
+        cached_input_microusd_per_million=int(raw["cached_input_microusd_per_million"]),
+        output_microusd_per_million=int(raw["output_microusd_per_million"]),
+        evidence_reference=raw["evidence_reference"],
+        verified_on=date.fromisoformat(raw["verified_on"]),
+        review_due_on=date.fromisoformat(raw["review_due_on"]),
+    )
+    price.validate(today=today)
+    if price.provider != PROVIDER or price.model != MODEL:
+        raise RuntimeError("controlled Native Voice price does not match provider/model")
+    return price
 
 
 def strict_response_format() -> dict[str, Any]:
@@ -176,7 +200,7 @@ def run_benchmark(*, output_path: Path, today: date) -> dict[str, Any]:
     if not os.environ.get("GROQ_API_KEY", "").strip():
         raise RuntimeError("missing GROQ_API_KEY benchmark credential")
 
-    price = load_controlled_price(today=today)
+    price = load_native_voice_price(today=today)
     projected = projected_spend_microusd(price)
     if projected > SPEND_CEILING_MICROUSD:
         raise RuntimeError(
