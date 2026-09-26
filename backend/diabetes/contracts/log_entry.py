@@ -60,6 +60,9 @@ SLEEP_VALUES = ("", "good", "bad")
 FATIGUE_VALUES = ("", "ok", "tired")
 SICK_VALUES = ("", "no", "yes")
 SOURCE_VALUES = ("manual", "voice", "cgm", "import", "demo")
+# Longitudinal Journal intelligence is derived only from patient-authored Journal rows.
+# CGM/import/demo populations remain separate until a dedicated governed fusion contract exists.
+JOURNAL_LONGITUDINAL_SOURCE_VALUES = ("manual", "voice")
 
 _UNIT_FACTORS = {
     "mg/dl": 1.0,
