@@ -160,6 +160,15 @@ class LogEntryCreateSchema(_CanonicalLogInputMixin, Schema):
     source: str = "manual"
     client_uuid: Optional[UUID] = None
 
+    @field_validator("source")
+    @classmethod
+    def validate_client_write_source(cls, value: str):
+        if value not in log_input.CLIENT_LOG_WRITE_SOURCE_VALUES:
+            raise ValueError(
+                "CGM/import provenance is reserved for dedicated ingestion paths."
+            )
+        return value
+
     @model_validator(mode="after")
     def validate_portion_links(self):
         validate_meal_portion_links(self.meal_items, self.meal_portions)
