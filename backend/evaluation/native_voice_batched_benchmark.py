@@ -78,11 +78,15 @@ APPROVED_SEMANTICS = {
     },
     "clinician_prep": {
         "speech_act": "PREPARE_CLINICIAN_QUESTIONS",
-        "required_claims": [
-            "Help the user formulate questions for their clinician about the approved observation.",
-            "Do not recommend changing treatment or dose.",
+        "allowed_question_intents": [
+            "Ask the clinician how to discuss the irregular logging times observed this week.",
+            "Ask whether this observation alone is sufficient for any clinical conclusion.",
         ],
         "forbidden_claims": [
+            "Cause of the irregular logging",
+            "Effect on blood glucose",
+            "Lifestyle recommendation",
+            "Medication recommendation",
             "Treatment recommendation",
             "Dose change",
             "New clinical interpretation",
@@ -96,8 +100,10 @@ SYSTEM_PROMPT = (
     "create a new patient action, or infer causality. "
     "You will receive one synthetic ten-turn conversation scenario. "
     "Return exactly one short natural reply for each turn, in order. "
-    "For any turn with approved_semantic_contract, preserve exactly that contract: "
-    "include required_claims, do not add forbidden_claims, and do not infer beyond it. "
+    "For any turn with approved_semantic_contract, preserve exactly that contract. "
+    "Render the meaning naturally in the requested locale and script; NEVER copy English "
+    "contract text into a non-English locale. Include only required_claims or "
+    "allowed_question_intents when present, do not add forbidden_claims, and do not infer beyond them. "
     "For turns without that contract, preserve only the supplied semantic goal. "
     "Maintain conversational continuity across turns. "
     "Use the requested locale and script. Avoid forced dialect markers and stereotypes. "
