@@ -167,6 +167,31 @@ class GovernedMultiSourceFusionTests(TestCase):
             result.limitations,
         )
 
+    def test_unrequested_import_and_demo_populations_never_enter_fusion(self):
+        when = self.start + dt.timedelta(hours=2, minutes=30)
+        self._log(source="manual", when=when, glucose=141)
+        self._log(source="import", when=when, glucose=142)
+        self._log(source="demo", when=when, glucose=143)
+
+        result = fuse_governed_glucose_sources(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=self.end,
+            contract=GovernedGlucoseFusionContract.journal_with(
+                FusionPopulation.CGM
+            ),
+        )
+
+        self.assertEqual(len(result.facts), 1)
+        self.assertEqual(
+            {item.population for item in result.facts},
+            {FusionPopulation.JOURNAL},
+        )
+        self.assertNotIn(
+            FusionPopulation.IMPORT,
+            result.requested_populations,
+        )
+
     def test_legacy_logentry_cgm_is_excluded_and_reported(self):
         when = self.start + dt.timedelta(hours=3)
         self._log(source="manual", when=when, glucose=120)
