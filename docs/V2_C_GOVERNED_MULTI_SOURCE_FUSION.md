@@ -10,8 +10,8 @@ Créer une primitive serveur de fusion glucose multi-source qui n'admet aucune p
 
 - le contrat doit exiger explicitement Journal + CGM et/ou import ;
 - Journal reste limité aux sources patient manual et voice verrouillées par V2-B ;
-- l'import reste une population distincte ;
-- le CGM admis provient uniquement de CGMReadingRecord relié à une session capteur cohérente ;
+- l'import reste une population distincte et sa provenance ne peut pas être revendiquée via les écritures patient `/logs` ;
+- le CGM admis provient uniquement de CGMReadingRecord relié à une session capteur cohérente appartenant au même patient ;
 - les anciens LogEntry(source="cgm") restent exclus ;
 - chaque fait fusionné conserve source_type, source_ref et provenance ;
 - aucune déduplication inter-source n'est autorisée par ce contrat ;
