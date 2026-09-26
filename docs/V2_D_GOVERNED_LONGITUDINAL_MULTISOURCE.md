@@ -48,3 +48,16 @@ Tests déterministes :
 - UI ;
 - migration DB ;
 - déploiement Vercel.
+
+
+## Closeout certifié
+
+- PR produit : #799 — `V2-D: governed longitudinal multi-source intelligence`.
+- HEAD candidat certifié : `7cc9e4e90dbcc83d3420812f93c717cf3d4fbf56`.
+- Pré-merge : CI #5036 SUCCESS ; Django migration drift #4084 SUCCESS.
+- Merge commit exact : `0801755ed0494397dd1d3cb94c1f36d14c4ee2f8`.
+- Post-merge sur ce SHA : CI #5037 SUCCESS ; Django migration drift #4085 SUCCESS ; Dashboard global certification v2 #50 SUCCESS.
+- Résultat : V2-D certifié post-merge.
+- UI : aucun changement.
+- Schéma DB : aucune migration.
+- Déploiement Vercel : aucun.
