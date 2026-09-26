@@ -43,6 +43,14 @@ class GovernedGlucoseFusionContractTests(SimpleTestCase):
             ),
         )
 
+    def test_raw_string_population_is_rejected_fail_closed(self):
+        with self.assertRaises(FusionContractError):
+            GovernedGlucoseFusionContract(
+                requested_populations=frozenset(
+                    {"journal", "import"}  # type: ignore[arg-type]
+                )
+            )
+
     def test_cross_source_deduplication_cannot_be_enabled_implicitly(self):
         with self.assertRaises(FusionContractError):
             GovernedGlucoseFusionContract(
