@@ -62,3 +62,16 @@ Le résultat de ce lot est uniquement le **contrat d'évaluation shadow** requis
 **Présence de marqueurs dialectaux ≠ naturalité native.**
 
 Un locale ne pourra être déclaré `Native Voice Certified` qu'après exécution synthétique contrôlée + double revue native conforme au contrat.
+
+
+## Closeout certifié
+
+- PR produit : #803 — `Conversation: add Native Voice shadow benchmark`.
+- HEAD candidat certifié : `d803116c98acc00b1a3bfbd465ffe4ae24caa98a`.
+- Pré-merge : CI #5044 SUCCESS ; Django migration drift #4088 SUCCESS.
+- Merge commit exact : `ee2f9004c5a5f064997f4b2f93c090fa8a4ee780`.
+- Post-merge sur ce SHA : CI #5045 SUCCESS ; Django migration drift #4089 SUCCESS.
+- Résultat : Native Voice shadow benchmark certifié post-merge.
+- Provider/network run : aucun.
+- Données patient : aucune.
+- Runtime/UI/DB/Vercel : aucun changement.
