@@ -143,7 +143,7 @@ void main() {
         _narrow(tester);
         final audioBytes = Uint8List.fromList(<int>[1, 2, 3, 4]);
         final audio = StreamController<Uint8List>(sync: true);
-        final audioDelivered = Completer<void>();
+        final audioCaptured = Completer<void>();
         final transcript = Completer<String?>();
         RecordConfig? startConfig;
         Uint8List? transcribedBytes;
@@ -153,16 +153,16 @@ void main() {
           voicePermissionCheck: () async => true,
           voiceStartStream: (config) async {
             startConfig = config;
-            return audio.stream.map((chunk) {
-              if (!audioDelivered.isCompleted) audioDelivered.complete();
-              return chunk;
-            });
+            return audio.stream;
           },
           voiceStop: () async {},
           voiceTranscriber: (bytes, mimeType) {
             transcribedBytes = bytes;
             transcribedMime = mimeType;
             return transcript.future;
+          },
+          voiceChunkObserver: (_) {
+            if (!audioCaptured.isCompleted) audioCaptured.complete();
           },
         );
 
@@ -201,7 +201,7 @@ void main() {
         );
 
         audio.add(audioBytes);
-        await audioDelivered.future;
+        await audioCaptured.future;
 
         final stopFuture = tester
             .widget<AddLogMealCapture>(find.byType(AddLogMealCapture))
