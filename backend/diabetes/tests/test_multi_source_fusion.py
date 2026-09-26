@@ -17,6 +17,7 @@ from diabetes.services.clinical.multi_source_fusion import (
     FusionInputError,
     fuse_governed_glucose_sources,
 )
+from diabetes.services.import_identity import make_import_client_uuid
 
 
 class GovernedGlucoseFusionContractTests(SimpleTestCase):
@@ -100,12 +101,31 @@ class GovernedMultiSourceFusionTests(TestCase):
             end_reason=CGMSensorSession.EndReason.REPLACED,
         )
 
-    def _log(self, *, source: str, when: dt.datetime, glucose: int, patient=None):
+    def _log(
+        self,
+        *,
+        source: str,
+        when: dt.datetime,
+        glucose: int,
+        patient=None,
+        client_uuid=None,
+    ):
         return LogEntry.objects.create(
             patient=patient or self.patient,
             source=source,
             logged_at=when,
             blood_sugar=glucose,
+            client_uuid=client_uuid,
+        )
+
+    def _trusted_import(self, *, when: dt.datetime, glucose: int, patient=None):
+        target = patient or self.patient
+        return self._log(
+            source="import",
+            when=when,
+            glucose=glucose,
+            patient=target,
+            client_uuid=make_import_client_uuid(target.id, when, glucose),
         )
 
     def test_fusion_preserves_population_and_fact_provenance(self):
@@ -116,8 +136,7 @@ class GovernedMultiSourceFusionTests(TestCase):
             when=when + dt.timedelta(minutes=5),
             glucose=127,
         )
-        imported = self._log(
-            source="import",
+        imported = self._trusted_import(
             when=when + dt.timedelta(minutes=10),
             glucose=128,
         )
@@ -164,7 +183,7 @@ class GovernedMultiSourceFusionTests(TestCase):
     def test_same_value_and_timestamp_from_two_sources_are_not_silently_deduplicated(self):
         when = self.start + dt.timedelta(hours=2)
         self._log(source="manual", when=when, glucose=140)
-        self._log(source="import", when=when, glucose=140)
+        self._trusted_import(when=when, glucose=140)
 
         result = fuse_governed_glucose_sources(
             patient_id=self.patient.id,
@@ -183,6 +202,33 @@ class GovernedMultiSourceFusionTests(TestCase):
         self.assertIn(
             "cross_source_duplicates_preserved_not_deduplicated",
             result.limitations,
+        )
+
+    def test_unverifiable_historical_import_fails_closed(self):
+        when = self.start + dt.timedelta(hours=2, minutes=15)
+        self._log(source="manual", when=when, glucose=140)
+        self._log(source="import", when=when, glucose=141)
+
+        result = fuse_governed_glucose_sources(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=self.end,
+            contract=GovernedGlucoseFusionContract.journal_with(
+                FusionPopulation.IMPORT
+            ),
+        )
+
+        self.assertEqual(len(result.facts), 1)
+        import_summary = next(
+            summary
+            for summary in result.population_summaries
+            if summary.population is FusionPopulation.IMPORT
+        )
+        self.assertEqual(import_summary.included_count, 0)
+        self.assertEqual(import_summary.excluded_count, 1)
+        self.assertEqual(
+            import_summary.exclusion_reason,
+            "missing_or_invalid_server_import_identity",
         )
 
     def test_unrequested_import_and_demo_populations_never_enter_fusion(self):
