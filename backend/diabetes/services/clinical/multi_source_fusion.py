@@ -149,6 +149,7 @@ def _valid_cgm_queryset(
         CGMReadingRecord.objects.filter(
             patient_id=patient_id,
             session__isnull=False,
+            session__patient_id=patient_id,
             recorded_at__gte=window_start,
             recorded_at__lte=window_end,
             source=F("session__source"),
