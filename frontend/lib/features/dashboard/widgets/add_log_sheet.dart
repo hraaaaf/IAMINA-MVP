@@ -225,22 +225,24 @@ class _AddLogSheetState extends State<AddLogSheet> {
       final stream = await _startMealVoiceStream(
         mealVoiceRecordConfig(isWeb: kIsWeb),
       );
-      _mealVoiceSubscription = stream.listen(
-        _mealVoiceChunks.add,
-        onError: (_) {
-          if (!mounted) return;
-          _mealVoiceChunks.clear();
-          unawaited(_stopMealVoiceRecorder());
-          setState(() => _mealVoiceRecording = false);
-          _message(
-            _voiceCopy(
-              'Le micro a rencontré une erreur. Réessaie.',
-              'The microphone encountered an error. Try again.',
-              'حدث خطأ في الميكروفون. حاول مجددًا.',
-            ),
-          );
-        },
-      );
+      if (widget.voiceStopAndRead == null) {
+        _mealVoiceSubscription = stream.listen(
+          _mealVoiceChunks.add,
+          onError: (_) {
+            if (!mounted) return;
+            _mealVoiceChunks.clear();
+            unawaited(_stopMealVoiceRecorder());
+            setState(() => _mealVoiceRecording = false);
+            _message(
+              _voiceCopy(
+                'Le micro a rencontré une erreur. Réessaie.',
+                'The microphone encountered an error. Try again.',
+                'حدث خطأ في الميكروفون. حاول مجددًا.',
+              ),
+            );
+          },
+        );
+      }
 
       if (mounted) setState(() => _mealVoiceRecording = true);
     } catch (_) {
