@@ -144,6 +144,7 @@ void main() {
         final audioBytes = Uint8List.fromList(<int>[1, 2, 3, 4]);
         final audio = StreamController<Uint8List>(sync: true);
         final audioCaptured = Completer<void>();
+        final transcriberStarted = Completer<void>();
         final transcript = Completer<String?>();
         RecordConfig? startConfig;
         Uint8List? transcribedBytes;
@@ -159,6 +160,7 @@ void main() {
           voiceTranscriber: (bytes, mimeType) {
             transcribedBytes = bytes;
             transcribedMime = mimeType;
+            if (!transcriberStarted.isCompleted) transcriberStarted.complete();
             return transcript.future;
           },
           voiceChunkObserver: (_) {
@@ -207,9 +209,7 @@ void main() {
         final stopFuture = tester
             .widget<AddLogMealCapture>(find.byType(AddLogMealCapture))
             .onVoiceToggle();
-        for (var i = 0; i < 20 && transcribedBytes == null; i++) {
-          await tester.pump(const Duration(milliseconds: 10));
-        }
+        await transcriberStarted.future;
 
         expect(transcribedBytes, isNotNull);
         expect(transcribedBytes, hasLength(4));
