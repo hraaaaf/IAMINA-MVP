@@ -1,0 +1,65 @@
+name: Native Voice live benchmark
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/native-voice-live-benchmark.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-voice-live-benchmark
+  cancel-in-progress: false
+
+jobs:
+  groq-native-voice:
+    name: Groq synthetic Native Voice 70-turn benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: native-voice-benchmark-nonproduction
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: sqlite:///native-voice-benchmark.db
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      NATIVE_VOICE_NETWORK_AUTHORIZED: "true"
+
+    steps:
+      - name: Checkout exact main
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Validate benchmark contracts before network
+        working-directory: backend
+        run: |
+          pytest -q             evaluation/test_native_voice_shadow_benchmark.py             evaluation/test_native_voice_live_benchmark.py
+
+      - name: Run bounded synthetic Native Voice benchmark
+        working-directory: backend
+        run: |
+          mkdir -p ../artifacts
+          python -m evaluation.native_voice_live_benchmark             --output ../artifacts/native-voice-live-benchmark.json
+
+      - name: Upload Native Voice review packet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-voice-live-benchmark
+          path: artifacts/native-voice-live-benchmark.json
+          if-no-files-found: warn
+          retention-days: 14
