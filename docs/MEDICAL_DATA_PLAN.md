@@ -73,6 +73,14 @@ Canonical facts must preserve patient subject reference, normalized concept/valu
 
 FHIR/LOINC/UCUM are interoperability vocabularies, not permission to invent semantics. An adapter may attach a coding system only when it can prove the relevant meaning. Unknown units must not be auto-labelled UCUM, and no LOINC code may be inferred merely from a broad label such as “glucose” when specimen/method semantics are absent.
 
+### Governed multi-source glucose fusion
+
+V2-C permits multi-source glucose fusion only through an explicit versioned contract. The default V2-B Journal intelligence boundary remains unchanged: patient-authored Journal evidence is limited to `manual` and `voice`. A fusion caller must explicitly request Journal plus CGM and/or import; no additional population may enter implicitly.
+
+Imported `LogEntry` rows remain a distinct import population, and `source="import"` / `source="cgm"` are reserved from patient `/logs` create/batch inputs so those provenance labels cannot be self-asserted through the Journal API. Fusion admits an import row only when its stored timestamp/glucose/patient reproduce the current deterministic server import identity; legacy or otherwise unverifiable import rows fail closed rather than being silently trusted. CGM fusion may consume only normalized `CGMReadingRecord` rows with a same-patient coherent sensor-session link, matching source and timestamps inside the declared session interval. Legacy `LogEntry(source="cgm")`, demo rows, unlinked CGM transport rows and source/session mismatches are not silently promoted.
+
+Every included item must retain its canonical `source_type`, `source_ref` and provenance. Equal values or timestamps from different source populations are preserved as separate observations; V2-C does not authorize heuristic or probabilistic cross-source deduplication. Fusion is descriptive data organization only: it grants no diagnosis, causality, prediction, normative metric promotion, treatment optimization, dose authority or autonomous recommendation. Invalid subject/window/contract inputs fail closed.
+
 ### Context observations
 
 Illness, stress, activity, sleep and fatigue context are observational patient-entered data. Missing context is **unknown**, not evidence of a negative/normal state. New logging paths must therefore avoid manufacturing `no`, `good` or `ok` values when the patient did not report them. Existing historical rows are not retrospectively rewritten to guess intent. Context may later support explicitly governed observational pattern detection, but it must not be presented as a proven cause of a glucose change or converted into treatment/dose advice.
