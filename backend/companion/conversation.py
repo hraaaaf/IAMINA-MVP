@@ -3,6 +3,7 @@ import re
 
 from companion.advice_filter import apply_advice_throttle
 from companion.memory import _detect_emotional_signals
+from companion.narration_envelope import shadow_validate_resolution
 from companion.narrator_prompts import (
     CHAT_USER,
     EMOTIONAL_USER,
@@ -48,6 +49,24 @@ from core.medical_safety import apply_no_prescription_policy, no_prescription_me
 from llm.pseudonymizer import PHIPseudonymizer
 
 logger = logging.getLogger(__name__)
+
+
+def _shadow_narration_envelope(
+    resolution,
+    *,
+    language: str,
+    prefer_latin_script: bool,
+) -> None:
+    """Exercise the future narration contract without changing patient output."""
+    try:
+        shadow_validate_resolution(
+            resolution,
+            language=language,
+            prefer_latin_script=prefer_latin_script,
+        )
+    except Exception:
+        logger.exception("IAmina narration envelope shadow validation failed")
+
 
 _HISTORY_CHAR_BUDGET = 900
 _STREAM_SUFFIX = (
@@ -735,6 +754,13 @@ def chat(
                 advice_resolution,
                 advice_resolution.reply,
             )
+            _shadow_narration_envelope(
+                advice_resolution,
+                language=language,
+                prefer_latin_script=(
+                    language == "ar-MA" and not _ARABIC_RE.search(message)
+                ),
+            )
             record_clinical_decision_audit(
                 patient=patient,
                 decision=advice_resolution.decision,
@@ -875,6 +901,13 @@ def stream_chat(
                 patient.id if patient else None,
                 advice_resolution,
                 advice_resolution.reply,
+            )
+            _shadow_narration_envelope(
+                advice_resolution,
+                language=language,
+                prefer_latin_script=(
+                    language == "ar-MA" and not _ARABIC_RE.search(message)
+                ),
             )
             record_clinical_decision_audit(
                 patient=patient,
