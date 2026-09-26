@@ -7,7 +7,6 @@ from django.test import SimpleTestCase, TestCase
 from pydantic import ValidationError
 
 from diabetes.api.v1.schemas import LogEntryCreateSchema
-
 from diabetes.contracts.multi_source_fusion import (
     FusionContractError,
     FusionPopulation,
