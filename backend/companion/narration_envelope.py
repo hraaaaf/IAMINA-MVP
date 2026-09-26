@@ -135,9 +135,9 @@ def verify_and_reinject_narration(
             raise NarrationVerificationError(
                 f"candidate omitted required fact token {fact.key}"
             )
-        if fact.egress_policy.value == "local_only" and fact.rendered_value in candidate:
+        if fact.rendered_value in candidate:
             raise NarrationVerificationError(
-                f"candidate exposed local-only fact value {fact.key}"
+                f"candidate exposed exact local fact value {fact.key}"
             )
 
     scrubbed = _FACT_TOKEN_RE.sub("", candidate)
