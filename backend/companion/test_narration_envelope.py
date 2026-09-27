@@ -9,6 +9,8 @@ from companion.narration_envelope import (
     shadow_validate_resolution,
     verify_and_reinject_narration,
 )
+from core.ai_egress import _detect_sensitive_text
+from core.anonymization_gateway import minimize_external_text_payload
 from core.contracts.advice_decision import (
     AdviceAuthorityLevel,
     AdviceDecision,
@@ -80,7 +82,7 @@ def test_provider_view_omits_local_fact_value_and_provenance():
     provider = envelope.provider_view()
     fact = provider["facts"][0]
 
-    assert fact["token"].startswith("{{NVF_")
+    assert fact["token"].startswith("{{NVF:")
     assert fact["token"].endswith("}}")
     assert "FACT_GLUCOSE" not in fact["token"]
     assert fact["provider_hint"] is None
@@ -114,7 +116,7 @@ def test_unknown_or_missing_fact_tokens_fail_closed():
 
     with pytest.raises(NarrationVerificationError, match="unknown"):
         verify_and_reinject_narration(
-            "هاد القياس {{NVF_00000000000000000000000000000000}}.",
+            "هاد القياس {{NVF:00000000:00000000:00000000:00000000}}.",
             envelope,
         )
 
@@ -268,5 +270,27 @@ def test_multiple_facts_receive_distinct_tokens_without_semantic_keys():
         envelope.fact_token("FACT_SECOND"),
     }
     assert len(tokens) == 2
-    assert all(token.startswith("{{NVF_") and token.endswith("}}") for token in tokens)
+    assert all(token.startswith("{{NVF:") and token.endswith("}}") for token in tokens)
     assert all("FACT_" not in token for token in tokens)
+
+
+
+def test_generated_tokens_survive_external_anonymization_and_dlp_unchanged():
+    envelope = build_shadow_envelope(
+        _resolution(),
+        language="ar-MA",
+        facts=(_fact(),),
+    )
+    fact_token = envelope.fact_token("FACT_GLUCOSE")
+    body_token = envelope.protected_body_token
+    payload = {
+        "system_prompt": f"Preserve {fact_token}",
+        "user_prompt": f"Preserve {body_token}",
+    }
+
+    minimized = minimize_external_text_payload(payload)
+
+    assert dict(minimized.fields) == payload
+    assert minimized.transformations == ()
+    assert _detect_sensitive_text(fact_token) == frozenset()
+    assert _detect_sensitive_text(body_token) == frozenset()
