@@ -18,6 +18,7 @@ from core.contracts.advice_resolution import AdviceResolution
 from core.contracts.capabilities import Capability
 from core.contracts.narration_envelope import (
     FactEgressPolicy,
+    NarrationEnvelopeError,
     NarrationFact,
     NarrationSpeechAct,
 )
