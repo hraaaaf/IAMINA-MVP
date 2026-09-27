@@ -34,7 +34,7 @@ from llm.base import LLMResponse
 from llm.factory import get_llm
 from llm.middleware.logging import LoggingMiddleware
 from llm.middleware.phi_stripping import PHIStrippingMiddleware
-from llm.pipeline import LLMPipeline
+from llm.pipeline import LLMPipeline, LLMPipelineModeBlocked
 from llm.pseudonymizer import PHIPseudonymizer
 from llm.usage_telemetry import (
     current_usage_workload,
@@ -158,14 +158,10 @@ class GatewayLLM:
         user: str,
         capability: Capability = Capability.EXPLAIN_APPROVED_DATA,
     ) -> tuple[str, str]:
+        del system, user
         _assert_generative_capability(capability)
-        assert_ai_egress_allowed(TEXT)
-        safe_system = _prepare_unstructured_prompt(system, self._pseudonymizer)
-        safe_user = _prepare_unstructured_prompt(user, self._pseudonymizer)
-        thinking, response = self._provider.think(safe_system, safe_user)
-        return (
-            self._pseudonymizer.unmask_medical_report(thinking),
-            self._pseudonymizer.unmask_medical_report(response),
+        raise LLMPipelineModeBlocked(
+            "think() is forbidden on the governed patient narration gateway"
         )
 
 

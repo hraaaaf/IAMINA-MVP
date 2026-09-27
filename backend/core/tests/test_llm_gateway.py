@@ -16,6 +16,7 @@ from core.contracts.domain_context import DomainContext
 from core.contracts.patient_context import ModulePatientContext
 from core.tests.consent_helpers import grant_current_ai_consent
 from llm.base import LLMResponse
+from llm.pipeline import LLMPipelineModeBlocked
 
 
 @pytest.fixture
@@ -143,3 +144,22 @@ def test_mask_called_before_llm(patient_ctx, domain_ctx, companion_id):
 
     assert mask_call_count >= 2, f"Expected mask() called >= 2 times, got {mask_call_count}"
     assert complete_call_count == 1, "LLM complete() must be called exactly once"
+
+
+
+def test_gateway_think_fails_closed_before_provider_invocation():
+    mock_provider = MagicMock()
+    mock_provider.model_name = "mock"
+
+    with patch("core.llm_gateway.get_llm", return_value=mock_provider):
+        from core.llm_gateway import GatewayLLM
+
+        gateway = GatewayLLM()
+
+    with pytest.raises(
+        LLMPipelineModeBlocked,
+        match="forbidden on the governed patient narration gateway",
+    ):
+        gateway.think("system", "user")
+
+    mock_provider.think.assert_not_called()

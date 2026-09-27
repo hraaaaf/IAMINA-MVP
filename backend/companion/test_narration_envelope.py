@@ -18,6 +18,7 @@ from core.contracts.advice_resolution import AdviceResolution
 from core.contracts.capabilities import Capability
 from core.contracts.narration_envelope import (
     FactEgressPolicy,
+    NarrationEnvelopeError,
     NarrationFact,
     NarrationSpeechAct,
 )
@@ -164,3 +165,50 @@ def test_shadow_validation_does_not_change_patient_visible_reply():
     assert shadow.structurally_valid is True
     assert shadow.source_reply == resolution.reply
     assert shadow.envelope.fallback_reply == resolution.reply
+
+
+
+def test_coarsened_provider_hint_cannot_expose_exact_or_replacement_measurement():
+    unsafe_hints = (
+        "around 187 mg/dL",
+        "around 180 mg/dL",
+        "تقريباً ١٨٧ mg/dL",
+        "187",
+    )
+    for hint in unsafe_hints:
+        with pytest.raises(NarrationEnvelopeError, match="genuinely coarsened"):
+            NarrationFact(
+                key="FACT_GLUCOSE",
+                semantic_type="glucose_value",
+                rendered_value="187 mg/dL",
+                egress_policy=FactEgressPolicy.COARSENED_ONLY,
+                provider_hint=hint,
+            )
+
+    safe = NarrationFact(
+        key="FACT_GLUCOSE",
+        semantic_type="glucose_value",
+        rendered_value="187 mg/dL",
+        egress_policy=FactEgressPolicy.COARSENED_ONLY,
+        provider_hint="elevated range",
+    )
+    assert safe.provider_hint == "elevated range"
+
+
+def test_provider_view_exposes_only_safe_coarsened_hint_not_exact_value():
+    fact = NarrationFact(
+        key="FACT_GLUCOSE",
+        semantic_type="glucose_value",
+        rendered_value="187 mg/dL",
+        egress_policy=FactEgressPolicy.COARSENED_ONLY,
+        provider_hint="elevated range",
+    )
+    envelope = build_shadow_envelope(
+        _resolution(),
+        language="ar-MA",
+        facts=(fact,),
+    )
+
+    provider = envelope.provider_view()
+    assert provider["facts"][0]["provider_hint"] == "elevated range"
+    assert "187 mg/dL" not in repr(provider)
