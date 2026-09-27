@@ -7,6 +7,7 @@ meaning.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
@@ -16,6 +17,27 @@ from core.contracts.advice_decision import AdviceDecision
 
 NARRATION_ENVELOPE_CONTRACT_ID = "narration-envelope.v1"
 _FACT_KEY_RE = re.compile(r"^FACT_[A-Z0-9_]+$")
+_DIGIT_TRANSLATION = str.maketrans(
+    "٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹",
+    "01234567890123456789",
+)
+_CLINICAL_MEASUREMENT_RE = re.compile(
+    r"(?<!\\w)\\d{1,4}(?:[.,]\\d+)?\\s*(?:"
+    r"mg\\s*/\\s*d[lL]|mmol\\s*/\\s*[lL]|g\\s*/\\s*[lL]|mm\\s*Hg|"
+    r"bpm|kg|cm|%|(?:IU|UI|U)\\b|unit(?:s|és?)?\\b|"
+    r"ملغ\\s*/\\s*دل|مليمول\\s*/\\s*ل|وحد(?:ة|ات)"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _normalize_sensitive_surface(value: str) -> str:
+    normalized = unicodedata.normalize("NFKC", value).translate(_DIGIT_TRANSLATION)
+    return " ".join(normalized.casefold().split())
+
+
+def _numeric_fragments(value: str) -> frozenset[str]:
+    return frozenset(re.findall(r"\\d+(?:[.,]\\d+)?", _normalize_sensitive_surface(value)))
 
 
 class NarrationEnvelopeError(ValueError):
@@ -71,6 +93,20 @@ class NarrationFact:
             raise NarrationEnvelopeError(
                 "coarsened-only fact requires a provider_hint"
             )
+        if self.egress_policy is FactEgressPolicy.COARSENED_ONLY:
+            exact = _normalize_sensitive_surface(self.rendered_value)
+            hint = _normalize_sensitive_surface(self.provider_hint or "")
+            if (
+                exact == hint
+                or (len(exact) >= 3 and exact in hint)
+                or (len(hint) >= 3 and hint in exact)
+                or bool(_numeric_fragments(self.rendered_value) & _numeric_fragments(hint))
+                or _CLINICAL_MEASUREMENT_RE.search(hint)
+            ):
+                raise NarrationEnvelopeError(
+                    "provider_hint must be genuinely coarsened and cannot expose "
+                    "exact or replacement clinical measurements"
+                )
         if self.provenance_ref is not None and not self.provenance_ref.strip():
             raise NarrationEnvelopeError("provenance_ref cannot be blank")
 
