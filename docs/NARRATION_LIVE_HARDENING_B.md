@@ -1,6 +1,6 @@
 # IAMINA — Narration Live Hardening B
 
-Base stackée : Narration Live Hardening A.
+Base certifiée : `main@96f6c853383600b99119d5edcc1fc6de1df9f8a0` après merge de Hardening A / PR #818.
 
 ## Goal
 
@@ -39,3 +39,13 @@ Un token valide provenant d'une enveloppe précédente est traité comme inconnu
 - claim schema sémantique enrichi ;
 - activation live d'une rule family ;
 - nouvel egress patient.
+
+
+## Dépendance A
+
+Hardening A est mergé sur `main` :
+- PR #818 ;
+- merge exact `96f6c853383600b99119d5edcc1fc6de1df9f8a0` ;
+- pré-merge : CI #5081 SUCCESS, migration #4108 SUCCESS, Companion E2E #279 SUCCESS.
+
+Cette PR B est désormais évaluée directement contre `main`.
