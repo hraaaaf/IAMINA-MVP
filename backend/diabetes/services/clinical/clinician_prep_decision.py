@@ -32,7 +32,7 @@ _PREP_RE = re.compile(
     r"(?:\b(?:prépar\w*|prepar\w*|"
     r"question\w*|ask|discuss|parler|dire|résum\w*|resum\w*|summari[sz]\w*|summary|"
     r"bring|apporter|montrer|show|nwjdo|n7der|nswel|nsoul|swal|nhder|nweri|nlkhs|nlkhes)\b|"
-    r"(?:نوجد|نحضّر|نحضر|أسئلة|اسئلة|نسول|نهضر|نوري|نلخص|نلخّص))",
+    r"(?:نوجد|نحضّر|نحضر|نجهز|أجهز|اجهز|جهّز|جهز|أسئلة|اسئلة|نسول|نهضر|نوري|نلخص|نلخّص))",
     re.IGNORECASE,
 )
 
@@ -52,6 +52,8 @@ _LIMITATIONS = (
     "clinician_remains_medical_decision_authority",
     "no_diagnosis_causality_dose_or_treatment_change",
 )
+
+_GULF_LOCALES = frozenset({"ar-SA", "ar-AE", "ar-KW", "ar-QA", "ar-OM"})
 
 _WINDOW_DAYS = 14
 
@@ -78,6 +80,25 @@ def _brief_topics(brief) -> tuple[str, ...]:
 
 
 def _reply(language: str, *, topics: tuple[str, ...], has_items: bool) -> str:
+    if language in _GULF_LOCALES:
+        if has_items:
+            intro = "عشان تجهز للموعد، IAmina جمعت فقط المعلومات المنظمة والمسموح بها."
+        else:
+            intro = "المعلومات المنظمة المتاحة حالياً محدودة، لذلك التحضير بيكون عام."
+        labels = {
+            "recorded_glucose": "القياسات المسجلة",
+            "governed_context_observations": "الملاحظات المنظمة عن السياق",
+            "descriptive_changes_since_review": "التغييرات الوصفية من آخر مراجعة",
+            "missing_or_limited_data": "المعلومات الناقصة أو المحدودة",
+        }
+        present = "، ".join(labels[item] for item in topics if item in labels)
+        scope = f" تقدر تاخذ معك: {present}." if present else ""
+        return (
+            f"{intro}{scope} أسئلة ممكن تسألها للطبيب: وش أهم شيء يبان لك في هالمعطيات؟ "
+            "وش المعلومات اللي ناقصة؟ وش أستمر أراقب لين الموعد الجاي؟ "
+            "IAmina ما تشخّص ولا تغيّر العلاج."
+        )
+
     if language.startswith("ar"):
         if has_items:
             intro = "باش توجد الموعد، IAmina جمعت غير المعلومات المنظمة والمسموح بها."
