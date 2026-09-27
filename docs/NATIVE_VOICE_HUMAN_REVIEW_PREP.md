@@ -63,7 +63,7 @@ Contrôle d'alignement :
 `IAMINA_NATIVE_VOICE_REVIEWER_PACKETS.zip`
 
 SHA256 :
-`25b0c9186322b3ea59bafb0a623e44f272ad19a205ffb68e01232db1e87e8722`
+`724ff72bd69b97b1b671c629bfd752ef6871824ab4a9d28143c8652ea7c3ef4e`
 
 Contenu :
 - instructions ;
@@ -71,14 +71,14 @@ Contenu :
 - reviewer_1 : 6 CSV locale ;
 - reviewer_2 : 6 CSV locale.
 
-Aucune clé V1/V2 dans ce bundle.
+Aucune clé V1/V2 dans ce bundle. Audit de fuite : 0 occurrence des labels V1/V2, artifact IDs, answer key, randomization seed ou semantic-contract dans les fichiers reviewers.
 
 ### Owner bundle — NE PAS PARTAGER
 
 `IAMINA_NATIVE_VOICE_OWNER_KEY_DO_NOT_SHARE.zip`
 
 SHA256 :
-`b702ddf042f74b8485522dc3be9159bf48911349aec0d6205902de3a38ade962`
+`0133e99d32bd5d61b7c5eb5db31bbb552665d6849972e5c0e5964aec722e5ea5`
 
 Contenu :
 - answer key ;
