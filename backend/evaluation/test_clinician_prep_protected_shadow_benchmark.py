@@ -82,3 +82,25 @@ def test_clinical_wrapper_is_rejected_after_local_body_reinjection():
 
     assert not family.passed
     assert "wrapper_contains_clinical_content" in family.violations
+
+
+
+def test_gulf_deterministic_bodies_use_expected_locale_signatures_not_darija():
+    expected = {
+        "saudi": "وش أهم شيء",
+        "emirati": "شو أهم شيء",
+        "kuwaiti": "شنو أهم شيء",
+        "qatari": "شنو أهم شيء",
+        "omani": "وش أهم شيء",
+    }
+    by_id = {
+        case["scenario"].scenario_id: case
+        for case in _cases()
+    }
+
+    for scenario_id, marker in expected.items():
+        reply = by_id[scenario_id]["resolution"].reply
+        assert marker in reply
+        assert "باش توجد" not in reply
+        assert "كتديرش" not in reply
+        assert "خاصني" not in reply
