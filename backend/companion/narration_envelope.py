@@ -20,7 +20,7 @@ from core.contracts.narration_envelope import (
     NarrationSpeechAct,
 )
 
-_FACT_TOKEN_RE = re.compile(r"\{\{(FACT_[A-Z0-9_]+)\}\}")
+_FACT_TOKEN_RE = re.compile(r"\{\{NVF_[A-F0-9]{32}\}\}")
 _CLINICAL_NUMBER_RE = re.compile(
     r"(?<!\w)\d{1,4}(?:[.,]\d+)?\s*(?:"
     r"mg\s*/\s*d[lL]|mmol\s*/\s*[lL]|mm\s*Hg|bpm|%|"
@@ -124,14 +124,18 @@ def verify_and_reinject_narration(
     if not isinstance(candidate, str) or not candidate.strip():
         raise NarrationVerificationError("candidate must be non-empty")
 
-    known = {fact.key: fact for fact in envelope.facts}
+    known = {
+        envelope.fact_token(fact.key): fact
+        for fact in envelope.facts
+    }
     observed = set(_FACT_TOKEN_RE.findall(candidate))
     unknown = observed - set(known)
     if unknown:
         raise NarrationVerificationError("candidate contains unknown fact tokens")
 
     for fact in envelope.facts:
-        if fact.required and fact.key not in observed:
+        token = envelope.fact_token(fact.key)
+        if fact.required and token not in observed:
             raise NarrationVerificationError(
                 f"candidate omitted required fact token {fact.key}"
             )
@@ -148,7 +152,10 @@ def verify_and_reinject_narration(
 
     result = candidate
     for fact in envelope.facts:
-        result = result.replace(fact.token, fact.rendered_value)
+        result = result.replace(
+            envelope.fact_token(fact.key),
+            fact.rendered_value,
+        )
 
     if _FACT_TOKEN_RE.search(result):
         raise NarrationVerificationError("unresolved fact token remains")

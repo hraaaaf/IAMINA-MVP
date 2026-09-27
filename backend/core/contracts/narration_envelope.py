@@ -7,8 +7,9 @@ meaning.
 from __future__ import annotations
 
 import re
+import secrets
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from types import MappingProxyType
 from typing import Mapping
@@ -111,10 +112,6 @@ class NarrationFact:
         if self.provenance_ref is not None and not self.provenance_ref.strip():
             raise NarrationEnvelopeError("provenance_ref cannot be blank")
 
-    @property
-    def token(self) -> str:
-        return "{{" + self.key + "}}"
-
 
 @dataclass(frozen=True, slots=True)
 class LocaleContract:
@@ -146,6 +143,7 @@ class NarrationEnvelope:
     fallback_reply: str = ""
     verifier_id: str = "structural-shadow.v1"
     contract_id: str = NARRATION_ENVELOPE_CONTRACT_ID
+    fact_tokens: Mapping[str, str] = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if self.contract_id != NARRATION_ENVELOPE_CONTRACT_ID:
@@ -162,6 +160,21 @@ class NarrationEnvelope:
         keys = tuple(fact.key for fact in self.facts)
         if len(keys) != len(set(keys)):
             raise NarrationEnvelopeError("fact keys must be unique")
+
+        used_tokens: set[str] = set()
+        fact_tokens: dict[str, str] = {}
+        for key in keys:
+            while True:
+                token = "{{NVF_" + secrets.token_hex(16).upper() + "}}"
+                if token not in used_tokens:
+                    break
+            used_tokens.add(token)
+            fact_tokens[key] = token
+        object.__setattr__(
+            self,
+            "fact_tokens",
+            MappingProxyType(fact_tokens),
+        )
 
         for field_name in (
             "allowed_claims",
@@ -193,6 +206,12 @@ class NarrationEnvelope:
             MappingProxyType(dict(self.style_contract)),
         )
 
+    def fact_token(self, key: str) -> str:
+        try:
+            return self.fact_tokens[key]
+        except KeyError as exc:
+            raise NarrationEnvelopeError("unknown narration fact key") from exc
+
     def provider_view(self) -> dict[str, object]:
         """Return the bounded linguistic task surface.
 
@@ -214,7 +233,7 @@ class NarrationEnvelope:
             },
             "facts": tuple(
                 {
-                    "token": fact.token,
+                    "token": self.fact_token(fact.key),
                     "semantic_type": fact.semantic_type,
                     "required": fact.required,
                     "provider_hint": fact.provider_hint,
