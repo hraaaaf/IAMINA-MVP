@@ -20,8 +20,12 @@ from core.contracts.narration_envelope import (
     NarrationSpeechAct,
 )
 
-_FACT_TOKEN_RE = re.compile(r"\{\{NVF_[A-F0-9]{32}\}\}")
-_BODY_TOKEN_RE = re.compile(r"\{\{NVB_[A-F0-9]{32}\}\}")
+_FACT_TOKEN_RE = re.compile(
+    r"\{\{NVF:(?:[A-F0-9]{8}:){3}[A-F0-9]{8}\}\}"
+)
+_BODY_TOKEN_RE = re.compile(
+    r"\{\{NVB:(?:[A-F0-9]{8}:){3}[A-F0-9]{8}\}\}"
+)
 _CLINICAL_NUMBER_RE = re.compile(
     r"(?<!\w)\d{1,4}(?:[.,]\d+)?\s*(?:"
     r"mg\s*/\s*d[lL]|mmol\s*/\s*[lL]|mm\s*Hg|bpm|%|"
