@@ -188,7 +188,6 @@ def test_shadow_validation_does_not_change_patient_visible_reply():
     assert shadow.envelope.fallback_reply == resolution.reply
 
 
-
 def test_coarsened_provider_hint_cannot_expose_exact_or_replacement_measurement():
     unsafe_hints = (
         "around 187 mg/dL",
@@ -233,7 +232,6 @@ def test_provider_view_exposes_only_safe_coarsened_hint_not_exact_value():
     provider = envelope.provider_view()
     assert provider["facts"][0]["provider_hint"] == "elevated range"
     assert "187 mg/dL" not in repr(provider)
-
 
 
 def test_fact_tokens_are_opaque_unique_and_envelope_scoped():
@@ -286,7 +284,6 @@ def test_multiple_facts_receive_distinct_tokens_without_semantic_keys():
     assert len(tokens) == 2
     assert all(token.startswith("{{NVF_") and token.endswith("}}") for token in tokens)
     assert all("FACT_" not in token for token in tokens)
-
 
 
 def test_protected_body_is_required_reinjected_locally_and_not_provider_visible():
