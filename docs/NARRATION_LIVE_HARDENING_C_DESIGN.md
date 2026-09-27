@@ -1,6 +1,6 @@
 # IAMINA — Narration Live Hardening C — Design
 
-Base conceptuelle : Hardening A + B.
+Base certifiée : `main@8bee1952cdec4c7e53d4f87e2e85d1449b7c31dd` après merge de Hardening A + B.
 
 ## Goal
 
@@ -127,3 +127,16 @@ La branche de préparation encode maintenant un mécanisme plus strict que le de
 Conséquence : pour le premier live contrôlé, toutes les limitations déjà présentes dans la réponse déterministe restent mécaniquement présentes et ne peuvent pas être traduites, supprimées ou paraphrasées par le provider.
 
 Le modèle ne pourra modifier que le wrapper relationnel autour du corps clinique protégé.
+
+
+## État de la branche candidate
+
+Implémenté mais non activé patient :
+- `protected_body_token` opaque par enveloppe ;
+- provider view sans corps clinique exact ;
+- verifier additif `verify_and_reinject_protected_narration()` ;
+- omission/duplication/replay/exposition du body local → fail-closed ;
+- tests dédiés séparés des tests Hardening B ;
+- première famille live proposée : `CLINICIAN_PREP`.
+
+Aucun chemin runtime n'appelle encore ce verifier protégé.
