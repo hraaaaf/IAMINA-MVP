@@ -1,6 +1,6 @@
 # IAMINA — CLINICIAN_PREP Protected Wrapper Benchmark
 
-Base stackée : correctif Gulf CLINICIAN_PREP PR #823, candidat `d76409ca1d049ddf32a51fbf2fe1a75ab9a62fd1`.
+Base certifiée : `main@e5b16311e8d64a0bc22af6fbae3775fea4501bbf` après merge du correctif Gulf CLINICIAN_PREP / PR #823.
 
 ## Goal
 
@@ -97,3 +97,13 @@ Le premier preflight E a découvert deux gaps produit réels :
 
 Ces défauts sont corrigés dans PR #823 avant toute exécution réseau du benchmark.
 La CI de cette PR est donc évaluée en pile sur #823 ; après merge #823 elle sera retargetée sur `main` et recertifiée exact-head.
+
+
+## Correctif Gulf certifié
+
+- PR #823 mergée ;
+- merge exact `e5b16311e8d64a0bc22af6fbae3775fea4501bbf` ;
+- pré-merge CI #5090 SUCCESS ;
+- pré-merge migration #4117 SUCCESS ;
+- les 5 formulations Gulf exactes du corpus sont désormais reconnues ;
+- les corps déterministes Gulf n'utilisent plus la copie Darija marocaine.
