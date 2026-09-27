@@ -42,6 +42,12 @@ def _numeric_fragments(value: str) -> frozenset[str]:
     return frozenset(re.findall(r"\d+(?:[.,]\d+)?", normalized))
 
 
+def _opaque_token(prefix: str) -> str:
+    raw = secrets.token_hex(16).upper()
+    segmented = ":".join(raw[index:index + 8] for index in range(0, 32, 8))
+    return "{{" + prefix + ":" + segmented + "}}"
+
+
 class NarrationEnvelopeError(ValueError):
     """Raised when a narration envelope is ambiguous or unsafe."""
 
@@ -166,7 +172,7 @@ class NarrationEnvelope:
         fact_tokens: dict[str, str] = {}
         for key in keys:
             while True:
-                token = "{{NVF_" + secrets.token_hex(16).upper() + "}}"
+                token = _opaque_token("NVF")
                 if token not in used_tokens:
                     break
             used_tokens.add(token)
@@ -179,7 +185,7 @@ class NarrationEnvelope:
         object.__setattr__(
             self,
             "protected_body_token",
-            "{{NVB_" + secrets.token_hex(16).upper() + "}}",
+            _opaque_token("NVB"),
         )
 
         for field_name in (
