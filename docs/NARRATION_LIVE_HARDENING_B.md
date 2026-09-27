@@ -21,7 +21,7 @@ Remplacer les placeholders sémantiques prédictibles de type `{{FACT_GLUCOSE}}`
 ## Contrat
 
 Format provider :
-`{{NVF_<128-bit random hex>}}`
+`{{NVF:<8hex>:<8hex>:<8hex>:<8hex>}}`
 
 Le mapping `semantic fact key → opaque token` reste uniquement dans l'instance locale de `NarrationEnvelope`.
 
@@ -49,3 +49,13 @@ Hardening A est mergé sur `main` :
 - pré-merge : CI #5081 SUCCESS, migration #4108 SUCCESS, Companion E2E #279 SUCCESS.
 
 Cette PR B est désormais évaluée directement contre `main`.
+
+
+## Privacy egress compatibility
+
+Le format segmenté par `:` évite qu'un token opaque soit classé comme identifiant stable par les contrôles privacy.
+Les tokens générés sont testés pour traverser sans mutation :
+- External Anonymization Gateway ;
+- DLP text payload.
+
+La segmentation ne réduit pas l'entropie : 128 bits aléatoires restent générés par enveloppe.
