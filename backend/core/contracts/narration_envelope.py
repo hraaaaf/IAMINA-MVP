@@ -23,10 +23,10 @@ _DIGIT_TRANSLATION = str.maketrans(
     "01234567890123456789",
 )
 _CLINICAL_MEASUREMENT_RE = re.compile(
-    r"(?<!\\w)\\d{1,4}(?:[.,]\\d+)?\\s*(?:"
-    r"mg\\s*/\\s*d[lL]|mmol\\s*/\\s*[lL]|g\\s*/\\s*[lL]|mm\\s*Hg|"
-    r"bpm|kg|cm|%|(?:IU|UI|U)\\b|unit(?:s|és?)?\\b|"
-    r"ملغ\\s*/\\s*دل|مليمول\\s*/\\s*ل|وحد(?:ة|ات)"
+    r"(?<!\w)\d{1,4}(?:[.,]\d+)?\s*(?:"
+    r"mg\s*/\s*d[lL]|mmol\s*/\s*[lL]|g\s*/\s*[lL]|mm\s*Hg|"
+    r"bpm|kg|cm|%|(?:IU|UI|U)\b|unit(?:s|és?)?\b|"
+    r"ملغ\s*/\s*دل|مليمول\s*/\s*ل|وحد(?:ة|ات)"
     r")",
     re.IGNORECASE,
 )
@@ -38,7 +38,8 @@ def _normalize_sensitive_surface(value: str) -> str:
 
 
 def _numeric_fragments(value: str) -> frozenset[str]:
-    return frozenset(re.findall(r"\\d+(?:[.,]\\d+)?", _normalize_sensitive_surface(value)))
+    normalized = _normalize_sensitive_surface(value)
+    return frozenset(re.findall(r"\d+(?:[.,]\d+)?", normalized))
 
 
 class NarrationEnvelopeError(ValueError):
@@ -110,6 +111,7 @@ class NarrationFact:
                 )
         if self.provenance_ref is not None and not self.provenance_ref.strip():
             raise NarrationEnvelopeError("provenance_ref cannot be blank")
+
 
 @dataclass(frozen=True, slots=True)
 class LocaleContract:
