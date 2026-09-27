@@ -21,6 +21,7 @@ from core.contracts.narration_envelope import (
 )
 
 _FACT_TOKEN_RE = re.compile(r"\{\{NVF_[A-F0-9]{32}\}\}")
+_BODY_TOKEN_RE = re.compile(r"\{\{NVB_[A-F0-9]{32}\}\}")
 _CLINICAL_NUMBER_RE = re.compile(
     r"(?<!\w)\d{1,4}(?:[.,]\d+)?\s*(?:"
     r"mg\s*/\s*d[lL]|mmol\s*/\s*[lL]|mm\s*Hg|bpm|%|"
@@ -124,6 +125,16 @@ def verify_and_reinject_narration(
     if not isinstance(candidate, str) or not candidate.strip():
         raise NarrationVerificationError("candidate must be non-empty")
 
+    body_tokens = _BODY_TOKEN_RE.findall(candidate)
+    if body_tokens != [envelope.protected_body_token]:
+        if not body_tokens:
+            raise NarrationVerificationError("candidate omitted protected body token")
+        if len(body_tokens) != 1:
+            raise NarrationVerificationError("candidate must contain exactly one protected body token")
+        raise NarrationVerificationError("candidate contains a replayed or unknown body token")
+    if envelope.fallback_reply and envelope.fallback_reply in candidate:
+        raise NarrationVerificationError("candidate exposed protected local body")
+
     known = {
         envelope.fact_token(fact.key): fact
         for fact in envelope.facts
@@ -157,8 +168,15 @@ def verify_and_reinject_narration(
             fact.rendered_value,
         )
 
+    result = result.replace(
+        envelope.protected_body_token,
+        envelope.fallback_reply,
+    )
+
     if _FACT_TOKEN_RE.search(result):
         raise NarrationVerificationError("unresolved fact token remains")
+    if _BODY_TOKEN_RE.search(result):
+        raise NarrationVerificationError("unresolved protected body token remains")
     return result.strip()
 
 
