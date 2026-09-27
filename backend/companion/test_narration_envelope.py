@@ -56,6 +56,10 @@ def _fact() -> NarrationFact:
     )
 
 
+def _with_body(envelope, text: str) -> str:
+    return f"{text} {envelope.protected_body_token}"
+
+
 def test_shadow_envelope_maps_existing_authority_without_expanding_it():
     envelope = build_shadow_envelope(
         _resolution(),
@@ -84,6 +88,9 @@ def test_provider_view_omits_local_fact_value_and_provenance():
     assert fact["token"].endswith("}}")
     assert "FACT_GLUCOSE" not in fact["token"]
     assert fact["provider_hint"] is None
+    assert provider["protected_body_token"].startswith("{{NVB_")
+    assert provider["protected_body_token"].endswith("}}")
+    assert "جواب حتمي وآمن." not in repr(provider)
     assert "187 mg/dL" not in repr(provider)
     assert "log_entry:synthetic" not in repr(provider)
 
@@ -97,7 +104,10 @@ def test_required_fact_token_is_reinjected_only_after_verification():
 
     token = envelope.fact_token("FACT_GLUCOSE")
     result = verify_and_reinject_narration(
-        f"هاد القياس {token} باين فالملاحظة اللي عطاتها IAMINA.",
+        _with_body(
+            envelope,
+            f"هاد القياس {token} باين فالملاحظة اللي عطاتها IAMINA.",
+        ),
         envelope,
     )
 
@@ -114,13 +124,16 @@ def test_unknown_or_missing_fact_tokens_fail_closed():
 
     with pytest.raises(NarrationVerificationError, match="unknown"):
         verify_and_reinject_narration(
-            "هاد القياس {{NVF_00000000000000000000000000000000}}.",
+            _with_body(
+                envelope,
+                "هاد القياس {{NVF_00000000000000000000000000000000}}.",
+            ),
             envelope,
         )
 
     with pytest.raises(NarrationVerificationError, match="omitted"):
         verify_and_reinject_narration(
-            "هاد القياس باين فالملاحظة.",
+            _with_body(envelope, "هاد القياس باين فالملاحظة."),
             envelope,
         )
 
@@ -136,13 +149,16 @@ def test_candidate_cannot_expose_or_invent_untokenized_clinical_number():
 
     with pytest.raises(NarrationVerificationError, match="exact local"):
         verify_and_reinject_narration(
-            f"القياس 187 mg/dL و {token}.",
+            _with_body(envelope, f"القياس 187 mg/dL و {token}."),
             envelope,
         )
 
     with pytest.raises(NarrationVerificationError, match="untokenized"):
         verify_and_reinject_narration(
-            f"القياس {token} وملاحظة ثانية 210 mg/dL.",
+            _with_body(
+                envelope,
+                f"القياس {token} وملاحظة ثانية 210 mg/dL.",
+            ),
             envelope,
         )
 
@@ -240,12 +256,12 @@ def test_fact_tokens_are_opaque_unique_and_envelope_scoped():
     assert "FACT_GLUCOSE" not in second_token
 
     assert "187 mg/dL" in verify_and_reinject_narration(
-        f"القياس {first_token}.",
+        _with_body(first, f"القياس {first_token}."),
         first,
     )
     with pytest.raises(NarrationVerificationError, match="unknown"):
         verify_and_reinject_narration(
-            f"القياس {first_token}.",
+            _with_body(second, f"القياس {first_token}."),
             second,
         )
 
@@ -270,3 +286,63 @@ def test_multiple_facts_receive_distinct_tokens_without_semantic_keys():
     assert len(tokens) == 2
     assert all(token.startswith("{{NVF_") and token.endswith("}}") for token in tokens)
     assert all("FACT_" not in token for token in tokens)
+
+
+
+def test_protected_body_is_required_reinjected_locally_and_not_provider_visible():
+    envelope = build_shadow_envelope(
+        _resolution(),
+        language="ar-MA",
+    )
+
+    provider = envelope.provider_view()
+    body_token = provider["protected_body_token"]
+
+    assert body_token == envelope.protected_body_token
+    assert "جواب حتمي وآمن." not in repr(provider)
+
+    result = verify_and_reinject_narration(
+        f"مفهوم. {body_token}",
+        envelope,
+    )
+    assert body_token not in result
+    assert result == "مفهوم. جواب حتمي وآمن."
+
+    with pytest.raises(NarrationVerificationError, match="omitted protected body"):
+        verify_and_reinject_narration("مفهوم.", envelope)
+
+    with pytest.raises(NarrationVerificationError, match="protected local body"):
+        verify_and_reinject_narration(
+            f"جواب حتمي وآمن. {body_token}",
+            envelope,
+        )
+
+
+def test_protected_body_token_is_envelope_scoped_and_replay_fails_closed():
+    first = build_shadow_envelope(_resolution(), language="ar-MA")
+    second = build_shadow_envelope(_resolution(), language="ar-MA")
+
+    assert first.protected_body_token != second.protected_body_token
+
+    with pytest.raises(
+        NarrationVerificationError,
+        match="replayed or unknown body token",
+    ):
+        verify_and_reinject_narration(
+            first.protected_body_token,
+            second,
+        )
+
+
+def test_duplicate_protected_body_token_is_rejected():
+    envelope = build_shadow_envelope(_resolution(), language="ar-MA")
+    token = envelope.protected_body_token
+
+    with pytest.raises(
+        NarrationVerificationError,
+        match="exactly one protected body token",
+    ):
+        verify_and_reinject_narration(
+            f"{token} puis {token}",
+            envelope,
+        )
