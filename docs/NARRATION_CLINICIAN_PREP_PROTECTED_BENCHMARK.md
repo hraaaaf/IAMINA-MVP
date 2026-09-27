@@ -1,6 +1,6 @@
 # IAMINA — CLINICIAN_PREP Protected Wrapper Benchmark
 
-Base certifiée : `main@6fce50a58a13c5a4059223c24926cb99fe833a89`.
+Base stackée : correctif Gulf CLINICIAN_PREP PR #823, candidat `d76409ca1d049ddf32a51fbf2fe1a75ab9a62fd1`.
 
 ## Goal
 
@@ -87,3 +87,13 @@ Un PASS ne :
 - ne certifie aucune nouvelle autorité clinique ;
 - ne résout pas E1–E6 ;
 - ne déploie rien sur Vercel.
+
+
+## Gulf prerequisite
+
+Le premier preflight E a découvert deux gaps produit réels :
+- les formulations Gulf naturelles avec `أجهز` n'étaient pas reconnues par le classifieur ;
+- le corps déterministe `ar-*` utilisait la copie Darija pour tous les Gulf locales.
+
+Ces défauts sont corrigés dans PR #823 avant toute exécution réseau du benchmark.
+La CI de cette PR est donc évaluée en pile sur #823 ; après merge #823 elle sera retargetée sur `main` et recertifiée exact-head.
