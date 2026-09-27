@@ -144,6 +144,7 @@ class NarrationEnvelope:
     verifier_id: str = "structural-shadow.v1"
     contract_id: str = NARRATION_ENVELOPE_CONTRACT_ID
     fact_tokens: Mapping[str, str] = field(init=False, repr=False, compare=False)
+    protected_body_token: str = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if self.contract_id != NARRATION_ENVELOPE_CONTRACT_ID:
@@ -174,6 +175,11 @@ class NarrationEnvelope:
             self,
             "fact_tokens",
             MappingProxyType(fact_tokens),
+        )
+        object.__setattr__(
+            self,
+            "protected_body_token",
+            "{{NVB_" + secrets.token_hex(16).upper() + "}}",
         )
 
         for field_name in (
@@ -231,6 +237,7 @@ class NarrationEnvelope:
                 "register": self.locale.register,
                 "code_switching": self.locale.code_switching,
             },
+            "protected_body_token": self.protected_body_token,
             "facts": tuple(
                 {
                     "token": self.fact_token(fact.key),
