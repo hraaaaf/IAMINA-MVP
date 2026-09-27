@@ -6,6 +6,7 @@ No patient data is used and the deterministic clinical bodies never leave IAmina
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -352,7 +353,7 @@ def run_benchmark(*, output_path: Path, today: date) -> dict[str, Any]:
                 "synthetic_user": case["turn"].user,
                 "provider_reply": provider_reply,
                 "wrapper": wrapper,
-                "deterministic_body_sha256": __import__("hashlib").sha256(
+                "deterministic_body_sha256": hashlib.sha256(
                     resolution.reply.encode("utf-8")
                 ).hexdigest(),
                 "token_count_ok": token_count_ok,
