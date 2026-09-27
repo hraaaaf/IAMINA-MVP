@@ -79,7 +79,9 @@ def test_provider_view_omits_local_fact_value_and_provenance():
     provider = envelope.provider_view()
     fact = provider["facts"][0]
 
-    assert fact["token"] == "{{FACT_GLUCOSE}}"
+    assert fact["token"].startswith("{{NVF_")
+    assert fact["token"].endswith("}}")
+    assert "FACT_GLUCOSE" not in fact["token"]
     assert fact["provider_hint"] is None
     assert "187 mg/dL" not in repr(provider)
     assert "log_entry:synthetic" not in repr(provider)
@@ -92,12 +94,13 @@ def test_required_fact_token_is_reinjected_only_after_verification():
         facts=(_fact(),),
     )
 
+    token = envelope.fact_token("FACT_GLUCOSE")
     result = verify_and_reinject_narration(
-        "هاد القياس {{FACT_GLUCOSE}} باين فالملاحظة اللي عطاتها IAMINA.",
+        f"هاد القياس {token} باين فالملاحظة اللي عطاتها IAMINA.",
         envelope,
     )
 
-    assert "{{FACT_GLUCOSE}}" not in result
+    assert token not in result
     assert "187 mg/dL" in result
 
 
@@ -110,7 +113,7 @@ def test_unknown_or_missing_fact_tokens_fail_closed():
 
     with pytest.raises(NarrationVerificationError, match="unknown"):
         verify_and_reinject_narration(
-            "هاد القياس {{FACT_UNKNOWN}}.",
+            "هاد القياس {{NVF_00000000000000000000000000000000}}.",
             envelope,
         )
 
@@ -128,15 +131,17 @@ def test_candidate_cannot_expose_or_invent_untokenized_clinical_number():
         facts=(_fact(),),
     )
 
+    token = envelope.fact_token("FACT_GLUCOSE")
+
     with pytest.raises(NarrationVerificationError, match="exact local"):
         verify_and_reinject_narration(
-            "القياس 187 mg/dL و {{FACT_GLUCOSE}}.",
+            f"القياس 187 mg/dL و {token}.",
             envelope,
         )
 
     with pytest.raises(NarrationVerificationError, match="untokenized"):
         verify_and_reinject_narration(
-            "القياس {{FACT_GLUCOSE}} وملاحظة ثانية 210 mg/dL.",
+            f"القياس {token} وملاحظة ثانية 210 mg/dL.",
             envelope,
         )
 
@@ -211,3 +216,56 @@ def test_provider_view_exposes_only_safe_coarsened_hint_not_exact_value():
     provider = envelope.provider_view()
     assert provider["facts"][0]["provider_hint"] == "elevated range"
     assert "187 mg/dL" not in repr(provider)
+
+
+
+def test_fact_tokens_are_opaque_unique_and_envelope_scoped():
+    first = build_shadow_envelope(
+        _resolution(),
+        language="ar-MA",
+        facts=(_fact(),),
+    )
+    second = build_shadow_envelope(
+        _resolution(),
+        language="ar-MA",
+        facts=(_fact(),),
+    )
+
+    first_token = first.fact_token("FACT_GLUCOSE")
+    second_token = second.fact_token("FACT_GLUCOSE")
+
+    assert first_token != second_token
+    assert "FACT_GLUCOSE" not in first_token
+    assert "FACT_GLUCOSE" not in second_token
+
+    assert "187 mg/dL" in verify_and_reinject_narration(
+        f"القياس {first_token}.",
+        first,
+    )
+    with pytest.raises(NarrationVerificationError, match="unknown"):
+        verify_and_reinject_narration(
+            f"القياس {first_token}.",
+            second,
+        )
+
+
+def test_multiple_facts_receive_distinct_tokens_without_semantic_keys():
+    second_fact = NarrationFact(
+        key="FACT_SECOND",
+        semantic_type="second_observation",
+        rendered_value="stable",
+        egress_policy=FactEgressPolicy.LOCAL_ONLY,
+    )
+    envelope = build_shadow_envelope(
+        _resolution(),
+        language="ar-MA",
+        facts=(_fact(), second_fact),
+    )
+
+    tokens = {
+        envelope.fact_token("FACT_GLUCOSE"),
+        envelope.fact_token("FACT_SECOND"),
+    }
+    assert len(tokens) == 2
+    assert all(token.startswith("{{NVF_") and token.endswith("}}") for token in tokens)
+    assert all("FACT_" not in token for token in tokens)
