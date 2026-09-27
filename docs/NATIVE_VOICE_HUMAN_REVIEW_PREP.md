@@ -125,3 +125,17 @@ Plafond autorisé :
 Le seul gate restant est l'exécution réelle des revues natives indépendantes.
 
 Aucun runtime patient, UI, DB ou déploiement Vercel n'a été modifié.
+
+
+## Product-owner progression decision — 2026-09-27
+
+Le propriétaire produit accepte le pré-screen IA Reviewer 1 comme preuve suffisante pour **poursuivre le chantier d'ingénierie**.
+
+État enregistré :
+- progression vers le hardening suivant : **AUTHORIZED BY PRODUCT OWNER** ;
+- AI pre-screen : 70/70 complété, candidat V2 moyen 9.87/10, 0 hard reject observé ;
+- la double revue native humaine n'est plus un gate bloquant pour poursuivre l'implémentation ;
+- elle n'est cependant pas déclarée réalisée ;
+- le label `Native Voice Certified by native human reviewers` n'est donc pas revendiqué.
+
+Cette décision change le gate de progression produit, pas la nature des preuves réellement obtenues.
