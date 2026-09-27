@@ -81,6 +81,13 @@ def _brief_topics(brief) -> tuple[str, ...]:
 
 def _reply(language: str, *, topics: tuple[str, ...], has_items: bool) -> str:
     if language in _GULF_LOCALES:
+        question_word = {
+            "ar-SA": "وش",
+            "ar-AE": "شو",
+            "ar-KW": "شنو",
+            "ar-QA": "شنو",
+            "ar-OM": "وش",
+        }[language]
         if has_items:
             intro = "عشان تجهز للموعد، IAmina جمعت فقط المعلومات المنظمة والمسموح بها."
         else:
@@ -94,8 +101,10 @@ def _reply(language: str, *, topics: tuple[str, ...], has_items: bool) -> str:
         present = "، ".join(labels[item] for item in topics if item in labels)
         scope = f" تقدر تاخذ معك: {present}." if present else ""
         return (
-            f"{intro}{scope} أسئلة ممكن تسألها للطبيب: وش أهم شيء يبان لك في هالمعطيات؟ "
-            "وش المعلومات اللي ناقصة؟ وش أستمر أراقب لين الموعد الجاي؟ "
+            f"{intro}{scope} أسئلة ممكن تسألها للطبيب: "
+            f"{question_word} أهم شيء يبان لك في هالمعطيات؟ "
+            f"{question_word} المعلومات اللي ناقصة؟ "
+            f"{question_word} أستمر أراقب لين الموعد الجاي؟ "
             "IAmina ما تشخّص ولا تغيّر العلاج."
         )
 
