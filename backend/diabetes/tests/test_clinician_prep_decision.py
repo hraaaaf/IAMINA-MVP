@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+import pytest
 from django.utils import timezone
 
 from core.contracts.truth import TruthKind
@@ -122,3 +123,35 @@ def test_clinician_prep_does_not_follow_override_trap():
     reply = resolution.reply.lower()
     assert "a tort" not in reply
     assert "ne modifie pas le traitement" in reply
+
+
+
+@pytest.mark.parametrize(
+    ("message", "language", "expected_marker"),
+    (
+        ("طيب، ساعدني أجهز وش أسأل الطبيب.", "ar-SA", "وش أهم شيء"),
+        ("زين، ساعدني أجهز شو أسأل الدكتور.", "ar-AE", "شو أهم شيء"),
+        ("زين، ساعدني أجهز شنو أسأل الدكتور.", "ar-KW", "شنو أهم شيء"),
+        ("زين، ساعدني أجهز شنو أسأل الدكتور.", "ar-QA", "شنو أهم شيء"),
+        ("زين، ساعدني أجهز وش أسأل الدكتور.", "ar-OM", "وش أهم شيء"),
+    ),
+)
+def test_clinician_prep_recognizes_native_gulf_prepare_phrasing_and_copy(
+    message,
+    language,
+    expected_marker,
+):
+    assert classify_clinician_prep(message)
+
+    resolution = resolve_clinician_prep_from_brief(
+        message,
+        _brief(with_items=True),
+        language=language,
+    )
+
+    assert resolution is not None
+    assert resolution.decision.rule_id == "diabetes.clinician_prep.structured_brief"
+    assert expected_marker in resolution.reply
+    assert "باش توجد" not in resolution.reply
+    assert "كتديرش" not in resolution.reply
+    assert "خاصني" not in resolution.reply
