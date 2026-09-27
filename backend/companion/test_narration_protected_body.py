@@ -44,7 +44,7 @@ def test_provider_view_exposes_opaque_body_token_not_local_body():
 
     token = provider["protected_body_token"]
     assert token == envelope.protected_body_token
-    assert token.startswith("{{NVB_")
+    assert token.startswith("{{NVB:")
     assert token.endswith("}}")
     assert "Réponse clinique déterministe." not in repr(provider)
 
