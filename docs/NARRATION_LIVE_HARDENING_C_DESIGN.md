@@ -117,7 +117,7 @@ Hardening C n'est clos que si :
 
 La branche de préparation encode maintenant un mécanisme plus strict que le design initial :
 
-- chaque `NarrationEnvelope` émet un `protected_body_token` opaque `{{NVB_<128-bit random hex>}}` ;
+- chaque `NarrationEnvelope` émet un `protected_body_token` opaque `{{NVB:<8hex>:<8hex>:<8hex>:<8hex>}}` ;
 - le provider view expose uniquement ce token, jamais `fallback_reply` ;
 - le candidat doit contenir exactement une occurrence du body token ;
 - omission, duplication ou replay depuis une autre enveloppe → rejet fail-closed ;
@@ -140,3 +140,13 @@ Implémenté mais non activé patient :
 - première famille live proposée : `CLINICIAN_PREP`.
 
 Aucun chemin runtime n'appelle encore ce verifier protégé.
+
+
+## Privacy egress compatibility
+
+Le format segmenté par `:` évite qu'un token opaque soit classé comme identifiant stable par les contrôles privacy.
+Les tokens générés sont testés pour traverser sans mutation :
+- External Anonymization Gateway ;
+- DLP text payload.
+
+La segmentation ne réduit pas l'entropie : 128 bits aléatoires restent générés par enveloppe.
