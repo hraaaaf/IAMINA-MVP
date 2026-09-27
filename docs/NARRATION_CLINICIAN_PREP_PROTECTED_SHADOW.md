@@ -1,6 +1,6 @@
 # IAMINA — CLINICIAN_PREP Protected Narration Shadow
 
-Base de préparation : Hardening C.
+Base certifiée : `main@35c43a4972b3f032d9b27634deb5e4fb9992724e` après merge de Hardening C / PR #820.
 
 ## Goal
 
