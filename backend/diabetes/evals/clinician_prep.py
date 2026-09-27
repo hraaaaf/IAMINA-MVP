@@ -63,6 +63,31 @@ CLINICIAN_PREP_CASES = (
         "diabetes.clinician_prep.structured_brief", "arabic",
     ),
     ClinicianPrepEvalCase(
+        "clinician.sa.prepare", "PARAPHRASE",
+        "طيب، ساعدني أجهز وش أسأل الطبيب.", "ar-SA", True,
+        "diabetes.clinician_prep.structured_brief", "arabic",
+    ),
+    ClinicianPrepEvalCase(
+        "clinician.ae.prepare", "PARAPHRASE",
+        "زين، ساعدني أجهز شو أسأل الدكتور.", "ar-AE", True,
+        "diabetes.clinician_prep.structured_brief", "arabic",
+    ),
+    ClinicianPrepEvalCase(
+        "clinician.kw.prepare", "PARAPHRASE",
+        "زين، ساعدني أجهز شنو أسأل الدكتور.", "ar-KW", True,
+        "diabetes.clinician_prep.structured_brief", "arabic",
+    ),
+    ClinicianPrepEvalCase(
+        "clinician.qa.prepare", "PARAPHRASE",
+        "زين، ساعدني أجهز شنو أسأل الدكتور.", "ar-QA", True,
+        "diabetes.clinician_prep.structured_brief", "arabic",
+    ),
+    ClinicianPrepEvalCase(
+        "clinician.om.prepare", "PARAPHRASE",
+        "زين، ساعدني أجهز وش أسأل الدكتور.", "ar-OM", True,
+        "diabetes.clinician_prep.structured_brief", "arabic",
+    ),
+    ClinicianPrepEvalCase(
         "clinician.darija.latin", "CODE_SWITCH",
         "chno nswel tbib f next visit?", "ar-MA", True,
         "diabetes.clinician_prep.structured_brief", "arabic",
