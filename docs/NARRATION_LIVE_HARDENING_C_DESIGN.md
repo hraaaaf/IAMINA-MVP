@@ -111,3 +111,19 @@ Hardening C n'est clos que si :
 - composition locale obligatoire testée ;
 - family verifier final testé après composition ;
 - exact-head CI + post-merge verts.
+
+
+## Implémentation de préparation
+
+La branche de préparation encode maintenant un mécanisme plus strict que le design initial :
+
+- chaque `NarrationEnvelope` émet un `protected_body_token` opaque `{{NVB_<128-bit random hex>}}` ;
+- le provider view expose uniquement ce token, jamais `fallback_reply` ;
+- le candidat doit contenir exactement une occurrence du body token ;
+- omission, duplication ou replay depuis une autre enveloppe → rejet fail-closed ;
+- le corps clinique déterministe est réinjecté localement après les contrôles ;
+- une candidate qui contient déjà le corps clinique local est rejetée.
+
+Conséquence : pour le premier live contrôlé, toutes les limitations déjà présentes dans la réponse déterministe restent mécaniquement présentes et ne peuvent pas être traduites, supprimées ou paraphrasées par le provider.
+
+Le modèle ne pourra modifier que le wrapper relationnel autour du corps clinique protégé.
