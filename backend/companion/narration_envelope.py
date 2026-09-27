@@ -21,6 +21,7 @@ from core.contracts.narration_envelope import (
 )
 
 _FACT_TOKEN_RE = re.compile(r"\{\{NVF_[A-F0-9]{32}\}\}")
+_BODY_TOKEN_RE = re.compile(r"\{\{NVB_[A-F0-9]{32}\}\}")
 _CLINICAL_NUMBER_RE = re.compile(
     r"(?<!\w)\d{1,4}(?:[.,]\d+)?\s*(?:"
     r"mg\s*/\s*d[lL]|mmol\s*/\s*[lL]|mm\s*Hg|bpm|%|"
@@ -162,6 +163,43 @@ def verify_and_reinject_narration(
     return result.strip()
 
 
+def verify_and_reinject_protected_narration(
+    candidate: str,
+    envelope: NarrationEnvelope,
+) -> str:
+    """Verify one opaque protected-body token, then reinsert the local clinical body.
+
+    The existing fact-token verifier remains unchanged. This additive path is reserved
+    for a future controlled live narrator where the provider may only generate a
+    non-clinical wrapper around the deterministic governed body.
+    """
+    if not isinstance(candidate, str) or not candidate.strip():
+        raise NarrationVerificationError("candidate must be non-empty")
+
+    body_tokens = _BODY_TOKEN_RE.findall(candidate)
+    if not body_tokens:
+        raise NarrationVerificationError("candidate omitted protected body token")
+    if len(body_tokens) != 1:
+        raise NarrationVerificationError(
+            "candidate must contain exactly one protected body token"
+        )
+    if body_tokens[0] != envelope.protected_body_token:
+        raise NarrationVerificationError(
+            "candidate contains a replayed or unknown body token"
+        )
+    if envelope.fallback_reply and envelope.fallback_reply in candidate:
+        raise NarrationVerificationError("candidate exposed protected local body")
+
+    fact_restored = verify_and_reinject_narration(candidate, envelope)
+    result = fact_restored.replace(
+        envelope.protected_body_token,
+        envelope.fallback_reply,
+    )
+    if _BODY_TOKEN_RE.search(result):
+        raise NarrationVerificationError("unresolved protected body token remains")
+    return result.strip()
+
+
 def shadow_validate_resolution(
     resolution: AdviceResolution,
     *,
@@ -188,4 +226,5 @@ __all__ = [
     "locale_contract",
     "shadow_validate_resolution",
     "verify_and_reinject_narration",
+    "verify_and_reinject_protected_narration",
 ]
