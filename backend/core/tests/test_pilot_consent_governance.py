@@ -49,6 +49,8 @@ def test_patient_consent_never_substitutes_for_external_approvals():
     assert any("cndp_health_processing_authorization" in item for item in payload["blockers"])
     assert any("cndp_foreign_transfer_authorization" in item for item in payload["blockers"])
     assert any("contract_dpa" in item for item in payload["blockers"])
+    assert any("data_controller_identity" in item for item in payload["blockers"])
+    assert any("patient_notice_and_reconsent" in item for item in payload["blockers"])
 
 
 def test_real_pilot_gate_fails_while_external_evidence_is_pending():

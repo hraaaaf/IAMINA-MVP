@@ -23,6 +23,12 @@ Success is observable only when all mandatory rows below have:
 
 Until then, Groq must remain PENDING in processor policy.
 
+Executable cross-check:
+- E3 is represented by `groq.data_controller_identity` in the processor evidence registry;
+- E6 is represented by `groq.patient_notice_and_reconsent`;
+- a release-scoped audit with Groq enabled remains blocked while either item is not APPROVED;
+- supplying a CNDP health-processing reference alone cannot clear E3 or E6.
+
 ## Existing technical controls already verified
 
 - governed deterministic context;
@@ -115,6 +121,13 @@ For E5:
   required by ZDR;
 - record capture date;
 - do not expose API keys or secrets.
+
+Current product evidence (2026-09-28):
+- consent notice version is `2026-09-12.1`;
+- FR/EN/AR copy refers generically to an “external AI service”;
+- the current notice does **not** name Groq;
+- the current notice does **not** identify a United States transfer context;
+- therefore E6 is mechanically **MISSING** and existing consent receipts cannot be treated as Groq-specific transfer consent.
 
 For E6:
 - increment IAMINA consent notice version;

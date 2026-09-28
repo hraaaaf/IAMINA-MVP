@@ -21,6 +21,8 @@ The following gates are independent and all must be satisfied where applicable:
 7. the current DPA, processor terms and subprocessor evidence are approved;
 8. retention, deletion and training-use terms are approved;
 9. security and privacy owners approved the deployment.
+10. the exact IAMINA data-controller legal identity/signatory authority is evidenced;
+11. the versioned patient notice names the enabled processor/transfer context and existing users are re-consented against that notice.
 
 Patient consent does not replace CNDP authorization, contractual evidence, security review or processor approval.
 
@@ -116,7 +118,9 @@ Restricted evidence must be held in the approved private compliance repository a
 
 The roadmap gate remains open until all of the following are true:
 
+- [ ] IAMINA data-controller legal identity and signatory authority evidenced;
 - [ ] final patient notice and consent wording approved;
+- [ ] notice version/hash and re-consent path bound to the enabled processor/transfer context;
 - [ ] CNDP health-data processing authorization reference recorded;
 - [ ] foreign-transfer authorization/basis recorded for every destination;
 - [ ] exact processors and subprocessors approved;

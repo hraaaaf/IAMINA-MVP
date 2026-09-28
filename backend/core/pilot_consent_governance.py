@@ -75,6 +75,7 @@ class ProcessorEvidenceRecord:
     provider: str
     external_egress: bool
     processor_identity: ApprovalEvidence
+    data_controller_identity: ApprovalEvidence
     contract_dpa: ApprovalEvidence
     subprocessor_register: ApprovalEvidence
     processing_regions: ApprovalEvidence
@@ -82,6 +83,7 @@ class ProcessorEvidenceRecord:
     training_use: ApprovalEvidence
     security_review: ApprovalEvidence
     privacy_review: ApprovalEvidence
+    patient_notice_and_reconsent: ApprovalEvidence
     cndp_health_processing_authorization: ApprovalEvidence
     cndp_foreign_transfer_authorization: ApprovalEvidence
 
@@ -118,6 +120,7 @@ class ProcessorEvidenceRecord:
     def _evidence_fields(self) -> dict[str, ApprovalEvidence]:
         return {
             "processor_identity": self.processor_identity,
+            "data_controller_identity": self.data_controller_identity,
             "contract_dpa": self.contract_dpa,
             "subprocessor_register": self.subprocessor_register,
             "processing_regions": self.processing_regions,
@@ -125,6 +128,7 @@ class ProcessorEvidenceRecord:
             "training_use": self.training_use,
             "security_review": self.security_review,
             "privacy_review": self.privacy_review,
+            "patient_notice_and_reconsent": self.patient_notice_and_reconsent,
             "cndp_health_processing_authorization": self.cndp_health_processing_authorization,
             "cndp_foreign_transfer_authorization": self.cndp_foreign_transfer_authorization,
         }
@@ -200,6 +204,7 @@ def _local_record(provider: str) -> ProcessorEvidenceRecord:
         provider=provider,
         external_egress=False,
         processor_identity=identity,
+        data_controller_identity=na,
         contract_dpa=na,
         subprocessor_register=na,
         processing_regions=na,
@@ -207,6 +212,7 @@ def _local_record(provider: str) -> ProcessorEvidenceRecord:
         training_use=na,
         security_review=na,
         privacy_review=na,
+        patient_notice_and_reconsent=na,
         cndp_health_processing_authorization=na,
         cndp_foreign_transfer_authorization=na,
     )
@@ -223,6 +229,10 @@ def _network_record(
         provider=provider,
         external_egress=True,
         processor_identity=_pending(processor_reference, "IAmina Privacy Owner"),
+        data_controller_identity=_pending(
+            "Exact IAMINA data-controller legal entity and signatory authority required",
+            "IAmina Legal/Privacy Owner",
+        ),
         contract_dpa=_pending(
             "Executed account-specific DPA and applicable service terms required",
             "IAmina Legal/Privacy Owner",
@@ -250,6 +260,11 @@ def _network_record(
         privacy_review=_pending(
             "Completed deployment-specific privacy review required",
             "IAmina Privacy Owner",
+        ),
+        patient_notice_and_reconsent=_pending(
+            "Versioned patient notice naming the enabled processor/transfer context "
+            "and tested re-consent evidence required",
+            "IAmina Product and Privacy Owners",
         ),
         cndp_health_processing_authorization=_pending(
             "CNDP authorization reference for health-data processing required",
