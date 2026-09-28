@@ -23,6 +23,12 @@ Success is observable only when all mandatory rows below have:
 
 Until then, Groq must remain PENDING in processor policy.
 
+Executable cross-check:
+- E3 is represented by `groq.data_controller_identity` in the processor evidence registry;
+- E6 is represented by `groq.patient_notice_and_reconsent`;
+- a release-scoped audit with Groq enabled remains blocked while either item is not APPROVED;
+- supplying a CNDP health-processing reference alone cannot clear E3 or E6.
+
 ## Existing technical controls already verified
 
 - governed deterministic context;
