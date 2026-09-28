@@ -3,6 +3,9 @@
 One provider call generates six non-clinical wrappers around opaque body tokens.
 No patient data is used and the deterministic clinical bodies never leave IAmina.
 """
+# Django must be initialized before importing modules that load ORM models.
+# ruff: noqa: E402
+
 from __future__ import annotations
 
 import argparse
@@ -13,6 +16,10 @@ import re
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+import django
+
+django.setup()
 
 from companion.narration_envelope import (
     build_shadow_envelope,

@@ -1,3 +1,5 @@
+import subprocess
+import sys
 from datetime import date
 
 from companion.narration_envelope import verify_and_reinject_protected_narration
@@ -104,3 +106,18 @@ def test_gulf_deterministic_bodies_use_expected_locale_signatures_not_darija():
         assert "باش توجد" not in reply
         assert "كتديرش" not in reply
         assert "خاصني" not in reply
+
+
+
+def test_benchmark_module_imports_standalone_with_django_setup():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import evaluation.clinician_prep_protected_shadow_benchmark",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
