@@ -1,0 +1,71 @@
+name: Clinician Prep protected shadow benchmark
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/clinician-prep-protected-shadow.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clinician-prep-protected-shadow
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    name: Synthetic protected wrapper benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: clinician-prep-protected-shadow-nonproduction
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: sqlite:///clinician-prep-protected-shadow.db
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      NATIVE_VOICE_NETWORK_AUTHORIZED: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Pre-network protected narration tests
+        working-directory: backend
+        run: |
+          pytest -q \
+            companion/test_narration_envelope.py \
+            companion/test_narration_protected_body.py \
+            diabetes/tests/test_clinician_prep_narration_verifier.py \
+            diabetes/tests/test_clinician_prep_protected_narration_verifier.py \
+            evaluation/test_clinician_prep_protected_shadow_benchmark.py
+
+      - name: Run synthetic protected wrapper benchmark
+        working-directory: backend
+        run: |
+          mkdir -p ../artifacts
+          python -m evaluation.clinician_prep_protected_shadow_benchmark \
+            --output ../artifacts/clinician-prep-protected-shadow.json
+
+      - name: Upload benchmark packet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clinician-prep-protected-shadow
+          path: artifacts/clinician-prep-protected-shadow.json
+          if-no-files-found: warn
+          retention-days: 14
