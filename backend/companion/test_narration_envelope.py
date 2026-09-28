@@ -19,6 +19,7 @@ from core.contracts.capabilities import Capability
 from core.contracts.narration_envelope import (
     FactEgressPolicy,
     NarrationEnvelopeError,
+    NarrationEnvelopeError,
     NarrationFact,
     NarrationSpeechAct,
 )
