@@ -1,4 +1,5 @@
 name: Clinician Prep protected shadow benchmark
+# Trigger note: rerun after Django bootstrap fix.
 
 on:
   push:
