@@ -174,3 +174,27 @@ def test_residency_manifest_flag_requires_local_only():
             "--residency-manifest",
             "/restricted/iamina/pilot-residency.json",
         )
+
+
+
+def test_groq_release_remains_blocked_without_controller_identity_and_reconsent():
+    payload = release_scoped_consent_governance_payload(
+        enabled_external_providers=("groq",),
+        global_health_processing_references=("restricted-cndp-health-ref",),
+        today=TODAY,
+    )
+
+    assert GLOBAL_HEALTH_PROCESSING_BLOCKER not in payload["blockers"]
+    assert "groq.data_controller_identity:pending" in payload["blockers"]
+    assert "groq.patient_notice_and_reconsent:pending" in payload["blockers"]
+
+    groq = next(row for row in payload["processors"] if row["provider"] == "groq")
+    assert groq["release_enabled"] is True
+    assert (
+        groq["evidence"]["data_controller_identity"]["status"]
+        == "pending"
+    )
+    assert (
+        groq["evidence"]["patient_notice_and_reconsent"]["status"]
+        == "pending"
+    )
