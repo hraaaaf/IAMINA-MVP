@@ -1,6 +1,6 @@
-from datetime import date
 import subprocess
 import sys
+from datetime import date
 
 from companion.narration_envelope import verify_and_reinject_protected_narration
 from diabetes.services.clinical.clinician_prep_protected_narration_verifier import (
