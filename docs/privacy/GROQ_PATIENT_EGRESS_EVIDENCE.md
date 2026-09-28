@@ -122,6 +122,13 @@ For E5:
 - record capture date;
 - do not expose API keys or secrets.
 
+Current product evidence (2026-09-28):
+- consent notice version is `2026-09-12.1`;
+- FR/EN/AR copy refers generically to an “external AI service”;
+- the current notice does **not** name Groq;
+- the current notice does **not** identify a United States transfer context;
+- therefore E6 is mechanically **MISSING** and existing consent receipts cannot be treated as Groq-specific transfer consent.
+
 For E6:
 - increment IAMINA consent notice version;
 - name the actual external processor and international transfer context approved
