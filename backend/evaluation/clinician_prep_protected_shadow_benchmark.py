@@ -14,6 +14,10 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import django
+
+django.setup()
+
 from companion.narration_envelope import (
     build_shadow_envelope,
     verify_and_reinject_protected_narration,
