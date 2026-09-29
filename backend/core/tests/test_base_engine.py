@@ -145,10 +145,7 @@ class ProtectedAdviceVerifierContractTests(SimpleTestCase):
         )
 
         food = _governed_resolution("diabetes.food.synthetic")
-        self.assertEqual(
-            engine.verify_protected_advice_reply(
-                food,
-                f"D'accord. {food.reply}",
-            ),
-            food.reply,
-        )
+        altered_food = f"D'accord. {food.reply}"
+        result = engine.verify_protected_advice_reply(food, altered_food)
+        self.assertEqual(result, food.reply)
+        self.assertNotEqual(result, altered_food)
