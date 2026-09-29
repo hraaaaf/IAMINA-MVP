@@ -114,3 +114,34 @@ Contract:
 
 This keeps condition semantics inside the module while allowing a future provider-backed
 wrapper candidate to be verified without weakening the chassis contract.
+
+
+## Provider-backed shadow generator
+
+Status: **IMPLEMENTED — OFF BY DEFAULT**
+
+Feature flag:
+`NARRATION_PROTECTED_PROVIDER_SHADOW=False` by default.
+
+Provider payload is deliberately minimal:
+- locale;
+- script;
+- envelope-scoped opaque protected body token.
+
+It excludes:
+- patient message;
+- deterministic clinical body;
+- exact clinical values;
+- facts/history;
+- AdviceDecision/rule identifiers.
+
+Execution order:
+1. feature flag must be ON;
+2. processor policy must authorize Groq for `companion_chat/text`;
+3. only then may the provider adapter be constructed;
+4. returned candidate passes protected-body reinjection;
+5. active module protected verifier validates the reinjected candidate;
+6. patient-visible reply remains the original deterministic governed reply.
+
+An accidental flag flip therefore cannot create provider traffic while the processor
+policy gate is not approved. This stage remains shadow-only and non-authoritative.

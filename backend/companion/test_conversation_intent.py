@@ -98,3 +98,54 @@ def test_non_clinician_runtime_shadow_does_not_use_protected_seam():
         )
 
     protected_shadow.assert_not_called()
+
+
+
+def test_provider_shadow_candidate_is_verified_without_changing_patient_reply():
+    resolution = _shadow_resolution("clinician_prep")
+    token = "{{NVB_0123456789ABCDEF0123456789ABCDEF}}"
+    envelope = type("Envelope", (), {"protected_body_token": token})()
+    protected = type(
+        "Protected",
+        (),
+        {
+            "structurally_valid": True,
+            "reinjected_reply": resolution.reply,
+            "envelope": envelope,
+        },
+    )()
+    provider_candidate = f"D'accord. {token}"
+
+    with (
+        patch(
+            "companion.conversation.shadow_validate_protected_resolution",
+            return_value=protected,
+        ),
+        patch(
+            "companion.conversation.generate_protected_provider_shadow_candidate",
+            return_value=provider_candidate,
+        ),
+        patch(
+            "companion.conversation.verify_and_reinject_protected_narration",
+            create=True,
+        ) as _unused,
+        patch(
+            "companion.narration_envelope.verify_and_reinject_protected_narration",
+            return_value=f"D'accord. {resolution.reply}",
+        ),
+        patch("companion.conversation.verify_protected_advice_reply") as verify,
+    ):
+        _shadow_narration_envelope(
+            resolution,
+            patient_id=77,
+            language="fr",
+            prefer_latin_script=False,
+        )
+
+    assert verify.call_count == 2
+    assert verify.call_args_list[0].args == (77, resolution, resolution.reply)
+    assert verify.call_args_list[1].args == (
+        77,
+        resolution,
+        f"D'accord. {resolution.reply}",
+    )
