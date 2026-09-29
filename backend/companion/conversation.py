@@ -65,6 +65,7 @@ def _shadow_narration_envelope(
     patient_id: int | None,
     language: str,
     prefer_latin_script: bool,
+    internal_shadow_authorized: bool = False,
 ) -> None:
     """Exercise narration contracts without changing patient output."""
     try:
@@ -88,7 +89,8 @@ def _shadow_narration_envelope(
             )
 
             provider_candidate = generate_protected_provider_shadow_candidate(
-                protected.envelope
+                protected.envelope,
+                internal_authorized=internal_shadow_authorized,
             )
             if provider_candidate is not None:
                 from companion.narration_envelope import (
@@ -805,6 +807,11 @@ def chat(
                 language=language,
                 prefer_latin_script=(
                     language == "ar-MA" and not _ARABIC_RE.search(message)
+                ),
+                internal_shadow_authorized=bool(
+                    patient
+                    and getattr(patient, "is_active", False)
+                    and getattr(patient, "is_staff", False)
                 ),
             )
             record_clinical_decision_audit(
