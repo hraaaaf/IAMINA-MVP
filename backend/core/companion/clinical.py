@@ -184,6 +184,29 @@ def verify_advice_reply(
     return verified.strip()
 
 
+def verify_protected_advice_reply(
+    patient_id: int | None,
+    resolution: AdviceResolution,
+    candidate: str,
+) -> str:
+    """Verify protected wrapper narration through the active module contract."""
+
+    if patient_id is None:
+        raise PermissionError("protected advice verification requires an active patient module")
+    if not isinstance(resolution, AdviceResolution):
+        raise TypeError("resolution must be an AdviceResolution")
+    engine = _resolve_engine(patient_id)
+    if engine is None:
+        raise PermissionError("no active module available to verify protected advice")
+    verifier = getattr(engine, "verify_protected_advice_reply", None)
+    if not callable(verifier):
+        raise PermissionError("active module has no protected advice verifier")
+    verified = verifier(resolution, candidate)
+    if not isinstance(verified, str) or not verified.strip():
+        raise PermissionError("active module returned an invalid protected advice reply")
+    return verified.strip()
+
+
 def get_offline_fallback(
     patient_id: int | None,
     context: DomainContext,
