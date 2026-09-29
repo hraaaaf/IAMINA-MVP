@@ -1019,6 +1019,26 @@ class DiabetesEngine(BaseEngine):
 
         raise PermissionError(f"unsupported governed advice verifier: {rule_id}")
 
+    def verify_protected_advice_reply(
+        self,
+        resolution: "AdviceResolution",
+        candidate: str,
+    ) -> str:
+        """Verify protected wrapper narration for explicitly supported families."""
+        rule_id = resolution.decision.rule_id
+        if rule_id.startswith("diabetes.clinician_prep."):
+            from diabetes.services.clinical.clinician_prep_protected_narration_verifier import (
+                verified_clinician_prep_protected_narration_or_fallback,
+            )
+
+            return verified_clinician_prep_protected_narration_or_fallback(
+                resolution.decision,
+                candidate,
+                resolution.reply,
+            )
+
+        return super().verify_protected_advice_reply(resolution, candidate)
+
     def evaluate_alert(self, entry, language: str = "fr") -> "DomainAlert | None":
         from core.contracts.alert import DomainAlert
         from diabetes.services.clinical.alerts import AlertLevel

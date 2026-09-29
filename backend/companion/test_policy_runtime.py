@@ -798,6 +798,10 @@ def test_module_clinician_prep_short_circuits_llm_and_verifies_before_chat_stora
             return_value=DomainContext.empty(language="fr"),
         ),
         patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch(
+            "companion.conversation.verify_protected_advice_reply",
+            side_effect=verify,
+        ),
         patch("companion.conversation._append_turn", side_effect=append),
         patch("companion.conversation.record_companion_route") as record_route,
     ):
@@ -838,6 +842,10 @@ def test_module_clinician_prep_short_circuits_llm_and_verifies_before_stream_emi
             return_value=DomainContext.empty(language="fr"),
         ),
         patch("companion.conversation.verify_advice_reply", side_effect=verify),
+        patch(
+            "companion.conversation.verify_protected_advice_reply",
+            side_effect=verify,
+        ),
         patch("companion.conversation._append_turn", side_effect=append),
         patch("companion.conversation.record_companion_route") as record_route,
     ):

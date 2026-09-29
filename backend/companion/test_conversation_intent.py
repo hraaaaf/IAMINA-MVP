@@ -72,7 +72,7 @@ def test_clinician_prep_runtime_shadow_reverifies_with_active_patient():
         "companion.conversation.shadow_validate_protected_resolution",
         return_value=protected,
     ) as protected_shadow:
-        with patch("companion.conversation.verify_advice_reply") as verify:
+        with patch("companion.conversation.verify_protected_advice_reply") as verify:
             _shadow_narration_envelope(
                 resolution,
                 patient_id=77,

@@ -100,3 +100,17 @@ This runtime shadow performs no external provider call and does not change provi
 policy, consent state, patient output, or clinical authority. Its purpose is to
 prove that the protected seam survives the actual companion control flow before any
 future provider-backed shadow is considered.
+
+
+## Protected verifier module hook
+
+The chassis now exposes a condition-agnostic protected narration verifier port.
+
+Contract:
+- `BaseEngine.verify_protected_advice_reply()` defaults to the existing exact-copy verifier;
+- the companion runtime calls the protected port only for the protected shadow seam;
+- the diabetes module explicitly opts in `CLINICIAN_PREP` to its protected wrapper verifier;
+- all other diabetes families retain their existing strict verifier behavior.
+
+This keeps condition semantics inside the module while allowing a future provider-backed
+wrapper candidate to be verified without weakening the chassis contract.

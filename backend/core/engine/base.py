@@ -145,6 +145,24 @@ class BaseEngine(abc.ABC):
             )
         return candidate.strip()
 
+    def verify_protected_advice_reply(
+        self,
+        resolution: "AdviceResolution",
+        candidate: str,
+    ) -> str:
+        """Verify protected-body narration only for explicitly opted-in modules.
+
+        The default is stricter than the normal family verifier: alternate
+        protected narration is forbidden unless a module overrides this hook.
+        """
+        if not isinstance(candidate, str) or not candidate.strip():
+            raise PermissionError("protected advice reply must be non-empty")
+        if candidate.strip() != resolution.reply:
+            raise PermissionError(
+                "active module has no protected verifier for altered governed advice"
+            )
+        return candidate.strip()
+
     def offline_fallback(
         self,
         context: "DomainContext",
