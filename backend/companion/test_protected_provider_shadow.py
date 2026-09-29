@@ -76,7 +76,10 @@ def test_policy_denial_happens_before_provider_construction():
             "companion.protected_provider_shadow.build_openai_compatible_provider"
         ) as build:
             with pytest.raises(AIProcessorPolicyDenied):
-                generate_protected_provider_shadow_candidate(envelope)
+                generate_protected_provider_shadow_candidate(
+                    envelope,
+                    internal_authorized=True,
+                )
 
     authorize.assert_called_once_with("groq", "companion_chat", "text")
     build.assert_not_called()
@@ -97,7 +100,10 @@ def test_authorized_shadow_returns_candidate_from_minimal_payload():
             "companion.protected_provider_shadow.build_openai_compatible_provider",
             return_value=provider,
         ):
-            candidate = generate_protected_provider_shadow_candidate(envelope)
+            candidate = generate_protected_provider_shadow_candidate(
+                envelope,
+                internal_authorized=True,
+            )
 
     authorize.assert_called_once_with("groq", "companion_chat", "text")
     assert candidate == f"D'accord. {envelope.protected_body_token}"
