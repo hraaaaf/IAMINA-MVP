@@ -54,6 +54,8 @@ def build_protected_provider_shadow_request(
 
 def generate_protected_provider_shadow_candidate(
     envelope: NarrationEnvelope,
+    *,
+    internal_authorized: bool = False,
 ) -> str | None:
     """Return a provider wrapper candidate, or None while shadow is disabled.
 
@@ -62,6 +64,9 @@ def generate_protected_provider_shadow_candidate(
     """
     if not getattr(settings, "NARRATION_PROTECTED_PROVIDER_SHADOW", False):
         record_protected_narration_shadow(status="disabled")
+        return None
+    if not internal_authorized:
+        record_protected_narration_shadow(status="blocked")
         return None
 
     try:
