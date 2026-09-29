@@ -922,6 +922,7 @@ def stream_chat(
             )
             _shadow_narration_envelope(
                 advice_resolution,
+                patient_id=patient.id if patient else None,
                 language=language,
                 prefer_latin_script=(
                     language == "ar-MA" and not _ARABIC_RE.search(message)
