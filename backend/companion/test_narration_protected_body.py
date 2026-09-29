@@ -99,7 +99,6 @@ def test_protected_body_token_is_envelope_scoped_and_replay_fails_closed():
         )
 
 
-
 def test_runtime_shadow_candidate_reinjects_exact_body_without_network():
     resolution = _resolution()
 
