@@ -76,7 +76,10 @@ def test_policy_denial_happens_before_provider_construction():
             "companion.protected_provider_shadow.build_openai_compatible_provider"
         ) as build:
             with pytest.raises(AIProcessorPolicyDenied):
-                generate_protected_provider_shadow_candidate(envelope)
+                generate_protected_provider_shadow_candidate(
+                    envelope,
+                    internal_authorized=True,
+                )
 
     authorize.assert_called_once_with("groq", "companion_chat", "text")
     build.assert_not_called()
@@ -97,11 +100,59 @@ def test_authorized_shadow_returns_candidate_from_minimal_payload():
             "companion.protected_provider_shadow.build_openai_compatible_provider",
             return_value=provider,
         ):
-            candidate = generate_protected_provider_shadow_candidate(envelope)
+            candidate = generate_protected_provider_shadow_candidate(
+                envelope,
+                internal_authorized=True,
+            )
 
     authorize.assert_called_once_with("groq", "companion_chat", "text")
     assert candidate == f"D'accord. {envelope.protected_body_token}"
     system, user = provider.complete.call_args.args
-    assert "Réponse clinique déterministe" not in system + user
-    assert "142" not in system + user
+    payload_without_token = (system + user).replace(envelope.protected_body_token, "")
+    assert "Réponse clinique déterministe" not in payload_without_token
+    assert "142" not in payload_without_token
+    assert "mg/dL" not in payload_without_token
     assert envelope.protected_body_token in user
+
+
+@override_settings(NARRATION_PROTECTED_PROVIDER_SHADOW=True)
+def test_non_internal_subject_never_reaches_processor_policy():
+    envelope = build_shadow_envelope(_resolution(), language="fr")
+
+    with patch(
+        "companion.protected_provider_shadow.authorize_processor_policy"
+    ) as authorize:
+        with patch(
+            "companion.protected_provider_shadow.build_openai_compatible_provider"
+        ) as build:
+            assert (
+                generate_protected_provider_shadow_candidate(
+                    envelope,
+                    internal_authorized=False,
+                )
+                is None
+            )
+
+    authorize.assert_not_called()
+    build.assert_not_called()
+
+
+@override_settings(NARRATION_PROTECTED_PROVIDER_SHADOW=True)
+def test_internal_subject_reaches_processor_policy_before_provider():
+    envelope = build_shadow_envelope(_resolution(), language="fr")
+
+    with patch(
+        "companion.protected_provider_shadow.authorize_processor_policy",
+        side_effect=AIProcessorPolicyDenied("blocked"),
+    ) as authorize:
+        with patch(
+            "companion.protected_provider_shadow.build_openai_compatible_provider"
+        ) as build:
+            with pytest.raises(AIProcessorPolicyDenied):
+                generate_protected_provider_shadow_candidate(
+                    envelope,
+                    internal_authorized=True,
+                )
+
+    authorize.assert_called_once_with("groq", "companion_chat", "text")
+    build.assert_not_called()

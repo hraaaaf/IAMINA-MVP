@@ -180,3 +180,32 @@ Adversarial gate includes:
 Success criterion:
 every adversarial provider candidate leaves the patient-visible reply byte-for-byte equal
 to the deterministic governed reply, and records only `rejected` telemetry.
+
+
+## Internal activation gate
+
+Status: **IMPLEMENTED — INTERNAL-ONLY, STILL POLICY-BLOCKED**
+
+The provider-backed shadow path now requires all of the following before any provider
+adapter can be constructed:
+1. `NARRATION_PROTECTED_PROVIDER_SHADOW=True`;
+2. the runtime subject is an active Django staff user;
+3. the Groq processor policy authorizes `companion_chat/text`.
+
+Fail-closed behavior:
+- ordinary/non-staff users never reach processor policy or provider construction;
+- inactive staff users are not authorized by the runtime;
+- a staff user with the flag enabled still cannot create provider traffic while the
+  Groq processor policy remains non-approved;
+- patient-visible output remains the deterministic governed reply.
+
+This gate is deliberately hard-coded as internal-only. Moving from internal shadow to
+patient exposure requires a separate code change and separate promotion decision; it
+cannot be achieved by flipping the existing feature flag alone.
+
+Promotion criteria remain:
+- processor/legal governance complete and explicitly approved;
+- real internal shadow observations show no clinical-content leakage;
+- accepted/rejected/error telemetry is reviewed over a bounded run;
+- adversarial gate remains green;
+- no patient-visible output change during shadow phase.
