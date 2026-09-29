@@ -145,6 +145,18 @@ class BaseEngine(abc.ABC):
             )
         return candidate.strip()
 
+    def verify_protected_advice_reply(
+        self,
+        resolution: "AdviceResolution",
+        candidate: str,
+    ) -> str:
+        """Verify a protected-body narration candidate.
+
+        Default modules do not opt in to wrapper narration and therefore fall
+        back to the normal governed-copy verifier.
+        """
+        return self.verify_advice_reply(resolution, candidate)
+
     def offline_fallback(
         self,
         context: "DomainContext",
