@@ -227,6 +227,28 @@ def shadow_validate_resolution(
     )
 
 
+def shadow_validate_protected_resolution(
+    resolution: AdviceResolution,
+    *,
+    language: str,
+    prefer_latin_script: bool = False,
+) -> ProtectedShadowNarrationResult:
+    """Exercise protected-body reinjection locally without any network call."""
+    envelope = build_shadow_envelope(
+        resolution,
+        language=language,
+        prefer_latin_script=prefer_latin_script,
+    )
+    candidate = envelope.protected_body_token
+    reinjected = verify_and_reinject_protected_narration(candidate, envelope)
+    return ProtectedShadowNarrationResult(
+        envelope=envelope,
+        provider_candidate=candidate,
+        reinjected_reply=reinjected,
+        structurally_valid=(reinjected == resolution.reply),
+    )
+
+
 __all__ = [
     "NarrationVerificationError",
     "ShadowNarrationResult",
