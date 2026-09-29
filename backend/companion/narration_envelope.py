@@ -41,6 +41,14 @@ class ShadowNarrationResult:
     structurally_valid: bool
 
 
+@dataclass(frozen=True, slots=True)
+class ProtectedShadowNarrationResult:
+    envelope: NarrationEnvelope
+    provider_candidate: str
+    reinjected_reply: str
+    structurally_valid: bool
+
+
 def _speech_act(decision: AdviceDecision) -> NarrationSpeechAct:
     actions = set(decision.allowed_actions)
     if Capability.PREPARE_CLINICIAN_QUESTIONS.value in actions:
