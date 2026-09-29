@@ -14,10 +14,10 @@ from companion.narrator_prompts import (
     get_language_label,
 )
 from companion.output_guard import guard_narrator_output
+from companion.parser import parse_llm_json
 from companion.protected_provider_shadow import (
     generate_protected_provider_shadow_candidate,
 )
-from companion.parser import parse_llm_json
 from companion.route_telemetry import record_companion_route
 from companion.state import compute_state, state_to_prompt
 from companion.tone import get_tone_instruction, select_relationship_tone
