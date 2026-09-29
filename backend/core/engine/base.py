@@ -150,12 +150,18 @@ class BaseEngine(abc.ABC):
         resolution: "AdviceResolution",
         candidate: str,
     ) -> str:
-        """Verify a protected-body narration candidate.
+        """Verify protected-body narration only for explicitly opted-in modules.
 
-        Default modules do not opt in to wrapper narration and therefore fall
-        back to the normal governed-copy verifier.
+        The default is stricter than the normal family verifier: alternate
+        protected narration is forbidden unless a module overrides this hook.
         """
-        return self.verify_advice_reply(resolution, candidate)
+        if not isinstance(candidate, str) or not candidate.strip():
+            raise PermissionError("protected advice reply must be non-empty")
+        if candidate.strip() != resolution.reply:
+            raise PermissionError(
+                "active module has no protected verifier for altered governed advice"
+            )
+        return candidate.strip()
 
     def offline_fallback(
         self,
