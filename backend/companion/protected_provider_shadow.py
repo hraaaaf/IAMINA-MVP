@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from django.conf import settings
 
+from companion.protected_shadow_telemetry import record_protected_narration_shadow
 from core.ai_processor_policy import authorize_processor_policy
 from core.contracts.narration_envelope import NarrationEnvelope
 from llm.provider_registry import build_openai_compatible_provider
@@ -60,13 +61,24 @@ def generate_protected_provider_shadow_candidate(
     flip cannot bypass processor policy or create network traffic.
     """
     if not getattr(settings, "NARRATION_PROTECTED_PROVIDER_SHADOW", False):
+        record_protected_narration_shadow(status="disabled")
         return None
 
-    authorize_processor_policy(_PROVIDER, _PURPOSE, _MODALITY)
+    try:
+        authorize_processor_policy(_PROVIDER, _PURPOSE, _MODALITY)
+    except Exception:
+        record_protected_narration_shadow(status="blocked")
+        raise
+
     request = build_protected_provider_shadow_request(envelope)
-    provider = build_openai_compatible_provider(_PROVIDER)
-    response = provider.complete(_SYSTEM, request.user_prompt())
+    try:
+        provider = build_openai_compatible_provider(_PROVIDER)
+        response = provider.complete(_SYSTEM, request.user_prompt())
+    except Exception:
+        record_protected_narration_shadow(status="error")
+        raise
     if not isinstance(response.content, str) or not response.content.strip():
+        record_protected_narration_shadow(status="error")
         raise PermissionError("protected provider shadow returned an empty candidate")
     return response.content.strip()
 
