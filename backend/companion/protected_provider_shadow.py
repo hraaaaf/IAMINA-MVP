@@ -11,8 +11,8 @@ from dataclasses import dataclass
 
 from django.conf import settings
 
-from core.ai_processor_policy import authorize_processor_policy
 from companion.protected_shadow_telemetry import record_protected_narration_shadow
+from core.ai_processor_policy import authorize_processor_policy
 from core.contracts.narration_envelope import NarrationEnvelope
 from llm.provider_registry import build_openai_compatible_provider
 
