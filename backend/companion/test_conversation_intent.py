@@ -40,7 +40,6 @@ def test_neutral_arabic_tracking_message_remains_practical():
     )
 
 
-
 def _shadow_resolution(intent: str) -> AdviceResolution:
     return AdviceResolution(
         decision=AdviceDecision(
