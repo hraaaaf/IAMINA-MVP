@@ -108,8 +108,10 @@ def test_authorized_shadow_returns_candidate_from_minimal_payload():
     authorize.assert_called_once_with("groq", "companion_chat", "text")
     assert candidate == f"D'accord. {envelope.protected_body_token}"
     system, user = provider.complete.call_args.args
-    assert "Réponse clinique déterministe" not in system + user
-    assert "142" not in system + user
+    payload_without_token = (system + user).replace(envelope.protected_body_token, "")
+    assert "Réponse clinique déterministe" not in payload_without_token
+    assert "142" not in payload_without_token
+    assert "mg/dL" not in payload_without_token
     assert envelope.protected_body_token in user
 
 
