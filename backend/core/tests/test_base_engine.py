@@ -124,14 +124,24 @@ class ProtectedAdviceVerifierContractTests(SimpleTestCase):
                 f"D'accord. {resolution.reply}",
             )
 
-    def test_diabetes_engine_accepts_only_protected_clinician_prep_wrapper(self):
+    def test_diabetes_engine_routes_only_clinician_prep_to_protected_verifier(self):
         engine = DiabetesEngine()
         clinician = _governed_resolution("diabetes.clinician_prep.synthetic")
         wrapped = f"D'accord, on fait simple. {clinician.reply}"
 
-        self.assertEqual(
-            engine.verify_protected_advice_reply(clinician, wrapped),
+        with mock.patch(
+            "diabetes.services.clinical.clinician_prep_protected_narration_verifier."
+            "verified_clinician_prep_protected_narration_or_fallback",
+            return_value=wrapped,
+        ) as protected:
+            self.assertEqual(
+                engine.verify_protected_advice_reply(clinician, wrapped),
+                wrapped,
+            )
+        protected.assert_called_once_with(
+            clinician.decision,
             wrapped,
+            clinician.reply,
         )
 
         food = _governed_resolution("diabetes.food.synthetic")
