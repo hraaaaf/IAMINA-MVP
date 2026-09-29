@@ -79,3 +79,24 @@ Retour immédiat au déterministe si :
 - streaming token-by-token patient ;
 - changement d'autorité clinique ;
 - Vercel.
+
+
+## Runtime shadow implementation
+
+Status: **IMPLEMENTED IN SHADOW — NO NETWORK / NO PATIENT OUTPUT CHANGE**
+
+The live companion path now exercises the protected-body seam for
+`CLINICIAN_PREP` after the deterministic reply has already passed its normal
+domain verifier.
+
+Runtime behavior:
+1. build a fresh envelope-scoped opaque body token;
+2. use that token as the local shadow provider candidate;
+3. reinsert the exact deterministic body locally;
+4. pass the reinjected reply through the existing active module verifier again;
+5. keep the original deterministic patient reply unchanged.
+
+This runtime shadow performs no external provider call and does not change provider
+policy, consent state, patient output, or clinical authority. Its purpose is to
+prove that the protected seam survives the actual companion control flow before any
+future provider-backed shadow is considered.
