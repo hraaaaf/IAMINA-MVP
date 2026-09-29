@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 _SAFE_LABEL = re.compile(r"^[A-Za-z0-9_./:-]{1,160}$")
 _EVENT_FIELDS = {
     "companion_route": frozenset({"event", "route"}),
+    "protected_narration_shadow": frozenset(
+        {"event", "status", "provider", "family"}
+    ),
     "ocr_route": frozenset({"event", "modality", "script", "bounded_capture", "lane"}),
     "llm_usage": frozenset(
         {
