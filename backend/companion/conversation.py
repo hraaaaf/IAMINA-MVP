@@ -57,6 +57,7 @@ logger = logging.getLogger(__name__)
 def _shadow_narration_envelope(
     resolution,
     *,
+    patient_id: int | None,
     language: str,
     prefer_latin_script: bool,
 ) -> None:
@@ -76,7 +77,7 @@ def _shadow_narration_envelope(
             if not protected.structurally_valid:
                 raise PermissionError("protected clinician-prep shadow mismatch")
             verify_advice_reply(
-                None,
+                patient_id,
                 resolution,
                 protected.reinjected_reply,
             )
@@ -772,6 +773,7 @@ def chat(
             )
             _shadow_narration_envelope(
                 advice_resolution,
+                patient_id=patient.id if patient else None,
                 language=language,
                 prefer_latin_script=(
                     language == "ar-MA" and not _ARABIC_RE.search(message)
