@@ -5,6 +5,7 @@ import pytest
 from companion.narration_envelope import (
     NarrationVerificationError,
     build_shadow_envelope,
+    shadow_validate_protected_resolution,
     verify_and_reinject_protected_narration,
 )
 from core.contracts.advice_decision import (
@@ -96,3 +97,18 @@ def test_protected_body_token_is_envelope_scoped_and_replay_fails_closed():
             first.protected_body_token,
             second,
         )
+
+
+def test_runtime_shadow_candidate_reinjects_exact_body_without_network():
+    resolution = _resolution()
+
+    result = shadow_validate_protected_resolution(
+        resolution,
+        language="fr",
+    )
+
+    assert result.provider_candidate == result.envelope.protected_body_token
+    assert result.provider_candidate.startswith("{{NVB_")
+    assert resolution.reply not in result.provider_candidate
+    assert result.reinjected_reply == resolution.reply
+    assert result.structurally_valid is True

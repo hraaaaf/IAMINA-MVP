@@ -3,7 +3,10 @@ import re
 
 from companion.advice_filter import apply_advice_throttle
 from companion.memory import _detect_emotional_signals
-from companion.narration_envelope import shadow_validate_resolution
+from companion.narration_envelope import (
+    shadow_validate_protected_resolution,
+    shadow_validate_resolution,
+)
 from companion.narrator_prompts import (
     CHAT_USER,
     EMOTIONAL_USER,
@@ -54,16 +57,30 @@ logger = logging.getLogger(__name__)
 def _shadow_narration_envelope(
     resolution,
     *,
+    patient_id: int | None,
     language: str,
     prefer_latin_script: bool,
 ) -> None:
-    """Exercise the future narration contract without changing patient output."""
+    """Exercise narration contracts without changing patient output."""
     try:
         shadow_validate_resolution(
             resolution,
             language=language,
             prefer_latin_script=prefer_latin_script,
         )
+        if resolution.decision.intent == "clinician_prep":
+            protected = shadow_validate_protected_resolution(
+                resolution,
+                language=language,
+                prefer_latin_script=prefer_latin_script,
+            )
+            if not protected.structurally_valid:
+                raise PermissionError("protected clinician-prep shadow mismatch")
+            verify_advice_reply(
+                patient_id,
+                resolution,
+                protected.reinjected_reply,
+            )
     except Exception:
         logger.exception("IAmina narration envelope shadow validation failed")
 
@@ -756,6 +773,7 @@ def chat(
             )
             _shadow_narration_envelope(
                 advice_resolution,
+                patient_id=patient.id if patient else None,
                 language=language,
                 prefer_latin_script=(
                     language == "ar-MA" and not _ARABIC_RE.search(message)
@@ -904,6 +922,7 @@ def stream_chat(
             )
             _shadow_narration_envelope(
                 advice_resolution,
+                patient_id=patient.id if patient else None,
                 language=language,
                 prefer_latin_script=(
                     language == "ar-MA" and not _ARABIC_RE.search(message)
