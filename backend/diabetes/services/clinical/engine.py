@@ -1037,7 +1037,7 @@ class DiabetesEngine(BaseEngine):
                 resolution.reply,
             )
 
-        return self.verify_advice_reply(resolution, candidate)
+        return super().verify_protected_advice_reply(resolution, candidate)
 
     def evaluate_alert(self, entry, language: str = "fr") -> "DomainAlert | None":
         from core.contracts.alert import DomainAlert
