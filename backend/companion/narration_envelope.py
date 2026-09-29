@@ -251,9 +251,11 @@ def shadow_validate_protected_resolution(
 
 __all__ = [
     "NarrationVerificationError",
+    "ProtectedShadowNarrationResult",
     "ShadowNarrationResult",
     "build_shadow_envelope",
     "locale_contract",
+    "shadow_validate_protected_resolution",
     "shadow_validate_resolution",
     "verify_and_reinject_narration",
     "verify_and_reinject_protected_narration",
