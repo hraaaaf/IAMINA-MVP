@@ -145,3 +145,38 @@ Execution order:
 
 An accidental flag flip therefore cannot create provider traffic while the processor
 policy gate is not approved. This stage remains shadow-only and non-authoritative.
+
+
+## Shadow telemetry + adversarial gate
+
+Status: **IMPLEMENTED — CONTENT-FREE TELEMETRY**
+
+Telemetry event:
+`protected_narration_shadow`
+
+Allowlisted fields only:
+- status: `disabled | blocked | accepted | rejected | error`;
+- provider: `groq`;
+- family: `clinician_prep`.
+
+No patient identifier, prompt, reply, token, clinical value, rule id, history, or free-form
+error message is persisted.
+
+Status semantics:
+- `disabled`: feature flag OFF;
+- `blocked`: processor policy denies before provider construction;
+- `error`: provider construction/call/empty response failure;
+- `accepted`: candidate passed structural reinjection and active module protected verifier;
+- `rejected`: candidate failed structural or module verification.
+
+Adversarial gate includes:
+- missing body token;
+- duplicated body token;
+- replayed/unknown body token;
+- deterministic body exposure;
+- untokenized clinical number;
+- clinical wrapper rejected by module verifier.
+
+Success criterion:
+every adversarial provider candidate leaves the patient-visible reply byte-for-byte equal
+to the deterministic governed reply, and records only `rejected` telemetry.
