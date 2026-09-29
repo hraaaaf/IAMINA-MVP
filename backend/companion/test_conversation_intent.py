@@ -149,3 +149,38 @@ def test_provider_shadow_candidate_is_verified_without_changing_patient_reply():
         resolution,
         f"D'accord. {resolution.reply}",
     )
+
+
+def test_runtime_shadow_marks_only_active_staff_as_internal_authorized():
+    resolution = _shadow_resolution("clinician_prep")
+    envelope = type("Envelope", (), {"protected_body_token": "{{NVB_INTERNAL}}"})()
+    protected = type(
+        "Protected",
+        (),
+        {
+            "structurally_valid": True,
+            "reinjected_reply": resolution.reply,
+            "envelope": envelope,
+        },
+    )()
+
+    with (
+        patch(
+            "companion.conversation.shadow_validate_protected_resolution",
+            return_value=protected,
+        ),
+        patch(
+            "companion.conversation.generate_protected_provider_shadow_candidate",
+            return_value=None,
+        ) as generator,
+        patch("companion.conversation.verify_protected_advice_reply"),
+    ):
+        _shadow_narration_envelope(
+            resolution,
+            patient_id=77,
+            language="fr",
+            prefer_latin_script=False,
+            internal_shadow_authorized=True,
+        )
+
+    assert generator.call_args.kwargs["internal_authorized"] is True
