@@ -811,7 +811,7 @@ def test_module_clinician_prep_short_circuits_llm_and_verifies_before_chat_stora
         )
 
     assert reply == "Réponse CLINICIAN_PREP déterministe."
-    assert events == ["verify", "assistant_store"]
+    assert events == ["verify", "verify", "assistant_store"]
     record_route.assert_called_once_with("policy_rule")
 
 
@@ -854,7 +854,7 @@ def test_module_clinician_prep_short_circuits_llm_and_verifies_before_stream_emi
 
     events.append("observed_emit")
     assert chunks == ["Réponse CLINICIAN_PREP déterministe."]
-    assert events == ["verify", "assistant_store", "observed_emit"]
+    assert events == ["verify", "verify", "assistant_store", "observed_emit"]
     record_route.assert_called_once_with("policy_rule")
 
 
