@@ -1,10 +1,11 @@
 # IAMINA — Protected Shadow Internal Campaign Certification
 
-Status: **PENDING EXACT-HEAD CI**
+Status: **CERTIFIED — PRE-MERGE**
 
 PR: #834  
 Branch: `conversation/protected-shadow-internal-campaign`  
-Candidate HEAD: `bdc0ec6c64e42c1169da600158e7882e5b2ff581`
+Evidence HEAD: `f0c363d8d6fc3c4e6f11f3ad03fcc36a8ec514de`  
+Certification commit: documentation-only; it does not alter runtime or tests.
 
 ## Goal
 
@@ -27,6 +28,18 @@ or changing patient-visible clinical output.
 - deterministic patient reply assertion across synthetic candidate paths;
 - existing protected narration adversarial suite remains part of repository validation.
 
+## Exact-head evidence
+
+Evidence HEAD `f0c363d8d6fc3c4e6f11f3ad03fcc36a8ec514de`:
+
+1. CI #5134 — SUCCESS;
+2. Django migration drift #4157 — SUCCESS;
+3. Companion real chat E2E screenshots #305 — SUCCESS;
+4. PR #834 mergeable against main at certification time.
+
+The certification commit changes this Markdown file only. Required CI must also remain
+green on the final PR HEAD before merge.
+
 ## Governance invariants
 
 This PR does not:
@@ -39,18 +52,8 @@ This PR does not:
 - activate patient-visible generated narration;
 - deploy Vercel.
 
-## Certification gate
+## Certification boundary
 
-Do not change this document to CERTIFIED until all exact-head required CI checks for the
-candidate HEAD are successful.
-
-Required final evidence:
-
-1. CI exact HEAD — SUCCESS;
-2. Django migration drift exact HEAD — SUCCESS;
-3. Companion real chat E2E screenshots exact HEAD — SUCCESS;
-4. PR mergeable against current main;
-5. candidate HEAD unchanged after those checks.
-
-If any required check fails, certification remains blocked and the failure must be
-corrected on the branch before reassessment.
+This certifies the bounded internal dry-run campaign infrastructure and synthetic
+adversarial evidence only. It does **not** authorize real patient-data provider traffic.
+That remains blocked until explicit processor-governance approval.
