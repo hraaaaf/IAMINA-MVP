@@ -13,6 +13,12 @@ from unittest import mock
 
 from django.test import SimpleTestCase
 
+from core.contracts.advice_decision import (
+    AdviceAuthorityLevel,
+    AdviceDecision,
+    AdviceDisposition,
+)
+from core.contracts.advice_resolution import AdviceResolution
 from core.engine import BaseEngine
 from diabetes.services.clinical.engine import DiabetesEngine, run_clinical_analysis
 from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
@@ -78,3 +84,61 @@ class BaseEngineABCTests(SimpleTestCase):
         """Test 5 (P4.5): normal glucose raises no alert."""
         entry = type("E", (), {"blood_sugar": 110.0})()
         self.assertIsNone(DiabetesEngine().evaluate_alert(entry, language="fr"))
+
+
+
+def _governed_resolution(rule_id: str) -> AdviceResolution:
+    return AdviceResolution(
+        decision=AdviceDecision(
+            intent="clinician_prep",
+            authority_level=AdviceAuthorityLevel.L1_EDUCATION,
+            decision=AdviceDisposition.CONSTRAIN,
+            rule_id=rule_id,
+            rule_version="1",
+            allowed_actions=("prepare_clinician_questions",),
+            forbidden_actions=("diagnose",),
+            required_facts=("certified_consultation_brief",),
+            language="fr",
+        ),
+        reply="Réponse déterministe.",
+    )
+
+
+class ProtectedAdviceVerifierContractTests(SimpleTestCase):
+    def test_base_engine_protected_hook_does_not_open_alternate_copy(self):
+        class MinimalEngine(BaseEngine):
+            def analyze(self, patient_id, language="fr", days=14):
+                del patient_id, language, days
+                return None
+
+        engine = MinimalEngine()
+        resolution = _governed_resolution("synthetic.rule")
+
+        self.assertEqual(
+            engine.verify_protected_advice_reply(resolution, resolution.reply),
+            resolution.reply,
+        )
+        with self.assertRaises(PermissionError):
+            engine.verify_protected_advice_reply(
+                resolution,
+                f"D'accord. {resolution.reply}",
+            )
+
+    def test_diabetes_engine_accepts_only_protected_clinician_prep_wrapper(self):
+        engine = DiabetesEngine()
+        clinician = _governed_resolution("diabetes.clinician_prep.synthetic")
+        wrapped = f"D'accord, on fait simple. {clinician.reply}"
+
+        self.assertEqual(
+            engine.verify_protected_advice_reply(clinician, wrapped),
+            wrapped,
+        )
+
+        food = _governed_resolution("diabetes.food.synthetic")
+        self.assertEqual(
+            engine.verify_protected_advice_reply(
+                food,
+                f"D'accord. {food.reply}",
+            ),
+            food.reply,
+        )
