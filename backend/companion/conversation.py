@@ -35,6 +35,7 @@ from core.companion.clinical import (
     get_domain_context,
     get_offline_fallback,
     verify_advice_reply,
+    verify_protected_advice_reply,
 )
 from core.companion.ports import get_conversation_store
 from core.contracts.advice_decision import AdviceDecision
@@ -76,7 +77,7 @@ def _shadow_narration_envelope(
             )
             if not protected.structurally_valid:
                 raise PermissionError("protected clinician-prep shadow mismatch")
-            verify_advice_reply(
+            verify_protected_advice_reply(
                 patient_id,
                 resolution,
                 protected.reinjected_reply,
