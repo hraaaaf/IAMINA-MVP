@@ -18,6 +18,7 @@ from companion.parser import parse_llm_json
 from companion.protected_provider_shadow import (
     generate_protected_provider_shadow_candidate,
 )
+from companion.protected_shadow_telemetry import record_protected_narration_shadow
 from companion.route_telemetry import record_companion_route
 from companion.state import compute_state, state_to_prompt
 from companion.tone import get_tone_instruction, select_relationship_tone
@@ -94,15 +95,20 @@ def _shadow_narration_envelope(
                     verify_and_reinject_protected_narration,
                 )
 
-                provider_reinjected = verify_and_reinject_protected_narration(
-                    provider_candidate,
-                    protected.envelope,
-                )
-                verify_protected_advice_reply(
-                    patient_id,
-                    resolution,
-                    provider_reinjected,
-                )
+                try:
+                    provider_reinjected = verify_and_reinject_protected_narration(
+                        provider_candidate,
+                        protected.envelope,
+                    )
+                    verify_protected_advice_reply(
+                        patient_id,
+                        resolution,
+                        provider_reinjected,
+                    )
+                except Exception:
+                    record_protected_narration_shadow(status="rejected")
+                    raise
+                record_protected_narration_shadow(status="accepted")
     except Exception:
         logger.exception("IAmina narration envelope shadow validation failed")
 
