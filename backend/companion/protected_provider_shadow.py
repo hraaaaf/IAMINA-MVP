@@ -13,7 +13,6 @@ import re
 
 from django.conf import settings
 
-from companion.protected_shadow_telemetry import record_protected_narration_shadow
 from core.ai_processor_policy import (
     AIProcessorPolicyDenied,
     FORBIDDEN,
@@ -22,6 +21,8 @@ from core.ai_processor_policy import (
 )
 from core.contracts.narration_envelope import NarrationEnvelope
 from llm.provider_registry import build_openai_compatible_provider
+
+from companion.protected_shadow_telemetry import record_protected_narration_shadow
 
 _PROVIDER = "groq"
 _PURPOSE = "companion_chat"
