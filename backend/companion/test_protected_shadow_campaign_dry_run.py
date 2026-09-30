@@ -196,3 +196,4 @@ def test_bounded_campaign_provider_error_is_content_free_and_fail_closed():
     )
     assert summary.error == 1
     assert telemetry == [_event("error")]
+    provider.client.close.assert_called_once()
