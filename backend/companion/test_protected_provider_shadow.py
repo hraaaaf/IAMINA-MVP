@@ -161,6 +161,7 @@ def test_internal_subject_reaches_processor_policy_before_provider():
 @override_settings(
     NARRATION_PROTECTED_PROVIDER_SHADOW=True,
     NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE_STAFF_IDS="77",
 )
 def test_internal_live_token_only_path_does_not_require_patient_egress_approval():
     envelope = build_shadow_envelope(_resolution(), language="fr")
@@ -190,6 +191,7 @@ def test_internal_live_token_only_path_does_not_require_patient_egress_approval(
         candidate = generate_protected_provider_shadow_candidate(
             envelope,
             internal_authorized=True,
+            internal_subject_id=77,
         )
 
     assert candidate == f"D'accord. {envelope.protected_body_token}"
@@ -207,6 +209,7 @@ def test_internal_live_token_only_path_does_not_require_patient_egress_approval(
 @override_settings(
     NARRATION_PROTECTED_PROVIDER_SHADOW=True,
     NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE_STAFF_IDS="77",
 )
 def test_internal_live_forbidden_provider_still_fails_before_construction():
     envelope = build_shadow_envelope(_resolution(), language="fr")
@@ -229,6 +232,28 @@ def test_internal_live_forbidden_provider_still_fails_before_construction():
             generate_protected_provider_shadow_candidate(
                 envelope,
                 internal_authorized=True,
+                internal_subject_id=77,
+            )
+
+    build.assert_not_called()
+
+
+@override_settings(
+    NARRATION_PROTECTED_PROVIDER_SHADOW=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE_STAFF_IDS="77",
+)
+def test_internal_live_requires_subject_to_be_explicitly_opted_in():
+    envelope = build_shadow_envelope(_resolution(), language="fr")
+
+    with patch(
+        "companion.protected_provider_shadow.build_openai_compatible_provider"
+    ) as build:
+        with pytest.raises(PermissionError, match="not opted in"):
+            generate_protected_provider_shadow_candidate(
+                envelope,
+                internal_authorized=True,
+                internal_subject_id=78,
             )
 
     build.assert_not_called()
