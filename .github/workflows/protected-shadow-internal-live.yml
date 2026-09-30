@@ -1,0 +1,93 @@
+name: Protected Shadow internal live probe
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/companion/protected_provider_shadow.py"
+      - "backend/companion/conversation.py"
+      - "backend/companion/test_protected_provider_shadow.py"
+      - "backend/llm/lowcost_openai_compatible.py"
+      - "backend/llm/tests/test_provider_registry.py"
+      - "backend/evaluation/protected_shadow_internal_live_probe.py"
+      - "backend/evaluation/tests/test_protected_shadow_internal_live_probe.py"
+      - "backend/amina/settings.py"
+      - "backend/.env.example"
+      - "docs/PROTECTED_SHADOW_INTERNAL_LIVE.md"
+      - ".github/workflows/protected-shadow-internal-live.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: protected-shadow-internal-live-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live-probe:
+    name: Groq token-only protected wrapper probe
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DJANGO_SETTINGS_MODULE: amina.settings
+      SECRET_KEY: protected-shadow-internal-live-nonproduction
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      DATABASE_URL: sqlite:///protected-shadow-internal-live.db
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      NARRATION_PROTECTED_PROVIDER_SHADOW: "true"
+      NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE: "true"
+      PROTECTED_SHADOW_INTERNAL_LIVE_NETWORK_AUTHORIZED: "true"
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt ruff==0.15.17
+
+      - name: Validate protected path before network
+        run: |
+          ruff check \
+            companion/protected_provider_shadow.py \
+            companion/conversation.py \
+            companion/test_protected_provider_shadow.py \
+            llm/lowcost_openai_compatible.py \
+            llm/tests/test_provider_registry.py \
+            evaluation/protected_shadow_internal_live_probe.py \
+            evaluation/tests/test_protected_shadow_internal_live_probe.py
+          pytest -q \
+            companion/test_protected_provider_shadow.py \
+            companion/test_conversation_intent.py \
+            llm/tests/test_provider_registry.py \
+            evaluation/tests/test_protected_shadow_internal_live_probe.py
+
+      - name: Run three-call token-only live probe
+        run: |
+          mkdir -p ../artifacts
+          python -m evaluation.protected_shadow_internal_live_probe \
+            --output ../artifacts/protected-shadow-internal-live.json
+
+      - name: Upload scrubbed proof packet
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: protected-shadow-internal-live
+          path: artifacts/protected-shadow-internal-live.json
+          if-no-files-found: error
+          retention-days: 7
