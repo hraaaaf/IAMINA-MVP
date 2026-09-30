@@ -9,15 +9,15 @@ token-only payload for active staff while keeping all patient-linked content loc
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from django.conf import settings
 
 from companion.protected_shadow_telemetry import record_protected_narration_shadow
 from core.ai_processor_policy import (
-    AIProcessorPolicyDenied,
     FORBIDDEN,
+    AIProcessorPolicyDenied,
     authorize_processor_policy,
     get_processor_policy,
 )
