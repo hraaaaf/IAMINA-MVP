@@ -215,6 +215,16 @@ def main() -> int:
                 "machine_passed": report["machine_passed"],
                 "planned_calls": report["planned_calls"],
                 "patient_data": report["patient_data"],
+                "case_results": [
+                    {
+                        "case_id": row["case_id"],
+                        "locale": row["locale"],
+                        "script": row["script"],
+                        "passed": row["passed"],
+                        "violations": row["violations"],
+                    }
+                    for row in report["results"]
+                ],
             },
             ensure_ascii=False,
         )
