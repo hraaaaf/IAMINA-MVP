@@ -135,7 +135,10 @@ locale/script/random opaque body token.
 
     try:
         provider = build_openai_compatible_provider(_PROVIDER)
-        response = provider.complete_text(_SYSTEM, request.user_prompt())
+        try:
+            response = provider.complete_text(_SYSTEM, request.user_prompt())
+        finally:
+            provider.client.close()
     except Exception:
         record_protected_narration_shadow(status="error")
         raise
