@@ -8,6 +8,7 @@ from core.contracts.advice_decision import (
     AdviceDisposition,
 )
 from core.contracts.advice_resolution import AdviceResolution
+from core.contracts.domain_context import DomainContext
 
 
 def test_multilingual_emotional_messages_route_to_emotional_mode():
@@ -200,10 +201,7 @@ def test_chat_wires_active_staff_to_internal_shadow():
         ),
         patch(
             "companion.conversation._get_context",
-            return_value=__import__(
-                "core.contracts.domain_context",
-                fromlist=["DomainContext"],
-            ).DomainContext.empty(language="fr"),
+            return_value=DomainContext.empty(language="fr"),
         ),
         patch(
             "companion.conversation.verify_advice_reply",
