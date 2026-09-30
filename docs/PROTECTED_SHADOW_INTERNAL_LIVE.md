@@ -7,7 +7,7 @@ Status: **IMPLEMENTED — OFF BY DEFAULT — STAFF ONLY**
 Allow a bounded real provider shadow call from real active-staff runtime while keeping
 all patient-linked clinical content local to IAMINA.
 
-The provider may receive only:
+The provider receives one static non-clinical wrapper instruction. Its dynamic user payload contains only:
 
 - locale;
 - script;
