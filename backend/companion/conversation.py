@@ -152,7 +152,7 @@ _RECAP_RE = re.compile(
     r"لخ[ّ]?ص|اختصر|ملخ[ّ]?ص|وش اتفقنا|شو اتفقنا|إيش اتفقنا|ايش اتفقنا|شنو اتفقنا)",
     re.IGNORECASE,
 )
-_WEEK_RE = re.compile(r"\b(?:semaine|week|simana|أسبوع|الاسبوع|الأسبوع)\b", re.IGNORECASE)
+_WEEK_RE = re.compile(r"\b(?:semaine|week|simana|السيمانة|سيمانة|أسبوع|الاسبوع|الأسبوع)\b", re.IGNORECASE)
 _EVENING_MARKERS = {
     "fr": ("soir", "dîner", "diner"),
     "en": ("evening", "dinner"),

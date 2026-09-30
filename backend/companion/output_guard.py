@@ -44,7 +44,7 @@ _CLINICIAN_RISKY_QUESTION_PATTERN = re.compile(
     r"(?:سبب|أسباب|إجراء(?:ات)? تصحيحي|تعديل.{0,20}روتين))",
     re.IGNORECASE,
 )
-_ARABIC_HEALTH_ACTION = r"(?:قياس|فحص|تسجيل|تدوين|مراجعة|سج[ّ]?ل|سجّل|دوّن)"
+_ARABIC_HEALTH_ACTION = r"(?:سج[ّ]?ل(?:ي)?|دوّن(?:ي)?|قس|قِس|قيسي|افحص|افحصي|راجع|راجعي)\b"
 _ARABIC_HEALTH_TARGET = r"(?:السكر|سكر|السكري|مستوى السكر|القراءات|قراءات السكر|القيم)"
 _HEALTH_TRACKING_SELECTION_PATTERN = re.compile(
     r"(?:"
@@ -311,8 +311,6 @@ def guard_narrator_output(
     weekly: bool = False,
     prefer_latin_script: bool = False,
 ) -> str:
-    del approved_session_context
-
     forbidden = contains_unapproved_behavior_action(reply)
     technical_failure = bool(_TECHNICAL_FAILURE_PATTERN.search(reply))
     words = word_count(reply)
@@ -356,7 +354,10 @@ def guard_narrator_output(
         therapeutic = bool(_CLINICIAN_THERAPEUTIC_PATTERN.search(reply))
         question_only_shape = question_count >= 2
         missing_practical_mechanism = (
-            mode == "practical" and words >= 5 and not _PRACTICAL_ORGANIZATION_PATTERN.search(reply)
+            mode == "practical"
+            and not approved_session_context
+            and words >= 5
+            and not _PRACTICAL_ORGANIZATION_PATTERN.search(reply)
         )
         invalid_shape = (
             words > 45

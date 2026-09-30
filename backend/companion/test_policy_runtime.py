@@ -973,3 +973,47 @@ def test_module_longitudinal_personalization_short_circuits_llm_and_verifies_bef
     assert chunks == ["Réponse LONGITUDINAL déterministe."]
     assert events == ["verify", "assistant_store", "observed_emit"]
     record_route.assert_called_once_with("policy_rule")
+
+
+def test_darija_weekly_glucose_chat_preserves_governed_descriptive_reply():
+    ctx = DomainContext(
+        kpi_summary={"entries": 7},
+        detected_patterns=[],
+        insights=[],
+        pivot_text="Approved weekly glucose context.",
+        language="ar-MA",
+        has_sufficient_data=True,
+    )
+    reply_text = "هاد السيمانة، القراءات المسجلة كاينة فالسياق المسموح ونقدر نوصفها بلا ما نزيد توصية."
+    llm = SimpleNamespace(
+        complete=lambda *_args, **_kwargs: SimpleNamespace(
+            content='{"reply":"' + reply_text + '"}'
+        )
+    )
+    deep = SimpleNamespace(save=lambda: None)
+
+    with (
+        patch("companion.conversation.get_advice_resolution", return_value=None),
+        patch("companion.conversation._get_context", return_value=ctx),
+        patch(
+            "companion.conversation._build_runtime_prompt",
+            return_value=("ar-MA", ctx, "system", "user"),
+        ),
+        patch(
+            "companion.conversation.apply_advice_throttle",
+            side_effect=lambda reply, _deep: reply,
+        ),
+        patch("companion.conversation._needs_continuity_retry", return_value=False),
+        patch("companion.conversation._append_turn"),
+    ):
+        reply = conversation.chat(
+            "تقدر تشوف السكر ديالي هاد السيمانة؟",
+            memory=None,
+            deep=deep,
+            llm=llm,
+            language="ar-MA",
+            patient=SimpleNamespace(id=42, first_name=""),
+        )
+
+    assert reply == reply_text
+    assert "ثلاث خانات" not in reply
