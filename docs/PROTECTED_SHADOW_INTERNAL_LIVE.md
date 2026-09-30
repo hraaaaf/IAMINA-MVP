@@ -25,10 +25,15 @@ NARRATION_PROTECTED_PROVIDER_SHADOW=true
 NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE=true
 ```
 
-The runtime caller must also be an active Django staff account.
+The runtime caller must also be an active Django staff account **and** its Django user
+ID must be explicitly listed in:
 
-Either switch OFF, or a non-staff/inactive subject, prevents internal-live provider
-transport.
+```text
+NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE_STAFF_IDS=<comma-separated IDs>
+```
+
+Either switch OFF, an empty/malformed allowlist, an unlisted subject, or a
+non-staff/inactive subject prevents internal-live provider transport.
 
 ## Patient-data governance boundary
 
@@ -70,7 +75,9 @@ Existing JSON callers remain unchanged.
 ## Exact-head live proof
 
 The workflow `.github/workflows/protected-shadow-internal-live.yml` performs a maximum
-of three real Groq calls using the repository `GROQ_API_KEY` secret.
+of three real Groq calls using the repository `GROQ_API_KEY` secret. Its synthetic
+probe subject is explicitly allowlisted as ID `0`; production/staff IDs are never
+hard-coded in source control.
 
 The probe is synthetic on the network side and sends no patient data. It checks:
 
