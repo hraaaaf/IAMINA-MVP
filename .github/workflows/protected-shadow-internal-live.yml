@@ -65,7 +65,15 @@ jobs:
 
       - name: Validate protected path before network
         run: |
-          ruff check \
+          ruff check --fix \
+            companion/protected_provider_shadow.py \
+            companion/conversation.py \
+            companion/test_protected_provider_shadow.py \
+            llm/lowcost_openai_compatible.py \
+            llm/tests/test_provider_registry.py \
+            evaluation/protected_shadow_internal_live_probe.py \
+            evaluation/tests/test_protected_shadow_internal_live_probe.py
+          git diff --exit-code -- \
             companion/protected_provider_shadow.py \
             companion/conversation.py \
             companion/test_protected_provider_shadow.py \
