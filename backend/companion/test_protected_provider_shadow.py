@@ -64,7 +64,10 @@ def test_shadow_off_never_authorizes_or_builds_provider():
     build.assert_not_called()
 
 
-@override_settings(NARRATION_PROTECTED_PROVIDER_SHADOW=True)
+@override_settings(
+    NARRATION_PROTECTED_PROVIDER_SHADOW=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE=False,
+)
 def test_policy_denial_happens_before_provider_construction():
     envelope = build_shadow_envelope(_resolution(), language="fr")
 
@@ -85,7 +88,10 @@ def test_policy_denial_happens_before_provider_construction():
     build.assert_not_called()
 
 
-@override_settings(NARRATION_PROTECTED_PROVIDER_SHADOW=True)
+@override_settings(
+    NARRATION_PROTECTED_PROVIDER_SHADOW=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE=False,
+)
 def test_authorized_shadow_returns_candidate_from_minimal_payload():
     envelope = build_shadow_envelope(_resolution(), language="fr")
     provider = MagicMock()
@@ -138,7 +144,10 @@ def test_non_internal_subject_never_reaches_processor_policy():
     build.assert_not_called()
 
 
-@override_settings(NARRATION_PROTECTED_PROVIDER_SHADOW=True)
+@override_settings(
+    NARRATION_PROTECTED_PROVIDER_SHADOW=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE=False,
+)
 def test_internal_subject_reaches_processor_policy_before_provider():
     envelope = build_shadow_envelope(_resolution(), language="fr")
 
