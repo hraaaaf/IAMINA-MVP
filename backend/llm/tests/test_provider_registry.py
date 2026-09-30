@@ -111,3 +111,4 @@ def test_groq_plain_text_completion_does_not_force_json_schema():
     assert "response_format" not in kwargs
     assert kwargs["reasoning_effort"] == "low"
     assert kwargs["max_completion_tokens"] == 384
+    assert kwargs["extra_body"] == {"reasoning_format": "hidden"}
