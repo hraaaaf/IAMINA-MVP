@@ -113,6 +113,7 @@ def test_authorized_shadow_returns_candidate_from_minimal_payload():
     assert "142" not in payload_without_token
     assert "mg/dL" not in payload_without_token
     assert envelope.protected_body_token in user
+    provider.client.close.assert_called_once()
 
 
 @override_settings(NARRATION_PROTECTED_PROVIDER_SHADOW=True)
@@ -204,6 +205,7 @@ def test_internal_live_token_only_path_does_not_require_patient_egress_approval(
         f"protected_body_token={envelope.protected_body_token}"
     )
     assert _resolution().reply not in user
+    provider.client.close.assert_called_once()
 
 
 @override_settings(
