@@ -155,18 +155,58 @@ Do not change order:
 11. Run the agreed 10-turn benign continuity certification.
 12. Close out in Notion with immutable evidence references.
 
-## Current verified search result — 2026-09-21
+## Current verified evidence refresh — 2026-09-29
 
-Searched:
-- IAMINA Notion workspace;
-- connected Google Drive;
-- connected Gmail account used for IAMINA/Groq;
-- public CNDP/Groq primary documentation.
+Public primary-source verification:
+
+- Groq states inference customer data is not retained by default, but inputs/outputs may
+  be temporarily logged for reliability/abuse monitoring for up to 30 days unless ZDR
+  is enabled.
+- Groq states all customers may enable Zero Data Retention in Data Controls; when ZDR
+  is enabled, customer data is not retained for reliability/abuse monitoring and
+  retention-dependent features are disabled.
+- Groq states retained customer data is stored in U.S. GCP buckets.
+- Groq's current DPA is incorporated into its Services Agreement, treats Groq as a
+  processor/subprocessor as applicable, and permits subprocessors/international
+  processing subject to its contractual terms.
+- CNDP states health-data processing requires prior authorization.
+- CNDP states foreign transfers use the dedicated transfer procedure and that the
+  underlying treatment must first be approved/notified; its notification procedure
+  lists F-118 for foreign transfer.
+
+Primary references reviewed:
+- https://console.groq.com/docs/your-data
+- https://console.groq.com/docs/legal/customer-data-processing-addendum
+- https://console.groq.com/docs/legal/services-agreement
+- https://www.cndp.ma/notifier-une-demande-dautorisation-prealable/
+- https://www.cndp.ma/transfert-de-donnees-a-letranger/
+- https://www.cndp.ma/procedures-de-notification-process/
+
+IAMINA-specific evidence search performed on 2026-09-29:
+
+- connected Gmail searched for Groq / DPA / Zero Data Retention evidence;
+- connected Gmail searched for CNDP / F118 / authorization / transfer evidence;
+- connected Google Drive searched for Groq DPA/ZDR and CNDP F118 IAMINA evidence.
 
 Result:
-- no IAMINA-specific CNDP receipt/F118 evidence found;
-- no Groq DPA acceptance evidence found;
-- no production-org ZDR evidence found;
-- Gmail contains Groq operational/model-deprecation messages, not contractual/ZDR proof.
 
-Therefore E1–E6 remain **MISSING** unless a separate artifact is supplied and verified.
+- no IAMINA-specific CNDP health-processing authorization artifact found;
+- no IAMINA-specific CNDP F118/foreign-transfer approval artifact found;
+- no evidence found that the exact IAMINA controller has accepted the current Groq DPA;
+- no production-org ZDR screenshot/configuration evidence found;
+- no IAMINA-specific controller/signatory artifact found in those searches;
+- E6 remains missing because the current repository evidence says the patient notice
+  still does not name Groq/U.S. transfer context.
+
+Therefore E1–E6 remain **MISSING**. Public provider/regulator pages support the
+requirements and provider characteristics, but they do not satisfy IAMINA-specific
+approval evidence.
+
+## Decision
+
+**NO-GO for patient-data egress.**
+
+This is a fail-closed evidence result, not a rejection of Groq as a future processor.
+The next executable work is preparation of the exact evidence/approval packet; runtime
+policy must remain `PENDING` until the missing IAMINA-specific artifacts are supplied
+and reviewed.
