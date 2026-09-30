@@ -60,10 +60,24 @@ def build_protected_provider_shadow_request(
     )
 
 
+def _internal_live_allowed_subject_ids() -> frozenset[int]:
+    raw = getattr(
+        settings,
+        "NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE_STAFF_IDS",
+        "",
+    )
+    values = str(raw or "").split(",")
+    try:
+        return frozenset(int(value.strip()) for value in values if value.strip())
+    except ValueError as exc:
+        raise PermissionError("internal live staff allowlist is invalid") from exc
+
+
 def generate_protected_provider_shadow_candidate(
     envelope: NarrationEnvelope,
     *,
     internal_authorized: bool = False,
+    internal_subject_id: int | None = None,
 ) -> str | None:
     """Return a provider wrapper candidate, or None while shadow is disabled.
 
@@ -85,6 +99,10 @@ def generate_protected_provider_shadow_candidate(
 
     try:
         if internal_live:
+            if envelope.decision.intent != "clinician_prep":
+                raise PermissionError("internal live is restricted to clinician_prep")
+            if internal_subject_id not in _internal_live_allowed_subject_ids():
+                raise PermissionError("internal subject is not opted in for live shadow")
             policy = get_processor_policy(_PROVIDER)
             if policy.status == FORBIDDEN:
                 raise AIProcessorPolicyDenied(
