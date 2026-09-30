@@ -5,7 +5,7 @@ Status: **CERTIFIED PRE-MERGE**
 Date: 2026-09-30
 PR: #840
 Branch: `conversation/protected-shadow-internal-live-bounded`
-Certified HEAD: `39d2c6db744553750b819ee595ad1d330b013bc3`
+Certified code HEAD: `0f4033248b2f945424239840070f2d759630782a`
 
 ## Goal
 
@@ -32,8 +32,8 @@ patient-linked clinical content local.
 
 ### Protected Shadow internal live probe
 
-Workflow run: **#34**
-Run ID: `36725384424`
+Workflow run: **#37**
+Run ID: `36729998756`
 Conclusion: **SUCCESS**
 
 Pre-network validation:
@@ -51,15 +51,18 @@ Case results:
 - `darija-latin` / locale `ar-MA` / script `latin`: PASS, violations=[]
 
 Scrubbed artifact:
-- artifact ID: `11103020201`
+- artifact ID: `11104402477`
 - SHA-256 of uploaded artifact zip:
-  `ebce81082f4547b0c774efe8894301684be067176b6e6b326008a3a3544a2966`
+  `4b860f26e0eea9ed2a7a8462e16e94c34268cb0024b781d700d2a00cc7f96e5d`
 
-### Repository checks on the same HEAD
+### Repository checks on the same code HEAD
 
-- CI #5182: **SUCCESS**
-- Django migration drift #4201: **SUCCESS**
-- Companion real chat E2E screenshots #343: **SUCCESS**
+- Django migration drift #4204: **SUCCESS**
+- CI #5185: **PENDING at certification-doc update time**
+- Companion real chat E2E screenshots #346: **PENDING at certification-doc update time**
+
+The certification document update is metadata-only and intentionally retriggers the
+protected-shadow workflow so the final PR HEAD can be validated independently before merge.
 
 ## Boundary of certification
 
