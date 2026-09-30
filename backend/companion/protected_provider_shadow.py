@@ -2,8 +2,9 @@
 
 This module may only send locale/script plus an opaque body token. It never sends
 patient text, deterministic clinical copy, facts, history, or AdviceDecision data.
-The feature is OFF by default and processor policy is checked before a provider
-adapter is constructed.
+The feature is OFF by default. Patient-data egress still requires approved processor
+policy. A separate OFF-by-default internal-live mode may transport only the proven
+token-only payload for active staff while keeping all patient-linked content local.
 """
 from __future__ import annotations
 
@@ -66,8 +67,9 @@ def generate_protected_provider_shadow_candidate(
 ) -> str | None:
     """Return a provider wrapper candidate, or None while shadow is disabled.
 
-    Authorization is checked before adapter construction, so an accidental flag
-    flip cannot bypass processor policy or create network traffic.
+    The normal shadow path requires approved patient-data processor policy before
+    adapter construction. The separate internal-live path is double-gated, active-staff
+    only at the caller, and may transport only locale/script/random opaque body token.
     """
     if not getattr(settings, "NARRATION_PROTECTED_PROVIDER_SHADOW", False):
         record_protected_narration_shadow(status="disabled")
