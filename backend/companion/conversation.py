@@ -91,6 +91,7 @@ def _shadow_narration_envelope(
             provider_candidate = generate_protected_provider_shadow_candidate(
                 protected.envelope,
                 internal_authorized=internal_shadow_authorized,
+                internal_subject_id=patient_id,
             )
             if provider_candidate is not None:
                 from companion.narration_envelope import (
