@@ -16,8 +16,8 @@ from django.conf import settings
 
 from companion.protected_shadow_telemetry import record_protected_narration_shadow
 from core.ai_processor_policy import (
-    FORBIDDEN,
     AIProcessorPolicyDenied,
+    FORBIDDEN,
     authorize_processor_policy,
     get_processor_policy,
 )
