@@ -91,6 +91,7 @@ def _shadow_narration_envelope(
             provider_candidate = generate_protected_provider_shadow_candidate(
                 protected.envelope,
                 internal_authorized=internal_shadow_authorized,
+                internal_subject_id=patient_id,
             )
             if provider_candidate is not None:
                 from companion.narration_envelope import (
@@ -961,6 +962,11 @@ def stream_chat(
                 language=language,
                 prefer_latin_script=(
                     language == "ar-MA" and not _ARABIC_RE.search(message)
+                ),
+                internal_shadow_authorized=bool(
+                    patient
+                    and getattr(patient, "is_active", False)
+                    and getattr(patient, "is_staff", False)
                 ),
             )
             record_clinical_decision_audit(

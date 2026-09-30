@@ -86,3 +86,29 @@ def test_all_registered_network_candidates_remain_unapproved():
     for provider_id in ("deepseek", "qwen", "groq"):
         with pytest.raises(AIProcessorPolicyDenied, match="not approved"):
             authorize_processor_policy(provider_id, "companion_chat", "text")
+
+
+@override_settings(
+    GROQ_API_KEY="synthetic-test-key",
+    GROQ_BASE_URL="",
+    GROQ_MODEL="",
+)
+def test_groq_plain_text_completion_does_not_force_json_schema():
+    provider = build_openai_compatible_provider("groq")
+    response = MagicMock()
+    response.choices = [MagicMock(message=MagicMock(content="plain wrapper"))]
+    response.usage = None
+    create = MagicMock(return_value=response)
+    provider.client.chat.completions.create = create
+
+    try:
+        result = provider.complete_text("system", "user")
+    finally:
+        provider.client.close()
+
+    assert result.content == "plain wrapper"
+    kwargs = create.call_args.kwargs
+    assert "response_format" not in kwargs
+    assert kwargs["reasoning_effort"] == "low"
+    assert kwargs["max_completion_tokens"] == 384
+    assert kwargs["extra_body"] == {"reasoning_format": "hidden"}

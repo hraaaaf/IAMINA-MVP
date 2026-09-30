@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from companion.conversation import _response_mode, _shadow_narration_envelope
@@ -7,6 +8,7 @@ from core.contracts.advice_decision import (
     AdviceDisposition,
 )
 from core.contracts.advice_resolution import AdviceResolution
+from core.contracts.domain_context import DomainContext
 
 
 def test_multilingual_emotional_messages_route_to_emotional_mode():
@@ -184,3 +186,83 @@ def test_runtime_shadow_marks_only_active_staff_as_internal_authorized():
         )
 
     assert generator.call_args.kwargs["internal_authorized"] is True
+    assert generator.call_args.kwargs["internal_subject_id"] == 77
+
+
+def test_chat_wires_active_staff_to_internal_shadow():
+    from companion import conversation
+
+    patient = SimpleNamespace(id=77, first_name="", is_active=True, is_staff=True)
+    resolution = _shadow_resolution("clinician_prep")
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=resolution,
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=DomainContext.empty(language="fr"),
+        ),
+        patch(
+            "companion.conversation.verify_advice_reply",
+            side_effect=lambda _pid, _res, candidate: candidate,
+        ),
+        patch("companion.conversation._shadow_narration_envelope") as shadow,
+        patch("companion.conversation.record_clinical_decision_audit"),
+        patch("companion.conversation.record_companion_route"),
+        patch("companion.conversation._append_turn"),
+    ):
+        reply = conversation.chat(
+            "Aide-moi à préparer les questions pour mon médecin.",
+            memory=None,
+            deep=object(),
+            llm=object(),
+            language="fr",
+            patient=patient,
+        )
+
+    assert reply == resolution.reply
+    assert shadow.call_args.kwargs["internal_shadow_authorized"] is True
+
+
+def test_stream_wires_active_staff_to_internal_shadow():
+    from companion import conversation
+
+    patient = SimpleNamespace(id=77, first_name="", is_active=True, is_staff=True)
+    resolution = _shadow_resolution("clinician_prep")
+
+    with (
+        patch(
+            "companion.conversation.get_advice_resolution",
+            return_value=resolution,
+        ),
+        patch(
+            "companion.conversation._get_context",
+            return_value=__import__(
+                "core.contracts.domain_context",
+                fromlist=["DomainContext"],
+            ).DomainContext.empty(language="fr"),
+        ),
+        patch(
+            "companion.conversation.verify_advice_reply",
+            side_effect=lambda _pid, _res, candidate: candidate,
+        ),
+        patch("companion.conversation._shadow_narration_envelope") as shadow,
+        patch("companion.conversation.record_clinical_decision_audit"),
+        patch("companion.conversation.record_companion_route"),
+        patch("companion.conversation._append_turn"),
+    ):
+        chunks = list(
+            conversation.stream_chat(
+                "Aide-moi à préparer les questions pour mon médecin.",
+                memory=None,
+                deep=object(),
+                llm=object(),
+                language="fr",
+                patient=patient,
+            )
+        )
+
+    assert chunks == [resolution.reply]
+    assert shadow.call_args.kwargs["internal_shadow_authorized"] is True
