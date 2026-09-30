@@ -157,12 +157,15 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
 
     def complete_text(self, system: str, user: str) -> LLMResponse:
         """Single-turn plain-text completion for bounded non-JSON contracts."""
+        tuning = self._request_tuning()
+        if self._is_groq_gpt_oss():
+            tuning["extra_body"] = {"reasoning_format": "hidden"}
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=self._messages(system, user),
                 timeout=self.timeout_seconds,
-                **self._request_tuning(),
+                **tuning,
             )
         except Exception as exc:
             raise normalize_provider_exception(exc, self.provider_id) from exc
