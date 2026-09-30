@@ -4,6 +4,9 @@ The probe uses deterministic synthetic CLINICIAN_PREP resolutions only. It exerc
 the exact token-only provider path used by active staff runtime while sending no patient
 identity, clinical body, facts, history, or patient message to the provider.
 """
+# Django must be initialized before importing modules that load ORM models.
+# ruff: noqa: E402
+
 from __future__ import annotations
 
 import argparse
@@ -14,7 +17,10 @@ from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 
+import django
 from django.utils import timezone
+
+django.setup()
 
 from companion.narration_envelope import (
     build_shadow_envelope,
