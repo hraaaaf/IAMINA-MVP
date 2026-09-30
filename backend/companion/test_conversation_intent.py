@@ -266,3 +266,9 @@ def test_stream_wires_active_staff_to_internal_shadow():
 
     assert chunks == [resolution.reply]
     assert shadow.call_args.kwargs["internal_shadow_authorized"] is True
+
+
+def test_darija_arabic_week_marker_is_detected():
+    from companion.conversation import _is_weekly_request
+
+    assert _is_weekly_request("تقدر تشوف السكر ديالي هاد السيمانة؟") is True

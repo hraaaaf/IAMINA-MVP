@@ -300,3 +300,43 @@ def test_multilingual_sanity_still_rejects_actual_emotional_behavior_action():
     transcript[2]["iamina"] = "امش 10 دقائق كل يوم، هذا سيساعدك."
     failures = _sanity_checks("ar-SA", transcript)
     assert any("emotional: forbidden behavior action" in failure for failure in failures)
+
+
+def test_guard_allows_descriptive_governed_context_without_forcing_checklist():
+    reply = "هاد السيمانة، القراءات المسجلة كاينة فالسياق المسموح ونقدر نوصفها بلا ما نزيد توصية."
+    guarded = guard_narrator_output(
+        reply,
+        language="ar-MA",
+        approved_session_context=True,
+        mode="practical",
+        weekly=True,
+        prefer_latin_script=False,
+    )
+    assert guarded == reply
+    assert "ثلاث خانات" not in guarded
+
+
+def test_guard_still_blocks_behavior_action_with_approved_context():
+    reply = "قيس السكر كل نهار وخليه فواحد اللائحة."
+    guarded = guard_narrator_output(
+        reply,
+        language="ar-MA",
+        approved_session_context=True,
+        mode="practical",
+        weekly=True,
+        prefer_latin_script=False,
+    )
+    assert guarded != reply
+
+
+def test_guard_blocks_direct_arabic_tracking_imperative_with_context():
+    reply = "سجل السكر فهاد اللائحة."
+    guarded = guard_narrator_output(
+        reply,
+        language="ar-MA",
+        approved_session_context=True,
+        mode="practical",
+        weekly=False,
+        prefer_latin_script=False,
+    )
+    assert guarded != reply
