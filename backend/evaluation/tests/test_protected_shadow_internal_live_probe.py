@@ -9,8 +9,14 @@ def test_internal_live_probe_is_bounded_and_content_free(monkeypatch, tmp_path: 
     monkeypatch.setenv("PROTECTED_SHADOW_INTERNAL_LIVE_NETWORK_AUTHORIZED", "true")
     monkeypatch.setenv("GROQ_API_KEY", "synthetic-test-key")
 
-    def fake_generate(envelope, *, internal_authorized=False):
+    def fake_generate(
+        envelope,
+        *,
+        internal_authorized=False,
+        internal_subject_id=None,
+    ):
         assert internal_authorized is True
+        assert internal_subject_id == 0
         if envelope.locale.script == "arabic":
             wrapper = "أكيد."
         elif envelope.locale.script == "latin":
@@ -57,7 +63,9 @@ def test_internal_live_probe_rejects_missing_wrapper(monkeypatch, tmp_path: Path
     monkeypatch.setattr(
         probe,
         "generate_protected_provider_shadow_candidate",
-        lambda envelope, *, internal_authorized=False: envelope.protected_body_token,
+        lambda envelope, *, internal_authorized=False, internal_subject_id=None: (
+            envelope.protected_body_token
+        ),
     )
 
     report = probe.run_probe(output_path=tmp_path / "probe.json")
