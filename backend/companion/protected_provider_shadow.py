@@ -8,8 +8,8 @@ token-only payload for active staff while keeping all patient-linked content loc
 """
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
+import re
 
 from django.conf import settings
 
