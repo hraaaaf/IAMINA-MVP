@@ -8,17 +8,24 @@ adapter is constructed.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 
 from django.conf import settings
 
 from companion.protected_shadow_telemetry import record_protected_narration_shadow
-from core.ai_processor_policy import authorize_processor_policy
+from core.ai_processor_policy import (
+    AIProcessorPolicyDenied,
+    FORBIDDEN,
+    authorize_processor_policy,
+    get_processor_policy,
+)
 from core.contracts.narration_envelope import NarrationEnvelope
 from llm.provider_registry import build_openai_compatible_provider
 
 _PROVIDER = "groq"
 _PURPOSE = "companion_chat"
 _MODALITY = "text"
+_BODY_TOKEN_RE = re.compile(r"^\{\{NVB_[A-F0-9]{32}\}\}$")
 _SYSTEM = (
     "Generate one very short non-clinical relational wrapper around the exact "
     "opaque token. Keep the token unchanged exactly once. Do not add facts, "
@@ -69,16 +76,43 @@ def generate_protected_provider_shadow_candidate(
         record_protected_narration_shadow(status="blocked")
         return None
 
+    request = build_protected_provider_shadow_request(envelope)
+    internal_live = bool(
+        getattr(settings, "NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE", False)
+    )
+
     try:
-        authorize_processor_policy(_PROVIDER, _PURPOSE, _MODALITY)
+        if internal_live:
+            policy = get_processor_policy(_PROVIDER)
+            if policy.status == FORBIDDEN:
+                raise AIProcessorPolicyDenied(
+                    "provider is forbidden even for token-only internal live transport"
+                )
+            if _PURPOSE not in policy.allowed_purposes:
+                raise AIProcessorPolicyDenied(
+                    "provider does not allow protected wrapper purpose"
+                )
+            if _MODALITY not in policy.allowed_modalities:
+                raise AIProcessorPolicyDenied(
+                    "provider does not allow protected wrapper modality"
+                )
+            if request.locale != envelope.locale.locale:
+                raise PermissionError("protected wrapper locale drift")
+            if request.script != envelope.locale.script:
+                raise PermissionError("protected wrapper script drift")
+            if request.protected_body_token != envelope.protected_body_token:
+                raise PermissionError("protected wrapper token drift")
+            if not _BODY_TOKEN_RE.fullmatch(request.protected_body_token):
+                raise PermissionError("protected wrapper token format invalid")
+        else:
+            authorize_processor_policy(_PROVIDER, _PURPOSE, _MODALITY)
     except Exception:
         record_protected_narration_shadow(status="blocked")
         raise
 
-    request = build_protected_provider_shadow_request(envelope)
     try:
         provider = build_openai_compatible_provider(_PROVIDER)
-        response = provider.complete(_SYSTEM, request.user_prompt())
+        response = provider.complete_text(_SYSTEM, request.user_prompt())
     except Exception:
         record_protected_narration_shadow(status="error")
         raise
