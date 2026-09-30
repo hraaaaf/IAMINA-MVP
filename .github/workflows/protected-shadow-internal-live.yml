@@ -15,6 +15,7 @@ on:
       - "backend/amina/settings.py"
       - "backend/.env.example"
       - "docs/PROTECTED_SHADOW_INTERNAL_LIVE.md"
+      - "docs/PROTECTED_SHADOW_INTERNAL_LIVE_CERTIFICATION.md"
       - ".github/workflows/protected-shadow-internal-live.yml"
 
 permissions:
