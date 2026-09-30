@@ -962,6 +962,11 @@ def stream_chat(
                 prefer_latin_script=(
                     language == "ar-MA" and not _ARABIC_RE.search(message)
                 ),
+                internal_shadow_authorized=bool(
+                    patient
+                    and getattr(patient, "is_active", False)
+                    and getattr(patient, "is_staff", False)
+                ),
             )
             record_clinical_decision_audit(
                 patient=patient,
