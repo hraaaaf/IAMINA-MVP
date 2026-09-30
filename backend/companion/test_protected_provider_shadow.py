@@ -257,3 +257,59 @@ def test_internal_live_requires_subject_to_be_explicitly_opted_in():
             )
 
     build.assert_not_called()
+
+
+@override_settings(
+    NARRATION_PROTECTED_PROVIDER_SHADOW=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE_STAFF_IDS="77,not-an-id",
+)
+def test_internal_live_malformed_allowlist_fails_closed():
+    envelope = build_shadow_envelope(_resolution(), language="fr")
+
+    with patch(
+        "companion.protected_provider_shadow.build_openai_compatible_provider"
+    ) as build:
+        with pytest.raises(PermissionError, match="allowlist is invalid"):
+            generate_protected_provider_shadow_candidate(
+                envelope,
+                internal_authorized=True,
+                internal_subject_id=77,
+            )
+
+    build.assert_not_called()
+
+
+@override_settings(
+    NARRATION_PROTECTED_PROVIDER_SHADOW=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE_STAFF_IDS="77",
+)
+def test_internal_live_rejects_non_clinician_prep_family():
+    resolution = AdviceResolution(
+        decision=AdviceDecision(
+            intent="food_permission",
+            authority_level=AdviceAuthorityLevel.L1_EDUCATION,
+            decision=AdviceDisposition.CONSTRAIN,
+            rule_id="diabetes.food.synthetic",
+            rule_version="1",
+            allowed_actions=("review_portion_and_carbohydrate_context",),
+            forbidden_actions=("diagnose",),
+            required_facts=(),
+            language="fr",
+        ),
+        reply="Réponse FOOD déterministe.",
+    )
+    envelope = build_shadow_envelope(resolution, language="fr")
+
+    with patch(
+        "companion.protected_provider_shadow.build_openai_compatible_provider"
+    ) as build:
+        with pytest.raises(PermissionError, match="restricted to clinician_prep"):
+            generate_protected_provider_shadow_candidate(
+                envelope,
+                internal_authorized=True,
+                internal_subject_id=77,
+            )
+
+    build.assert_not_called()
