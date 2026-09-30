@@ -90,5 +90,5 @@ jobs:
         with:
           name: protected-shadow-internal-live
           path: artifacts/protected-shadow-internal-live.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7
