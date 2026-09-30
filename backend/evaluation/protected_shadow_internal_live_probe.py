@@ -114,9 +114,10 @@ def run_probe(*, output_path: Path) -> dict[str, object]:
         )
         request = build_protected_provider_shadow_request(envelope)
         prompt = request.user_prompt()
-        if resolution.reply in prompt:
+        prompt_without_token = prompt.replace(envelope.protected_body_token, "")
+        if resolution.reply in prompt_without_token:
             raise RuntimeError("clinical body leaked before provider call")
-        if "142" in prompt or "mg/dL" in prompt:
+        if "142" in prompt_without_token or "mg/dL" in prompt_without_token:
             raise RuntimeError("clinical value leaked before provider call")
 
         try:
