@@ -186,6 +186,7 @@ def test_runtime_shadow_marks_only_active_staff_as_internal_authorized():
         )
 
     assert generator.call_args.kwargs["internal_authorized"] is True
+    assert generator.call_args.kwargs["internal_subject_id"] == 77
 
 
 def test_chat_wires_active_staff_to_internal_shadow():
