@@ -89,7 +89,7 @@ def test_policy_denial_happens_before_provider_construction():
 def test_authorized_shadow_returns_candidate_from_minimal_payload():
     envelope = build_shadow_envelope(_resolution(), language="fr")
     provider = MagicMock()
-    provider.complete.return_value = MagicMock(
+    provider.complete_text.return_value = MagicMock(
         content=f"D'accord. {envelope.protected_body_token}"
     )
 
@@ -107,7 +107,7 @@ def test_authorized_shadow_returns_candidate_from_minimal_payload():
 
     authorize.assert_called_once_with("groq", "companion_chat", "text")
     assert candidate == f"D'accord. {envelope.protected_body_token}"
-    system, user = provider.complete.call_args.args
+    system, user = provider.complete_text.call_args.args
     payload_without_token = (system + user).replace(envelope.protected_body_token, "")
     assert "Réponse clinique déterministe" not in payload_without_token
     assert "142" not in payload_without_token
@@ -155,4 +155,80 @@ def test_internal_subject_reaches_processor_policy_before_provider():
                 )
 
     authorize.assert_called_once_with("groq", "companion_chat", "text")
+    build.assert_not_called()
+
+
+@override_settings(
+    NARRATION_PROTECTED_PROVIDER_SHADOW=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE=True,
+)
+def test_internal_live_token_only_path_does_not_require_patient_egress_approval():
+    envelope = build_shadow_envelope(_resolution(), language="fr")
+    provider = MagicMock()
+    provider.complete_text.return_value = MagicMock(
+        content=f"D'accord. {envelope.protected_body_token}"
+    )
+    pending_policy = MagicMock(
+        status="pending",
+        allowed_purposes=frozenset({"companion_chat"}),
+        allowed_modalities=frozenset({"text"}),
+    )
+
+    with (
+        patch(
+            "companion.protected_provider_shadow.get_processor_policy",
+            return_value=pending_policy,
+        ),
+        patch(
+            "companion.protected_provider_shadow.authorize_processor_policy"
+        ) as authorize_patient_egress,
+        patch(
+            "companion.protected_provider_shadow.build_openai_compatible_provider",
+            return_value=provider,
+        ),
+    ):
+        candidate = generate_protected_provider_shadow_candidate(
+            envelope,
+            internal_authorized=True,
+        )
+
+    assert candidate == f"D'accord. {envelope.protected_body_token}"
+    authorize_patient_egress.assert_not_called()
+    provider.complete_text.assert_called_once()
+    _, user = provider.complete_text.call_args.args
+    assert user == (
+        f"locale=fr\n"
+        f"script=default\n"
+        f"protected_body_token={envelope.protected_body_token}"
+    )
+    assert _resolution().reply not in user
+
+
+@override_settings(
+    NARRATION_PROTECTED_PROVIDER_SHADOW=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE=True,
+)
+def test_internal_live_forbidden_provider_still_fails_before_construction():
+    envelope = build_shadow_envelope(_resolution(), language="fr")
+    forbidden_policy = MagicMock(
+        status="forbidden",
+        allowed_purposes=frozenset({"companion_chat"}),
+        allowed_modalities=frozenset({"text"}),
+    )
+
+    with (
+        patch(
+            "companion.protected_provider_shadow.get_processor_policy",
+            return_value=forbidden_policy,
+        ),
+        patch(
+            "companion.protected_provider_shadow.build_openai_compatible_provider"
+        ) as build,
+    ):
+        with pytest.raises(AIProcessorPolicyDenied):
+            generate_protected_provider_shadow_candidate(
+                envelope,
+                internal_authorized=True,
+            )
+
     build.assert_not_called()
