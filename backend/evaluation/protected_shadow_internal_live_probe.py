@@ -117,6 +117,7 @@ def run_probe(*, output_path: Path) -> dict[str, object]:
             candidate = generate_protected_provider_shadow_candidate(
                 envelope,
                 internal_authorized=True,
+                internal_subject_id=0,
             )
             if candidate is None:
                 raise RuntimeError("internal-live provider path returned no candidate")
