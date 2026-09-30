@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
@@ -41,6 +42,8 @@ PROVIDER = "groq"
 MODEL = "openai/gpt-oss-120b"
 MAX_CALLS = 3
 _NETWORK_AUTH_ENV = "PROTECTED_SHADOW_INTERNAL_LIVE_NETWORK_AUTHORIZED"
+_ARABIC_RE = re.compile(r"[\u0600-\u06ff]")
+_LATIN_RE = re.compile(r"[A-Za-z]")
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,8 +126,23 @@ def run_probe(*, output_path: Path) -> dict[str, object]:
                 reinjected,
                 resolution.reply,
             )
-            passed = bool(semantic.passed)
+            wrapper = candidate.replace(envelope.protected_body_token, "", 1).strip()
+            script_ok = True
+            if request.script == "arabic":
+                script_ok = bool(_ARABIC_RE.search(wrapper))
+            elif request.script == "latin":
+                script_ok = bool(_LATIN_RE.search(wrapper)) and not bool(
+                    _ARABIC_RE.search(wrapper)
+                )
+            elif request.script == "default":
+                script_ok = bool(wrapper)
+
             violations = list(semantic.violations)
+            if not wrapper:
+                violations.append("wrapper_missing")
+            if not script_ok:
+                violations.append("wrapper_script_mismatch")
+            passed = bool(semantic.passed) and bool(wrapper) and script_ok
             scrubbed_candidate = candidate.replace(
                 envelope.protected_body_token,
                 "<PROTECTED_BODY_TOKEN>",
