@@ -277,6 +277,11 @@ def _is_weekly_request(message: str) -> bool:
     return bool(_WEEK_RE.search(message))
 
 
+def _effective_context_days(message: str, default_days: int) -> int:
+    """Use a 7-day clinical window when the user explicitly asks for the week."""
+    return 7 if _is_weekly_request(message) else default_days
+
+
 def _normalize_reply(text: str) -> str:
     return " ".join(text.split()).casefold()
 
@@ -789,6 +794,7 @@ def chat(
         _update_relationship_memory(message, memory)
         return zero_model_reply
 
+    context_days = _effective_context_days(message, context_days)
     language, ctx, advice_decision, advice_resolution = _authorize_runtime_narration(
         message,
         patient,
@@ -943,6 +949,7 @@ def stream_chat(
         yield zero_model_reply
         return
 
+    context_days = _effective_context_days(message, context_days)
     language, ctx, advice_decision, advice_resolution = _authorize_runtime_narration(
         message,
         patient,

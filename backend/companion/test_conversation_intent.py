@@ -272,3 +272,17 @@ def test_darija_arabic_week_marker_is_detected():
     from companion.conversation import _is_weekly_request
 
     assert _is_weekly_request("تقدر تشوف السكر ديالي هاد السيمانة؟") is True
+
+
+def test_weekly_request_uses_seven_day_context_window():
+    from companion.conversation import _effective_context_days
+
+    assert _effective_context_days("Comment était mon diabète cette semaine ?", 14) == 7
+    assert _effective_context_days("تقدر تشوف السكر ديالي هاد السيمانة؟", 14) == 7
+
+
+def test_nonweekly_request_preserves_requested_context_window():
+    from companion.conversation import _effective_context_days
+
+    assert _effective_context_days("Comment vont mes données ?", 14) == 14
+    assert _effective_context_days("Analyse mes logs.", 30) == 30
