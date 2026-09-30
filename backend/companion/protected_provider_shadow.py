@@ -1,7 +1,8 @@
 """Fail-closed provider candidate generator for protected narration shadow.
 
-This module may only send locale/script plus an opaque body token. It never sends
-patient text, deterministic clinical copy, facts, history, or AdviceDecision data.
+This module sends one static non-clinical system instruction plus a dynamic user
+payload limited to locale/script and an opaque body token. It never sends patient text,
+deterministic clinical copy, facts, history, or AdviceDecision data.
 The feature is OFF by default. Patient-data egress still requires approved processor
 policy. A separate OFF-by-default internal-live mode may transport only the proven
 token-only payload for active staff while keeping all patient-linked content local.
@@ -84,7 +85,8 @@ def generate_protected_provider_shadow_candidate(
 
     The normal shadow path requires approved patient-data processor policy before
     adapter construction. The separate internal-live path is double-gated, active-staff
-    only at the caller, and may transport only locale/script/random opaque body token.
+    only at the caller, and may transport only the static wrapper instruction plus
+locale/script/random opaque body token.
     """
     if not getattr(settings, "NARRATION_PROTECTED_PROVIDER_SHADOW", False):
         record_protected_narration_shadow(status="disabled")
