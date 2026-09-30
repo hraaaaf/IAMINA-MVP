@@ -53,7 +53,7 @@ For `CLINICIAN_PREP` only:
 1. IAMINA resolves the real deterministic clinical reply locally.
 2. IAMINA verifies the deterministic reply locally.
 3. IAMINA creates a random one-shot protected body token.
-4. Only `locale + script + protected_body_token` may be sent to Groq.
+4. Groq receives the static wrapper instruction plus only `locale + script + protected_body_token` as dynamic payload.
 5. Groq returns a short non-clinical wrapper containing the token exactly once.
 6. IAMINA verifies token integrity.
 7. IAMINA reinjects the deterministic body locally.
@@ -81,7 +81,7 @@ hard-coded in source control.
 
 The probe is synthetic on the network side and sends no patient data. It checks:
 
-- exact token-only request shape;
+- exact static-instruction + token-only dynamic request shape;
 - deterministic body/value absent before egress;
 - token exactly once;
 - non-empty wrapper;
