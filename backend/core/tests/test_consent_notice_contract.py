@@ -116,6 +116,35 @@ def test_account_consent_creates_exact_receipt_and_withdrawal_revokes_it(monkeyp
 
 
 @pytest.mark.django_db
+def test_stale_notice_version_forces_reconsent(monkeypatch):
+    user = User.objects.create_user(username="stale-consent-patient")
+    request = SimpleNamespace(user=user)
+    monkeypatch.setattr("core.api.v1.account.record_audit", lambda *args, **kwargs: None)
+    claim = expected_notice_claim("fr")
+
+    give_consent(
+        request,
+        ConsentGrantSchema(
+            notice_version=claim.version,
+            notice_hash=claim.notice_hash,
+            locale=claim.locale,
+        ),
+    )
+
+    profile = BasePatientProfile.objects.get(patient=user)
+    profile.ai_consent_notice_version = "legacy-notice-version"
+    profile.save(update_fields=["ai_consent_notice_version"])
+
+    assert profile_has_current_consent(profile) is False
+    status = get_consent_status(request)
+    assert status["ai_consent_given"] is False
+    assert status["ai_consent_given_at"] is None
+    assert status["notice_version"] is None
+    assert status["notice_hash"] is None
+    assert status["locale"] is None
+
+
+@pytest.mark.django_db
 def test_account_consent_rejects_modified_notice_without_writing_state(monkeypatch):
     user = User.objects.create_user(username="modified-consent-patient")
     request = SimpleNamespace(user=user)
