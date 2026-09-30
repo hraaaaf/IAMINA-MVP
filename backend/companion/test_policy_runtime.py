@@ -1017,3 +1017,55 @@ def test_darija_weekly_glucose_chat_preserves_governed_descriptive_reply():
 
     assert reply == reply_text
     assert "ثلاث خانات" not in reply
+
+
+def test_weekly_chat_routes_seven_day_context_window():
+    message = "تقدر تشوف السكر ديالي هاد السيمانة؟"
+    decision = AdviceDecision.fail_closed(language="ar-MA")
+
+    with (
+        patch(
+            "companion.conversation._authorize_runtime_narration",
+            return_value=("ar-MA", DomainContext.empty(language="ar-MA"), decision, None),
+        ) as authorize,
+        patch("companion.conversation.record_companion_route"),
+        patch("companion.conversation._append_turn"),
+    ):
+        conversation.chat(
+            message,
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            language="ar-MA",
+            patient=None,
+            context_days=14,
+        )
+
+    authorize.assert_called_once_with(message, None, "ar-MA", 7)
+
+
+def test_weekly_stream_routes_seven_day_context_window():
+    message = "Comment était mon diabète cette semaine ?"
+    decision = AdviceDecision.fail_closed(language="fr")
+
+    with (
+        patch(
+            "companion.conversation._authorize_runtime_narration",
+            return_value=("fr", DomainContext.empty(language="fr"), decision, None),
+        ) as authorize,
+        patch("companion.conversation.record_companion_route"),
+        patch("companion.conversation._append_turn"),
+    ):
+        list(
+            conversation.stream_chat(
+                message,
+                memory=None,
+                deep=object(),
+                llm=ExplodingLLM(),
+                language="fr",
+                patient=None,
+                context_days=14,
+            )
+        )
+
+    authorize.assert_called_once_with(message, None, "fr", 7)
