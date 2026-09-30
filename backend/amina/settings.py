@@ -38,6 +38,9 @@ LLM_MEDICAL_STREAMING = os.environ.get('LLM_MEDICAL_STREAMING', 'False').lower()
 NARRATION_PROTECTED_PROVIDER_SHADOW = (
     os.environ.get('NARRATION_PROTECTED_PROVIDER_SHADOW', 'False').lower() == 'true'
 )
+NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE = (
+    os.environ.get('NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE', 'False').lower() == 'true'
+)
 ALLOW_INSULIN_ADVICE = os.environ.get('ALLOW_INSULIN_ADVICE', 'False').lower() == 'true'
 ALLOW_DIAGNOSIS = os.environ.get('ALLOW_DIAGNOSIS', 'False').lower() == 'true'
 
