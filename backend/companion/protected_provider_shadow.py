@@ -30,9 +30,11 @@ _MODALITY = "text"
 _BODY_TOKEN_RE = re.compile(r"^\{\{NVB_[A-F0-9]{32}\}\}$")
 _SYSTEM = (
     "Generate one very short non-clinical relational wrapper around the exact "
-    "opaque token. Keep the token unchanged exactly once. Do not add facts, "
-    "numbers, health content, advice, questions, actions, diagnosis, treatment, "
-    "dose, urgency, or clinical concepts. Return plain text only."
+    "opaque token. Keep the token unchanged exactly once. Obey the requested "
+    "script exactly: if script=arabic, the wrapper must contain Arabic letters; "
+    "if script=latin, the wrapper must use Latin letters only and no Arabic. "
+    "Do not add facts, numbers, health content, advice, questions, actions, "
+    "diagnosis, treatment, dose, urgency, or clinical concepts. Return plain text only."
 )
 
 
