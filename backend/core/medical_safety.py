@@ -40,7 +40,17 @@ def diagnosis_allowed() -> bool:
     return bool(getattr(settings, "ALLOW_DIAGNOSIS", False))
 
 
-def no_prescription_message(language: str = "fr") -> str:
+def no_prescription_message(
+    language: str = "fr",
+    *,
+    script_preference: str | None = None,
+) -> str:
+    if language == "ar-MA" and script_preference == "arabic":
+        return (
+            "ما نقدرش نبدل ليك العلاج، ولا نعطيك جرعة ديال الإنسولين، "
+            "ولا نشخص شي حالة. نقدر نعاونك تفهم المعطيات ديالك "
+            "وتوجد أسئلة للطبيب."
+        )
     if language == "ar-MA":
         return (
             "Ma nqderch nbadel lik traitement, n3ti dosage dial insuline, "
