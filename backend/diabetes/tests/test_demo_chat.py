@@ -5,6 +5,7 @@ from unittest.mock import patch
 from django.test import Client, TestCase
 from django.utils import timezone
 
+from core.ai_egress import TEXT, assert_ai_egress_allowed
 from core.companion.clinical import get_domain_context
 from diabetes.models import LogEntry
 from diabetes.services.demo_patient import get_or_create_synthetic_demo_patient
@@ -42,6 +43,21 @@ class DemoChatContractTests(TestCase):
             context_days=14,
         )
         self.assertEqual(response.json()["reply"], "Réponse issue du runtime IAmina.")
+
+    @patch("companion.demo_runtime.IAmina")
+    def test_demo_runtime_preserves_governed_ai_egress_scope(self, iamina_cls):
+        def _chat(message, context_days=14):
+            del message, context_days
+            context = assert_ai_egress_allowed(TEXT)
+            self.assertEqual(context.purpose, "companion_chat")
+            return "ok"
+
+        iamina_cls.return_value.chat.side_effect = _chat
+
+        response = self._post("Parle-moi de ma semaine.")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["reply"], "ok")
 
     def test_synthetic_demo_context_is_clinically_analyzable(self):
         patient = get_or_create_synthetic_demo_patient("contract-subject")
