@@ -104,6 +104,35 @@ class DemoChatContractTests(TestCase):
         payload = response.json()
         self.assertTrue(payload["is_emergency"])
         self.assertEqual(payload["conversation_id"], "TRIAGE_VITAL")
+        self.assertEqual(payload["reply_language"], "ar-MA")
+        self.assertFalse(
+            any("\u0600" <= ch <= "\u06ff" for ch in payload["reply"])
+        )
+
+    def test_demo_chat_keeps_arabic_darija_emergency_script_consistent(self):
+        response = self._post(
+            "السكر عندي 45 وكنحس براسي مشوش، شنو ندير دابا؟",
+            language="ar-MA",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["is_emergency"])
+        self.assertEqual(payload["reply_language"], "ar-MA")
+        self.assertNotIn("ma katra9ebch", payload["reply"])
+
+    def test_demo_chat_keeps_gulf_emergency_out_of_moroccan_darija(self):
+        response = self._post(
+            "سكري 45 وأنا مشوش شوي، وش أسوي الحين؟",
+            language="ar",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["is_emergency"])
+        self.assertEqual(payload["reply_language"], "ar")
+        for marker in ("إلا كان", "والو", "كتبدلش", "ديالك"):
+            self.assertNotIn(marker, payload["reply"])
 
     def test_demo_chat_does_not_call_model_for_dose_boundary(self):
         with patch(
