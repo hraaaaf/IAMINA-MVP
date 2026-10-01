@@ -69,6 +69,18 @@ class DemoChatContractTests(TestCase):
         self.assertTrue(context.kpi_summary)
         self.assertIn("tir_pct", context.kpi_summary)
 
+    def test_demo_personal_tir_uses_real_synthetic_clinical_context(self):
+        response = self._post("Quel est mon TIR cette semaine ?")
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"].lower()
+        self.assertNotIn("aucun dossier patient", reply)
+        self.assertNotIn("mode démo", reply)
+        self.assertTrue(
+            "tir cgm vérifié" in reply
+            or "mesures enregistrées entre 70 et 180 mg/dl" in reply
+        )
+
     @patch("companion.demo_runtime.IAmina")
     def test_personal_weekly_request_is_not_forced_to_no_patient_record(self, iamina_cls):
         iamina_cls.return_value.chat.return_value = (
