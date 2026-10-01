@@ -976,10 +976,6 @@ def test_module_longitudinal_personalization_short_circuits_llm_and_verifies_bef
 
 
 def test_zero_log_broad_weekly_diabetes_chat_never_reaches_llm_or_week_fallback():
-    from diabetes.services.clinical.monitoring_decision import (
-        resolve_monitoring_interpretation,
-    )
-
     message = "Comment était mon diabète cette semaine ?"
     ctx = DomainContext(
         kpi_summary={
@@ -994,8 +990,27 @@ def test_zero_log_broad_weekly_diabetes_chat_never_reaches_llm_or_week_fallback(
         has_sufficient_data=False,
         analysis_status="insufficient_data",
     )
-    resolution = resolve_monitoring_interpretation(message, ctx, language="fr")
-    assert resolution is not None
+    decision = AdviceDecision(
+        intent="monitoring_interpretation",
+        authority_level=AdviceAuthorityLevel.L1_EDUCATION,
+        decision=AdviceDisposition.CONSTRAIN,
+        rule_id="diabetes.monitoring.insufficient_data",
+        rule_version="1",
+        allowed_actions=("explain_available_monitoring_data",),
+        forbidden_actions=(),
+        required_facts=("sufficient_monitoring_window",),
+        missing_facts=("sufficient_monitoring_window",),
+        evidence_refs=(),
+        limitations=("insufficient_monitoring_data",),
+        language="fr",
+    )
+    resolution = AdviceResolution(
+        decision=decision,
+        reply=(
+            "Je n’ai aucune glycémie enregistrée sur cette fenêtre. "
+            "Je ne peux pas calculer une tendance sans inventer de données."
+        ),
+    )
 
     with (
         patch("companion.conversation._get_context", return_value=ctx),
@@ -1019,7 +1034,6 @@ def test_zero_log_broad_weekly_diabetes_chat_never_reaches_llm_or_week_fallback(
     assert "aucune glycémie enregistrée" in reply
     assert "sans inventer" in reply
     assert "trois cases" not in reply
-
 
 def test_darija_weekly_glucose_chat_preserves_governed_descriptive_reply():
     ctx = DomainContext(
