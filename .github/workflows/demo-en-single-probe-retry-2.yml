@@ -1,0 +1,36 @@
+name: Demo EN single probe retry 2
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/demo-en-single-probe-retry-2.yml"
+      - "backend/evaluation/demo_en_single_probe_retry_2.py"
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements.txt
+      - name: Run single EN retry with exception evidence
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: amina.settings
+          SECRET_KEY: en-single-probe-2-nonproduction
+          DEBUG: "True"
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          DATABASE_URL: sqlite:///en-single-probe-2.db
+        run: python evaluation/demo_en_single_probe_retry_2.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-en-single-probe-retry-2
+          path: artifacts/demo-en-single-probe-retry-2.json
+          retention-days: 7
