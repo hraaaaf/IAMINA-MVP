@@ -16,6 +16,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.companion.clinical import invalidate
+from core.consent_notice import expected_notice_claim
 from core.models import BasePatientProfile
 from diabetes.models import DiabetesProfile, LogEntry
 
@@ -100,6 +101,7 @@ def get_or_create_synthetic_demo_patient(subject_key: str) -> User:
         patient.set_unusable_password()
         patient.save(update_fields=["password"])
 
+    notice = expected_notice_claim("fr")
     base, _ = BasePatientProfile.objects.get_or_create(
         patient=patient,
         defaults={
@@ -107,8 +109,31 @@ def get_or_create_synthetic_demo_patient(subject_key: str) -> User:
             "gender": "female",
             "weight": Decimal("68.0"),
             "height": 165,
+            "ai_consent_given_at": timezone.now(),
+            "ai_consent_notice_version": notice.version,
+            "ai_consent_notice_hash": notice.notice_hash,
+            "ai_consent_notice_locale": notice.locale,
         },
     )
+    if (
+        base.ai_consent_given_at is None
+        or base.ai_consent_notice_version != notice.version
+        or base.ai_consent_notice_hash != notice.notice_hash
+        or base.ai_consent_notice_locale != notice.locale
+    ):
+        base.ai_consent_given_at = timezone.now()
+        base.ai_consent_notice_version = notice.version
+        base.ai_consent_notice_hash = notice.notice_hash
+        base.ai_consent_notice_locale = notice.locale
+        base.save(
+            update_fields=[
+                "ai_consent_given_at",
+                "ai_consent_notice_version",
+                "ai_consent_notice_hash",
+                "ai_consent_notice_locale",
+                "updated_at",
+            ]
+        )
     DiabetesProfile.objects.get_or_create(
         base_profile=base,
         defaults={
