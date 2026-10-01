@@ -91,6 +91,20 @@ class DemoChatContractTests(TestCase):
         self.assertIn("mode démo", reply)
         self.assertIn("aucun dossier patient", reply)
 
+    def test_demo_chat_routes_latin_darija_low_glucose_before_model(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=AssertionError("urgent content must stay deterministic"),
+        ):
+            response = self._post(
+                "sokkar 45 w kan7ess brassi mdowekh bzaf, chno ndir daba?"
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["is_emergency"])
+        self.assertEqual(payload["conversation_id"], "TRIAGE_VITAL")
+
     def test_demo_chat_does_not_call_model_for_dose_boundary(self):
         with patch(
             "companion.demo.generate_demo_reply",
