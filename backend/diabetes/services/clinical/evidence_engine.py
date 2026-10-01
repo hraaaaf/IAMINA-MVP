@@ -70,7 +70,19 @@ class EvidenceGuardedDiabetesEngine(DiabetesEngine):
             )
 
         if not raw_kpis.has_sufficient_data:
-            return DomainContext.empty(language=language)
+            return DomainContext(
+                kpi_summary={
+                    "log_count": raw_kpis.log_count,
+                    "days_with_data": raw_kpis.days_with_data,
+                    "has_sufficient_data": False,
+                },
+                detected_patterns=[],
+                insights=[],
+                pivot_text="",
+                language=language,
+                has_sufficient_data=False,
+                analysis_status="insufficient_data",
+            )
 
         target_degradations: list[str] = []
         try:

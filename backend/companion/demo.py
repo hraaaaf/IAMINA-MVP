@@ -38,8 +38,8 @@ _CLINICIAN_RE = re.compile(
 )
 _PERSONAL_DATA_RE = re.compile(
     r"\b(?:mes?\s+(?:donn[ée]es?|glyc[ée]mie|mesures?|r[ée]sultats?|tir|dossier)|"
-    r"my\s+(?:data|glucose|readings?|results?|tir|record))\b|"
-    r"(?:بياناتي|سكري|قياساتي|نتائجي|ملفي)",
+    r"mon\s+diab[eè]te|my\s+(?:data|glucose|readings?|results?|tir|record|diabetes))\b|"
+    r"(?:بياناتي|سكري|السكري\s+ديالي|قياساتي|نتائجي|ملفي)",
     re.IGNORECASE,
 )
 _CAPABILITY_RE = re.compile(
