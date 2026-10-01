@@ -63,6 +63,7 @@ class DemoChatHistoryTurn(BaseModel):
 class DemoChatRequest(BaseModel):
     message: str
     language: str = "fr"
+    session_id: str = ""
     history: List[DemoChatHistoryTurn] = Field(default_factory=list)
 
 
@@ -103,6 +104,9 @@ def demo_chat(request, data: DemoChatRequest):
         raise HttpError(400, "Demo message must not be empty")
     if len(message) > 1000:
         raise HttpError(400, "Demo message exceeds 1000 characters")
+    session_id = data.session_id.strip()
+    if len(session_id) > 128:
+        raise HttpError(400, "Demo session id exceeds 128 characters")
     if len(data.history) > 20:
         raise HttpError(400, "Demo history exceeds 20 turns")
 
@@ -114,10 +118,11 @@ def demo_chat(request, data: DemoChatRequest):
         raise HttpError(400, "Demo history exceeds total size limit")
 
     del history
+    session_subject = f"{subject}|{session_id}" if session_id else subject
     return reply_with_synthetic_patient(
         message,
         language=data.language,
-        subject_key=subject,
+        subject_key=session_subject,
     )
 
 
