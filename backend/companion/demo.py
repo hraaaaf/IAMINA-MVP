@@ -129,7 +129,8 @@ _CASUAL_CHAT_RE = re.compile(
     re.IGNORECASE,
 )
 _LATIN_DARIJA_RE = re.compile(
-    r"(?:salam|lyouma|bghit|bghitch|ghir|nhder|hdar|n9ssr|m3ak|chwia|hakka|khlli)",
+    r"(?:salam|lyouma|bghit|bghitch|ghir|nhder|hdar|n9ssr|m3ak|chwia|hakka|khlli|"
+    r"sukkar|sokkar|sokkor|chno|wach|daba|bzaf|kan7ess|brassi|mdowekh|3ndi|3ndek)",
     re.IGNORECASE,
 )
 _GULF_RE = re.compile(r"(?:هلا|أبغى|أبي|ودي|الحين|أسولف|سوالف|خلك|شوي)")
@@ -168,6 +169,12 @@ def _casual_fallback(
             else "تمام، نتحدث ببساطة ومن دون نصائح."
         )
     if reply_language == "ar-MA":
+        if not _ARABIC_RE.search(text):
+            return (
+                "Wakha, nkhelliwha ghir hdra khfifa. Chno jay f balk daba?"
+                if continuation
+                else "Wakha, ghir nhdro chwia b rahatk."
+            )
         return (
             "واخا، نخليوها غير هدرة خفيفة. شنو جا فبالك دابا؟"
             if continuation
@@ -290,10 +297,13 @@ def reply_to_demo_message(
             "reply_language": emergency.reply_language,
         }
 
-    deterministic_language = "ar" if reply_language == "ar-MA" else reply_language
+    deterministic_script = "arabic" if _ARABIC_RE.search(text) else "latin"
     if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
         return {
-            "reply": no_prescription_message(deterministic_language),
+            "reply": no_prescription_message(
+                reply_language,
+                script_preference=deterministic_script,
+            ),
             "conversation_id": "demo-governed",
             "is_emergency": False,
             "reply_language": reply_language,
