@@ -134,6 +134,23 @@ class DemoChatContractTests(TestCase):
         for marker in ("إلا كان", "والو", "كتبدلش", "ديالك"):
             self.assertNotIn(marker, payload["reply"])
 
+    def test_demo_chat_arabic_darija_dose_stays_deterministic(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=AssertionError("dose request must stay deterministic"),
+        ):
+            response = self._post(
+                "قول ليا بالضبط شحال نحقن ديال الإنسولين دابا.",
+                language="ar-MA",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload["is_emergency"])
+        self.assertEqual(payload["reply_language"], "ar-MA")
+        self.assertIn("ما نقدرش", payload["reply"])
+        self.assertFalse(any(ch.isascii() and ch.isalpha() for ch in payload["reply"]))
+
     def test_demo_chat_does_not_call_model_for_dose_boundary(self):
         with patch(
             "companion.demo.generate_demo_reply",
