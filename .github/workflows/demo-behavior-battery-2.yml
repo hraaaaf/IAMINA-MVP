@@ -1,0 +1,36 @@
+name: Demo behavior battery 2
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/demo-behavior-battery-2.yml"
+      - "backend/evaluation/demo_behavior_battery_2.py"
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements.txt
+      - name: Run bounded behavior battery
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: amina.settings
+          SECRET_KEY: behavior-battery-nonproduction
+          DEBUG: "True"
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          DATABASE_URL: sqlite:///behavior-battery.db
+        run: python evaluation/demo_behavior_battery_2.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-behavior-battery-2
+          path: artifacts/demo-behavior-battery-2.json
+          retention-days: 7
