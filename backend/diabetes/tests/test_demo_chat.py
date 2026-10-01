@@ -3,7 +3,8 @@
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
-from django.test import Client, TestCase\nfrom django.utils import timezone
+from django.test import Client, TestCase
+from django.utils import timezone
 
 from companion.demo_model import DemoModelUnavailable
 from diabetes.models import LogEntry
@@ -41,7 +42,6 @@ class DemoChatContractTests(TestCase):
         self.assertTrue(payload["reply"])
         self.assertEqual(User.objects.count(), 0)
         self.assertEqual(LogEntry.objects.count(), 0)
-
 
     def test_demo_chat_forwards_bounded_history_without_persisting_it(self):
         history = [
@@ -90,7 +90,6 @@ class DemoChatContractTests(TestCase):
         reply = response.json()["reply"].lower()
         self.assertIn("mode démo", reply)
         self.assertIn("aucun dossier patient", reply)
-
 
     def test_demo_chat_does_not_call_model_for_dose_boundary(self):
         with patch(
@@ -272,7 +271,6 @@ class DemoChatContractTests(TestCase):
         self.assertIn("ما أقدر أعطيك موافقة شخصية", reply)
         self.assertIn("الكربوهيدرات", reply)
         self.assertNotIn("أكيد", reply)
-
 
     def test_demo_reported_food_context_uses_governed_food_rule_from_history(self):
         history = [
