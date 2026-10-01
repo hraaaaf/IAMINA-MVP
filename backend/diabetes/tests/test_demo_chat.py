@@ -36,7 +36,7 @@ class DemoChatContractTests(TestCase):
         self.assertEqual(response.status_code, 200)
         patient = iamina_cls.call_args.args[0]
         self.assertTrue(patient.username.startswith("demo_runtime_"))
-        self.assertTrue(patient.has_usable_password() is False)
+        self.assertFalse(patient.has_usable_password())
         self.assertGreater(LogEntry.objects.filter(patient=patient).count(), 20)
         iamina_cls.return_value.chat.assert_called_once_with(
             "Comment était mon diabète cette semaine ?",
