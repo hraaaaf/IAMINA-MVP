@@ -105,6 +105,8 @@ GLYCEMIC_MESSAGES = [
     "غادي نطيح",
     "فقدان الوعي",
     "sukkar 38 w kanrjef",
+    "sokkar 45 w kan7ess brassi mdowekh bzaf, chno ndir daba?",
+    "sokkor 42 w kanrjef",
 ]
 
 
