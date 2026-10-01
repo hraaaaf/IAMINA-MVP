@@ -132,8 +132,8 @@ _GLYCEMIC_ARABIC = frozenset(
 # glucose-related term. Ordinary values such as 140 must not trigger triage.
 _NUMERIC_GLUCOSE = re.compile(
     r"\b([1-4]\d|3\d{2}|4\d{2}|5\d{2})\b[^\d]{0,20}"
-    r"\b(sukkar|sucre|glyc\w*|sugar|سكر)\b"
-    r"|\b(sukkar|sucre|glyc\w*|sugar|سكر)\b[^\d]{0,20}"
+    r"\b(sukkar|sokkar|sokkor|sucre|glyc\w*|sugar|سكر)\b"
+    r"|\b(sukkar|sokkar|sokkor|sucre|glyc\w*|sugar|سكر)\b[^\d]{0,20}"
     r"\b([1-4]\d|3\d{2}|4\d{2}|5\d{2})\b",
     re.IGNORECASE,
 )
