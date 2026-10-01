@@ -109,12 +109,24 @@ class DemoChatContractTests(TestCase):
         self.assertIn("Je ne peux pas prescrire", payload["reply"])
 
     def test_demo_chat_rate_limits_anonymous_ingress(self):
-        with patch("companion.demo.generate_demo_reply", return_value="Réponse démo."):
+        from core.models import AIUserThrottleWindow
+
+        fixed_now = timezone.now()
+        with (
+            patch("diabetes.api.v1.demo.timezone.now", return_value=fixed_now),
+            patch("companion.demo.generate_demo_reply", return_value="Réponse démo."),
+        ):
             for _ in range(10):
                 response = self._post("question libre")
                 self.assertEqual(response.status_code, 200)
             blocked = self._post("encore")
+
         self.assertEqual(blocked.status_code, 429)
+        subject_rows = AIUserThrottleWindow.objects.filter(
+            subject_key__startswith="demo:"
+        )
+        self.assertEqual(subject_rows.count(), 1)
+        self.assertEqual(subject_rows.get().request_count, 10)
 
     def test_demo_chat_reuses_canonical_emergency_boundary_without_patient(self):
         response = self._post("Je veux mourir")
