@@ -112,6 +112,11 @@ def render_medical_emergency_contact(
     resources = resolve_emergency_resources(locale, today=today)
     contact = primary_medical_emergency_contact(resources)
     if contact is None:
+        if language == "ar-MA" and locale.script_preference == "latin":
+            return (
+                "3ayet daba l-khadamat dyal tawari2 l-ma7alliya. "
+                "IAmina ma 3andhach ra9m tawari2 m2akkad l-blad dyalk."
+            )
         if language == "ar-MA":
             return "تاصل بخدمات الطوارئ المحلية دابا. ما عندناش رقم مؤكد للبلد ديالك."
         if language == "ar":
@@ -126,6 +131,8 @@ def render_medical_emergency_contact(
             "IAmina n'a pas de numéro d'urgence confirmé pour ton pays."
         )
 
+    if language == "ar-MA" and locale.script_preference == "latin":
+        return f"3ayet daba l-is3af l-ma7alli: {contact.number}."
     if language == "ar-MA":
         return f"تاصل دابا بالإسعاف المحلي: {contact.number}."
     if language == "ar":
