@@ -189,7 +189,7 @@ class DemoChatContractTests(TestCase):
         payload = response.json()
         self.assertFalse(payload["is_emergency"])
         self.assertEqual(payload["reply_language"], "ar-MA")
-        self.assertIn("ما نقدرش", payload["reply"])
+        self.assertIn("Ma nqderch", payload["reply"])
         iamina_cls.assert_not_called()
 
     @patch("companion.demo_runtime.IAmina")
