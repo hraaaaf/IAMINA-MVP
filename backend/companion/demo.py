@@ -38,11 +38,13 @@ _CLINICIAN_RE = re.compile(
     re.IGNORECASE,
 )
 _PERSONAL_DATA_RE = re.compile(
-    r"\b(?:mes?\s+(?:donn[ée]es?|glyc[ée]mie|mesures?|r[ée]sultats?|tir|dossier)|"
-    r"mon\s+diab[eè]te|my\s+(?:data|glucose|readings?|results?|tir|record|diabetes))\b|"
-    r"(?:بياناتي|سكري|السكري\s+ديالي|قياساتي|نتائجي|ملفي)",
+    r"\\b(?:(?:mon|ma|mes?)\\s+(?:donn[ée]es?|glyc[ée]mie|mesures?|r[ée]sultats?|"
+    r"tir|gmi|cv|variabilit[ée]|dossier|diab[eè]te)|"
+    r"my\\s+(?:data|glucose|readings?|results?|tir|gmi|cv|variability|record|diabetes))\\b|"
+    r"(?:بياناتي|سكري|السكري\\s+ديالي|قياساتي|نتائجي|ملفي)",
     re.IGNORECASE,
 )
+
 _CAPABILITY_RE = re.compile(
     r"(?:que peux[- ]?tu faire|comment (?:tu|ça) fonctionne|qui es[- ]?tu|"
     r"what can you do|how do you work|who are you|"
