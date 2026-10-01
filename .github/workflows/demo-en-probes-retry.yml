@@ -1,0 +1,36 @@
+name: Demo EN probes retry
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/demo-en-probes-retry.yml"
+      - "backend/evaluation/demo_en_probes_retry.py"
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r backend/requirements.txt
+      - name: Run minimal EN retry
+        working-directory: backend
+        env:
+          DJANGO_SETTINGS_MODULE: amina.settings
+          SECRET_KEY: en-probes-retry-nonproduction
+          DEBUG: "True"
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          DATABASE_URL: sqlite:///en-probes-retry.db
+        run: python evaluation/demo_en_probes_retry.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-en-probes-retry
+          path: artifacts/demo-en-probes-retry.json
+          retention-days: 7
