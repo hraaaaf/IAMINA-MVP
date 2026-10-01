@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
@@ -58,6 +59,7 @@ class CompanionService {
   final http.Client _http;
   final String baseUrl;
   final String demoLanguage;
+  final String demoSessionId;
   final CompanionFailureLogger _failureLogger;
   final List<_DemoHistoryTurn> _demoHistory = <_DemoHistoryTurn>[];
 
@@ -69,10 +71,18 @@ class CompanionService {
     http.Client? httpClient,
     this.baseUrl = companionApiBaseUrl,
     this.demoLanguage = 'fr',
+    String? demoSessionId,
     CompanionFailureLogger? failureLogger,
   }) : _authService = authService ?? AuthService(),
        _http = httpClient ?? http.Client(),
+       demoSessionId = demoSessionId ?? _newDemoSessionId(),
        _failureLogger = failureLogger ?? _defaultFailureLogger;
+
+  static String _newDemoSessionId() {
+    final random = Random.secure();
+    return '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}-'
+        '${random.nextInt(1 << 32).toRadixString(36)}';
+  }
 
   static void _defaultFailureLogger(
     String operation,
@@ -381,6 +391,7 @@ class CompanionService {
             body: jsonEncode({
               'message': message,
               'language': demoLanguage,
+              'session_id': demoSessionId,
               'history': _demoHistory.map((turn) => turn.toJson()).toList(),
             }),
           )

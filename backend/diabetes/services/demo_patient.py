@@ -7,6 +7,7 @@ logs under an anonymous, non-login Django user derived from a hashed demo subjec
 
 from __future__ import annotations
 
+import hashlib
 import random
 from datetime import timedelta
 from decimal import Decimal
@@ -33,8 +34,8 @@ _MEALS = {
 
 
 def _username(subject_key: str) -> str:
-    safe = "".join(ch for ch in subject_key.lower() if ch.isalnum())
-    return f"{_DEMO_USERNAME_PREFIX}{safe[:32]}"
+    digest = hashlib.sha256(subject_key.encode("utf-8")).hexdigest()
+    return f"{_DEMO_USERNAME_PREFIX}{digest[:32]}"
 
 
 def _seed_logs(patient: User) -> None:

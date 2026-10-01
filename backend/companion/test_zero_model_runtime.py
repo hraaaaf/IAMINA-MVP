@@ -31,6 +31,12 @@ def test_exact_greeting_bypasses_llm_in_chat():
     assert "Bonjour" in reply
 
 
+def test_mixed_casual_greeting_bypasses_llm_and_checklist_guard():
+    reply = chat("hi ca va !?", memory=None, deep=object(), llm=ExplodingLLM())
+    assert "Bonjour" in reply
+    assert "trois cases" not in reply
+
+
 def test_exact_thanks_bypasses_llm_in_stream_chat():
     chunks = list(
         stream_chat("merci", memory=None, deep=object(), llm=ExplodingLLM())

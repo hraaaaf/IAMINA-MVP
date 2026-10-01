@@ -21,12 +21,14 @@ class DemoChatContractTests(TestCase):
         language: str = "fr",
         history=None,
         remote_addr: str = "127.0.0.1",
+        session_id: str = "test-session",
     ):
         return self.client.post(
             "/api/v1/demo/chat",
             data={
                 "message": message,
                 "language": language,
+                "session_id": session_id,
                 "history": history or [],
             },
             content_type="application/json",
@@ -102,18 +104,45 @@ class DemoChatContractTests(TestCase):
         self.assertNotIn("mode démo", reply)
 
     @patch("companion.demo_runtime.IAmina")
-    def test_demo_subject_is_stable_per_remote_address(self, iamina_cls):
+    def test_demo_subject_is_stable_for_same_remote_and_session(self, iamina_cls):
         iamina_cls.return_value.chat.return_value = "ok"
 
-        first = self._post("Bonjour", remote_addr="198.51.100.10")
+        first = self._post(
+            "Bonjour",
+            remote_addr="198.51.100.10",
+            session_id="session-a",
+        )
         first_patient = iamina_cls.call_args.args[0]
-        second = self._post("Encore", remote_addr="198.51.100.10")
+        second = self._post(
+            "Encore",
+            remote_addr="198.51.100.10",
+            session_id="session-a",
+        )
         second_patient = iamina_cls.call_args.args[0]
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
         self.assertEqual(first_patient.id, second_patient.id)
         self.assertNotIn("198.51.100.10", first_patient.username)
+
+    @patch("companion.demo_runtime.IAmina")
+    def test_demo_subject_isolated_between_sessions_on_same_remote(self, iamina_cls):
+        iamina_cls.return_value.chat.return_value = "ok"
+
+        self._post(
+            "Bonjour",
+            remote_addr="198.51.100.20",
+            session_id="session-a",
+        )
+        first_patient = iamina_cls.call_args.args[0]
+        self._post(
+            "Bonjour",
+            remote_addr="198.51.100.20",
+            session_id="session-b",
+        )
+        second_patient = iamina_cls.call_args.args[0]
+
+        self.assertNotEqual(first_patient.id, second_patient.id)
 
     @patch("companion.demo_runtime.IAmina")
     def test_demo_subject_isolated_between_remote_addresses(self, iamina_cls):
