@@ -16,7 +16,7 @@ from ninja import Router
 from ninja.errors import HttpError
 from pydantic import BaseModel, Field
 
-from companion.demo import reply_to_demo_message
+from companion.demo_runtime import reply_with_synthetic_patient
 from core.models import AIUserThrottleWindow, BasePatientProfile
 from diabetes.api.v1.security import firebase_auth_backend
 from diabetes.models import DiabetesProfile, LogEntry
@@ -27,7 +27,7 @@ _DEMO_CHAT_WINDOW_SECONDS = 60
 _DEMO_CHAT_MAX_REQUESTS = 10
 
 
-def _authorize_demo_chat_request(request) -> None:
+def _authorize_demo_chat_request(request) -> str:
     raw = request.META.get("REMOTE_ADDR", "unknown")
     subject = hashlib.sha256(f"iamina-demo|{raw}".encode()).hexdigest()
     now = timezone.now()
@@ -46,6 +46,7 @@ def _authorize_demo_chat_request(request) -> None:
             raise HttpError(429, "Demo chat rate limit exceeded")
         row.request_count += 1
         row.save(update_fields=("request_count", "updated_at"))
+    return subject
 
 
 class DemoScenarioResponse(BaseModel):
@@ -95,8 +96,8 @@ def list_demo_scenarios(request):
 
 @router.post("/demo/chat", response=DemoChatResponse)
 def demo_chat(request, data: DemoChatRequest):
-    """Public, stateless IAMINA demo conversation with request-scoped history."""
-    _authorize_demo_chat_request(request)
+    """Public demo using the application runtime with synthetic logs."""
+    subject = _authorize_demo_chat_request(request)
     message = data.message.strip()
     if not message:
         raise HttpError(400, "Demo message must not be empty")
@@ -112,13 +113,12 @@ def demo_chat(request, data: DemoChatRequest):
     if sum(len(turn["content"]) for turn in history) > 6000:
         raise HttpError(400, "Demo history exceeds total size limit")
 
-    payload = reply_to_demo_message(
+    del history
+    return reply_with_synthetic_patient(
         message,
         language=data.language,
-        history=history,
+        subject_key=subject,
     )
-    payload["timestamp"] = timezone.now().isoformat()
-    return payload
 
 
 @router.post("/demo/seed", auth=firebase_auth_backend, response=SeedResponse)
