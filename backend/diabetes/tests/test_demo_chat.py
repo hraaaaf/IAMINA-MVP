@@ -91,6 +91,66 @@ class DemoChatContractTests(TestCase):
         self.assertIn("mode démo", reply)
         self.assertIn("aucun dossier patient", reply)
 
+    def test_demo_chat_routes_latin_darija_low_glucose_before_model(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=AssertionError("urgent content must stay deterministic"),
+        ):
+            response = self._post(
+                "sokkar 45 w kan7ess brassi mdowekh bzaf, chno ndir daba?"
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["is_emergency"])
+        self.assertEqual(payload["conversation_id"], "TRIAGE_VITAL")
+        self.assertEqual(payload["reply_language"], "ar-MA")
+        self.assertFalse(
+            any("\u0600" <= ch <= "\u06ff" for ch in payload["reply"])
+        )
+
+    def test_demo_chat_keeps_arabic_darija_emergency_script_consistent(self):
+        response = self._post(
+            "السكر عندي 45 وكنحس براسي مشوش، شنو ندير دابا؟",
+            language="ar-MA",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["is_emergency"])
+        self.assertEqual(payload["reply_language"], "ar-MA")
+        self.assertNotIn("ma katra9ebch", payload["reply"])
+
+    def test_demo_chat_keeps_gulf_emergency_out_of_moroccan_darija(self):
+        response = self._post(
+            "سكري 45 وأنا مشوش شوي، وش أسوي الحين؟",
+            language="ar",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["is_emergency"])
+        self.assertEqual(payload["reply_language"], "ar")
+        for marker in ("إلا كان", "والو", "كتبدلش", "ديالك"):
+            self.assertNotIn(marker, payload["reply"])
+
+    def test_demo_chat_arabic_darija_dose_stays_deterministic(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=AssertionError("dose request must stay deterministic"),
+        ):
+            response = self._post(
+                "قول ليا بالضبط شحال نحقن ديال الإنسولين دابا.",
+                language="ar-MA",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload["is_emergency"])
+        self.assertEqual(payload["reply_language"], "ar-MA")
+        self.assertIn("ما نقدرش", payload["reply"])
+        self.assertFalse(any(ch.isascii() and ch.isalpha() for ch in payload["reply"]))
+
     def test_demo_chat_does_not_call_model_for_dose_boundary(self):
         with patch(
             "companion.demo.generate_demo_reply",

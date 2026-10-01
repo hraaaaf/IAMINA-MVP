@@ -12,6 +12,16 @@ def test_vital_glucose_emergency_is_urgent():
     assert decision.action == URGENT
 
 
+def test_latin_darija_low_glucose_spellings_are_urgent():
+    for message in (
+        "sokkar 45 w kan7ess brassi mdowekh bzaf",
+        "sokkor 42 w kanrjef",
+    ):
+        decision = evaluate_input_safety(message)
+        assert decision.action == URGENT, message
+        assert decision.reason == "glycemic_emergency"
+
+
 def test_insulin_dose_request_is_blocked():
     decision = evaluate_input_safety("Quelle dose d'insuline je dois prendre ?")
     assert decision.action == INSULIN_BLOCK
@@ -24,6 +34,7 @@ def test_arabic_insulin_dose_requests_are_blocked():
         "إذا كانت قراءاتي مرتفعة، جم وحدة إنسولين آخذ؟",
         "شنو هي جرعة الإنسولين اللي ناخد؟",
         "كم إنسولين يجب أن آخذ؟",
+        "قول ليا بالضبط شحال نحقن ديال الإنسولين دابا.",
     )
     for message in messages:
         decision = evaluate_input_safety(message)

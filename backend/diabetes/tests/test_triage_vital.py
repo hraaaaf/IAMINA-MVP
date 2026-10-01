@@ -46,6 +46,8 @@ class DetectVitalDistressTests(SimpleTestCase):
 
     def test_numeric_near_glucose_keyword_triggers(self):
         self.assertTrue(detect_vital_distress("ma glycémie est à 32"))
+        self.assertTrue(detect_vital_distress("sokkar 45 w kan7ess brassi mdowekh"))
+        self.assertTrue(detect_vital_distress("sokkor 42 w kanrjef"))
 
     def test_numeric_without_glucose_context_is_safe(self):
         self.assertFalse(
@@ -89,7 +91,10 @@ class PickEmergencyResponseTests(SimpleTestCase):
         )
         self.assertTrue(payload["is_emergency"])
         self.assertEqual(payload["conversation_id"], "TRIAGE_VITAL")
-        self.assertIn("ما عندناش رقم مؤكد", payload["reply"])
+        self.assertIn("ma 3andhach ra9m tawari2", payload["reply"])
+        self.assertFalse(
+            any("\u0600" <= ch <= "\u06ff" for ch in payload["reply"])
+        )
 
     def test_message_language_fallback_detects_single_darija_indicator(self):
         payload = _pick_emergency_response(
@@ -128,7 +133,10 @@ class TriageVitalMiddlewareTests(TestCase):
         response = self._post_chat("3yyan bzaf ma3endouch l7al")
         data = json.loads(response.content)
         self.assertTrue(data["is_emergency"])
-        self.assertIn("ما عندناش رقم مؤكد", data["reply"])
+        self.assertIn("ma 3andhach ra9m tawari2", data["reply"])
+        self.assertFalse(
+            any("\u0600" <= ch <= "\u06ff" for ch in data["reply"])
+        )
 
     def test_safe_french_message_passes_through(self):
         response = self._post_chat("Ma glycémie est à 140 ce matin.")

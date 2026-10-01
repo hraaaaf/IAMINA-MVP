@@ -95,12 +95,12 @@ _ARABIC_CRITICAL = frozenset(
 
 _NUMERIC_PATTERNS = (
     re.compile(
-        r"(glycémie|glucose|sukkar|sucre\s+de\s+sang|taux\s+de\s+sucre|سكر|سكري|السكر)"
+        r"(glycémie|glucose|sukkar|sokkar|sokkor|sucre\s+de\s+sang|taux\s+de\s+sucre|سكر|سكري|السكر)"
         r".{0,20}\b[1-4]\d\b",
         re.IGNORECASE,
     ),
     re.compile(
-        r"\b[1-4]\d\b.{0,20}(glycémie|glucose|mg.?dl|sukkar|سكر|سكري|السكر)",
+        r"\b[1-4]\d\b.{0,20}(glycémie|glucose|mg.?dl|sukkar|sokkar|sokkor|سكر|سكري|السكر)",
         re.IGNORECASE,
     ),
 )

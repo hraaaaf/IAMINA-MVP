@@ -44,7 +44,7 @@ _ARABIC_SCRIPT_MARKERS = (
     "ي",
 )
 _DARIJA_LATIN_MARKERS = frozenset(
-    {"wach", "bghit", "sukkar", "3ndi", "3ndek", "daba", "bzaf", "mzyan"}
+    {"wach", "bghit", "sukkar", "sokkar", "sokkor", "3ndi", "3ndek", "daba", "bzaf", "mzyan"}
 )
 
 
@@ -111,13 +111,21 @@ def fallback_emergency_locale(
 ) -> ResolvedLocale:
     """Build a jurisdiction-neutral locale when no confirmed patient locale exists."""
     response_language = normalize_emergency_language(language, message)
+    script_preference = "latin"
+    if response_language == "ar":
+        script_preference = "arabic"
+    elif response_language == "ar-MA":
+        script_preference = (
+            "arabic"
+            if any(marker in message for marker in _ARABIC_SCRIPT_MARKERS)
+            else "latin"
+        )
+
     return ResolvedLocale(
         country_code=None,
         ui_language=response_language if response_language != "ar-MA" else "ar",
         response_language=response_language,
-        script_preference=(
-            "arabic" if response_language in {"ar", "ar-MA"} else "latin"
-        ),
+        script_preference=script_preference,
         transliteration_preference="none",
         dialect="ar-MA" if response_language == "ar-MA" else None,
         glucose_unit="mg/dL",
@@ -159,13 +167,31 @@ def _response_class(reason: str | None) -> str:
 
 def _medical_reply(locale: ResolvedLocale, language: str) -> str:
     contact_line = render_medical_emergency_contact(locale, language=language)
-    if language in {"ar-MA", "ar"}:
+    if language == "ar-MA":
+        if locale.script_preference == "latin":
+            return (
+                "⚠️ TANBIH SI7I 3AJEL — IAmina wa9fat t-ta7lil l-ali.\n\n"
+                f"🚨 {contact_line}\n\n"
+                "Ila nta wa3i w t9der tbl3, tbe3 plan dyal l-hypo li deja ttaf9ti 3lih "
+                "m3a l-fari9 t-tibbi. Ila ma b9itich wa3i, ma y3tiwk walo mn fom w "
+                "yb9a m3ak chi wa7ed 7tta twsel l-mosa3ada.\n\n"
+                "IAmina ma kat3awwdch l3inaya t-tibbiya lmosta3jala."
+            )
         return (
             "⚠️ تنبيه صحي عاجل — IAmina وقفات التحليل الآلي.\n\n"
             f"🚨 {contact_line}\n\n"
             "إلا كان الشخص واعي ويقدر يبلع، طبقو خطة نقص السكر اللي سبق شرحها الفريق الصحي. "
             "إلا كان فاقد الوعي، ما تعطيوه والو من الفم وبقاو معاه حتى توصل المساعدة.\n\n"
             "IAmina ما كتبدلش الرعاية الطبية المستعجلة."
+        )
+    if language == "ar":
+        return (
+            "⚠️ تنبيه صحي عاجل — أوقفت IAmina التحليل الآلي.\n\n"
+            f"🚨 {contact_line}\n\n"
+            "إذا كان الشخص واعيًا وقادرًا على البلع، فاتبعوا خطة علاج انخفاض السكر "
+            "المتفق عليها مسبقًا مع الفريق الصحي. وإذا كان فاقدًا للوعي، فلا تعطوه "
+            "شيئًا عن طريق الفم وابقوا معه حتى تصل المساعدة.\n\n"
+            "IAmina لا تغني عن الرعاية الطبية الطارئة."
         )
     if language == "en":
         return (
@@ -214,7 +240,11 @@ def compose_emergency_response(
         reply, language = _crisis_reply(locale, language)
     else:
         reply = _medical_reply(locale, language)
-    reply = append_emergency_disclosure(reply, language)
+    reply = append_emergency_disclosure(
+        reply,
+        language,
+        script_preference=locale.script_preference,
+    )
 
     return EmergencyResponse(
         reply=reply,

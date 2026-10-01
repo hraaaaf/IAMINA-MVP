@@ -93,17 +93,38 @@ _DISCLOSURES = {
         "IAmina ma katra9ebch had l-alert f lwa9t l7a9i9i, w ma t3ayet l ta wa7ed "
         "mn l-mihaniyin automatiquement. 3ayet daba l-tawari2 wla chi wa7ed kat9 fih."
     ),
+    "ar-MA-arabic": (
+        "IAmina ما كتراقبش هاد التنبيه فالوقت الحقيقي، وما تعيط حتى لشي مهني "
+        "بشكل تلقائي. تاصل دابا بالطوارئ ولا بشي واحد كتق فيه."
+    ),
 }
 
 
-def emergency_disclosure(language: str = "fr") -> str:
+def emergency_disclosure(
+    language: str = "fr",
+    *,
+    script_preference: str | None = None,
+) -> str:
     """Return the mandatory disclosure for the active operating mode."""
     PILOT_EMERGENCY_POLICY.validate()
-    return _DISCLOSURES.get(language, _DISCLOSURES["fr"])
+    key = (
+        "ar-MA-arabic"
+        if language == "ar-MA" and script_preference == "arabic"
+        else language
+    )
+    return _DISCLOSURES.get(key, _DISCLOSURES["fr"])
 
 
-def append_emergency_disclosure(message: str, language: str = "fr") -> str:
-    disclosure = emergency_disclosure(language)
+def append_emergency_disclosure(
+    message: str,
+    language: str = "fr",
+    *,
+    script_preference: str | None = None,
+) -> str:
+    disclosure = emergency_disclosure(
+        language,
+        script_preference=script_preference,
+    )
     if disclosure in message:
         return message
     return f"{message.rstrip()}\n\n{disclosure}"
