@@ -5,7 +5,11 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 
 def _reply(message: str, *, language: str = "en", history: list[dict[str, str]] | None = None) -> dict:
