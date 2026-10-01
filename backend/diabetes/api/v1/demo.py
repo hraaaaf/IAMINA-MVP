@@ -16,7 +16,7 @@ from ninja import Router
 from ninja.errors import HttpError
 from pydantic import BaseModel, Field
 
-from companion.demo_runtime import reply_with_synthetic_patient
+from diabetes.services.demo_runtime import reply_with_synthetic_patient
 from core.models import AIUserThrottleWindow, BasePatientProfile
 from diabetes.api.v1.security import firebase_auth_backend
 from diabetes.models import DiabetesProfile, LogEntry
