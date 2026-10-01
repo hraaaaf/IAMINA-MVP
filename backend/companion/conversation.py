@@ -130,7 +130,7 @@ _DARIJA_LATIN_RE = re.compile(
     r"kayn|mazal|daba|hna|nta|nti|wakha|khouya|khti|bzaf|chhal|kifach|chno|"
     r"fach|rah|sir|salam|labas|b9iti|ma3lich|inchallah|labes|mashi|walo|"
     r"yallah|bslama|chokran|3la|dyal|lli|had|hadi|bach|ach|nkdar|nqder|"
-    r"khasni|khassni|mnin|fin|hnaya|ghir|smahli|samahli|mabghitch)\b",
+    r"khasni|khassni|mnin|fin|hnaya|ghir|smahli|samahli|mabghitch|sokkar|kan7ess|brassi|mdowekh)\b",
     re.IGNORECASE,
 )
 _EMOTIONAL_RE = re.compile(
