@@ -59,6 +59,27 @@ def test_monitoring_interpretation_fails_closed_when_data_are_insufficient():
     assert "change_treatment" in resolution.decision.forbidden_actions
 
 
+def test_monitoring_reply_exposes_available_summary_values():
+    context = _context()
+    context.kpi_summary.update({
+        "log_count": 42,
+        "days_with_data": 7,
+        "gmi": None,
+    })
+
+    resolution = resolve_monitoring_interpretation(
+        "Explique-moi ma glycémie moyenne et mon TIR.",
+        context,
+        language="fr",
+    )
+
+    assert resolution is not None
+    assert "42 mesures sur 7 jours" in resolution.reply
+    assert "142 mg/dL" in resolution.reply
+    assert "TIR CGM vérifié 68 %" in resolution.reply
+    assert "GMI indisponible" in resolution.reply
+
+
 def test_broad_weekly_personal_diabetes_request_fails_closed_without_data():
     context = DomainContext(
         kpi_summary={
