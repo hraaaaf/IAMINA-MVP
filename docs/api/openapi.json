@@ -2517,6 +2517,11 @@
             "title": "Language",
             "type": "string"
           },
+          "session_id": {
+            "default": "",
+            "title": "Session Id",
+            "type": "string"
+          },
           "history": {
             "items": {
               "$ref": "#/components/schemas/DemoChatHistoryTurn"
