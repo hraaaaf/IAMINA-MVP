@@ -303,7 +303,7 @@
             }
           }
         },
-        "description": "Public, stateless IAMINA demo conversation with request-scoped history.",
+        "description": "Public demo using the application runtime with synthetic logs.",
         "tags": [
           "demo"
         ],
