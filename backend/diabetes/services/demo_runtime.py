@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from django.utils import timezone
 
-from companion.conversation import detect_language
 import companion.demo_runtime as companion_demo_runtime
+from companion.conversation import detect_language
 from core.ai_egress import TEXT, ai_egress_scope
 from core.emergency_response import compose_emergency_for_patient
 from core.input_safety import INSULIN_BLOCK, PRESCRIPTION_BLOCK, URGENT, evaluate_input_safety
