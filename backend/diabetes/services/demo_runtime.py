@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from companion.conversation import detect_language
 import companion.demo_runtime as companion_demo_runtime
+from core.ai_egress import TEXT, ai_egress_scope
 from core.emergency_response import compose_emergency_for_patient
 from core.input_safety import INSULIN_BLOCK, PRESCRIPTION_BLOCK, URGENT, evaluate_input_safety
 from core.medical_safety import no_prescription_message
@@ -47,7 +48,11 @@ def reply_with_synthetic_patient(
         }
 
     try:
-        reply = companion_demo_runtime.IAmina(patient, reply_language).chat(message, context_days=14)
+        with ai_egress_scope(patient.id, "companion_chat", TEXT):
+            reply = companion_demo_runtime.IAmina(patient, reply_language).chat(
+                message,
+                context_days=14,
+            )
     except Exception:
         reply = "Désolé, une erreur inattendue s'est produite. Réessaie dans quelques instants."
 
