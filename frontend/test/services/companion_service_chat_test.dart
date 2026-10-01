@@ -47,6 +47,7 @@ void main() {
       authService: _AuditAuthService(),
       httpClient: client,
       baseUrl: 'http://127.0.0.1:8000',
+      demoSessionId: 'test-session',
     );
 
     final reply = await service.sendChatMessage('bonjour');
@@ -58,6 +59,7 @@ void main() {
     expect(jsonDecode(captured.body), {
       'message': 'bonjour',
       'language': 'fr',
+      'session_id': 'test-session',
       'history': <dynamic>[],
     });
     expect(reply?.conversationId, 'demo-governed');
@@ -90,6 +92,7 @@ void main() {
         );
       }),
       baseUrl: 'http://127.0.0.1:8000',
+      demoSessionId: 'test-session',
     );
 
     await service.sendChatMessage('Je veux mieux dormir.');
@@ -100,6 +103,7 @@ void main() {
     expect(jsonDecode(captured[1].body), {
       'message': 'Quel était mon objectif ?',
       'language': 'fr',
+      'session_id': 'test-session',
       'history': [
         {'role': 'user', 'content': 'Je veux mieux dormir.'},
         {'role': 'assistant', 'content': 'Tu veux mieux dormir.'},
@@ -130,6 +134,7 @@ void main() {
         );
       }),
       baseUrl: 'http://127.0.0.1:8000',
+      demoSessionId: 'test-session',
     );
 
     for (var turn = 1; turn <= 10; turn += 1) {
@@ -172,6 +177,7 @@ void main() {
         ),
       ),
       baseUrl: 'http://127.0.0.1:8000',
+      demoSessionId: 'test-session',
     );
 
     final reply = await service.sendChatMessage('مرحبا');
@@ -188,6 +194,7 @@ void main() {
       authService: _AuditAuthService(),
       httpClient: MockClient((_) async => throw http.ClientException('offline')),
       baseUrl: 'http://127.0.0.1:8000',
+      demoSessionId: 'test-session',
     );
 
     final reply = await service.sendChatMessage('bonjour');
@@ -219,6 +226,7 @@ void main() {
       authService: _TokenAuthService(),
       httpClient: client,
       baseUrl: 'http://127.0.0.1:8000',
+      demoSessionId: 'test-session',
     );
 
     final reply = await service.sendChatMessage(
@@ -262,6 +270,7 @@ void main() {
       authService: _TokenAuthService(),
       httpClient: client,
       baseUrl: 'http://127.0.0.1:8000',
+      demoSessionId: 'test-session',
     );
 
     final reply = await service.sendVoiceMessage(
@@ -296,6 +305,7 @@ void main() {
         (_) async => throw StateError('network must not be reached'),
       ),
       baseUrl: 'http://127.0.0.1:8000',
+      demoSessionId: 'test-session',
     );
 
     await expectLater(
