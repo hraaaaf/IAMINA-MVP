@@ -34,7 +34,7 @@ _TREND_RE = re.compile(
 )
 
 _PERSONAL_DIABETES_RE = re.compile(
-    r"(?:\\b(?:mon|my)\\s+(?:diab[eè]te|diabetes)\\b|(?:سكري|السكري)\\s+(?:ديالي|عندي))",
+    r"(?:\b(?:mon|my)\s+(?:diab[eè]te|diabetes)\b|(?:سكري|السكري)\s+(?:ديالي|عندي))",
     re.IGNORECASE,
 )
 
