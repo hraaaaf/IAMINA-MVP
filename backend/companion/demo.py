@@ -39,7 +39,8 @@ _CLINICIAN_RE = re.compile(
 )
 _PERSONAL_DATA_RE = re.compile(
     r"\b(?:mes?\s+(?:donn[ée]es?|glyc[ée]mie|mesures?|r[ée]sultats?|tir|dossier)|"
-    r"mon\s+diab[eè]te|my\s+(?:data|glucose|readings?|results?|tir|record|diabetes))\b|"
+    r"mon\s+(?:diab[eè]te|tir|gmi|cv|glucose|tbr|tar)|"
+    r"my\s+(?:(?:exact|current|weekly)\s+)?(?:data|glucose|readings?|results?|tir|gmi|cv|tbr|tar|record|diabetes))\b|"
     r"(?:بياناتي|سكري|السكري\s+ديالي|قياساتي|نتائجي|ملفي)",
     re.IGNORECASE,
 )
