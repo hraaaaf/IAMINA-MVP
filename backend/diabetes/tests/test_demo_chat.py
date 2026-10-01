@@ -79,6 +79,19 @@ class DemoChatContractTests(TestCase):
         self.assertEqual(self._post("hello", history=too_many).status_code, 400)
         self.assertEqual(self._post("hello", history=too_large).status_code, 400)
 
+    def test_demo_weekly_personal_diabetes_request_never_calls_model(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=AssertionError("personal demo data request must stay deterministic"),
+        ):
+            response = self._post("Comment était mon diabète cette semaine ?")
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"].lower()
+        self.assertIn("mode démo", reply)
+        self.assertIn("aucun dossier patient", reply)
+
+
     def test_demo_chat_does_not_call_model_for_dose_boundary(self):
         with patch(
             "companion.demo.generate_demo_reply",
