@@ -91,6 +91,35 @@ class DemoChatContractTests(TestCase):
         self.assertIn("mode démo", reply)
         self.assertIn("aucun dossier patient", reply)
 
+    def test_demo_personal_tir_request_stays_data_bound_before_education(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=AssertionError("personal TIR request must stay deterministic"),
+        ):
+            response = self._post(
+                "Quel est mon TIR exact cette semaine ? Je n'ai partagé aucun log."
+            )
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"].lower()
+        self.assertIn("aucun dossier patient", reply)
+        self.assertNotIn("70–180", reply)
+
+    def test_demo_personal_gmi_request_stays_data_bound_before_education(self):
+        with patch(
+            "companion.demo.generate_demo_reply",
+            side_effect=AssertionError("personal GMI request must stay deterministic"),
+        ):
+            response = self._post(
+                "What is my exact GMI this week? I shared no glucose logs.",
+                language="en",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"].lower()
+        self.assertIn("cannot access any patient record", reply)
+        self.assertNotIn("a1c-like estimate", reply)
+
     def test_demo_chat_routes_latin_darija_low_glucose_before_model(self):
         with patch(
             "companion.demo.generate_demo_reply",
