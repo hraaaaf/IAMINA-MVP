@@ -248,6 +248,8 @@ _DEMO_COPY = {
 def resolve_demo_language(message: str, requested: str = "fr") -> str:
     """Resolve a bounded demo language without patient/profile lookup."""
     requested = (requested or "fr").strip()
+    if _LATIN_DARIJA_RE.search(message) and not _ARABIC_RE.search(message):
+        return "ar-MA"
     if _ARABIC_RE.search(message):
         return "ar-MA" if requested == "ar-MA" else "ar"
     if _ENGLISH_HINT_RE.search(message):
