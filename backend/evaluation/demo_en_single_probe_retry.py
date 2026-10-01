@@ -1,4 +1,4 @@
-"""Single English Groq availability probe through the governed demo path."""
+"""Single English Groq availability probe through the governed demo path. Retry marker 2026-10-01T16:21Z."""
 
 from __future__ import annotations
 
