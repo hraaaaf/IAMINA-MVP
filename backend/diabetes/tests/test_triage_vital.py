@@ -133,7 +133,10 @@ class TriageVitalMiddlewareTests(TestCase):
         response = self._post_chat("3yyan bzaf ma3endouch l7al")
         data = json.loads(response.content)
         self.assertTrue(data["is_emergency"])
-        self.assertIn("ما عندناش رقم مؤكد", data["reply"])
+        self.assertIn("ma 3andhach ra9m tawari2", data["reply"])
+        self.assertFalse(
+            any("\u0600" <= ch <= "\u06ff" for ch in data["reply"])
+        )
 
     def test_safe_french_message_passes_through(self):
         response = self._post_chat("Ma glycémie est à 140 ce matin.")
