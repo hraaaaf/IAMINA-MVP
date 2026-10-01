@@ -26,7 +26,7 @@ def reply_with_synthetic_patient(
     if decision.action == URGENT:
         emergency = compose_emergency_for_patient(
             decision,
-            patient=patient,
+            patient=None,
             language=reply_language,
             message=message,
         )
