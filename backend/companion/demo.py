@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 
 from companion.demo_model import DemoModelUnavailable, DemoPayloadDenied, generate_demo_reply
+from companion.diabetes_education import diabetes_education_reply
 from companion.output_guard import safe_fallback
 from companion.zero_model_router import exact_chitchat_reply
 from core.companion.clinical import get_demo_advice_resolution
@@ -120,6 +121,8 @@ def _food_permission_reply(text: str, reply_language: str) -> str:
         "la teneur en glucides. Si tu veux, je peux t’aider à lire l’étiquette ou "
         "à préparer une question pour ton soignant."
     )
+
+
 _CASUAL_CHAT_RE = re.compile(
     r"(?:just keep me company|just talk|keep it casual|don't turn it into advice|"
     r"pas besoin d['’]un plan|juste discuter|parle-moi normalement|"
@@ -191,6 +194,7 @@ def _casual_fallback(
         if continuation
         else "D’accord, pas de plan ni de conseils. On peut juste discuter tranquillement."
     )
+
 
 _DEMO_COPY = {
     "fr": {
@@ -345,32 +349,36 @@ def reply_to_demo_message(
     elif _CAPABILITY_RE.search(text):
         reply = _DEMO_COPY[reply_language]["capability"]
     else:
-        try:
-            reply = generate_demo_reply(
-                text,
-                reply_language,
-                history=history or [],
-            )
-        except DemoPayloadDenied:
-            reply = _DEMO_COPY[reply_language]["personal"]
-        except DemoModelUnavailable:
-            bounded_history = history or []
-            if _CASUAL_CHAT_RE.search(text) or _history_is_casual(bounded_history):
-                reply = _casual_fallback(text, reply_language, bounded_history)
-            elif _EMOTIONAL_RE.search(text):
-                reply = safe_fallback(
+        education = diabetes_education_reply(text, reply_language)
+        if education is not None:
+            reply = education
+        else:
+            try:
+                reply = generate_demo_reply(
+                    text,
                     reply_language,
-                    mode="emotional",
-                    prefer_latin_script=False,
+                    history=history or [],
                 )
-            elif _CLINICIAN_RE.search(text):
-                reply = safe_fallback(
-                    reply_language,
-                    mode="clinician_prep",
-                    prefer_latin_script=False,
-                )
-            else:
-                reply = _DEMO_COPY[reply_language]["general"]
+            except DemoPayloadDenied:
+                reply = _DEMO_COPY[reply_language]["personal"]
+            except DemoModelUnavailable:
+                bounded_history = history or []
+                if _CASUAL_CHAT_RE.search(text) or _history_is_casual(bounded_history):
+                    reply = _casual_fallback(text, reply_language, bounded_history)
+                elif _EMOTIONAL_RE.search(text):
+                    reply = safe_fallback(
+                        reply_language,
+                        mode="emotional",
+                        prefer_latin_script=False,
+                    )
+                elif _CLINICIAN_RE.search(text):
+                    reply = safe_fallback(
+                        reply_language,
+                        mode="clinician_prep",
+                        prefer_latin_script=False,
+                    )
+                else:
+                    reply = _DEMO_COPY[reply_language]["general"]
 
     return {
         "reply": reply,
