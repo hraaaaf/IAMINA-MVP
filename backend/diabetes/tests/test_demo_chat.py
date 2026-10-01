@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
-from django.test import Client, TestCase
+from django.test import Client, TestCase\nfrom django.utils import timezone
 
 from companion.demo_model import DemoModelUnavailable
 from diabetes.models import LogEntry
