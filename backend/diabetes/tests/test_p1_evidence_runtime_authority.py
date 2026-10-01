@@ -176,6 +176,29 @@ class EvidenceGuardedEngineTests(SimpleTestCase):
         self.assertIsNone(context.kpi_summary["tir_pct"])
         build_context_mock.assert_called_once()
 
+    @patch("diabetes.services.clinical.evidence_engine.compute_kpis")
+    def test_insufficient_context_preserves_measurement_coverage(
+        self,
+        compute_kpis_mock,
+    ):
+        compute_kpis_mock.return_value = SimpleNamespace(
+            has_sufficient_data=False,
+            log_count=0,
+            days_with_data=0,
+        )
+
+        context = EvidenceGuardedDiabetesEngine().analyze(
+            patient_id=7,
+            language="fr",
+            days=7,
+        )
+
+        self.assertEqual(context.analysis_status, "insufficient_data")
+        self.assertFalse(context.has_sufficient_data)
+        self.assertEqual(context.kpi_summary["log_count"], 0)
+        self.assertEqual(context.kpi_summary["days_with_data"], 0)
+
+
     @patch("diabetes.api.v1.kpis.assess_cgm_window")
     @patch("diabetes.api.v1.kpis.cache")
     @patch("diabetes.api.v1.kpis.compute_kpis")
