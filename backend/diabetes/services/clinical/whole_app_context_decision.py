@@ -42,28 +42,29 @@ _PATTERNS: tuple[tuple[WholeAppIntent, re.Pattern[str]], ...] = (
     (
         WholeAppIntent.IMPORTED_MEDICATIONS,
         re.compile(
-            r"(?:m[eé]dicament|medication|medications|دواء|أدوية).{0,40}"
-            r"(?:document|rapport|ordonnance|import|extrait|extracted|مستند|تقرير)",
+            r"(?:m[eé]dicament|medication|medications|دواء|أدوية).{0,48}"
+            r"(?:import|extrait|extracted|مستند|تقرير|document|rapport|ordonnance).{0,24}"
+            r"(?:\b(?:mon|ma|mes|my)\b.{0,12}(?:document|rapport|ordonnance)|"
+            r"(?:مستندي|تقريري))",
             re.IGNORECASE,
         ),
     ),
     (
         WholeAppIntent.PAIRED_MEALS,
         re.compile(
-            r"(?:\b(?:mes|my|montre|show)\b.{0,28}"
+            r"\b(?:mes|my|montre|show)\b.{0,28}"
             r"(?:pr[eé][ -]?post|avant.{0,12}apr[eè]s|pre.{0,12}post|"
-            r"[eé]pisode.{0,12}repas|paired.{0,12}meal)|"
-            r"(?:[eé]pisodes?|pairs?).{0,16}(?:pr[eé][ -]?post|paired))",
+            r"[eé]pisode.{0,12}repas|paired.{0,12}meal)",
             re.IGNORECASE,
         ),
     ),
     (
         WholeAppIntent.LATEST_CGM,
         re.compile(
-            r"(?:derni[eè]re|latest|last).{0,24}(?:cgm|capteur|sensor).{0,20}"
-            r"(?:mesure|lecture|reading|glucose)?|"
-            r"(?:cgm|capteur|sensor).{0,24}(?:derni[eè]re|latest|last).{0,16}"
-            r"(?:mesure|lecture|reading)?",
+            r"(?:\b(?:ma|mon|my)\b.{0,28}(?:derni[eè]re|latest|last).{0,28}"
+            r"(?:cgm|capteur|sensor)|"
+            r"(?:derni[eè]re|latest|last).{0,28}\b(?:ma|mon|my)\b.{0,16}"
+            r"(?:cgm|capteur|sensor))",
             re.IGNORECASE,
         ),
     ),
@@ -135,19 +136,20 @@ _PATTERNS: tuple[tuple[WholeAppIntent, re.Pattern[str]], ...] = (
     (
         WholeAppIntent.LATEST_LAB,
         re.compile(
-            r"(?:dernier|derni[eè]re|latest|last).{0,24}"
+            r"(?:\b(?:mon|ma|my)\b.{0,28}(?:dernier|derni[eè]re|latest|last).{0,28}"
             r"(?:rapport|bilan|labo|laboratoire|lab|document)|"
-            r"(?:rapport|bilan|labo|laboratoire|lab|document).{0,24}"
-            r"(?:dernier|derni[eè]re|latest|last)",
+            r"(?:dernier|derni[eè]re|latest|last).{0,28}\b(?:mon|ma|my)\b.{0,16}"
+            r"(?:rapport|bilan|labo|laboratoire|lab|document))",
             re.IGNORECASE,
         ),
     ),
     (
         WholeAppIntent.PROACTIVE_PENDING,
         re.compile(
-            r"(?:observation|insight|alerte|suggestion).{0,24}"
-            r"(?:attente|pending|proactiv)|"
-            r"(?:proactiv).{0,24}(?:attente|pending|observation|insight)",
+            r"(?:observation|insight|alerte|suggestion|proactiv).{0,32}"
+            r"(?:attente|pending)|"
+            r"(?:attente|pending).{0,32}"
+            r"(?:observation|insight|alerte|suggestion|proactiv)",
             re.IGNORECASE,
         ),
     ),
