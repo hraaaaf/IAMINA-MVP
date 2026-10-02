@@ -6,7 +6,7 @@ T2: stream() yields text chunks from the OpenAI stream.
 T3: missing openai package logs an error and sets client=None.
 T4: complete() raises RuntimeError when client is None.
 T5: factory resolves KimiProvider when LLM_PROVIDER=kimi.
-T6: Gemini quota exhaustion stays local even when KIMI_API_KEY is set.
+T6: legacy Gemini text configuration remaps to Groq and never selects Kimi.
 """
 from unittest.mock import MagicMock, patch
 
@@ -134,17 +134,23 @@ def test_factory_resolves_kimi_provider():
         assert isinstance(provider, KimiProvider)
 
 
-# ── T6: Gemini quota exhaustion never selects Kimi implicitly ────────────────
+# ── T6: legacy Gemini text configuration is migrated to Groq ────────────────
 
-def test_factory_gemini_quota_exhaustion_stays_local():
+def test_factory_legacy_gemini_config_remaps_to_groq_not_kimi():
+    mock_groq = MagicMock()
+    mock_groq.provider_policy_key = "groq"
     with patch("llm.factory.settings") as mock_settings, \
-         patch("llm.rate_guard.should_use_gemini", return_value=False), \
+         patch(
+             "llm.provider_registry.build_openai_compatible_provider",
+             return_value=mock_groq,
+         ) as mock_build, \
          patch("llm.kimi.KimiProvider") as mock_kimi:
         mock_settings.LLM_PROVIDER = "gemini"
-        mock_settings.LLM_MODEL = None
-        mock_settings.KIMI_API_KEY = "test-key"
+        mock_settings.LLM_MODEL = "gemini-2.5-flash"
         from llm.factory import get_llm
-        from llm.fallback import QuotaExhaustedProvider
+
         result = get_llm()
-        assert isinstance(result, QuotaExhaustedProvider)
+
+        assert result is mock_groq
+        mock_build.assert_called_once_with("groq", model=None)
         mock_kimi.assert_not_called()
