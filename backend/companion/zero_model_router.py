@@ -93,7 +93,7 @@ _FAREWELLS = {
 
 _REPLIES = {
     "fr": {
-        "greeting": "Salut 👋 Oui, je suis là. Qu'est-ce que tu veux savoir ?",
+        "greeting": "Bonjour 👋 Je suis là. Que puis-je faire pour toi ?",
         "thanks": "Avec plaisir 🙏",
         "farewell": "À bientôt 👋",
         "identity": (
@@ -106,8 +106,8 @@ _REPLIES = {
             "à une question précise. Je ne modifie pas ton traitement et je n'invente pas les données manquantes."
         ),
         "history": (
-            "Oui. Je peux utiliser les données enregistrées dans ton compte IAMINA et l'historique récent "
-            "de cette conversation. Demande-moi une donnée précise et je la cherche directement."
+            "Oui pour l'historique récent de cette conversation. Pour les données IAMINA, "
+            "je n'utilise que celles qui sont effectivement enregistrées et accessibles dans l'app."
         ),
         "confusion": (
             "Tu as raison, ma réponse précédente était hors sujet. "
@@ -128,8 +128,8 @@ _REPLIES = {
             "I do not change treatment or invent missing data."
         ),
         "history": (
-            "Yes. I can use data recorded in your IAmina account and the recent history of this conversation. "
-            "Ask for a specific item and I'll look it up directly."
+            "Yes for the recent history of this conversation. For IAmina data, "
+            "I only use information that is actually recorded and available in the app."
         ),
         "confusion": "You're right, my previous reply was off-topic. Tell me what you want to know.",
     },
@@ -143,8 +143,8 @@ _REPLIES = {
             "وبيانات CGM والوثائق/التحاليل، ثم تلخيصها أو الإجابة عن سؤال محدد. لا أغيّر العلاج ولا أختلق بيانات."
         ),
         "history": (
-            "نعم. أستطيع استخدام البيانات المسجلة في حسابك على IAmina والسياق الحديث لهذه المحادثة. "
-            "اطلب معلومة محددة وسأبحث عنها مباشرة."
+            "نعم بالنسبة للسياق الحديث لهذه المحادثة. وبالنسبة لبيانات IAmina، "
+            "لا أستخدم إلا المعلومات المسجلة والمتاحة فعلاً داخل التطبيق."
         ),
         "confusion": "معك حق، ردي السابق كان خارج الموضوع. قل لي ببساطة ماذا تريد أن تعرف.",
     },
@@ -158,8 +158,8 @@ _REPLIES = {
             "ونلخصها ولا نجاوبك على سؤال محدد. ما كنبدلش العلاج وما كنخترعش الداتا الناقصة."
         ),
         "history": (
-            "إييه. نقدر نستعمل الداتا المسجلة فحسابك فـ IAmina والسياق القريب ديال هاد المحادثة. "
-            "سولني على معلومة محددة ونقلب عليها مباشرة."
+            "إييه بالنسبة للسياق القريب ديال هاد المحادثة. وبالنسبة لداتا IAmina، "
+            "كنستعمل غير المعلومات اللي مسجلة ومتاحة فعلاً فالتطبيق."
         ),
         "confusion": "عندك الحق، الجواب اللي فات كان خارج الموضوع. قول ليا غير شنو بغيتي تعرف.",
     },
@@ -177,8 +177,8 @@ _REPLIES = {
             "Ma kanbeddelch traitement w ma kanzidch data ma kaynach."
         ),
         "history": (
-            "Iyyeh. N9der nsta3mel data li msjla f compte IAmina dyalk w l-context l9rib dyal had lconversation. "
-            "Sowlni 3la ma3louma m7edda w nqleb 3liha direct."
+            "Iyyeh 3la l-context l9rib dyal had lconversation. W bnisba l-data dyal IAmina, "
+            "kansta3mel ghir dakchi li msjjel w disponible f l-app."
         ),
         "confusion": "3ndk l7e9, ljawab li fat kan barra mn sujet. Goul lia ghir chno bghiti t3ref.",
     },
