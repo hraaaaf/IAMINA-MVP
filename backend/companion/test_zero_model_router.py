@@ -17,6 +17,13 @@ from companion.zero_model_router import exact_chitchat_reply
         ("thank you", "en"),
         ("Goodbye", "en"),
         ("salam", "ar-MA"),
+        ("salam ça va ?", "fr"),
+        ("tu sais faire quoi ?", "fr"),
+        ("qui es-tu ?", "fr"),
+        ("t'as accès à mon historique ?", "fr"),
+        ("malek chkouen sweltek ?", "ar-MA"),
+        ("what can you do?", "en"),
+        ("chno kat9der dir?", "ar-MA"),
         ("chokran", "ar-MA"),
         ("bslama", "ar-MA"),
         ("سلام", "ar-MA"),
@@ -101,4 +108,36 @@ def test_latin_darija_practical_reply_stays_latin():
     ],
 )
 def test_any_extra_or_reserved_content_fails_closed(message):
+    assert exact_chitchat_reply(message, "fr") is None
+
+
+@pytest.mark.parametrize(
+    ("message", "language", "expected"),
+    [
+        ("salam ça va ?", "fr", "Salam"),
+        ("tu sais faire quoi ?", "fr", "glycémie"),
+        ("qui es-tu ?", "fr", "IAmina"),
+        ("t'as accès à mon historique ?", "fr", "historique récent"),
+        ("malek chkouen sweltek ?", "ar-MA", "3ndk l7e9"),
+        ("what can you do?", "en", "recorded in IAmina"),
+        ("chno kat9der dir?", "ar-MA", "N9der nqleb"),
+    ],
+)
+def test_common_companion_meta_turns_are_local_and_useful(message, language, expected):
+    reply = exact_chitchat_reply(message, language)
+    assert reply is not None
+    assert expected in reply
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "tu sais faire quoi pour une glycémie à 40",
+        "t'as accès à mon historique d'insuline et tu me conseilles quoi",
+        "qui es-tu et quelle dose je prends",
+        "salam ça va ma glycémie est 40",
+        "chno kat9der dir ila sucre 40",
+    ],
+)
+def test_meta_routes_do_not_absorb_clinical_content(message):
     assert exact_chitchat_reply(message, "fr") is None
