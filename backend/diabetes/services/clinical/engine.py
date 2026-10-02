@@ -888,6 +888,18 @@ class DiabetesEngine(BaseEngine):
         if resolution is not None:
             return resolution
 
+        from diabetes.services.clinical.whole_app_context_decision import (
+            resolve_whole_app_context,
+        )
+
+        resolution = resolve_whole_app_context(
+            patient_id,
+            message,
+            language=language,
+        )
+        if resolution is not None:
+            return resolution
+
         from diabetes.services.clinical.clinician_prep_decision import (
             resolve_clinician_prep,
         )
@@ -1012,6 +1024,17 @@ class DiabetesEngine(BaseEngine):
             )
 
             return verified_longitudinal_narration_or_fallback(
+                resolution.decision,
+                candidate,
+                resolution.reply,
+            )
+
+        if rule_id.startswith("diabetes.context."):
+            from diabetes.services.clinical.whole_app_context_narration_verifier import (
+                verified_whole_app_context_or_fallback,
+            )
+
+            return verified_whole_app_context_or_fallback(
                 resolution.decision,
                 candidate,
                 resolution.reply,
