@@ -256,6 +256,45 @@ class WholeAppContextRouterTests(TestCase):
                     f"diabetes.context.{suffix}",
                 )
 
+    def test_patient_scope_never_reads_another_users_records(self):
+        other = User.objects.create_user(username="whole-app-other")
+        other_base = BasePatientProfile.objects.create(
+            patient=other,
+            preferred_language="fr",
+        )
+        DiabetesProfile.objects.create(
+            base_profile=other_base,
+            diabetes_type="type1",
+            treatment_type="insulin_pump",
+        )
+        CGMReadingRecord.objects.create(
+            patient=other,
+            source="dexcom",
+            recorded_at=timezone.now(),
+            glucose_mg_dl=299,
+            dedupe_key="other-patient-cgm",
+        )
+        LabReport.objects.create(
+            patient=other,
+            document_type="lab_report",
+            source_format="pdf",
+            hba1c_pct=11.1,
+            confidence=0.99,
+        )
+
+        profile_reply = self._resolve(
+            "Quel est mon type de diabète enregistré ?"
+        ).reply
+        cgm_reply = self._resolve("Quelle est ma dernière mesure CGM exacte ?").reply
+        lab_reply = self._resolve("Que dit mon dernier rapport de laboratoire ?").reply
+
+        self.assertIn("Type 2", profile_reply)
+        self.assertNotIn("Type 1", profile_reply)
+        self.assertIn("146 mg/dL", cgm_reply)
+        self.assertNotIn("299", cgm_reply)
+        self.assertIn("6.8 %", lab_reply)
+        self.assertNotIn("11.1", lab_reply)
+
     def test_verifier_rejects_nondeterministic_rewrite(self):
         engine = DiabetesEngine()
         resolution = self._resolve("Quel traitement est enregistré dans mon profil ?")
