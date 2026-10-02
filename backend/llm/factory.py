@@ -318,11 +318,21 @@ def get_ai_provider_name() -> str:
 
 
 def get_llm() -> BaseLLMProvider:
-    provider = getattr(settings, "LLM_PROVIDER", "gemini")
+    provider = str(getattr(settings, "LLM_PROVIDER", "groq") or "groq").strip().lower()
     model = getattr(settings, "LLM_MODEL", None)
 
+    # Migration guard: stale production configuration must never silently
+    # reactivate Gemini for text. Legacy Gemini text settings are remapped to
+    # the governed Groq text adapter; Gemini remains isolated to multimodal
+    # adapters that explicitly instantiate it.
     if provider == "gemini":
-        return _build_gemini_with_failover()
+        logger.warning("Legacy LLM_PROVIDER=gemini remapped to Groq text runtime.")
+        provider = "groq"
+        if isinstance(model, str) and model.lower().startswith("gemini"):
+            model = None
+    if provider == "groq" and isinstance(model, str) and model.lower().startswith("gemini"):
+        logger.warning("Ignoring legacy Gemini LLM_MODEL for Groq text runtime.")
+        model = None
 
     if provider == "kimi":
         from .kimi import KimiProvider
