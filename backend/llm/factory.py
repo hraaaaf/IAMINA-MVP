@@ -269,11 +269,8 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
     return provider
 
 
-def get_ai_provider_name() -> str:
-    return _provider_policy_name(get_llm())
-
-
-def get_llm() -> BaseLLMProvider:
+def _configured_text_provider() -> tuple[str, str | None]:
+    """Resolve configured text provider without instantiating a network client."""
     provider = str(getattr(settings, "LLM_PROVIDER", "groq") or "groq").strip().lower()
     model = getattr(settings, "LLM_MODEL", None)
 
@@ -289,6 +286,19 @@ def get_llm() -> BaseLLMProvider:
     if provider == "groq" and isinstance(model, str) and model.lower().startswith("gemini"):
         logger.warning("Ignoring legacy Gemini LLM_MODEL for Groq text runtime.")
         model = None
+    return provider, model
+
+
+def get_ai_provider_name() -> str:
+    """Return the configured text provider name without requiring credentials."""
+    provider, _ = _configured_text_provider()
+    if provider in {"groq", "kimi", "deepseek", "qwen", "claude", "fallback"}:
+        return provider
+    return "fallback"
+
+
+def get_llm() -> BaseLLMProvider:
+    provider, model = _configured_text_provider()
 
     if provider == "kimi":
         from .kimi import KimiProvider
