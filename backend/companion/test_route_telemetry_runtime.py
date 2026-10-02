@@ -110,7 +110,7 @@ def test_recent_exchange_recall_bypasses_llm_even_with_phi_shaped_date():
         patch("companion.conversation.record_companion_route") as route,
     ):
         reply = chat(
-            "Qu'est-ce qu'on s'était dit juste avant ?",
+            "Merci. Et qu'est-ce qu'on s'était dit juste avant ?",
             memory=None,
             deep=object(),
             llm=ExplodingLLM(),
