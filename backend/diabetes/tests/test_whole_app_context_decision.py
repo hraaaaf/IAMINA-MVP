@@ -317,6 +317,12 @@ class WholeAppContextRouterTests(TestCase):
             "Quel temps fait-il demain ?",
             "Aide-moi à rester motivé.",
             "Quel traitement devrais-je prendre ?",
+            "Quels types de diabète existent ?",
+            "Quel devrait être mon objectif glycémique ?",
+            "Que devrais-je manger ce soir ?",
+            "Comment mieux dormir ?",
+            "Comment réduire mon stress ?",
+            "Explique les mesures pré/post repas.",
         ):
             with self.subTest(message=message):
                 self.assertIsNone(classify_whole_app_context(message))
