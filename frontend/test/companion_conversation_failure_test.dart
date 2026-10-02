@@ -77,11 +77,11 @@ void main() {
     final input = find.byKey(const Key('companion-chat-input'));
     await tester.tap(input);
     await tester.enterText(input, 'Salut');
-    expect(Focus.of(tester.element(input)).hasPrimaryFocus, isTrue);
+    expect(tester.widget<TextField>(input).focusNode?.hasPrimaryFocus, isTrue);
 
     await tester.tap(find.byKey(const Key('companion-chat-send')));
     await tester.pump();
-    expect(Focus.of(tester.element(input)).hasPrimaryFocus, isTrue);
+    expect(tester.widget<TextField>(input).focusNode?.hasPrimaryFocus, isTrue);
 
     service.completer.complete(
       const CompanionChatReply(
@@ -92,7 +92,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(Focus.of(tester.element(input)).hasPrimaryFocus, isTrue);
+    expect(tester.widget<TextField>(input).focusNode?.hasPrimaryFocus, isTrue);
     expect(find.text('Bonjour 👋'), findsOneWidget);
   });
 
