@@ -1,3 +1,4 @@
+# Deterministic interpretation coverage audit: no LLM/provider calls.
 import pytest
 
 from companion.zero_model_router import exact_chitchat_reply
