@@ -218,7 +218,10 @@ def _reply_diabetes_type(patient_id: int) -> str:
     profile = _profile(patient_id)
     if profile is None or not profile.diabetes_type:
         return "Aucun type de diabète n’est enregistré dans ton profil."
-    return f"Le type de diabète enregistré dans ton profil est : {profile.get_diabetes_type_display()}."
+    return (
+        "Le type de diabète enregistré dans ton profil est : "
+        f"{profile.get_diabetes_type_display()}."
+    )
 
 
 def _reply_treatment(patient_id: int) -> str:
@@ -282,7 +285,10 @@ def _reply_exact_glucose(patient_id: int, message: str) -> str:
         r"\b(?:hier|yesterday)\b", message, re.IGNORECASE
     ) else timezone.localdate()
     if hour_match is None:
-        return "Je peux relire une mesure précise si tu indiques une heure enregistrée, par exemple « hier à 20h »."
+        return (
+            "Je peux relire une mesure précise si tu indiques une heure enregistrée, "
+            "par exemple « hier à 20h »."
+        )
     hour = int(hour_match.group(1))
     candidates = [
         row
@@ -346,7 +352,11 @@ def _reply_latest_lab(patient_id: int) -> str:
     ):
         if value is not None:
             values.append(f"{label} {_fmt_number(value)} {unit}")
-    date_label = report.report_date.isoformat() if report.report_date else report.created_at.date().isoformat()
+    date_label = (
+        report.report_date.isoformat()
+        if report.report_date
+        else report.created_at.date().isoformat()
+    )
     suffix = " ; ".join(values) if values else "aucune valeur structurée persistée"
     return (
         f"Dernier document confirmé : {report.get_document_type_display()}, date {date_label}. "
