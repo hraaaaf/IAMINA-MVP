@@ -324,6 +324,11 @@ class WholeAppContextRouterTests(TestCase):
             "Comment mieux dormir ?",
             "Comment réduire mon stress ?",
             "Explique les mesures pré/post repas.",
+            "Quels médicaments peut-on extraire d'un document ?",
+            "Explique les épisodes pré/post repas.",
+            "Quelle est la dernière mesure CGM recommandée en recherche ?",
+            "Quel est le dernier document de l'ADA ?",
+            "Une observation proactive, ça veut dire quoi ?",
         ):
             with self.subTest(message=message):
                 self.assertIsNone(classify_whole_app_context(message))
