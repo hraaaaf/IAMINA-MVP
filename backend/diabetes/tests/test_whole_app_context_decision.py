@@ -118,7 +118,9 @@ class WholeAppContextRouterTests(TestCase):
             "Comment ai-je dormi cette semaine ?": WholeAppIntent.SLEEP_HISTORY,
             "Est-ce que j'étais stressé cette semaine ?": WholeAppIntent.STRESS_HISTORY,
             "Que dit mon dernier rapport de laboratoire ?": WholeAppIntent.LATEST_LAB,
-            "Quels médicaments ont été importés de mon document ?": WholeAppIntent.IMPORTED_MEDICATIONS,
+            "Quels médicaments ont été importés de mon document ?": (
+                WholeAppIntent.IMPORTED_MEDICATIONS
+            ),
             "Quelle est ma dernière mesure CGM exacte ?": WholeAppIntent.LATEST_CGM,
             "Quelles observations proactives sont en attente ?": WholeAppIntent.PROACTIVE_PENDING,
             "Montre-moi mes épisodes pré/post repas liés.": WholeAppIntent.PAIRED_MEALS,
