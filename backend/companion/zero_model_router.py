@@ -18,6 +18,14 @@ _GREETING = {
     "hi",
     "hi ca va",
     "hi ça va",
+    "salut ca va",
+    "salut ça va",
+    "yo ca va",
+    "yo ça va",
+    "yoo ca va",
+    "yoo ça va",
+    "you ca va",
+    "you ça va",
     "ca va",
     "ça va",
     "comment ça va",
@@ -55,6 +63,8 @@ _CAPABILITIES = {
 _HISTORY_ACCESS = {
     "t'as accès a mon historique",
     "t'as accès à mon historique",
+    "t'as accès a mon historique au moins",
+    "t'as accès à mon historique au moins",
     "tu as accès a mon historique",
     "tu as accès à mon historique",
     "as-tu accès a mon historique",
@@ -224,10 +234,9 @@ _FR_ROUTINE_SIMPLE_RE = re.compile(
 
 
 def _normalize(message: str) -> str:
-    normalized = _INTERNAL_SPACE.sub(
-        " ",
-        message.strip().casefold().replace("’", "'"),
-    )
+    normalized = message.strip().casefold().replace("’", "'")
+    normalized = re.sub(r"[,;،؛]+", " ", normalized)
+    normalized = _INTERNAL_SPACE.sub(" ", normalized)
     return _TRAILING_PUNCTUATION.sub("", normalized)
 
 
