@@ -52,6 +52,21 @@ class LlmFactoryProviderResolutionTest(SimpleTestCase):
         self.assertEqual(provider.model_name, "openai/gpt-oss-120b")
 
 
+    @override_settings(LLM_PROVIDER="groq", LLM_MODEL="openai/gpt-oss-120b")
+    @patch.dict(os.environ, {"GROQ_API_KEY": ""}, clear=False)
+    def test_provider_name_does_not_require_groq_credentials(self):
+        from llm.factory import get_ai_provider_name
+
+        self.assertEqual(get_ai_provider_name(), "groq")
+
+    @override_settings(LLM_PROVIDER="gemini", LLM_MODEL="gemini-2.5-flash")
+    @patch.dict(os.environ, {"GROQ_API_KEY": ""}, clear=False)
+    def test_provider_name_remaps_legacy_gemini_without_credentials(self):
+        from llm.factory import get_ai_provider_name
+
+        self.assertEqual(get_ai_provider_name(), "groq")
+
+
 class LlmProviderInterfaceTest(SimpleTestCase):
     """FallbackProvider and QuotaExhaustedProvider satisfy the BaseLLMProvider interface."""
 
