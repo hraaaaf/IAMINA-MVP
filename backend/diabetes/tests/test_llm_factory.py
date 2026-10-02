@@ -4,6 +4,7 @@ LLM Factory — provider resolution tests.
 Tests that `get_llm()` returns the correct provider type depending on
 the LLM_PROVIDER setting, without making any real API calls.
 """
+import os
 from unittest.mock import patch
 
 from django.test import SimpleTestCase, override_settings
@@ -26,27 +27,29 @@ class LlmFactoryProviderResolutionTest(SimpleTestCase):
         provider = get_llm()
         self.assertIsInstance(provider, FallbackProvider)
 
-    @override_settings(LLM_PROVIDER="gemini")
-    def test_gemini_provider_uses_central_runtime_guard(self):
-        """Gemini stays directly visible so persistent FinOps can observe 429s."""
+    @override_settings(LLM_PROVIDER="groq", LLM_MODEL="openai/gpt-oss-120b")
+    @patch.dict(os.environ, {"GROQ_API_KEY": "test-groq-key"}, clear=False)
+    def test_groq_provider_is_text_runtime_default(self):
         from llm.factory import get_llm
-        from llm.gemini import GeminiProvider
-        from llm.rate_guard import GuardedGeminiProvider
+        from llm.lowcost_openai_compatible import OpenAICompatibleLowCostProvider
 
-        with patch("llm.rate_guard.should_use_gemini", return_value=True):
-            provider = get_llm()
+        provider = get_llm()
 
-        self.assertIsInstance(provider, GeminiProvider)
-        self.assertNotIsInstance(provider, GuardedGeminiProvider)
+        self.assertIsInstance(provider, OpenAICompatibleLowCostProvider)
+        self.assertEqual(provider.provider_id, "groq")
+        self.assertEqual(provider.model_name, "openai/gpt-oss-120b")
         self.assertTrue(getattr(provider, "_iamina_text_payload_policy", False))
 
-    @override_settings(LLM_PROVIDER="gemini")
-    def test_gemini_cap_hit_returns_local_quota_exhausted(self):
-        """When Gemini daily cap is hit, the factory stays local and deterministic."""
+    @override_settings(LLM_PROVIDER="gemini", LLM_MODEL="gemini-2.5-flash")
+    @patch.dict(os.environ, {"GROQ_API_KEY": "test-groq-key"}, clear=False)
+    def test_legacy_gemini_text_config_is_remapped_to_groq(self):
+        """Stale prod env cannot silently reactivate Gemini for text."""
         from llm.factory import get_llm
-        with patch("llm.rate_guard.should_use_gemini", return_value=False):
-            provider = get_llm()
-        self.assertIsInstance(provider, QuotaExhaustedProvider)
+
+        provider = get_llm()
+
+        self.assertEqual(provider.provider_id, "groq")
+        self.assertEqual(provider.model_name, "openai/gpt-oss-120b")
 
 
 class LlmProviderInterfaceTest(SimpleTestCase):
