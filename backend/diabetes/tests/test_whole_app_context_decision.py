@@ -222,6 +222,40 @@ class WholeAppContextRouterTests(TestCase):
             "diabetes.context.profile_treatment",
         )
 
+    def test_engine_routes_all_twelve_audit_gaps_without_generative_fallback(self):
+        engine = DiabetesEngine()
+        context = engine.analyze(self.user.id, language="fr", days=7)
+        cases = {
+            "Quel est mon type de diabète enregistré ?": "profile_diabetes_type",
+            "Quel traitement est enregistré dans mon profil ?": "profile_treatment",
+            "Quels sont mes objectifs glycémiques enregistrés ?": "profile_targets",
+            "Qu'est-ce que j'ai mangé hier ?": "journal_meal_history",
+            "Quelle était ma glycémie hier à 20h ?": "journal_exact_glucose",
+            "Comment ai-je dormi cette semaine ?": "journal_sleep_history",
+            "Est-ce que j'étais stressé cette semaine ?": "journal_stress_history",
+            "Que dit mon dernier rapport de laboratoire ?": "document_latest_lab",
+            "Quels médicaments ont été importés de mon document ?": (
+                "document_imported_medications"
+            ),
+            "Quelle est ma dernière mesure CGM exacte ?": "cgm_latest_reading",
+            "Quelles observations proactives sont en attente ?": "proactive_pending",
+            "Montre-moi mes épisodes pré/post repas liés.": "paired_meal_history",
+        }
+
+        for message, suffix in cases.items():
+            with self.subTest(message=message):
+                resolution = engine.resolve_patient_advice(
+                    self.user.id,
+                    message,
+                    context,
+                    language="fr",
+                )
+                self.assertIsNotNone(resolution)
+                self.assertEqual(
+                    resolution.decision.rule_id,
+                    f"diabetes.context.{suffix}",
+                )
+
     def test_verifier_rejects_nondeterministic_rewrite(self):
         engine = DiabetesEngine()
         resolution = self._resolve("Quel traitement est enregistré dans mon profil ?")
