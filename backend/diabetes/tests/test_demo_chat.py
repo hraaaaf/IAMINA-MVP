@@ -89,6 +89,33 @@ class DemoChatContractTests(TestCase):
             or "mesures enregistrées entre 70 et 180 mg/dl" in reply
         )
 
+    def test_personal_weekly_request_uses_verified_synthetic_monitoring_data(self):
+        response = self._post("Il est comment mon diabète cette semaine ?!")
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"].lower()
+        self.assertNotIn("comment se portent tes glycémies", reply)
+        self.assertNotIn("je n'ai pas accès à tes logs", reply)
+        self.assertTrue(
+            "mesures sur" in reply
+            or "tir cgm vérifié" in reply
+            or "mesures enregistrées entre 70 et 180 mg/dl" in reply
+        )
+
+    def test_personal_log_request_uses_verified_synthetic_monitoring_data(self):
+        response = self._post("check my logs and tell me!")
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"].lower()
+        self.assertNotIn("je n'ai pas accès à tes logs", reply)
+        self.assertNotIn("i don't have access to your logs", reply)
+        self.assertTrue(
+            "mesures sur" in reply
+            or "tir cgm vérifié" in reply
+            or "mesures enregistrées entre 70 et 180 mg/dl" in reply
+            or "recorded monitoring summary" in reply
+        )
+
     @patch("companion.demo_runtime.IAmina")
     def test_personal_weekly_request_is_not_forced_to_no_patient_record(self, iamina_cls):
         iamina_cls.return_value.chat.return_value = (
