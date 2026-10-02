@@ -240,6 +240,104 @@ def _turn_count(patient) -> int:
     return store.count(patient.id)
 
 
+_LOCAL_LAST_EXCHANGE = {
+    "qu'est-ce qu'on s'était dit juste avant",
+    "qu est ce qu on s etait dit juste avant",
+    "qu'est-ce qu'on vient de se dire",
+    "what did we just say",
+    "what did we say just before",
+    "chno glna 9bel",
+    "ach glna 9bel",
+}
+_LOCAL_RECAP = {
+    "peux-tu me résumer notre échange en une phrase",
+    "peux tu me resumer notre echange en une phrase",
+    "résume notre échange en une phrase",
+    "resume notre echange en une phrase",
+    "summarize our conversation in one sentence",
+    "chno lkhla9a dyal had lhdra",
+}
+
+
+def _normalize_local_meta(message: str) -> str:
+    normalized = re.sub(
+        r"\s+",
+        " ",
+        message.strip().casefold().replace("’", "'"),
+    )
+    return re.sub(r"[\s.!?…،؛:]+$", "", normalized)
+
+
+def _compact_turn_text(message: str, limit: int = 220) -> str:
+    compact = re.sub(r"\s+", " ", (message or "").strip())
+    if len(compact) <= limit:
+        return compact
+    return compact[: limit - 1].rstrip() + "…"
+
+
+def _recent_exchange_pair(patient):
+    assistant = None
+    user = None
+    for turn in _recent_turns(patient, 8):
+        if assistant is None and turn.role == "assistant":
+            assistant = turn.message
+            continue
+        if assistant is not None and turn.role == "user":
+            user = turn.message
+            break
+    return user, assistant
+
+
+def _local_conversation_meta_reply(
+    message: str,
+    patient,
+    language: str,
+) -> str | None:
+    """Answer exact history-meta turns locally; never send stored chat to a provider."""
+    normalized = _normalize_local_meta(message)
+    if normalized not in _LOCAL_LAST_EXCHANGE and normalized not in _LOCAL_RECAP:
+        return None
+
+    user_turn, assistant_turn = _recent_exchange_pair(patient)
+    if not user_turn or not assistant_turn:
+        if language == "en":
+            return "I don't have an earlier exchange to recap yet."
+        if language == "ar-MA" and not _ARABIC_RE.search(message):
+            return "Mazal ma kaynch échange 9bel bach nlkhso."
+        if language in _ARABIC_LANGUAGE_KEYS:
+            return "ما زال ما كاينش تبادل سابق باش نلخّصه."
+        return "Je n'ai pas encore d'échange précédent à rappeler."
+
+    previous_user = _compact_turn_text(user_turn)
+    previous_assistant = _compact_turn_text(assistant_turn)
+
+    if normalized in _LOCAL_LAST_EXCHANGE:
+        if language == "en":
+            return (
+                f'Just before, you asked: “{previous_user}” '
+                f'and I answered: “{previous_assistant}”.'
+            )
+        if language == "ar-MA" and not _ARABIC_RE.search(message):
+            return (
+                f'9bel chwia swlti: “{previous_user}” '
+                f'w jawbtek: “{previous_assistant}”.'
+            )
+        if language in _ARABIC_LANGUAGE_KEYS:
+            return f'قبل شوية سولتيني: «{previous_user}» وجاوبتك: «{previous_assistant}».'
+        return (
+            f'Juste avant, tu m’as demandé : « {previous_user} » '
+            f'et je t’ai répondu : « {previous_assistant} ».'
+        )
+
+    if language == "en":
+        return f'In short: you asked “{previous_user}”, and I answered “{previous_assistant}”.'
+    if language == "ar-MA" and not _ARABIC_RE.search(message):
+        return f'Bikhtisar: swlti “{previous_user}”, w jawbtek “{previous_assistant}”.'
+    if language in _ARABIC_LANGUAGE_KEYS:
+        return f'باختصار: سولتيني «{previous_user}»، وجاوبتك «{previous_assistant}».'
+    return f'En bref : tu m’as demandé « {previous_user} » et je t’ai répondu « {previous_assistant} ».'
+
+
 def _deterministic_language(language: str) -> str:
     """Keep Gulf dialects narrator-only; deterministic clinical copy uses MSA."""
     return "ar" if language in _GULF_DIALECT_KEYS else language
@@ -783,6 +881,18 @@ def chat(
         return safety_reply
 
     detected_language = detect_language(message, language)
+    local_meta_reply = _local_conversation_meta_reply(
+        message,
+        patient,
+        _deterministic_language(detected_language),
+    )
+    if local_meta_reply is not None:
+        record_companion_route("zero_model")
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", local_meta_reply)
+        _update_relationship_memory(message, memory)
+        return local_meta_reply
+
     zero_model_reply = exact_chitchat_reply(
         message,
         _deterministic_language(detected_language),
@@ -937,6 +1047,19 @@ def stream_chat(
         return
 
     detected_language = detect_language(message, language)
+    local_meta_reply = _local_conversation_meta_reply(
+        message,
+        patient,
+        _deterministic_language(detected_language),
+    )
+    if local_meta_reply is not None:
+        record_companion_route("zero_model")
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", local_meta_reply)
+        _update_relationship_memory(message, memory)
+        yield local_meta_reply
+        return
+
     zero_model_reply = exact_chitchat_reply(
         message,
         _deterministic_language(detected_language),
