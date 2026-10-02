@@ -37,6 +37,12 @@ _PERSONAL_DIABETES_RE = re.compile(
     r"(?:\b(?:mon|my)\s+(?:diab[eè]te|diabetes)\b|(?:سكري|السكري)\s+(?:ديالي|عندي))",
     re.IGNORECASE,
 )
+_PERSONAL_MONITORING_DATA_RE = re.compile(
+    r"(?:\b(?:mes|my)\s+logs?\b|"
+    r"\b(?:check|regarde|analyse|analyze|tell me)\b.{0,32}\b(?:logs?|data|donn[eé]es|mesures?|readings?)\b|"
+    r"(?:راجع|حلل).{0,24}(?:قياساتي|بياناتي|القياسات ديالي|المعطيات ديالي))",
+    re.IGNORECASE,
+)
 
 _EVIDENCE = (
     "rule.metric.recorded-range-fractions.v1",
@@ -64,6 +70,8 @@ def classify_monitoring_interpretation(message: str) -> bool:
     if not text:
         return False
     if _MONITORING_METRIC_RE.search(text):
+        return True
+    if _PERSONAL_MONITORING_DATA_RE.search(text):
         return True
     return bool(_GLUCOSE_RE.search(text) and _TREND_RE.search(text))
 
@@ -254,11 +262,6 @@ def resolve_monitoring_interpretation(
             language=language,
         )
         return AdviceResolution(decision=decision, reply=_missing_reply(context, language))
-
-    # Broad weekly questions use the approved clinical narrator when data exist,
-    # preserving actual seven-day context instead of generic deterministic copy.
-    if broad_weekly_request and not metric_or_trend_request:
-        return None
 
     decision = AdviceDecision(
         intent="monitoring_interpretation",
