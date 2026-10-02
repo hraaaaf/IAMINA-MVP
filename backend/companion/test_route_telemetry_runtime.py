@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from companion.conversation import chat, stream_chat
+from core.ai_processor_policy import AIProcessorPolicyDenied
 from core.contracts.domain_context import DomainContext
 from llm.base import LLMResponse
 
@@ -144,3 +145,36 @@ def test_one_sentence_recap_bypasses_llm():
     assert "Question précédente" in reply
     assert "Réponse locale" in reply
     route.assert_called_once_with("zero_model")
+
+
+class PolicyDeniedLLM:
+    def complete(self, *_args, **_kwargs):
+        raise AIProcessorPolicyDenied("synthetic policy denial")
+
+
+def test_policy_denial_returns_useful_local_fallback_without_retry():
+    with (
+        patch("companion.conversation._safety_reply", return_value=None),
+        patch("companion.conversation.exact_chitchat_reply", return_value=None),
+        patch("companion.conversation._local_conversation_meta_reply", return_value=None),
+        patch(
+            "companion.conversation._build_runtime_prompt",
+            return_value=(
+                "fr",
+                DomainContext.empty(language="fr"),
+                "system",
+                "user",
+            ),
+        ),
+        patch("companion.conversation._retry_finalized_repeat") as retry,
+    ):
+        reply = chat(
+            "question libre",
+            memory=None,
+            deep=Deep(),
+            llm=PolicyDeniedLLM(),
+        )
+
+    assert "fonctions locales" in reply
+    assert "Difficulté technique" not in reply
+    retry.assert_not_called()
