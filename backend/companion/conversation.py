@@ -23,6 +23,7 @@ from companion.route_telemetry import record_companion_route
 from companion.state import compute_state, state_to_prompt
 from companion.tone import get_tone_instruction, select_relationship_tone
 from companion.zero_model_router import exact_chitchat_reply
+from core.ai_processor_policy import AIProcessorPolicyDenied
 from core.clinical_decision_audit import record_clinical_decision_audit
 from core.clinical_policy import (
     NarrationMode,
@@ -33,7 +34,6 @@ from core.clinical_policy import (
     narration_policy_block,
     policy_denied_reply,
 )
-from core.ai_processor_policy import AIProcessorPolicyDenied
 from core.companion.clinical import (
     get_advice_resolution,
     get_companion_context,
