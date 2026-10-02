@@ -9,6 +9,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
+from core.input_safety import ALLOW, evaluate_input_safety
 from core.models import BasePatientProfile
 from diabetes.models import CGMReadingRecord, DiabetesProfile, LabReport, LogEntry
 from diabetes.services.clinical.engine import DiabetesEngine
@@ -127,6 +128,7 @@ class WholeAppContextRouterTests(TestCase):
         }
         for message, expected in cases.items():
             with self.subTest(message=message):
+                self.assertEqual(evaluate_input_safety(message).action, ALLOW)
                 self.assertEqual(classify_whole_app_context(message), expected)
 
     def test_profile_type_treatment_and_targets_use_persisted_profile(self):
