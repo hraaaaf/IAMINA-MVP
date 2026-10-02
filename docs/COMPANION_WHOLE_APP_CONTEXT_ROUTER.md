@@ -69,7 +69,7 @@ plumbing. Conversational coverage is now mapped as follows:
 - whole_app_context_decision.py: intent classification + patient-scoped read adapters.
 - whole_app_context_narration_verifier.py: exact deterministic-copy verification.
 - DiabetesEngine.resolve_patient_advice(): routes whole-app context before generative narration.
-- clinical_validation.py: diabetes.context.* registered as EXPERIMENTAL / max L1 while certification is in progress.
+- clinical_validation.py: diabetes.context.* remains registered as EXPERIMENTAL / max L1; this closeout does not promote its clinical validation status.
 - regression tests cover the 12 audit gaps, source reads, false-positive treatment wording, deterministic rewrite rejection, and demo provider bypass.
 
 ## Closeout evidence
