@@ -77,7 +77,7 @@ _PATTERNS: tuple[tuple[WholeAppIntent, re.Pattern[str]], ...] = (
         WholeAppIntent.TREATMENT,
         re.compile(
             r"(?:quel|what).{0,16}(?:traitement|treatment).{0,20}"
-            r"(?:enregistr|profil|record|profile)?|"
+            r"(?:enregistr|profil|record|profile)|"
             r"(?:traitement|treatment).{0,20}(?:enregistr|profil|record|profile)",
             re.IGNORECASE,
         ),
