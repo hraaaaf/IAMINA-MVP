@@ -261,12 +261,14 @@ _LOCAL_RECAP = {
 
 
 def _normalize_local_meta(message: str) -> str:
-    normalized = re.sub(
-        r"\s+",
-        " ",
-        message.strip().casefold().replace("’", "'"),
-    )
-    return re.sub(r"[\s.!?…،؛:]+$", "", normalized)
+    normalized = message.strip().casefold().replace("’", "'")
+    normalized = re.sub(r"[,.!?…،؛:]+", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    for prefix in ("merci et ", "merci ", "et "):
+        if normalized.startswith(prefix):
+            normalized = normalized[len(prefix):].strip()
+            break
+    return normalized
 
 
 def _compact_turn_text(message: str, limit: int = 220) -> str:
