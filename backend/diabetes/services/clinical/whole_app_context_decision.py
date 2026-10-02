@@ -50,8 +50,10 @@ _PATTERNS: tuple[tuple[WholeAppIntent, re.Pattern[str]], ...] = (
     (
         WholeAppIntent.PAIRED_MEALS,
         re.compile(
+            r"(?:\b(?:mes|my|montre|show)\b.{0,28}"
             r"(?:pr[eé][ -]?post|avant.{0,12}apr[eè]s|pre.{0,12}post|"
-            r"[eé]pisode.{0,12}repas|paired.{0,12}meal)",
+            r"[eé]pisode.{0,12}repas|paired.{0,12}meal)|"
+            r"(?:[eé]pisodes?|pairs?).{0,16}(?:pr[eé][ -]?post|paired))",
             re.IGNORECASE,
         ),
     ),
@@ -68,8 +70,10 @@ _PATTERNS: tuple[tuple[WholeAppIntent, re.Pattern[str]], ...] = (
     (
         WholeAppIntent.DIABETES_TYPE,
         re.compile(
-            r"(?:quel|what).{0,12}(?:type).{0,12}(?:diab[eè]te|diabetes)|"
-            r"(?:type).{0,12}(?:diab[eè]te|diabetes).{0,18}(?:enregistr|record)",
+            r"(?:quel(?:le)?\s+est\s+mon|what\s+is\s+my).{0,16}"
+            r"(?:type).{0,12}(?:diab[eè]te|diabetes)|"
+            r"(?:type).{0,12}(?:diab[eè]te|diabetes).{0,24}"
+            r"(?:enregistr|profil|record|profile)",
             re.IGNORECASE,
         ),
     ),
@@ -85,16 +89,19 @@ _PATTERNS: tuple[tuple[WholeAppIntent, re.Pattern[str]], ...] = (
     (
         WholeAppIntent.TARGETS,
         re.compile(
-            r"(?:objectif|cible|target|plage).{0,24}(?:glyc[eé]mi|glucose|enregistr|configur)|"
-            r"(?:quels?|what).{0,18}(?:objectifs?|targets?).{0,18}(?:glyc[eé]mi|glucose)",
+            r"(?:\b(?:mes|my)\b.{0,18}(?:objectifs?|targets?|cible|plage).{0,24}"
+            r"(?:glyc[eé]mi|glucose)|"
+            r"(?:objectif|cible|target|plage).{0,24}(?:glyc[eé]mi|glucose).{0,24}"
+            r"(?:enregistr|configur|profil|record|profile))",
             re.IGNORECASE,
         ),
     ),
     (
         WholeAppIntent.MEAL_HISTORY,
         re.compile(
-            r"(?:qu['’ ]?est[- ]?ce que|quoi|what).{0,16}(?:mang[eé]|eat|ate)|"
-            r"(?:mang[eé]|repas|meal).{0,22}(?:hier|yesterday|journal|histor)",
+            r"(?:qu['’ ]?est[- ]?ce que\s+j['’]?ai\s+mang[eé]|"
+            r"what\s+did\s+i\s+eat|what\s+have\s+i\s+eaten)|"
+            r"(?:mes\s+repas|my\s+meals).{0,22}(?:hier|yesterday|journal|histor)",
             re.IGNORECASE,
         ),
     ),
@@ -109,16 +116,19 @@ _PATTERNS: tuple[tuple[WholeAppIntent, re.Pattern[str]], ...] = (
     (
         WholeAppIntent.SLEEP_HISTORY,
         re.compile(
-            r"(?:sommeil|dormi|dormir|sleep|slept).{0,28}(?:semaine|week|histor|journal)|"
-            r"(?:comment|how).{0,18}(?:dormi|slept|sommeil|sleep)",
+            r"(?:comment\s+ai[- ]?je\s+dormi|how\s+did\s+i\s+sleep)|"
+            r"(?:mon\s+sommeil|my\s+sleep|dormi|slept).{0,28}"
+            r"(?:semaine|week|histor|journal)",
             re.IGNORECASE,
         ),
     ),
     (
         WholeAppIntent.STRESS_HISTORY,
         re.compile(
-            r"(?:stress|stress[eé]|stressed).{0,28}(?:semaine|week|histor|journal)|"
-            r"(?:est[- ]?ce que|was i).{0,18}(?:stress|stressed)",
+            r"(?:est[- ]?ce que\s+j['’]? [eé]tais|[eé]tais[- ]?je|was\s+i)"
+            r".{0,18}(?:stress|stressed)|"
+            r"(?:mon\s+stress|my\s+stress|stress[eé]|stressed).{0,28}"
+            r"(?:semaine|week|histor|journal)",
             re.IGNORECASE,
         ),
     ),
