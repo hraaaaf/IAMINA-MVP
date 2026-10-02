@@ -222,11 +222,23 @@ class WholeAppContextRouterTests(TestCase):
             "diabetes.context.profile_treatment",
         )
 
+    def test_verifier_rejects_nondeterministic_rewrite(self):
+        engine = DiabetesEngine()
+        resolution = self._resolve("Quel traitement est enregistré dans mon profil ?")
+
+        verified = engine.verify_advice_reply(
+            resolution,
+            "Tu devrais changer ton traitement.",
+        )
+
+        self.assertEqual(verified, resolution.reply)
+
     def test_unrelated_message_is_not_claimed(self):
         for message in (
             "Raconte-moi une blague.",
             "Quel temps fait-il demain ?",
             "Aide-moi à rester motivé.",
+            "Quel traitement devrais-je prendre ?",
         ):
             with self.subTest(message=message):
                 self.assertIsNone(classify_whole_app_context(message))
