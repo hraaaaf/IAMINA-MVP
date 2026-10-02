@@ -125,7 +125,7 @@ _PATTERNS: tuple[tuple[WholeAppIntent, re.Pattern[str]], ...] = (
     (
         WholeAppIntent.STRESS_HISTORY,
         re.compile(
-            r"(?:est[- ]?ce que\s+j['’]? [eé]tais|[eé]tais[- ]?je|was\s+i)"
+            r"(?:est[- ]?ce que\s+j['’]?[eé]tais|[eé]tais[- ]?je|was\s+i)"
             r".{0,18}(?:stress|stressed)|"
             r"(?:mon\s+stress|my\s+stress|stress[eé]|stressed).{0,28}"
             r"(?:semaine|week|histor|journal)",
