@@ -74,6 +74,7 @@ class _CompanionConversationScreenState
   bool _serviceInitialized = false;
   bool _ownsService = false;
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _inputFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   final List<_ConversationMessage> _messages = [];
   bool _sending = false;
@@ -121,6 +122,7 @@ class _CompanionConversationScreenState
     unawaited(_tts.stop().then<void>((_) {}));
     _voicePulseController.dispose();
     _controller.dispose();
+    _inputFocusNode.dispose();
     _scrollController.dispose();
     if (_ownsService) _service.dispose();
     super.dispose();
@@ -445,6 +447,7 @@ class _CompanionConversationScreenState
                   ),
                 _Composer(
                   controller: _controller,
+                  focusNode: _inputFocusNode,
                   sending: _sending,
                   voiceState: _voiceState,
                   voicePulse: _voicePulseController,
@@ -652,6 +655,7 @@ class _EmptyConversation extends StatelessWidget {
 
 class _Composer extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode focusNode;
   final bool sending;
   final _VoiceState voiceState;
   final Animation<double> voicePulse;
@@ -660,6 +664,7 @@ class _Composer extends StatelessWidget {
 
   const _Composer({
     required this.controller,
+    required this.focusNode,
     required this.sending,
     required this.voiceState,
     required this.voicePulse,
@@ -694,7 +699,8 @@ class _Composer extends StatelessWidget {
             child: TextField(
               key: const Key('companion-chat-input'),
               controller: controller,
-              enabled: !sending && !voiceBusy,
+              focusNode: focusNode,
+              readOnly: sending || voiceBusy,
               minLines: 1,
               maxLines: 4,
               textInputAction: TextInputAction.send,
