@@ -186,6 +186,7 @@ class WholeAppContextRouterTests(TestCase):
             pending_count=2,
             item=SimpleNamespace(
                 observation_key="context:stress",
+                kind="context",
                 state="persisting",
                 observations=4,
                 distinct_days=3,
@@ -197,7 +198,8 @@ class WholeAppContextRouterTests(TestCase):
 
         preview.assert_called_once_with(patient_id=self.user.id)
         self.assertIn("2 observation(s) en attente", reply)
-        self.assertIn("context:stress", reply)
+        self.assertIn("observation gouvernée : contexte", reply)
+        self.assertNotIn("context:stress", reply)
         self.assertIn("PREPARE_CLINICIAN_DISCUSSION", reply)
 
     def test_paired_meal_query_uses_explicit_episode_links_only(self):
