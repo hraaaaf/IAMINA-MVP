@@ -89,6 +89,16 @@ class DemoChatContractTests(TestCase):
             or "mesures enregistrées entre 70 et 180 mg/dl" in reply
         )
 
+    @patch("companion.conversation.get_gateway_llm")
+    def test_demo_profile_lookup_bypasses_llm_provider(self, gateway):
+        gateway.side_effect = AssertionError("LLM provider must not be called")
+
+        response = self._post("Quel est mon type de diabète enregistré ?")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Type 2", response.json()["reply"])
+        gateway.assert_not_called()
+
     def test_personal_weekly_request_uses_verified_synthetic_monitoring_data(self):
         response = self._post("Il est comment mon diabète cette semaine ?!")
 

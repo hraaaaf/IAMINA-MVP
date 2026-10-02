@@ -70,6 +70,13 @@ RULE_FAMILY_VALIDATION = (
         evidence_basis=("ci7",),
         limitation="descriptive_longitudinal_scope_only",
     ),
+    RuleFamilyValidation(
+        prefix="diabetes.context.",
+        status=ValidationStatus.EXPERIMENTAL,
+        max_authority=AdviceAuthorityLevel.L1_EDUCATION,
+        evidence_basis=("evals.whole_app_context_router",),
+        limitation="read_only_patient_owned_data_only",
+    ),
 )
 
 

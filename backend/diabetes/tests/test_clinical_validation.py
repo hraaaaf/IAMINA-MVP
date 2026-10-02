@@ -64,6 +64,7 @@ def test_all_current_runtime_families_have_explicit_validation_policy():
         "diabetes.symptom.",
         "diabetes.clinician_prep.",
         "diabetes.longitudinal.",
+        "diabetes.context.",
     }
 
 
