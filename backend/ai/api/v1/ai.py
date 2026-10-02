@@ -102,9 +102,9 @@ class SummaryResponse(BaseModel):
     daily_averages: List[dict]
     generated_at: str
     has_sufficient_data: bool
-    # "gemini" | "kimi" | "claude" | "quota-exhausted" | "fallback"
+    # "groq" | "kimi" | "claude" | "quota-exhausted" | "fallback"
     # Lets the Flutter client show a degraded-mode banner when AI is unavailable.
-    ai_provider: str = "gemini"
+    ai_provider: str = "groq"
 
 
 class ChatRequest(BaseModel):
@@ -161,7 +161,7 @@ def get_summary(request, data: SummaryRequest):
     Step 1: SQL computes all KPIs (never Python arithmetic).
     Step 2: Pattern detection engine runs against ORM queryset.
     Step 3: SemanticCompressor → English pivot text.
-    Step 4: Gemini interprets and generates empathetic patient response.
+    Step 4: Groq GPT-OSS-120B formats the governed patient response.
     """
     user = request.user
     patient_language = _get_patient_language(user)
@@ -189,7 +189,7 @@ def get_summary(request, data: SummaryRequest):
     # ── Step 3: Semantic Compression → English Pivot ──
     compressed = compress(kpis, report.patterns, patient_language)
 
-    # ── Step 4: LLM formatting (Gemini interprets, does not calculate) ──
+    # ── Step 4: LLM formatting (Groq GPT-OSS-120B narrates; it does not calculate) ──
     from core.medical_safety import sanitize_patient_visible
 
     insights = sanitize_patient_visible(
