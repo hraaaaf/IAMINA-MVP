@@ -37,7 +37,8 @@ class WholeAppContextRouterTests(TestCase):
         )
 
         now = timezone.now()
-        yesterday_20 = (now - timedelta(days=1)).replace(
+        local_now = timezone.localtime(now)
+        yesterday_20 = (local_now - timedelta(days=1)).replace(
             hour=20,
             minute=15,
             second=0,
