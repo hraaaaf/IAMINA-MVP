@@ -32,7 +32,6 @@ from .circuit_breaker import (
 )
 from .errors import (
     LLMProviderError,
-    LLMProviderQuotaExceeded,
     normalize_provider_exception,
 )
 from .runtime_finops import RuntimeFinOpsConfigurationError
@@ -48,12 +47,6 @@ def _get_fallback() -> BaseLLMProvider:
     return FallbackProvider()
 
 
-def _get_quota_exhausted() -> BaseLLMProvider:
-    from .fallback import QuotaExhaustedProvider
-
-    return QuotaExhaustedProvider()
-
-
 def _provider_policy_name(provider: BaseLLMProvider) -> str:
     explicit = getattr(provider, "provider_policy_key", None)
     if isinstance(explicit, str) and explicit.strip():
@@ -61,8 +54,6 @@ def _provider_policy_name(provider: BaseLLMProvider) -> str:
 
     cls = type(provider).__name__
     mapping = {
-        "GeminiProvider": "gemini",
-        "GuardedGeminiProvider": "gemini",
         "KimiProvider": "kimi",
         "ClaudeProvider": "claude",
         "DeepSeekProvider": "deepseek",
@@ -166,45 +157,24 @@ def _execute_external_complete(
 
     now = timezone.now()
     binding.user_throttle.authorize(patient_id=context.patient_id, now=now)
-    try:
-        response = binding.enforcer.execute_complete(
-            provider=provider_name,
-            model=model,
-            workload=workload,
-            operation_reference=operation_reference,
-            month_key=now.strftime("%Y-%m"),
-            now=now,
-            max_input_tokens=input_upper_bound,
-            max_output_tokens=output_ceiling,
-            call=lambda: _execute_provider_call(
-                provider_name,
-                "complete",
-                lambda: original_complete(
-                    payload.system_prompt,
-                    payload.user_prompt,
-                ),
+    return binding.enforcer.execute_complete(
+        provider=provider_name,
+        model=model,
+        workload=workload,
+        operation_reference=operation_reference,
+        month_key=now.strftime("%Y-%m"),
+        now=now,
+        max_input_tokens=input_upper_bound,
+        max_output_tokens=output_ceiling,
+        call=lambda: _execute_provider_call(
+            provider_name,
+            "complete",
+            lambda: original_complete(
+                payload.system_prompt,
+                payload.user_prompt,
             ),
-        )
-    except LLMProviderQuotaExceeded:
-        if provider_name != "gemini":
-            raise
-        from .rate_guard import _mark_cap_reached
-
-        _mark_cap_reached()
-        logger.warning(
-            "Gemini quota failure recorded by persistent FinOps guard; "
-            "serving local quota response."
-        )
-        return _get_quota_exhausted().complete(
-            payload.system_prompt,
-            payload.user_prompt,
-        )
-
-    if provider_name == "gemini":
-        from .rate_guard import record_gemini_call
-
-        record_gemini_call()
-    return response
+        ),
+    )
 
 
 def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
@@ -297,20 +267,6 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
     provider.think = guarded_think  # type: ignore[method-assign]
     setattr(provider, "_iamina_text_payload_policy", True)
     return provider
-
-
-def _build_gemini_with_failover() -> BaseLLMProvider:
-    from .gemini import GeminiProvider
-    from .rate_guard import should_use_gemini
-
-    if not should_use_gemini():
-        logger.warning(
-            "LLM factory: Gemini daily cap hit — using local quota response; "
-            "implicit network failover is disabled."
-        )
-        return _enforce_text_payload_policy(_get_quota_exhausted())
-
-    return _enforce_text_payload_policy(GeminiProvider())
 
 
 def get_ai_provider_name() -> str:
