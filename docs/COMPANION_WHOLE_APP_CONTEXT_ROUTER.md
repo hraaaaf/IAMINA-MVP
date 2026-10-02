@@ -47,6 +47,23 @@ The router must decide **where to read**, fetch only patient-scoped persisted fa
 6. Deterministic output is the fallback and verifier authority; generative rewrites cannot alter it.
 7. No Vercel deployment without explicit owner authorization.
 
+## Protected patient-data surface coverage
+
+The current diabetes API exposes protected patient data through logs, profile, KPIs,
+personal-response, proactive, companion, CGM, imports/documents, plus account/module
+plumbing. Conversational coverage is now mapped as follows:
+
+- logs / journal -> monitoring + whole-app log, meal, sleep and stress retrieval;
+- profile -> diabetes type, treatment and configured range/provenance;
+- KPIs -> existing monitoring family;
+- personal-response -> existing longitudinal family;
+- proactive -> read-only proactive preview;
+- CGM -> existing monitoring metrics + exact latest reading;
+- documents/imports -> confirmed LabReport fields + explicit non-persistence disclosure
+  for preview-only medication extraction;
+- account/module/auth/locale plumbing -> intentionally not exposed as clinical context;
+- voice is an input transport, not a separate patient-data authority.
+
 ## Current implementation
 
 - whole_app_context_decision.py: intent classification + patient-scoped read adapters.
