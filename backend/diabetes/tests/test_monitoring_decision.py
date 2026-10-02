@@ -107,14 +107,17 @@ def test_broad_weekly_personal_diabetes_request_fails_closed_without_data():
     assert "sans inventer" in resolution.reply
 
 
-def test_broad_weekly_personal_diabetes_request_with_data_uses_approved_narrator():
+def test_broad_weekly_personal_diabetes_request_with_data_uses_verified_summary():
     resolution = resolve_monitoring_interpretation(
         "Comment était mon diabète cette semaine ?",
         _context(),
         language="fr",
     )
 
-    assert resolution is None
+    assert resolution is not None
+    assert resolution.decision.rule_id == "diabetes.monitoring.descriptive_interpretation"
+    assert "142 mg/dL" in resolution.reply
+    assert "TIR CGM vérifié 68 %" in resolution.reply
 
 
 def test_insufficient_monitoring_reply_exposes_known_measurement_coverage():
