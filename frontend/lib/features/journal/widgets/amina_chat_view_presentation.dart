@@ -144,7 +144,7 @@ class _ChatHeader extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('IAmina', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AminaTheme.ink900)),
-                    Text('Assistant clinique · Gemini Flash', style: TextStyle(fontSize: 11, color: AminaTheme.ink400)),
+                    Text('Assistant clinique · Groq GPT-OSS', style: TextStyle(fontSize: 11, color: AminaTheme.ink400)),
                   ],
                 ),
               ],
