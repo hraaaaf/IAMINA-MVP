@@ -200,7 +200,8 @@ class WholeAppContextRouterTests(TestCase):
         self.assertIn("2 observation(s) en attente", reply)
         self.assertIn("observation gouvernée : contexte", reply)
         self.assertNotIn("context:stress", reply)
-        self.assertIn("PREPARE_CLINICIAN_DISCUSSION", reply)
+        self.assertIn("préparer une discussion avec le clinicien", reply)
+        self.assertNotIn("PREPARE_CLINICIAN_DISCUSSION", reply)
 
     def test_paired_meal_query_uses_explicit_episode_links_only(self):
         reply = self._resolve("Montre-moi mes épisodes pré/post repas liés.").reply
