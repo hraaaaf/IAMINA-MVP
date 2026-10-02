@@ -14,7 +14,7 @@ Architecture (Analytical-First):
   1. SQL KPIs computed by sql_analytics.compute_kpis() — no Python arithmetic.
   2. Pattern detection by clinical engine rule detectors.
   3. SemanticCompressor converts KPIs + patterns → English pivot text.
-  4. LLM (Gemini 2.5 Flash) interprets the pivot text, responds in patient language.
+  4. LLM (Groq GPT-OSS-120B) formats the governed pivot response in patient language.
   5. TriageVitalMiddleware (upstream) has already intercepted any emergency messages.
   6. UnitGuardMiddleware (upstream) has already normalised all glucose values.
 """
