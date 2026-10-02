@@ -33,6 +33,7 @@ from core.clinical_policy import (
     narration_policy_block,
     policy_denied_reply,
 )
+from core.ai_processor_policy import AIProcessorPolicyDenied
 from core.companion.clinical import (
     get_advice_resolution,
     get_companion_context,
@@ -341,6 +342,32 @@ def _local_conversation_meta_reply(
 def _deterministic_language(language: str) -> str:
     """Keep Gulf dialects narrator-only; deterministic clinical copy uses MSA."""
     return "ar" if language in _GULF_DIALECT_KEYS else language
+
+
+def _governance_blocked_fallback(message: str, language: str) -> str:
+    """Useful fail-closed copy when external narration is not authorized."""
+    if language == "en":
+        return (
+            "I can keep helping with IAmina's local functions. Ask me for a specific recorded item — "
+            "glucose, meals, sleep, stress, recorded treatment, CGM or documents — "
+            "or ask what I can do."
+        )
+    if language == "ar-MA" and not _ARABIC_RE.search(message):
+        return (
+            "N9der nkemmel m3ak b fonctions locales dyal IAmina. Sowlni 3la data m7edda msjla — "
+            "sucre, makla, n3as, stress, traitement msjjel, CGM wela documents — "
+            "wela sowlni chno n9der ndir."
+        )
+    if language in _ARABIC_LANGUAGE_KEYS:
+        return (
+            "نقدر نكمل معك بوظائف IAmina المحلية. اسألني عن معلومة محددة ومسجلة مثل السكر، الوجبات، "
+            "النوم، التوتر، العلاج المسجل، CGM أو الوثائق، أو اسألني ماذا أستطيع أن أفعل."
+        )
+    return (
+        "Je peux continuer avec les fonctions locales d’IAMINA. Demande-moi une donnée précise enregistrée — "
+        "glycémie, repas, sommeil, stress, traitement enregistré, CGM ou documents — "
+        "ou demande-moi ce que je sais faire."
+    )
 
 
 def _get_context(patient, context_days: int, language: str = "fr") -> DomainContext:
@@ -986,10 +1013,21 @@ def chat(
     _append_turn(patient, "user", message)
     prefer_latin_script = language == "ar-MA" and not _ARABIC_RE.search(message)
 
+    provider_policy_denied = False
     try:
         result = llm.complete(system, user_prompt)
         parsed = parse_llm_json(result.content, ["reply"])
         reply = parsed["reply"]
+    except AIProcessorPolicyDenied:
+        provider_policy_denied = True
+        logger.warning(
+            "IAmina external narration denied by processor policy for patient=%s",
+            patient.id if patient else None,
+        )
+        reply = _governance_blocked_fallback(
+            message,
+            _deterministic_language(language),
+        )
     except Exception:
         logger.exception(
             "IAmina conversation.chat failed for patient=%s",
@@ -1010,18 +1048,19 @@ def chat(
         weekly=_is_weekly_request(message),
         prefer_latin_script=prefer_latin_script,
     )
-    reply = _retry_finalized_repeat(
-        reply=reply,
-        message=message,
-        llm=llm,
-        system=system,
-        user_prompt=user_prompt,
-        deep=deep,
-        language=language,
-        patient=patient,
-        ctx=ctx,
-        prefer_latin_script=prefer_latin_script,
-    )
+    if not provider_policy_denied:
+        reply = _retry_finalized_repeat(
+            reply=reply,
+            message=message,
+            llm=llm,
+            system=system,
+            user_prompt=user_prompt,
+            deep=deep,
+            language=language,
+            patient=patient,
+            ctx=ctx,
+            prefer_latin_script=prefer_latin_script,
+        )
     _append_turn(patient, "assistant", reply)
     _update_relationship_memory(message, memory)
     return reply
@@ -1157,9 +1196,20 @@ def stream_chat(
     _append_turn(patient, "user", message)
     prefer_latin_script = language == "ar-MA" and not _ARABIC_RE.search(message)
 
+    provider_policy_denied = False
     try:
         result = llm.complete(system, user_prompt)
         full_reply = result.content
+    except AIProcessorPolicyDenied:
+        provider_policy_denied = True
+        logger.warning(
+            "IAmina stream external narration denied by processor policy for patient=%s",
+            patient.id if patient else None,
+        )
+        full_reply = _governance_blocked_fallback(
+            message,
+            _deterministic_language(language),
+        )
     except Exception:
         logger.exception(
             "IAmina stream_chat buffered fallback failed for patient=%s",
@@ -1180,18 +1230,19 @@ def stream_chat(
         weekly=_is_weekly_request(message),
         prefer_latin_script=prefer_latin_script,
     )
-    full_reply = _retry_finalized_repeat(
-        reply=full_reply,
-        message=message,
-        llm=llm,
-        system=system,
-        user_prompt=user_prompt,
-        deep=deep,
-        language=language,
-        patient=patient,
-        ctx=ctx,
-        prefer_latin_script=prefer_latin_script,
-    )
+    if not provider_policy_denied:
+        full_reply = _retry_finalized_repeat(
+            reply=full_reply,
+            message=message,
+            llm=llm,
+            system=system,
+            user_prompt=user_prompt,
+            deep=deep,
+            language=language,
+            patient=patient,
+            ctx=ctx,
+            prefer_latin_script=prefer_latin_script,
+        )
     _append_turn(patient, "assistant", full_reply)
     _update_relationship_memory(message, memory)
     yield full_reply
