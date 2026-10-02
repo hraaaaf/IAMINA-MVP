@@ -1,7 +1,7 @@
 # IAMINA — Whole-App Context Router
 
-Status: IN PROGRESS  
-PR: #861
+Status: CLOSED  
+PR: #861 — MERGED
 
 ## Goal
 
@@ -69,9 +69,25 @@ plumbing. Conversational coverage is now mapped as follows:
 - whole_app_context_decision.py: intent classification + patient-scoped read adapters.
 - whole_app_context_narration_verifier.py: exact deterministic-copy verification.
 - DiabetesEngine.resolve_patient_advice(): routes whole-app context before generative narration.
-- clinical_validation.py: diabetes.context.* registered as EXPERIMENTAL / max L1 while certification is in progress.
+- clinical_validation.py: diabetes.context.* remains registered as EXPERIMENTAL / max L1; this closeout does not promote its clinical validation status.
 - regression tests cover the 12 audit gaps, source reads, false-positive treatment wording, deterministic rewrite rejection, and demo provider bypass.
 
-## Closeout rule
+## Closeout evidence
 
-Do not mark this chantier CLOSED until exact-head tests are green, the PR is merged with expected-head protection, post-merge evidence is green (or equivalent exact-SHA recertification), and this document is synchronized to those proofs.
+- Certified PR head: `ddc7b552c2421778a98c3f1849fb0cd4a52a9642`.
+- Exact-head gates:
+  - CI #5300 — SUCCESS.
+  - Django migration drift #4308 — SUCCESS.
+  - Companion real chat E2E screenshots #419 — SUCCESS.
+- Final adversarial hardening prevented generic document/CGM/import/proactive/pre-post questions from being misclassified as patient-data requests.
+- PR #861 was marked ready and squash-merged with `expected_head` pinned to the certified head.
+- Merge commit: `2540eb79793a162cdc0d262d49aefa895462346f`.
+- Post-merge on that exact SHA:
+  - Django migration drift run `37000062014` — SUCCESS.
+  - CI run `37000061807` — SUCCESS.
+  - Dashboard global certification v2 run `37000061834` — SUCCESS, including isolated backend build and mobile/tablet/desktop Playwright captures.
+- No Vercel deployment was performed as part of this chantier.
+
+## Closeout
+
+The Whole-App Context Router chantier is CLOSED on the evidence above. The router remains bounded to deterministic patient-scoped read-only retrieval and L1 descriptive authority.
