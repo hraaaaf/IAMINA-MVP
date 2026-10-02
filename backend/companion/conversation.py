@@ -1039,16 +1039,16 @@ def chat(
             _deterministic_language(language),
         )
 
-    reply = _finalize_reply(
-        reply,
-        deep,
-        language,
-        approved_session_context=bool(ctx.pivot_text),
-        mode=_response_mode(message),
-        weekly=_is_weekly_request(message),
-        prefer_latin_script=prefer_latin_script,
-    )
     if not provider_policy_denied:
+        reply = _finalize_reply(
+            reply,
+            deep,
+            language,
+            approved_session_context=bool(ctx.pivot_text),
+            mode=_response_mode(message),
+            weekly=_is_weekly_request(message),
+            prefer_latin_script=prefer_latin_script,
+        )
         reply = _retry_finalized_repeat(
             reply=reply,
             message=message,
@@ -1221,16 +1221,16 @@ def stream_chat(
             _deterministic_language(language),
         )
 
-    full_reply = _finalize_reply(
-        full_reply,
-        deep,
-        language,
-        approved_session_context=bool(ctx.pivot_text),
-        mode=_response_mode(message),
-        weekly=_is_weekly_request(message),
-        prefer_latin_script=prefer_latin_script,
-    )
     if not provider_policy_denied:
+        full_reply = _finalize_reply(
+            full_reply,
+            deep,
+            language,
+            approved_session_context=bool(ctx.pivot_text),
+            mode=_response_mode(message),
+            weekly=_is_weekly_request(message),
+            prefer_latin_script=prefer_latin_script,
+        )
         full_reply = _retry_finalized_repeat(
             reply=full_reply,
             message=message,
