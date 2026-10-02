@@ -403,9 +403,10 @@ def _reply_proactive(patient_id: int) -> str:
             f"{preview.pending_count} observation(s) en attente."
         )
     item = preview.item
+    kind_label = "repas" if item.kind == "meal" else "contexte"
     return (
         f"Insights proactifs : {preview.pending_count} observation(s) en attente. "
-        f"Prochaine observation gouvernée : {item.observation_key}, état « {item.state} », "
+        f"Prochaine observation gouvernée : {kind_label}, état « {item.state} », "
         f"{item.observations} observation(s) sur {item.distinct_days} jour(s). "
         f"Étape autorisée : {item.allowed_next_step}."
     )
