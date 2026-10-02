@@ -74,3 +74,18 @@ def test_stream_records_zero_model_route_once():
 
     assert chunks == ["Avec plaisir 🙏"]
     route.assert_called_once_with("zero_model")
+
+
+def test_common_meta_turns_bypass_llm():
+    messages = (
+        "salam ça va ?",
+        "tu sais faire quoi ?",
+        "qui es-tu ?",
+        "t'as accès à mon historique ?",
+        "malek chkouen sweltek ?",
+    )
+    for message in messages:
+        with patch("companion.conversation.record_companion_route") as route:
+            reply = chat(message, memory=None, deep=object(), llm=ExplodingLLM())
+        assert "Difficulté technique" not in reply
+        route.assert_called_once_with("zero_model")
