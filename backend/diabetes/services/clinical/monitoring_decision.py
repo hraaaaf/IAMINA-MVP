@@ -38,9 +38,9 @@ _PERSONAL_DIABETES_RE = re.compile(
     re.IGNORECASE,
 )
 _PERSONAL_MONITORING_DATA_RE = re.compile(
-    r"(?:\b(?:mes|my)\s+(?:logs?|donn[eé]es|data|mesures?|readings?)\b|"
+    r"(?:\b(?:mes|my)\s+logs?\b|"
     r"\b(?:check|regarde|analyse|analyze|tell me)\b.{0,32}\b(?:logs?|data|donn[eé]es|mesures?|readings?)\b|"
-    r"(?:قياساتي|بياناتي|القياسات ديالي|المعطيات ديالي))",
+    r"(?:راجع|حلل).{0,24}(?:قياساتي|بياناتي|القياسات ديالي|المعطيات ديالي))",
     re.IGNORECASE,
 )
 
