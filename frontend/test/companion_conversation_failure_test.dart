@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +7,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:amina/features/companion/companion_conversation_screen.dart';
 import 'package:amina/services/api_client.dart';
 import 'package:amina/services/companion_service.dart';
+
+class _DelayedCompanionService extends CompanionService {
+  final Completer<CompanionChatReply?> completer = Completer<CompanionChatReply?>();
+
+  @override
+  Future<CompanionChatReply?> sendChatMessage(
+    String message, {
+    int contextDays = 14,
+  }) => completer.future;
+
+  @override
+  void dispose() {}
+}
 
 class _FailingCompanionService extends CompanionService {
   final ProviderApiException failure;
@@ -51,6 +66,36 @@ Future<void> _submit(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('composer retains focus while waiting and after reply', (tester) async {
+    final service = _DelayedCompanionService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CompanionConversationScreen(service: service),
+      ),
+    );
+
+    final input = find.byKey(const Key('companion-chat-input'));
+    await tester.tap(input);
+    await tester.enterText(input, 'Salut');
+    expect(Focus.of(tester.element(input)).hasPrimaryFocus, isTrue);
+
+    await tester.tap(find.byKey(const Key('companion-chat-send')));
+    await tester.pump();
+    expect(Focus.of(tester.element(input)).hasPrimaryFocus, isTrue);
+
+    service.completer.complete(
+      const CompanionChatReply(
+        reply: 'Bonjour 👋',
+        conversationId: 'conv-test',
+        replyLanguage: 'fr',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(Focus.of(tester.element(input)).hasPrimaryFocus, isTrue);
+    expect(find.text('Bonjour 👋'), findsOneWidget);
+  });
+
   for (final width in <double>[390, 768, 1280]) {
     testWidgets('timeout failure stays readable at ${width.toInt()}px', (tester) async {
       tester.view.devicePixelRatio = 1;
