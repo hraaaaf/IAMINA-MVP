@@ -89,3 +89,58 @@ def test_common_meta_turns_bypass_llm():
             reply = chat(message, memory=None, deep=object(), llm=ExplodingLLM())
         assert "Difficulté technique" not in reply
         route.assert_called_once_with("zero_model")
+
+
+def test_recent_exchange_recall_bypasses_llm_even_with_phi_shaped_date():
+    patient = SimpleNamespace(id=99)
+    turns = [
+        SimpleNamespace(
+            role="assistant",
+            message="Je ne trouve aucune glycémie enregistrée le 2026-10-02 entre 20:00 et 20:59.",
+        ),
+        SimpleNamespace(
+            role="user",
+            message="Quelle était ma glycémie hier à 20h ?",
+        ),
+    ]
+    with (
+        patch("companion.conversation._recent_turns", return_value=turns),
+        patch("companion.conversation._append_turn"),
+        patch("companion.conversation.record_companion_route") as route,
+    ):
+        reply = chat(
+            "Qu'est-ce qu'on s'était dit juste avant ?",
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            patient=patient,
+        )
+
+    assert "2026-10-02" in reply
+    assert "Difficulté technique" not in reply
+    route.assert_called_once_with("zero_model")
+
+
+def test_one_sentence_recap_bypasses_llm():
+    patient = SimpleNamespace(id=100)
+    turns = [
+        SimpleNamespace(role="assistant", message="Réponse locale."),
+        SimpleNamespace(role="user", message="Question précédente."),
+    ]
+    with (
+        patch("companion.conversation._recent_turns", return_value=turns),
+        patch("companion.conversation._append_turn"),
+        patch("companion.conversation.record_companion_route") as route,
+    ):
+        reply = chat(
+            "Peux-tu me résumer notre échange en une phrase ?",
+            memory=None,
+            deep=object(),
+            llm=ExplodingLLM(),
+            patient=patient,
+        )
+
+    assert "En bref" in reply
+    assert "Question précédente" in reply
+    assert "Réponse locale" in reply
+    route.assert_called_once_with("zero_model")
