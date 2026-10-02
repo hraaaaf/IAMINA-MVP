@@ -30,8 +30,7 @@ if not DEBUG and '*' in ALLOWED_HOSTS:
 # Default is False — admin must be opt-in via .env (ENABLE_DJANGO_ADMIN=True).
 ENABLE_DJANGO_ADMIN = os.environ.get('ENABLE_DJANGO_ADMIN', 'False').lower() == 'true'
 
-# LLM provider selection. False = Gemini (default). True = Kimi 2.5 (standby).
-# Requires MOONSHOT_API_KEY when True. Zero-downtime switch: change + restart.
+# Legacy Kimi toggle retained for compatibility only. Text provider selection is governed by LLM_PROVIDER below.
 USE_KIMI_LLM = os.environ.get('USE_KIMI', 'False').lower() == 'true'
 MEDICAL_PILOT_MODE = os.environ.get('MEDICAL_PILOT_MODE', 'False').lower() == 'true'
 LLM_MEDICAL_STREAMING = os.environ.get('LLM_MEDICAL_STREAMING', 'False').lower() == 'true'
@@ -176,8 +175,8 @@ X_FRAME_OPTIONS             = 'DENY'     # always — clickjacking guard
 
 # ── IAmina LLM Provider ──────────────────────────────────────
 # Switch provider via .env — zero-downtime swap.
-LLM_PROVIDER = os.environ.get('LLM_PROVIDER', 'gemini')    # "gemini" | "claude" | "kimi"
-LLM_MODEL = os.environ.get('LLM_MODEL', 'gemini-2.5-flash')
+LLM_PROVIDER = os.environ.get('LLM_PROVIDER', 'groq')    # "groq" | "claude" | "kimi" | "fallback"
+LLM_MODEL = os.environ.get('LLM_MODEL', 'openai/gpt-oss-120b')
 
 # Kimi (self-hosted only — GDPR)
 KIMI_BASE_URL = os.environ.get('KIMI_BASE_URL', '')
