@@ -66,7 +66,7 @@ class SummaryResponse {
   final List<dynamic> agpProfile;
   final String generatedAt;
   final bool hasSufficientData;
-  // "gemini" | "kimi" | "claude" | "quota-exhausted" | "fallback"
+  // "groq" | "kimi" | "claude" | "quota-exhausted" | "fallback"
   // Used to show a degraded-mode banner in the insights section.
   final String aiProvider;
 
@@ -77,7 +77,7 @@ class SummaryResponse {
     required this.agpProfile,
     required this.generatedAt,
     required this.hasSufficientData,
-    this.aiProvider = 'gemini',
+    this.aiProvider = 'groq',
   });
 
   factory SummaryResponse.fromJson(Map<String, dynamic> json) {
@@ -90,7 +90,7 @@ class SummaryResponse {
       agpProfile: json['agp_profile'] ?? [],
       generatedAt: json['generated_at'] ?? '',
       hasSufficientData: json['has_sufficient_data'] ?? false,
-      aiProvider: json['ai_provider'] as String? ?? 'gemini',
+      aiProvider: json['ai_provider'] as String? ?? 'groq',
     );
   }
 

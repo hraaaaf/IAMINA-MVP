@@ -32,7 +32,6 @@ from .circuit_breaker import (
 )
 from .errors import (
     LLMProviderError,
-    LLMProviderQuotaExceeded,
     normalize_provider_exception,
 )
 from .runtime_finops import RuntimeFinOpsConfigurationError
@@ -48,12 +47,6 @@ def _get_fallback() -> BaseLLMProvider:
     return FallbackProvider()
 
 
-def _get_quota_exhausted() -> BaseLLMProvider:
-    from .fallback import QuotaExhaustedProvider
-
-    return QuotaExhaustedProvider()
-
-
 def _provider_policy_name(provider: BaseLLMProvider) -> str:
     explicit = getattr(provider, "provider_policy_key", None)
     if isinstance(explicit, str) and explicit.strip():
@@ -61,8 +54,6 @@ def _provider_policy_name(provider: BaseLLMProvider) -> str:
 
     cls = type(provider).__name__
     mapping = {
-        "GeminiProvider": "gemini",
-        "GuardedGeminiProvider": "gemini",
         "KimiProvider": "kimi",
         "ClaudeProvider": "claude",
         "DeepSeekProvider": "deepseek",
@@ -166,45 +157,24 @@ def _execute_external_complete(
 
     now = timezone.now()
     binding.user_throttle.authorize(patient_id=context.patient_id, now=now)
-    try:
-        response = binding.enforcer.execute_complete(
-            provider=provider_name,
-            model=model,
-            workload=workload,
-            operation_reference=operation_reference,
-            month_key=now.strftime("%Y-%m"),
-            now=now,
-            max_input_tokens=input_upper_bound,
-            max_output_tokens=output_ceiling,
-            call=lambda: _execute_provider_call(
-                provider_name,
-                "complete",
-                lambda: original_complete(
-                    payload.system_prompt,
-                    payload.user_prompt,
-                ),
+    return binding.enforcer.execute_complete(
+        provider=provider_name,
+        model=model,
+        workload=workload,
+        operation_reference=operation_reference,
+        month_key=now.strftime("%Y-%m"),
+        now=now,
+        max_input_tokens=input_upper_bound,
+        max_output_tokens=output_ceiling,
+        call=lambda: _execute_provider_call(
+            provider_name,
+            "complete",
+            lambda: original_complete(
+                payload.system_prompt,
+                payload.user_prompt,
             ),
-        )
-    except LLMProviderQuotaExceeded:
-        if provider_name != "gemini":
-            raise
-        from .rate_guard import _mark_cap_reached
-
-        _mark_cap_reached()
-        logger.warning(
-            "Gemini quota failure recorded by persistent FinOps guard; "
-            "serving local quota response."
-        )
-        return _get_quota_exhausted().complete(
-            payload.system_prompt,
-            payload.user_prompt,
-        )
-
-    if provider_name == "gemini":
-        from .rate_guard import record_gemini_call
-
-        record_gemini_call()
-    return response
+        ),
+    )
 
 
 def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
@@ -299,30 +269,36 @@ def _enforce_text_payload_policy(provider: BaseLLMProvider) -> BaseLLMProvider:
     return provider
 
 
-def _build_gemini_with_failover() -> BaseLLMProvider:
-    from .gemini import GeminiProvider
-    from .rate_guard import should_use_gemini
+def _configured_text_provider() -> tuple[str, str | None]:
+    """Resolve configured text provider without instantiating a network client."""
+    provider = str(getattr(settings, "LLM_PROVIDER", "groq") or "groq").strip().lower()
+    model = getattr(settings, "LLM_MODEL", None)
 
-    if not should_use_gemini():
-        logger.warning(
-            "LLM factory: Gemini daily cap hit — using local quota response; "
-            "implicit network failover is disabled."
-        )
-        return _enforce_text_payload_policy(_get_quota_exhausted())
-
-    return _enforce_text_payload_policy(GeminiProvider())
+    # Migration guard: stale production configuration must never silently
+    # reactivate Gemini for text. Legacy Gemini text settings are remapped to
+    # the governed Groq text adapter; Gemini remains isolated to multimodal
+    # adapters that explicitly instantiate it.
+    if provider == "gemini":
+        logger.warning("Legacy LLM_PROVIDER=gemini remapped to Groq text runtime.")
+        provider = "groq"
+        if isinstance(model, str) and model.lower().startswith("gemini"):
+            model = None
+    if provider == "groq" and isinstance(model, str) and model.lower().startswith("gemini"):
+        logger.warning("Ignoring legacy Gemini LLM_MODEL for Groq text runtime.")
+        model = None
+    return provider, model
 
 
 def get_ai_provider_name() -> str:
-    return _provider_policy_name(get_llm())
+    """Return the configured text provider name without requiring credentials."""
+    provider, _ = _configured_text_provider()
+    if provider in {"groq", "kimi", "deepseek", "qwen", "claude", "fallback"}:
+        return provider
+    return "fallback"
 
 
 def get_llm() -> BaseLLMProvider:
-    provider = getattr(settings, "LLM_PROVIDER", "gemini")
-    model = getattr(settings, "LLM_MODEL", None)
-
-    if provider == "gemini":
-        return _build_gemini_with_failover()
+    provider, model = _configured_text_provider()
 
     if provider == "kimi":
         from .kimi import KimiProvider

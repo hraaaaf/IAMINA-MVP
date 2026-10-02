@@ -18,6 +18,7 @@ from core.models import (
 from core.tests.consent_helpers import grant_current_ai_consent
 from llm.base import BaseLLMProvider, LLMResponse, LLMUsage
 from llm.budget import BudgetExceeded
+from llm.errors import LLMProviderQuotaExceeded
 from llm.factory import _enforce_text_payload_policy
 from llm.provider_guard import ProviderCircuitOpen
 from llm.runtime_finops import RuntimeFinOpsConfigurationError
@@ -365,22 +366,21 @@ def test_local_fallback_remains_available_without_finops_config(
 
 
 @pytest.mark.django_db(transaction=True)
-def test_gemini_429_is_recorded_before_local_quota_response(
+def test_groq_429_is_recorded_and_propagated(
     consenting_patient, monkeypatch
 ):
-    _configure(monkeypatch, provider="gemini")
+    _configure(monkeypatch, provider="groq")
     provider = SyntheticProvider([HTTPStatusError(429)])
-    guarded = _external_guard(provider, monkeypatch, provider_name="gemini")
-    mark_cap = MagicMock()
-    monkeypatch.setattr("llm.rate_guard._mark_cap_reached", mark_cap)
-    response = _complete(guarded, consenting_patient)
-    assert response.provider == "quota-exhausted"
+    guarded = _external_guard(provider, monkeypatch, provider_name="groq")
+
+    with pytest.raises(LLMProviderQuotaExceeded):
+        _complete(guarded, consenting_patient)
+
     assert provider.calls == 1
-    mark_cap.assert_called_once_with()
-    attempt = AIProviderOperationAttempt.objects.get(provider="gemini")
+    attempt = AIProviderOperationAttempt.objects.get(provider="groq")
     assert attempt.last_error_code == "provider_quota_exceeded"
     assert AIBudgetAccount.objects.get(
-        subject_key="finops:provider:gemini"
+        subject_key="finops:provider:groq"
     ).committed_microusd > 0
 
 

@@ -1867,7 +1867,7 @@
             }
           }
         },
-        "description": "Full Phase 6 analytical pipeline.\n\nStep 1: SQL computes all KPIs (never Python arithmetic).\nStep 2: Pattern detection engine runs against ORM queryset.\nStep 3: SemanticCompressor \u2192 English pivot text.\nStep 4: Gemini interprets and generates empathetic patient response.",
+        "description": "Full Phase 6 analytical pipeline.\n\nStep 1: SQL computes all KPIs (never Python arithmetic).\nStep 2: Pattern detection engine runs against ORM queryset.\nStep 3: SemanticCompressor \u2192 English pivot text.\nStep 4: Groq GPT-OSS-120B formats the governed patient response.",
         "tags": [
           "ai"
         ],
@@ -5837,7 +5837,7 @@
             "type": "boolean"
           },
           "ai_provider": {
-            "default": "gemini",
+            "default": "groq",
             "title": "Ai Provider",
             "type": "string"
           }
