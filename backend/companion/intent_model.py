@@ -151,7 +151,11 @@ def classify_intent(
         model = os.environ.get(_MODEL, "").strip() or None
         provider = build_openai_compatible_provider(_provider_id(), model=model)
 
-    response = provider.complete(_SYSTEM, prepared.user_payload)
+    try:
+        response = provider.complete(_SYSTEM, prepared.user_payload)
+    except Exception as exc:
+        raise IntentModelUnavailable("intent classifier provider unavailable") from exc
+
     raw = (response.content or "").strip()
     if not raw or len(raw) > _MAX_OUTPUT_CHARS:
         raise IntentModelUnavailable("invalid intent classifier response size")
