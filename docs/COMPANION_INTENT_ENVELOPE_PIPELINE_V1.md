@@ -158,6 +158,8 @@ Thresholds are tunable before/after freeze. The existence of a confidence gate i
 
 The pipeline deliberately uses **minimized** / **de-identified candidate payload**, not “certified anonymous”.
 
+**Important governance boundary:** minimization does not make an authenticated health message automatically non-patient data. Free text can retain re-identification context even after known direct identifiers, exact dates and exact measurements are removed. Therefore this V1 architecture and its synthetic benchmark do **not** authorize external intent classification for authenticated patient traffic. Production activation must separately satisfy the applicable processor/transfer/consent policy, or use a future locally-proven abstraction layer that does not transfer patient data.
+
 `core/anonymization_gateway.py` explicitly keeps `certified_anonymous=False`.
 
 A residual-risk check can deny the classifier call. No raw patient context, patient object, patient ID, DB result, or conversation database is supplied to the intent model.
