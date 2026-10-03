@@ -1,4 +1,3 @@
-
 import json
 
 import pytest
@@ -38,9 +37,6 @@ def _payload(**overrides):
         "schema_version": "1",
         "intent": "patient_data_read",
         "target": "glucose",
-        "operation": "read",
-        "needs_patient_data": True,
-        "answer_mode": "deterministic",
         "confidence": 0.96,
         "ambiguity": "none",
     }
@@ -56,6 +52,16 @@ def test_patient_read_contract_maps_to_deterministic_backend_route():
     assert decision.target is IntentTarget.GLUCOSE
 
 
+def test_patient_summary_contract_is_derived_by_backend():
+    envelope = IntentEnvelope.from_json(
+        json.dumps(_payload(intent="patient_data_summary", target="sleep"))
+    )
+    decision = decide_backend_route(envelope)
+    assert decision.route is RouteKind.DETERMINISTIC_PATIENT_DATA
+    assert decision.target is IntentTarget.SLEEP
+    assert decision.reason == "validated_patient_summary_intent"
+
+
 def test_patient_read_below_threshold_requires_clarification():
     envelope = IntentEnvelope.from_json(json.dumps(_payload(confidence=0.72)))
     decision = decide_backend_route(envelope)
@@ -66,10 +72,7 @@ def test_patient_read_below_threshold_requires_clarification():
 @pytest.mark.parametrize(
     "mutation",
     [
-        {"needs_patient_data": False},
         {"target": "none"},
-        {"answer_mode": "conversational"},
-        {"operation": "chat"},
         {"confidence": 1.4},
         {"schema_version": "2"},
     ],
@@ -79,9 +82,13 @@ def test_invalid_patient_envelopes_fail_closed(mutation):
         IntentEnvelope.from_json(json.dumps(_payload(**mutation)))
 
 
-def test_extra_output_key_is_rejected():
+@pytest.mark.parametrize(
+    "forbidden_field",
+    ["operation", "needs_patient_data", "answer_mode", "reply", "tool_call"],
+)
+def test_model_cannot_propose_execution_authority_fields(forbidden_field):
     payload = _payload()
-    payload["reply"] = "forbidden"
+    payload[forbidden_field] = "forbidden"
     with pytest.raises(IntentEnvelopeError):
         IntentEnvelope.from_json(json.dumps(payload))
 
@@ -92,9 +99,6 @@ def test_unknown_intent_can_only_clarify():
             _payload(
                 intent="unknown",
                 target="none",
-                operation="none",
-                needs_patient_data=False,
-                answer_mode="clarify",
                 confidence=0.42,
                 ambiguity="high",
             )
@@ -103,15 +107,25 @@ def test_unknown_intent_can_only_clarify():
     assert decide_backend_route(envelope).route is RouteKind.CLARIFY
 
 
+def test_non_patient_intent_target_is_exactly_constrained():
+    with pytest.raises(IntentEnvelopeError):
+        IntentEnvelope.from_json(
+            json.dumps(
+                _payload(
+                    intent="emotional_support",
+                    target="glucose",
+                    confidence=0.95,
+                )
+            )
+        )
+
+
 def test_conversation_recall_stays_local_and_non_patient():
     envelope = IntentEnvelope.from_json(
         json.dumps(
             _payload(
                 intent="conversation_recall",
                 target="conversation",
-                operation="recall",
-                needs_patient_data=False,
-                answer_mode="deterministic",
                 confidence=0.94,
             )
         )
@@ -121,7 +135,8 @@ def test_conversation_recall_stays_local_and_non_patient():
 
 def test_prepared_payload_removes_exact_clinical_value_date_and_identity():
     prepared = prepare_intent_payload(
-        "Je m appelle Alice, mon email alice@example.com. Le 2026-10-02 à 20:15 ma glycémie était 245 mg/dL.",
+        "Je m appelle Alice, mon email alice@example.com. "
+        "Le 2026-10-02 à 20:15 ma glycémie était 245 mg/dL.",
         "fr",
     )
     assert "alice@example.com" not in prepared.user_payload
@@ -151,9 +166,6 @@ def test_prompt_injection_cannot_expand_output_contract():
         _payload(
             intent="unknown",
             target="none",
-            operation="none",
-            needs_patient_data=False,
-            answer_mode="clarify",
             confidence=0.2,
             ambiguity="high",
         )
@@ -189,7 +201,7 @@ def test_safety_gate_prevents_external_classifier_call():
     assert provider.calls == []
 
 
-def test_valid_patient_query_uses_model_only_for_intent_then_backend_decides():
+def test_valid_patient_query_uses_model_only_for_semantics_then_backend_decides():
     provider = FakeProvider(_payload())
     outcome = analyze_unresolved_turn(
         "Tu peux regarder ce que j avais comme sucre hier soir ?",
@@ -223,7 +235,6 @@ def test_model_failure_becomes_local_clarification_not_technical_error():
     )
     assert outcome.decision.route is RouteKind.CLARIFY
     assert outcome.fallback_copy_key == "intent_clarify"
-
 
 
 def test_provider_exception_becomes_intent_model_unavailable():
@@ -270,6 +281,13 @@ def test_classifier_prefers_provider_strict_schema_method():
     _system, _user, schema_name, schema, max_tokens = provider.strict_calls[0]
     assert schema_name == "iamina_intent_envelope_v1"
     assert schema["additionalProperties"] is False
+    assert set(schema["required"]) == {
+        "schema_version",
+        "intent",
+        "target",
+        "confidence",
+        "ambiguity",
+    }
     assert max_tokens == 384
 
 
