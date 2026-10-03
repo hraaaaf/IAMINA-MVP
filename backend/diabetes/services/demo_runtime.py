@@ -18,8 +18,6 @@ from core.medical_safety import no_prescription_message
 from diabetes.services.demo_patient import get_or_create_synthetic_demo_patient
 from llm.provider_registry import build_openai_compatible_provider
 
-
-
 _INTENT_PREVIEW_ENABLED = "IAMINA_DEMO_INTENT_ROUTER_ENABLED"
 _INTENT_PREVIEW_MODEL = "IAMINA_INTENT_ROUTER_LLM_MODEL"
 
