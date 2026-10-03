@@ -294,3 +294,30 @@ def test_classifier_prefers_provider_strict_schema_method():
 def test_classifier_never_opens_network_without_explicit_governed_provider():
     with pytest.raises(IntentModelUnavailable, match="explicitly governed provider"):
         classify_intent("question libre", "fr")
+
+
+def test_intent_prompt_keeps_greeting_and_vague_personal_reference_distinct():
+    greeting = FakeProvider(
+        _payload(
+            intent="meta_greeting",
+            target="conversation",
+            confidence=0.95,
+        )
+    )
+    classify_intent("salam labas?", "ar-MA", provider=greeting)
+    greeting_system, _ = greeting.calls[0]
+    assert "salam labas?" in greeting_system
+    assert "never casual_conversation" in greeting_system
+
+    ambiguous = FakeProvider(
+        _payload(
+            intent="unknown",
+            target="none",
+            confidence=0.4,
+            ambiguity="high",
+        )
+    )
+    classify_intent("Je voulais te parler de mes trucs d'hier.", "fr", provider=ambiguous)
+    ambiguous_system, _ = ambiguous.calls[0]
+    assert "mes trucs d'hier" in ambiguous_system
+    assert "unknown, target=none, ambiguity=high" in ambiguous_system
