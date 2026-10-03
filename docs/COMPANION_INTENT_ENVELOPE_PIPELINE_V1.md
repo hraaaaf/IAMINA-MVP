@@ -264,6 +264,17 @@ After owner approval, V1 becomes **FROZEN**.
 - allowing the LLM to execute backend actions;
 - changing patient-data routes from deterministic/read-only to generative authority.
 
+## Independent adversarial review — candidate findings
+
+The pre-freeze review challenged the candidate from four directions:
+
+1. **Privacy residue** — an existing email-boundary regex failed when an email address was immediately followed by sentence punctuation. The DLP, pseudonymizer and anonymization gateway were aligned and regression-tested.
+2. **Authority confusion** — a conversational or patient-data intent could be misread as permission for downstream external egress. V1 now states explicitly that intent routing never grants egress; every later external narrator requires its own independent authorization.
+3. **False-positive patient reads** — negative benchmark cases now cover health terms used in emotional support, generic education, capabilities and clinician-prep requests where the user explicitly says not to open their record.
+4. **Structured-output benchmark harness** — strict JSON Schema unit calls worked while the first 4-case batch failed with the 384-token completion ceiling. Groq documents strict JSON Schema and array support for GPT-OSS; the batch ceiling was raised to 1024 without increasing batch count. The next benchmark run must prove the corrected harness.
+
+No runtime patient path is wired by this candidate PR. Changed-files inspection excludes the chat API, `conversation.py`, and the clinical engine.
+
 ## Evidence required to change status to FROZEN
 
 1. Local unit/privacy/adversarial tests green.
