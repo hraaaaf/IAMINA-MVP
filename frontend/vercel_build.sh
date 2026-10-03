@@ -21,7 +21,11 @@ IAMINA_CERTIFIED_API_BASE_URL="https://iamina-certified.vercel.app"
 IAMINA_INTENT_PREVIEW_API_BASE_URL="https://iamina-certified-79hw727il-achraf-benmoussa-s-projects.vercel.app"
 
 if [ "${VERCEL_GIT_COMMIT_REF:-}" = "preview/intent-envelope-v1-demo" ]; then
-  IAMINA_CERTIFIED_API_BASE_URL="$IAMINA_INTENT_PREVIEW_API_BASE_URL"
+  if [ -n "${VERCEL_URL:-}" ]; then
+    IAMINA_CERTIFIED_API_BASE_URL="https://${VERCEL_URL}"
+  else
+    IAMINA_CERTIFIED_API_BASE_URL="$IAMINA_INTENT_PREVIEW_API_BASE_URL"
+  fi
 fi
 
 # Fail closed on Vercel if this Flutter build is ever invoked by another
