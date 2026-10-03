@@ -119,6 +119,9 @@ Rules:
 - Clinician prep means helping prepare questions/notes, not reading records unless explicitly asked.
 - Casual conversation and emotional support are non-patient-data intents even if health topics are mentioned,
   unless the user explicitly asks to retrieve stored data.
+- Identity questions like "Who are you?", "Qui es-tu ?", "من أنت؟", "chkoun nta?" => meta_identity, target=none.
+- Capability questions like "What can you do?", "Tu sais faire quoi ?", "ماذا تستطيع أن تفعل؟", "chno kat9der dir?" => meta_capabilities, target=none.
+- Asking what IAMINA can do with records is still meta_capabilities when the user is asking about capability and not requesting retrieval. Explicit "do not open/retrieve" language confirms non-patient routing.
 - Unknown/ambiguous => ambiguity=high when the need cannot be determined safely.
 - Do not classify medication dose changes, prescriptions, emergencies, or self-harm;
   those should have been intercepted upstream. If such content still appears, return unknown
