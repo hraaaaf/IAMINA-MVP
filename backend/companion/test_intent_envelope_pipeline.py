@@ -271,3 +271,8 @@ def test_classifier_prefers_provider_strict_schema_method():
     assert schema_name == "iamina_intent_envelope_v1"
     assert schema["additionalProperties"] is False
     assert max_tokens == 384
+
+
+def test_classifier_never_opens_network_without_explicit_governed_provider():
+    with pytest.raises(IntentModelUnavailable, match="explicitly governed provider"):
+        classify_intent("question libre", "fr")
