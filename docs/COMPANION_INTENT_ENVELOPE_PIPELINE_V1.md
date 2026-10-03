@@ -270,7 +270,7 @@ The pre-freeze review challenged the candidate from four directions:
 1. **Privacy residue** — an existing email-boundary regex failed when an email address was immediately followed by sentence punctuation. The DLP, pseudonymizer and anonymization gateway were aligned and regression-tested.
 2. **Authority confusion** — a conversational or patient-data intent could be misread as permission for downstream external egress. V1 now states explicitly that intent routing never grants egress; every later external narrator requires its own independent authorization.
 3. **False-positive patient reads** — negative benchmark cases now cover health terms used in emotional support, generic education, capabilities and clinician-prep requests where the user explicitly says not to open their record.
-4. **Structured-output benchmark harness** — strict JSON Schema unit calls worked while the first 4-case batch failed with the 384-token completion ceiling. Groq documents strict JSON Schema and array support for GPT-OSS; the batch ceiling was raised to 1024 without increasing batch count. The next benchmark run must prove the corrected harness.
+4. **Structured-output benchmark harness** — strict JSON Schema unit calls worked while the original 4-case batch failed under the old, redundant 8-field envelope. Instead of widening the product token ceiling, V1 was simplified to a 5-field semantic-only envelope so IAMINA derives execution semantics locally. The benchmark remains capped at 384 output tokens and must prove the simplified contract.
 
 No runtime patient path is wired by this candidate PR. Changed-files inspection excludes the chat API, `conversation.py`, and the clinical engine.
 
