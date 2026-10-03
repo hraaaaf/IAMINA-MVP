@@ -145,6 +145,29 @@ V1 keeps the same read-only patient-owned surface already certified by the Whole
 
 The classifier may propose the semantic target. It cannot read it. IAMINA resolves the canonical source after validation.
 
+## Backend authority map — V1
+
+The intent model never selects a database table, ORM query or executable function. It proposes only a semantic `target`. IAMINA owns the canonical source and execution policy:
+
+| Intent target | Backend authority / canonical source |
+| --- | --- |
+| glucose | diabetes journal / governed monitoring read path |
+| meal | patient journal meal history |
+| sleep | patient journal sleep history |
+| stress | patient journal stress history |
+| treatment | DiabetesProfile recorded treatment |
+| diabetes_type | DiabetesProfile recorded diabetes type |
+| targets | DiabetesProfile configured range + provenance |
+| lab_document | confirmed LabReport structured fields |
+| medications | document persistence contract; no invented historical medication list |
+| cgm | CGMReadingRecord |
+| proactive | read-only proactive preview |
+| paired_meal | deterministic paired-meal computation from explicit episode links |
+
+The adapter from `IntentTarget` to these backend authorities may be improved without changing V1 semantics, but it may never grant a new authority, bypass patient scoping, or make the classifier choose the physical data source.
+
+For `patient_data_summary`, the backend may summarize only facts already available through an approved deterministic/read-only authority. If no deterministic summary exists for that target, the route must clarify or fall back to the existing bounded deterministic read — never promote the LLM to patient-data authority.
+
 ## Confidence policy — candidate
 
 - patient-data route: minimum `0.88`;
