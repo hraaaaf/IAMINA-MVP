@@ -119,7 +119,10 @@ CASES = (
 )
 
 
-def _quality_classify(provider, cases: list[Case]) -> tuple[list[IntentEnvelope], float]:
+def _quality_classify(
+    provider,
+    cases: list[Case],
+) -> tuple[list[IntentEnvelope], float, int]:
     """Measure semantic quality in one quota-aware JSON-object batch.
 
     Runtime schema adherence is measured separately with strict unitary calls.
@@ -155,11 +158,26 @@ def _quality_classify(provider, cases: list[Case]) -> tuple[list[IntentEnvelope]
     if not isinstance(results, list) or len(results) != len(cases):
         raise RuntimeError("quality batch returned wrong result count")
 
+    normalized_results = []
+    confidence_string_coercions = 0
+    for item in results:
+        if not isinstance(item, dict):
+            raise RuntimeError("quality batch item must be an object")
+        normalized = dict(item)
+        confidence = normalized.get("confidence")
+        if isinstance(confidence, str):
+            try:
+                normalized["confidence"] = float(confidence.strip())
+            except ValueError as exc:
+                raise RuntimeError("quality batch confidence string is not numeric") from exc
+            confidence_string_coercions += 1
+        normalized_results.append(normalized)
+
     envelopes = [
         IntentEnvelope.from_json(json.dumps(item, ensure_ascii=False))
-        for item in results
+        for item in normalized_results
     ]
-    return envelopes, latency_ms
+    return envelopes, latency_ms, confidence_string_coercions
 
 
 class ExplodingProvider(BaseLLMProvider):
@@ -217,8 +235,13 @@ def main() -> None:
         )
 
     quality_batch_latency_ms: float | None = None
+    quality_batch_confidence_string_coercions = 0
     try:
-        envelopes, quality_batch_latency_ms = _quality_classify(provider, quality_cases)
+        (
+            envelopes,
+            quality_batch_latency_ms,
+            quality_batch_confidence_string_coercions,
+        ) = _quality_classify(provider, quality_cases)
     except Exception as exc:
         schema_errors += 1
         envelopes = []
@@ -288,6 +311,9 @@ def main() -> None:
             round(quality_batch_latency_ms, 1)
             if quality_batch_latency_ms is not None
             else None
+        ),
+        "quality_batch_confidence_string_coercions": (
+            quality_batch_confidence_string_coercions
         ),
         "strict_unit_latency_samples": len(strict_unit_latencies),
         "strict_unit_latency_ms_p50": (
