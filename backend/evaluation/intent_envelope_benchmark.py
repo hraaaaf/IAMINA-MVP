@@ -163,16 +163,26 @@ def _quality_classify(
 
     normalized_results = []
     confidence_string_coercions = 0
-    for item in results:
+    for index, item in enumerate(results):
         if not isinstance(item, dict):
-            raise RuntimeError("quality batch item must be an object")
+            raise RuntimeError(
+                f"quality batch item must be an object index={index} "
+                f"case_id={cases[index].case_id if index < len(cases) else 'unknown'} "
+                f"raw={item!r}"
+            )
         normalized = dict(item)
         confidence = normalized.get("confidence")
         if isinstance(confidence, str):
             try:
                 normalized["confidence"] = float(confidence.strip())
             except ValueError as exc:
-                raise RuntimeError("quality batch confidence string is not numeric") from exc
+                raise RuntimeError(
+                    "quality batch confidence string is not numeric "
+                    f"index={index} "
+                    f"case_id={cases[index].case_id if index < len(cases) else 'unknown'} "
+                    f"confidence_raw={confidence!r} "
+                    f"raw={json.dumps(item, ensure_ascii=False)}"
+                ) from exc
             confidence_string_coercions += 1
         normalized_results.append(normalized)
 
@@ -298,14 +308,15 @@ def main() -> None:
 
     strict_unit_latencies = []
     strict_unit_errors = []
-    for case in (quality_cases[0], quality_cases[13]):
-        started = time.perf_counter()
-        try:
-            classify_intent(case.message, case.language, provider=provider)
-        except Exception as exc:
-            strict_unit_errors.append(f"{type(exc).__name__}: {str(exc)[:200]}")
-        else:
-            strict_unit_latencies.append((time.perf_counter() - started) * 1000.0)
+    if quality_failure is None:
+        for case in (quality_cases[0], quality_cases[13]):
+            started = time.perf_counter()
+            try:
+                classify_intent(case.message, case.language, provider=provider)
+            except Exception as exc:
+                strict_unit_errors.append(f"{type(exc).__name__}: {str(exc)[:200]}")
+            else:
+                strict_unit_latencies.append((time.perf_counter() - started) * 1000.0)
 
     total = len(CASES)
     quality_total = len(quality_cases)
