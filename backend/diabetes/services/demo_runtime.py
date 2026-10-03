@@ -9,7 +9,8 @@ from django.utils import timezone
 import companion.demo_runtime as companion_demo_runtime
 from companion.conversation import detect_language
 from companion.demo import reply_to_demo_message
-from companion.intent_envelope import RouteKind
+from companion.diabetes_education import diabetes_education_reply
+from companion.intent_envelope import IntentKind, RouteKind
 from companion.intent_pipeline import analyze_unresolved_turn
 from core.ai_egress import TEXT, ai_egress_scope
 from core.emergency_response import compose_emergency_for_patient
@@ -47,6 +48,14 @@ def _preview_route_reply(message: str, language: str) -> tuple[RouteKind, str] |
     outcome = analyze_unresolved_turn(message, language, provider=provider)
     if outcome.decision.route is RouteKind.CLARIFY:
         return outcome.decision.route, _clarify_reply(language)
+    if (
+        outcome.decision.route is RouteKind.CONVERSATIONAL
+        and outcome.envelope is not None
+        and outcome.envelope.intent is IntentKind.GENERAL_HEALTH_EDUCATION
+    ):
+        education = diabetes_education_reply(message, language)
+        if education is not None:
+            return outcome.decision.route, education
     if outcome.decision.route in {RouteKind.DETERMINISTIC_LOCAL, RouteKind.CONVERSATIONAL}:
         demo = reply_to_demo_message(message, language, history=[])
         return outcome.decision.route, demo["reply"]
