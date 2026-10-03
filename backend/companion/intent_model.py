@@ -8,7 +8,6 @@ and may emit only the strict IntentEnvelope schema.
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass
 
 from companion.intent_envelope import IntentEnvelope, IntentEnvelopeError
@@ -18,11 +17,7 @@ from core.anonymization_gateway import (
     minimize_external_text_payload,
 )
 from llm.base import BaseLLMProvider
-from llm.provider_registry import build_openai_compatible_provider
 
-_ENABLED = "IAMINA_INTENT_ROUTER_EXTERNAL_AI_ENABLED"
-_PROVIDER = "IAMINA_INTENT_ROUTER_LLM_PROVIDER"
-_MODEL = "IAMINA_INTENT_ROUTER_LLM_MODEL"
 _MAX_INPUT_CHARS = 1200
 _MAX_OUTPUT_CHARS = 1800
 
@@ -160,17 +155,6 @@ class PreparedIntentPayload:
     certified_anonymous: bool = False
 
 
-def intent_model_enabled() -> bool:
-    return os.environ.get(_ENABLED, "").strip().lower() in {"1", "true", "yes"}
-
-
-def _provider_id() -> str:
-    provider = os.environ.get(_PROVIDER, "groq").strip().lower()
-    if provider != "groq":
-        raise IntentModelUnavailable("unsupported intent-router provider")
-    return provider
-
-
 def prepare_intent_payload(message: str, language: str) -> PreparedIntentPayload:
     text = (message or "").strip()
     if not text:
@@ -206,14 +190,12 @@ def classify_intent(
 ) -> IntentEnvelope:
     """Classify one minimized unresolved turn or fail closed."""
 
-    if provider is None and not intent_model_enabled():
-        raise IntentModelUnavailable("intent external classifier disabled")
+    if provider is None:
+        raise IntentModelUnavailable(
+            "intent classifier requires an explicitly governed provider"
+        )
 
     prepared = prepare_intent_payload(message, language)
-
-    if provider is None:
-        model = os.environ.get(_MODEL, "").strip() or None
-        provider = build_openai_compatible_provider(_provider_id(), model=model)
 
     try:
         strict_complete = getattr(provider, "complete_json_schema", None)
