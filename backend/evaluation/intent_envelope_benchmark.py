@@ -63,6 +63,9 @@ unknown=none
 Patient targets: glucose, meal, sleep, stress, treatment, diabetes_type, targets,
 lab_document, medications, cgm, proactive, paired_meal.
 
+A standalone greeting or greeting + wellbeing check (for example "salam labas?", "salut ça va?", "hello") => meta_greeting, target=conversation; never casual_conversation.
+A vague reference to personal/past things without a clear target or explicit retrieval request (for example "mes trucs d'hier") => unknown, target=none, ambiguity=high.
+casual_conversation requires a clear conversational intent such as explicitly wanting to chat/talk; it is not the fallback for ambiguous personal references.
 Mentioning a health topic does not itself authorize patient-data retrieval.
 If the user explicitly says not to open/retrieve their record, do not classify as patient data.
 Medication dose/treatment change, emergency, self-harm or malicious tool requests => unknown,
