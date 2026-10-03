@@ -99,6 +99,47 @@ class DemoChatContractTests(TestCase):
         self.assertIn("Type 2", response.json()["reply"])
         gateway.assert_not_called()
 
+
+    @patch("companion.conversation.get_gateway_llm")
+    def test_demo_common_meta_turns_bypass_llm_provider(self, gateway):
+        gateway.side_effect = AssertionError("LLM provider must not be called")
+
+        greeting = self._post(
+            "salam ça va ?",
+            language="fr",
+            session_id="meta-turns",
+        )
+        capabilities = self._post(
+            "tu sais faire quoi ?",
+            language="fr",
+            session_id="meta-turns",
+        )
+
+        self.assertEqual(greeting.status_code, 200)
+        self.assertIn("Salam", greeting.json()["reply"])
+        self.assertEqual(capabilities.status_code, 200)
+        self.assertIn("glycémie", capabilities.json()["reply"])
+        gateway.assert_not_called()
+
+    @patch("companion.conversation.get_gateway_llm")
+    def test_demo_recall_after_deterministic_patient_reply_stays_local(self, gateway):
+        gateway.side_effect = AssertionError("LLM provider must not be called")
+
+        first = self._post(
+            "Quel est mon type de diabète enregistré ?",
+            session_id="local-recall",
+        )
+        recall = self._post(
+            "Qu'est-ce qu'on s'était dit juste avant ?",
+            session_id="local-recall",
+        )
+
+        self.assertEqual(first.status_code, 200)
+        self.assertIn("Type 2", first.json()["reply"])
+        self.assertEqual(recall.status_code, 200)
+        self.assertIn("Type 2", recall.json()["reply"])
+        gateway.assert_not_called()
+
     def test_personal_weekly_request_uses_verified_synthetic_monitoring_data(self):
         response = self._post("Il est comment mon diabète cette semaine ?!")
 

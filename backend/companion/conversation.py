@@ -23,6 +23,7 @@ from companion.route_telemetry import record_companion_route
 from companion.state import compute_state, state_to_prompt
 from companion.tone import get_tone_instruction, select_relationship_tone
 from companion.zero_model_router import exact_chitchat_reply
+from core.ai_processor_policy import AIProcessorPolicyDenied
 from core.clinical_decision_audit import record_clinical_decision_audit
 from core.clinical_policy import (
     NarrationMode,
@@ -240,9 +241,135 @@ def _turn_count(patient) -> int:
     return store.count(patient.id)
 
 
+_LOCAL_LAST_EXCHANGE = {
+    "qu'est-ce qu'on s'était dit juste avant",
+    "qu est ce qu on s etait dit juste avant",
+    "qu'est-ce qu'on vient de se dire",
+    "what did we just say",
+    "what did we say just before",
+    "chno glna 9bel",
+    "ach glna 9bel",
+}
+_LOCAL_RECAP = {
+    "peux-tu me résumer notre échange en une phrase",
+    "peux tu me resumer notre echange en une phrase",
+    "résume notre échange en une phrase",
+    "resume notre echange en une phrase",
+    "summarize our conversation in one sentence",
+    "chno lkhla9a dyal had lhdra",
+}
+
+
+def _normalize_local_meta(message: str) -> str:
+    normalized = message.strip().casefold().replace("’", "'")
+    normalized = re.sub(r"[,.!?…،؛:]+", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    for prefix in ("merci et ", "merci ", "et "):
+        if normalized.startswith(prefix):
+            normalized = normalized[len(prefix):].strip()
+            break
+    return normalized
+
+
+def _compact_turn_text(message: str, limit: int = 220) -> str:
+    compact = re.sub(r"\s+", " ", (message or "").strip())
+    if len(compact) <= limit:
+        return compact
+    return compact[: limit - 1].rstrip() + "…"
+
+
+def _recent_exchange_pair(patient):
+    assistant = None
+    user = None
+    for turn in _recent_turns(patient, 8):
+        if assistant is None and turn.role == "assistant":
+            assistant = turn.message
+            continue
+        if assistant is not None and turn.role == "user":
+            user = turn.message
+            break
+    return user, assistant
+
+
+def _local_conversation_meta_reply(
+    message: str,
+    patient,
+    language: str,
+) -> str | None:
+    """Answer exact history-meta turns locally; never send stored chat to a provider."""
+    normalized = _normalize_local_meta(message)
+    if normalized not in _LOCAL_LAST_EXCHANGE and normalized not in _LOCAL_RECAP:
+        return None
+
+    user_turn, assistant_turn = _recent_exchange_pair(patient)
+    if not user_turn or not assistant_turn:
+        if language == "en":
+            return "I don't have an earlier exchange to recap yet."
+        if language == "ar-MA" and not _ARABIC_RE.search(message):
+            return "Mazal ma kaynch échange 9bel bach nlkhso."
+        if language in _ARABIC_LANGUAGE_KEYS:
+            return "ما زال ما كاينش تبادل سابق باش نلخّصه."
+        return "Je n'ai pas encore d'échange précédent à rappeler."
+
+    previous_user = _compact_turn_text(user_turn)
+    previous_assistant = _compact_turn_text(assistant_turn)
+
+    if normalized in _LOCAL_LAST_EXCHANGE:
+        if language == "en":
+            return (
+                f'Just before, you asked: “{previous_user}” '
+                f'and I answered: “{previous_assistant}”.'
+            )
+        if language == "ar-MA" and not _ARABIC_RE.search(message):
+            return (
+                f'9bel chwia swlti: “{previous_user}” '
+                f'w jawbtek: “{previous_assistant}”.'
+            )
+        if language in _ARABIC_LANGUAGE_KEYS:
+            return f'قبل شوية سولتيني: «{previous_user}» وجاوبتك: «{previous_assistant}».'
+        return (
+            f'Juste avant, tu m’as demandé : « {previous_user} » '
+            f'et je t’ai répondu : « {previous_assistant} ».'
+        )
+
+    if language == "en":
+        return f'In short: you asked “{previous_user}”, and I answered “{previous_assistant}”.'
+    if language == "ar-MA" and not _ARABIC_RE.search(message):
+        return f'Bikhtisar: swlti “{previous_user}”, w jawbtek “{previous_assistant}”.'
+    if language in _ARABIC_LANGUAGE_KEYS:
+        return f'باختصار: سولتيني «{previous_user}»، وجاوبتك «{previous_assistant}».'
+    return f'En bref : tu m’as demandé « {previous_user} » et je t’ai répondu « {previous_assistant} ».'
+
+
 def _deterministic_language(language: str) -> str:
     """Keep Gulf dialects narrator-only; deterministic clinical copy uses MSA."""
     return "ar" if language in _GULF_DIALECT_KEYS else language
+
+
+def _governance_blocked_fallback(message: str, language: str) -> str:
+    """Useful fail-closed copy when external narration is not authorized."""
+    if language == "en":
+        return (
+            "I can keep helping with IAmina's local functions. Ask me for a specific recorded item — "
+            "glucose, meals, sleep, stress, recorded treatment, CGM or documents — "
+            "or ask what I can do."
+        )
+    if language == "ar-MA" and not _ARABIC_RE.search(message):
+        return (
+            "N9der nkemmel m3ak b fonctions locales dyal IAmina. Sowlni 3la data m7edda msjla — "
+            "sucre, makla, n3as, stress, traitement msjjel, CGM wela documents — "
+            "wela sowlni chno n9der ndir."
+        )
+    if language in _ARABIC_LANGUAGE_KEYS:
+        return (
+            "نقدر نكمل معك بوظائف IAmina المحلية. اسألني عن معلومة محددة ومسجلة مثل السكر، الوجبات، "
+            "النوم، التوتر، العلاج المسجل، CGM أو الوثائق، أو اسألني ماذا أستطيع أن أفعل."
+        )
+    return (
+        "Je peux continuer avec les fonctions locales d’IAMINA. Demande-moi une donnée précise enregistrée — "
+        "glycémie, repas, sommeil, stress, traitement enregistré, CGM ou documents — "
+        "ou demande-moi ce que je sais faire."
+    )
 
 
 def _get_context(patient, context_days: int, language: str = "fr") -> DomainContext:
@@ -783,6 +910,18 @@ def chat(
         return safety_reply
 
     detected_language = detect_language(message, language)
+    local_meta_reply = _local_conversation_meta_reply(
+        message,
+        patient,
+        _deterministic_language(detected_language),
+    )
+    if local_meta_reply is not None:
+        record_companion_route("zero_model")
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", local_meta_reply)
+        _update_relationship_memory(message, memory)
+        return local_meta_reply
+
     zero_model_reply = exact_chitchat_reply(
         message,
         _deterministic_language(detected_language),
@@ -876,10 +1015,21 @@ def chat(
     _append_turn(patient, "user", message)
     prefer_latin_script = language == "ar-MA" and not _ARABIC_RE.search(message)
 
+    provider_policy_denied = False
     try:
         result = llm.complete(system, user_prompt)
         parsed = parse_llm_json(result.content, ["reply"])
         reply = parsed["reply"]
+    except AIProcessorPolicyDenied:
+        provider_policy_denied = True
+        logger.warning(
+            "IAmina external narration denied by processor policy for patient=%s",
+            patient.id if patient else None,
+        )
+        reply = _governance_blocked_fallback(
+            message,
+            _deterministic_language(language),
+        )
     except Exception:
         logger.exception(
             "IAmina conversation.chat failed for patient=%s",
@@ -891,27 +1041,28 @@ def chat(
             _deterministic_language(language),
         )
 
-    reply = _finalize_reply(
-        reply,
-        deep,
-        language,
-        approved_session_context=bool(ctx.pivot_text),
-        mode=_response_mode(message),
-        weekly=_is_weekly_request(message),
-        prefer_latin_script=prefer_latin_script,
-    )
-    reply = _retry_finalized_repeat(
-        reply=reply,
-        message=message,
-        llm=llm,
-        system=system,
-        user_prompt=user_prompt,
-        deep=deep,
-        language=language,
-        patient=patient,
-        ctx=ctx,
-        prefer_latin_script=prefer_latin_script,
-    )
+    if not provider_policy_denied:
+        reply = _finalize_reply(
+            reply,
+            deep,
+            language,
+            approved_session_context=bool(ctx.pivot_text),
+            mode=_response_mode(message),
+            weekly=_is_weekly_request(message),
+            prefer_latin_script=prefer_latin_script,
+        )
+        reply = _retry_finalized_repeat(
+            reply=reply,
+            message=message,
+            llm=llm,
+            system=system,
+            user_prompt=user_prompt,
+            deep=deep,
+            language=language,
+            patient=patient,
+            ctx=ctx,
+            prefer_latin_script=prefer_latin_script,
+        )
     _append_turn(patient, "assistant", reply)
     _update_relationship_memory(message, memory)
     return reply
@@ -937,6 +1088,19 @@ def stream_chat(
         return
 
     detected_language = detect_language(message, language)
+    local_meta_reply = _local_conversation_meta_reply(
+        message,
+        patient,
+        _deterministic_language(detected_language),
+    )
+    if local_meta_reply is not None:
+        record_companion_route("zero_model")
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", local_meta_reply)
+        _update_relationship_memory(message, memory)
+        yield local_meta_reply
+        return
+
     zero_model_reply = exact_chitchat_reply(
         message,
         _deterministic_language(detected_language),
@@ -1034,9 +1198,20 @@ def stream_chat(
     _append_turn(patient, "user", message)
     prefer_latin_script = language == "ar-MA" and not _ARABIC_RE.search(message)
 
+    provider_policy_denied = False
     try:
         result = llm.complete(system, user_prompt)
         full_reply = result.content
+    except AIProcessorPolicyDenied:
+        provider_policy_denied = True
+        logger.warning(
+            "IAmina stream external narration denied by processor policy for patient=%s",
+            patient.id if patient else None,
+        )
+        full_reply = _governance_blocked_fallback(
+            message,
+            _deterministic_language(language),
+        )
     except Exception:
         logger.exception(
             "IAmina stream_chat buffered fallback failed for patient=%s",
@@ -1048,27 +1223,28 @@ def stream_chat(
             _deterministic_language(language),
         )
 
-    full_reply = _finalize_reply(
-        full_reply,
-        deep,
-        language,
-        approved_session_context=bool(ctx.pivot_text),
-        mode=_response_mode(message),
-        weekly=_is_weekly_request(message),
-        prefer_latin_script=prefer_latin_script,
-    )
-    full_reply = _retry_finalized_repeat(
-        reply=full_reply,
-        message=message,
-        llm=llm,
-        system=system,
-        user_prompt=user_prompt,
-        deep=deep,
-        language=language,
-        patient=patient,
-        ctx=ctx,
-        prefer_latin_script=prefer_latin_script,
-    )
+    if not provider_policy_denied:
+        full_reply = _finalize_reply(
+            full_reply,
+            deep,
+            language,
+            approved_session_context=bool(ctx.pivot_text),
+            mode=_response_mode(message),
+            weekly=_is_weekly_request(message),
+            prefer_latin_script=prefer_latin_script,
+        )
+        full_reply = _retry_finalized_repeat(
+            reply=full_reply,
+            message=message,
+            llm=llm,
+            system=system,
+            user_prompt=user_prompt,
+            deep=deep,
+            language=language,
+            patient=patient,
+            ctx=ctx,
+            prefer_latin_script=prefer_latin_script,
+        )
     _append_turn(patient, "assistant", full_reply)
     _update_relationship_memory(message, memory)
     yield full_reply
