@@ -220,7 +220,7 @@ Runtime target after integration:
 - deterministic fast path: no classifier;
 - unresolved classified path: display a neutral transient state such as **“IAMINA réfléchit…”** while classification runs;
 - do not expose chain-of-thought or model reasoning;
-- measured p50/p95 from benchmark before UI implementation.
+- measured strict-runtime latency samples plus semantic-batch latency before UI implementation.
 
 No UI change is part of this candidate branch yet. Any future indicator follows the project UI protocol: BEFORE → goal → mockup → implementation → AFTER same viewports → comparison/tests.
 
@@ -270,7 +270,7 @@ The pre-freeze review challenged the candidate from four directions:
 1. **Privacy residue** — an existing email-boundary regex failed when an email address was immediately followed by sentence punctuation. The DLP, pseudonymizer and anonymization gateway were aligned and regression-tested.
 2. **Authority confusion** — a conversational or patient-data intent could be misread as permission for downstream external egress. V1 now states explicitly that intent routing never grants egress; every later external narrator requires its own independent authorization.
 3. **False-positive patient reads** — negative benchmark cases now cover health terms used in emotional support, generic education, capabilities and clinician-prep requests where the user explicitly says not to open their record.
-4. **Structured-output benchmark harness** — strict JSON Schema unit calls worked while the original 4-case batch failed under the old, redundant 8-field envelope. Instead of widening the product token ceiling, V1 was simplified to a 5-field semantic-only envelope so IAMINA derives execution semantics locally. The benchmark remains capped at 384 output tokens and must prove the simplified contract.
+4. **Structured-output benchmark harness** — strict JSON Schema unit calls work, but multi-case strict-schema batching introduced a vendor/harness failure that does not exist in the real runtime. Final certification therefore separates concerns: one quota-aware JSON Object Mode batch measures semantic quality across all non-safety cases and validates every returned item through `IntentEnvelope.from_json`; two unitary strict JSON Schema calls exercise the real runtime contract at the unchanged 384-token ceiling. Total external calls: 3 maximum.
 
 No runtime patient path is wired by this candidate PR. Changed-files inspection excludes the chat API, `conversation.py`, and the clinical engine.
 
