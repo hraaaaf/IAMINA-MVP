@@ -234,3 +234,40 @@ def test_provider_exception_becomes_intent_model_unavailable():
 
     with pytest.raises(IntentModelUnavailable):
         classify_intent("question libre", "fr", provider=ExplodingProvider())
+
+
+def test_classifier_prefers_provider_strict_schema_method():
+    class StrictProvider(FakeProvider):
+        def __init__(self):
+            super().__init__(_payload())
+            self.strict_calls = []
+
+        def complete(self, system: str, user: str) -> LLMResponse:
+            raise AssertionError("plain complete must not be used when strict schema is available")
+
+        def complete_json_schema(
+            self,
+            system: str,
+            user: str,
+            *,
+            schema_name: str,
+            schema: dict,
+            max_output_tokens: int,
+        ) -> LLMResponse:
+            self.strict_calls.append(
+                (system, user, schema_name, schema, max_output_tokens)
+            )
+            return LLMResponse(
+                content=json.dumps(self.payload),
+                provider="fake",
+            )
+
+    provider = StrictProvider()
+    envelope = classify_intent("Retrouve ma glycémie d'hier", "fr", provider=provider)
+
+    assert envelope.intent is IntentKind.PATIENT_DATA_READ
+    assert len(provider.strict_calls) == 1
+    _system, _user, schema_name, schema, max_tokens = provider.strict_calls[0]
+    assert schema_name == "iamina_intent_envelope_v1"
+    assert schema["additionalProperties"] is False
+    assert max_tokens == 384
