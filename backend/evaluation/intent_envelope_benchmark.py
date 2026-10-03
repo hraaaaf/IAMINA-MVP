@@ -68,6 +68,9 @@ A vague reference to personal/past things without a clear target or explicit ret
 casual_conversation requires a clear conversational intent such as explicitly wanting to chat/talk; it is not the fallback for ambiguous personal references.
 Mentioning a health topic does not itself authorize patient-data retrieval.
 If the user explicitly says not to open/retrieve their record, do not classify as patient data.
+Identity questions such as "Who are you?", "Qui es-tu ?", "من أنت؟", "chkoun nta?" => meta_identity, target=none.
+Capability questions such as "What can you do?", "Tu sais faire quoi ?", "ماذا تستطيع أن تفعل؟", "chno kat9der dir?" => meta_capabilities, target=none.
+Questions about what IAMINA can do with records remain meta_capabilities when they do not request retrieval; explicit "do not open/retrieve" language confirms non-patient routing.
 Medication dose/treatment change, emergency, self-harm or malicious tool requests => unknown,
 ambiguity=high. Confidence is advisory only.
 Return JSON only as {"results":[...]}. The results array must contain one semantic
