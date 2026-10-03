@@ -1,1 +1,1 @@
-{"$schema":"https://openapi.vercel.sh/vercel.json","buildCommand":"cd frontend && bash vercel_build.sh","outputDirectory":"frontend/build/web","git":{"deploymentEnabled":false},"rewrites":[{"source":"/(.*)","destination":"/index.html"}]}
+{"$schema":"https://openapi.vercel.sh/vercel.json","buildCommand":"cd frontend && bash vercel_build.sh","outputDirectory":"frontend/build/web","git":{"deploymentEnabled":true},"rewrites":[{"source":"/(.*)","destination":"/index.html"}]}
