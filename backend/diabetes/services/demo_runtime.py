@@ -23,7 +23,8 @@ _INTENT_PREVIEW_MODEL = "IAMINA_INTENT_ROUTER_LLM_MODEL"
 
 
 def _intent_preview_enabled() -> bool:
-    return os.environ.get(_INTENT_PREVIEW_ENABLED, "").strip().lower() in {"1", "true", "yes"}
+    explicit = os.environ.get(_INTENT_PREVIEW_ENABLED, "").strip().lower()
+    return explicit in {"1", "true", "yes"} or os.environ.get("VERCEL_ENV") == "preview"
 
 
 def _clarify_reply(language: str) -> str:
