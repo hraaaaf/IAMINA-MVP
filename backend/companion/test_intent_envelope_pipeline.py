@@ -307,7 +307,7 @@ def test_intent_prompt_keeps_greeting_and_vague_personal_reference_distinct():
     classify_intent("salam labas?", "ar-MA", provider=greeting)
     greeting_system, _ = greeting.calls[0]
     assert "salam labas?" in greeting_system
-    assert "never casual_conversation" in greeting_system
+    assert "Do not promote it to casual_conversation" in greeting_system
 
     ambiguous = FakeProvider(
         _payload(
