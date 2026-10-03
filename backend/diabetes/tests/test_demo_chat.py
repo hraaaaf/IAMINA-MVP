@@ -5,7 +5,15 @@ from unittest.mock import patch
 from django.test import Client, TestCase
 from django.utils import timezone
 
-from companion.intent_envelope import RouteKind
+from companion.intent_envelope import (
+    Ambiguity,
+    BackendIntentDecision,
+    IntentEnvelope,
+    IntentKind,
+    IntentTarget,
+    RouteKind,
+)
+from companion.intent_pipeline import IntentPipelineOutcome
 from core.ai_egress import TEXT, assert_ai_egress_allowed
 from core.companion.clinical import get_domain_context
 from diabetes.models import LogEntry
@@ -75,6 +83,36 @@ class DemoChatContractTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["reply"], "Synthetic patient reply")
         iamina_cls.return_value.chat.assert_called_once()
+
+
+    @patch("diabetes.services.demo_runtime.analyze_unresolved_turn")
+    def test_general_tir_education_ignores_negated_personal_data_phrase(self, analyze):
+        analyze.return_value = IntentPipelineOutcome(
+            decision=BackendIntentDecision(
+                route=RouteKind.CONVERSATIONAL,
+                target=IntentTarget.NONE,
+                reason="validated_conversational_intent",
+            ),
+            envelope=IntentEnvelope(
+                schema_version="1",
+                intent=IntentKind.GENERAL_HEALTH_EDUCATION,
+                target=IntentTarget.NONE,
+                confidence=0.98,
+                ambiguity=Ambiguity.NONE,
+            ),
+            source="intent_envelope_v1",
+            fallback_copy_key="",
+        )
+
+        response = self._post(
+            "Explique-moi le TIR en général, sans regarder mes données."
+        )
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"]
+        self.assertIn("Le TIR (Time in Range)", reply)
+        self.assertNotIn("aucun dossier patient", reply)
+        self.assertNotIn("mode démo", reply)
 
     @patch("companion.demo_runtime.IAmina")
     @patch("diabetes.services.demo_runtime._preview_route_reply")
