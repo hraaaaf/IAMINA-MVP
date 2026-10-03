@@ -55,15 +55,25 @@ deterministic | conversational | clarify
 ambiguity enum:
 none | low | high
 
+Exact combinations:
+- meta_greeting => target=conversation, operation=chat, needs_patient_data=false, answer_mode=deterministic
+- meta_identity => target=none, operation=explain, needs_patient_data=false, answer_mode=deterministic
+- meta_capabilities => target=none, operation=explain, needs_patient_data=false, answer_mode=deterministic
+- conversation_recall => target=conversation, operation=recall, needs_patient_data=false, answer_mode=deterministic
+- patient_data_read => target=one patient target, operation=read, needs_patient_data=true, answer_mode=deterministic
+- patient_data_summary => target=one patient target, operation=summarize, needs_patient_data=true, answer_mode=deterministic
+- general_health_education => target=none, operation=explain, needs_patient_data=false, answer_mode=conversational
+- clinician_prep => target=none, operation=prepare, needs_patient_data=false, answer_mode=conversational
+- casual_conversation => target=conversation, operation=chat, needs_patient_data=false, answer_mode=conversational
+- emotional_support => target=conversation, operation=chat, needs_patient_data=false, answer_mode=conversational
+- unknown => target=none, operation=none, needs_patient_data=false, answer_mode=clarify
+
 Rules:
 - Requests to retrieve the user's recorded data => patient_data_read or patient_data_summary.
-- Patient data intents MUST use answer_mode=deterministic and needs_patient_data=true.
 - Conversation recall refers only to recent chat history, not medical records.
 - General health education is generic and MUST NOT request patient data.
 - Clinician prep means helping prepare questions/notes for a clinician, not treatment changes.
-- Casual conversation and emotional support use answer_mode=conversational.
-- Unknown/ambiguous => target=none, operation=none, needs_patient_data=false,
-  answer_mode=clarify.
+- Unknown/ambiguous => ambiguity=high when the need cannot be determined safely.
 - Do not classify medication dose changes, prescriptions, emergencies, or self-harm;
   those should have been intercepted upstream. If such content still appears, return unknown
   with ambiguity=high.
