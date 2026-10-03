@@ -1,4 +1,3 @@
-[Reading 151 lines from start (total: 151 lines, 0 remaining)]
 
 """Bounded external intent classifier for unresolved companion turns.
 
@@ -152,4 +151,3 @@ def classify_intent(
     except IntentEnvelopeError as exc:
         raise IntentModelUnavailable("intent classifier returned invalid schema") from exc
 
-[executed on device: DESKTOP-3MAJEEH (ae2c2d90-92dd-4ede-b025-19f560836d45)]
