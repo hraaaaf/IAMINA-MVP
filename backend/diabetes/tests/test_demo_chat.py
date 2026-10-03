@@ -5,6 +5,7 @@ from unittest.mock import patch
 from django.test import Client, TestCase
 from django.utils import timezone
 
+from companion.intent_envelope import RouteKind
 from core.ai_egress import TEXT, assert_ai_egress_allowed
 from core.companion.clinical import get_domain_context
 from diabetes.models import LogEntry
@@ -51,6 +52,40 @@ class DemoChatContractTests(TestCase):
             context_days=14,
         )
         self.assertEqual(response.json()["reply"], "Réponse issue du runtime IAmina.")
+
+    @patch("companion.demo_runtime.IAmina")
+    @patch("diabetes.services.demo_runtime._preview_route_reply")
+    def test_intent_preview_local_route_bypasses_patient_runtime(self, preview, iamina_cls):
+        preview.return_value = (RouteKind.DETERMINISTIC_LOCAL, "Preview local reply")
+
+        response = self._post("What can you do exactly?")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["reply"], "Preview local reply")
+        iamina_cls.assert_not_called()
+
+    @patch("companion.demo_runtime.IAmina")
+    @patch("diabetes.services.demo_runtime._preview_route_reply")
+    def test_intent_preview_patient_route_keeps_synthetic_runtime(self, preview, iamina_cls):
+        preview.return_value = (RouteKind.DETERMINISTIC_PATIENT_DATA, "")
+        iamina_cls.return_value.chat.return_value = "Synthetic patient reply"
+
+        response = self._post("Quel est mon TIR cette semaine ?")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["reply"], "Synthetic patient reply")
+        iamina_cls.return_value.chat.assert_called_once()
+
+    @patch("companion.demo_runtime.IAmina")
+    @patch("diabetes.services.demo_runtime._preview_route_reply")
+    def test_intent_preview_failure_fails_closed_to_clarification(self, preview, iamina_cls):
+        preview.side_effect = RuntimeError("preview provider unavailable")
+
+        response = self._post("question libre")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("pas encore certain", response.json()["reply"])
+        iamina_cls.assert_not_called()
 
     @patch("companion.demo_runtime.IAmina")
     def test_demo_runtime_preserves_governed_ai_egress_scope(self, iamina_cls):
