@@ -108,7 +108,10 @@ Exact target semantics:
 - unknown => none
 
 Rules:
+- A standalone greeting or greeting + wellbeing check (for example "salam labas?", "salut ça va?", "hello") => meta_greeting, target=conversation. Do not promote it to casual_conversation.
 - Requests to retrieve the user's recorded data => patient_data_read or patient_data_summary.
+- A vague reference to personal/past things without a clear target or explicit retrieval request (for example "mes trucs d'hier") => unknown, target=none, ambiguity=high. Do not guess casual_conversation or a patient-data target.
+- casual_conversation requires a clear conversational intent such as explicitly wanting to chat/talk; it is not the fallback for ambiguous personal references.
 - Mentioning a health topic does NOT by itself mean the user asked to retrieve their record.
 - If the user explicitly says not to open/retrieve their record, do not classify as patient data.
 - Conversation recall refers only to recent chat history, not medical records.
