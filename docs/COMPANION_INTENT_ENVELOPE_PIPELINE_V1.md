@@ -83,18 +83,15 @@ USER RESPONSE
 
 ## IntentEnvelope V1
 
-Exact keys only:
+Exact model-output keys only:
 
 - `schema_version`
 - `intent`
 - `target`
-- `operation`
-- `needs_patient_data`
-- `answer_mode`
 - `confidence`
 - `ambiguity`
 
-No free-text reasoning field is permitted.
+No free-text reasoning, operation, patient-data permission, answer mode, tool call, or reply field is permitted.
 
 ### Intent enum
 
@@ -112,19 +109,21 @@ No free-text reasoning field is permitted.
 
 ### Exact semantic combinations
 
-| Intent | Target | Operation | Patient data | Answer mode |
-| --- | --- | --- | --- | --- |
-| meta_greeting | conversation | chat | false | deterministic |
-| meta_identity | none | explain | false | deterministic |
-| meta_capabilities | none | explain | false | deterministic |
-| conversation_recall | conversation | recall | false | deterministic |
-| patient_data_read | patient target | read | true | deterministic |
-| patient_data_summary | patient target | summarize | true | deterministic |
-| general_health_education | none | explain | false | conversational |
-| clinician_prep | none | prepare | false | conversational |
-| casual_conversation | conversation | chat | false | conversational |
-| emotional_support | conversation | chat | false | conversational |
-| unknown | none | none | false | clarify |
+| Intent | Model target | Backend-derived route semantics |
+| --- | --- | --- |
+| meta_greeting | conversation | deterministic local |
+| meta_identity | none | deterministic local |
+| meta_capabilities | none | deterministic local |
+| conversation_recall | conversation | deterministic local recall |
+| patient_data_read | patient target | read-only deterministic patient-data route |
+| patient_data_summary | patient target | deterministic patient-data summary when a bounded authority exists; otherwise clarify/fallback |
+| general_health_education | none | conversational candidate, no patient-data authority |
+| clinician_prep | none | conversational candidate, no patient-data authority |
+| casual_conversation | conversation | conversational candidate, no patient-data authority |
+| emotional_support | conversation | conversational candidate, no patient-data authority |
+| unknown | none | clarify |
+
+`operation`, `needs_patient_data` and `answer_mode` are deliberately **not model outputs**. IAMINA derives those semantics from the validated intent and target.
 
 ## Patient targets
 
