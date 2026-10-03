@@ -169,58 +169,98 @@ class IntentEnvelope:
         return envelope
 
     def validate(self) -> None:
-        if self.intent in _PATIENT_INTENTS:
-            if not self.needs_patient_data:
-                raise IntentEnvelopeError("patient-data intent must declare patient data")
-            if self.target not in _PATIENT_TARGETS:
-                raise IntentEnvelopeError("patient-data intent requires a patient target")
-            if self.answer_mode is not AnswerMode.DETERMINISTIC:
-                raise IntentEnvelopeError("patient-data intent must remain deterministic")
-            if self.operation not in {IntentOperation.READ, IntentOperation.SUMMARIZE}:
-                raise IntentEnvelopeError("patient-data intent must read or summarize")
+        if self.intent is IntentKind.PATIENT_DATA_READ:
+            self._require(
+                target_in=_PATIENT_TARGETS,
+                operation=IntentOperation.READ,
+                patient_data=True,
+                answer_mode=AnswerMode.DETERMINISTIC,
+            )
             return
 
-        if self.intent is IntentKind.CONVERSATION_RECALL:
-            if self.needs_patient_data:
-                raise IntentEnvelopeError("conversation recall is not patient-data access")
-            if self.target is not IntentTarget.CONVERSATION:
-                raise IntentEnvelopeError("conversation recall target must be conversation")
-            if self.operation is not IntentOperation.RECALL:
-                raise IntentEnvelopeError("conversation recall operation must be recall")
-            if self.answer_mode is not AnswerMode.DETERMINISTIC:
-                raise IntentEnvelopeError("conversation recall must be deterministic")
+        if self.intent is IntentKind.PATIENT_DATA_SUMMARY:
+            self._require(
+                target_in=_PATIENT_TARGETS,
+                operation=IntentOperation.SUMMARIZE,
+                patient_data=True,
+                answer_mode=AnswerMode.DETERMINISTIC,
+            )
             return
 
-        if self.intent in _META_INTENTS:
-            if self.needs_patient_data:
-                raise IntentEnvelopeError("meta intent cannot request patient data")
-            if self.target not in {IntentTarget.NONE, IntentTarget.CONVERSATION}:
-                raise IntentEnvelopeError("meta intent target is invalid")
-            if self.answer_mode is not AnswerMode.DETERMINISTIC:
-                raise IntentEnvelopeError("meta intent must be deterministic")
-            return
+        exact_non_patient = {
+            IntentKind.META_GREETING: (
+                IntentTarget.CONVERSATION,
+                IntentOperation.CHAT,
+                AnswerMode.DETERMINISTIC,
+            ),
+            IntentKind.META_IDENTITY: (
+                IntentTarget.NONE,
+                IntentOperation.EXPLAIN,
+                AnswerMode.DETERMINISTIC,
+            ),
+            IntentKind.META_CAPABILITIES: (
+                IntentTarget.NONE,
+                IntentOperation.EXPLAIN,
+                AnswerMode.DETERMINISTIC,
+            ),
+            IntentKind.CONVERSATION_RECALL: (
+                IntentTarget.CONVERSATION,
+                IntentOperation.RECALL,
+                AnswerMode.DETERMINISTIC,
+            ),
+            IntentKind.GENERAL_HEALTH_EDUCATION: (
+                IntentTarget.NONE,
+                IntentOperation.EXPLAIN,
+                AnswerMode.CONVERSATIONAL,
+            ),
+            IntentKind.CLINICIAN_PREP: (
+                IntentTarget.NONE,
+                IntentOperation.PREPARE,
+                AnswerMode.CONVERSATIONAL,
+            ),
+            IntentKind.CASUAL_CONVERSATION: (
+                IntentTarget.CONVERSATION,
+                IntentOperation.CHAT,
+                AnswerMode.CONVERSATIONAL,
+            ),
+            IntentKind.EMOTIONAL_SUPPORT: (
+                IntentTarget.CONVERSATION,
+                IntentOperation.CHAT,
+                AnswerMode.CONVERSATIONAL,
+            ),
+            IntentKind.UNKNOWN: (
+                IntentTarget.NONE,
+                IntentOperation.NONE,
+                AnswerMode.CLARIFY,
+            ),
+        }
+        expected = exact_non_patient.get(self.intent)
+        if expected is None:
+            raise IntentEnvelopeError("unsupported envelope state")
+        target, operation, answer_mode = expected
+        self._require(
+            target_in=frozenset({target}),
+            operation=operation,
+            patient_data=False,
+            answer_mode=answer_mode,
+        )
 
-        if self.intent in _CONVERSATIONAL_INTENTS:
-            if self.needs_patient_data:
-                raise IntentEnvelopeError("conversational intent cannot request patient data")
-            if self.target not in {IntentTarget.NONE, IntentTarget.CONVERSATION}:
-                raise IntentEnvelopeError("conversational target is invalid")
-            if self.answer_mode is not AnswerMode.CONVERSATIONAL:
-                raise IntentEnvelopeError("conversational intent must use conversational mode")
-            return
-
-        if self.intent is IntentKind.UNKNOWN:
-            if self.needs_patient_data:
-                raise IntentEnvelopeError("unknown intent cannot authorize patient data")
-            if self.target is not IntentTarget.NONE:
-                raise IntentEnvelopeError("unknown intent target must be none")
-            if self.operation is not IntentOperation.NONE:
-                raise IntentEnvelopeError("unknown intent operation must be none")
-            if self.answer_mode is not AnswerMode.CLARIFY:
-                raise IntentEnvelopeError("unknown intent must clarify")
-            return
-
-        raise IntentEnvelopeError("unsupported envelope state")
+    def _require(
+        self,
+        *,
+        target_in: frozenset[IntentTarget],
+        operation: IntentOperation,
+        patient_data: bool,
+        answer_mode: AnswerMode,
+    ) -> None:
+        if self.target not in target_in:
+            raise IntentEnvelopeError("intent target is inconsistent with intent")
+        if self.operation is not operation:
+            raise IntentEnvelopeError("intent operation is inconsistent with intent")
+        if self.needs_patient_data is not patient_data:
+            raise IntentEnvelopeError("patient-data flag is inconsistent with intent")
+        if self.answer_mode is not answer_mode:
+            raise IntentEnvelopeError("answer mode is inconsistent with intent")
 
 
 @dataclass(frozen=True, slots=True)
