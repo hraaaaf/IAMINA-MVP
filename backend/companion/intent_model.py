@@ -1,3 +1,5 @@
+[Reading 151 lines from start (total: 151 lines, 0 remaining)]
+
 """Bounded external intent classifier for unresolved companion turns.
 
 Candidate V1 only. Disabled by default and not wired into the patient runtime.
@@ -11,14 +13,13 @@ import os
 from dataclasses import dataclass
 
 from companion.intent_envelope import IntentEnvelope, IntentEnvelopeError
+from core.ai_egress import _detect_sensitive_text
 from core.anonymization_gateway import (
     AnonymizationResult,
     minimize_external_text_payload,
 )
-from core.ai_egress import _detect_sensitive_text
 from llm.base import BaseLLMProvider
 from llm.provider_registry import build_openai_compatible_provider
-
 
 _ENABLED = "IAMINA_INTENT_ROUTER_EXTERNAL_AI_ENABLED"
 _PROVIDER = "IAMINA_INTENT_ROUTER_LLM_PROVIDER"
@@ -150,3 +151,5 @@ def classify_intent(
         return IntentEnvelope.from_json(raw)
     except IntentEnvelopeError as exc:
         raise IntentModelUnavailable("intent classifier returned invalid schema") from exc
+
+[executed on device: DESKTOP-3MAJEEH (ae2c2d90-92dd-4ede-b025-19f560836d45)]
