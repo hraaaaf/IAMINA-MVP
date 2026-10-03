@@ -224,3 +224,13 @@ def test_model_failure_becomes_local_clarification_not_technical_error():
     assert outcome.decision.route is RouteKind.CLARIFY
     assert outcome.fallback_copy_key == "intent_clarify"
 
+
+
+def test_provider_exception_becomes_intent_model_unavailable():
+    class ExplodingProvider(BaseLLMProvider):
+        def complete(self, system: str, user: str) -> LLMResponse:
+            del system, user
+            raise RuntimeError("network down")
+
+    with pytest.raises(IntentModelUnavailable):
+        classify_intent("question libre", "fr", provider=ExplodingProvider())
