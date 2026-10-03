@@ -1,6 +1,6 @@
 # IAMINA — Companion Intent Envelope Pipeline V1
 
-Status: **CANDIDATE — NOT RUNTIME-WIRED — NOT FROZEN**  
+Status: **CANDIDATE — NOT RUNTIME-WIRED — NOT FROZEN**
 Branch: `feat/companion-intent-envelope-router`
 
 ## Goal
