@@ -1,4 +1,3 @@
-[Reading 273 lines from start (total: 273 lines, 0 remaining)]
 
 """Strict intent-envelope contract for IAMINA companion routing.
 
@@ -274,4 +273,3 @@ def decide_backend_route(envelope: IntentEnvelope) -> BackendIntentDecision:
 
     return BackendIntentDecision(RouteKind.CLARIFY, IntentTarget.NONE, "unknown_intent")
 
-[executed on device: DESKTOP-3MAJEEH (ae2c2d90-92dd-4ede-b025-19f560836d45)]
