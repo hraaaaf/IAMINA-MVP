@@ -2,17 +2,6 @@ name: Companion intent envelope benchmark
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
-    paths:
-      - ".github/workflows/intent-envelope-benchmark.yml"
-      - "backend/evaluation/intent_envelope_benchmark.py"
-      - "backend/companion/intent_envelope.py"
-      - "backend/companion/intent_model.py"
-      - "backend/companion/intent_pipeline.py"
-      - "backend/core/anonymization_gateway.py"
-      - "backend/core/ai_egress.py"
-      - "backend/llm/pseudonymizer.py"
 
 permissions:
   contents: read
