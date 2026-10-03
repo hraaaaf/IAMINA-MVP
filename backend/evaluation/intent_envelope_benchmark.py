@@ -38,6 +38,7 @@ from llm.provider_registry import build_openai_compatible_provider  # noqa: E402
 
 PRIMARY_MODEL = "openai/gpt-oss-120b"
 BATCH_SIZE = 4
+BATCH_MAX_OUTPUT_TOKENS = 1024
 
 _BATCH_SYSTEM = """You are IAMINA_INTENT_ROUTER_V1_BATCH.
 Classify every CASE independently and in the SAME ORDER.
@@ -152,7 +153,7 @@ def _quality_classify(provider, cases: list[Case]) -> tuple[list[IntentEnvelope]
             user,
             schema_name=f"iamina_intent_batch_{len(batch)}",
             schema=_batch_schema(len(batch)),
-            max_output_tokens=384,
+            max_output_tokens=BATCH_MAX_OUTPUT_TOKENS,
         )
         latencies.append((time.perf_counter() - started) * 1000.0)
         payload = json.loads(response.content)
