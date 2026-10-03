@@ -213,11 +213,12 @@ After owner approval, V1 becomes **FROZEN**.
 3. Provider-bound classifier text passes through deterministic privacy minimization.
 4. The payload never self-certifies legal anonymity.
 5. Intent model returns a strict, versioned envelope only.
-6. Backend validates the envelope before use.
-7. High ambiguity / invalid output fails closed.
-8. Patient-data access remains canonical-source, read-only and deterministic.
-9. Treatment/dose/diagnosis authority never moves to the LLM.
-10. Final patient-visible output remains independently guarded.
+6. The intent adapter never creates a network provider implicitly; an explicitly governed provider must be injected by the backend boundary.
+7. Backend validates the envelope before use.
+8. High ambiguity / invalid output fails closed.
+9. Patient-data access remains canonical-source, read-only and deterministic.
+10. Treatment/dose/diagnosis authority never moves to the LLM.
+11. Final patient-visible output remains independently guarded.
 
 ### Improvements allowed inside V1
 
