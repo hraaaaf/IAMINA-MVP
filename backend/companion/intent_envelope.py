@@ -1,9 +1,8 @@
-
 """Strict intent-envelope contract for IAMINA companion routing.
 
-The external model, when enabled, proposes classification metadata only.
-It never gets backend tools, patient identifiers, database access, or action authority.
-IAMINA validates the envelope and derives the executable route deterministically.
+The external model proposes semantic classification metadata only.
+It never chooses execution mode, patient-data authority, backend actions, or egress.
+IAMINA derives the executable route deterministically after validation.
 """
 from __future__ import annotations
 
@@ -15,7 +14,7 @@ SCHEMA_VERSION = "1"
 
 
 class IntentEnvelopeError(ValueError):
-    """Raised when classifier output violates the frozen candidate contract."""
+    """Raised when classifier output violates the candidate V1 contract."""
 
 
 class IntentKind(StrEnum):
@@ -47,22 +46,6 @@ class IntentTarget(StrEnum):
     PROACTIVE = "proactive"
     PAIRED_MEAL = "paired_meal"
     CONVERSATION = "conversation"
-
-
-class IntentOperation(StrEnum):
-    NONE = "none"
-    READ = "read"
-    SUMMARIZE = "summarize"
-    EXPLAIN = "explain"
-    PREPARE = "prepare"
-    CHAT = "chat"
-    RECALL = "recall"
-
-
-class AnswerMode(StrEnum):
-    DETERMINISTIC = "deterministic"
-    CONVERSATIONAL = "conversational"
-    CLARIFY = "clarify"
 
 
 class Ambiguity(StrEnum):
@@ -104,15 +87,29 @@ _PATIENT_TARGETS = frozenset(
     if target not in {IntentTarget.NONE, IntentTarget.CONVERSATION}
 )
 
+_EXACT_TARGET_BY_INTENT = {
+    IntentKind.META_GREETING: IntentTarget.CONVERSATION,
+    IntentKind.META_IDENTITY: IntentTarget.NONE,
+    IntentKind.META_CAPABILITIES: IntentTarget.NONE,
+    IntentKind.CONVERSATION_RECALL: IntentTarget.CONVERSATION,
+    IntentKind.GENERAL_HEALTH_EDUCATION: IntentTarget.NONE,
+    IntentKind.CLINICIAN_PREP: IntentTarget.NONE,
+    IntentKind.CASUAL_CONVERSATION: IntentTarget.CONVERSATION,
+    IntentKind.EMOTIONAL_SUPPORT: IntentTarget.CONVERSATION,
+    IntentKind.UNKNOWN: IntentTarget.NONE,
+}
+
 
 @dataclass(frozen=True, slots=True)
 class IntentEnvelope:
+    """Untrusted semantic proposal returned by the classifier.
+
+    Deliberately contains no execution/egress fields. IAMINA derives those.
+    """
+
     schema_version: str
     intent: IntentKind
     target: IntentTarget
-    operation: IntentOperation
-    needs_patient_data: bool
-    answer_mode: AnswerMode
     confidence: float
     ambiguity: Ambiguity
 
@@ -129,21 +126,16 @@ class IntentEnvelope:
             "schema_version",
             "intent",
             "target",
-            "operation",
-            "needs_patient_data",
-            "answer_mode",
             "confidence",
             "ambiguity",
         }
-        keys = set(payload)
-        if keys != expected:
+        if set(payload) != expected:
             raise IntentEnvelopeError(
                 f"classifier output keys must equal {sorted(expected)}"
             )
         if payload["schema_version"] != SCHEMA_VERSION:
             raise IntentEnvelopeError("unsupported intent envelope schema version")
-        if type(payload["needs_patient_data"]) is not bool:
-            raise IntentEnvelopeError("needs_patient_data must be boolean")
+
         confidence = payload["confidence"]
         if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
             raise IntentEnvelopeError("confidence must be numeric")
@@ -156,9 +148,6 @@ class IntentEnvelope:
                 schema_version=SCHEMA_VERSION,
                 intent=IntentKind(payload["intent"]),
                 target=IntentTarget(payload["target"]),
-                operation=IntentOperation(payload["operation"]),
-                needs_patient_data=payload["needs_patient_data"],
-                answer_mode=AnswerMode(payload["answer_mode"]),
                 confidence=confidence,
                 ambiguity=Ambiguity(payload["ambiguity"]),
             )
@@ -169,109 +158,32 @@ class IntentEnvelope:
         return envelope
 
     def validate(self) -> None:
-        if self.intent is IntentKind.PATIENT_DATA_READ:
-            self._require(
-                target_in=_PATIENT_TARGETS,
-                operation=IntentOperation.READ,
-                patient_data=True,
-                answer_mode=AnswerMode.DETERMINISTIC,
-            )
+        if self.intent in _PATIENT_INTENTS:
+            if self.target not in _PATIENT_TARGETS:
+                raise IntentEnvelopeError("patient-data intent requires a patient target")
             return
 
-        if self.intent is IntentKind.PATIENT_DATA_SUMMARY:
-            self._require(
-                target_in=_PATIENT_TARGETS,
-                operation=IntentOperation.SUMMARIZE,
-                patient_data=True,
-                answer_mode=AnswerMode.DETERMINISTIC,
-            )
-            return
-
-        exact_non_patient = {
-            IntentKind.META_GREETING: (
-                IntentTarget.CONVERSATION,
-                IntentOperation.CHAT,
-                AnswerMode.DETERMINISTIC,
-            ),
-            IntentKind.META_IDENTITY: (
-                IntentTarget.NONE,
-                IntentOperation.EXPLAIN,
-                AnswerMode.DETERMINISTIC,
-            ),
-            IntentKind.META_CAPABILITIES: (
-                IntentTarget.NONE,
-                IntentOperation.EXPLAIN,
-                AnswerMode.DETERMINISTIC,
-            ),
-            IntentKind.CONVERSATION_RECALL: (
-                IntentTarget.CONVERSATION,
-                IntentOperation.RECALL,
-                AnswerMode.DETERMINISTIC,
-            ),
-            IntentKind.GENERAL_HEALTH_EDUCATION: (
-                IntentTarget.NONE,
-                IntentOperation.EXPLAIN,
-                AnswerMode.CONVERSATIONAL,
-            ),
-            IntentKind.CLINICIAN_PREP: (
-                IntentTarget.NONE,
-                IntentOperation.PREPARE,
-                AnswerMode.CONVERSATIONAL,
-            ),
-            IntentKind.CASUAL_CONVERSATION: (
-                IntentTarget.CONVERSATION,
-                IntentOperation.CHAT,
-                AnswerMode.CONVERSATIONAL,
-            ),
-            IntentKind.EMOTIONAL_SUPPORT: (
-                IntentTarget.CONVERSATION,
-                IntentOperation.CHAT,
-                AnswerMode.CONVERSATIONAL,
-            ),
-            IntentKind.UNKNOWN: (
-                IntentTarget.NONE,
-                IntentOperation.NONE,
-                AnswerMode.CLARIFY,
-            ),
-        }
-        expected = exact_non_patient.get(self.intent)
-        if expected is None:
+        expected_target = _EXACT_TARGET_BY_INTENT.get(self.intent)
+        if expected_target is None:
             raise IntentEnvelopeError("unsupported envelope state")
-        target, operation, answer_mode = expected
-        self._require(
-            target_in=frozenset({target}),
-            operation=operation,
-            patient_data=False,
-            answer_mode=answer_mode,
-        )
-
-    def _require(
-        self,
-        *,
-        target_in: frozenset[IntentTarget],
-        operation: IntentOperation,
-        patient_data: bool,
-        answer_mode: AnswerMode,
-    ) -> None:
-        if self.target not in target_in:
+        if self.target is not expected_target:
             raise IntentEnvelopeError("intent target is inconsistent with intent")
-        if self.operation is not operation:
-            raise IntentEnvelopeError("intent operation is inconsistent with intent")
-        if self.needs_patient_data is not patient_data:
-            raise IntentEnvelopeError("patient-data flag is inconsistent with intent")
-        if self.answer_mode is not answer_mode:
-            raise IntentEnvelopeError("answer mode is inconsistent with intent")
 
 
 @dataclass(frozen=True, slots=True)
 class BackendIntentDecision:
+    """IAMINA-owned executable routing decision.
+
+    This is not an external-egress authorization.
+    """
+
     route: RouteKind
     target: IntentTarget
     reason: str
 
 
 def decide_backend_route(envelope: IntentEnvelope) -> BackendIntentDecision:
-    """Derive executable routing from an untrusted-but-validated intent proposal."""
+    """Derive executable routing from a validated, untrusted semantic proposal."""
 
     if envelope.ambiguity is Ambiguity.HIGH:
         return BackendIntentDecision(RouteKind.CLARIFY, IntentTarget.NONE, "high_ambiguity")
@@ -286,12 +198,20 @@ def decide_backend_route(envelope: IntentEnvelope) -> BackendIntentDecision:
         return BackendIntentDecision(
             RouteKind.DETERMINISTIC_PATIENT_DATA,
             envelope.target,
-            "validated_patient_read_intent",
+            (
+                "validated_patient_summary_intent"
+                if envelope.intent is IntentKind.PATIENT_DATA_SUMMARY
+                else "validated_patient_read_intent"
+            ),
         )
 
     if envelope.intent in _META_INTENTS:
         if envelope.confidence < 0.78:
-            return BackendIntentDecision(RouteKind.CLARIFY, IntentTarget.NONE, "meta_low_confidence")
+            return BackendIntentDecision(
+                RouteKind.CLARIFY,
+                IntentTarget.NONE,
+                "meta_low_confidence",
+            )
         return BackendIntentDecision(
             RouteKind.DETERMINISTIC_LOCAL,
             envelope.target,
@@ -312,4 +232,3 @@ def decide_backend_route(envelope: IntentEnvelope) -> BackendIntentDecision:
         )
 
     return BackendIntentDecision(RouteKind.CLARIFY, IntentTarget.NONE, "unknown_intent")
-
