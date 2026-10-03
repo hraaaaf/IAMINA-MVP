@@ -176,10 +176,19 @@ def _quality_classify(
             confidence_string_coercions += 1
         normalized_results.append(normalized)
 
-    envelopes = [
-        IntentEnvelope.from_json(json.dumps(item, ensure_ascii=False))
-        for item in normalized_results
-    ]
+    envelopes = []
+    for index, item in enumerate(normalized_results):
+        try:
+            envelope = IntentEnvelope.from_json(
+                json.dumps(item, ensure_ascii=False)
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                "quality batch invalid item "
+                f"index={index} raw={json.dumps(item, ensure_ascii=False)} "
+                f"error={type(exc).__name__}: {exc}"
+            ) from exc
+        envelopes.append(envelope)
     return envelopes, latency_ms, confidence_string_coercions
 
 
