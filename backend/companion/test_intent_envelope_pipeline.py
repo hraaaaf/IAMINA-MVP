@@ -1,4 +1,3 @@
-[Reading 224 lines from start (total: 224 lines, 0 remaining)]
 
 import json
 
@@ -225,4 +224,3 @@ def test_model_failure_becomes_local_clarification_not_technical_error():
     assert outcome.decision.route is RouteKind.CLARIFY
     assert outcome.fallback_copy_key == "intent_clarify"
 
-[executed on device: DESKTOP-3MAJEEH (ae2c2d90-92dd-4ede-b025-19f560836d45)]
