@@ -242,6 +242,7 @@ After owner approval, V1 becomes **FROZEN**.
 9. Patient-data access remains canonical-source, read-only and deterministic.
 10. Treatment/dose/diagnosis authority never moves to the LLM.
 11. Final patient-visible output remains independently guarded.
+12. An intent or backend route decision never grants external model egress. Any downstream narrator must pass its own independent purpose/consent/processor/payload authorization before network use.
 
 ### Improvements allowed inside V1
 
