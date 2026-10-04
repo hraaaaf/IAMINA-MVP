@@ -21,7 +21,20 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install backend dependencies
-        run: pip install -r backend/requirements.txt
+        run: |
+          pip install -r backend/requirements.txt
+          pip install ruff
+      - name: Run local deterministic certification
+        env:
+          DJANGO_SETTINGS_MODULE: amina.settings
+          SECRET_KEY: exhaustive-cert-nonproduction
+          DEBUG: "True"
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          DATABASE_URL: sqlite:///intent-exhaustive.db
+        working-directory: backend
+        run: |
+          python -m ruff check companion/intent_envelope.py companion/intent_model.py companion/intent_pipeline.py companion/demo.py diabetes/services/demo_runtime.py diabetes/api/v1/demo.py diabetes/tests/test_demo_chat.py evaluation/intent_envelope_exhaustive_benchmark.py
+          python -m pytest companion/test_intent_envelope_pipeline.py diabetes/tests/test_demo_chat.py -q --tb=short
       - name: Run exhaustive multilingual certification
         env:
           DJANGO_SETTINGS_MODULE: amina.settings
