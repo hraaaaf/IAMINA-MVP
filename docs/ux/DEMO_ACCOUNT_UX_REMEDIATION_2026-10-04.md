@@ -121,3 +121,9 @@ Pending exact-HEAD CI and screenshot artifacts. Do not mark this document comple
 2. responsive screenshots are inspected at matching certified viewports;
 3. visual comparison is recorded with a score;
 4. no Vercel deployment occurs without explicit approval.
+
+Latest exact-head remediation on 2026-10-04:
+- On HEAD `99bb74cc6019405d8e42243579db83a19e99d790`, 10/12 workflows passed, including UI browser screenshots, geometry, P7 responsive, Companion E2E, CGM onboarding, Auth and Offline demo.
+- Global Flutter analyze passed. Frontend tests reached 574 passed / 2 failed / 1 skipped; the only failures were the two Edit insulin persistence tests, caused by viewport interaction rather than persistence logic. Those tests now invoke the Save callback directly after asserting it is enabled.
+- Dashboard responsive visual built successfully and captured all nine views. The only failure was desktop top/lower pixel identity. Root cause: the certification app could give up scroll positioning before asynchronous content established its final max extent. The cert harness now reapplies the requested scroll as content grows, bounded to 120 frames.
+- New exact HEAD: `2029c649109f6a10dfd5f65f9eded67b3d3b50c8`; final exact-head CI remains pending.
