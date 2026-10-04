@@ -178,6 +178,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
             child: Column(
               children: [
                 AminaMobilePageHeader(
+                  leading: const AminaPageExitButton(),
                   title: title,
                   subtitle: _mt(
                     context,

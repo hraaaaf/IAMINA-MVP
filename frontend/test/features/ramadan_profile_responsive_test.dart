@@ -2,6 +2,7 @@ import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/profile/profile_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/consent_service.dart';
+import 'package:amina/services/auth_service.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -42,6 +43,7 @@ void main() {
           providers: [
             Provider<AppDatabase>.value(value: db),
             ChangeNotifierProvider<ConsentService>.value(value: consent),
+            ChangeNotifierProvider<AuthService>(create: (_) => AuthService()),
           ],
           child: const ProfileScreen(),
         ),

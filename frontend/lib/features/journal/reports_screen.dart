@@ -5,8 +5,6 @@ import 'package:provider/provider.dart';
 import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
-import '../../services/auth_service.dart';
-import 'ai_summary_screen.dart';
 
 part 'reports_screen_presentation.dart';
 
@@ -22,8 +20,7 @@ class ReportsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (kOfflineDemo) return const _OfflineReportsScreen();
-    return const AISummaryScreen();
+    return const _OfflineReportsScreen();
   }
 }
 

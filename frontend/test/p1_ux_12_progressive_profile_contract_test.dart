@@ -16,6 +16,7 @@ void main() {
       final source = _readProfileLibrary();
       expect(source, contains("ValueKey('profile-medical-section')"));
       expect(source, contains("ValueKey('profile-iamina-section')"));
+      expect(source, contains("ValueKey('profile-data-section')"));
       expect(source, contains("ValueKey('profile-account-section')"));
       expect(source, contains('ExpansionTile('));
       expect(source, contains('maintainState: true'));
@@ -25,7 +26,7 @@ void main() {
   );
 
   test(
-    'all sections start collapsed while medical summary remains truthful',
+    'IAmina preferences are visible while medical and account details remain progressive',
     () {
       final source = _readProfileLibrary();
       final medical = source.indexOf('Widget _buildMedicalSection');
@@ -36,7 +37,12 @@ void main() {
       expect(section, greaterThan(account));
       final medicalBlock = source.substring(medical, account);
       expect(medicalBlock, contains('initiallyExpanded: false'));
-      expect(source, isNot(contains('initiallyExpanded: true')));
+      expect(
+        source,
+        contains("key: const ValueKey('profile-iamina-section')"),
+      );
+      expect(source, contains('initiallyExpanded: true'));
+      expect(source, contains("context.push('/preferences')"));
       expect(source, contains('_hasPersistedProfile'));
       expect(source, contains('profileMedicalSectionHint'));
       expect(source, contains('if (!_hasPersistedProfile)'));

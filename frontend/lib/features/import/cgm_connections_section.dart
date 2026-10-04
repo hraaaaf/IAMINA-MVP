@@ -229,12 +229,7 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          l10n.cgmOneConnectionNote,
-          style: const TextStyle(fontSize: 11.5, height: 1.3, color: AminaTheme.ink500),
-        ),
         if (_error != null) ...[
-          const SizedBox(height: 10),
           Semantics(
             liveRegion: true,
             child: Container(
@@ -252,7 +247,7 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
             ),
           ),
         ],
-        const SizedBox(height: 12),
+        if (_error != null) const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
             final cards = _sources
@@ -286,8 +281,6 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
   Widget _buildSourceCard(_CgmSourcePresentation source, AppLocalizations l10n) {
     final connected = _connection.connected && _connection.source == source.id;
     final latest = connected && _readings.isNotEmpty ? _readings.last : null;
-    final subtitle = source.id == 'linx' ? l10n.cgmLinxBridge : l10n.cgmCompatibleBridge;
-
     return ClinicalCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -318,35 +311,13 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
                         color: AminaTheme.ink900,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(fontSize: 11, height: 1.35, color: AminaTheme.ink500),
-                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _CgmBadge(
-                    label: connected ? l10n.cgmConnected : l10n.cgmViaNightscout,
-                    connected: connected,
-                  ),
-                  const SizedBox(height: 2),
-                  TextButton.icon(
-                    onPressed: () => _showHowTo(source),
-                    icon: const Icon(Icons.help_outline_rounded, size: 14),
-                    label: Text(l10n.cgmHowToUse),
-                    style: TextButton.styleFrom(
-                      minimumSize: const Size(0, 36),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                      visualDensity: VisualDensity.compact,
-                      textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ],
+              _CgmBadge(
+                label: connected ? l10n.cgmConnected : l10n.cgmViaNightscout,
+                connected: connected,
               ),
             ],
           ),
@@ -412,11 +383,21 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
               ],
             ),
           ] else ...[
-            Text(l10n.cgmNoConnection, style: const TextStyle(fontSize: 12, color: AminaTheme.ink500)),
-            const SizedBox(height: 10),
-            OutlinedButton(
-              onPressed: () => _configure(source),
-              child: Text(l10n.cgmConfigure),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                FilledButton(
+                  onPressed: () => _configure(source),
+                  child: Text(l10n.cgmConfigure),
+                ),
+                IconButton(
+                  tooltip: l10n.cgmHowToUse,
+                  onPressed: () => _showHowTo(source),
+                  icon: const Icon(Icons.help_outline_rounded),
+                ),
+              ],
             ),
           ],
         ],

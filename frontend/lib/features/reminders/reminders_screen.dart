@@ -98,6 +98,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
             child: Column(
               children: [
                 AminaMobilePageHeader(
+                  leading: const AminaPageExitButton(),
                   title: _rt(context, 'Rappels', 'Reminders', 'التذكيرات'),
                   subtitle: _rt(
                     context,

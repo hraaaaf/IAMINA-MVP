@@ -68,24 +68,18 @@ void main() {
   test(
     'importer first-use leads to document review and exposes the guided CGM flow',
     () {
-      final importer = _read('lib/features/import/import_screen.dart');
+      final module = _read('lib/modules/diabetes_module.dart');
       final cgmScreen = _read('lib/features/import/cgm_screen.dart');
       final cgm = _read('lib/features/import/cgm_connections_section.dart');
-      expect(importer, contains('final documentSurface = _totalLogs == 0'));
-      expect(importer, contains("ValueKey('import-first-use')"));
-      expect(importer, contains('.documentIntro'));
-      expect(importer, contains('.chooseDocument'));
-      expect(importer, contains("context.push('/pulper')"));
-      expect(
-        importer,
-        contains("_CgmGuideEntryCard(onTap: () => context.push('/cgm'))"),
-      );
+      expect(module, contains("path: '/importer'"));
+      expect(module, contains('const DocumentImportPremiumScreen()'));
+      expect(module, contains("path: '/cgm'"));
       expect(cgmScreen, contains('class CgmScreen'));
       expect(cgmScreen, contains('CgmConnectionsSection(service: service)'));
       expect(cgmScreen, contains('Dexcom G6/G7'));
       expect(cgmScreen, contains('FreeStyle Libre'));
       expect(cgmScreen, contains('LinX / AiDEX X'));
-      expect(cgm, contains('OutlinedButton('));
+      expect(cgm, contains('IconButton('));
       expect(cgm, isNot(contains('const _UnavailableAction()')));
     },
   );

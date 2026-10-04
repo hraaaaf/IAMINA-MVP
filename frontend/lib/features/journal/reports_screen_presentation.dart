@@ -88,29 +88,6 @@ class _Header extends StatelessWidget {
           final copy = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AminaVisualLanguage.mintSurface,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: AminaVisualLanguage.mintBorder),
-                ),
-                child: Text(
-                  _t(
-                    context,
-                    'MODE DÉMO · LOCAL',
-                    'DEMO MODE · LOCAL',
-                    'وضع تجريبي · محلي',
-                  ),
-                  style: const TextStyle(
-                    color: AminaVisualLanguage.actionGreen,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: .3,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
               Text(
                 _t(
                   context,
@@ -131,9 +108,9 @@ class _Header extends StatelessWidget {
               Text(
                 _t(
                   context,
-                  'Synthèse calculée uniquement à partir des mesures enregistrées sur cet appareil.',
-                  'Summary calculated only from measurements stored on this device.',
-                  'ملخص محسوب فقط من القياسات المحفوظة على هذا الجهاز.',
+                  'Résumé de vos mesures enregistrées.',
+                  'Summary of your recorded measurements.',
+                  'ملخص لقياساتك المسجلة.',
                 ),
                 style: TextStyle(
                   fontSize: 13,
@@ -599,9 +576,9 @@ class _TruthBoundary extends StatelessWidget {
                 Text(
                   _t(
                     context,
-                    'En mode démo hors ligne, IAmina calcule uniquement des statistiques sur $count mesures locales. Elle n’invente ni cause, ni diagnostic, ni analyse IA avancée.',
-                    'In offline demo mode, IAmina only calculates statistics from $count local measurements. It does not invent causes, diagnoses, or advanced AI analysis.',
-                    'في الوضع التجريبي دون اتصال، تحسب IAmina إحصاءات فقط من $count قياساً محلياً ولا تختلق أسباباً أو تشخيصاً أو تحليلاً متقدماً بالذكاء الاصطناعي.',
+                    '$count mesures utilisées. Statistiques descriptives uniquement : aucun diagnostic ni conseil de traitement.',
+                    '$count measurements used. Descriptive statistics only: no diagnosis or treatment advice.',
+                    'تم استخدام $count قياساً. إحصاءات وصفية فقط: لا تشخيص ولا نصيحة علاجية.',
                   ),
                   style: const TextStyle(
                     color: AminaVisualLanguage.forestDeep,
