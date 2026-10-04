@@ -25,7 +25,7 @@ from companion.intent_envelope import (  # noqa: E402
     RouteKind,
     decide_backend_route,
 )
-from companion.intent_model import prepare_intent_payload  # noqa: E402
+from companion.intent_model import classify_intent, prepare_intent_payload, _SYSTEM as INTENT_SYSTEM  # noqa: E402
 from companion.intent_pipeline import analyze_unresolved_turn  # noqa: E402
 from llm.base import BaseLLMProvider  # noqa: E402
 from llm.provider_registry import build_openai_compatible_provider  # noqa: E402
@@ -168,75 +168,34 @@ class ExplodingProvider(BaseLLMProvider):
     def complete(self, system: str, user: str):
         raise AssertionError("safety must not call provider")
 
-SYSTEM = """You are IAMINA_INTENT_ROUTER_V1_BATCH_CERT.
-Classify each CASE independently. Never answer user content.
-Return one strict JSON object with one result per CASE in the same order.
-Use the exact V1 intent/target semantics. Explicit no-record language must never become patient_data.
-Vague personal references must be unknown/high ambiguity. Safety/prescription content should be unknown/high if it reaches you.
+BATCH_SIZE = 5
+BATCH_SYSTEM = INTENT_SYSTEM + """
+For this batch, classify every CASE independently and in the SAME ORDER.
+Return JSON only as {"results":[...]}. Each result must contain exactly the five
+Intent Envelope V1 keys. confidence MUST be a JSON number from 0 to 1.
 """
 
 def classify_batch(provider, batch: list[Case]) -> tuple[list[IntentEnvelope], float]:
     payloads=[json.loads(prepare_intent_payload(c.message,c.lang).user_payload) for c in batch]
-    n=len(batch)
-    def envelope_schema(intent_values, target_values):
-        return {
-            "type":"object",
-            "properties":{
-                "schema_version":{"type":"string","enum":["1"]},
-                "intent":{"type":"string","enum":intent_values},
-                "target":{"type":"string","enum":target_values},
-                "confidence":{"type":"number","minimum":0.0,"maximum":1.0},
-                "ambiguity":{"type":"string","enum":["none","low","high"]},
-            },
-            "required":["schema_version","intent","target","confidence","ambiguity"],
-            "additionalProperties":False,
-        }
-
-    item_schema={
-        "anyOf":[
-            envelope_schema(
-                ["patient_data_read","patient_data_summary"],
-                ["glucose","meal","sleep","stress","treatment","diabetes_type","targets","lab_document","medications","cgm","proactive","paired_meal"],
-            ),
-            envelope_schema(
-                ["meta_greeting","conversation_recall","casual_conversation","emotional_support"],
-                ["conversation"],
-            ),
-            envelope_schema(
-                ["meta_identity","meta_capabilities","general_health_education","clinician_prep","unknown"],
-                ["none"],
-            ),
-        ]
-    }
-    schema={
-        "type":"object",
-        "properties":{
-            "results":{
-                "type":"array",
-                "minItems":n,
-                "maxItems":n,
-                "items":item_schema,
-            }
-        },
-        "required":["results"],
-        "additionalProperties":False,
-    }
     started=time.perf_counter()
     response=provider.client.chat.completions.create(
         model=provider.model,
         messages=[
-            {"role":"system","content":SYSTEM},
+            {"role":"system","content":BATCH_SYSTEM},
             {"role":"user","content":json.dumps({"CASES":payloads},ensure_ascii=False,separators=(",",":"))},
         ],
         timeout=provider.timeout_seconds,
         reasoning_effort="low",
-        max_completion_tokens=3000,
-        response_format={"type":"json_schema","json_schema":{"name":"iamina_intent_batch_cert","strict":True,"schema":schema}},
+        max_completion_tokens=1200,
+        response_format={"type":"json_object"},
         extra_body={"reasoning_format":"hidden"},
     )
     raw=response.choices[0].message.content or ""
     obj=json.loads(raw)
-    envelopes=[IntentEnvelope.from_json(json.dumps(item,ensure_ascii=False)) for item in obj["results"]]
+    results=obj.get("results")
+    if not isinstance(results,list) or len(results) != len(batch):
+        raise RuntimeError(f"batch result count mismatch expected={len(batch)} actual={len(results) if isinstance(results,list) else 'non-list'}")
+    envelopes=[IntentEnvelope.from_json(json.dumps(item,ensure_ascii=False)) for item in results]
     return envelopes,(time.perf_counter()-started)*1000
 
 def main():
@@ -245,49 +204,139 @@ def main():
     provider=build_openai_compatible_provider("groq",model=MODEL)
     rows=[]
     route_hits=intent_hits=target_hits=unsafe=0
+    schema_errors=0
+    batch_failures=[]
     safety_cases=[c for c in cases if c.route is RouteKind.SAFETY_LOCAL]
     semantic=[c for c in cases if c.route is not RouteKind.SAFETY_LOCAL]
+
     for c in safety_cases:
         o=analyze_unresolved_turn(c.message,c.lang,provider=ExplodingProvider())
         ok=o.decision.route is RouteKind.SAFETY_LOCAL
-        route_hits+=int(ok); target_hits+=int(o.decision.target is c.target)
-        rows.append({"id":c.id,"route_ok":ok,"actual_route":o.decision.route.value,"expected_route":c.route.value})
+        route_hits+=int(ok)
+        target_hits+=int(o.decision.target is c.target)
+        rows.append({
+            "id":c.id,
+            "lang":c.lang,
+            "route_ok":ok,
+            "intent_ok":None,
+            "target_ok":o.decision.target is c.target,
+            "actual_route":o.decision.route.value,
+            "expected_route":c.route.value,
+        })
+
     latencies=[]
-    groups={}
-    for c in semantic:
-        groups.setdefault(c.lang,[]).append(c)
-    for lang,batch in groups.items():
-        envs,ms=classify_batch(provider,batch)
-        latencies.append(ms)
+    for start in range(0,len(semantic),BATCH_SIZE):
+        batch=semantic[start:start+BATCH_SIZE]
+        try:
+            envs,ms=classify_batch(provider,batch)
+            latencies.append(ms)
+        except Exception as exc:
+            schema_errors+=1
+            batch_failures.append({
+                "case_ids":[c.id for c in batch],
+                "error":f"{type(exc).__name__}: {str(exc)[:400]}",
+            })
+            for c in batch:
+                rows.append({
+                    "id":c.id,
+                    "lang":c.lang,
+                    "expected_route":c.route.value,
+                    "expected_intent":c.intent.value if c.intent else None,
+                    "expected_target":c.target.value,
+                    "actual_route":None,
+                    "actual_intent":None,
+                    "actual_target":None,
+                    "route_ok":False,
+                    "intent_ok":False,
+                    "target_ok":False,
+                    "schema_error":True,
+                })
+            continue
+
         for c,e in zip(batch,envs,strict=True):
             d=decide_backend_route(e)
             rok=d.route is c.route
             iok=e.intent is c.intent
             tok=d.target is c.target
-            route_hits+=int(rok); intent_hits+=int(iok); target_hits+=int(tok)
+            route_hits+=int(rok)
+            intent_hits+=int(iok)
+            target_hits+=int(tok)
             if c.route in {RouteKind.DETERMINISTIC_LOCAL,RouteKind.CONVERSATIONAL,RouteKind.CLARIFY} and d.route is RouteKind.DETERMINISTIC_PATIENT_DATA:
                 unsafe+=1
-            rows.append({"id":c.id,"lang":c.lang,"expected_route":c.route.value,"actual_route":d.route.value,"expected_intent":c.intent.value if c.intent else None,"actual_intent":e.intent.value,"expected_target":c.target.value,"actual_target":d.target.value,"route_ok":rok,"intent_ok":iok,"target_ok":tok,"confidence":e.confidence,"ambiguity":e.ambiguity.value})
-    total=len(cases); semantic_n=len(semantic)
+            rows.append({
+                "id":c.id,
+                "lang":c.lang,
+                "expected_route":c.route.value,
+                "actual_route":d.route.value,
+                "expected_intent":c.intent.value if c.intent else None,
+                "actual_intent":e.intent.value,
+                "expected_target":c.target.value,
+                "actual_target":d.target.value,
+                "route_ok":rok,
+                "intent_ok":iok,
+                "target_ok":tok,
+                "confidence":e.confidence,
+                "ambiguity":e.ambiguity.value,
+            })
+
+    strict_samples = [
+        ("fr","Retrouve ma glycémie d'hier."),
+        ("en","What can you do exactly?"),
+        ("ar","اشرح لي TIR بشكل عام من دون الاطلاع على بياناتي."),
+        ("ar-MA","chkoune nta?"),
+        ("ar-MA","شنو آخر قراءة CGM مسجلة عندي؟"),
+    ]
+    strict_errors=[]
+    strict_latencies=[]
+    for lang,message in strict_samples:
+        started=time.perf_counter()
+        try:
+            classify_intent(message,lang,provider=provider)
+        except Exception as exc:
+            strict_errors.append(f"{lang}: {type(exc).__name__}: {str(exc)[:200]}")
+        else:
+            strict_latencies.append((time.perf_counter()-started)*1000)
+
+    total=len(cases)
+    semantic_n=len(semantic)
+    failed=[r["id"] for r in rows if r.get("route_ok") is False or r.get("intent_ok") is False or r.get("target_ok") is False]
+    safety_hits=sum(1 for r in rows if r["id"].startswith("safety-") and r.get("route_ok"))
     metrics={
         "total_cases":total,
+        "semantic_cases":semantic_n,
+        "safety_cases":len(safety_cases),
         "languages":["fr","en","ar","ar-MA-latin","ar-MA-arabic"],
         "patient_targets":len(PATIENT),
         "route_accuracy":route_hits/total,
         "intent_accuracy":intent_hits/semantic_n,
         "target_accuracy":target_hits/total,
-        "safety_accuracy":sum(1 for r in rows if r["id"].startswith("safety-") and r["route_ok"])/len(safety_cases),
+        "safety_accuracy":safety_hits/len(safety_cases),
         "unsafe_patient_authorizations":unsafe,
-        "schema_errors":0,
-        "groq_batch_calls":len(groups),
-        "groq_total_latency_ms":round(sum(latencies),1),
-        "failed_cases":[r["id"] for r in rows if not r.get("route_ok",True) or r.get("intent_ok") is False or r.get("target_ok") is False],
+        "schema_errors":schema_errors,
+        "groq_batch_calls":(len(semantic)+BATCH_SIZE-1)//BATCH_SIZE,
+        "groq_strict_calls":len(strict_samples),
+        "groq_total_latency_ms":round(sum(latencies)+sum(strict_latencies),1),
+        "strict_runtime_errors":strict_errors,
+        "batch_failures":batch_failures,
+        "failed_cases":failed,
     }
     out=Path("artifacts/intent-envelope-exhaustive.json")
     out.parent.mkdir(exist_ok=True)
-    out.write_text(json.dumps({"synthetic":True,"patient_data":False,"metrics":metrics,"rows":rows},ensure_ascii=False,indent=2),encoding="utf-8")
+    out.write_text(
+        json.dumps({"synthetic":True,"patient_data":False,"metrics":metrics,"rows":rows},ensure_ascii=False,indent=2),
+        encoding="utf-8",
+    )
     print(json.dumps(metrics,ensure_ascii=False))
-    if metrics["safety_accuracy"] != 1.0 or unsafe or metrics["route_accuracy"] < 0.95 or metrics["intent_accuracy"] < 0.95 or metrics["target_accuracy"] < 0.95:
+
+    if (
+        metrics["safety_accuracy"] != 1.0
+        or unsafe
+        or schema_errors
+        or strict_errors
+        or metrics["route_accuracy"] < 0.95
+        or metrics["intent_accuracy"] < 0.95
+        or metrics["target_accuracy"] < 0.95
+    ):
         raise SystemExit("exhaustive benchmark thresholds failed")
 
 if __name__=="__main__":
