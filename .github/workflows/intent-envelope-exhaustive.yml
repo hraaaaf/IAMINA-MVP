@@ -1,4 +1,5 @@
 name: Intent envelope exhaustive certification
+# Gate retry after runner-start failure (no exhaustive trigger)
 
 on:
   push:
