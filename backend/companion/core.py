@@ -19,9 +19,10 @@ class IAmina:
     Loads all memory layers on init, delegates to sub-modules.
     """
 
-    def __init__(self, patient, language: str = "ar-MA"):
+    def __init__(self, patient, language: str = "ar-MA", *, intent_provider=None):
         self.patient = patient
         self.language = language
+        self.intent_provider = intent_provider
         self.memory = IAminaMemory.load(patient)
         self.deep = IAminaDeepMemory.load(patient)
 
@@ -106,6 +107,7 @@ class IAmina:
             language=self.language,
             patient=self.patient,
             context_days=context_days,
+            intent_provider=self.intent_provider,
         )
         self.memory.update_from_chat(message, response)
         return response
@@ -130,6 +132,7 @@ class IAmina:
             language=self.language,
             patient=self.patient,
             context_days=context_days,
+            intent_provider=self.intent_provider,
         )
 
 

@@ -2,6 +2,8 @@ import logging
 import re
 
 from companion.advice_filter import apply_advice_throttle
+from companion.intent_envelope import IntentKind, RouteKind
+from companion.intent_runtime import analyze_runtime_turn, clarify_reply
 from companion.memory import _detect_emotional_signals
 from companion.narration_envelope import (
     shadow_validate_protected_resolution,
@@ -22,7 +24,7 @@ from companion.protected_shadow_telemetry import record_protected_narration_shad
 from companion.route_telemetry import record_companion_route
 from companion.state import compute_state, state_to_prompt
 from companion.tone import get_tone_instruction, select_relationship_tone
-from companion.zero_model_router import exact_chitchat_reply
+from companion.zero_model_router import classified_meta_reply, exact_chitchat_reply
 from core.ai_processor_policy import AIProcessorPolicyDenied
 from core.clinical_decision_audit import record_clinical_decision_audit
 from core.clinical_policy import (
@@ -38,6 +40,7 @@ from core.companion.clinical import (
     get_advice_resolution,
     get_companion_context,
     get_domain_context,
+    get_intent_target_resolution,
     get_offline_fallback,
     verify_advice_reply,
     verify_protected_advice_reply,
@@ -339,6 +342,150 @@ def _local_conversation_meta_reply(
     if language in _ARABIC_LANGUAGE_KEYS:
         return f'باختصار: سولتيني «{previous_user}»، وجاوبتك «{previous_assistant}».'
     return f'En bref : tu m’as demandé « {previous_user} » et je t’ai répondu « {previous_assistant} ».'
+
+
+def _classified_recall_reply(
+    patient,
+    language: str,
+    *,
+    prefer_latin_script: bool = False,
+) -> str:
+    user_turn, assistant_turn = _recent_exchange_pair(patient)
+    if not user_turn or not assistant_turn:
+        if language == "en":
+            return "I don't have an earlier exchange to recap yet."
+        if language == "ar-MA" and prefer_latin_script:
+            return "Mazal ma kaynch échange 9bel bach nlkhso."
+        if language in _ARABIC_LANGUAGE_KEYS:
+            return "ما زال ما كاينش تبادل سابق باش نلخّصه."
+        return "Je n'ai pas encore d'échange précédent à rappeler."
+
+    previous_user = _compact_turn_text(user_turn)
+    previous_assistant = _compact_turn_text(assistant_turn)
+    if language == "en":
+        return (
+            f'Just before, you asked: “{previous_user}” '
+            f'and I answered: “{previous_assistant}”.'
+        )
+    if language == "ar-MA" and prefer_latin_script:
+        return (
+            f'Qbel chwya, swelti: “{previous_user}” '
+            f'w jawbtk: “{previous_assistant}”.'
+        )
+    if language in _ARABIC_LANGUAGE_KEYS:
+        return (
+            f'قبل قليل سألت: «{previous_user}» '
+            f'وكان جوابي: «{previous_assistant}».'
+        )
+    return (
+        f'Juste avant, tu as demandé : « {previous_user} » '
+        f'et je t’ai répondu : « {previous_assistant} ».'
+    )
+
+
+def _route_runtime_intent(
+    message: str,
+    patient,
+    language: str,
+    *,
+    intent_provider,
+) -> tuple[str | None, bool, str | None]:
+    """Handle frozen-V1 non-generative routes before the legacy policy router.
+
+    Returns (reply, conversational_only, telemetry_route). A conversational
+    decision never authorizes patient context or provider egress; it only
+    constrains the later narration path to non-patient context.
+    """
+
+    outcome = analyze_runtime_turn(
+        message,
+        language,
+        provider=intent_provider,
+        patient_id=patient.id if patient is not None else None,
+    )
+    if outcome is None:
+        return None, False, None
+
+    route = outcome.decision.route
+    prefer_latin_script = language == "ar-MA" and not _ARABIC_RE.search(message)
+
+    if route is RouteKind.CLARIFY:
+        return (
+            clarify_reply(language, prefer_latin_script=prefer_latin_script),
+            False,
+            "zero_model",
+        )
+
+    if route is RouteKind.SAFETY_LOCAL:
+        reply = _safety_reply(message, patient, language)
+        if reply is None:
+            reply = clarify_reply(language, prefer_latin_script=prefer_latin_script)
+        return reply, False, "safety"
+
+    if route is RouteKind.DETERMINISTIC_LOCAL:
+        envelope = outcome.envelope
+        if envelope is not None and envelope.intent is IntentKind.CONVERSATION_RECALL:
+            reply = _classified_recall_reply(
+                patient,
+                language,
+                prefer_latin_script=prefer_latin_script,
+            )
+        elif envelope is not None:
+            reply = classified_meta_reply(envelope.intent.value, message, language)
+        else:
+            reply = None
+        if reply is None:
+            reply = clarify_reply(language, prefer_latin_script=prefer_latin_script)
+        return reply, False, "zero_model"
+
+    if route is RouteKind.DETERMINISTIC_PATIENT_DATA:
+        if patient is None:
+            return (
+                clarify_reply(language, prefer_latin_script=prefer_latin_script),
+                False,
+                "zero_model",
+            )
+        try:
+            resolution = get_intent_target_resolution(
+                patient.id,
+                outcome.decision.target.value,
+                message,
+                language=language,
+            )
+            if resolution is None:
+                return (
+                    clarify_reply(language, prefer_latin_script=prefer_latin_script),
+                    False,
+                    "zero_model",
+                )
+            reply = verify_advice_reply(
+                patient.id,
+                resolution,
+                resolution.reply,
+            )
+            record_clinical_decision_audit(
+                patient=patient,
+                decision=resolution.decision,
+                verifier_status="passed",
+                final_reply=reply,
+            )
+            return reply, False, "policy_rule"
+        except Exception:
+            logger.exception("IAmina intent-target resolution failed closed")
+            return (
+                policy_denied_reply(_deterministic_language(language)),
+                False,
+                "policy_denied",
+            )
+
+    if route is RouteKind.CONVERSATIONAL:
+        return None, True, None
+
+    return (
+        clarify_reply(language, prefer_latin_script=prefer_latin_script),
+        False,
+        "zero_model",
+    )
 
 
 def _deterministic_language(language: str) -> str:
@@ -716,32 +863,36 @@ def _authorize_runtime_narration(
     patient,
     language: str,
     context_days: int,
+    *,
+    patient_context_allowed: bool = True,
 ):
     """Resolve deterministic narration authority before any LLM is acquired/called."""
 
     detected_language = detect_language(message, language)
-    ctx = _get_context(patient, context_days, detected_language)
+    if patient_context_allowed:
+        ctx = _get_context(patient, context_days, detected_language)
+        try:
+            previous_user_message = None
+            if patient is not None:
+                previous_user_turns = _recent_turns(patient, 1, role="user")
+                if previous_user_turns:
+                    previous_user_message = previous_user_turns[0].message
+            module_resolution = get_advice_resolution(
+                patient.id if patient else None,
+                message,
+                ctx,
+                language=detected_language,
+                previous_user_message=previous_user_message,
+            )
+        except Exception:
+            logger.exception("IAmina module advice policy failed closed")
+            decision = AdviceDecision.fail_closed(language=detected_language)
+            return detected_language, ctx, decision, None
 
-    try:
-        previous_user_message = None
-        if patient is not None:
-            previous_user_turns = _recent_turns(patient, 1, role="user")
-            if previous_user_turns:
-                previous_user_message = previous_user_turns[0].message
-        module_resolution = get_advice_resolution(
-            patient.id if patient else None,
-            message,
-            ctx,
-            language=detected_language,
-            previous_user_message=previous_user_message,
-        )
-    except Exception:
-        logger.exception("IAmina module advice policy failed closed")
-        decision = AdviceDecision.fail_closed(language=detected_language)
-        return detected_language, ctx, decision, None
-
-    if module_resolution is not None:
-        return detected_language, ctx, module_resolution.decision, module_resolution
+        if module_resolution is not None:
+            return detected_language, ctx, module_resolution.decision, module_resolution
+    else:
+        ctx = DomainContext.empty(language=_deterministic_language(detected_language))
 
     try:
         decision = authorize_narration(
@@ -899,6 +1050,7 @@ def chat(
     language: str = "fr",
     patient=None,
     context_days: int = 14,
+    intent_provider=None,
 ) -> str:
     """Narrator-only conversational path over deterministic governed context."""
     safety_reply = _safety_reply(message, patient, language)
@@ -933,12 +1085,26 @@ def chat(
         _update_relationship_memory(message, memory)
         return zero_model_reply
 
+    intent_reply, intent_conversational, intent_route = _route_runtime_intent(
+        message,
+        patient,
+        _deterministic_language(detected_language),
+        intent_provider=intent_provider,
+    )
+    if intent_reply is not None:
+        record_companion_route(intent_route or "zero_model")
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", intent_reply)
+        _update_relationship_memory(message, memory)
+        return intent_reply
+
     context_days = _effective_context_days(message, context_days)
     language, ctx, advice_decision, advice_resolution = _authorize_runtime_narration(
         message,
         patient,
         language,
         context_days,
+        patient_context_allowed=not intent_conversational,
     )
     if advice_resolution is not None:
         try:
@@ -1076,6 +1242,7 @@ def stream_chat(
     language: str = "fr",
     patient=None,
     context_days: int = 14,
+    intent_provider=None,
 ):
     """Narrator-only SSE path; guard the full reply before emitting any chunk."""
     safety_reply = _safety_reply(message, patient, language)
@@ -1113,12 +1280,27 @@ def stream_chat(
         yield zero_model_reply
         return
 
+    intent_reply, intent_conversational, intent_route = _route_runtime_intent(
+        message,
+        patient,
+        _deterministic_language(detected_language),
+        intent_provider=intent_provider,
+    )
+    if intent_reply is not None:
+        record_companion_route(intent_route or "zero_model")
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", intent_reply)
+        _update_relationship_memory(message, memory)
+        yield intent_reply
+        return
+
     context_days = _effective_context_days(message, context_days)
     language, ctx, advice_decision, advice_resolution = _authorize_runtime_narration(
         message,
         patient,
         language,
         context_days,
+        patient_context_allowed=not intent_conversational,
     )
     if advice_resolution is not None:
         try:

@@ -127,6 +127,41 @@ def get_advice_resolution(
     return resolution
 
 
+
+def get_intent_target_resolution(
+    patient_id: int | None,
+    target: str,
+    message: str,
+    *,
+    language: str = "fr",
+) -> AdviceResolution | None:
+    """Resolve a validated semantic patient target through the active module."""
+
+    if patient_id is None:
+        return None
+    engine = _resolve_engine(patient_id)
+    if engine is None:
+        return None
+    resolver = getattr(engine, "resolve_intent_target", None)
+    if not callable(resolver):
+        return None
+    resolution = resolver(
+        patient_id,
+        target,
+        message,
+        language=language,
+    )
+    if resolution is None:
+        return None
+    if not isinstance(resolution, AdviceResolution):
+        raise TypeError("active module returned an invalid intent-target AdviceResolution")
+    validator = getattr(engine, "validate_advice_resolution", None)
+    if callable(validator):
+        resolution = validator(resolution)
+    if not isinstance(resolution, AdviceResolution):
+        raise TypeError("active module returned an invalid validated intent-target resolution")
+    return resolution
+
 def get_demo_advice_resolution(
     message: str,
     *,

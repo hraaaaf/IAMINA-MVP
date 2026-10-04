@@ -37,6 +37,7 @@ _PURPOSE_MODALITIES: dict[str, frozenset[str]] = {
     "clinical_summary": frozenset({TEXT}),
     "doctor_brief": frozenset({TEXT}),
     "companion_chat": frozenset({TEXT}),
+    "intent_classification": frozenset({TEXT}),
     "meal_vision": frozenset({IMAGE}),
     "glucometer_ocr": frozenset({IMAGE}),
     "voice_chat": frozenset({AUDIO, TEXT}),
@@ -49,6 +50,7 @@ _TEXT_PAYLOAD_LIMITS: dict[str, dict[str, int]] = {
     "clinical_summary": {"system_prompt": 12_000, "user_prompt": 24_000},
     "doctor_brief": {"system_prompt": 12_000, "user_prompt": 16_000},
     "companion_chat": {"system_prompt": 20_000, "user_prompt": 24_000},
+    "intent_classification": {"system_prompt": 8_000, "user_prompt": 2_000},
     "voice_chat": {"system_prompt": 20_000, "user_prompt": 24_000},
     "document_ingest": {"system_prompt": 12_000, "user_prompt": 48_000},
 }
