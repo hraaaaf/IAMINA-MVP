@@ -102,6 +102,18 @@ void main() {
       );
     });
 
+    testWidgets('page mode keeps visible back navigation', (tester) async {
+      _narrow(tester);
+      await tester.pumpWidget(
+        _sheet(db, sheet: const AddLogSheet(isPage: true)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Retour'), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_back_ios_new_rounded), findsOneWidget);
+      expect(find.text('Nouvelle mesure'), findsOneWidget);
+    });
+
     testWidgets('enables save only after a valid glucose value', (tester) async {
       _narrow(tester);
       await tester.pumpWidget(_sheet(db));
