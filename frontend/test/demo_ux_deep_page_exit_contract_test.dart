@@ -66,6 +66,7 @@ void main() {
       'lib/features/import/cgm_screen.dart',
       'lib/features/documents/document_import_screen.dart',
       'lib/features/documents/document_import_premium_screen.dart',
+      'lib/features/journal/add_log_screen.dart',
       'lib/features/journal/edit_log_screen.dart',
     ]) {
       expect(
