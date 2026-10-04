@@ -55,6 +55,21 @@ bool shouldApplyConsentGate({
       hasConsentService;
 }
 
+bool shouldApplyOnboardingGate({
+  required bool isLoggedIn,
+  required bool isAnonymous,
+  required bool requiresHostedRemoteLogin,
+  required bool hasCompletedOnboarding,
+  required bool hasProfileState,
+}) {
+  return isLoggedIn &&
+      !isAnonymous &&
+      !requiresHostedRemoteLogin &&
+      hasProfileState &&
+      !hasCompletedOnboarding;
+}
+
+
 class AppRouterHolder {
   final GoRouter router;
 
@@ -89,6 +104,7 @@ AppRouterHolder createAppRouterHolder({
       final isLoginPage = path == '/login';
       final isPasswordResetPage = path == '/reset-password';
       final isConsentPage = path == '/consent';
+      final isOnboardingPage = path == '/onboarding';
       final isAppLockSetupPage = path == '/app-lock/setup';
       final isAppLockUnlockPage = path == '/app-lock/unlock';
       final isAppLockPage = isAppLockSetupPage || isAppLockUnlockPage;
@@ -148,9 +164,23 @@ AppRouterHolder createAppRouterHolder({
         return _homeRoute();
       }
 
-      // ── Consent gate (RGPD Art. 7) ────────────────────────────────────────
-      // Skip for anonymous demo users and when ConsentService is not wired.
+      // ── First-use onboarding gate ────────────────────────────────────────
+      // A real user must persist the minimum patient profile before consent or
+      // any patient-facing root. Audit/demo sessions remain exempt.
       final activeConsent = consent;
+      if (activeConsent != null &&
+          shouldApplyOnboardingGate(
+            isLoggedIn: isLoggedIn,
+            isAnonymous: isAnonymous,
+            requiresHostedRemoteLogin: requiresHostedRemoteLogin,
+            hasCompletedOnboarding: activeConsent.hasCompletedOnboarding,
+            hasProfileState: activeConsent.isInitialized,
+          )) {
+        if (!isOnboardingPage && !isAppLockPage) return '/onboarding';
+      }
+
+      // ── Consent gate (RGPD Art. 7) ────────────────────────────────────────
+      // Consent is requested only after minimum onboarding is persisted.
       if (activeConsent != null &&
           shouldApplyConsentGate(
             isLoggedIn: isLoggedIn,
@@ -161,10 +191,17 @@ AppRouterHolder createAppRouterHolder({
         final hasConsent = activeConsent.hasConsent;
         final hasDeclined = activeConsent.hasDeclinedLocally;
 
-        if (!hasConsent && !hasDeclined && !isConsentPage && !isAppLockPage) {
+        if (!hasConsent &&
+            !hasDeclined &&
+            !isConsentPage &&
+            !isAppLockPage &&
+            !isOnboardingPage) {
           return '/consent';
         }
-        if (hasConsent && isConsentPage) return _homeRoute();
+        if ((hasConsent || hasDeclined) && isConsentPage) return _homeRoute();
+        if (activeConsent.hasCompletedOnboarding && isOnboardingPage) {
+          return hasConsent || hasDeclined ? _homeRoute() : '/consent';
+        }
       }
 
       return null;
