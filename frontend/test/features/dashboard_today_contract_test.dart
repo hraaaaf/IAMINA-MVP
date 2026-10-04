@@ -11,7 +11,8 @@ void main() {
     expect(source, contains('_service.fetchOverview()'));
     expect(source, contains('signals.take(2)'));
     expect(source, contains("context.go('/companion')"));
-    expect(source, contains("context.go('/importer')"));
+    expect(source, contains("context.go('/companion/chat')"));
+    expect(source, isNot(contains("context.go('/importer')")));
     expect(source, isNot(contains('proactive-insights')));
     expect(source, isNot(contains('evaluateProactive')));
     expect(source, isNot(contains("context.go('/journal')")));

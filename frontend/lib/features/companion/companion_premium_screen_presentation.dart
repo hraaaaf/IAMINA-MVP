@@ -191,7 +191,14 @@ class _BrandHeader extends StatelessWidget {
           ),
         ),
         IconButton(
-          onPressed: () => Navigator.of(context).maybePop(),
+          onPressed: () {
+            final router = GoRouter.of(context);
+            if (router.canPop()) {
+              router.pop();
+            } else {
+              router.go('/dashboard');
+            }
+          },
           icon: const Icon(Icons.close_rounded),
           style: IconButton.styleFrom(
             minimumSize: const Size(46, 46),

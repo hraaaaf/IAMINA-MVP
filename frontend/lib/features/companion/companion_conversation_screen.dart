@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:record/record.dart';
 import 'package:provider/provider.dart';
@@ -401,7 +402,14 @@ class _CompanionConversationScreenState
             final conversation = Column(
               children: [
                 _ConversationHeader(
-                  onClose: () => Navigator.of(context).maybePop(),
+                  onClose: () {
+                    final router = GoRouter.of(context);
+                    if (router.canPop()) {
+                      router.pop();
+                    } else {
+                      router.go('/dashboard');
+                    }
+                  },
                 ),
                 Expanded(
                   child: _messages.isEmpty

@@ -270,6 +270,15 @@ AppRouterHolder createAppRouterHolder({
         ),
       ),
 
+      GoRoute(
+        path: '/preferences',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _createPage(
+          state,
+          const OnboardingChatScreen(preferencesOnly: true),
+        ),
+      ),
+
       for (final m in ModuleRegistry.all())
         for (final r in m.fullScreenRoutes)
           GoRoute(

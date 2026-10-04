@@ -110,6 +110,10 @@ Exact target semantics:
 Rules:
 - A standalone greeting or greeting + wellbeing check (for example "salam labas?", "salut ça va?", "hello") => meta_greeting, target=conversation. Do not promote it to casual_conversation.
 - Requests to retrieve the user's recorded data => patient_data_read or patient_data_summary.
+- Use patient_data_summary when the user explicitly asks to summarize, recap, synthesize, or describe a period/episode; use patient_data_read for direct lookup/retrieval.
+- target=targets means configured glucose goals/ranges (for example target range, plage glycémique, نطاق مستهدف, range configuré), NOT glucose readings.
+- target=paired_meal means before/after-meal episodes or paired pre/post-prandial records; do NOT collapse these to target=meal.
+- Distress/exhaustion plus an explicit wish to talk (including Darija forms such as "3yit ... bghit ghir nhder") => emotional_support, not casual_conversation.
 - A vague reference to personal/past things without a clear target or explicit retrieval request (for example "mes trucs d'hier") => unknown, target=none, ambiguity=high. Do not guess casual_conversation or a patient-data target.
 - casual_conversation requires a clear conversational intent such as explicitly wanting to chat/talk; it is not the fallback for ambiguous personal references.
 - Mentioning a health topic does NOT by itself mean the user asked to retrieve their record.
@@ -126,7 +130,7 @@ Rules:
 - Do not classify medication dose changes, prescriptions, emergencies, or self-harm;
   those should have been intercepted upstream. If such content still appears, return unknown
   with ambiguity=high.
-- confidence is advisory only. IAMINA decides every executable route locally.
+- confidence MUST be an unquoted JSON number from 0 to 1 (example: 0.91), never a string such as "0.91".\n- confidence is advisory only. IAMINA decides every executable route locally.
 """
 
 

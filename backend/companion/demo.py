@@ -28,6 +28,18 @@ _ENGLISH_HINT_RE = re.compile(
     r"\b(?:hello|hi|thanks|thank you|doctor|clinician|help|what|how|why)\b",
     re.IGNORECASE,
 )
+_ARABIC_REQUEST_RE = re.compile(
+    r"(?:\ben\s+arabe\b|\bin\s+arabic\b|\barabic\b|بالعربية|بالعربي)",
+    re.IGNORECASE,
+)
+_ENGLISH_REQUEST_RE = re.compile(
+    r"(?:\ben\s+anglais\b|\bin\s+english\b|\benglish\b)",
+    re.IGNORECASE,
+)
+_FRENCH_REQUEST_RE = re.compile(
+    r"(?:\ben\s+fran[cç]ais\b|\bin\s+french\b|\bfrench\b)",
+    re.IGNORECASE,
+)
 _EMOTIONAL_RE = re.compile(
     r"(?:j['’]?en ai marre|j['’]?en peux plus|fatigu[ée]|[ée]puis[ée]|"
     r"i['’]?m done|exhausted|hopeless|3yit|3yayt|تعبت|عييت|خلاص)",
@@ -45,7 +57,8 @@ _PERSONAL_DATA_RE = re.compile(
     re.IGNORECASE,
 )
 _CAPABILITY_RE = re.compile(
-    r"(?:que peux[- ]?tu faire|comment (?:tu|ça) fonctionne|qui es[- ]?tu|"
+    r"(?:que peux[- ]?tu faire|tu sais faire quoi(?: exactement)?|"
+    r"comment (?:tu|ça) fonctionne|qui es[- ]?tu|"
     r"what can you do|how do you work|who are you|"
     r"شنو كتقدر|ماذا يمكنك|من أنت)",
     re.IGNORECASE,
@@ -134,7 +147,8 @@ _CASUAL_CHAT_RE = re.compile(
 )
 _LATIN_DARIJA_RE = re.compile(
     r"(?:salam|lyouma|bghit|bghitch|ghir|nhder|hdar|n9ssr|m3ak|chwia|hakka|khlli|"
-    r"sukkar|sokkar|sokkor|chno|wach|daba|bzaf|kan7ess|brassi|mdowekh|3ndi|3ndek)",
+    r"sukkar|sokkar|sokkor|chno|ch['’]?o|ch\s+houa|wach|daba|bzaf|kan7ess|brassi|"
+    r"mdowekh|3ndi|3ndek)",
     re.IGNORECASE,
 )
 _GULF_RE = re.compile(r"(?:هلا|أبغى|أبي|ودي|الحين|أسولف|سوالف|خلك|شوي)")
@@ -260,6 +274,12 @@ _DEMO_COPY = {
 def resolve_demo_language(message: str, requested: str = "fr") -> str:
     """Resolve a bounded demo language without patient/profile lookup."""
     requested = (requested or "fr").strip()
+    if _ARABIC_REQUEST_RE.search(message):
+        return "ar"
+    if _ENGLISH_REQUEST_RE.search(message):
+        return "en"
+    if _FRENCH_REQUEST_RE.search(message):
+        return "fr"
     if _LATIN_DARIJA_RE.search(message) and not _ARABIC_RE.search(message):
         return "ar-MA"
     if _ARABIC_RE.search(message):
@@ -269,6 +289,42 @@ def resolve_demo_language(message: str, requested: str = "fr") -> str:
     if requested in _DEMO_COPY:
         return requested
     return "fr"
+
+
+def deterministic_demo_fast_path(message: str, language: str = "fr") -> dict | None:
+    """Resolve deterministic demo turns before any external classifier/model call."""
+    text = (message or "").strip()
+    if not text:
+        return None
+
+    reply_language = resolve_demo_language(text, language)
+    exact = exact_chitchat_reply(text, reply_language)
+    if exact is not None:
+        return {
+            "reply": exact,
+            "conversation_id": "demo-governed",
+            "is_emergency": False,
+            "reply_language": reply_language,
+        }
+
+    if _CAPABILITY_RE.search(text):
+        return {
+            "reply": _DEMO_COPY[reply_language]["capability"],
+            "conversation_id": "demo-governed",
+            "is_emergency": False,
+            "reply_language": reply_language,
+        }
+
+    education = diabetes_education_reply(text, reply_language)
+    if education is not None and not _PERSONAL_DATA_RE.search(text):
+        return {
+            "reply": education,
+            "conversation_id": "demo-governed",
+            "is_emergency": False,
+            "reply_language": reply_language,
+        }
+
+    return None
 
 
 def reply_to_demo_message(

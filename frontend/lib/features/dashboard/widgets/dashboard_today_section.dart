@@ -7,6 +7,19 @@ import '../../../core/theme/amina_visual_language.dart';
 import '../../../data/models/companion_models.dart';
 import '../../../services/companion_service.dart';
 
+String _todayActionCopy(
+  BuildContext context, {
+  required String fr,
+  required String en,
+  required String ar,
+}) {
+  return switch (Localizations.localeOf(context).languageCode) {
+    'fr' => fr,
+    'ar' => ar,
+    _ => en,
+  };
+}
+
 class DashboardTodaySection extends StatefulWidget {
   final bool targetConfigured;
   final CompanionService? service;
@@ -290,27 +303,21 @@ class _SecondaryActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            key: const ValueKey('dashboard-secondary-companion'),
-            onPressed: () => context.go('/companion'),
-            icon: const Icon(Icons.auto_awesome_rounded, size: 17),
-            label: Text(l10n.dashboardOpenCompanion),
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        key: const ValueKey('dashboard-secondary-companion'),
+        onPressed: () => context.go('/companion/chat'),
+        icon: const Icon(Icons.auto_awesome_rounded, size: 17),
+        label: Text(
+          _todayActionCopy(
+            context,
+            fr: 'Parler avec IAmina',
+            en: 'Ask IAmina',
+            ar: 'تحدث مع IAmina',
           ),
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: OutlinedButton.icon(
-            key: const ValueKey('dashboard-secondary-import'),
-            onPressed: () => context.go('/importer'),
-            icon: const Icon(Icons.upload_file_outlined, size: 17),
-            label: Text(l10n.dashboardImportData),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

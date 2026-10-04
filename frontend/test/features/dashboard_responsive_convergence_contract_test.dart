@@ -16,14 +16,14 @@ void main() {
     expect(module, isNot(contains('constraints.maxWidth < 700')));
   });
 
-  test('Responsive density changes layout, not semantic product authority', () {
+  test('Responsive hierarchy keeps one factual trend before interpretation', () {
     final responsive = File(
       'lib/features/dashboard/widgets/dashboard_responsive_sections.dart',
     ).readAsStringSync();
 
     expect(responsive, contains('constraints.maxWidth < 760'));
     expect(responsive, contains('DashboardTrendSection('));
-    expect(responsive, contains('DashboardAdaptiveKpiSection('));
+    expect(responsive, isNot(contains('DashboardAdaptiveKpiSection(')));
     expect(responsive, contains('DashboardInsightSection('));
     expect(responsive, contains('DashboardNextActionSection('));
     expect(responsive, isNot(contains('DashboardScreen')));
@@ -32,7 +32,7 @@ void main() {
     expect(responsive, isNot(contains('calcTIR')));
   });
 
-  test('Large screens are bounded and centered without changing data semantics', () {
+  test('Large screens are bounded and place data tools after primary content', () {
     final dashboard = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
     ).readAsStringSync();
@@ -41,6 +41,9 @@ void main() {
     expect(dashboard, contains('(width - 1120) / 2'));
     expect(dashboard, contains('width >= 700'));
     expect(dashboard, contains('DashboardResponsiveSections('));
+    expect(dashboard, contains('const _DataTools()'));
+    expect(dashboard, contains("ValueKey('dashboard-data-import')"));
+    expect(dashboard, contains("ValueKey('dashboard-data-cgm')"));
     expect(dashboard, contains('watchRecentLogs(limit: 1)'));
     expect(dashboard, isNot(contains('Duration(days: 21)')));
   });

@@ -115,27 +115,13 @@ class DashboardTrendSummary extends StatelessWidget {
       ),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= 650) {
-          return Row(
-            children: [
-              for (var i = 0; i < cards.length; i++) ...[
-                Expanded(child: cards[i]),
-                if (i != cards.length - 1) const SizedBox(width: 10),
-              ],
-            ],
-          );
-        }
-        return Column(
-          children: [
-            for (var i = 0; i < cards.length; i++) ...[
-              cards[i],
-              if (i != cards.length - 1) const SizedBox(height: 8),
-            ],
-          ],
-        );
-      },
+    return Row(
+      children: [
+        for (var i = 0; i < cards.length; i++) ...[
+          Expanded(child: cards[i]),
+          if (i != cards.length - 1) const SizedBox(width: 8),
+        ],
+      ],
     );
   }
 
@@ -164,87 +150,66 @@ class _SummaryMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 94),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      constraints: const BoxConstraints(minHeight: 82),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: AminaVisualLanguage.mintSurface.withValues(alpha: .32),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AminaVisualLanguage.mintSurface,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 23, color: AminaVisualLanguage.actionGreen),
+          Row(
+            children: [
+              Icon(icon, size: 15, color: AminaVisualLanguage.actionGreen),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: AminaVisualLanguage.secondary(context),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        value,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'Georgia',
-                          fontSize: 26,
-                          height: 1,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -.5,
-                          color: AminaVisualLanguage.primaryText(context),
-                        ),
-                      ),
-                    ),
-                    if (unit != null) ...[
-                      const SizedBox(width: 6),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 2),
-                        child: Text(
-                          unit!,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            color: AminaVisualLanguage.secondary(context),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontFamily: 'Georgia',
+                    fontSize: 21,
+                    height: 1,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -.35,
+                    color: AminaVisualLanguage.primaryText(context),
+                  ),
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: AminaVisualLanguage.secondary(context),
-                        ),
+                if (unit != null) ...[
+                  const SizedBox(width: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 1),
+                    child: Text(
+                      unit!,
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: AminaVisualLanguage.secondary(context),
                       ),
                     ),
-                    const SizedBox(width: 5),
-                    Icon(
-                      Icons.info_outline_rounded,
-                      size: 14,
-                      color: AminaVisualLanguage.secondary(context),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ],
             ),
           ),

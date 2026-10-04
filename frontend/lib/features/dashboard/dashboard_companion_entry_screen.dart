@@ -37,7 +37,7 @@ class DashboardCompanionEntryScreen extends StatelessWidget {
               onPressed: () => context.push('/companion/chat'),
               backgroundColor: AminaVisualLanguage.forestDeep,
               foregroundColor: Colors.white,
-              child: const Icon(Icons.forum_outlined),
+              child: const Icon(Icons.auto_awesome_rounded),
             ),
           ),
         ),

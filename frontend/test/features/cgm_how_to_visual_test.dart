@@ -65,9 +65,9 @@ void main() {
 
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Mode d’emploi'), findsNWidgets(3));
+    expect(find.byIcon(Icons.help_outline_rounded), findsNWidgets(3));
 
-    await tester.tap(find.text('Mode d’emploi').first);
+    await tester.tap(find.byIcon(Icons.help_outline_rounded).first);
     await tester.pumpAndSettle();
     final dialog = find.byType(Dialog);
     expect(dialog, findsOneWidget);

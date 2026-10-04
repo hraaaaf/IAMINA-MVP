@@ -1,0 +1,89 @@
+name: Intent envelope exhaustive certification
+# Final post-main exhaustive certification trigger
+
+on:
+  push:
+    branches:
+      - preview/intent-envelope-v1-demo
+    paths:
+      - ".github/workflows/intent-envelope-exhaustive.yml"
+      - "backend/companion/**"
+      - "backend/diabetes/services/demo_runtime.py"
+      - "backend/diabetes/api/v1/demo.py"
+      - "backend/diabetes/tests/test_demo_chat.py"
+      - "backend/core/input_safety.py"
+      - "backend/core/triage_classification.py"
+      - "backend/safety/crisis.py"
+      - "backend/evaluation/intent_envelope_exhaustive_benchmark.py"
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: "Certification phase"
+        required: true
+        default: deterministic
+        type: choice
+        options:
+          - deterministic
+          - exhaustive
+
+permissions:
+  contents: read
+
+jobs:
+  exhaustive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install ruff
+      - name: Run local deterministic certification
+        env:
+          DJANGO_SETTINGS_MODULE: amina.settings
+          SECRET_KEY: exhaustive-cert-nonproduction
+          DEBUG: "True"
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          DATABASE_URL: sqlite:///intent-exhaustive.db
+        working-directory: backend
+        run: |
+          python -m ruff check companion/intent_envelope.py companion/intent_model.py companion/intent_pipeline.py companion/demo.py core/input_safety.py core/triage_classification.py core/tests/test_input_safety.py safety/crisis.py diabetes/services/demo_runtime.py diabetes/api/v1/demo.py diabetes/tests/test_demo_chat.py evaluation/intent_envelope_exhaustive_benchmark.py
+          python -m pytest companion/test_intent_envelope_pipeline.py -q --tb=short
+          python -m pytest core/tests/test_input_safety.py -q --tb=short
+          python -m pytest diabetes/tests/test_demo_chat.py -q --tb=short -k "not intent_preview and not general_tir_education and not explicit_arabic_tir_request and not language_only_followup and not natural_language_followups and not natural_french_capability"
+
+      - name: Run preview-specific deterministic certification
+        env:
+          DJANGO_SETTINGS_MODULE: amina.settings
+          SECRET_KEY: exhaustive-cert-nonproduction
+          DEBUG: "True"
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          DATABASE_URL: sqlite:///intent-exhaustive-preview.db
+          IAMINA_DEMO_INTENT_ROUTER_ENABLED: "true"
+        working-directory: backend
+        run: |
+          python -m pytest diabetes/tests/test_demo_chat.py -q --tb=short -k "intent_preview or general_tir_education or explicit_arabic_tir_request or language_only_followup or natural_language_followups or natural_french_capability"
+      - name: Run exhaustive multilingual certification
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.phase == 'exhaustive') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[intent-exhaustive]')) }}
+        env:
+          DJANGO_SETTINGS_MODULE: amina.settings
+          SECRET_KEY: exhaustive-cert-nonproduction
+          DEBUG: "True"
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          DATABASE_URL: sqlite:///intent-exhaustive.db
+          IAMINA_DEMO_INTENT_ROUTER_ENABLED: "true"
+          # Exhaustive certification marker: 2026-10-04 final 125 matrix
+        working-directory: backend
+        run: python evaluation/intent_envelope_exhaustive_benchmark.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: intent-envelope-exhaustive
+          path: backend/artifacts/intent-envelope-exhaustive.json
+          retention-days: 14

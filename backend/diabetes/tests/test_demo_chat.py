@@ -5,6 +5,15 @@ from unittest.mock import patch
 from django.test import Client, TestCase
 from django.utils import timezone
 
+from companion.intent_envelope import (
+    Ambiguity,
+    BackendIntentDecision,
+    IntentEnvelope,
+    IntentKind,
+    IntentTarget,
+    RouteKind,
+)
+from companion.intent_pipeline import IntentPipelineOutcome
 from core.ai_egress import TEXT, assert_ai_egress_allowed
 from core.companion.clinical import get_domain_context
 from diabetes.models import LogEntry
@@ -51,6 +60,121 @@ class DemoChatContractTests(TestCase):
             context_days=14,
         )
         self.assertEqual(response.json()["reply"], "Réponse issue du runtime IAmina.")
+
+    @patch("companion.demo_runtime.IAmina")
+    @patch("diabetes.services.demo_runtime._preview_route_reply")
+    def test_intent_preview_local_route_bypasses_patient_runtime(self, preview, iamina_cls):
+        preview.return_value = (RouteKind.DETERMINISTIC_LOCAL, "Preview local reply")
+
+        response = self._post("What can you do exactly?")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["reply"], "Preview local reply")
+        iamina_cls.assert_not_called()
+
+    @patch("companion.demo_runtime.IAmina")
+    @patch("diabetes.services.demo_runtime._preview_route_reply")
+    def test_intent_preview_patient_route_keeps_synthetic_runtime(self, preview, iamina_cls):
+        preview.return_value = (RouteKind.DETERMINISTIC_PATIENT_DATA, "")
+        iamina_cls.return_value.chat.return_value = "Synthetic patient reply"
+
+        response = self._post("Quel est mon TIR cette semaine ?")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["reply"], "Synthetic patient reply")
+        iamina_cls.return_value.chat.assert_called_once()
+
+
+    @patch("diabetes.services.demo_runtime.analyze_unresolved_turn")
+    def test_general_tir_education_ignores_negated_personal_data_phrase(self, analyze):
+        analyze.return_value = IntentPipelineOutcome(
+            decision=BackendIntentDecision(
+                route=RouteKind.CONVERSATIONAL,
+                target=IntentTarget.NONE,
+                reason="validated_conversational_intent",
+            ),
+            envelope=IntentEnvelope(
+                schema_version="1",
+                intent=IntentKind.GENERAL_HEALTH_EDUCATION,
+                target=IntentTarget.NONE,
+                confidence=0.98,
+                ambiguity=Ambiguity.NONE,
+            ),
+            source="intent_envelope_v1",
+            fallback_copy_key="",
+        )
+
+        response = self._post(
+            "Explique-moi le TIR en général, sans regarder mes données."
+        )
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"]
+        self.assertIn("Le TIR (Time in Range)", reply)
+        self.assertNotIn("aucun dossier patient", reply)
+        self.assertNotIn("mode démo", reply)
+
+
+    def test_explicit_arabic_tir_request_answers_in_arabic(self):
+        response = self._post("Explique-moi en arabe le TIR")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["reply_language"], "ar")
+        self.assertIn("الوقت ضمن النطاق", payload["reply"])
+
+    def test_language_only_followup_reuses_prior_tir_context(self):
+        history = [
+            {
+                "role": "user",
+                "content": "Explique-moi le TIR en général, sans regarder mes données.",
+            },
+            {
+                "role": "assistant",
+                "content": "Le TIR (Time in Range) est le pourcentage du temps...",
+            },
+        ]
+
+        response = self._post("en arabe", history=history)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["reply_language"], "ar")
+        self.assertIn("الوقت ضمن النطاق", payload["reply"])
+        self.assertNotIn("pas encore certain", payload["reply"])
+
+
+    def test_natural_language_followups_reuse_prior_tir_context(self):
+        history = [
+            {
+                "role": "user",
+                "content": "Explique-moi le TIR en général, sans regarder mes données.",
+            },
+            {
+                "role": "assistant",
+                "content": "Le TIR (Time in Range) est le pourcentage du temps...",
+            },
+        ]
+
+        for message in ("puis en arabe", "et en arabe", "maintenant en arabe", "alors en arabe"):
+            with self.subTest(message=message):
+                response = self._post(message, history=history)
+                self.assertEqual(response.status_code, 200)
+                payload = response.json()
+                self.assertEqual(payload["reply_language"], "ar")
+                self.assertIn("الوقت ضمن النطاق", payload["reply"])
+                self.assertNotIn("pas encore certain", payload["reply"])
+
+    @patch("companion.demo_runtime.IAmina")
+    @patch("diabetes.services.demo_runtime._preview_route_reply")
+    def test_intent_preview_failure_fails_closed_to_clarification(self, preview, iamina_cls):
+        preview.side_effect = RuntimeError("preview provider unavailable")
+
+        response = self._post("question libre")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("pas encore certain", response.json()["reply"])
+        iamina_cls.assert_not_called()
 
     @patch("companion.demo_runtime.IAmina")
     def test_demo_runtime_preserves_governed_ai_egress_scope(self, iamina_cls):
@@ -119,6 +243,22 @@ class DemoChatContractTests(TestCase):
         self.assertIn("Salam", greeting.json()["reply"])
         self.assertEqual(capabilities.status_code, 200)
         self.assertIn("glycémie", capabilities.json()["reply"])
+        gateway.assert_not_called()
+
+
+    @patch("diabetes.services.demo_runtime.build_openai_compatible_provider")
+    @patch("companion.conversation.get_gateway_llm")
+    def test_natural_french_capability_question_stays_local(self, gateway, provider):
+        gateway.side_effect = AssertionError("LLM narrator must not be called")
+        provider.side_effect = AssertionError("Intent classifier must not be called")
+
+        response = self._post("Tu sais faire quoi exactement ?")
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"].lower()
+        self.assertIn("iamina", reply)
+        self.assertNotIn("oui, on peut en parler ici", reply)
+        provider.assert_not_called()
         gateway.assert_not_called()
 
     @patch("companion.conversation.get_gateway_llm")

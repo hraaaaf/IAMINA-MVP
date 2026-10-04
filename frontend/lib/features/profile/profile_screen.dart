@@ -3,6 +3,7 @@ import 'package:amina/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' as drift;
+import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/amina_text_field.dart';
 import '../../core/widgets/responsive_content_surface.dart';
@@ -15,6 +16,19 @@ import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
 
 part 'profile_screen_presentation.dart';
+
+String _profileUiText(
+  BuildContext context, {
+  required String fr,
+  required String en,
+  required String ar,
+}) {
+  return switch (Localizations.localeOf(context).languageCode) {
+    'fr' => fr,
+    'ar' => ar,
+    _ => en,
+  };
+}
 
 String _profileValidationMessage(BuildContext context) {
   final code = Localizations.localeOf(context).languageCode;
@@ -167,8 +181,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (_) => SingleChildScrollView(
         child: Container(
           padding: const EdgeInsetsDirectional.fromSTEB(24, 20, 24, 40),
-          decoration: const BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(
+            color: AminaVisualLanguage.cardSurface(context),
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
@@ -178,7 +192,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AminaTheme.ink200,
+                  color: AminaVisualLanguage.controlBorder(context),
                   borderRadius: BorderRadius.circular(100),
                 ),
               ),
@@ -199,19 +213,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 16),
               Text(
                 l10n.signOutConfirmTitle,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: AminaTheme.ink900,
+                  color: AminaVisualLanguage.primaryText(context),
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 l10n.signOutConfirmBody,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
-                  color: AminaTheme.ink500,
+                  color: AminaVisualLanguage.secondary(context),
                   height: 1.5,
                 ),
               ),
@@ -223,15 +237,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: AminaTheme.ink200),
+                        side: BorderSide(color: AminaVisualLanguage.controlBorder(context)),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: Text(
                         l10n.cancel,
-                        style: const TextStyle(
-                          color: AminaTheme.ink700,
+                        style: TextStyle(
+                          color: AminaVisualLanguage.primaryText(context),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -288,7 +302,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AminaTheme.ink200,
+                color: AminaVisualLanguage.controlBorder(context),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -309,19 +323,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 16),
             Text(
               l10n.consentWithdrawConfirmTitle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: AminaTheme.ink900,
+                color: AminaVisualLanguage.primaryText(context),
               ),
             ),
             const SizedBox(height: 8),
             Text(
               l10n.consentWithdrawConfirmBody,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
-                color: AminaTheme.ink500,
+                color: AminaVisualLanguage.secondary(context),
                 height: 1.5,
               ),
             ),
@@ -333,15 +347,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onPressed: () => Navigator.pop(sheetCtx),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: AminaTheme.ink200),
+                      side: BorderSide(color: AminaVisualLanguage.controlBorder(context)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     child: Text(
                       l10n.cancel,
-                      style: const TextStyle(
-                        color: AminaTheme.ink700,
+                      style: TextStyle(
+                        color: AminaVisualLanguage.primaryText(context),
                         fontWeight: FontWeight.w600,
                       ),
                     ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/clinical_card.dart';
+import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/responsive_content_surface.dart';
 import '../../services/cgm_service.dart';
 import 'cgm_connections_section.dart';
@@ -140,11 +141,7 @@ class _CgmHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          IconButton(
-            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-            onPressed: Navigator.of(context).canPop() ? () => Navigator.of(context).pop() : null,
-            icon: const Icon(Icons.arrow_back_rounded),
-          ),
+          const AminaPageExitButton(),
           const SizedBox(width: 2),
           Expanded(
             child: Column(

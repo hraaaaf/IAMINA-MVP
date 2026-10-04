@@ -8,12 +8,31 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/mobile_page_header.dart';
 import '../../data/drift/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/locale_preference_service.dart';
 
+String _preferencesCopy(
+  BuildContext context, {
+  required String fr,
+  required String en,
+  required String ar,
+}) {
+  return switch (Localizations.localeOf(context).languageCode) {
+    'fr' => fr,
+    'ar' => ar,
+    _ => en,
+  };
+}
+
 class OnboardingChatScreen extends StatefulWidget {
-  const OnboardingChatScreen({super.key});
+  final bool preferencesOnly;
+
+  const OnboardingChatScreen({
+    super.key,
+    this.preferencesOnly = false,
+  });
 
   @override
   State<OnboardingChatScreen> createState() => _OnboardingChatScreenState();
@@ -29,8 +48,24 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   String? _treatment;
   String _unit = 'mg/dL';
   bool _saving = false;
+  bool _preferencesInitialized = false;
 
   AppLocalizations get l10n => AppLocalizations.of(context)!;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!widget.preferencesOnly || _preferencesInitialized) return;
+    final localeService = context.read<LocalePreferenceService>();
+    final profile = context.read<PatientProfileData?>();
+    _language = localeService.locale.languageCode;
+    _country = localeService.country;
+    _tone = localeService.tone;
+    _diabetesType = profile?.diabetesType;
+    _treatment = profile?.treatment;
+    _unit = profile?.unitPreference ?? _unit;
+    _preferencesInitialized = true;
+  }
 
   Future<void> _selectLanguage(String value) async {
     _language = value;
@@ -43,11 +78,9 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   }
 
   Future<void> _finish() async {
-    if (_language == null ||
-        _country == null ||
-        _tone == null ||
-        _diabetesType == null ||
-        _treatment == null) {
+    if (_language == null || _country == null || _tone == null) return;
+    if (!widget.preferencesOnly &&
+        (_diabetesType == null || _treatment == null)) {
       return;
     }
 
@@ -64,6 +97,15 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           .timeout(_persistenceTimeout);
 
       if (!mounted) return;
+      if (widget.preferencesOnly) {
+        final router = GoRouter.of(context);
+        if (router.canPop()) {
+          router.pop();
+        } else {
+          router.go('/profile');
+        }
+        return;
+      }
 
       final db = context.read<AppDatabase>();
       final firebaseUser = FirebaseAuth.instance.currentUser;
@@ -106,7 +148,65 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final steps = <Widget>[
+    final preferenceSteps = <Widget>[
+      _Question(
+        title: l10n.onboardingChooseLanguage,
+        children: [
+          _Choice(
+            label: 'Français',
+            selected: _language == 'fr',
+            onTap: () => _selectLanguage('fr'),
+          ),
+          _Choice(
+            label: 'English',
+            selected: _language == 'en',
+            onTap: () => _selectLanguage('en'),
+          ),
+          _Choice(
+            label: 'العربية',
+            selected: _language == 'ar',
+            onTap: () => _selectLanguage('ar'),
+          ),
+        ],
+      ),
+      _Question(
+        title: l10n.onboardingChooseCountry,
+        children: [
+          _Choice(
+            label: l10n.onboardingCountryMorocco,
+            selected: _country == 'MA',
+            onTap: () => setState(() => _country = 'MA'),
+          ),
+          _Choice(
+            label: l10n.onboardingCountryFrance,
+            selected: _country == 'FR',
+            onTap: () => setState(() => _country = 'FR'),
+          ),
+          _Choice(
+            label: l10n.onboardingCountryOther,
+            selected: _country == 'OTHER',
+            onTap: () => setState(() => _country = 'OTHER'),
+          ),
+        ],
+      ),
+      _Question(
+        title: l10n.onboardingChooseTone,
+        children: [
+          _Choice(
+            label: l10n.onboardingToneNeutral,
+            selected: _tone == 'neutral',
+            onTap: () => setState(() => _tone = 'neutral'),
+          ),
+          _Choice(
+            label: l10n.onboardingToneFriendly,
+            selected: _tone == 'friendly',
+            onTap: () => setState(() => _tone = 'friendly'),
+          ),
+        ],
+      ),
+    ];
+
+    final onboardingSteps = <Widget>[
       _Question(
         title: l10n.onboardingChooseLanguage,
         children: [
@@ -229,22 +329,60 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         ),
     ];
 
+    final steps = widget.preferencesOnly ? preferenceSteps : onboardingSteps;
+
     final ready =
         _language != null &&
         _country != null &&
         _tone != null &&
-        _diabetesType != null &&
-        _treatment != null;
+        (widget.preferencesOnly ||
+            (_diabetesType != null && _treatment != null));
+
+    final assistantLabel = widget.preferencesOnly
+        ? _preferencesCopy(
+            context,
+            fr: 'Préférences IAmina',
+            en: 'IAmina preferences',
+            ar: 'تفضيلات IAmina',
+          )
+        : l10n.onboardingAssistantLabel;
+    final welcome = widget.preferencesOnly
+        ? _preferencesCopy(
+            context,
+            fr: 'Choisissez vos préférences. Vos données médicales restent dans votre profil.',
+            en: 'Choose your preferences. Your medical data stays in your profile.',
+            ar: 'اختر تفضيلاتك. تبقى بياناتك الطبية في ملفك الشخصي.',
+          )
+        : l10n.onboardingWelcome;
+    final readyLabel = widget.preferencesOnly
+        ? _preferencesCopy(
+            context,
+            fr: 'Préférences prêtes',
+            en: 'Preferences ready',
+            ar: 'التفضيلات جاهزة',
+          )
+        : l10n.onboardingReady;
+    final finishLabel = widget.preferencesOnly
+        ? _preferencesCopy(
+            context,
+            fr: 'Enregistrer',
+            en: 'Save',
+            ar: 'حفظ',
+          )
+        : l10n.onboardingStart;
 
     return Scaffold(
       backgroundColor: AminaTheme.surfaceMuted,
       appBar: AppBar(
+        leading: widget.preferencesOnly
+            ? const AminaPageExitButton(fallbackRoute: '/profile')
+            : null,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('IAmina'),
             Text(
-              l10n.onboardingAssistantLabel,
+              assistantLabel,
               style: const TextStyle(fontSize: 12),
             ),
           ],
@@ -255,13 +393,13 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           builder: (context, constraints) {
             final desktop = constraints.maxWidth >= 900;
             final questions = _OnboardingQuestions(
-              welcome: l10n.onboardingWelcome,
+              welcome: welcome,
               steps: steps,
               ready: ready,
-              readyLabel: l10n.onboardingReady,
+              readyLabel: readyLabel,
               saving: _saving,
               savingLabel: l10n.onboardingSaving,
-              startLabel: l10n.onboardingStart,
+              startLabel: finishLabel,
               onFinish: _finish,
             );
 
@@ -290,8 +428,8 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
                           flex: 4,
                           child: _DesktopWelcomePanel(
                             title: 'IAmina',
-                            subtitle: l10n.onboardingAssistantLabel,
-                            body: l10n.onboardingWelcome,
+                            subtitle: assistantLabel,
+                            body: welcome,
                           ),
                         ),
                         const SizedBox(width: 28),

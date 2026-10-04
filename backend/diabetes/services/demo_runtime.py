@@ -2,25 +2,109 @@
 
 from __future__ import annotations
 
+import os
+import re
+
 from django.utils import timezone
 
 import companion.demo_runtime as companion_demo_runtime
 from companion.conversation import detect_language
+from companion.demo import (
+    deterministic_demo_fast_path,
+    reply_to_demo_message,
+    resolve_demo_language,
+)
+from companion.diabetes_education import diabetes_education_reply
+from companion.intent_envelope import IntentKind, RouteKind
+from companion.intent_pipeline import analyze_unresolved_turn
 from core.ai_egress import TEXT, ai_egress_scope
 from core.emergency_response import compose_emergency_for_patient
 from core.input_safety import INSULIN_BLOCK, PRESCRIPTION_BLOCK, URGENT, evaluate_input_safety
 from core.medical_safety import no_prescription_message
 from diabetes.services.demo_patient import get_or_create_synthetic_demo_patient
+from llm.provider_registry import build_openai_compatible_provider
 
+_INTENT_PREVIEW_ENABLED = "IAMINA_DEMO_INTENT_ROUTER_ENABLED"
+_INTENT_PREVIEW_MODEL = "IAMINA_INTENT_ROUTER_LLM_MODEL"
+_LANGUAGE_ONLY_FOLLOWUP_RE = re.compile(
+    r"^(?:(?:puis|et|maintenant|alors)\s+)?(?:"
+    r"en\s+arabe|in\s+arabic|arabic|"
+    r"en\s+anglais|in\s+english|english|"
+    r"en\s+fran[cç]ais|in\s+french|french"
+    r")\s*[.!?]*$",
+    re.IGNORECASE,
+)
+
+
+def _intent_preview_enabled() -> bool:
+    explicit = os.environ.get(_INTENT_PREVIEW_ENABLED, "").strip().lower()
+    return explicit in {"1", "true", "yes"} or os.environ.get("VERCEL_ENV") == "preview"
+
+
+def _clarify_reply(language: str) -> str:
+    if language == "en":
+        return "I’m not fully sure what you want yet. Do you want me to retrieve a recorded item, explain something generally, or just chat?"
+    if language == "ar-MA":
+        return "Mazal ma fhemtch bddabt chno bghiti. Bghiti n9elleb 3la data msjla, nchra7 lik chi haja b sifa 3amma, wela ghir nhdro?"
+    if language == "ar":
+        return "لست متأكدًا تمامًا مما تريده. هل تريد استرجاع معلومة مسجلة، شرحًا عامًا، أم مجرد محادثة؟"
+    return "Je ne suis pas encore certain de ce que tu veux. Tu veux que je retrouve une donnée enregistrée, que je t’explique quelque chose en général, ou simplement discuter ?"
+
+
+def _preview_route_reply(
+    message: str,
+    language: str,
+    history: list[dict[str, str]] | None = None,
+) -> tuple[RouteKind, str] | None:
+    if not _intent_preview_enabled():
+        return None
+
+    history = history or []
+    reply_language = resolve_demo_language(message, language)
+
+    fast_path = deterministic_demo_fast_path(message, reply_language)
+    if fast_path is not None:
+        return RouteKind.DETERMINISTIC_LOCAL, fast_path["reply"]
+
+    language_only_followup = bool(_LANGUAGE_ONLY_FOLLOWUP_RE.fullmatch(message.strip()))
+    if language_only_followup:
+        for turn in reversed(history):
+            if str(turn.get("role", "")).strip() != "user":
+                continue
+            prior = str(turn.get("content", "")).strip()
+            education = diabetes_education_reply(prior, reply_language)
+            if education is not None:
+                return RouteKind.CONVERSATIONAL, education
+
+    provider = build_openai_compatible_provider(
+        "groq",
+        model=os.environ.get(_INTENT_PREVIEW_MODEL, "").strip() or "openai/gpt-oss-120b",
+    )
+    outcome = analyze_unresolved_turn(message, reply_language, provider=provider)
+    if outcome.decision.route is RouteKind.CLARIFY:
+        return outcome.decision.route, _clarify_reply(reply_language)
+    if (
+        outcome.decision.route is RouteKind.CONVERSATIONAL
+        and outcome.envelope is not None
+        and outcome.envelope.intent is IntentKind.GENERAL_HEALTH_EDUCATION
+    ):
+        education = diabetes_education_reply(message, reply_language)
+        if education is not None:
+            return outcome.decision.route, education
+    if outcome.decision.route in {RouteKind.DETERMINISTIC_LOCAL, RouteKind.CONVERSATIONAL}:
+        demo = reply_to_demo_message(message, reply_language, history=history)
+        return outcome.decision.route, demo["reply"]
+    return outcome.decision.route, ""
 
 def reply_with_synthetic_patient(
     message: str,
     *,
     language: str,
     subject_key: str,
+    history: list[dict[str, str]] | None = None,
 ) -> dict:
     patient = get_or_create_synthetic_demo_patient(subject_key)
-    reply_language = detect_language(message, language)
+    reply_language = resolve_demo_language(message, detect_language(message, language))
     decision = evaluate_input_safety(message, reply_language)
 
     if decision.action == URGENT:
@@ -46,6 +130,21 @@ def reply_with_synthetic_patient(
             "is_emergency": False,
             "reply_language": reply_language,
         }
+
+    try:
+        preview = _preview_route_reply(message, reply_language, history=history)
+    except Exception:
+        preview = (RouteKind.CLARIFY, _clarify_reply(reply_language))
+    if preview is not None:
+        route, preview_reply = preview
+        if route in {RouteKind.DETERMINISTIC_LOCAL, RouteKind.CONVERSATIONAL, RouteKind.CLARIFY}:
+            return {
+                "reply": preview_reply,
+                "conversation_id": f"conv-demo-{subject_key[:12]}",
+                "timestamp": timezone.now().isoformat(),
+                "is_emergency": False,
+                "reply_language": reply_language,
+            }
 
     try:
         with ai_egress_scope(patient.id, "companion_chat", TEXT):

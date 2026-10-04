@@ -49,6 +49,11 @@ const _screenRegistry = <_RtlScreenEntry>[
     source: 'lib/features/auth/onboarding_chat_screen.dart',
   ),
   _RtlScreenEntry(
+    route: '/preferences',
+    widget: 'OnboardingChatScreen',
+    source: 'lib/features/auth/onboarding_chat_screen.dart',
+  ),
+  _RtlScreenEntry(
     route: '/profile',
     widget: 'ProfileScreen',
     source: 'lib/features/profile/profile_screen.dart',
@@ -70,8 +75,8 @@ const _screenRegistry = <_RtlScreenEntry>[
   ),
   _RtlScreenEntry(
     route: '/importer',
-    widget: 'ImportScreen',
-    source: 'lib/features/import/import_screen.dart',
+    widget: 'DocumentImportPremiumScreen',
+    source: 'lib/features/documents/document_import_premium_screen.dart',
   ),
   _RtlScreenEntry(
     route: '/cgm',

@@ -321,3 +321,4 @@ def test_intent_prompt_keeps_greeting_and_vague_personal_reference_distinct():
     ambiguous_system, _ = ambiguous.calls[0]
     assert "mes trucs d'hier" in ambiguous_system
     assert "unknown, target=none, ambiguity=high" in ambiguous_system
+    assert "unquoted JSON number" in ambiguous_system

@@ -97,8 +97,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
   String? _mealType;
   DateTime _selectedTime = DateTime.now();
   bool _mealExpanded = false;
-  bool _detailsExpanded = false;
-  bool _contextExpanded = false;
   bool _saving = false;
   bool _isSick = false;
   bool _isStressed = false;
@@ -110,8 +108,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
   void initState() {
     super.initState();
     _mealExpanded = widget.focus == AddLogFocus.meal;
-    _detailsExpanded = widget.focus == AddLogFocus.activity;
-    _contextExpanded = widget.focus == AddLogFocus.activity;
   }
 
   @override
@@ -436,13 +432,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
     final detailsCard = AddLogDetailsCard(
       timeLabel: addLogTimeLabel(l10n, _selectedTime),
       onPickDateTime: _pickDateTime,
-      contextExpanded: _contextExpanded,
       isSick: _isSick,
       isStressed: _isStressed,
       isActive: _isActive,
       badSleep: _badSleep,
-      onExpandContext: () => setState(() => _contextExpanded = true),
-      onCollapseContext: () => setState(() => _contextExpanded = false),
       onSickChanged: (value) => setState(() => _isSick = value),
       onStressedChanged: (value) => setState(() => _isStressed = value),
       onActiveChanged: (value) => setState(() => _isActive = value),
@@ -462,8 +455,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
         },
         primaryEvent: primaryEvent,
         detailsCard: detailsCard,
-        detailsExpanded: _detailsExpanded,
-        onShowDetails: () => setState(() => _detailsExpanded = true),
         saveBar: AddLogSaveBar(
           saving: _saving,
           enabled: _hasValidGlucose && !_mealVoiceBusy,
@@ -626,8 +617,6 @@ class _AddLogSheetState extends State<AddLogSheet> {
     _mealType = null;
     _selectedTime = DateTime.now();
     _mealExpanded = false;
-    _detailsExpanded = false;
-    _contextExpanded = false;
     _isSick = false;
     _isStressed = false;
     _isActive = false;

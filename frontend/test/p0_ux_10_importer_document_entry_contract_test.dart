@@ -10,7 +10,7 @@ String _readDocumentImportLibrary() => [
 ].join('\n');
 
 void main() {
-  test('Importer remains the acquisition entry without becoming a persistent root', () {
+  test('Importer opens the document task directly without becoming a root', () {
     final module = _read('lib/modules/diabetes_module.dart');
     final premium = _read(
       'lib/features/documents/document_import_premium_screen.dart',
@@ -18,44 +18,37 @@ void main() {
     final navBlock = module.split('shellRoutes:').first;
 
     expect(navBlock, isNot(contains("route: '/importer'")));
-    expect(navBlock, isNot(contains("route: '/pulper'")));
     expect(module, contains("path: '/importer'"));
     expect(module, contains("path: '/pulper'"));
-    expect(module, contains('ImportScreen'));
-    expect(module, contains('DocumentImportPremiumScreen'));
+    expect(module, isNot(contains("import '../features/import/import_screen.dart';")));
+    expect(module, isNot(contains('builder: (s) => const ImportScreen()')));
+    expect(module, contains('builder: (s) => const DocumentImportPremiumScreen()'));
     expect(premium, contains('DocumentImportScreen'));
   });
 
-  test('document import is entered from Importer with task-first wording', () {
-    final importer = _read('lib/features/import/import_screen.dart');
+  test('document import is a one-step route before the native file picker', () {
+    final module = _read('lib/modules/diabetes_module.dart');
+    final importerIndex = module.indexOf("path: '/importer'");
+    final pulperIndex = module.indexOf("path: '/pulper'");
+    final importerBlock = module.substring(importerIndex, pulperIndex);
 
-    expect(importer, contains("onTap: () => context.push('/pulper')"));
-    expect(importer, contains('AuditedPageCopy.of(context).documentTitle'));
-    expect(
-      importer,
-      contains('AuditedPageCopy.of(context).openDocumentImport'),
-    );
-    expect(importer, contains('class _DocumentImportCard'));
-    expect(importer, isNot(contains("'Pulper IAmina'")));
-    expect(importer, isNot(contains('class _PulperCard')));
+    expect(importerBlock, contains('DocumentImportPremiumScreen'));
+    expect(importerBlock, isNot(contains('ImportScreen')));
   });
 
-  test(
-    'document screen exposes the user task, not internal Pulper branding',
-    () {
-      final screen = _readDocumentImportLibrary();
+  test('document screen exposes the user task, not internal Pulper branding', () {
+    final screen = _readDocumentImportLibrary();
 
-      expect(screen, contains('AuditedPageCopy.of(context).documentTitle'));
-      expect(screen, contains('AuditedPageCopy.of(context).documentIntro'));
-      expect(screen, contains('AuditedPageCopy.of(context).chooseDocument'));
-      expect(screen, contains('class _DocumentImportIcon'));
-      expect(
-        screen,
-        contains('compactHeight = MediaQuery.sizeOf(context).height <= 600'),
-      );
-      expect(screen, contains('verticalPadding = compactHeight ? 12.0 : 24.0'));
-      expect(screen, isNot(contains("'Pulper IAmina'")));
-      expect(screen, isNot(contains('class _PulperIcon')));
-    },
-  );
+    expect(screen, contains('AuditedPageCopy.of(context).documentTitle'));
+    expect(screen, contains('AuditedPageCopy.of(context).documentIntro'));
+    expect(screen, contains('AuditedPageCopy.of(context).chooseDocument'));
+    expect(screen, contains('class _DocumentImportIcon'));
+    expect(
+      screen,
+      contains('compactHeight = MediaQuery.sizeOf(context).height <= 600'),
+    );
+    expect(screen, contains('verticalPadding = compactHeight ? 12.0 : 24.0'));
+    expect(screen, isNot(contains("'Pulper IAmina'")));
+    expect(screen, isNot(contains('class _PulperIcon')));
+  });
 }

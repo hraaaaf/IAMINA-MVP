@@ -117,12 +117,12 @@ def demo_chat(request, data: DemoChatRequest):
     if sum(len(turn["content"]) for turn in history) > 6000:
         raise HttpError(400, "Demo history exceeds total size limit")
 
-    del history
     session_subject = f"{subject}|{session_id}" if session_id else subject
     return reply_with_synthetic_patient(
         message,
         language=data.language,
         subject_key=session_subject,
+        history=history,
     )
 
 

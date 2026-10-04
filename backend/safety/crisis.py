@@ -58,6 +58,8 @@ _IDEATION_MARKERS = (
     r"ما\s+بقيتش?\s+(?:باغي\s+)?نعيش|ما\s+بغيتش?\s+نعيش",
     r"نسالي\s+على\s+راسي|نكمل\s+على\s+راسي",
     r"je\s+veux\s+(?:mourir|en\s+finir|plus\s+vivre)",
+    r"i\s+(?:want|wanna)\s+to\s+die",
+    r"(?<!لا\s)[أا]ريد\s+[أا]ن\s+[أا]موت",
     r"j[' ]?en\s+peux\s+plus\s+de\s+(?:la\s+)?vie",
     r"plus\s+envie\s+de\s+vivre",
 )
