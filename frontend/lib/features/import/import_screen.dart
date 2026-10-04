@@ -218,6 +218,7 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final copy = AuditedPageCopy.of(context);
     return AminaMobilePageHeader(
+      leading: const AminaPageExitButton(),
       title: copy.importTitle,
       subtitle: copy.importSubtitle,
     );
