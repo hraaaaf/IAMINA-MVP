@@ -2,6 +2,8 @@ import logging
 import re
 
 from companion.advice_filter import apply_advice_throttle
+from companion.intent_envelope import IntentKind, RouteKind
+from companion.intent_runtime import analyze_runtime_turn, clarify_reply
 from companion.memory import _detect_emotional_signals
 from companion.narration_envelope import (
     shadow_validate_protected_resolution,
@@ -22,7 +24,7 @@ from companion.protected_shadow_telemetry import record_protected_narration_shad
 from companion.route_telemetry import record_companion_route
 from companion.state import compute_state, state_to_prompt
 from companion.tone import get_tone_instruction, select_relationship_tone
-from companion.zero_model_router import exact_chitchat_reply
+from companion.zero_model_router import classified_meta_reply, exact_chitchat_reply
 from core.ai_processor_policy import AIProcessorPolicyDenied
 from core.clinical_decision_audit import record_clinical_decision_audit
 from core.clinical_policy import (
@@ -38,6 +40,7 @@ from core.companion.clinical import (
     get_advice_resolution,
     get_companion_context,
     get_domain_context,
+    get_intent_target_resolution,
     get_offline_fallback,
     verify_advice_reply,
     verify_protected_advice_reply,
@@ -339,6 +342,133 @@ def _local_conversation_meta_reply(
     if language in _ARABIC_LANGUAGE_KEYS:
         return f'باختصار: سولتيني «{previous_user}»، وجاوبتك «{previous_assistant}».'
     return f'En bref : tu m’as demandé « {previous_user} » et je t’ai répondu « {previous_assistant} ».'
+
+
+def _classified_recall_reply(patient, language: str) -> str:
+    user_turn, assistant_turn = _recent_exchange_pair(patient)
+    if not user_turn or not assistant_turn:
+        if language == "en":
+            return "I don't have an earlier exchange to recap yet."
+        if language in _ARABIC_LANGUAGE_KEYS:
+            return "ما زال ما كاينش تبادل سابق باش نلخّصه."
+        return "Je n'ai pas encore d'échange précédent à rappeler."
+
+    previous_user = _compact_turn_text(user_turn)
+    previous_assistant = _compact_turn_text(assistant_turn)
+    if language == "en":
+        return (
+            f'Just before, you asked: “{previous_user}” '
+            f'and I answered: “{previous_assistant}”.'
+        )
+    if language in _ARABIC_LANGUAGE_KEYS:
+        return (
+            f'قبل قليل سألت: «{previous_user}» '
+            f'وكان جوابي: «{previous_assistant}».'
+        )
+    return (
+        f'Juste avant, tu as demandé : « {previous_user} » '
+        f'et je t’ai répondu : « {previous_assistant} ».'
+    )
+
+
+def _route_runtime_intent(
+    message: str,
+    patient,
+    language: str,
+    *,
+    intent_provider,
+) -> tuple[str | None, bool, str | None]:
+    """Handle frozen-V1 non-generative routes before the legacy policy router.
+
+    Returns (reply, conversational_only, telemetry_route). A conversational
+    decision never authorizes patient context or provider egress; it only
+    constrains the later narration path to non-patient context.
+    """
+
+    outcome = analyze_runtime_turn(
+        message,
+        language,
+        provider=intent_provider,
+    )
+    if outcome is None:
+        return None, False, None
+
+    route = outcome.decision.route
+    prefer_latin_script = language == "ar-MA" and not _ARABIC_RE.search(message)
+
+    if route is RouteKind.CLARIFY:
+        return (
+            clarify_reply(language, prefer_latin_script=prefer_latin_script),
+            False,
+            "zero_model",
+        )
+
+    if route is RouteKind.SAFETY_LOCAL:
+        reply = _safety_reply(message, patient, language)
+        if reply is None:
+            reply = clarify_reply(language, prefer_latin_script=prefer_latin_script)
+        return reply, False, "safety"
+
+    if route is RouteKind.DETERMINISTIC_LOCAL:
+        envelope = outcome.envelope
+        if envelope is not None and envelope.intent is IntentKind.CONVERSATION_RECALL:
+            reply = _classified_recall_reply(patient, language)
+        elif envelope is not None:
+            reply = classified_meta_reply(envelope.intent.value, message, language)
+        else:
+            reply = None
+        if reply is None:
+            reply = clarify_reply(language, prefer_latin_script=prefer_latin_script)
+        return reply, False, "zero_model"
+
+    if route is RouteKind.DETERMINISTIC_PATIENT_DATA:
+        if patient is None:
+            return (
+                clarify_reply(language, prefer_latin_script=prefer_latin_script),
+                False,
+                "zero_model",
+            )
+        try:
+            resolution = get_intent_target_resolution(
+                patient.id,
+                outcome.decision.target.value,
+                message,
+                language=language,
+            )
+            if resolution is None:
+                return (
+                    clarify_reply(language, prefer_latin_script=prefer_latin_script),
+                    False,
+                    "zero_model",
+                )
+            reply = verify_advice_reply(
+                patient.id,
+                resolution,
+                resolution.reply,
+            )
+            record_clinical_decision_audit(
+                patient=patient,
+                decision=resolution.decision,
+                verifier_status="passed",
+                final_reply=reply,
+            )
+            return reply, False, "policy_rule"
+        except Exception:
+            logger.exception("IAmina intent-target resolution failed closed")
+            return (
+                policy_denied_reply(_deterministic_language(language)),
+                False,
+                "policy_denied",
+            )
+
+    if route is RouteKind.CONVERSATIONAL:
+        return None, True, None
+
+    return (
+        clarify_reply(language, prefer_latin_script=prefer_latin_script),
+        False,
+        "zero_model",
+    )
 
 
 def _deterministic_language(language: str) -> str:
