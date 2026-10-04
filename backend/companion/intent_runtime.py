@@ -9,10 +9,41 @@ from __future__ import annotations
 import os
 
 from companion.intent_pipeline import IntentPipelineOutcome, analyze_unresolved_turn
+from core.ai_egress import (
+    TEXT,
+    AIEgressDenied,
+    ai_egress_scope,
+    authorize_text_payload,
+)
 from core.ai_processor_policy import AIProcessorPolicyDenied, authorize_processor_policy
 from llm.base import BaseLLMProvider
 
 _RUNTIME_FLAG = "IAMINA_INTENT_ENVELOPE_RUNTIME_ENABLED"
+
+
+class _RuntimePayloadGuard:
+    """Apply patient consent + payload DLP immediately before external egress."""
+
+    def __init__(self, provider: BaseLLMProvider):
+        self._provider = provider
+
+    def __getattr__(self, name: str):
+        attribute = getattr(self._provider, name)
+        if name not in {"complete", "complete_json_schema"} or not callable(attribute):
+            return attribute
+
+        def guarded(system: str, user: str, *args, **kwargs):
+            payload = authorize_text_payload(
+                {"system_prompt": system, "user_prompt": user}
+            )
+            return attribute(
+                payload.system_prompt,
+                payload.user_prompt,
+                *args,
+                **kwargs,
+            )
+
+        return guarded
 
 
 def intent_runtime_enabled() -> bool:
@@ -25,8 +56,9 @@ def analyze_runtime_turn(
     language: str,
     *,
     provider: BaseLLMProvider | None,
+    patient_id: int | None = None,
 ) -> IntentPipelineOutcome | None:
-    """Return a frozen-V1 decision only when the runtime gate is enabled."""
+    """Return a frozen-V1 decision only when every runtime gate is satisfied."""
 
     if not intent_runtime_enabled():
         return None
@@ -45,10 +77,10 @@ def analyze_runtime_turn(
             provider=None,
         )
     try:
-        authorize_processor_policy(
+        processor_policy = authorize_processor_policy(
             policy_key,
             "intent_classification",
-            "text",
+            TEXT,
         )
     except AIProcessorPolicyDenied:
         return analyze_unresolved_turn(
@@ -57,11 +89,33 @@ def analyze_runtime_turn(
             provider=None,
         )
 
-    return analyze_unresolved_turn(
-        message,
-        language,
-        provider=provider,
-    )
+    if not processor_policy.external_egress:
+        return analyze_unresolved_turn(
+            message,
+            language,
+            provider=provider,
+        )
+
+    if patient_id is None:
+        return analyze_unresolved_turn(
+            message,
+            language,
+            provider=None,
+        )
+
+    try:
+        with ai_egress_scope(patient_id, "intent_classification", TEXT):
+            return analyze_unresolved_turn(
+                message,
+                language,
+                provider=_RuntimePayloadGuard(provider),
+            )
+    except AIEgressDenied:
+        return analyze_unresolved_turn(
+            message,
+            language,
+            provider=None,
+        )
 
 
 def clarify_reply(language: str, *, prefer_latin_script: bool = False) -> str:
