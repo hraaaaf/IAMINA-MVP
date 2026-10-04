@@ -57,7 +57,8 @@ _PERSONAL_DATA_RE = re.compile(
     re.IGNORECASE,
 )
 _CAPABILITY_RE = re.compile(
-    r"(?:que peux[- ]?tu faire|comment (?:tu|ça) fonctionne|qui es[- ]?tu|"
+    r"(?:que peux[- ]?tu faire|tu sais faire quoi(?: exactement)?|"
+    r"comment (?:tu|ça) fonctionne|qui es[- ]?tu|"
     r"what can you do|how do you work|who are you|"
     r"شنو كتقدر|ماذا يمكنك|من أنت)",
     re.IGNORECASE,
