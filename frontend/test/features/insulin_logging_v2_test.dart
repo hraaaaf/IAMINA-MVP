@@ -79,10 +79,10 @@ void main() {
         '',
       );
       final save = find.byKey(const Key('save-edit-log-button'));
-      await tester.scrollUntilVisible(
+      await tester.dragUntilVisible(
         save,
-        300,
-        scrollable: find.byType(Scrollable).first,
+        find.byType(SingleChildScrollView),
+        const Offset(0, -300),
       );
       await tester.pumpAndSettle();
       await tester.tap(save);
@@ -120,10 +120,10 @@ void main() {
         '4.75',
       );
       final save = find.byKey(const Key('save-edit-log-button'));
-      await tester.scrollUntilVisible(
+      await tester.dragUntilVisible(
         save,
-        300,
-        scrollable: find.byType(Scrollable).first,
+        find.byType(SingleChildScrollView),
+        const Offset(0, -300),
       );
       await tester.pumpAndSettle();
       await tester.tap(save);
