@@ -1,6 +1,6 @@
 # IAMINA — Companion Intent Envelope Pipeline V1
 
-Status: **CANDIDATE — NOT RUNTIME-WIRED — NOT FROZEN**
+Status: **FROZEN — NOT RUNTIME-WIRED**
 Branch: `feat/companion-intent-envelope-router`
 
 ## Goal
@@ -263,7 +263,7 @@ After owner approval, V1 becomes **FROZEN**.
 - allowing the LLM to execute backend actions;
 - changing patient-data routes from deterministic/read-only to generative authority.
 
-## Independent adversarial review — candidate findings
+## Independent adversarial review — pre-freeze findings
 
 The pre-freeze review challenged the candidate from four directions:
 
@@ -286,3 +286,29 @@ No runtime patient path is wired by this candidate PR. Changed-files inspection 
 8. Explicit owner approval to freeze V1.
 
 Production integration and Vercel deployment are separate later gates.
+
+
+## Freeze record — 2026-10-04
+
+Owner approval: **APPROVED — FREEZE**.
+
+Frozen against certification commit `40a3c668e96da8070f87f6f38942a4fd99506c48` after reconciliation with `main@20b838ab0579fc2862c3131a66cf737060b48f73` through integration merge `b49f58fa42cbc9195d628426f90e60e19fa50418`.
+
+Pre-freeze evidence:
+
+- deterministic/local certification: green in run `37230784641`;
+- Companion real-chat E2E: green in run `37230787529`;
+- exhaustive multilingual certification: run `37231553138` green on exact HEAD `40a3c668e96da8070f87f6f38942a4fd99506c48`;
+- exhaustive matrix: 125 cases across FR, EN, Arabic, Darija Latin and Darija Arabic;
+- route accuracy: 100%;
+- intent accuracy: 100%;
+- target accuracy: 100%;
+- safety interception: 100%;
+- unsafe patient-data authorizations: 0;
+- schema errors: 0;
+- strict-runtime errors: 0;
+- batch failures: 0;
+- failed cases: 0;
+- artifact: `intent-envelope-exhaustive`, artifact ID `11314530753`, SHA-256 `7b9d71b1d40ab868c3caf7fdfaf5b27ca52353954aa61731c201d8e67234045f`.
+
+Freeze means the V1 contract and invariants above are locked. It does **not** authorize production runtime wiring, patient-data egress, PR-to-production merge, or Vercel deployment. Those remain separate gates.
