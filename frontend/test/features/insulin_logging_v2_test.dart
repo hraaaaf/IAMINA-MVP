@@ -81,7 +81,7 @@ void main() {
       final save = find.byKey(const Key('save-edit-log-button'));
       final saveButton = tester.widget<FilledButton>(save);
       expect(saveButton.onPressed, isNotNull);
-      await saveButton.onPressed!();
+      saveButton.onPressed!();
       await tester.pumpAndSettle();
 
       final log = await db.getLogById(id);
@@ -118,7 +118,7 @@ void main() {
       final save = find.byKey(const Key('save-edit-log-button'));
       final saveButton = tester.widget<FilledButton>(save);
       expect(saveButton.onPressed, isNotNull);
-      await saveButton.onPressed!();
+      saveButton.onPressed!();
       await tester.pumpAndSettle();
       expect((await db.getLogById(id))!.insulinUnits, 4.75);
     },
