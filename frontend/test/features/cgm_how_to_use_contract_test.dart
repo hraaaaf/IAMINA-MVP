@@ -7,7 +7,7 @@ void main() {
     final source = File('lib/features/import/cgm_connections_section.dart').readAsStringSync();
     expect(source, contains('Future<void> _showHowTo'));
     expect(source, contains('Icons.help_outline_rounded'));
-    expect(source, contains('label: Text(l10n.cgmHowToUse)'));
+    expect(source, contains('tooltip: l10n.cgmHowToUse'));
     expect(source, contains('class _CgmHowToDialog'));
     expect(source, contains('for (var i = 0; i < steps.length; i++)'));
     expect(source, contains("'dexcom' => l10n.cgmHowToDexcomBridge"));
