@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 
 from companion.intent_pipeline import IntentPipelineOutcome, analyze_unresolved_turn
+from core.ai_processor_policy import AIProcessorPolicyDenied, authorize_processor_policy
 from llm.base import BaseLLMProvider
 
 _RUNTIME_FLAG = "IAMINA_INTENT_ENVELOPE_RUNTIME_ENABLED"
@@ -29,6 +30,33 @@ def analyze_runtime_turn(
 
     if not intent_runtime_enabled():
         return None
+    if provider is None:
+        return analyze_unresolved_turn(
+            message,
+            language,
+            provider=None,
+        )
+
+    policy_key = getattr(provider, "processor_policy_key", "")
+    if not isinstance(policy_key, str) or not policy_key.strip():
+        return analyze_unresolved_turn(
+            message,
+            language,
+            provider=None,
+        )
+    try:
+        authorize_processor_policy(
+            policy_key,
+            "intent_classification",
+            "text",
+        )
+    except AIProcessorPolicyDenied:
+        return analyze_unresolved_turn(
+            message,
+            language,
+            provider=None,
+        )
+
     return analyze_unresolved_turn(
         message,
         language,
