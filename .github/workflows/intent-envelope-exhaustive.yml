@@ -52,8 +52,9 @@ jobs:
           DATABASE_URL: sqlite:///intent-exhaustive.db
         working-directory: backend
         run: |
-          python -m ruff check companion/intent_envelope.py companion/intent_model.py companion/intent_pipeline.py companion/demo.py diabetes/services/demo_runtime.py diabetes/api/v1/demo.py diabetes/tests/test_demo_chat.py evaluation/intent_envelope_exhaustive_benchmark.py
+          python -m ruff check companion/intent_envelope.py companion/intent_model.py companion/intent_pipeline.py companion/demo.py core/input_safety.py core/triage_classification.py core/tests/test_input_safety.py safety/crisis.py diabetes/services/demo_runtime.py diabetes/api/v1/demo.py diabetes/tests/test_demo_chat.py evaluation/intent_envelope_exhaustive_benchmark.py
           python -m pytest companion/test_intent_envelope_pipeline.py -q --tb=short
+          python -m pytest core/tests/test_input_safety.py -q --tb=short
           python -m pytest diabetes/tests/test_demo_chat.py -q --tb=short -k "not intent_preview and not general_tir_education and not explicit_arabic_tir_request and not language_only_followup and not natural_language_followups and not natural_french_capability"
 
       - name: Run preview-specific deterministic certification
