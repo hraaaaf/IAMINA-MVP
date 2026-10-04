@@ -64,7 +64,7 @@ void main() {
       'lib/core/localization/dashboard_insight_localized_copy.dart',
     ).readAsStringSync();
 
-    expect(widget, contains('authService.isAuditSession'));
+    expect(widget, contains('authService?.isAuditSession ?? false'));
     expect(widget, contains('watchRecentLogs(limit: 100)'));
     expect(widget, contains('_DemoFactualInsight'));
     expect(widget, contains('total / logs.length'));
