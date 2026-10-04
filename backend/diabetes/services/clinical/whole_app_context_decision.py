@@ -445,16 +445,29 @@ def _reply_paired_meals(patient_id: int) -> str:
     )
 
 
-def resolve_whole_app_context(
+_INTENT_TARGET_MAP: dict[str, WholeAppIntent] = {
+    "glucose": WholeAppIntent.EXACT_GLUCOSE,
+    "meal": WholeAppIntent.MEAL_HISTORY,
+    "sleep": WholeAppIntent.SLEEP_HISTORY,
+    "stress": WholeAppIntent.STRESS_HISTORY,
+    "treatment": WholeAppIntent.TREATMENT,
+    "diabetes_type": WholeAppIntent.DIABETES_TYPE,
+    "targets": WholeAppIntent.TARGETS,
+    "lab_document": WholeAppIntent.LATEST_LAB,
+    "medications": WholeAppIntent.IMPORTED_MEDICATIONS,
+    "cgm": WholeAppIntent.LATEST_CGM,
+    "proactive": WholeAppIntent.PROACTIVE_PENDING,
+    "paired_meal": WholeAppIntent.PAIRED_MEALS,
+}
+
+
+def _resolve_intent(
     patient_id: int,
+    intent: WholeAppIntent,
     message: str,
     *,
-    language: str = "fr",
-) -> AdviceResolution | None:
-    intent = classify_whole_app_context(message)
-    if intent is None:
-        return None
-
+    language: str,
+) -> AdviceResolution:
     reply_by_intent = {
         WholeAppIntent.DIABETES_TYPE: lambda: _reply_diabetes_type(patient_id),
         WholeAppIntent.TREATMENT: lambda: _reply_treatment(patient_id),
@@ -475,8 +488,46 @@ def resolve_whole_app_context(
     )
 
 
+def resolve_whole_app_target(
+    patient_id: int,
+    target: str,
+    message: str,
+    *,
+    language: str = "fr",
+) -> AdviceResolution | None:
+    """Resolve a validated frozen-V1 semantic target through canonical sources."""
+
+    intent = _INTENT_TARGET_MAP.get(str(target))
+    if intent is None:
+        return None
+    return _resolve_intent(
+        patient_id,
+        intent,
+        message,
+        language=language,
+    )
+
+
+def resolve_whole_app_context(
+    patient_id: int,
+    message: str,
+    *,
+    language: str = "fr",
+) -> AdviceResolution | None:
+    intent = classify_whole_app_context(message)
+    if intent is None:
+        return None
+    return _resolve_intent(
+        patient_id,
+        intent,
+        message,
+        language=language,
+    )
+
+
 __all__ = [
     "WholeAppIntent",
     "classify_whole_app_context",
     "resolve_whole_app_context",
+    "resolve_whole_app_target",
 ]
