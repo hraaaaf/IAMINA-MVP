@@ -1033,6 +1033,7 @@ def chat(
     language: str = "fr",
     patient=None,
     context_days: int = 14,
+    intent_provider=None,
 ) -> str:
     """Narrator-only conversational path over deterministic governed context."""
     safety_reply = _safety_reply(message, patient, language)
@@ -1067,12 +1068,26 @@ def chat(
         _update_relationship_memory(message, memory)
         return zero_model_reply
 
+    intent_reply, intent_conversational, intent_route = _route_runtime_intent(
+        message,
+        patient,
+        _deterministic_language(detected_language),
+        intent_provider=intent_provider,
+    )
+    if intent_reply is not None:
+        record_companion_route(intent_route or "zero_model")
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", intent_reply)
+        _update_relationship_memory(message, memory)
+        return intent_reply
+
     context_days = _effective_context_days(message, context_days)
     language, ctx, advice_decision, advice_resolution = _authorize_runtime_narration(
         message,
         patient,
         language,
         context_days,
+        patient_context_allowed=not intent_conversational,
     )
     if advice_resolution is not None:
         try:
@@ -1210,6 +1225,7 @@ def stream_chat(
     language: str = "fr",
     patient=None,
     context_days: int = 14,
+    intent_provider=None,
 ):
     """Narrator-only SSE path; guard the full reply before emitting any chunk."""
     safety_reply = _safety_reply(message, patient, language)
@@ -1247,12 +1263,27 @@ def stream_chat(
         yield zero_model_reply
         return
 
+    intent_reply, intent_conversational, intent_route = _route_runtime_intent(
+        message,
+        patient,
+        _deterministic_language(detected_language),
+        intent_provider=intent_provider,
+    )
+    if intent_reply is not None:
+        record_companion_route(intent_route or "zero_model")
+        _append_turn(patient, "user", message)
+        _append_turn(patient, "assistant", intent_reply)
+        _update_relationship_memory(message, memory)
+        yield intent_reply
+        return
+
     context_days = _effective_context_days(message, context_days)
     language, ctx, advice_decision, advice_resolution = _authorize_runtime_narration(
         message,
         patient,
         language,
         context_days,
+        patient_context_allowed=not intent_conversational,
     )
     if advice_resolution is not None:
         try:
