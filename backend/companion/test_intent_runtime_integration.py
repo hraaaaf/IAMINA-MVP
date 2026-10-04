@@ -123,6 +123,60 @@ def test_pending_external_processor_is_denied_before_classifier_call(monkeypatch
     assert provider.calls == 0
 
 
+def test_external_classifier_requires_patient_scope_and_payload_guard(monkeypatch):
+    monkeypatch.setenv("IAMINA_INTENT_ENVELOPE_RUNTIME_ENABLED", "true")
+    provider = StrictIntentProvider(_payload("meta_identity", "none"))
+    external_policy = SimpleNamespace(external_egress=True)
+    authorized_payload = SimpleNamespace(
+        system_prompt="guarded-system",
+        user_prompt="guarded-user",
+    )
+
+    with (
+        patch(
+            "companion.intent_runtime.authorize_processor_policy",
+            return_value=external_policy,
+        ),
+        patch("companion.intent_runtime.ai_egress_scope") as scope,
+        patch(
+            "companion.intent_runtime.authorize_text_payload",
+            return_value=authorized_payload,
+        ) as authorize_payload,
+    ):
+        outcome = analyze_runtime_turn(
+            "Présente-toi autrement.",
+            "fr",
+            provider=provider,
+            patient_id=77,
+        )
+
+    assert outcome is not None
+    assert outcome.decision.route is RouteKind.DETERMINISTIC_LOCAL
+    scope.assert_called_once_with(77, "intent_classification", "text")
+    authorize_payload.assert_called_once()
+    assert provider.calls == 1
+
+
+def test_external_classifier_without_patient_scope_fails_closed(monkeypatch):
+    monkeypatch.setenv("IAMINA_INTENT_ENVELOPE_RUNTIME_ENABLED", "true")
+    provider = StrictIntentProvider(_payload("meta_identity", "none"))
+
+    with patch(
+        "companion.intent_runtime.authorize_processor_policy",
+        return_value=SimpleNamespace(external_egress=True),
+    ):
+        outcome = analyze_runtime_turn(
+            "Présente-toi autrement.",
+            "fr",
+            provider=provider,
+            patient_id=None,
+        )
+
+    assert outcome is not None
+    assert outcome.decision.route is RouteKind.CLARIFY
+    assert provider.calls == 0
+
+
 def test_classified_meta_identity_stays_local_and_never_calls_narrator(monkeypatch):
     monkeypatch.setenv("IAMINA_INTENT_ENVELOPE_RUNTIME_ENABLED", "true")
     provider = StrictIntentProvider(_payload("meta_identity", "none"))
