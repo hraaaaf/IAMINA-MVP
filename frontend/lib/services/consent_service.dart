@@ -10,6 +10,7 @@ class ConsentService extends ChangeNotifier {
   bool? _hasConsent;
   bool _hasVerifiedEvidence;
   bool _profileHasTimestamp = false;
+  bool _hasCompletedOnboarding = false;
   StreamSubscription<PatientProfileData?>? _sub;
 
   ConsentService({bool hasVerifiedEvidence = false})
@@ -21,7 +22,20 @@ class ConsentService extends ChangeNotifier {
   /// Safe default is false. Both local timestamp and verified evidence required.
   bool get hasConsent => _hasConsent ?? false;
 
+  /// True only when the minimum patient onboarding fields are persisted.
+  bool get hasCompletedOnboarding => _hasCompletedOnboarding;
+
+  bool _profileCompletesOnboarding(PatientProfileData? profile) {
+    final diabetesType = profile?.diabetesType?.trim();
+    final treatment = profile?.treatment?.trim();
+    return diabetesType != null &&
+        diabetesType.isNotEmpty &&
+        treatment != null &&
+        treatment.isNotEmpty;
+  }
+
   void _applyProfile(PatientProfileData? profile) {
+    _hasCompletedOnboarding = _profileCompletesOnboarding(profile);
     _profileHasTimestamp = profile?.aiConsentGivenAt != null;
     final next = _profileHasTimestamp && _hasVerifiedEvidence;
     if (next != _hasConsent) {
@@ -42,6 +56,7 @@ class ConsentService extends ChangeNotifier {
 
   /// Seed synchronously to avoid a redirect flicker on app start.
   void seedInitialProfile(PatientProfileData? profile) {
+    _hasCompletedOnboarding = _profileCompletesOnboarding(profile);
     _profileHasTimestamp = profile?.aiConsentGivenAt != null;
     _hasConsent = _profileHasTimestamp && _hasVerifiedEvidence;
   }

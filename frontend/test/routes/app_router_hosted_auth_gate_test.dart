@@ -109,4 +109,56 @@ void main() {
       isFalse,
     );
   });
+  test('real authenticated session without onboarding is gated', () {
+    expect(
+      shouldApplyOnboardingGate(
+        isLoggedIn: true,
+        isAnonymous: false,
+        requiresHostedRemoteLogin: false,
+        hasCompletedOnboarding: false,
+        hasProfileState: true,
+      ),
+      isTrue,
+    );
+  });
+
+  test('completed onboarding releases first-use gate', () {
+    expect(
+      shouldApplyOnboardingGate(
+        isLoggedIn: true,
+        isAnonymous: false,
+        requiresHostedRemoteLogin: false,
+        hasCompletedOnboarding: true,
+        hasProfileState: true,
+      ),
+      isFalse,
+    );
+  });
+
+  test('anonymous demo session skips onboarding gate', () {
+    expect(
+      shouldApplyOnboardingGate(
+        isLoggedIn: true,
+        isAnonymous: true,
+        requiresHostedRemoteLogin: false,
+        hasCompletedOnboarding: false,
+        hasProfileState: true,
+      ),
+      isFalse,
+    );
+  });
+
+  test('hosted local-only session waits for remote auth before onboarding', () {
+    expect(
+      shouldApplyOnboardingGate(
+        isLoggedIn: true,
+        isAnonymous: false,
+        requiresHostedRemoteLogin: true,
+        hasCompletedOnboarding: false,
+        hasProfileState: true,
+      ),
+      isFalse,
+    );
+  });
+
 }
