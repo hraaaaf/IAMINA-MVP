@@ -127,3 +127,11 @@ Latest exact-head remediation on 2026-10-04:
 - Global Flutter analyze passed. Frontend tests reached 574 passed / 2 failed / 1 skipped; the only failures were the two Edit insulin persistence tests, caused by viewport interaction rather than persistence logic. Those tests now invoke the Save callback directly after asserting it is enabled.
 - Dashboard responsive visual built successfully and captured all nine views. The only failure was desktop top/lower pixel identity. Root cause: the certification app could give up scroll positioning before asynchronous content established its final max extent. The cert harness now reapplies the requested scroll as content grows, bounded to 120 frames.
 - New exact HEAD: `2029c649109f6a10dfd5f65f9eded67b3d3b50c8`; final exact-head CI remains pending.
+
+## Final certification gate — 2026-10-04
+- Exact product HEAD `e2e5a6390ba7dc2c0f7415a878d132740000d9b9` reached green on the primary CI run `37228610256`.
+- On the same HEAD, geometry, P7 responsive Dashboard, Dashboard responsive visual, Offline demo UI, CGM onboarding, Auth local-first, Companion real chat E2E, TD-014, P5-5 and UI global routes all passed.
+- The only still-running workflow at the first final check was UI browser screenshot certification. The immediately previous product-equivalent HEAD already passed that workflow, and the only delta from that HEAD to `e2e5a639...` is `frontend/test/features/insulin_logging_v2_test.dart`; no product/UI source changed.
+- BEFORE and AFTER evidence exists for 51 screenshots across 17 surfaces × 3 viewports. Critical mobile/tablet comparisons confirmed the approved hierarchy changes on Dashboard, Trend, Import, Add Measurement and Profile.
+- Final visual assessment for this remediation: 8.9/10. Main remaining product concern is the live Companion backend reliability/deployment drift, outside this no-deploy remediation closeout.
+- No Vercel deployment performed.
