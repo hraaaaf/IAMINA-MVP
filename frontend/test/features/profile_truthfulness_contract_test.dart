@@ -48,7 +48,7 @@ void main() {
 
     expect(profile, isNot(contains("preferredLanguage: const drift.Value('fr')")));
     expect(profile, contains('Localizations.localeOf(context).languageCode'));
-    expect(profile, contains("context.push('/onboarding?mode=preferences')"));
+    expect(profile, contains("context.push('/preferences')"));
     expect(onboarding, contains('final bool preferencesOnly;'));
     expect(onboarding, contains('widget.preferencesOnly ? preferenceSteps : onboardingSteps'));
     expect(onboarding, contains('if (widget.preferencesOnly)'));
