@@ -34,8 +34,8 @@ class _DashboardInsightSectionState extends State<DashboardInsightSection> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final authService = context.read<AuthService>();
-    final demoSession = authService.isAuditSession;
+    final authService = Provider.of<AuthService?>(context, listen: false);
+    final demoSession = authService?.isAuditSession ?? false;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
