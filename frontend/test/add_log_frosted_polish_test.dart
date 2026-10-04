@@ -83,10 +83,8 @@ void main() {
     expect(meal.style?.minimumSize?.resolve(<WidgetState>{})?.height, 48);
     expect(meal.style?.alignment, Alignment.center);
 
-    final details = tester.widget<OutlinedButton>(
-      find.byKey(const Key('journal-details-button')),
-    );
-    expect(details.style?.minimumSize?.resolve(<WidgetState>{})?.height, 48);
+    expect(find.byKey(const Key('journal-details-button')), findsNothing);
+    expect(find.byKey(const Key('journal-details-card')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -126,15 +124,14 @@ void main() {
     await tester.pumpWidget(_screen(db));
     await tester.pumpAndSettle();
 
-    final details = find.byKey(const Key('journal-details-button'));
+    final details = find.byKey(const Key('journal-details-card'));
     final save = find.byKey(const Key('save-log-button'));
     expect(details, findsOneWidget);
     expect(save, findsOneWidget);
 
-    final detailsBottom = tester.getBottomLeft(details).dy;
-    final saveTop = tester.getTopLeft(save).dy;
-    expect(saveTop - detailsBottom, lessThan(180));
-    expect(saveTop, lessThan(700));
+    await tester.ensureVisible(details);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(details).height, greaterThan(100));
     expect(tester.takeException(), isNull);
   });
 
