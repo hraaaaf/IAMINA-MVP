@@ -9,9 +9,12 @@ void main() {
         'lib/features/dashboard/widgets/dashboard_today_section.dart',
       ).readAsStringSync();
       expect(today, contains("ValueKey('dashboard-secondary-companion')"));
-      expect(today, contains("context.go('/companion')"));
-      expect(today, contains("ValueKey('dashboard-secondary-import')"));
-      expect(today, contains("context.go('/importer')"));
+      expect(today, contains("context.go('/companion/chat')"));
+      final premium = File(
+        'lib/features/dashboard/dashboard_premium_screen.dart',
+      ).readAsStringSync();
+      expect(premium, contains("ValueKey('dashboard-data-import')"));
+      expect(premium, contains("context.go('/importer')"));
 
       final module = File(
         'lib/modules/diabetes_module.dart',
