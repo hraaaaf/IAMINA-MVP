@@ -237,7 +237,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: AminaVisualLanguage.controlBorder(context)),
+                        side: BorderSide(color: AminaVisualLanguage.controlBorder(context)),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -323,7 +323,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 16),
             Text(
               l10n.consentWithdrawConfirmTitle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
                 color: AminaVisualLanguage.primaryText(context),
@@ -333,7 +333,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Text(
               l10n.consentWithdrawConfirmBody,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 color: AminaVisualLanguage.secondary(context),
                 height: 1.5,
@@ -347,14 +347,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onPressed: () => Navigator.pop(sheetCtx),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: AminaVisualLanguage.controlBorder(context)),
+                      side: BorderSide(color: AminaVisualLanguage.controlBorder(context)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     child: Text(
                       l10n.cancel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AminaVisualLanguage.primaryText(context),
                         fontWeight: FontWeight.w600,
                       ),
