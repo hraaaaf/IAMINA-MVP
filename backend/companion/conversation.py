@@ -846,32 +846,36 @@ def _authorize_runtime_narration(
     patient,
     language: str,
     context_days: int,
+    *,
+    patient_context_allowed: bool = True,
 ):
     """Resolve deterministic narration authority before any LLM is acquired/called."""
 
     detected_language = detect_language(message, language)
-    ctx = _get_context(patient, context_days, detected_language)
+    if patient_context_allowed:
+        ctx = _get_context(patient, context_days, detected_language)
+        try:
+            previous_user_message = None
+            if patient is not None:
+                previous_user_turns = _recent_turns(patient, 1, role="user")
+                if previous_user_turns:
+                    previous_user_message = previous_user_turns[0].message
+            module_resolution = get_advice_resolution(
+                patient.id if patient else None,
+                message,
+                ctx,
+                language=detected_language,
+                previous_user_message=previous_user_message,
+            )
+        except Exception:
+            logger.exception("IAmina module advice policy failed closed")
+            decision = AdviceDecision.fail_closed(language=detected_language)
+            return detected_language, ctx, decision, None
 
-    try:
-        previous_user_message = None
-        if patient is not None:
-            previous_user_turns = _recent_turns(patient, 1, role="user")
-            if previous_user_turns:
-                previous_user_message = previous_user_turns[0].message
-        module_resolution = get_advice_resolution(
-            patient.id if patient else None,
-            message,
-            ctx,
-            language=detected_language,
-            previous_user_message=previous_user_message,
-        )
-    except Exception:
-        logger.exception("IAmina module advice policy failed closed")
-        decision = AdviceDecision.fail_closed(language=detected_language)
-        return detected_language, ctx, decision, None
-
-    if module_resolution is not None:
-        return detected_language, ctx, module_resolution.decision, module_resolution
+        if module_resolution is not None:
+            return detected_language, ctx, module_resolution.decision, module_resolution
+    else:
+        ctx = DomainContext.empty(language=_deterministic_language(detected_language))
 
     try:
         decision = authorize_narration(
