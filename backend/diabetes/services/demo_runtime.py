@@ -9,7 +9,11 @@ from django.utils import timezone
 
 import companion.demo_runtime as companion_demo_runtime
 from companion.conversation import detect_language
-from companion.demo import deterministic_demo_fast_path, reply_to_demo_message, resolve_demo_language
+from companion.demo import (
+    deterministic_demo_fast_path,
+    reply_to_demo_message,
+    resolve_demo_language,
+)
 from companion.diabetes_education import diabetes_education_reply
 from companion.intent_envelope import IntentKind, RouteKind
 from companion.intent_pipeline import analyze_unresolved_turn
