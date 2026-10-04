@@ -130,7 +130,7 @@ Rules:
 - Do not classify medication dose changes, prescriptions, emergencies, or self-harm;
   those should have been intercepted upstream. If such content still appears, return unknown
   with ambiguity=high.
-- confidence is advisory only. IAMINA decides every executable route locally.
+- confidence MUST be an unquoted JSON number from 0 to 1 (example: 0.91), never a string such as "0.91".\n- confidence is advisory only. IAMINA decides every executable route locally.
 """
 
 
