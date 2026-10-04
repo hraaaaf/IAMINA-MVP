@@ -20,6 +20,7 @@ on:
       - "backend/diabetes/services/clinical/engine.py"
       - "backend/diabetes/services/clinical/whole_app_context_decision.py"
       - "backend/companion/test_intent_runtime_integration.py"
+      - "backend/companion/test_policy_runtime.py"
       - "backend/diabetes/tests/test_whole_app_context_decision.py"
       - ".github/workflows/intent-envelope-runtime-integration.yml"
 
