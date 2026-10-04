@@ -99,6 +99,13 @@ Implemented:
 
 ## AFTER / proof
 
+2026-10-04 post-public runner validation:
+- GitHub Actions now allocates runners and executes Flutter jobs.
+- Secret hygiene, PR-size advisory, and changed-scope classification pass.
+- Frontend reaches Flutter setup/dependency resolution, then fails at global `flutter analyze`; downstream tests/PWA build are therefore skipped.
+- Browser certification passes its isolated analyze step, then fails while building the isolated browser audit; screenshot capture is therefore skipped.
+- These are real application/build failures, not the earlier runner-allocation failure. Exact diagnostics still need to be resolved before certification.
+
 Pending exact-HEAD CI and screenshot artifacts. Do not mark this document complete until:
 1. compile/tests pass at the final HEAD;
 2. responsive screenshots are inspected at matching certified viewports;
