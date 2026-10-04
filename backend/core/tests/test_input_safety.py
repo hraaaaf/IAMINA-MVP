@@ -7,6 +7,19 @@ def test_suicidal_ideation_is_urgent():
     assert decision.reason == "suicidal_ideation"
 
 
+def test_english_and_arabic_suicidal_ideation_are_urgent():
+    for message in ("I want to die.", "أريد أن أموت."):
+        decision = evaluate_input_safety(message)
+        assert decision.action == URGENT, message
+        assert decision.reason == "suicidal_ideation"
+
+
+def test_explicit_ideation_negation_is_not_misclassified_as_urgent():
+    for message in ("I don't want to die.", "لا أريد أن أموت."):
+        decision = evaluate_input_safety(message)
+        assert decision.action == ALLOW, message
+
+
 def test_vital_glucose_emergency_is_urgent():
     decision = evaluate_input_safety("ma glycémie est à 32")
     assert decision.action == URGENT
