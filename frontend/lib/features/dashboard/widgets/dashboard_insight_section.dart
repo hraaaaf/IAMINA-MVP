@@ -1,10 +1,13 @@
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/localization/dashboard_insight_localized_copy.dart';
 import '../../../core/theme/amina_visual_language.dart';
+import '../../../data/drift/database.dart';
 import '../../../data/models/proactive_preview_models.dart';
+import '../../../services/auth_service.dart';
 import '../../../services/companion_service.dart';
 
 class DashboardInsightSection extends StatefulWidget {
@@ -31,6 +34,8 @@ class _DashboardInsightSectionState extends State<DashboardInsightSection> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final authService = context.read<AuthService>();
+    final demoSession = authService.isAuditSession;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -59,7 +64,21 @@ class _DashboardInsightSectionState extends State<DashboardInsightSection> {
             ),
           ),
           const SizedBox(height: 14),
-          FutureBuilder<ProactivePreview?>(
+          if (demoSession)
+            StreamBuilder<List<LogEntryData>>(
+              stream: context.read<AppDatabase>().watchRecentLogs(limit: 100),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return _InsightState(
+                    loading: true,
+                    text: l10n.dashboardInsightLoading,
+                  );
+                }
+                return _DemoFactualInsight(logs: snapshot.data ?? const []);
+              },
+            )
+          else
+            FutureBuilder<ProactivePreview?>(
             future: _future,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -107,6 +126,81 @@ class _DashboardInsightSectionState extends State<DashboardInsightSection> {
               }
               return _InsightBody(item: item);
             },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DemoFactualInsight extends StatelessWidget {
+  final List<LogEntryData> logs;
+
+  const _DemoFactualInsight({required this.logs});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    if (logs.isEmpty) {
+      return _InsightState(
+        icon: Icons.hourglass_empty_rounded,
+        text: l10n.dashboardInsightDemoEmpty,
+      );
+    }
+
+    final days = <String>{};
+    var total = 0.0;
+    for (final log in logs) {
+      total += log.bloodSugar;
+      final at = log.loggedAt ?? log.createdAt;
+      days.add('${at.year}-${at.month}-${at.day}');
+    }
+    final average = total / logs.length;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AminaVisualLanguage.mintSurface.withValues(alpha: .62),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AminaVisualLanguage.mintBorder.withValues(alpha: .82),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.dashboardInsightDemoEyebrow,
+            style: const TextStyle(
+              color: AminaVisualLanguage.actionGreen,
+              fontSize: 9.8,
+              fontWeight: FontWeight.w800,
+              letterSpacing: .9,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.dashboardInsightDemoSummary(
+              logs.length,
+              days.length,
+              average.round(),
+            ),
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.45,
+              fontWeight: FontWeight.w700,
+              color: AminaVisualLanguage.primaryText(context),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            l10n.dashboardInsightDemoLimitation,
+            style: TextStyle(
+              fontSize: 10.8,
+              height: 1.4,
+              color: AminaVisualLanguage.secondary(context),
+            ),
           ),
         ],
       ),
