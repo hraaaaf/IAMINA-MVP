@@ -591,7 +591,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           ),
           title: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
               color: AminaVisualLanguage.primaryText(context),
@@ -603,7 +603,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
               subtitle,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 height: 1.35,
                 color: AminaVisualLanguage.secondary(context),
