@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/mobile_page_header.dart';
 import '../../data/drift/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../dashboard/widgets/add_log_sheet.dart';
@@ -82,10 +83,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(
-          onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-        ),
+        leading: const AminaPageExitButton(),
         title: Text(l10n.journalEditTitle),
       ),
       body: _loading
