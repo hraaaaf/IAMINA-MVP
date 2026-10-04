@@ -170,6 +170,26 @@ class ExplodingProvider(BaseLLMProvider):
         raise AssertionError("safety must not call provider")
 
 BATCH_SIZE = 5
+GROQ_MIN_CALL_INTERVAL_SECONDS = 4.5
+GROQ_MAX_RATE_LIMIT_RETRIES = 3
+_last_groq_call_started = 0.0
+
+def _paced_groq_create(provider, **kwargs):
+    global _last_groq_call_started
+    for attempt in range(GROQ_MAX_RATE_LIMIT_RETRIES + 1):
+        wait = GROQ_MIN_CALL_INTERVAL_SECONDS - (time.monotonic() - _last_groq_call_started)
+        if wait > 0:
+            time.sleep(wait)
+        _last_groq_call_started = time.monotonic()
+        try:
+            return provider.client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            if "RateLimitError" not in type(exc).__name__ and "rate_limit_exceeded" not in str(exc):
+                raise
+            if attempt >= GROQ_MAX_RATE_LIMIT_RETRIES:
+                raise
+            time.sleep(4.0 * (attempt + 1))
+
 BATCH_SYSTEM = INTENT_SYSTEM + """
 For this batch, classify every CASE independently and in the SAME ORDER.
 Return JSON only as {"results":[...]}. Each result must contain exactly the five
@@ -179,7 +199,7 @@ Intent Envelope V1 keys. confidence MUST be a JSON number from 0 to 1.
 def classify_batch(provider, batch: list[Case]) -> tuple[list[IntentEnvelope], float]:
     payloads=[json.loads(prepare_intent_payload(c.message,c.lang).user_payload) for c in batch]
     started=time.perf_counter()
-    response=provider.client.chat.completions.create(
+    response=_paced_groq_create(provider,
         model=provider.model,
         messages=[
             {"role":"system","content":BATCH_SYSTEM},
