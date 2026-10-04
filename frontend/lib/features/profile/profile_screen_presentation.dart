@@ -642,7 +642,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
 
   Widget _buildIASetupCard(AppLocalizations l10n) {
     return InkWell(
-      onTap: () => context.push('/onboarding?mode=preferences'),
+      onTap: () => context.push('/preferences'),
       borderRadius: BorderRadius.circular(24),
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -677,9 +677,9 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                   Text(
                     _profileActionCopy(
                       context,
-                      fr: 'Parler avec IAmina',
-                      en: 'Ask IAmina',
-                      ar: 'تحدث مع IAmina',
+                      fr: 'Préférences IAmina',
+                      en: 'IAmina preferences',
+                      ar: 'تفضيلات IAmina',
                     ),
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
@@ -689,9 +689,9 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                   Text(
                     _profileActionCopy(
                       context,
-                      fr: 'Ouvre le chat. Vos réglages médicaux restent inchangés.',
-                      en: 'Opens chat. Your medical settings stay unchanged.',
-                      ar: 'يفتح الدردشة. تبقى إعداداتك الطبية دون تغيير.',
+                      fr: 'Langue, pays et ton. Vos réglages médicaux restent dans le profil.',
+                      en: 'Language, country and tone. Medical settings stay in your profile.',
+                      ar: 'اللغة والبلد والنبرة. تبقى الإعدادات الطبية في ملفك الشخصي.',
                     ),
                     style: const TextStyle(
                       color: AminaTheme.textMuted,
