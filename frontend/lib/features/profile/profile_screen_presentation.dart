@@ -42,7 +42,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                           icon: Icons.auto_awesome_outlined,
                           title: l10n.profileIaminaSection,
                           subtitle: l10n.profileIaminaSectionHint,
-                          initiallyExpanded: false,
+                          initiallyExpanded: true,
                           children: [_buildIASetupCard(l10n)],
                         ),
                         const SizedBox(height: 14),
@@ -483,7 +483,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
 
   Widget _buildIASetupCard(AppLocalizations l10n) {
     return InkWell(
-      onTap: () => context.push('/onboarding'),
+      onTap: () => context.push('/onboarding?mode=preferences'),
       borderRadius: BorderRadius.circular(24),
       child: Container(
         padding: const EdgeInsets.all(20),
