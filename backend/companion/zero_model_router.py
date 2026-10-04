@@ -274,6 +274,24 @@ def _exact_practical_reply(normalized: str, language: str) -> str | None:
     return None
 
 
+
+_META_REPLY_KEY_BY_INTENT = {
+    "meta_greeting": "greeting",
+    "meta_identity": "identity",
+    "meta_capabilities": "capabilities",
+}
+
+
+def classified_meta_reply(intent: str, message: str, language: str) -> str | None:
+    """Render a bounded local reply for a validated frozen-V1 meta intent."""
+
+    reply_key = _META_REPLY_KEY_BY_INTENT.get(intent)
+    if reply_key is None:
+        return None
+    normalized = _normalize(message)
+    locale = _reply_locale(message, normalized, language)
+    return _REPLIES[locale][reply_key]
+
 def exact_chitchat_reply(message: str, language: str) -> str | None:
     """Return an exact bounded zero-model reply, otherwise fail closed."""
     normalized = _normalize(message)
