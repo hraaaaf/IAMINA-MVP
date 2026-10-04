@@ -199,7 +199,7 @@ class ExplodingProvider(BaseLLMProvider):
         raise AssertionError("safety must not call provider")
 
 BATCH_SIZE = 5
-GROQ_MIN_CALL_INTERVAL_SECONDS = 4.5
+GROQ_MIN_CALL_INTERVAL_SECONDS = 9.0
 GROQ_MAX_RATE_LIMIT_RETRIES = 3
 _last_groq_call_started = 0.0
 
@@ -222,7 +222,8 @@ def _paced_groq_create(provider, **kwargs):
 BATCH_SYSTEM = INTENT_SYSTEM + """
 For this batch, classify every CASE independently and in the SAME ORDER.
 Return JSON only as {"results":[...]}. Each result must contain exactly the five
-Intent Envelope V1 keys. confidence MUST be a JSON number from 0 to 1.
+Intent Envelope V1 keys. confidence MUST be an UNQUOTED JSON number from 0 to 1,
+for example "confidence":0.91. Never emit "confidence":"0.91".
 """
 
 def classify_batch(provider, batch: list[Case]) -> tuple[list[IntentEnvelope], float]:
@@ -273,6 +274,24 @@ def main():
             "actual_route":o.decision.route.value,
             "expected_route":c.route.value,
         })
+
+    strict_samples = [
+        ("fr","Retrouve ma glycémie d'hier."),
+        ("en","What can you do exactly?"),
+        ("ar","اشرح لي TIR بشكل عام من دون الاطلاع على بياناتي."),
+        ("ar-MA","chkoune nta?"),
+        ("ar-MA","شنو آخر قراءة CGM مسجلة عندي؟"),
+    ]
+    strict_errors=[]
+    strict_latencies=[]
+    for lang,message in strict_samples:
+        started=time.perf_counter()
+        try:
+            classify_intent(message,lang,provider=StrictRuntimeProvider(provider))
+        except Exception as exc:
+            strict_errors.append(f"{lang}: {type(exc).__name__}: {str(exc)[:200]}")
+        else:
+            strict_latencies.append((time.perf_counter()-started)*1000)
 
     latencies=[]
     for start in range(0,len(semantic),BATCH_SIZE):
@@ -328,24 +347,6 @@ def main():
                 "confidence":e.confidence,
                 "ambiguity":e.ambiguity.value,
             })
-
-    strict_samples = [
-        ("fr","Retrouve ma glycémie d'hier."),
-        ("en","What can you do exactly?"),
-        ("ar","اشرح لي TIR بشكل عام من دون الاطلاع على بياناتي."),
-        ("ar-MA","chkoune nta?"),
-        ("ar-MA","شنو آخر قراءة CGM مسجلة عندي؟"),
-    ]
-    strict_errors=[]
-    strict_latencies=[]
-    for lang,message in strict_samples:
-        started=time.perf_counter()
-        try:
-            classify_intent(message,lang,provider=StrictRuntimeProvider(provider))
-        except Exception as exc:
-            strict_errors.append(f"{lang}: {type(exc).__name__}: {str(exc)[:200]}")
-        else:
-            strict_latencies.append((time.perf_counter()-started)*1000)
 
     total=len(cases)
     semantic_n=len(semantic)
