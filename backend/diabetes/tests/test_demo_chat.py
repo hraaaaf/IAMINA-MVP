@@ -143,6 +143,28 @@ class DemoChatContractTests(TestCase):
         self.assertIn("الوقت ضمن النطاق", payload["reply"])
         self.assertNotIn("pas encore certain", payload["reply"])
 
+
+    def test_natural_language_followups_reuse_prior_tir_context(self):
+        history = [
+            {
+                "role": "user",
+                "content": "Explique-moi le TIR en général, sans regarder mes données.",
+            },
+            {
+                "role": "assistant",
+                "content": "Le TIR (Time in Range) est le pourcentage du temps...",
+            },
+        ]
+
+        for message in ("puis en arabe", "et en arabe", "maintenant en arabe", "alors en arabe"):
+            with self.subTest(message=message):
+                response = self._post(message, history=history)
+                self.assertEqual(response.status_code, 200)
+                payload = response.json()
+                self.assertEqual(payload["reply_language"], "ar")
+                self.assertIn("الوقت ضمن النطاق", payload["reply"])
+                self.assertNotIn("pas encore certain", payload["reply"])
+
     @patch("companion.demo_runtime.IAmina")
     @patch("diabetes.services.demo_runtime._preview_route_reply")
     def test_intent_preview_failure_fails_closed_to_clarification(self, preview, iamina_cls):
