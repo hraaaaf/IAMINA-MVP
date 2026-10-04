@@ -1,5 +1,18 @@
 part of 'profile_screen.dart';
 
+String _profileActionCopy(
+  BuildContext context, {
+  required String fr,
+  required String en,
+  required String ar,
+}) {
+  return switch (Localizations.localeOf(context).languageCode) {
+    'fr' => fr,
+    'ar' => ar,
+    _ => en,
+  };
+}
+
 extension _ProfileScreenPresentation on _ProfileScreenState {
   Widget _buildPresentation(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -662,14 +675,24 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    l10n.configureWithIamina,
+                    _profileActionCopy(
+                      context,
+                      fr: 'Parler avec IAmina',
+                      en: 'Ask IAmina',
+                      ar: 'تحدث مع IAmina',
+                    ),
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                     ),
                   ),
                   Text(
-                    l10n.conversationalAssistant,
+                    _profileActionCopy(
+                      context,
+                      fr: 'Ouvre le chat. Vos réglages médicaux restent inchangés.',
+                      en: 'Opens chat. Your medical settings stay unchanged.',
+                      ar: 'يفتح الدردشة. تبقى إعداداتك الطبية دون تغيير.',
+                    ),
                     style: const TextStyle(
                       color: AminaTheme.textMuted,
                       fontSize: 13,
