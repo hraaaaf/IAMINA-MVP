@@ -3,6 +3,7 @@ import 'package:amina/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' as drift;
+import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/amina_text_field.dart';
 import '../../core/widgets/responsive_content_surface.dart';
@@ -15,6 +16,19 @@ import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
 
 part 'profile_screen_presentation.dart';
+
+String _profileUiText(
+  BuildContext context, {
+  required String fr,
+  required String en,
+  required String ar,
+}) {
+  return switch (Localizations.localeOf(context).languageCode) {
+    'fr' => fr,
+    'ar' => ar,
+    _ => en,
+  };
+}
 
 String _profileValidationMessage(BuildContext context) {
   final code = Localizations.localeOf(context).languageCode;
