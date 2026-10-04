@@ -1101,7 +1101,13 @@ def test_weekly_chat_routes_seven_day_context_window():
             context_days=14,
         )
 
-    authorize.assert_called_once_with(message, None, "ar-MA", 7)
+    authorize.assert_called_once_with(
+        message,
+        None,
+        "ar-MA",
+        7,
+        patient_context_allowed=True,
+    )
 
 
 def test_weekly_stream_routes_seven_day_context_window():
@@ -1128,4 +1134,10 @@ def test_weekly_stream_routes_seven_day_context_window():
             )
         )
 
-    authorize.assert_called_once_with(message, None, "fr", 7)
+    authorize.assert_called_once_with(
+        message,
+        None,
+        "fr",
+        7,
+        patient_context_allowed=True,
+    )
