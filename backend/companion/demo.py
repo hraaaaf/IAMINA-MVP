@@ -146,7 +146,8 @@ _CASUAL_CHAT_RE = re.compile(
 )
 _LATIN_DARIJA_RE = re.compile(
     r"(?:salam|lyouma|bghit|bghitch|ghir|nhder|hdar|n9ssr|m3ak|chwia|hakka|khlli|"
-    r"sukkar|sokkar|sokkor|chno|wach|daba|bzaf|kan7ess|brassi|mdowekh|3ndi|3ndek)",
+    r"sukkar|sokkar|sokkor|chno|ch['’]?o|ch\s+houa|wach|daba|bzaf|kan7ess|brassi|"
+    r"mdowekh|3ndi|3ndek)",
     re.IGNORECASE,
 )
 _GULF_RE = re.compile(r"(?:هلا|أبغى|أبي|ودي|الحين|أسولف|سوالف|خلك|شوي)")
