@@ -2,6 +2,15 @@ name: Intent envelope exhaustive certification
 
 on:
   workflow_dispatch:
+    inputs:
+      phase:
+        description: "Certification phase"
+        required: true
+        default: deterministic
+        type: choice
+        options:
+          - deterministic
+          - exhaustive
 
 permissions:
   contents: read
@@ -46,6 +55,7 @@ jobs:
         run: |
           python -m pytest diabetes/tests/test_demo_chat.py -q --tb=short -k "intent_preview or general_tir_education or explicit_arabic_tir_request or language_only_followup or natural_language_followups or natural_french_capability"
       - name: Run exhaustive multilingual certification
+        if: ${{ inputs.phase == 'exhaustive' }}
         env:
           DJANGO_SETTINGS_MODULE: amina.settings
           SECRET_KEY: exhaustive-cert-nonproduction
