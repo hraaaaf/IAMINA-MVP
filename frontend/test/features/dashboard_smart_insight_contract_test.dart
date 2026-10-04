@@ -56,7 +56,7 @@ void main() {
     expect(widget, isNot(contains('personalBaselineComparisonMgDl')));
   });
 
-  test('Dashboard mobile composition keeps governed insight after adaptive KPIs', () {
+  test('Dashboard mobile composition keeps governed insight after the single trend block', () {
     final dashboard = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
     ).readAsStringSync();
@@ -67,14 +67,13 @@ void main() {
     final today = dashboard.indexOf('DashboardTodaySection(');
     final responsiveMount = dashboard.indexOf('DashboardResponsiveSections(');
     final trend = responsive.indexOf('DashboardTrendSection(');
-    final kpi = responsive.indexOf('DashboardAdaptiveKpiSection(');
     final insight = responsive.indexOf('DashboardInsightSection(');
 
     expect(today, greaterThanOrEqualTo(0));
     expect(responsiveMount, greaterThan(today));
     expect(trend, greaterThanOrEqualTo(0));
-    expect(kpi, greaterThan(trend));
-    expect(insight, greaterThan(kpi));
+    expect(insight, greaterThan(trend));
+    expect(responsive, isNot(contains('DashboardAdaptiveKpiSection(')));
   });
 
   test('Read-only backend preview has no clinical refresh or persistence writes', () {
