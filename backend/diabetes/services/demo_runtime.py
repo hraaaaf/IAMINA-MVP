@@ -21,6 +21,20 @@ from llm.provider_registry import build_openai_compatible_provider
 
 _INTENT_PREVIEW_ENABLED = "IAMINA_DEMO_INTENT_ROUTER_ENABLED"
 _INTENT_PREVIEW_MODEL = "IAMINA_INTENT_ROUTER_LLM_MODEL"
+_LANGUAGE_ONLY_FOLLOWUPS = frozenset(
+    {
+        "en arabe",
+        "in arabic",
+        "arabic",
+        "en anglais",
+        "in english",
+        "english",
+        "en français",
+        "en francais",
+        "in french",
+        "french",
+    }
+)
 
 
 def _intent_preview_enabled() -> bool:
@@ -48,7 +62,8 @@ def _preview_route_reply(
 
     history = history or []
     reply_language = resolve_demo_language(message, language)
-    if reply_language != language:
+    language_only_followup = message.strip().lower() in _LANGUAGE_ONLY_FOLLOWUPS
+    if language_only_followup:
         for turn in reversed(history):
             if str(turn.get("role", "")).strip() != "user":
                 continue
