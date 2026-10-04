@@ -78,6 +78,25 @@ void main() {
     expect(painter, contains('_paintDailySummary'));
   });
 
+  test('Trend prioritizes range, avoids default duplicate detail, and limits axis labels', () {
+    final section = File(
+      'lib/features/dashboard/widgets/dashboard_trend_section.dart',
+    ).readAsStringSync();
+    final painter = File(
+      'lib/features/dashboard/widgets/dashboard_trend_painter.dart',
+    ).readAsStringSync();
+
+    final rangeIndex = section.indexOf('_RangeSelector(selected: range');
+    final summaryIndex = section.indexOf('DashboardTrendSummary(');
+    expect(rangeIndex, greaterThanOrEqualTo(0));
+    expect(summaryIndex, greaterThan(rangeIndex));
+    expect(section, contains('if (selectedLogId != null)'));
+    expect(section, isNot(contains('_dailySummaryNote(context)')));
+    expect(painter, contains('final maxLabels ='));
+    expect(painter, contains('final labelStride ='));
+    expect(painter, contains('i == summaries.length - 1'));
+  });
+
   test('Dashboard trend presentation is decomposed from orchestration', () {
     final section = File(
       'lib/features/dashboard/widgets/dashboard_trend_section.dart',
