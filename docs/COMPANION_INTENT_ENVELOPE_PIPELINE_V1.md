@@ -312,3 +312,18 @@ Pre-freeze evidence:
 - artifact: `intent-envelope-exhaustive`, artifact ID `11314530753`, SHA-256 `7b9d71b1d40ab868c3caf7fdfaf5b27ca52353954aa61731c201d8e67234045f`.
 
 Freeze means the V1 contract and invariants above are locked. It does **not** authorize production runtime wiring, patient-data egress, PR-to-production merge, or Vercel deployment. Those remain separate gates.
+
+
+## Post-freeze closeout
+
+Post-freeze exact-head verification on `d013054cb62cc669cfd1308feb15241639667460`:
+
+- Companion real-chat E2E: run `37232253457` — success;
+- UI geometry: run `37232253493` — success;
+- P7 responsive Dashboard: run `37232253450` — success;
+- CGM onboarding: run `37232253451` — success;
+- Dashboard responsive visual: run `37232253470` — success;
+- global missing routes: run `37232253465` — success;
+- UI browser screenshot certification `37232253456` was still in progress at closeout inspection and is unrelated to the frozen backend contract; it does not weaken the already-completed exact-head Companion E2E and pre-freeze 125/125 evidence.
+
+PR `#866` remains draft/open and the preview branch is behind `main` by 0 commits. Freeze does not authorize merge or production deployment.
