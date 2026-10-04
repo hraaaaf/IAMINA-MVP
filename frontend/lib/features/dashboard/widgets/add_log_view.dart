@@ -438,7 +438,8 @@ class AddLogMealCapture extends StatelessWidget {
   final bool canUsePhotoRecognition;
   final bool voiceRecording;
   final bool voiceTranscribing;
-  final Future<void> Function()? onVoiceToggle;
+  final Future<void> Function() onVoiceToggle;
+  final bool showVoiceAction;
   final VoidCallback onExpand;
   final VoidCallback? onRemove;
   final ValueChanged<String?> onMealTypeChanged;
@@ -457,7 +458,8 @@ class AddLogMealCapture extends StatelessWidget {
     required this.canUsePhotoRecognition,
     required this.voiceRecording,
     required this.voiceTranscribing,
-    this.onVoiceToggle,
+    required this.onVoiceToggle,
+    this.showVoiceAction = true,
     required this.onExpand,
     required this.onRemove,
     required this.onMealTypeChanged,
@@ -567,7 +569,7 @@ class AddLogMealCapture extends StatelessWidget {
                       'جارٍ النسخ الصوتي…',
                     )
                   : l10n.journalMealNoteHint,
-              suffixIcon: onVoiceToggle == null
+              suffixIcon: !showVoiceAction
                   ? null
                   : Padding(
                       padding: const EdgeInsets.all(4),
@@ -595,7 +597,7 @@ class AddLogMealCapture extends StatelessWidget {
                               ),
                         onPressed: voiceTranscribing
                             ? null
-                            : () => unawaited(onVoiceToggle!()),
+                            : () => unawaited(onVoiceToggle()),
                         icon: voiceTranscribing
                             ? const SizedBox.square(
                                 dimension: 18,
