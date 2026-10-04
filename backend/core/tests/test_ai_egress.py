@@ -78,6 +78,19 @@ def test_legacy_timestamp_without_notice_evidence_is_denied(patient):
             assert_ai_egress_allowed(TEXT)
 
 
+def test_intent_classification_egress_requires_current_consent(patient):
+    with ai_egress_scope(patient.id, "intent_classification", TEXT):
+        with pytest.raises(AIConsentRequired, match="AI consent"):
+            assert_ai_egress_allowed(TEXT)
+
+    _grant_global_consent(patient)
+    with ai_egress_scope(patient.id, "intent_classification", TEXT):
+        context = assert_ai_egress_allowed(TEXT)
+
+    assert context.patient_id == patient.id
+    assert context.purpose == "intent_classification"
+
+
 def test_text_egress_allowed_after_global_consent(patient):
     _grant_global_consent(patient)
 
