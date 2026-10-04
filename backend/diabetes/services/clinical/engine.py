@@ -925,6 +925,27 @@ class DiabetesEngine(BaseEngine):
             language=language,
         )
 
+    def resolve_intent_target(
+        self,
+        patient_id: int,
+        target: str,
+        message: str,
+        *,
+        language: str = "fr",
+    ):
+        """Resolve a frozen semantic target through diabetes canonical sources."""
+
+        from diabetes.services.clinical.whole_app_context_decision import (
+            resolve_whole_app_target,
+        )
+
+        return resolve_whole_app_target(
+            patient_id,
+            target,
+            message,
+            language=language,
+        )
+
     def resolve_demo_advice(
         self,
         message: str,
