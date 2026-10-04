@@ -1,5 +1,5 @@
 name: Intent envelope exhaustive certification
-# Gate retry after runner-start failure (no exhaustive trigger)
+# Post-main reconciliation deterministic gate
 
 on:
   push:
