@@ -1,6 +1,16 @@
 name: Intent envelope exhaustive certification
 
 on:
+  push:
+    branches:
+      - preview/intent-envelope-v1-demo
+    paths:
+      - ".github/workflows/intent-envelope-exhaustive.yml"
+      - "backend/companion/**"
+      - "backend/diabetes/services/demo_runtime.py"
+      - "backend/diabetes/api/v1/demo.py"
+      - "backend/diabetes/tests/test_demo_chat.py"
+      - "backend/evaluation/intent_envelope_exhaustive_benchmark.py"
   workflow_dispatch:
     inputs:
       phase:
@@ -55,7 +65,7 @@ jobs:
         run: |
           python -m pytest diabetes/tests/test_demo_chat.py -q --tb=short -k "intent_preview or general_tir_education or explicit_arabic_tir_request or language_only_followup or natural_language_followups or natural_french_capability"
       - name: Run exhaustive multilingual certification
-        if: ${{ inputs.phase == 'exhaustive' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'exhaustive' }}
         env:
           DJANGO_SETTINGS_MODULE: amina.settings
           SECRET_KEY: exhaustive-cert-nonproduction
