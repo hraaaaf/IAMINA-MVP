@@ -65,7 +65,7 @@ jobs:
         run: |
           python -m pytest diabetes/tests/test_demo_chat.py -q --tb=short -k "intent_preview or general_tir_education or explicit_arabic_tir_request or language_only_followup or natural_language_followups or natural_french_capability"
       - name: Run exhaustive multilingual certification
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.phase == 'exhaustive' }}
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.phase == 'exhaustive') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[intent-exhaustive]')) }}
         env:
           DJANGO_SETTINGS_MODULE: amina.settings
           SECRET_KEY: exhaustive-cert-nonproduction
