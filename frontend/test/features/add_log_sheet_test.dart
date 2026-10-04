@@ -247,24 +247,22 @@ void main() {
       },
     );
 
-    testWidgets('mobile hides rare details and never exposes insulin intake', (
+    testWidgets('mobile exposes time and additional context in one step', (
       tester,
     ) async {
       _narrow(tester);
       await tester.pumpWidget(_sheet(db));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('journal-details-button')), findsOneWidget);
-      expect(find.byKey(const Key('journal-details-card')), findsNothing);
-      expect(find.byKey(const Key('insulin-taken-input')), findsNothing);
-      expect(find.textContaining('insuline prise', findRichText: true), findsNothing);
-
-      await tester.tap(find.byKey(const Key('journal-details-button')));
-      await tester.pumpAndSettle();
-
+      expect(find.byKey(const Key('journal-details-button')), findsNothing);
       expect(find.byKey(const Key('journal-details-card')), findsOneWidget);
+      expect(find.byKey(const Key('journal-context-button')), findsNothing);
+      expect(find.byKey(const Key('context-stress')), findsOneWidget);
       expect(find.byKey(const Key('insulin-taken-input')), findsNothing);
-      expect(find.byKey(const Key('journal-context-button')), findsOneWidget);
+      expect(
+        find.textContaining('Date et heure préremplies automatiquement'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('desktop keeps primary event and optional context side by side', (
@@ -316,13 +314,6 @@ void main() {
 
       await tester.enterText(find.byKey(const Key('glucose-input')), '126');
       await tester.pump();
-      await tester.tap(find.byKey(const Key('journal-details-button')));
-      await tester.pumpAndSettle();
-      final contextButton = find.byKey(const Key('journal-context-button'));
-      await tester.ensureVisible(contextButton);
-      await tester.pumpAndSettle();
-      await tester.tap(contextButton);
-      await tester.pumpAndSettle();
       final stressChip = find.byKey(const Key('context-stress'));
       await tester.ensureVisible(stressChip);
       await tester.pumpAndSettle();
@@ -411,7 +402,7 @@ void main() {
       );
       expect(glucose.controller?.text, isEmpty);
       expect(find.byKey(const Key('meal-section')), findsNothing);
-      expect(find.byKey(const Key('journal-details-card')), findsNothing);
+      expect(find.byKey(const Key('journal-details-card')), findsOneWidget);
     });
 
     testWidgets('Arabic receipt is localized RTL and factual', (tester) async {

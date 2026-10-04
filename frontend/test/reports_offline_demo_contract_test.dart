@@ -8,15 +8,15 @@ String _readReportsLibrary() => [
 ].join('\n');
 
 void main() {
-  test('Reports route selects a local-only surface in offline demo mode', () {
+  test('Reports always resolves to the descriptive recorded-measurement surface', () {
     final module = File('lib/modules/diabetes_module.dart').readAsStringSync();
     final reports = _readReportsLibrary();
 
     expect(module, contains("path: '/summary'"));
     expect(module, contains('builder: () => const ReportsScreen()'));
-    expect(module, isNot(contains('builder: () => const AISummaryScreen()')));
-    expect(reports, contains('if (kOfflineDemo)'));
-    expect(reports, contains('const AISummaryScreen()'));
+    expect(reports, contains('return const _OfflineReportsScreen();'));
+    expect(reports, isNot(contains('AISummaryScreen')));
+    expect(reports, isNot(contains('kOfflineDemo')));
     expect(reports, contains('db.watchLogsInRange('));
     expect(reports, contains('_Stats.from('));
     expect(reports, isNot(contains('ApiClient')));
@@ -24,11 +24,14 @@ void main() {
     expect(reports, isNot(contains('getKpis(')));
   });
 
-  test('Offline report states its truth boundary instead of inventing analysis', () {
+  test('Report states a concise descriptive truth boundary', () {
     final reports = _readReportsLibrary();
 
     expect(reports, contains('Ce rapport reste descriptif'));
-    expect(reports, contains('ni cause, ni diagnostic, ni analyse IA avancée'));
+    expect(
+      reports,
+      contains('Statistiques descriptives uniquement : aucun diagnostic ni conseil de traitement.'),
+    );
     expect(reports, contains('final int below;'));
     expect(reports, contains('final int inside;'));
     expect(reports, contains('final int above;'));

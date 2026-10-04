@@ -111,7 +111,37 @@ void main() {
     expect(source, contains('Future<void> _deleteLog'));
     expect(source, contains('l10n.actionIrreversible'));
     expect(source, contains('await db.deleteLog(widget.logId)'));
-    expect(source, contains('Navigator.of(context).maybePop()'));
+    expect(source, contains('void _leavePage()'));
+    expect(source, contains("router.go('/journal')"));
+  });
+
+  test('Edit measurement preserves the same factual dimensions as Add', () {
+    final add = File(
+      'lib/features/dashboard/widgets/add_log_sheet.dart',
+    ).readAsStringSync();
+    final edit = File(
+      'lib/features/journal/edit_log_screen.dart',
+    ).readAsStringSync();
+
+    for (final field in <String>[
+      'glycemicContext',
+      'mealType',
+      'mealDescription',
+      'mealItemsJson',
+      'mealPortionsJson',
+      'loggedAt',
+      'isSick',
+      'isStressed',
+      'isActive',
+      'sleepQuality',
+    ]) {
+      expect(add, contains(field), reason: 'add missing $field');
+      expect(edit, contains(field), reason: 'edit missing $field');
+    }
+    expect(edit, contains('AddLogMeasurementContext('));
+    expect(edit, contains('AddLogMealCapture('));
+    expect(edit, contains('AddLogDetailsCard('));
+    expect(edit, contains('Future<void> _pickDateTime()'));
   });
 
   test('Personal Response is secondary, after history, and collapsed by default', () {

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../core/localization/document_import_localized_copy.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/responsive_content_surface.dart';
+import '../../core/widgets/mobile_page_header.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/models/document_models.dart';
 import '../../services/api_client.dart';
@@ -137,11 +138,7 @@ class _DocumentImportScreenState extends State<DocumentImportScreen> {
       appBar: AppBar(
         backgroundColor: AminaTheme.surface(context),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () =>
-              context.canPop() ? context.pop() : context.go('/dashboard'),
-        ),
+        leading: const AminaPageExitButton(),
         title: Text(
           AuditedPageCopy.of(context).documentTitle,
           style: TextStyle(

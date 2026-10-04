@@ -12,7 +12,7 @@ extension DashboardInsightLocalizedCopy on AppLocalizations {
   }
 
   String get dashboardInsightHeading =>
-      _insightPick(en: 'IAmina insight', fr: 'Insight IAmina', ar: 'إشارة IAmina');
+      _insightPick(en: 'Automatic IAmina insight', fr: 'Analyse IAmina automatique', ar: 'تحليل IAmina التلقائي');
 
   String get dashboardInsightEyebrow => _insightPick(
         en: 'GOVERNED SIGNAL',
@@ -21,9 +21,9 @@ extension DashboardInsightLocalizedCopy on AppLocalizations {
       );
 
   String get dashboardInsightSubheading => _insightPick(
-        en: 'One evidence-qualified signal at a time, without inventing a cause.',
-        fr: 'Un signal qualifié par les preuves à la fois, sans inventer de cause.',
-        ar: 'إشارة واحدة مؤهلة بالأدلة في كل مرة، دون اختراع سبب.',
+        en: 'A passive signal from your recorded data. This is not the chat.',
+        fr: 'Un signal automatique issu de vos données enregistrées. Ce n’est pas le chat.',
+        ar: 'إشارة تلقائية من بياناتك المسجلة. هذا ليس الدردشة.',
       );
 
   String get dashboardInsightLoading => _insightPick(

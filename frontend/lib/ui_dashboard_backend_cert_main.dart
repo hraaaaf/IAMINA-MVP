@@ -108,11 +108,14 @@ class _DashboardBackendCertAppState extends State<_DashboardBackendCertApp> {
     if (_scrollController.hasClients) {
       final position = _scrollController.position;
       final maxExtent = position.maxScrollExtent;
-      if (maxExtent >= _targetScrollOffset || _positionAttempts >= 30) {
-        _scrollController.jumpTo(
-          _targetScrollOffset.clamp(0.0, maxExtent).toDouble(),
-        );
-        return;
+      if (maxExtent > 0) {
+        final desired = _targetScrollOffset.clamp(0.0, maxExtent).toDouble();
+        if ((position.pixels - desired).abs() > 0.5) {
+          _scrollController.jumpTo(desired);
+        }
+        if (maxExtent >= _targetScrollOffset || _positionAttempts >= 120) {
+          return;
+        }
       }
     }
 

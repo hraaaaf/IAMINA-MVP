@@ -1,5 +1,18 @@
 part of 'profile_screen.dart';
 
+String _profileActionCopy(
+  BuildContext context, {
+  required String fr,
+  required String en,
+  required String ar,
+}) {
+  return switch (Localizations.localeOf(context).languageCode) {
+    'fr' => fr,
+    'ar' => ar,
+    _ => en,
+  };
+}
+
 extension _ProfileScreenPresentation on _ProfileScreenState {
   Widget _buildPresentation(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -42,9 +55,11 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                           icon: Icons.auto_awesome_outlined,
                           title: l10n.profileIaminaSection,
                           subtitle: l10n.profileIaminaSectionHint,
-                          initiallyExpanded: false,
+                          initiallyExpanded: true,
                           children: [_buildIASetupCard(l10n)],
                         ),
+                        const SizedBox(height: 14),
+                        _buildDataSection(),
                         const SizedBox(height: 14),
                         _buildAccountSection(l10n),
                       ],
@@ -53,11 +68,11 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                     return Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AminaTheme.ink50,
+                        color: AminaVisualLanguage.controlSurface(context),
                         borderRadius: BorderRadius.circular(
                           AminaTheme.radius3XL,
                         ),
-                        border: Border.all(color: AminaTheme.ink100),
+                        border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
                       ),
                       child: sections,
                     );
@@ -148,7 +163,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           child: ElevatedButton(
             onPressed: _saveProfile,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AminaTheme.primaryTeal,
+              backgroundColor: AminaVisualLanguage.actionGreen,
               foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(48),
               shape: RoundedRectangleBorder(
@@ -179,8 +194,8 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       children: [
         Text(
           l10n.ramadanProfileHint,
-          style: const TextStyle(
-            color: AminaTheme.ink500,
+          style: TextStyle(
+            color: AminaVisualLanguage.secondary(context),
             fontSize: 13,
             height: 1.45,
           ),
@@ -280,16 +295,16 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
+            style: TextStyle(fontSize: 11, color: AminaVisualLanguage.secondary(context)),
           ),
           const SizedBox(height: 3),
           Text(
             value == null
                 ? AppLocalizations.of(context)!.ramadanChooseDate
                 : _dateLabel(value),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w700,
-              color: AminaTheme.ink900,
+              color: AminaVisualLanguage.primaryText(context),
             ),
           ),
         ],
@@ -303,7 +318,110 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
     return '$dd/$mm/${value.year}';
   }
 
+  Widget _buildDataSection() {
+    return _buildProfileSection(
+      key: const ValueKey('profile-data-section'),
+      icon: Icons.devices_other_outlined,
+      title: _profileUiText(
+        context,
+        fr: 'Données & appareils',
+        en: 'Data & devices',
+        ar: 'البيانات والأجهزة',
+      ),
+      subtitle: _profileUiText(
+        context,
+        fr: 'Import et connexions',
+        en: 'Import and connections',
+        ar: 'الاستيراد والاتصالات',
+      ),
+      initiallyExpanded: false,
+      children: [
+        _buildSettingsAction(
+          key: const ValueKey('profile-data-import'),
+          icon: Icons.upload_file_outlined,
+          label: _profileUiText(
+            context,
+            fr: 'Importer un document',
+            en: 'Import a document',
+            ar: 'استيراد مستند',
+          ),
+          onTap: () => context.push('/importer'),
+        ),
+        const SizedBox(height: 8),
+        _buildSettingsAction(
+          key: const ValueKey('profile-data-cgm'),
+          icon: Icons.sensors_outlined,
+          label: _profileUiText(
+            context,
+            fr: 'Connecter un CGM',
+            en: 'Connect a CGM',
+            ar: 'ربط جهاز CGM',
+          ),
+          onTap: () => context.push('/cgm'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSettingsAction({
+    required Key key,
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: AminaVisualLanguage.controlSurface(context),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        key: key,
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          child: Row(
+            children: [
+              Icon(icon, size: 19, color: AminaVisualLanguage.actionGreen),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AminaVisualLanguage.primaryText(context),
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, size: 19),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAccountSection(AppLocalizations l10n) {
+    final auth = context.watch<AuthService>();
+    final consent = context.watch<ConsentService>();
+    final accountIdentity = auth.firebaseUser?.email ??
+        _profileUiText(
+          context,
+          fr: 'Session locale',
+          en: 'Local session',
+          ar: 'جلسة محلية',
+        );
+    final consentLabel = consent.hasConsent
+        ? _profileUiText(
+            context,
+            fr: 'Consentement IAmina actif',
+            en: 'IAmina consent active',
+            ar: 'موافقة IAmina مفعلة',
+          )
+        : _profileUiText(
+            context,
+            fr: 'Consentement IAmina non activé',
+            en: 'IAmina consent not active',
+            ar: 'موافقة IAmina غير مفعلة',
+          );
     return _buildProfileSection(
       key: const ValueKey('profile-account-section'),
       icon: Icons.shield_outlined,
@@ -311,6 +429,16 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       subtitle: l10n.profileAccountSectionHint,
       initiallyExpanded: false,
       children: [
+        _buildAccountInfoRow(
+          icon: Icons.person_outline_rounded,
+          label: accountIdentity,
+        ),
+        const SizedBox(height: 8),
+        _buildAccountInfoRow(
+          icon: Icons.privacy_tip_outlined,
+          label: consentLabel,
+        ),
+        const SizedBox(height: 14),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
@@ -397,6 +525,37 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
     );
   }
 
+  Widget _buildAccountInfoRow({
+    required IconData icon,
+    required String label,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AminaVisualLanguage.controlSurface(context),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AminaVisualLanguage.actionGreen),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AminaVisualLanguage.primaryText(context),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProfileSection({
     required Key key,
     required IconData icon,
@@ -408,10 +567,10 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
     return Container(
       key: key,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AminaVisualLanguage.cardSurface(context),
         borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
-        border: Border.all(color: AminaTheme.ink100),
-        boxShadow: AminaTheme.shadowClinical,
+        border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
+        boxShadow: AminaVisualLanguage.cardShadow(context),
       ),
       clipBehavior: Clip.antiAlias,
       child: Theme(
@@ -425,17 +584,17 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AminaTheme.primaryTeal.withValues(alpha: 0.09),
+              color: AminaVisualLanguage.actionGreen.withValues(alpha: 0.09),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: AminaTheme.primaryTeal, size: 21),
+            child: Icon(icon, color: AminaVisualLanguage.actionGreen, size: 21),
           ),
           title: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: AminaTheme.ink900,
+              color: AminaVisualLanguage.primaryText(context),
             ),
           ),
           subtitle: Padding(
@@ -444,10 +603,10 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
               subtitle,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 height: 1.35,
-                color: AminaTheme.ink500,
+                color: AminaVisualLanguage.secondary(context),
               ),
             ),
           ),
@@ -483,15 +642,15 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
 
   Widget _buildIASetupCard(AppLocalizations l10n) {
     return InkWell(
-      onTap: () => context.push('/onboarding'),
+      onTap: () => context.push('/preferences'),
       borderRadius: BorderRadius.circular(24),
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AminaTheme.primaryTeal.withValues(alpha: 0.05),
+          color: AminaVisualLanguage.actionGreen.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
           border: Border.all(
-            color: AminaTheme.primaryTeal.withValues(alpha: 0.2),
+            color: AminaVisualLanguage.actionGreen.withValues(alpha: 0.2),
           ),
           boxShadow: AminaTheme.shadowClinical,
         ),
@@ -501,7 +660,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                gradient: AminaTheme.heroGradient,
+                gradient: AminaVisualLanguage.primaryGradient,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
@@ -516,23 +675,33 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    l10n.configureWithIamina,
+                    _profileActionCopy(
+                      context,
+                      fr: 'Préférences IAmina',
+                      en: 'IAmina preferences',
+                      ar: 'تفضيلات IAmina',
+                    ),
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                     ),
                   ),
                   Text(
-                    l10n.conversationalAssistant,
-                    style: const TextStyle(
-                      color: AminaTheme.textMuted,
+                    _profileActionCopy(
+                      context,
+                      fr: 'Langue, pays et ton. Vos réglages médicaux restent dans le profil.',
+                      en: 'Language, country and tone. Medical settings stay in your profile.',
+                      ar: 'اللغة والبلد والنبرة. تبقى الإعدادات الطبية في ملفك الشخصي.',
+                    ),
+                    style: TextStyle(
+                      color: AminaVisualLanguage.secondary(context),
                       fontSize: 13,
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AminaTheme.primaryTeal),
+            const Icon(Icons.chevron_right, color: AminaVisualLanguage.actionGreen),
           ],
         ),
       ),
@@ -542,7 +711,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
   Widget _buildSectionTitle(IconData icon, String title) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: AminaTheme.textDark),
+        Icon(icon, size: 20, color: AminaVisualLanguage.primaryText(context)),
         const SizedBox(width: 8),
         Text(
           title,
@@ -570,18 +739,18 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isSelected
-                  ? AminaTheme.primaryTeal
+                  ? AminaVisualLanguage.actionGreen
                   : Colors.grey.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isSelected ? AminaTheme.primaryTeal : Colors.transparent,
+                color: isSelected ? AminaVisualLanguage.actionGreen : Colors.transparent,
               ),
             ),
             child: Text(
               labels[index],
               style: TextStyle(
                 fontWeight: FontWeight.w700,
-                color: isSelected ? Colors.white : AminaTheme.textDark,
+                color: isSelected ? Colors.white : AminaVisualLanguage.primaryText(context),
               ),
             ),
           ),

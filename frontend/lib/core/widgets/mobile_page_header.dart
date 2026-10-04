@@ -1,7 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../theme/amina_visual_language.dart';
 import '../theme/app_theme.dart';
+
+class AminaPageExitButton extends StatelessWidget {
+  final String fallbackRoute;
+  final bool close;
+
+  const AminaPageExitButton({
+    super.key,
+    this.fallbackRoute = '/dashboard',
+    this.close = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final material = MaterialLocalizations.of(context);
+    return IconButton(
+      key: const ValueKey('amina-page-exit'),
+      tooltip: close ? material.closeButtonTooltip : material.backButtonTooltip,
+      onPressed: () {
+        final router = GoRouter.of(context);
+        if (router.canPop()) {
+          router.pop();
+        } else {
+          router.go(fallbackRoute);
+        }
+      },
+      icon: Icon(close ? Icons.close_rounded : Icons.arrow_back_rounded),
+    );
+  }
+}
 
 /// Canonical patient-facing mobile page chrome.
 ///

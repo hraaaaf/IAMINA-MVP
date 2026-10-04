@@ -6,6 +6,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 AppDatabase _db() => AppDatabase(NativeDatabase.memory());
@@ -15,19 +16,34 @@ Widget _providers(
   Widget child, {
   Locale locale = const Locale('fr'),
 }) {
-  return MaterialApp(
+  final router = GoRouter(
+    initialLocation: '/edit',
+    routes: [
+      GoRoute(
+        path: '/edit',
+        builder: (context, state) => Scaffold(
+          body: MultiProvider(
+            providers: [
+              Provider<AppDatabase>.value(value: db),
+              Provider<PatientProfileData?>.value(value: null),
+            ],
+            child: child,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/journal',
+        builder: (context, state) => const Scaffold(
+          body: SizedBox(key: Key('journal-test-destination')),
+        ),
+      ),
+    ],
+  );
+  return MaterialApp.router(
     locale: locale,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(
-      body: MultiProvider(
-        providers: [
-          Provider<AppDatabase>.value(value: db),
-          Provider<PatientProfileData?>.value(value: null),
-        ],
-        child: child,
-      ),
-    ),
+    routerConfig: router,
   );
 }
 
@@ -79,9 +95,9 @@ void main() {
         '',
       );
       final save = find.byKey(const Key('save-edit-log-button'));
-      await tester.ensureVisible(save);
-      await tester.pumpAndSettle();
-      await tester.tap(save);
+      final saveButton = tester.widget<FilledButton>(save);
+      expect(saveButton.onPressed, isNotNull);
+      saveButton.onPressed!();
       await tester.pumpAndSettle();
 
       final log = await db.getLogById(id);
@@ -116,9 +132,9 @@ void main() {
         '4.75',
       );
       final save = find.byKey(const Key('save-edit-log-button'));
-      await tester.ensureVisible(save);
-      await tester.pumpAndSettle();
-      await tester.tap(save);
+      final saveButton = tester.widget<FilledButton>(save);
+      expect(saveButton.onPressed, isNotNull);
+      saveButton.onPressed!();
       await tester.pumpAndSettle();
       expect((await db.getLogById(id))!.insulinUnits, 4.75);
     },

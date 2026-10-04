@@ -282,12 +282,59 @@ class _DashboardBody extends StatelessWidget {
                             high: high,
                             companionService: companionService,
                           ),
+                          const SizedBox(height: 22),
+                          const _DataTools(),
                         ]),
                       ),
                     ),
                   ],
                 );
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DataTools extends StatelessWidget {
+  const _DataTools();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: AminaVisualLanguage.cardDecoration(context, radius: 18),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: [
+          OutlinedButton.icon(
+            key: const ValueKey('dashboard-data-import'),
+            onPressed: () => context.go('/importer'),
+            icon: const Icon(Icons.upload_file_outlined, size: 17),
+            label: Text(
+              _t(
+                context,
+                'Importer un document',
+                'Import a document',
+                'استيراد مستند',
+              ),
+            ),
+          ),
+          OutlinedButton.icon(
+            key: const ValueKey('dashboard-data-cgm'),
+            onPressed: () => context.go('/cgm'),
+            icon: const Icon(Icons.sensors_outlined, size: 17),
+            label: Text(
+              _t(
+                context,
+                'Connecter un CGM',
+                'Connect a CGM',
+                'ربط جهاز CGM',
+              ),
             ),
           ),
         ],

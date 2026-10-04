@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../services/companion_service.dart';
-import 'dashboard_adaptive_kpi_section.dart';
 import 'dashboard_insight_section.dart';
 import 'dashboard_next_action_section.dart';
 import 'dashboard_trend_section.dart';
@@ -29,8 +28,6 @@ class DashboardResponsiveSections extends StatelessWidget {
             children: [
               DashboardTrendSection(unit: unit, low: low, high: high),
               const SizedBox(height: 18),
-              DashboardAdaptiveKpiSection(unit: unit, low: low, high: high),
-              const SizedBox(height: 18),
               DashboardInsightSection(service: companionService),
               const SizedBox(height: 18),
               DashboardNextActionSection(service: companionService),
@@ -38,14 +35,11 @@ class DashboardResponsiveSections extends StatelessWidget {
           );
         }
 
-        // Desktop hierarchy: trend first, metrics second, interpretation/actions last.
-        // This keeps the primary clinical signal large enough to read instead of
-        // compressing it into a half-width technical card.
+        // Dashboard hierarchy: one trend block, then interpretation/actions.
+        // Repeated KPIs were removed because they duplicated the trend summary.
         return Column(
           children: [
             DashboardTrendSection(unit: unit, low: low, high: high),
-            const SizedBox(height: 18),
-            DashboardAdaptiveKpiSection(unit: unit, low: low, high: high),
             const SizedBox(height: 18),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,

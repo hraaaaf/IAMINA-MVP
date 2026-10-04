@@ -155,6 +155,10 @@ class DashboardTrendPainter extends CustomPainter {
 
     if (dailySummary) {
       final summaries = _dailySummaries();
+      final maxLabels = math.max(2, math.min(6, (rect.width / 72).floor()));
+      final labelStride = summaries.length <= maxLabels
+          ? 1
+          : math.max(1, (summaries.length / maxLabels).ceil());
       for (var i = 0; i < summaries.length; i++) {
         final summary = summaries[i];
         final x = _xForSummaryIndex(i, summaries.length, rect);
@@ -163,13 +167,17 @@ class DashboardTrendPainter extends CustomPainter {
               .withValues(alpha: .045)
           ..strokeWidth = 1;
         canvas.drawLine(Offset(x, rect.top), Offset(x, rect.bottom), guide);
-        _paintXAxisLabel(
-          canvas,
-          DateFormat('d MMM', locale).format(summary.day),
-          x,
-          rect,
-          axisStyle,
-        );
+        final showLabel =
+            i == 0 || i == summaries.length - 1 || i % labelStride == 0;
+        if (showLabel) {
+          _paintXAxisLabel(
+            canvas,
+            DateFormat('d MMM', locale).format(summary.day),
+            x,
+            rect,
+            axisStyle,
+          );
+        }
       }
       return;
     }
