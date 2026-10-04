@@ -79,7 +79,11 @@ void main() {
         '',
       );
       final save = find.byKey(const Key('save-edit-log-button'));
-      await tester.ensureVisible(save);
+      await tester.scrollUntilVisible(
+        save,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
       await tester.tap(save);
       await tester.pumpAndSettle();
@@ -116,7 +120,11 @@ void main() {
         '4.75',
       );
       final save = find.byKey(const Key('save-edit-log-button'));
-      await tester.ensureVisible(save);
+      await tester.scrollUntilVisible(
+        save,
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.pumpAndSettle();
       await tester.tap(save);
       await tester.pumpAndSettle();
