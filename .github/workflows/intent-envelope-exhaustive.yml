@@ -1,9 +1,6 @@
 name: Intent envelope exhaustive certification
 
 on:
-  push:
-    branches:
-      - preview/intent-envelope-v1-demo
   workflow_dispatch:
 
 permissions:
