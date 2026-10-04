@@ -1,13 +1,18 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/data/meal_food_catalog.dart';
+import '../../core/data/nutrition_catalog.dart';
+import '../../core/data/ramadan_context.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/mobile_page_header.dart';
 import '../../data/drift/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../dashboard/widgets/add_log_sheet.dart';
+import '../dashboard/widgets/add_log_view.dart';
 import 'widgets/insulin_logging.dart';
 
 class EditLogScreen extends StatefulWidget {
@@ -22,6 +27,14 @@ class EditLogScreen extends StatefulWidget {
 class _EditLogScreenState extends State<EditLogScreen> {
   final TextEditingController _glucoseController = TextEditingController();
   final TextEditingController _insulinController = TextEditingController();
+  final TextEditingController _mealNoteController = TextEditingController();
+  final List<String> _selectedMealItemIds = <String>[];
+  final Map<String, MealPortionSelection> _mealPortionSelections =
+      <String, MealPortionSelection>{};
+  String? _glycemicContext;
+  String? _mealType;
+  DateTime _selectedTime = DateTime.now();
+  bool _mealExpanded = false;
   bool _loading = true;
   bool _saving = false;
   bool _deleting = false;
@@ -40,6 +53,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
   void dispose() {
     _glucoseController.dispose();
     _insulinController.dispose();
+    _mealNoteController.dispose();
     super.dispose();
   }
 
@@ -58,6 +72,24 @@ class _EditLogScreenState extends State<EditLogScreen> {
     _insulinController.text = log.insulinUnits == null
         ? ''
         : formatTakenInsulinUnits(log.insulinUnits!);
+    _glycemicContext = log.glycemicContext;
+    _mealType = log.mealType;
+    _mealNoteController.text = log.mealDescription ?? '';
+    _selectedMealItemIds
+      ..clear()
+      ..addAll(decodeMealItemIds(log.mealItemsJson));
+    _mealPortionSelections
+      ..clear()
+      ..addEntries(
+        decodeMealPortionSelections(log.mealPortionsJson).map(
+          (selection) => MapEntry(selection.foodId, selection),
+        ),
+      );
+    _selectedTime = log.loggedAt ?? log.createdAt;
+    _mealExpanded =
+        _mealType != null ||
+        _mealNoteController.text.trim().isNotEmpty ||
+        _selectedMealItemIds.isNotEmpty;
     _isSick = log.isSick;
     _isStressed = log.isStressed;
     _isActive = log.isActive;
@@ -147,8 +179,74 @@ class _EditLogScreenState extends State<EditLogScreen> {
                             const SizedBox(height: 18),
                             _insulinCard(l10n),
                           ],
-                          const SizedBox(height: 14),
-                          _contextCard(l10n),
+                          const SizedBox(height: 18),
+                          AddLogMeasurementContext(
+                            selected: _glycemicContext,
+                            onChanged: (value) =>
+                                setState(() => _glycemicContext = value),
+                          ),
+                          const SizedBox(height: 18),
+                          AddLogMealCapture(
+                            expanded: _mealExpanded,
+                            ramadanActive: isRamadanProfileDate(
+                              _selectedTime,
+                              profile?.ramadanStartDate,
+                              profile?.ramadanEndDate,
+                            ),
+                            mealTypes: mealTypesForProfileDate(
+                              _selectedTime,
+                              profile?.ramadanStartDate,
+                              profile?.ramadanEndDate,
+                            ),
+                            selectedMealType: _mealType,
+                            selectedMealItemIds: _selectedMealItemIds,
+                            mealPortionSelections: _mealPortionSelections,
+                            mealNoteController: _mealNoteController,
+                            canUsePhotoRecognition: false,
+                            voiceRecording: false,
+                            voiceTranscribing: false,
+                            onExpand: () =>
+                                setState(() => _mealExpanded = true),
+                            onRemove: () => setState(() {
+                              _mealExpanded = false;
+                              _mealType = null;
+                              _selectedMealItemIds.clear();
+                              _mealPortionSelections.clear();
+                              _mealNoteController.clear();
+                            }),
+                            onMealTypeChanged: (value) =>
+                                setState(() => _mealType = value),
+                            onSelectedMealItemIdsChanged: (ids) => setState(() {
+                              _selectedMealItemIds
+                                ..clear()
+                                ..addAll(ids);
+                              _mealPortionSelections.removeWhere(
+                                (foodId, _) => !ids.contains(foodId),
+                              );
+                            }),
+                            onPortionsChanged: (next) => setState(() {
+                              _mealPortionSelections
+                                ..clear()
+                                ..addAll(next);
+                            }),
+                          ),
+                          const SizedBox(height: 18),
+                          AddLogDetailsCard(
+                            timeLabel: addLogTimeLabel(l10n, _selectedTime),
+                            onPickDateTime: _pickDateTime,
+                            isSick: _isSick,
+                            isStressed: _isStressed,
+                            isActive: _isActive,
+                            badSleep: _badSleep,
+                            onSickChanged: (value) =>
+                                setState(() => _isSick = value),
+                            onStressedChanged: (value) =>
+                                setState(() => _isStressed = value),
+                            onActiveChanged: (value) =>
+                                setState(() => _isActive = value),
+                            onBadSleepChanged: (value) =>
+                                setState(() => _badSleep = value),
+                          ),
                           const SizedBox(height: 24),
                           _actionButtons(unit, l10n),
                         ],
@@ -301,60 +399,38 @@ class _EditLogScreenState extends State<EditLogScreen> {
     ),
   );
 
-  Widget _contextCard(AppLocalizations l10n) => Container(
-    key: const Key('edit-context-card'),
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      color: AminaTheme.subtleBg(context),
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: AminaTheme.divider(context)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          l10n.journalAdditionalContext,
-          style: TextStyle(
-            color: AminaTheme.textSecondary(context),
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: .55,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: <Widget>[
-            FilterChip(
-              key: const Key('edit-context-illness'),
-              label: Text(l10n.journalSick),
-              selected: _isSick,
-              onSelected: (v) => setState(() => _isSick = v),
-            ),
-            FilterChip(
-              key: const Key('edit-context-stress'),
-              label: Text(l10n.journalUnusualStress),
-              selected: _isStressed,
-              onSelected: (v) => setState(() => _isStressed = v),
-            ),
-            FilterChip(
-              key: const Key('edit-context-activity'),
-              label: Text(l10n.journalPhysicalActivity),
-              selected: _isActive,
-              onSelected: (v) => setState(() => _isActive = v),
-            ),
-            FilterChip(
-              key: const Key('edit-context-poor-sleep'),
-              label: Text(l10n.journalPoorSleep),
-              selected: _badSleep,
-              onSelected: (v) => setState(() => _badSleep = v),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
+  Future<void> _pickDateTime() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _selectedTime,
+      firstDate: DateTime.now().subtract(const Duration(days: 90)),
+      lastDate: DateTime.now(),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_selectedTime),
+    );
+    if (time == null || !mounted) return;
+    final profile = context.read<PatientProfileData?>();
+    setState(() {
+      _selectedTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+      final allowed = mealTypesForProfileDate(
+        _selectedTime,
+        profile?.ramadanStartDate,
+        profile?.ramadanEndDate,
+      );
+      if (_mealType != null && !allowed.contains(_mealType)) {
+        _mealType = null;
+      }
+    });
+  }
 
   Future<bool> _confirmLowGlucose(double mgdl, AppLocalizations l10n) async {
     final level = classifyGlucoseEntrySafety(mgdl);
@@ -406,6 +482,18 @@ class _EditLogScreenState extends State<EditLogScreen> {
           insulinUnits: drift.Value(
             parseTakenInsulinUnits(_insulinController.text),
           ),
+          glycemicContext: drift.Value(_glycemicContext),
+          mealType: drift.Value(_mealType),
+          mealDescription: drift.Value(
+            _mealNoteController.text.trim().isEmpty
+                ? null
+                : _mealNoteController.text.trim(),
+          ),
+          mealItemsJson: drift.Value(encodeMealItemIds(_selectedMealItemIds)),
+          mealPortionsJson: drift.Value(
+            encodeMealPortionSelections(_mealPortionSelections.values),
+          ),
+          loggedAt: drift.Value(_selectedTime),
           isSick: drift.Value(_isSick),
           isStressed: drift.Value(_isStressed),
           isActive: drift.Value(_isActive),
@@ -417,7 +505,7 @@ class _EditLogScreenState extends State<EditLogScreen> {
       );
       if (!mounted) return;
       _message(l10n.journalUpdated);
-      await Navigator.of(context).maybePop();
+      _leavePage();
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -451,9 +539,18 @@ class _EditLogScreenState extends State<EditLogScreen> {
       final db = context.read<AppDatabase>();
       await db.deleteLog(widget.logId);
       if (!mounted) return;
-      await Navigator.of(context).maybePop();
+      _leavePage();
     } finally {
       if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  void _leavePage() {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+    } else {
+      router.go('/journal');
     }
   }
 
