@@ -47,4 +47,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-http.server.ThreadingHTTPServer(('127.0.0.1', 7358), Handler).serve_forever()
+server = http.server.ThreadingHTTPServer(('127.0.0.1', 7358), Handler)
+print(f'Dashboard cert proxy serving {root} on 127.0.0.1:7358', flush=True)
+server.serve_forever()
