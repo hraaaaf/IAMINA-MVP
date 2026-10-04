@@ -1,5 +1,5 @@
 name: Intent envelope exhaustive certification
-# Post-main reconciliation deterministic gate
+# Final post-main exhaustive certification trigger
 
 on:
   push:
