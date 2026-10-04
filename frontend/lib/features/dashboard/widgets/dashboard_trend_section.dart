@@ -273,8 +273,7 @@ class _TrendContent extends StatelessWidget {
       },
     );
   }
-
-
+}
 
 class _TrendShell extends StatelessWidget {
   final int? count;
