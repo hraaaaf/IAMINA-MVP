@@ -178,6 +178,36 @@ Vague personal references must be unknown/high ambiguity. Safety/prescription co
 def classify_batch(provider, batch: list[Case]) -> tuple[list[IntentEnvelope], float]:
     payloads=[json.loads(prepare_intent_payload(c.message,c.lang).user_payload) for c in batch]
     n=len(batch)
+    def envelope_schema(intent_values, target_values):
+        return {
+            "type":"object",
+            "properties":{
+                "schema_version":{"type":"string","enum":["1"]},
+                "intent":{"type":"string","enum":intent_values},
+                "target":{"type":"string","enum":target_values},
+                "confidence":{"type":"number","minimum":0.0,"maximum":1.0},
+                "ambiguity":{"type":"string","enum":["none","low","high"]},
+            },
+            "required":["schema_version","intent","target","confidence","ambiguity"],
+            "additionalProperties":False,
+        }
+
+    item_schema={
+        "anyOf":[
+            envelope_schema(
+                ["patient_data_read","patient_data_summary"],
+                ["glucose","meal","sleep","stress","treatment","diabetes_type","targets","lab_document","medications","cgm","proactive","paired_meal"],
+            ),
+            envelope_schema(
+                ["meta_greeting","conversation_recall","casual_conversation","emotional_support"],
+                ["conversation"],
+            ),
+            envelope_schema(
+                ["meta_identity","meta_capabilities","general_health_education","clinician_prep","unknown"],
+                ["none"],
+            ),
+        ]
+    }
     schema={
         "type":"object",
         "properties":{
@@ -185,23 +215,7 @@ def classify_batch(provider, batch: list[Case]) -> tuple[list[IntentEnvelope], f
                 "type":"array",
                 "minItems":n,
                 "maxItems":n,
-                "items":{
-                    "type":"object",
-                    "properties":{
-                        "schema_version":{"type":"string","enum":["1"]},
-                        "intent":{"type":"string","enum":[x.value for x in IntentKind]},
-                        "target":{"type":"string","enum":[x.value for x in IntentTarget]},
-                        "confidence":{"type":"number","minimum":0.0,"maximum":1.0},
-                        "ambiguity":{"type":"string","enum":["none","low","high"]},
-                    },
-                    "required":["schema_version","intent","target","confidence","ambiguity"],
-                    "additionalProperties":False,
-                    "allOf":[
-                        {"if":{"properties":{"intent":{"enum":["meta_greeting","conversation_recall","casual_conversation","emotional_support"]}},"required":["intent"]},"then":{"properties":{"target":{"enum":["conversation"]}}}},
-                        {"if":{"properties":{"intent":{"enum":["meta_identity","meta_capabilities","general_health_education","clinician_prep","unknown"]}},"required":["intent"]},"then":{"properties":{"target":{"enum":["none"]}}}},
-                        {"if":{"properties":{"intent":{"enum":["patient_data_read","patient_data_summary"]}},"required":["intent"]},"then":{"properties":{"target":{"enum":["glucose","meal","sleep","stress","treatment","diabetes_type","targets","lab_document","medications","cgm","proactive","paired_meal"]}}}},
-                    ],
-                },
+                "items":item_schema,
             }
         },
         "required":["results"],
