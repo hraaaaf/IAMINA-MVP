@@ -196,6 +196,11 @@ def classify_batch(provider, batch: list[Case]) -> tuple[list[IntentEnvelope], f
                     },
                     "required":["schema_version","intent","target","confidence","ambiguity"],
                     "additionalProperties":False,
+                    "allOf":[
+                        {"if":{"properties":{"intent":{"enum":["meta_greeting","conversation_recall","casual_conversation","emotional_support"]}},"required":["intent"]},"then":{"properties":{"target":{"enum":["conversation"]}}}},
+                        {"if":{"properties":{"intent":{"enum":["meta_identity","meta_capabilities","general_health_education","clinician_prep","unknown"]}},"required":["intent"]},"then":{"properties":{"target":{"enum":["none"]}}}},
+                        {"if":{"properties":{"intent":{"enum":["patient_data_read","patient_data_summary"]}},"required":["intent"]},"then":{"properties":{"target":{"enum":["glucose","meal","sleep","stress","treatment","diabetes_type","targets","lab_document","medications","cgm","proactive","paired_meal"]}}}},
+                    ],
                 },
             }
         },
