@@ -28,6 +28,7 @@ jobs:
           DEBUG: "True"
           ALLOWED_HOSTS: localhost,127.0.0.1
           DATABASE_URL: sqlite:///intent-exhaustive.db
+          IAMINA_DEMO_INTENT_ROUTER_ENABLED: "true"
         working-directory: backend
         run: |
           python -m ruff check companion/intent_envelope.py companion/intent_model.py companion/intent_pipeline.py companion/demo.py diabetes/services/demo_runtime.py diabetes/api/v1/demo.py diabetes/tests/test_demo_chat.py evaluation/intent_envelope_exhaustive_benchmark.py
@@ -39,6 +40,7 @@ jobs:
           DEBUG: "True"
           ALLOWED_HOSTS: localhost,127.0.0.1
           DATABASE_URL: sqlite:///intent-exhaustive.db
+          IAMINA_DEMO_INTENT_ROUTER_ENABLED: "true"
         working-directory: backend
         run: python evaluation/intent_envelope_exhaustive_benchmark.py
       - uses: actions/upload-artifact@v4
