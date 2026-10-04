@@ -245,6 +245,19 @@ class DemoChatContractTests(TestCase):
         self.assertIn("glycémie", capabilities.json()["reply"])
         gateway.assert_not_called()
 
+
+    @patch("companion.conversation.get_gateway_llm")
+    def test_natural_french_capability_question_stays_local(self, gateway):
+        gateway.side_effect = AssertionError("LLM provider must not be called")
+
+        response = self._post("Tu sais faire quoi exactement ?")
+
+        self.assertEqual(response.status_code, 200)
+        reply = response.json()["reply"].lower()
+        self.assertIn("iamina", reply)
+        self.assertNotIn("oui, on peut en parler ici", reply)
+        gateway.assert_not_called()
+
     @patch("companion.conversation.get_gateway_llm")
     def test_demo_recall_after_deterministic_patient_reply_stays_local(self, gateway):
         gateway.side_effect = AssertionError("LLM provider must not be called")
