@@ -28,7 +28,7 @@ from companion.intent_envelope import (  # noqa: E402
 from companion.intent_model import _SYSTEM as INTENT_SYSTEM  # noqa: E402
 from companion.intent_model import classify_intent, prepare_intent_payload  # noqa: E402
 from companion.intent_pipeline import analyze_unresolved_turn  # noqa: E402
-from llm.base import BaseLLMProvider  # noqa: E402
+from llm.base import BaseLLMProvider, LLMResponse  # noqa: E402
 from llm.provider_registry import build_openai_compatible_provider  # noqa: E402
 
 MODEL = "openai/gpt-oss-120b"
@@ -69,7 +69,12 @@ cases: list[Case] = []
 for target, *messages in PATIENT:
     for (lang_name, idx), msg in zip(LANGS, messages, strict=True):
         lang = "ar-MA" if lang_name.startswith("ar-MA") else lang_name
-        cases.append(Case(f"patient-{target}-{lang_name}", lang, msg, RouteKind.DETERMINISTIC_PATIENT_DATA, IntentKind.PATIENT_DATA_READ, IntentTarget(target)))
+        expected_intent = (
+            IntentKind.PATIENT_DATA_SUMMARY
+            if target in {"sleep", "paired_meal"}
+            else IntentKind.PATIENT_DATA_READ
+        )
+        cases.append(Case(f"patient-{target}-{lang_name}", lang, msg, RouteKind.DETERMINISTIC_PATIENT_DATA, expected_intent, IntentTarget(target)))
 
 META = {
     "fr": [
@@ -164,6 +169,30 @@ ADVERSARIAL = [
 ]
 for idx,(lang,msg) in enumerate(ADVERSARIAL):
     cases.append(Case(f"adversarial-{idx}",lang,msg,RouteKind.CLARIFY,IntentKind.UNKNOWN,IntentTarget.NONE))
+
+class StrictRuntimeProvider(BaseLLMProvider):
+    def __init__(self, provider):
+        self.provider = provider
+
+    def complete(self, system: str, user: str) -> LLMResponse:
+        response = _paced_groq_create(
+            self.provider,
+            model=self.provider.model,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            timeout=self.provider.timeout_seconds,
+            reasoning_effort="low",
+            max_completion_tokens=384,
+            response_format={"type": "json_object"},
+            extra_body={"reasoning_format": "hidden"},
+        )
+        return LLMResponse(
+            content=response.choices[0].message.content or "",
+            provider="groq",
+        )
+
 
 class ExplodingProvider(BaseLLMProvider):
     def complete(self, system: str, user: str):
@@ -312,7 +341,7 @@ def main():
     for lang,message in strict_samples:
         started=time.perf_counter()
         try:
-            classify_intent(message,lang,provider=provider)
+            classify_intent(message,lang,provider=StrictRuntimeProvider(provider))
         except Exception as exc:
             strict_errors.append(f"{lang}: {type(exc).__name__}: {str(exc)[:200]}")
         else:
