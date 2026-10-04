@@ -151,21 +151,7 @@ class AddLogSurface extends StatelessWidget {
                       else ...<Widget>[
                         primaryEvent,
                         const SizedBox(height: 18),
-                        if (!detailsExpanded)
-                          OutlinedButton.icon(
-                            key: const Key('journal-details-button'),
-                            onPressed: onShowDetails,
-                            icon: const Icon(Icons.tune_rounded, size: 18),
-                            label: Text(addLogDetailsLabel(context)),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(48),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                          )
-                        else
-                          detailsCard,
+                        detailsCard,
                       ],
                     ],
                   ),
@@ -724,24 +710,6 @@ class AddLogDetailsCard extends StatelessWidget {
   }
 
   Widget _healthContext(BuildContext context, AppLocalizations l10n) {
-    final hasContext = isSick || isStressed || isActive || badSleep;
-    if (!contextExpanded && !hasContext) {
-      return OutlinedButton.icon(
-        key: const Key('journal-context-button'),
-        onPressed: onExpandContext,
-        icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-        label: Text(
-          '${l10n.journalAdditionalContext} · ${l10n.journalOptional}',
-        ),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(48),
-          alignment: AlignmentDirectional.centerStart,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-      );
-    }
     return Column(
       key: const Key('journal-context-selector'),
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -751,11 +719,7 @@ class AddLogDetailsCard extends StatelessWidget {
             Expanded(
               child: _sectionLabel(context, l10n.journalAdditionalContext),
             ),
-            if (!hasContext)
-              TextButton(
-                onPressed: onCollapseContext,
-                child: Text(l10n.cancel),
-              ),
+
           ],
         ),
         const SizedBox(height: 10),
