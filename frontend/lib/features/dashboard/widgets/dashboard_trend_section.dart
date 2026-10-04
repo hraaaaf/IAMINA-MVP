@@ -197,6 +197,8 @@ class _TrendContent extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _RangeSelector(selected: range, onChanged: onRangeChanged),
+            const SizedBox(height: 14),
             DashboardTrendSummary(
               recent: logs.last,
               average: average,
@@ -204,8 +206,6 @@ class _TrendContent extends StatelessWidget {
               count: logs.length,
               unit: unit,
             ),
-            const SizedBox(height: 14),
-            _RangeSelector(selected: range, onChanged: onRangeChanged),
             const SizedBox(height: 16),
             Container(
               width: double.infinity,
@@ -256,45 +256,25 @@ class _TrendContent extends StatelessWidget {
                     dailySummary: range.useDailySummary,
                     medicationCount: medications.length,
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    range.useDailySummary
-                        ? _dailySummaryNote(context)
-                        : AppLocalizations.of(
-                            context,
-                          )!.dashboardTrendNoInterpolation,
-                    style: TextStyle(
-                      fontSize: 10.6,
-                      height: 1.35,
-                      color: AminaVisualLanguage.secondary(context),
-                    ),
-                  ),
+
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            DashboardTrendSelectionCard(
-              log: selected,
-              unit: unit,
-              locale: locale,
-            ),
+            if (selectedLogId != null) ...[
+              const SizedBox(height: 12),
+              DashboardTrendSelectionCard(
+                log: selected,
+                unit: unit,
+                locale: locale,
+              ),
+            ],
           ],
         );
       },
     );
   }
 
-  String _dailySummaryNote(BuildContext context) {
-    final code = Localizations.localeOf(context).languageCode;
-    if (code == 'ar') {
-      return 'كل نقطة تمثل الوسيط اليومي للقياسات. الأشرطة العمودية تمثل القيم الدنيا والعليا المسجلة.';
-    }
-    if (code == 'en') {
-      return 'Each point is the daily median of recorded measurements. Vertical bars show the observed minimum and maximum.';
-    }
-    return 'Chaque point représente la médiane des mesures du jour. Les barres verticales indiquent la valeur minimale et maximale observée.';
-  }
-}
+
 
 class _TrendShell extends StatelessWidget {
   final int? count;
