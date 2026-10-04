@@ -22,6 +22,7 @@ on:
       - "backend/companion/test_intent_runtime_integration.py"
       - "backend/companion/test_policy_runtime.py"
       - "backend/diabetes/tests/test_whole_app_context_decision.py"
+      - "docs/COMPANION_INTENT_ENVELOPE_RUNTIME_INTEGRATION_V1.md"
       - ".github/workflows/intent-envelope-runtime-integration.yml"
 
 permissions:
