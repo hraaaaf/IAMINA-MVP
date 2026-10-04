@@ -56,6 +56,25 @@ void main() {
     expect(widget, isNot(contains('personalBaselineComparisonMgDl')));
   });
 
+  test('Demo insight uses only factual local readings and keeps patient preview remote', () {
+    final widget = File(
+      'lib/features/dashboard/widgets/dashboard_insight_section.dart',
+    ).readAsStringSync();
+    final copy = File(
+      'lib/core/localization/dashboard_insight_localized_copy.dart',
+    ).readAsStringSync();
+
+    expect(widget, contains('authService.isAuditSession'));
+    expect(widget, contains('watchRecentLogs(limit: 100)'));
+    expect(widget, contains('_DemoFactualInsight'));
+    expect(widget, contains('total / logs.length'));
+    expect(widget, contains('dashboardInsightDemoSummary'));
+    expect(copy, contains('RÉSUMÉ LOCAL FACTUEL'));
+    expect(copy, contains('Aucun diagnostic, cause, effet du traitement'));
+    expect(widget, contains('fetchProactivePreview()'));
+    expect(widget, isNot(contains('/api/v1/demo/')));
+  });
+
   test('Dashboard mobile composition keeps governed insight after the single trend block', () {
     final dashboard = File(
       'lib/features/dashboard/dashboard_premium_screen.dart',
