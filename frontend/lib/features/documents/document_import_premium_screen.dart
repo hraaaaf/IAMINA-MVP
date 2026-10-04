@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/widgets/legacy_page_header_bridge.dart';
+import '../../core/widgets/mobile_page_header.dart';
 import 'document_import_screen.dart';
 
 String _documentImportCopy(BuildContext context, String fr, String en, String ar) {
@@ -28,6 +29,7 @@ class DocumentImportPremiumScreen extends StatelessWidget {
         'Add a document, then review what IAmina read.',
         'أضف مستنداً ثم راجع ما قرأته IAmina.',
       ),
+      leading: const AminaPageExitButton(),
       legacyTopExtent: 82,
       child: const DocumentImportScreen(),
     );

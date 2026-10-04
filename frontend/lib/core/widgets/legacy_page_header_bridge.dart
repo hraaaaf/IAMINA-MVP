@@ -14,6 +14,7 @@ class AminaLegacyPageHeaderBridge extends StatelessWidget {
   final String title;
   final String? subtitle;
   final Widget child;
+  final Widget? leading;
   final double legacyTopExtent;
   final double contentTopInset;
 
@@ -22,6 +23,7 @@ class AminaLegacyPageHeaderBridge extends StatelessWidget {
     required this.title,
     this.subtitle,
     required this.child,
+    this.leading,
     required this.legacyTopExtent,
     this.contentTopInset = 0,
   });
@@ -32,7 +34,11 @@ class AminaLegacyPageHeaderBridge extends StatelessWidget {
       color: AminaTheme.bg(context),
       child: Column(
         children: [
-          AminaMobilePageHeader(title: title, subtitle: subtitle),
+          AminaMobilePageHeader(
+            title: title,
+            subtitle: subtitle,
+            leading: leading,
+          ),
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(top: contentTopInset),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/widgets/legacy_page_header_bridge.dart';
+import '../../core/widgets/mobile_page_header.dart';
 import '../dashboard/widgets/add_log_sheet.dart';
 
 String _addLogCopy(BuildContext context, String fr, String en, String ar) {
@@ -39,6 +40,7 @@ class AddLogScreen extends StatelessWidget {
           'Simply record what just happened.',
           'سجّل ببساطة ما حدث للتو.',
         ),
+        leading: const AminaPageExitButton(),
         legacyTopExtent: 0,
         contentTopInset: 12,
         child: SizedBox.expand(
