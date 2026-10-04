@@ -28,6 +28,18 @@ _ENGLISH_HINT_RE = re.compile(
     r"\b(?:hello|hi|thanks|thank you|doctor|clinician|help|what|how|why)\b",
     re.IGNORECASE,
 )
+_ARABIC_REQUEST_RE = re.compile(
+    r"(?:\ben\s+arabe\b|\bin\s+arabic\b|\barabic\b|بالعربية|بالعربي)",
+    re.IGNORECASE,
+)
+_ENGLISH_REQUEST_RE = re.compile(
+    r"(?:\ben\s+anglais\b|\bin\s+english\b|\benglish\b)",
+    re.IGNORECASE,
+)
+_FRENCH_REQUEST_RE = re.compile(
+    r"(?:\ben\s+fran[cç]ais\b|\bin\s+french\b|\bfrench\b)",
+    re.IGNORECASE,
+)
 _EMOTIONAL_RE = re.compile(
     r"(?:j['’]?en ai marre|j['’]?en peux plus|fatigu[ée]|[ée]puis[ée]|"
     r"i['’]?m done|exhausted|hopeless|3yit|3yayt|تعبت|عييت|خلاص)",
@@ -260,6 +272,12 @@ _DEMO_COPY = {
 def resolve_demo_language(message: str, requested: str = "fr") -> str:
     """Resolve a bounded demo language without patient/profile lookup."""
     requested = (requested or "fr").strip()
+    if _ARABIC_REQUEST_RE.search(message):
+        return "ar"
+    if _ENGLISH_REQUEST_RE.search(message):
+        return "en"
+    if _FRENCH_REQUEST_RE.search(message):
+        return "fr"
     if _LATIN_DARIJA_RE.search(message) and not _ARABIC_RE.search(message):
         return "ar-MA"
     if _ARABIC_RE.search(message):
