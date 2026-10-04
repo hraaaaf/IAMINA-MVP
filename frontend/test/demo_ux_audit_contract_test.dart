@@ -53,12 +53,16 @@ void main() {
     expect(reports, isNot(contains('AISummaryScreen')));
   });
 
-  test('profile assistant action opens chat instead of onboarding', () {
+  test('profile IAmina action opens dedicated preferences, not medical onboarding', () {
     final profile = source(
       'lib/features/profile/profile_screen_presentation.dart',
     );
-    expect(profile, contains("context.push('/companion/chat')"));
+    final router = source('lib/routes/app_router.dart');
+    expect(profile, contains("context.push('/preferences')"));
+    expect(profile, contains("'Préférences IAmina'"));
     expect(profile, isNot(contains("context.push('/onboarding')")));
+    expect(router, contains("path: '/preferences'"));
+    expect(router, contains('const OnboardingChatScreen(preferencesOnly: true)'));
   });
 
   test('edit measurement persists add-flow context dimensions', () {
