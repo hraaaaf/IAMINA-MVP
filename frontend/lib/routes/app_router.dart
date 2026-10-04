@@ -254,10 +254,7 @@ AppRouterHolder createAppRouterHolder({
         parentNavigatorKey: _rootNavigatorKey,
         pageBuilder: (context, state) => CustomTransitionPage(
           key: state.pageKey,
-          child: OnboardingChatScreen(
-            preferencesOnly:
-                state.uri.queryParameters['mode'] == 'preferences',
-          ),
+          child: const OnboardingChatScreen(),
           transitionDuration: AminaMotion.standard,
           reverseTransitionDuration: AminaMotion.fast,
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -270,6 +267,15 @@ AppRouterHolder createAppRouterHolder({
               child: child,
             );
           },
+        ),
+      ),
+
+      GoRoute(
+        path: '/preferences',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _createPage(
+          state,
+          const OnboardingChatScreen(preferencesOnly: true),
         ),
       ),
 
