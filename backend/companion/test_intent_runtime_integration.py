@@ -213,6 +213,34 @@ def test_safety_runs_before_intent_classifier(monkeypatch):
     assert reply
 
 
+def test_classified_recall_preserves_darija_latin_script(monkeypatch):
+    monkeypatch.setenv("IAMINA_INTENT_ENVELOPE_RUNTIME_ENABLED", "true")
+    provider = StrictIntentProvider(_payload("conversation_recall", "conversation"))
+    patient = SimpleNamespace(id=77, first_name="")
+    turns = (
+        SimpleNamespace(role="user", message="Chno glna 9bel?"),
+        SimpleNamespace(role="assistant", message="Glna nbdaw b suivi."),
+    )
+
+    with (
+        patch("companion.conversation._recent_exchange_pair", return_value=turns),
+        patch("companion.conversation.record_companion_route"),
+        patch("companion.conversation._append_turn"),
+    ):
+        reply = conversation.chat(
+            "Fekerni b dakchi li glna 9bel.",
+            memory=None,
+            deep=object(),
+            llm=ExplodingNarrator(),
+            language="ar-MA",
+            patient=patient,
+            intent_provider=provider,
+        )
+
+    assert reply.startswith("Qbel chwya")
+    assert "قبل قليل" not in reply
+
+
 def test_patient_target_route_uses_module_target_port_and_verifier(monkeypatch):
     monkeypatch.setenv("IAMINA_INTENT_ENVELOPE_RUNTIME_ENABLED", "true")
     provider = StrictIntentProvider(_payload("patient_data_read", "cgm"))
