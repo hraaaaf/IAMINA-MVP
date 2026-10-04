@@ -86,6 +86,7 @@ _ALL_TEXT_PURPOSES = frozenset(
         "companion_chat",
         "voice_chat",
         "document_ingest",
+        "intent_classification",
     }
 )
 
