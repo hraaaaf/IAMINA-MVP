@@ -76,6 +76,7 @@ jobs:
           ALLOWED_HOSTS: localhost,127.0.0.1
           DATABASE_URL: sqlite:///intent-exhaustive.db
           IAMINA_DEMO_INTENT_ROUTER_ENABLED: "true"
+          # Exhaustive certification marker: 2026-10-04 final 125 matrix
         working-directory: backend
         run: python evaluation/intent_envelope_exhaustive_benchmark.py
       - uses: actions/upload-artifact@v4
