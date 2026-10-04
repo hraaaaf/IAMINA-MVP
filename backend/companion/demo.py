@@ -291,6 +291,42 @@ def resolve_demo_language(message: str, requested: str = "fr") -> str:
     return "fr"
 
 
+def deterministic_demo_fast_path(message: str, language: str = "fr") -> dict | None:
+    """Resolve deterministic demo turns before any external classifier/model call."""
+    text = (message or "").strip()
+    if not text:
+        return None
+
+    reply_language = resolve_demo_language(text, language)
+    exact = exact_chitchat_reply(text, reply_language)
+    if exact is not None:
+        return {
+            "reply": exact,
+            "conversation_id": "demo-governed",
+            "is_emergency": False,
+            "reply_language": reply_language,
+        }
+
+    if _CAPABILITY_RE.search(text):
+        return {
+            "reply": _DEMO_COPY[reply_language]["capability"],
+            "conversation_id": "demo-governed",
+            "is_emergency": False,
+            "reply_language": reply_language,
+        }
+
+    education = diabetes_education_reply(text, reply_language)
+    if education is not None and not _PERSONAL_DATA_RE.search(text):
+        return {
+            "reply": education,
+            "conversation_id": "demo-governed",
+            "is_emergency": False,
+            "reply_language": reply_language,
+        }
+
+    return None
+
+
 def reply_to_demo_message(
     message: str,
     language: str = "fr",
