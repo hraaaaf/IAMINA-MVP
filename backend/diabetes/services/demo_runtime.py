@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 
 from django.utils import timezone
 
@@ -21,19 +22,13 @@ from llm.provider_registry import build_openai_compatible_provider
 
 _INTENT_PREVIEW_ENABLED = "IAMINA_DEMO_INTENT_ROUTER_ENABLED"
 _INTENT_PREVIEW_MODEL = "IAMINA_INTENT_ROUTER_LLM_MODEL"
-_LANGUAGE_ONLY_FOLLOWUPS = frozenset(
-    {
-        "en arabe",
-        "in arabic",
-        "arabic",
-        "en anglais",
-        "in english",
-        "english",
-        "en français",
-        "en francais",
-        "in french",
-        "french",
-    }
+_LANGUAGE_ONLY_FOLLOWUP_RE = re.compile(
+    r"^(?:(?:puis|et|maintenant|alors)\s+)?(?:"
+    r"en\s+arabe|in\s+arabic|arabic|"
+    r"en\s+anglais|in\s+english|english|"
+    r"en\s+fran[cç]ais|in\s+french|french"
+    r")\s*[.!?]*$",
+    re.IGNORECASE,
 )
 
 
@@ -62,7 +57,7 @@ def _preview_route_reply(
 
     history = history or []
     reply_language = resolve_demo_language(message, language)
-    language_only_followup = message.strip().lower() in _LANGUAGE_ONLY_FOLLOWUPS
+    language_only_followup = bool(_LANGUAGE_ONLY_FOLLOWUP_RE.fullmatch(message.strip()))
     if language_only_followup:
         for turn in reversed(history):
             if str(turn.get("role", "")).strip() != "user":
