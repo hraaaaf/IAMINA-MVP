@@ -10,6 +10,9 @@ on:
       - "backend/diabetes/services/demo_runtime.py"
       - "backend/diabetes/api/v1/demo.py"
       - "backend/diabetes/tests/test_demo_chat.py"
+      - "backend/core/input_safety.py"
+      - "backend/core/triage_classification.py"
+      - "backend/safety/crisis.py"
       - "backend/evaluation/intent_envelope_exhaustive_benchmark.py"
   workflow_dispatch:
     inputs:
