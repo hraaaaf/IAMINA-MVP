@@ -9,7 +9,8 @@ void main() {
     ).readAsStringSync();
 
     expect(today, contains("ValueKey('dashboard-secondary-companion')"));
-    expect(today, contains("context.go('/companion')"));
+    expect(today, contains("context.go('/companion/chat')"));
+    expect(today, contains("'Parler avec IAmina'"));
   });
 
   test('mobile dashboard exposes a persistent visible IAmina companion entry', () {
@@ -26,8 +27,9 @@ void main() {
 
     expect(wrapper, contains("ValueKey('dashboard-companion-primary-entry')"));
     expect(wrapper, contains('DashboardPremiumScreen'));
+    expect(wrapper, contains('Icons.auto_awesome_rounded'));
     expect(premium, contains('DashboardTodaySection('));
-    expect(today, contains("context.go('/companion')"));
+    expect(today, contains("context.go('/companion/chat')"));
     expect(today, contains("ValueKey('dashboard-secondary-companion')"));
     expect(module, contains('const DashboardCompanionEntryScreen()'));
   });
