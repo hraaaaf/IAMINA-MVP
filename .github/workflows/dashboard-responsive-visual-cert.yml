@@ -151,9 +151,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dashboard-visual-cert
-          STATIC_ROOT="$GITHUB_WORKSPACE/frontend/build/web" python3 tools/dashboard_cert_proxy.py >/tmp/iamina-dashboard-proxy.log 2>&1 &
+          STATIC_ROOT="$GITHUB_WORKSPACE/frontend/build/web" python3 -u tools/dashboard_cert_proxy.py >/tmp/iamina-dashboard-proxy.log 2>&1 &
           PROXY_PID=$!
           trap 'kill $PROXY_PID 2>/dev/null || true; kill $(cat /tmp/iamina-dashboard-backend.pid) 2>/dev/null || true' EXIT
+          sleep 1
+          if ! kill -0 "$PROXY_PID" 2>/dev/null; then
+            echo "Dashboard certification proxy exited before readiness probe" >&2
+            cat /tmp/iamina-dashboard-proxy.log >&2 || true
+            wait "$PROXY_PID" || true
+            exit 1
+          fi
           READY=0
           for _ in $(seq 1 60); do
             if curl -fsS http://127.0.0.1:7358/ >/dev/null; then
