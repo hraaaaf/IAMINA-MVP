@@ -205,6 +205,8 @@ class _EditLogScreenState extends State<EditLogScreen> {
                             canUsePhotoRecognition: false,
                             voiceRecording: false,
                             voiceTranscribing: false,
+                            showVoiceAction: false,
+                            onVoiceToggle: () async {},
                             onExpand: () =>
                                 setState(() => _mealExpanded = true),
                             onRemove: () => setState(() {
