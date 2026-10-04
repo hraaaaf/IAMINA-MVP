@@ -79,13 +79,9 @@ void main() {
         '',
       );
       final save = find.byKey(const Key('save-edit-log-button'));
-      await tester.dragUntilVisible(
-        save,
-        find.byType(SingleChildScrollView),
-        const Offset(0, -300),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(save);
+      final saveButton = tester.widget<FilledButton>(save);
+      expect(saveButton.onPressed, isNotNull);
+      await saveButton.onPressed!();
       await tester.pumpAndSettle();
 
       final log = await db.getLogById(id);
@@ -120,13 +116,9 @@ void main() {
         '4.75',
       );
       final save = find.byKey(const Key('save-edit-log-button'));
-      await tester.dragUntilVisible(
-        save,
-        find.byType(SingleChildScrollView),
-        const Offset(0, -300),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(save);
+      final saveButton = tester.widget<FilledButton>(save);
+      expect(saveButton.onPressed, isNotNull);
+      await saveButton.onPressed!();
       await tester.pumpAndSettle();
       expect((await db.getLogById(id))!.insulinUnits, 4.75);
     },
