@@ -25,7 +25,8 @@ from companion.intent_envelope import (  # noqa: E402
     RouteKind,
     decide_backend_route,
 )
-from companion.intent_model import classify_intent, prepare_intent_payload, _SYSTEM as INTENT_SYSTEM  # noqa: E402
+from companion.intent_model import _SYSTEM as INTENT_SYSTEM  # noqa: E402
+from companion.intent_model import classify_intent, prepare_intent_payload  # noqa: E402
 from companion.intent_pipeline import analyze_unresolved_turn  # noqa: E402
 from llm.base import BaseLLMProvider  # noqa: E402
 from llm.provider_registry import build_openai_compatible_provider  # noqa: E402
