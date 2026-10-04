@@ -15,6 +15,8 @@ on:
       - "backend/companion/zero_model_router.py"
       - "backend/core/companion/clinical.py"
       - "backend/core/ai_processor_policy.py"
+      - "backend/core/ai_egress.py"
+      - "backend/core/tests/test_ai_egress.py"
       - "backend/diabetes/services/clinical/engine.py"
       - "backend/diabetes/services/clinical/whole_app_context_decision.py"
       - "backend/companion/test_intent_runtime_integration.py"
@@ -66,6 +68,7 @@ jobs:
             companion/zero_model_router.py \
             core/companion/clinical.py \
             core/ai_processor_policy.py \
+            core/ai_egress.py \
             diabetes/services/clinical/engine.py \
             diabetes/services/clinical/whole_app_context_decision.py \
             companion/test_intent_runtime_integration.py \
@@ -87,4 +90,5 @@ jobs:
             companion/test_zero_model_runtime.py \
             companion/test_policy_runtime.py \
             core/tests/test_ai_processor_policy.py \
+            core/tests/test_ai_egress.py \
             diabetes/tests/test_whole_app_context_decision.py
