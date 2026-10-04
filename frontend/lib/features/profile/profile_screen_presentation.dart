@@ -194,7 +194,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       children: [
         Text(
           l10n.ramadanProfileHint,
-          style: const TextStyle(
+          style: TextStyle(
             color: AminaVisualLanguage.secondary(context),
             fontSize: 13,
             height: 1.45,
