@@ -42,7 +42,7 @@ void main() {
         contains("key: const ValueKey('profile-iamina-section')"),
       );
       expect(source, contains('initiallyExpanded: true'));
-      expect(source, contains("context.push('/onboarding?mode=preferences')"));
+      expect(source, contains("context.push('/preferences')"));
       expect(source, contains('_hasPersistedProfile'));
       expect(source, contains('profileMedicalSectionHint'));
       expect(source, contains('if (!_hasPersistedProfile)'));
