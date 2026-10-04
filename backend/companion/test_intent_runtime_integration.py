@@ -218,8 +218,8 @@ def test_classified_recall_preserves_darija_latin_script(monkeypatch):
     provider = StrictIntentProvider(_payload("conversation_recall", "conversation"))
     patient = SimpleNamespace(id=77, first_name="")
     turns = (
-        SimpleNamespace(role="user", message="Chno glna 9bel?"),
-        SimpleNamespace(role="assistant", message="Glna nbdaw b suivi."),
+        "Chno glna 9bel?",
+        "Glna nbdaw b suivi.",
     )
 
     with (
