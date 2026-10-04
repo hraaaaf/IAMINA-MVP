@@ -8,7 +8,7 @@ from django.utils import timezone
 
 import companion.demo_runtime as companion_demo_runtime
 from companion.conversation import detect_language
-from companion.demo import reply_to_demo_message
+from companion.demo import reply_to_demo_message, resolve_demo_language
 from companion.diabetes_education import diabetes_education_reply
 from companion.intent_envelope import IntentKind, RouteKind
 from companion.intent_pipeline import analyze_unresolved_turn
@@ -38,26 +38,42 @@ def _clarify_reply(language: str) -> str:
     return "Je ne suis pas encore certain de ce que tu veux. Tu veux que je retrouve une donnée enregistrée, que je t’explique quelque chose en général, ou simplement discuter ?"
 
 
-def _preview_route_reply(message: str, language: str) -> tuple[RouteKind, str] | None:
+def _preview_route_reply(
+    message: str,
+    language: str,
+    history: list[dict[str, str]] | None = None,
+) -> tuple[RouteKind, str] | None:
     if not _intent_preview_enabled():
         return None
+
+    history = history or []
+    reply_language = resolve_demo_language(message, language)
+    if reply_language != language:
+        for turn in reversed(history):
+            if str(turn.get("role", "")).strip() != "user":
+                continue
+            prior = str(turn.get("content", "")).strip()
+            education = diabetes_education_reply(prior, reply_language)
+            if education is not None:
+                return RouteKind.CONVERSATIONAL, education
+
     provider = build_openai_compatible_provider(
         "groq",
         model=os.environ.get(_INTENT_PREVIEW_MODEL, "").strip() or "openai/gpt-oss-120b",
     )
-    outcome = analyze_unresolved_turn(message, language, provider=provider)
+    outcome = analyze_unresolved_turn(message, reply_language, provider=provider)
     if outcome.decision.route is RouteKind.CLARIFY:
-        return outcome.decision.route, _clarify_reply(language)
+        return outcome.decision.route, _clarify_reply(reply_language)
     if (
         outcome.decision.route is RouteKind.CONVERSATIONAL
         and outcome.envelope is not None
         and outcome.envelope.intent is IntentKind.GENERAL_HEALTH_EDUCATION
     ):
-        education = diabetes_education_reply(message, language)
+        education = diabetes_education_reply(message, reply_language)
         if education is not None:
             return outcome.decision.route, education
     if outcome.decision.route in {RouteKind.DETERMINISTIC_LOCAL, RouteKind.CONVERSATIONAL}:
-        demo = reply_to_demo_message(message, language, history=[])
+        demo = reply_to_demo_message(message, reply_language, history=history)
         return outcome.decision.route, demo["reply"]
     return outcome.decision.route, ""
 
@@ -66,9 +82,10 @@ def reply_with_synthetic_patient(
     *,
     language: str,
     subject_key: str,
+    history: list[dict[str, str]] | None = None,
 ) -> dict:
     patient = get_or_create_synthetic_demo_patient(subject_key)
-    reply_language = detect_language(message, language)
+    reply_language = resolve_demo_language(message, detect_language(message, language))
     decision = evaluate_input_safety(message, reply_language)
 
     if decision.action == URGENT:
@@ -96,7 +113,7 @@ def reply_with_synthetic_patient(
         }
 
     try:
-        preview = _preview_route_reply(message, reply_language)
+        preview = _preview_route_reply(message, reply_language, history=history)
     except Exception:
         preview = (RouteKind.CLARIFY, _clarify_reply(reply_language))
     if preview is not None:
