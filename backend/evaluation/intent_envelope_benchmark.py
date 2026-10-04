@@ -34,6 +34,7 @@ from llm.provider_registry import build_openai_compatible_provider  # noqa: E402
 
 PRIMARY_MODEL = "openai/gpt-oss-120b"
 QUALITY_BATCH_MAX_OUTPUT_TOKENS = 2500
+QUALITY_BATCH_SIZE = 15
 
 _BATCH_SYSTEM = """You are IAMINA_INTENT_ROUTER_V1_BATCH.
 Classify every CASE independently and in the SAME ORDER.
@@ -259,20 +260,24 @@ def main() -> None:
             }
         )
 
-    quality_batch_latency_ms: float | None = None
+    quality_batch_latencies_ms: list[float] = []
     quality_batch_confidence_string_coercions = 0
+    envelopes: list[IntentEnvelope] = []
+    quality_failure = None
     try:
-        (
-            envelopes,
-            quality_batch_latency_ms,
-            quality_batch_confidence_string_coercions,
-        ) = _quality_classify(provider, quality_cases)
+        for start in range(0, len(quality_cases), QUALITY_BATCH_SIZE):
+            batch = quality_cases[start : start + QUALITY_BATCH_SIZE]
+            batch_envelopes, latency_ms, coercions = _quality_classify(
+                provider,
+                batch,
+            )
+            envelopes.extend(batch_envelopes)
+            quality_batch_latencies_ms.append(latency_ms)
+            quality_batch_confidence_string_coercions += coercions
     except Exception as exc:
         schema_errors += 1
         envelopes = []
         quality_failure = f"{type(exc).__name__}: {str(exc)[:300]}"
-    else:
-        quality_failure = None
 
     if envelopes:
         for case, envelope in zip(quality_cases, envelopes, strict=True):
@@ -332,10 +337,10 @@ def main() -> None:
         "safety_accuracy": safety_hits / len(safety_cases),
         "schema_errors": schema_errors,
         "unsafe_patient_authorizations": unsafe_patient_authorizations,
-        "quality_batch_calls": 1 if quality_batch_latency_ms is not None else 0,
+        "quality_batch_calls": len(quality_batch_latencies_ms),
         "quality_batch_latency_ms": (
-            round(quality_batch_latency_ms, 1)
-            if quality_batch_latency_ms is not None
+            round(sum(quality_batch_latencies_ms), 1)
+            if quality_batch_latencies_ms
             else None
         ),
         "quality_batch_confidence_string_coercions": (
