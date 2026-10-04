@@ -195,7 +195,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
         Text(
           l10n.ramadanProfileHint,
           style: const TextStyle(
-            color: AminaTheme.ink500,
+            color: AminaVisualLanguage.secondary(context),
             fontSize: 13,
             height: 1.45,
           ),
@@ -295,16 +295,16 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 11, color: AminaTheme.ink500),
+            style: TextStyle(fontSize: 11, color: AminaVisualLanguage.secondary(context)),
           ),
           const SizedBox(height: 3),
           Text(
             value == null
                 ? AppLocalizations.of(context)!.ramadanChooseDate
                 : _dateLabel(value),
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w700,
-              color: AminaTheme.ink900,
+              color: AminaVisualLanguage.primaryText(context),
             ),
           ),
         ],
@@ -567,10 +567,10 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
     return Container(
       key: key,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AminaVisualLanguage.cardSurface(context),
         borderRadius: BorderRadius.circular(AminaTheme.radius2XL),
-        border: Border.all(color: AminaTheme.ink100),
-        boxShadow: AminaTheme.shadowClinical,
+        border: Border.all(color: AminaVisualLanguage.controlBorder(context)),
+        boxShadow: AminaVisualLanguage.cardShadow(context),
       ),
       clipBehavior: Clip.antiAlias,
       child: Theme(
@@ -594,7 +594,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: AminaTheme.ink900,
+              color: AminaVisualLanguage.primaryText(context),
             ),
           ),
           subtitle: Padding(
@@ -606,7 +606,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
               style: const TextStyle(
                 fontSize: 12,
                 height: 1.35,
-                color: AminaTheme.ink500,
+                color: AminaVisualLanguage.secondary(context),
               ),
             ),
           ),
@@ -693,8 +693,8 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
                       en: 'Language, country and tone. Medical settings stay in your profile.',
                       ar: 'اللغة والبلد والنبرة. تبقى الإعدادات الطبية في ملفك الشخصي.',
                     ),
-                    style: const TextStyle(
-                      color: AminaTheme.textMuted,
+                    style: TextStyle(
+                      color: AminaVisualLanguage.secondary(context),
                       fontSize: 13,
                     ),
                   ),
@@ -711,7 +711,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
   Widget _buildSectionTitle(IconData icon, String title) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: AminaTheme.textDark),
+        Icon(icon, size: 20, color: AminaVisualLanguage.primaryText(context)),
         const SizedBox(width: 8),
         Text(
           title,
@@ -750,7 +750,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
               labels[index],
               style: TextStyle(
                 fontWeight: FontWeight.w700,
-                color: isSelected ? Colors.white : AminaTheme.textDark,
+                color: isSelected ? Colors.white : AminaVisualLanguage.primaryText(context),
               ),
             ),
           ),
