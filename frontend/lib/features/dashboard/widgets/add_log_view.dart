@@ -87,8 +87,6 @@ class AddLogSurface extends StatelessWidget {
   final Future<void> Function() onBack;
   final Widget primaryEvent;
   final Widget detailsCard;
-  final bool detailsExpanded;
-  final VoidCallback onShowDetails;
   final Widget saveBar;
 
   const AddLogSurface({
@@ -97,8 +95,6 @@ class AddLogSurface extends StatelessWidget {
     required this.onBack,
     required this.primaryEvent,
     required this.detailsCard,
-    required this.detailsExpanded,
-    required this.onShowDetails,
     required this.saveBar,
   });
 
@@ -442,7 +438,7 @@ class AddLogMealCapture extends StatelessWidget {
   final bool canUsePhotoRecognition;
   final bool voiceRecording;
   final bool voiceTranscribing;
-  final Future<void> Function() onVoiceToggle;
+  final Future<void> Function()? onVoiceToggle;
   final VoidCallback onExpand;
   final VoidCallback? onRemove;
   final ValueChanged<String?> onMealTypeChanged;
@@ -461,7 +457,7 @@ class AddLogMealCapture extends StatelessWidget {
     required this.canUsePhotoRecognition,
     required this.voiceRecording,
     required this.voiceTranscribing,
-    required this.onVoiceToggle,
+    this.onVoiceToggle,
     required this.onExpand,
     required this.onRemove,
     required this.onMealTypeChanged,
@@ -571,53 +567,55 @@ class AddLogMealCapture extends StatelessWidget {
                       'جارٍ النسخ الصوتي…',
                     )
                   : l10n.journalMealNoteHint,
-              suffixIcon: Padding(
-                padding: const EdgeInsets.all(4),
-                child: IconButton(
-                  key: const Key('meal-note-voice-button'),
-                  tooltip: voiceRecording
-                      ? addLogVoiceCopy(
-                          context,
-                          'Arrêter l’enregistrement',
-                          'Stop recording',
-                          'إيقاف التسجيل',
-                        )
-                      : voiceTranscribing
-                      ? addLogVoiceCopy(
-                          context,
-                          'Transcription en cours',
-                          'Transcription in progress',
-                          'النسخ الصوتي جارٍ',
-                        )
-                      : addLogVoiceCopy(
-                          context,
-                          'Dicter la note du repas',
-                          'Dictate meal note',
-                          'إملاء ملاحظة الوجبة',
+              suffixIcon: onVoiceToggle == null
+                  ? null
+                  : Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: IconButton(
+                        key: const Key('meal-note-voice-button'),
+                        tooltip: voiceRecording
+                            ? addLogVoiceCopy(
+                                context,
+                                'Arrêter l’enregistrement',
+                                'Stop recording',
+                                'إيقاف التسجيل',
+                              )
+                            : voiceTranscribing
+                            ? addLogVoiceCopy(
+                                context,
+                                'Transcription en cours',
+                                'Transcription in progress',
+                                'النسخ الصوتي جارٍ',
+                              )
+                            : addLogVoiceCopy(
+                                context,
+                                'Dicter la note du repas',
+                                'Dictate meal note',
+                                'إملاء ملاحظة الوجبة',
+                              ),
+                        onPressed: voiceTranscribing
+                            ? null
+                            : () => unawaited(onVoiceToggle!()),
+                        icon: voiceTranscribing
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(
+                                voiceRecording
+                                    ? Icons.stop_rounded
+                                    : Icons.mic_none_rounded,
+                                color: voiceRecording
+                                    ? AminaTheme.dangerFg
+                                    : AminaTheme.textSecondary(context),
+                              ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: voiceRecording
+                              ? AminaTheme.dangerBg
+                              : Colors.transparent,
                         ),
-                  onPressed: voiceTranscribing
-                      ? null
-                      : () => unawaited(onVoiceToggle()),
-                  icon: voiceTranscribing
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          voiceRecording
-                              ? Icons.stop_rounded
-                              : Icons.mic_none_rounded,
-                          color: voiceRecording
-                              ? AminaTheme.dangerFg
-                              : AminaTheme.textSecondary(context),
-                        ),
-                  style: IconButton.styleFrom(
-                    backgroundColor: voiceRecording
-                        ? AminaTheme.dangerBg
-                        : Colors.transparent,
-                  ),
-                ),
-              ),
+                      ),
+                    ),
               border: const OutlineInputBorder(),
             ),
           ),
@@ -630,13 +628,10 @@ class AddLogMealCapture extends StatelessWidget {
 class AddLogDetailsCard extends StatelessWidget {
   final String timeLabel;
   final Future<void> Function() onPickDateTime;
-  final bool contextExpanded;
   final bool isSick;
   final bool isStressed;
   final bool isActive;
   final bool badSleep;
-  final VoidCallback onExpandContext;
-  final VoidCallback onCollapseContext;
   final ValueChanged<bool> onSickChanged;
   final ValueChanged<bool> onStressedChanged;
   final ValueChanged<bool> onActiveChanged;
@@ -646,13 +641,10 @@ class AddLogDetailsCard extends StatelessWidget {
     super.key,
     required this.timeLabel,
     required this.onPickDateTime,
-    required this.contextExpanded,
     required this.isSick,
     required this.isStressed,
     required this.isActive,
     required this.badSleep,
-    required this.onExpandContext,
-    required this.onCollapseContext,
     required this.onSickChanged,
     required this.onStressedChanged,
     required this.onActiveChanged,
@@ -680,6 +672,16 @@ class AddLogDetailsCard extends StatelessWidget {
               fontSize: 16,
               fontWeight: FontWeight.w800,
             ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            addLogVoiceCopy(
+              context,
+              'Date et heure préremplies automatiquement · touchez pour ajuster.',
+              'Date and time are prefilled automatically · tap to adjust.',
+              'يتم ملء التاريخ والوقت تلقائياً · اضغط للتعديل.',
+            ),
+            style: _helperStyle(context),
           ),
           const SizedBox(height: 16),
           InkWell(
