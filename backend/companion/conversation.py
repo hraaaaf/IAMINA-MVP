@@ -344,11 +344,18 @@ def _local_conversation_meta_reply(
     return f'En bref : tu m’as demandé « {previous_user} » et je t’ai répondu « {previous_assistant} ».'
 
 
-def _classified_recall_reply(patient, language: str) -> str:
+def _classified_recall_reply(
+    patient,
+    language: str,
+    *,
+    prefer_latin_script: bool = False,
+) -> str:
     user_turn, assistant_turn = _recent_exchange_pair(patient)
     if not user_turn or not assistant_turn:
         if language == "en":
             return "I don't have an earlier exchange to recap yet."
+        if language == "ar-MA" and prefer_latin_script:
+            return "Mazal ma kaynch échange 9bel bach nlkhso."
         if language in _ARABIC_LANGUAGE_KEYS:
             return "ما زال ما كاينش تبادل سابق باش نلخّصه."
         return "Je n'ai pas encore d'échange précédent à rappeler."
@@ -359,6 +366,11 @@ def _classified_recall_reply(patient, language: str) -> str:
         return (
             f'Just before, you asked: “{previous_user}” '
             f'and I answered: “{previous_assistant}”.'
+        )
+    if language == "ar-MA" and prefer_latin_script:
+        return (
+            f'Qbel chwya, swelti: “{previous_user}” '
+            f'w jawbtk: “{previous_assistant}”.'
         )
     if language in _ARABIC_LANGUAGE_KEYS:
         return (
@@ -413,7 +425,11 @@ def _route_runtime_intent(
     if route is RouteKind.DETERMINISTIC_LOCAL:
         envelope = outcome.envelope
         if envelope is not None and envelope.intent is IntentKind.CONVERSATION_RECALL:
-            reply = _classified_recall_reply(patient, language)
+            reply = _classified_recall_reply(
+                patient,
+                language,
+                prefer_latin_script=prefer_latin_script,
+            )
         elif envelope is not None:
             reply = classified_meta_reply(envelope.intent.value, message, language)
         else:
