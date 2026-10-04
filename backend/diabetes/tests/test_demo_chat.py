@@ -246,9 +246,11 @@ class DemoChatContractTests(TestCase):
         gateway.assert_not_called()
 
 
+    @patch("diabetes.services.demo_runtime.build_openai_compatible_provider")
     @patch("companion.conversation.get_gateway_llm")
-    def test_natural_french_capability_question_stays_local(self, gateway):
-        gateway.side_effect = AssertionError("LLM provider must not be called")
+    def test_natural_french_capability_question_stays_local(self, gateway, provider):
+        gateway.side_effect = AssertionError("LLM narrator must not be called")
+        provider.side_effect = AssertionError("Intent classifier must not be called")
 
         response = self._post("Tu sais faire quoi exactement ?")
 
@@ -256,6 +258,7 @@ class DemoChatContractTests(TestCase):
         reply = response.json()["reply"].lower()
         self.assertIn("iamina", reply)
         self.assertNotIn("oui, on peut en parler ici", reply)
+        provider.assert_not_called()
         gateway.assert_not_called()
 
     @patch("companion.conversation.get_gateway_llm")
