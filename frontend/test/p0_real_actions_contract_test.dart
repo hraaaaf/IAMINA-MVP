@@ -77,10 +77,11 @@ void main() {
         isTrue,
       );
       expect(shell, contains("GoRouter.of(context).go('/ajouter')"));
-      expect(today, contains("ValueKey('dashboard-secondary-import')"));
-      expect(today, contains("context.go('/importer')"));
+      final premium = _read('lib/features/dashboard/dashboard_premium_screen.dart');
+      expect(premium, contains("ValueKey('dashboard-data-import')"));
+      expect(premium, contains("context.go('/importer')"));
       expect(today, contains("ValueKey('dashboard-secondary-companion')"));
-      expect(today, contains("context.go('/companion')"));
+      expect(today, contains("context.go('/companion/chat')"));
     },
   );
 
@@ -99,7 +100,7 @@ void main() {
     expect(cgm, contains("id: 'dexcom'"));
     expect(cgm, contains("id: 'libre'"));
     expect(cgm, contains("id: 'linx'"));
-    expect(cgm, contains('OutlinedButton('));
+    expect(cgm, contains('IconButton('));
     expect(cgm, contains('FilledButton.icon('));
     expect(cgm, contains('TextButton(onPressed: _disconnect'));
     expect(cgm, isNot(contains('Notifiez-moi')));
