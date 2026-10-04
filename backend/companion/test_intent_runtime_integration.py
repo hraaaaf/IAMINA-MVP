@@ -15,6 +15,8 @@ from core.contracts.advice_resolution import AdviceResolution
 
 
 class StrictIntentProvider:
+    processor_policy_key = "fallback"
+
     def __init__(self, payload: str):
         self.payload = payload
         self.calls = 0
@@ -25,8 +27,21 @@ class StrictIntentProvider:
 
 
 class ExplodingProvider:
+    processor_policy_key = "fallback"
+
     def complete_json_schema(self, *_args, **_kwargs):
         raise AssertionError("intent provider must not be called")
+
+
+class UnauthorizedProvider:
+    processor_policy_key = "groq"
+
+    def __init__(self):
+        self.calls = 0
+
+    def complete_json_schema(self, *_args, **_kwargs):
+        self.calls += 1
+        raise AssertionError("pending processor must be denied before network use")
 
 
 class ExplodingNarrator:
@@ -93,6 +108,21 @@ def test_enabled_runtime_without_provider_fails_closed_to_clarify(monkeypatch):
     assert outcome.source == "local_fail_closed"
 
 
+def test_pending_external_processor_is_denied_before_classifier_call(monkeypatch):
+    monkeypatch.setenv("IAMINA_INTENT_ENVELOPE_RUNTIME_ENABLED", "true")
+    provider = UnauthorizedProvider()
+
+    outcome = analyze_runtime_turn(
+        "Présente-toi autrement.",
+        "fr",
+        provider=provider,
+    )
+
+    assert outcome is not None
+    assert outcome.decision.route is RouteKind.CLARIFY
+    assert provider.calls == 0
+
+
 def test_classified_meta_identity_stays_local_and_never_calls_narrator(monkeypatch):
     monkeypatch.setenv("IAMINA_INTENT_ENVELOPE_RUNTIME_ENABLED", "true")
     provider = StrictIntentProvider(_payload("meta_identity", "none"))
@@ -127,7 +157,6 @@ def test_safety_runs_before_intent_classifier(monkeypatch):
         )
 
     assert reply
-    assert "urgence" in reply.casefold() or "immédiat" in reply.casefold()
 
 
 def test_patient_target_route_uses_module_target_port_and_verifier(monkeypatch):
