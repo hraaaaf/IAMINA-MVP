@@ -389,6 +389,7 @@ def _route_runtime_intent(
         message,
         language,
         provider=intent_provider,
+        patient_id=patient.id if patient is not None else None,
     )
     if outcome is None:
         return None, False, None
