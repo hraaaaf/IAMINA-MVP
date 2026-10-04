@@ -9,7 +9,7 @@ from django.utils import timezone
 
 import companion.demo_runtime as companion_demo_runtime
 from companion.conversation import detect_language
-from companion.demo import reply_to_demo_message, resolve_demo_language
+from companion.demo import deterministic_demo_fast_path, reply_to_demo_message, resolve_demo_language
 from companion.diabetes_education import diabetes_education_reply
 from companion.intent_envelope import IntentKind, RouteKind
 from companion.intent_pipeline import analyze_unresolved_turn
@@ -57,6 +57,11 @@ def _preview_route_reply(
 
     history = history or []
     reply_language = resolve_demo_language(message, language)
+
+    fast_path = deterministic_demo_fast_path(message, reply_language)
+    if fast_path is not None:
+        return RouteKind.DETERMINISTIC_LOCAL, fast_path["reply"]
+
     language_only_followup = bool(_LANGUAGE_ONLY_FOLLOWUP_RE.fullmatch(message.strip()))
     if language_only_followup:
         for turn in reversed(history):
