@@ -106,6 +106,16 @@ Implemented:
 - Browser certification passes its isolated analyze step, then fails while building the isolated browser audit; screenshot capture is therefore skipped.
 - These are real application/build failures, not the earlier runner-allocation failure. Exact diagnostics still need to be resolved before certification.
 
+Latest remediation evidence on 2026-10-04:
+- global Flutter analyze reached green on HEAD `691f54c7...`;
+- the remaining CI failures were isolated to stale contracts/fixtures plus test interaction, not analyzer errors;
+- dashboard/import/CGM/RTL contracts were aligned with the approved remediated hierarchy;
+- Edit insulin persistence tests were failing because the save button was tapped outside the 800x600 test viewport; the tests now scroll the action into view before tapping;
+- the Profile responsive fixture now supplies the AuthService dependency surfaced by the reorganized account section;
+- the geometry failure was traced to a `Spacer()` inside a compact Trend summary metric under unbounded vertical constraints; it was replaced with bounded spacing;
+- the dashboard responsive visual workflow had a proxy-readiness race: after retry exhaustion it could still launch Playwright without a successful HTTP probe. The workflow now requires a confirmed ready proxy before capture.
+- current exact HEAD: `e0045250691d27dbffee5b44276b2b7750179bde`; certification remains pending.
+
 Pending exact-HEAD CI and screenshot artifacts. Do not mark this document complete until:
 1. compile/tests pass at the final HEAD;
 2. responsive screenshots are inspected at matching certified viewports;
