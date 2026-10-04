@@ -7,12 +7,18 @@ import 'package:amina/data/drift/database.dart';
 
 AppDatabase _openDb() => AppDatabase(NativeDatabase.memory());
 
-Future<void> _insertProfile(AppDatabase db, {bool withConsent = false}) async {
+Future<void> _insertProfile(
+  AppDatabase db, {
+  bool withConsent = false,
+  bool completedOnboarding = false,
+}) async {
   await db.into(db.patientProfiles).insert(
     PatientProfilesCompanion.insert(
       userId: const drift.Value(1),
       preferredLanguage: const drift.Value('fr'),
       updatedAt: DateTime.now(),
+      diabetesType: drift.Value(completedOnboarding ? 'type2' : null),
+      treatment: drift.Value(completedOnboarding ? 'tablets' : null),
       aiConsentGivenAt: drift.Value(withConsent ? DateTime.now() : null),
     ),
   );
@@ -45,6 +51,34 @@ void main() {
       final svc = ConsentService(hasVerifiedEvidence: true);
       svc.seedInitialProfile(profile);
       expect(svc.hasConsent, isTrue);
+    });
+  });
+
+  group('ConsentService — onboarding completeness', () {
+    test('null profile is not completed', () {
+      final svc = ConsentService();
+      svc.seedInitialProfile(null);
+      expect(svc.hasCompletedOnboarding, isFalse);
+    });
+
+    test('partial profile is not completed', () async {
+      final db = _openDb();
+      addTearDown(db.close);
+      await _insertProfile(db);
+      final profile = await db.select(db.patientProfiles).getSingle();
+      final svc = ConsentService();
+      svc.seedInitialProfile(profile);
+      expect(svc.hasCompletedOnboarding, isFalse);
+    });
+
+    test('diabetes type and treatment complete onboarding', () async {
+      final db = _openDb();
+      addTearDown(db.close);
+      await _insertProfile(db, completedOnboarding: true);
+      final profile = await db.select(db.patientProfiles).getSingle();
+      final svc = ConsentService();
+      svc.seedInitialProfile(profile);
+      expect(svc.hasCompletedOnboarding, isTrue);
     });
   });
 
