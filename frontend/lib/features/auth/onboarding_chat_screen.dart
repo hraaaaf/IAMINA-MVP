@@ -8,9 +8,23 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/mobile_page_header.dart';
 import '../../data/drift/database.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/locale_preference_service.dart';
+
+String _preferencesCopy(
+  BuildContext context, {
+  required String fr,
+  required String en,
+  required String ar,
+}) {
+  return switch (Localizations.localeOf(context).languageCode) {
+    'fr' => fr,
+    'ar' => ar,
+    _ => en,
+  };
+}
 
 class OnboardingChatScreen extends StatefulWidget {
   final bool preferencesOnly;
@@ -324,15 +338,51 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
         (widget.preferencesOnly ||
             (_diabetesType != null && _treatment != null));
 
+    final assistantLabel = widget.preferencesOnly
+        ? _preferencesCopy(
+            context,
+            fr: 'Préférences IAmina',
+            en: 'IAmina preferences',
+            ar: 'تفضيلات IAmina',
+          )
+        : l10n.onboardingAssistantLabel;
+    final welcome = widget.preferencesOnly
+        ? _preferencesCopy(
+            context,
+            fr: 'Choisissez vos préférences. Vos données médicales restent dans votre profil.',
+            en: 'Choose your preferences. Your medical data stays in your profile.',
+            ar: 'اختر تفضيلاتك. تبقى بياناتك الطبية في ملفك الشخصي.',
+          )
+        : l10n.onboardingWelcome;
+    final readyLabel = widget.preferencesOnly
+        ? _preferencesCopy(
+            context,
+            fr: 'Préférences prêtes',
+            en: 'Preferences ready',
+            ar: 'التفضيلات جاهزة',
+          )
+        : l10n.onboardingReady;
+    final finishLabel = widget.preferencesOnly
+        ? _preferencesCopy(
+            context,
+            fr: 'Enregistrer',
+            en: 'Save',
+            ar: 'حفظ',
+          )
+        : l10n.onboardingStart;
+
     return Scaffold(
       backgroundColor: AminaTheme.surfaceMuted,
       appBar: AppBar(
+        leading: widget.preferencesOnly
+            ? const AminaPageExitButton(fallbackRoute: '/profile')
+            : null,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('IAmina'),
             Text(
-              l10n.onboardingAssistantLabel,
+              assistantLabel,
               style: const TextStyle(fontSize: 12),
             ),
           ],
@@ -343,13 +393,13 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           builder: (context, constraints) {
             final desktop = constraints.maxWidth >= 900;
             final questions = _OnboardingQuestions(
-              welcome: l10n.onboardingWelcome,
+              welcome: welcome,
               steps: steps,
               ready: ready,
-              readyLabel: l10n.onboardingReady,
+              readyLabel: readyLabel,
               saving: _saving,
               savingLabel: l10n.onboardingSaving,
-              startLabel: l10n.onboardingStart,
+              startLabel: finishLabel,
               onFinish: _finish,
             );
 
@@ -378,8 +428,8 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
                           flex: 4,
                           child: _DesktopWelcomePanel(
                             title: 'IAmina',
-                            subtitle: l10n.onboardingAssistantLabel,
-                            body: l10n.onboardingWelcome,
+                            subtitle: assistantLabel,
+                            body: welcome,
                           ),
                         ),
                         const SizedBox(width: 28),
