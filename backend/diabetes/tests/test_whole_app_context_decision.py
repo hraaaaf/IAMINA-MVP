@@ -17,6 +17,7 @@ from diabetes.services.clinical.whole_app_context_decision import (
     WholeAppIntent,
     classify_whole_app_context,
     resolve_whole_app_context,
+    resolve_whole_app_target,
 )
 
 
@@ -131,6 +132,33 @@ class WholeAppContextRouterTests(TestCase):
             with self.subTest(message=message):
                 self.assertEqual(evaluate_input_safety(message).action, ALLOW)
                 self.assertEqual(classify_whole_app_context(message), expected)
+
+    def test_frozen_intent_targets_cover_all_twelve_canonical_sources(self):
+        cases = {
+            "diabetes_type": "Quel est mon type de diabète enregistré ?",
+            "treatment": "Quel traitement est enregistré dans mon profil ?",
+            "targets": "Quels sont mes objectifs glycémiques enregistrés ?",
+            "meal": "Qu'est-ce que j'ai mangé hier ?",
+            "glucose": "Quelle était ma glycémie hier à 20h ?",
+            "sleep": "Comment ai-je dormi cette semaine ?",
+            "stress": "Est-ce que j'étais stressé cette semaine ?",
+            "lab_document": "Que dit mon dernier rapport de laboratoire ?",
+            "medications": "Quels médicaments ont été importés de mon document ?",
+            "cgm": "Quelle est ma dernière mesure CGM exacte ?",
+            "proactive": "Quelles observations proactives sont en attente ?",
+            "paired_meal": "Montre-moi mes épisodes pré/post repas liés.",
+        }
+
+        for target, message in cases.items():
+            with self.subTest(target=target):
+                resolution = resolve_whole_app_target(
+                    self.user.id,
+                    target,
+                    message,
+                    language="fr",
+                )
+                self.assertIsNotNone(resolution)
+                self.assertTrue(resolution.decision.rule_id.startswith("diabetes.context."))
 
     def test_profile_type_treatment_and_targets_use_persisted_profile(self):
         self.assertIn("Type 2", self._resolve("Quel est mon type de diabète enregistré ?").reply)
