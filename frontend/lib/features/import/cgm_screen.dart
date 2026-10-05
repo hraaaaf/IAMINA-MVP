@@ -67,6 +67,8 @@ class _CgmScreenState extends State<CgmScreen> {
                           hasNightscout: _hasNightscout!,
                           service: widget.service,
                           onBack: () => setState(() => _hasNightscout = null),
+                          onNightscoutReady: () =>
+                              setState(() => _hasNightscout = true),
                           onReset: _reset,
                         ),
                     ],
@@ -272,6 +274,7 @@ class _ConnectStep extends StatelessWidget {
   final bool hasNightscout;
   final CgmService? service;
   final VoidCallback onBack;
+  final VoidCallback onNightscoutReady;
   final VoidCallback onReset;
 
   const _ConnectStep({
@@ -280,6 +283,7 @@ class _ConnectStep extends StatelessWidget {
     required this.hasNightscout,
     required this.service,
     required this.onBack,
+    required this.onNightscoutReady,
     required this.onReset,
   });
 
@@ -321,11 +325,7 @@ class _ConnectStep extends StatelessWidget {
             width: double.infinity,
             child: FilledButton.icon(
               key: const ValueKey('cgm-wizard-nightscout-ready'),
-              onPressed: () => Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (_) => CgmScreen(service: service),
-                ),
-              ),
+              onPressed: onNightscoutReady,
               icon: const Icon(Icons.check_rounded),
               label: Text(copy.nightscoutReady),
             ),
