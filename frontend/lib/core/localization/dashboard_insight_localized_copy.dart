@@ -185,6 +185,34 @@ extension DashboardInsightLocalizedCopy on AppLocalizations {
         ar: 'ارتباط وصفي فقط. لا يثبت سبباً أو تشخيصاً أو تأثيراً للعلاج.',
       );
 
+  String get dashboardInsightDemoEyebrow => _insightPick(
+        en: 'DEMO · FACTUAL LOCAL SUMMARY',
+        fr: 'DÉMO · RÉSUMÉ LOCAL FACTUEL',
+        ar: 'عرض · ملخص محلي وصفي',
+      );
+
+  String dashboardInsightDemoSummary(
+    int readings,
+    int days,
+    int averageMgDl,
+  ) => _insightPick(
+        en: '$readings recorded readings across $days days · average $averageMgDl mg/dL.',
+        fr: '$readings mesures enregistrées sur $days jours · moyenne $averageMgDl mg/dL.',
+        ar: '$readings قراءة مسجلة على مدى $days أيام · متوسط $averageMgDl mg/dL.',
+      );
+
+  String get dashboardInsightDemoEmpty => _insightPick(
+        en: 'Add a first reading to unlock a factual local summary.',
+        fr: 'Ajoutez une première mesure pour afficher un résumé local factuel.',
+        ar: 'أضف أول قراءة لعرض ملخص محلي وصفي.',
+      );
+
+  String get dashboardInsightDemoLimitation => _insightPick(
+        en: 'Demo only: descriptive local statistics. No diagnosis, cause, treatment effect, or patient-record access is inferred.',
+        fr: 'Démo uniquement : statistiques locales descriptives. Aucun diagnostic, cause, effet du traitement ou accès à un dossier patient n’est déduit.',
+        ar: 'للعرض فقط: إحصاءات محلية وصفية. لا يتم استنتاج تشخيص أو سبب أو تأثير للعلاج أو الوصول إلى ملف المريض.',
+      );
+
   String get dashboardInsightSeeEvidence => _insightPick(
         en: 'See the evidence in Companion',
         fr: 'Voir les preuves dans Compagnon',
