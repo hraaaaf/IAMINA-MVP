@@ -75,7 +75,7 @@ void main() {
       expect(module, contains('const DocumentImportPremiumScreen()'));
       expect(module, contains("path: '/cgm'"));
       expect(cgmScreen, contains('class CgmScreen'));
-      expect(cgmScreen, contains('CgmConnectionsSection(service: service)'));
+      expect(cgmScreen, contains('CgmConnectionsSection(service: service, sourceFilter: sourceId)'));\n      expect(cgmScreen, contains("ValueKey('cgm-wizard-source-\${option.$1}')"));
       expect(cgmScreen, contains('Dexcom G6/G7'));
       expect(cgmScreen, contains('FreeStyle Libre'));
       expect(cgmScreen, contains('LinX / AiDEX X'));
