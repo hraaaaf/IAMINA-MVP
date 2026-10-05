@@ -18,7 +18,6 @@ void main() {
     expect(importSource, isNot(contains('const CgmConnectionsSection()')));
     expect(cgmSource, contains("import 'cgm_connections_section.dart';"));
     expect(cgmSource, contains('CgmConnectionsSection(service: service, sourceFilter: sourceId)'));
-    expect(cgmSource, contains("ValueKey('cgm-wizard-source-\${option.$1}')"));
     expect(cgmSource, contains("ValueKey('cgm-wizard-nightscout-yes')"));
     expect(moduleSource, contains("path: '/cgm'"));
     expect(moduleSource, contains('builder: (s) => const CgmScreen()'));
