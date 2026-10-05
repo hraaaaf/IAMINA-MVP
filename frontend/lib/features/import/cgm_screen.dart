@@ -866,6 +866,96 @@ class _CgmGuideCopy {
         ar: 'Nightscout جسر مستقل، وIAMINA لا تنشئه ولا تستضيفه حاليًا. أنشئ أو افتح موقعك عبر الوثائق الرسمية، أمّنه، وتحقق من ظهور قراءة حديثة، ثم عد برابط HTTPS ورمز token/API secret مخصص.',
       );
 
+  String get stepSensor => _pick(
+        fr: '1 · Capteur',
+        en: '1 · Sensor',
+        ar: '1 · المستشعر',
+      );
+
+  String get stepNightscout => _pick(
+        fr: '2 · Nightscout',
+        en: '2 · Nightscout',
+        ar: '2 · Nightscout',
+      );
+
+  String get stepIamina => _pick(
+        fr: '3 · IAMINA',
+        en: '3 · IAMINA',
+        ar: '3 · IAMINA',
+      );
+
+  String stepProgress(int step, String label) => _pick(
+        fr: 'Étape $step : $label',
+        en: 'Step $step: $label',
+        ar: 'الخطوة $step: $label',
+      );
+
+  String get sensorQuestion => _pick(
+        fr: 'Quel capteur utilisez-vous ?',
+        en: 'Which sensor do you use?',
+        ar: 'ما المستشعر الذي تستخدمه؟',
+      );
+
+  String get sensorQuestionBody => _pick(
+        fr: 'Choisissez votre capteur. IAMINA vous montrera uniquement le chemin qui vous concerne.',
+        en: 'Choose your sensor. IAMINA will show only the setup path that applies to you.',
+        ar: 'اختر المستشعر. ستعرض IAMINA فقط مسار الإعداد المناسب لك.',
+      );
+
+  String nightscoutQuestion(String sensor) => _pick(
+        fr: 'Avez-vous déjà Nightscout pour $sensor ?',
+        en: 'Do you already have Nightscout for $sensor?',
+        ar: 'هل لديك Nightscout بالفعل لـ $sensor؟',
+      );
+
+  String get nightscoutQuestionBody => _pick(
+        fr: 'Nightscout est le relais sécurisé entre votre capteur et IAMINA.',
+        en: 'Nightscout is the secure relay between your sensor and IAMINA.',
+        ar: 'Nightscout هو الجسر الآمن بين المستشعر وIAMINA.',
+      );
+
+  String get yesNightscout => _pick(
+        fr: 'Oui, Nightscout fonctionne déjà',
+        en: 'Yes, Nightscout is already working',
+        ar: 'نعم، Nightscout يعمل بالفعل',
+      );
+
+  String get noNightscoutYet => _pick(
+        fr: 'Non / je ne sais pas encore',
+        en: 'No / I am not sure yet',
+        ar: 'لا / لست متأكدًا بعد',
+      );
+
+  String get previousStep => _pick(
+        fr: 'Étape précédente',
+        en: 'Previous step',
+        ar: 'الخطوة السابقة',
+      );
+
+  String get prepareNightscoutTitle => _pick(
+        fr: 'Préparez Nightscout pour ce capteur',
+        en: 'Set up Nightscout for this sensor',
+        ar: 'أعد Nightscout لهذا المستشعر',
+      );
+
+  String get prepareNightscoutBody => _pick(
+        fr: 'Suivez uniquement ce parcours. Quand une mesure récente apparaît dans Nightscout, continuez vers IAMINA.',
+        en: 'Follow only this path. When a recent reading appears in Nightscout, continue to IAMINA.',
+        ar: 'اتبع هذا المسار فقط. عندما تظهر قراءة حديثة في Nightscout، تابع إلى IAMINA.',
+      );
+
+  String get nightscoutReady => _pick(
+        fr: 'J’ai une mesure récente dans Nightscout',
+        en: 'I have a recent reading in Nightscout',
+        ar: 'لدي قراءة حديثة في Nightscout',
+      );
+
+  String get changeSensor => _pick(
+        fr: 'Changer de capteur',
+        en: 'Change sensor',
+        ar: 'تغيير المستشعر',
+      );
+
   String get connectTitle => _pick(
         fr: 'Connecter IAMINA',
         en: 'Connect IAMINA',
