@@ -92,40 +92,52 @@ class _WizardProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final labels = [copy.stepSensor, copy.stepNightscout, copy.stepIamina];
-    return Row(
-      children: [
-        for (var i = 0; i < labels.length; i++) ...[
-          if (i > 0)
-            Expanded(
-              child: Container(
-                height: 2,
-                color: i < step ? AminaTheme.teal500 : AminaTheme.ink200,
-              ),
-            ),
-          Semantics(
-            label: copy.stepProgress(i + 1, labels[i]),
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 36),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: i + 1 <= step ? AminaTheme.teal50 : AminaTheme.ink50,
-                borderRadius: BorderRadius.circular(99),
-                border: Border.all(
-                  color: i + 1 <= step ? AminaTheme.teal100 : AminaTheme.ink200,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 480;
+        return Row(
+          children: [
+            for (var i = 0; i < labels.length; i++) ...[
+              if (i > 0)
+                Expanded(
+                  child: Container(
+                    height: 2,
+                    color: i < step ? AminaTheme.teal500 : AminaTheme.ink200,
+                  ),
+                ),
+              Semantics(
+                label: copy.stepProgress(i + 1, labels[i]),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 36),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: compact ? 10 : 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: i + 1 <= step ? AminaTheme.teal50 : AminaTheme.ink50,
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(
+                      color: i + 1 <= step
+                          ? AminaTheme.teal100
+                          : AminaTheme.ink200,
+                    ),
+                  ),
+                  child: Text(
+                    compact ? '${i + 1}' : labels[i],
+                    style: TextStyle(
+                      fontSize: compact ? 11 : 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: i + 1 <= step
+                          ? AminaTheme.teal700
+                          : AminaTheme.ink500,
+                    ),
+                  ),
                 ),
               ),
-              child: Text(
-                labels[i],
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w800,
-                  color: i + 1 <= step ? AminaTheme.teal700 : AminaTheme.ink500,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
+            ],
+          ],
+        );
+      },
     );
   }
 }
