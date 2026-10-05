@@ -21,7 +21,6 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
   List<CgmReadingView> _readings = const [];
   bool _loading = true;
   bool _syncing = false;
-  bool _configurationAvailable = true;
   String? _error;
 
   static const _sources = <_CgmSourcePresentation>[
@@ -70,16 +69,6 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
         _readings = readings;
         _error = readError;
         _loading = false;
-      });
-    } on CgmServiceException catch (error) {
-      if (!mounted) return;
-      final authRequired = error.code == 'authentication_required';
-      setState(() {
-        _loading = false;
-        _configurationAvailable = !authRequired;
-        _error = authRequired
-            ? AppLocalizations.of(context)!.cgmAuthenticationRequired
-            : AppLocalizations.of(context)!.cgmUnavailable;
       });
     } catch (_) {
       if (!mounted) return;
@@ -147,7 +136,6 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
   }
 
   Future<void> _configure(_CgmSourcePresentation source) async {
-    if (!_configurationAvailable) return;
     final result = await showDialog<_CgmConfiguration>(
       context: context,
       builder: (context) => _CgmConfigurationDialog(source: source),
@@ -401,9 +389,7 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 FilledButton(
-                  onPressed: _configurationAvailable
-                      ? () => _configure(source)
-                      : null,
+                  onPressed: () => _configure(source),
                   child: Text(l10n.cgmConfigure),
                 ),
                 IconButton(
@@ -669,8 +655,13 @@ class _CgmConfigurationDialogState extends State<_CgmConfigurationDialog> {
                 decoration: InputDecoration(
                   labelText: l10n.cgmSecret,
                   suffixIcon: IconButton(
+                    tooltip: _obscure
+                        ? l10n.cgmShowSecret
+                        : l10n.cgmHideSecret,
                     onPressed: () => setState(() => _obscure = !_obscure),
-                    icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+                    icon: Icon(
+                      _obscure ? Icons.visibility : Icons.visibility_off,
+                    ),
                   ),
                 ),
                 onChanged: (_) => setState(() {}),
