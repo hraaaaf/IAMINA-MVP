@@ -40,6 +40,22 @@ void main() {
     expect(source, isNot(contains("'Utilisateur'")));
   });
 
+  test('CGM secret visibility control has localized accessible names', () {
+    final cgm = File(
+      'lib/features/import/cgm_connections_section.dart',
+    ).readAsStringSync();
+    final copy = File(
+      'lib/core/localization/import_localized_copy.dart',
+    ).readAsStringSync();
+
+    expect(cgm, contains('tooltip: _obscure'));
+    expect(cgm, contains('l10n.cgmShowSecret'));
+    expect(cgm, contains('l10n.cgmHideSecret'));
+    expect(copy, contains('Afficher le secret Nightscout'));
+    expect(copy, contains('Show Nightscout secret'));
+    expect(copy, contains('إظهار سر Nightscout'));
+  });
+
   test('critical sidebar labels can wrap instead of being truncated', () {
     expect(source, contains('maxLines: 2'));
     expect(source, contains('softWrap: true'));
