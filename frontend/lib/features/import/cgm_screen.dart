@@ -7,10 +7,25 @@ import '../../core/widgets/responsive_content_surface.dart';
 import '../../services/cgm_service.dart';
 import 'cgm_connections_section.dart';
 
-class CgmScreen extends StatelessWidget {
+class CgmScreen extends StatefulWidget {
   final CgmService? service;
 
   const CgmScreen({super.key, this.service});
+
+  @override
+  State<CgmScreen> createState() => _CgmScreenState();
+}
+
+class _CgmScreenState extends State<CgmScreen> {
+  String? _sourceId;
+  bool? _hasNightscout;
+
+  int get _step => _sourceId == null ? 1 : _hasNightscout == null ? 2 : 3;
+
+  void _reset() => setState(() {
+        _sourceId = null;
+        _hasNightscout = null;
+      });
 
   @override
   Widget build(BuildContext context) {
@@ -24,95 +39,36 @@ class CgmScreen extends StatelessWidget {
             _CgmHeader(copy: copy),
             Expanded(
               child: ResponsiveContentSurface(
-                maxWidth: 1080,
+                maxWidth: 760,
                 child: SingleChildScrollView(
                   padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 28),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _JourneyCard(copy: copy),
+                      _WizardProgress(copy: copy, step: _step),
                       const SizedBox(height: 16),
-                      Text(
-                        copy.chooseSensor,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AminaTheme.ink900,
+                      if (_sourceId == null)
+                        _SensorStep(
+                          copy: copy,
+                          onSelect: (value) => setState(() => _sourceId = value),
+                        )
+                      else if (_hasNightscout == null)
+                        _NightscoutStep(
+                          copy: copy,
+                          sourceId: _sourceId!,
+                          onBack: () => setState(() => _sourceId = null),
+                          onAnswer: (value) =>
+                              setState(() => _hasNightscout = value),
+                        )
+                      else
+                        _ConnectStep(
+                          copy: copy,
+                          sourceId: _sourceId!,
+                          hasNightscout: _hasNightscout!,
+                          service: widget.service,
+                          onBack: () => setState(() => _hasNightscout = null),
+                          onReset: _reset,
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final guides = [
-                            _SourceGuideCard(
-                              key: const ValueKey('cgm-guide-dexcom'),
-                              icon: Icons.bluetooth_rounded,
-                              title: 'Dexcom G6/G7',
-                              path: copy.dexcomPath,
-                              steps: copy.dexcomSteps,
-                            ),
-                            _SourceGuideCard(
-                              key: const ValueKey('cgm-guide-libre'),
-                              icon: Icons.sensors_rounded,
-                              title: 'FreeStyle Libre',
-                              path: copy.librePath,
-                              steps: copy.libreSteps,
-                            ),
-                            _SourceGuideCard(
-                              key: const ValueKey('cgm-guide-linx'),
-                              icon: Icons.monitor_heart_outlined,
-                              title: 'LinX / AiDEX X',
-                              path: copy.linxPath,
-                              steps: copy.linxSteps,
-                            ),
-                          ];
-
-                          if (constraints.maxWidth >= 900) {
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                for (var i = 0; i < guides.length; i++) ...[
-                                  if (i > 0) const SizedBox(width: 12),
-                                  Expanded(child: guides[i]),
-                                ],
-                              ],
-                            );
-                          }
-
-                          return Column(
-                            children: [
-                              for (var i = 0; i < guides.length; i++) ...[
-                                if (i > 0) const SizedBox(height: 10),
-                                guides[i],
-                              ],
-                            ],
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      _NightscoutHelpCard(copy: copy),
-                      const SizedBox(height: 22),
-                      Text(
-                        copy.connectTitle,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AminaTheme.ink900,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        copy.connectIntro,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          height: 1.45,
-                          color: AminaTheme.ink600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      CgmConnectionsSection(service: service),
-                      const SizedBox(height: 14),
-                      _TroubleshootingCard(copy: copy),
                     ],
                   ),
                 ),
@@ -123,6 +79,353 @@ class CgmScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _WizardProgress extends StatelessWidget {
+  final _CgmGuideCopy copy;
+  final int step;
+
+  const _WizardProgress({required this.copy, required this.step});
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = [copy.stepSensor, copy.stepNightscout, copy.stepIamina];
+    return Row(
+      children: [
+        for (var i = 0; i < labels.length; i++) ...[
+          if (i > 0)
+            Expanded(
+              child: Container(
+                height: 2,
+                color: i < step ? AminaTheme.teal500 : AminaTheme.ink200,
+              ),
+            ),
+          Semantics(
+            label: copy.stepProgress(i + 1, labels[i]),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: i + 1 <= step ? AminaTheme.teal50 : AminaTheme.ink50,
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(
+                  color: i + 1 <= step ? AminaTheme.teal100 : AminaTheme.ink200,
+                ),
+              ),
+              child: Text(
+                labels[i],
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  color: i + 1 <= step ? AminaTheme.teal700 : AminaTheme.ink500,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _SensorStep extends StatelessWidget {
+  final _CgmGuideCopy copy;
+  final ValueChanged<String> onSelect;
+
+  const _SensorStep({required this.copy, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    final options = [
+      ('dexcom', 'Dexcom G6/G7', Icons.bluetooth_rounded),
+      ('libre', 'FreeStyle Libre', Icons.sensors_rounded),
+      ('linx', 'LinX / AiDEX X', Icons.monitor_heart_outlined),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          copy.sensorQuestion,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: AminaTheme.ink900,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          copy.sensorQuestionBody,
+          style: const TextStyle(fontSize: 12, height: 1.45, color: AminaTheme.ink600),
+        ),
+        const SizedBox(height: 16),
+        for (final option in options) ...[
+          Semantics(
+            button: true,
+            label: option.$2,
+            child: ClinicalCard(
+              padding: EdgeInsets.zero,
+              child: InkWell(
+                key: ValueKey('cgm-wizard-source-${option.$1}'),
+                onTap: () => onSelect(option.$1),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: AminaTheme.teal50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(option.$3, color: AminaTheme.teal700, size: 21),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          option.$2,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AminaTheme.ink900,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_rounded, color: AminaTheme.teal700),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+        const SizedBox(height: 6),
+        _JourneyCard(copy: copy),
+      ],
+    );
+  }
+}
+
+class _NightscoutStep extends StatelessWidget {
+  final _CgmGuideCopy copy;
+  final String sourceId;
+  final VoidCallback onBack;
+  final ValueChanged<bool> onAnswer;
+
+  const _NightscoutStep({
+    required this.copy,
+    required this.sourceId,
+    required this.onBack,
+    required this.onAnswer,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final title = switch (sourceId) {
+      'dexcom' => 'Dexcom G6/G7',
+      'libre' => 'FreeStyle Libre',
+      _ => 'LinX / AiDEX X',
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _BackStepButton(copy: copy, onPressed: onBack),
+        const SizedBox(height: 8),
+        Text(
+          copy.nightscoutQuestion(title),
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: AminaTheme.ink900,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          copy.nightscoutQuestionBody,
+          style: const TextStyle(fontSize: 12, height: 1.45, color: AminaTheme.ink600),
+        ),
+        const SizedBox(height: 16),
+        _ChoiceButton(
+          key: const ValueKey('cgm-wizard-nightscout-yes'),
+          icon: Icons.check_circle_outline_rounded,
+          label: copy.yesNightscout,
+          onPressed: () => onAnswer(true),
+        ),
+        const SizedBox(height: 10),
+        _ChoiceButton(
+          key: const ValueKey('cgm-wizard-nightscout-no'),
+          icon: Icons.help_outline_rounded,
+          label: copy.noNightscoutYet,
+          onPressed: () => onAnswer(false),
+        ),
+      ],
+    );
+  }
+}
+
+class _ConnectStep extends StatelessWidget {
+  final _CgmGuideCopy copy;
+  final String sourceId;
+  final bool hasNightscout;
+  final CgmService? service;
+  final VoidCallback onBack;
+  final VoidCallback onReset;
+
+  const _ConnectStep({
+    required this.copy,
+    required this.sourceId,
+    required this.hasNightscout,
+    required this.service,
+    required this.onBack,
+    required this.onReset,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final guide = _guideFor(copy, sourceId);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _BackStepButton(copy: copy, onPressed: onBack),
+        const SizedBox(height: 8),
+        if (!hasNightscout) ...[
+          Text(
+            copy.prepareNightscoutTitle,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AminaTheme.ink900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            copy.prepareNightscoutBody,
+            style: const TextStyle(fontSize: 12, height: 1.45, color: AminaTheme.ink600),
+          ),
+          const SizedBox(height: 14),
+          _SourceGuideCard(
+            key: ValueKey('cgm-wizard-guide-$sourceId'),
+            icon: guide.$1,
+            title: guide.$2,
+            path: guide.$3,
+            steps: guide.$4,
+            initiallyExpanded: true,
+          ),
+          const SizedBox(height: 14),
+          _NightscoutHelpCard(copy: copy),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const ValueKey('cgm-wizard-nightscout-ready'),
+              onPressed: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => CgmScreen(service: service),
+                ),
+              ),
+              icon: const Icon(Icons.check_rounded),
+              label: Text(copy.nightscoutReady),
+            ),
+          ),
+        ] else ...[
+          Text(
+            copy.connectTitle,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AminaTheme.ink900,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            copy.connectIntro,
+            style: const TextStyle(fontSize: 12, height: 1.45, color: AminaTheme.ink600),
+          ),
+          const SizedBox(height: 12),
+          CgmConnectionsSection(service: service, sourceFilter: sourceId),
+          const SizedBox(height: 14),
+          _TroubleshootingCard(copy: copy),
+          const SizedBox(height: 14),
+          TextButton.icon(
+            onPressed: onReset,
+            icon: const Icon(Icons.restart_alt_rounded),
+            label: Text(copy.changeSensor),
+          ),
+        ],
+      ],
+    );
+  }
+
+  (IconData, String, String, List<String>) _guideFor(
+    _CgmGuideCopy copy,
+    String sourceId,
+  ) {
+    return switch (sourceId) {
+      'dexcom' => (
+          Icons.bluetooth_rounded,
+          'Dexcom G6/G7',
+          copy.dexcomPath,
+          copy.dexcomSteps,
+        ),
+      'libre' => (
+          Icons.sensors_rounded,
+          'FreeStyle Libre',
+          copy.librePath,
+          copy.libreSteps,
+        ),
+      _ => (
+          Icons.monitor_heart_outlined,
+          'LinX / AiDEX X',
+          copy.linxPath,
+          copy.linxSteps,
+        ),
+    };
+  }
+}
+
+class _ChoiceButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  const _ChoiceButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        label: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Text(label),
+        ),
+      ),
+    );
+  }
+}
+
+class _BackStepButton extends StatelessWidget {
+  final _CgmGuideCopy copy;
+  final VoidCallback onPressed;
+
+  const _BackStepButton({required this.copy, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => TextButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.arrow_back_rounded, size: 17),
+        label: Text(copy.previousStep),
+      );
 }
 
 class _CgmHeader extends StatelessWidget {
@@ -240,12 +543,15 @@ class _SourceGuideCard extends StatelessWidget {
   final String path;
   final List<String> steps;
 
+  final bool initiallyExpanded;
+
   const _SourceGuideCard({
     super.key,
     required this.icon,
     required this.title,
     required this.path,
     required this.steps,
+    this.initiallyExpanded = false,
   });
 
   @override
@@ -253,6 +559,7 @@ class _SourceGuideCard extends StatelessWidget {
     return ClinicalCard(
       padding: EdgeInsets.zero,
       child: ExpansionTile(
+        initiallyExpanded: initiallyExpanded,
         tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         childrenPadding: const EdgeInsetsDirectional.fromSTEB(14, 0, 14, 14),
         leading: Container(
