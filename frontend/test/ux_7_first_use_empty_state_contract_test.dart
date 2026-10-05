@@ -7,14 +7,12 @@ String _read(String path) => File(path).readAsStringSync();
 String _readProfileLibrary() => [
   _read('lib/features/profile/profile_screen.dart'),
   _read('lib/features/profile/profile_screen_presentation.dart'),
-].join('
-    ');
+].join('\n');
 
 String _readSummaryLibrary() => [
   _read('lib/features/journal/ai_summary_screen.dart'),
   _read('lib/features/journal/ai_summary_screen_presentation.dart'),
-].join('
-    ');
+].join('\n');
 
 void main() {
   test('shared first-use panel is directional, semantic and action safe', () {
@@ -78,7 +76,7 @@ void main() {
       expect(module, contains("path: '/cgm'"));
       expect(cgmScreen, contains('class CgmScreen'));
       expect(cgmScreen, contains('CgmConnectionsSection(service: service, sourceFilter: sourceId)'));
-    expect(cgmScreen, contains("ValueKey('cgm-wizard-source-\${option.$1}')"));
+      expect(cgmScreen, contains("ValueKey('cgm-wizard-nightscout-yes')"));
       expect(cgmScreen, contains('Dexcom G6/G7'));
       expect(cgmScreen, contains('FreeStyle Libre'));
       expect(cgmScreen, contains('LinX / AiDEX X'));
