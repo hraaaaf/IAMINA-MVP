@@ -30,12 +30,14 @@ void main() {
       final source = _read(path);
       for (final match in emptyCallback.allMatches(source)) {
         final line =
-            '\n'.allMatches(source.substring(0, match.start)).length + 1;
+            '
+    '.allMatches(source.substring(0, match.start)).length + 1;
         failures.add('$path:$line has an empty patient-facing callback');
       }
     }
 
-    expect(failures, isEmpty, reason: failures.join('\n'));
+    expect(failures, isEmpty, reason: failures.join('
+    '));
   });
 
   test('the core add-view-edit-delete loop is wired to persisted data', () {
@@ -95,7 +97,9 @@ void main() {
       importer,
       contains("_CgmGuideEntryCard(onTap: () => context.push('/cgm'))"),
     );
-    expect(cgmScreen, contains('class CgmScreen'));\n    expect(cgmScreen, contains("ValueKey('cgm-wizard-source-\${option.$1}')"));\n    expect(cgmScreen, contains("ValueKey('cgm-wizard-nightscout-yes')"));
+    expect(cgmScreen, contains('class CgmScreen'));
+    expect(cgmScreen, contains("ValueKey('cgm-wizard-source-\${option.$1}')"));
+    expect(cgmScreen, contains("ValueKey('cgm-wizard-nightscout-yes')"));
     expect(cgmScreen, contains('CgmConnectionsSection(service: service, sourceFilter: sourceId)'));
     expect(cgm, contains("id: 'dexcom'"));
     expect(cgm, contains("id: 'libre'"));
@@ -117,7 +121,9 @@ void main() {
         _read('lib/features/journal/ai_summary_screen_presentation.dart');
     final localizedCopy =
         _read('lib/core/localization/ai_summary_localized_copy.dart');
-    final combined = '$summary\n$presentation\n$localizedCopy';
+    final combined = '$summary
+    $presentation
+    $localizedCopy';
     const forbidden = <String>[
       'Diviser la dose repas glucidique',
       'Fractionner bolus avant et après le repas',
