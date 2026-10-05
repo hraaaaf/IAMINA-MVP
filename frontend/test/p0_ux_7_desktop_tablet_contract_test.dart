@@ -44,7 +44,7 @@ void main() {
     expect(journal, contains('viewportWidth >= 700'));
   });
 
-  test('dedicated CGM guide uses a desktop three-column connection layout', () {
+  test('dedicated CGM guide keeps a centered wizard and responsive filtered connection layout', () {
     final importer = _read('lib/features/import/import_screen.dart');
     final cgmScreen = _read('lib/features/import/cgm_screen.dart');
     final cgm = _read('lib/features/import/cgm_connections_section.dart');
