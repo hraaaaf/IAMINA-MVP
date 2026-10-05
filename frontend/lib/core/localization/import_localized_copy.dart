@@ -104,6 +104,16 @@ extension ImportLocalizedCopy on AppLocalizations {
   String get cgmBearerToken => _pick(en: 'Bearer token', fr: 'Token Bearer', ar: 'رمز Bearer');
   String get cgmApiSecret => _pick(en: 'API secret', fr: 'Secret API', ar: 'سر API');
   String get cgmSecret => _pick(en: 'Secret', fr: 'Secret', ar: 'السر');
+  String get cgmShowSecret => _pick(
+        en: 'Show Nightscout secret',
+        fr: 'Afficher le secret Nightscout',
+        ar: 'إظهار سر Nightscout',
+      );
+  String get cgmHideSecret => _pick(
+        en: 'Hide Nightscout secret',
+        fr: 'Masquer le secret Nightscout',
+        ar: 'إخفاء سر Nightscout',
+      );
   String get cgmBridgeDisclosure => _pick(
         en: 'IAMINA reads your compatible Nightscout bridge; it does not log in directly to the sensor manufacturer.',
         fr: 'IAMINA lit votre bridge Nightscout compatible ; elle ne se connecte pas directement au fabricant du capteur.',

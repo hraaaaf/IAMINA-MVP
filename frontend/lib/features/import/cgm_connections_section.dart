@@ -669,8 +669,13 @@ class _CgmConfigurationDialogState extends State<_CgmConfigurationDialog> {
                 decoration: InputDecoration(
                   labelText: l10n.cgmSecret,
                   suffixIcon: IconButton(
+                    tooltip: _obscure
+                        ? l10n.cgmShowSecret
+                        : l10n.cgmHideSecret,
                     onPressed: () => setState(() => _obscure = !_obscure),
-                    icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+                    icon: Icon(
+                      _obscure ? Icons.visibility : Icons.visibility_off,
+                    ),
                   ),
                 ),
                 onChanged: (_) => setState(() {}),
