@@ -135,6 +135,11 @@ extension ImportLocalizedCopy on AppLocalizations {
         fr: 'La connexion CGM est temporairement indisponible.',
         ar: 'اتصال CGM غير متاح مؤقتًا.',
       );
+  String get cgmAuthenticationRequired => _pick(
+        en: 'CGM configuration is unavailable in this session because an authenticated IAMINA account is required. The setup guides remain available.',
+        fr: 'La configuration CGM est indisponible dans cette session car un compte IAMINA authentifié est requis. Les guides de configuration restent accessibles.',
+        ar: 'إعداد CGM غير متاح في هذه الجلسة لأنه يتطلب حساب IAMINA موثقًا. تبقى أدلة الإعداد متاحة.',
+      );
   String get cgmSaved => _pick(en: 'Connection saved.', fr: 'Connexion enregistrée.', ar: 'تم حفظ الاتصال.');
   String get cgmSyncComplete => _pick(en: 'Sync complete.', fr: 'Synchronisation terminée.', ar: 'اكتملت المزامنة.');
   String get cgmHowToUse => _pick(
