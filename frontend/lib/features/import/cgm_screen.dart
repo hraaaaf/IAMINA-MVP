@@ -963,9 +963,9 @@ class _CgmGuideCopy {
       );
 
   String get connectIntro => _pick(
-        fr: 'Une fois Nightscout alimenté, choisissez votre capteur ci-dessous, appuyez sur Configurer, enregistrez l’URL + l’accès Nightscout, puis lancez Synchroniser. Une connexion réussie doit afficher une mesure récente et l’heure de la dernière synchro.',
-        en: 'Once Nightscout has data, choose your sensor below, tap Configure, save the Nightscout URL + access, then run Sync. A successful connection should show a recent reading and the last sync time.',
-        ar: 'بعد وصول البيانات إلى Nightscout، اختر المستشعر أدناه واضغط إعداد، ثم احفظ رابط Nightscout وبيانات الوصول وشغّل المزامنة. يجب أن يعرض الاتصال الناجح قراءة حديثة ووقت آخر مزامنة.',
+        fr: 'Renseignez l’URL HTTPS et l’accès Nightscout puis Enregistrer. IAMINA lance automatiquement un premier test de synchronisation. Si la connexion réussit, une mesure récente et l’heure de la dernière synchro apparaissent ici.',
+        en: 'Enter the HTTPS URL and Nightscout access, then Save. IAMINA automatically runs a first sync test. If the connection succeeds, a recent reading and the last sync time appear here.',
+        ar: 'أدخل رابط HTTPS وبيانات وصول Nightscout ثم احفظ. تشغّل IAMINA تلقائيًا أول اختبار مزامنة. عند نجاح الاتصال تظهر هنا قراءة حديثة ووقت آخر مزامنة.',
       );
 
   String get troubleTitle => _pick(
