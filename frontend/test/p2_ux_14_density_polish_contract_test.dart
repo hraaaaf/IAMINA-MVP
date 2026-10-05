@@ -73,7 +73,7 @@ void main() {
     );
     expect(cgmScreen, contains('maxWidth: 760'));
     expect(cgmScreen, contains('constraints.maxWidth < 480'));
-    expect(cgmScreen, contains("compact ? '${i + 1}' : labels[i]"));
+    expect(cgmScreen, contains("compact ? '\${i + 1}' : labels[i]"));
     expect(cgmScreen, contains('sourceFilter: sourceId'));
     expect(cgm, contains('constraints.maxWidth >= 900'));
     expect(cgm, contains('Expanded(child: cards[i])'));
