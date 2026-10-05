@@ -8,8 +8,13 @@ import '../../services/cgm_service.dart';
 
 class CgmConnectionsSection extends StatefulWidget {
   final CgmService? service;
+  final String? sourceFilter;
 
-  const CgmConnectionsSection({super.key, this.service});
+  const CgmConnectionsSection({
+    super.key,
+    this.service,
+    this.sourceFilter,
+  });
 
   @override
   State<CgmConnectionsSection> createState() => _CgmConnectionsSectionState();
@@ -262,7 +267,12 @@ class _CgmConnectionsSectionState extends State<CgmConnectionsSection> {
         if (_error != null) const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
-            final cards = _sources
+            final visibleSources = widget.sourceFilter == null
+                ? _sources
+                : _sources
+                    .where((source) => source.id == widget.sourceFilter)
+                    .toList(growable: false);
+            final cards = visibleSources
                 .map((source) => _buildSourceCard(source, l10n))
                 .toList(growable: false);
             if (constraints.maxWidth >= 900) {
