@@ -8,6 +8,14 @@ import 'package:amina/features/import/cgm_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:amina/services/cgm_service.dart';
 
+
+class _AuthRequiredCgmService extends CgmService {
+  @override
+  Future<CgmConnectionState> getConnection() async {
+    throw const CgmServiceException('authentication_required', 401);
+  }
+}
+
 class _GuidedCgmService extends CgmService {
   @override
   Future<CgmConnectionState> getConnection() async =>
@@ -34,6 +42,29 @@ Future<void> _pumpGuide(
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       home: CgmScreen(service: _GuidedCgmService()),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 250));
+}
+
+
+Future<void> _pumpAuthRequiredGuide(WidgetTester tester) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(390, 844);
+  await tester.pumpWidget(
+    MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: AminaVisualLanguage.harmonize(AminaTheme.light),
+      locale: const Locale('fr'),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: CgmScreen(service: _AuthRequiredCgmService()),
     ),
   );
   await tester.pump();
@@ -68,6 +99,30 @@ void main() {
     expect(find.textContaining('Partage/Share'), findsOneWidget);
     expect(find.textContaining('Nightscout Connect'), findsWidgets);
 
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('auth-required CGM state is truthful and non-actionable', (
+    tester,
+  ) async {
+    await _pumpAuthRequiredGuide(tester);
+
+    expect(
+      find.textContaining('un compte IAMINA authentifié est requis'),
+      findsOneWidget,
+    );
+
+    final configureButtons = tester
+        .widgetList<FilledButton>(find.byType(FilledButton))
+        .where((button) {
+          final child = button.child;
+          return child is Text && child.data == 'Configurer';
+        })
+        .toList();
+
+    expect(configureButtons, isNotEmpty);
+    expect(configureButtons.every((button) => button.onPressed == null), isTrue);
+    expect(find.byTooltip('Mode d’emploi'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
