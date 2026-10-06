@@ -180,3 +180,48 @@ Remaining audit work:
 - certify a true virgin zero-to-value first-use path independently from the pre-seeded demo;
 - run the final transversal mobile 390×844 audit and rescore;
 - deploy/re-audit production only after explicit Vercel approval.
+
+
+## Final first-use mobile certification — 2026-10-06
+
+Certification-only PR #880 merged to `main` at `16a6b1f418f6a026011fe62c73f7be11a1b81575`.
+
+Exact-head proof on `9d2ba059d713a32820809d7a1a3ab19e64bef24f`:
+- CI ✅
+- P7 responsive Dashboard certification ✅
+- First-use mobile visual certification ✅
+- UI browser screenshot certification ✅
+
+The dedicated first-use browser artifact contains seven readable 390×844 captures with the local audit database unseeded:
+1. onboarding;
+2. consent;
+3. empty dashboard;
+4. add first measurement;
+5. factual post-save receipt;
+6. automatic insight in insufficient-data state;
+7. first IAmina exchange using a deterministic certification service.
+
+Observed first-use visual scores (390×844):
+- Onboarding: 7.8/10 — clear progressive start, but the first viewport is visually sparse and does not preview the remaining setup steps.
+- Consent: 8.8/10 — clear hierarchy, explicit accept/continue-without-AI paths, safety copy visible.
+- Empty dashboard: 8.3/10 — primary Add measurement CTA is obvious; however the “À retenir aujourd’hui” area is still busy before any measurement exists.
+- First measurement form: 9.1/10 — blank-by-default, explicit “no value assumed” copy, one-step context, strong save affordance.
+- Post-save receipt: 9.4/10 — immediate factual value, local-save confirmation, explicit non-interpretation note, clear next actions.
+- Automatic insight after one reading: 7.4/10 — behavior is correctly fail-closed (“insufficient data”), but the copy “état longitudinal gouverné / insight qualifié” is too technical for a new user.
+- First IAmina exchange: 9.0/10 — clear conversational distinction, readable two-message exchange, no fabricated clinical inference.
+
+Final first-use visual score: approximately 8.5/10, up from the original provisional 5.8/10 baseline.
+
+Cross-cutting mobile assessment from the certified browser flows:
+- navigation separation between Measurements / Reports / IAmina / Import / CGM is substantially clearer than baseline;
+- deep-page exits are visible;
+- Import and CGM are separated;
+- CGM novice wizard visual score: approximately 9.1/10;
+- safety remains strong: first measurement receipt is factual, first real-user insight after one reading remains insufficient-data rather than fabricated, and CGM auth-required states fail closed.
+
+Remaining product-level UX debt:
+- simplify onboarding first-viewport affordance / progress expectation;
+- simplify insufficient-data IAmina wording for non-technical users;
+- reduce empty-dashboard “À retenir aujourd’hui” density before the first measurement.
+
+No Vercel deployment performed. Production re-audit still requires an explicit deployment approval.
