@@ -21,30 +21,30 @@ extension DashboardInsightLocalizedCopy on AppLocalizations {
       );
 
   String get dashboardInsightSubheading => _insightPick(
-        en: 'A passive signal from your recorded data. This is not the chat.',
-        fr: 'Un signal automatique issu de vos données enregistrées. Ce n’est pas le chat.',
-        ar: 'إشارة تلقائية من بياناتك المسجلة. هذا ليس الدردشة.',
+        en: 'IAmina looks for useful trends in your recorded readings. This is separate from the chat.',
+        fr: 'IAmina recherche des tendances utiles dans vos mesures enregistrées. Cette analyse est distincte du chat.',
+        ar: 'تبحث IAmina عن اتجاهات مفيدة في قياساتك المسجلة. هذا التحليل منفصل عن الدردشة.',
       );
 
   String get dashboardInsightLoading => _insightPick(
-        en: 'Reading the governed signal…',
-        fr: 'Lecture du signal gouverné…',
-        ar: 'جارٍ قراءة الإشارة الموثوقة…',
+        en: 'Looking for a useful trend…',
+        fr: 'Recherche d’une tendance utile…',
+        ar: 'جارٍ البحث عن اتجاه مفيد…',
       );
 
   String get dashboardInsightUnavailable => _insightPick(
-        en: 'The governed insight is unavailable right now. No interpretation is invented.',
-        fr: 'L’insight gouverné est indisponible pour le moment. Aucune interprétation n’est inventée.',
-        ar: 'الإشارة الموثوقة غير متاحة حالياً. لا يتم اختراع أي تفسير.',
+        en: 'The automatic analysis is unavailable right now. IAmina will not invent an interpretation.',
+        fr: 'L’analyse automatique est indisponible pour le moment. IAmina n’invente aucune interprétation.',
+        ar: 'التحليل التلقائي غير متاح حالياً. لن تختلق IAmina أي تفسير.',
       );
 
   String get dashboardInsightRetry =>
       _insightPick(en: 'Retry', fr: 'Réessayer', ar: 'إعادة المحاولة');
 
   String get dashboardInsightInsufficient => _insightPick(
-        en: 'Not enough governed longitudinal state yet to show a qualified insight.',
-        fr: 'Pas encore assez d’état longitudinal gouverné pour afficher un insight qualifié.',
-        ar: 'لا تتوفر بعد حالة طولية موثوقة كافية لعرض إشارة مؤهلة.',
+        en: 'Not enough readings yet to show a useful trend. Keep recording normally; IAmina will show one only when the data is sufficient.',
+        fr: 'Pas encore assez de mesures pour afficher une tendance utile. Continuez simplement à enregistrer vos mesures ; IAmina en affichera une seulement quand les données seront suffisantes.',
+        ar: 'لا توجد قياسات كافية بعد لإظهار اتجاه مفيد. واصل تسجيل قياساتك بشكل طبيعي؛ ستعرض IAmina اتجاهاً فقط عندما تصبح البيانات كافية.',
       );
 
   String get dashboardInsightCooldown => _insightPick(

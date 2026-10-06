@@ -172,16 +172,16 @@ class _DashboardBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final latest = logs.isEmpty ? null : logs.first;
-    final latestAt = latest == null
-        ? null
-        : (latest.loggedAt ?? latest.createdAt);
+    if (latest == null) {
+      return _EmptyPremiumDashboard(scrollController: scrollController);
+    }
+    final latestAt = latest.loggedAt ?? latest.createdAt;
     final hasTarget = low != null && high != null && low! < high!;
     final inRange =
-        latest != null &&
         hasTarget &&
         latest.bloodSugar >= low! &&
         latest.bloodSugar <= high!;
-    final highValue = latest != null && hasTarget && latest.bloodSugar > high!;
+    final highValue = hasTarget && latest.bloodSugar > high!;
     final locale = _dashboardDateLocale(context);
 
     return Scaffold(
@@ -231,18 +231,9 @@ class _DashboardBody extends StatelessWidget {
                           _LatestReadingCard(
                             latest: latest,
                             latestAt: latestAt,
-                            display: latest == null
-                                ? '—'
-                                : _display(latest.bloodSugar),
+                            display: _display(latest.bloodSugar),
                             unit: unit,
-                            status: latest == null
-                                ? _t(
-                                    context,
-                                    'Aucune mesure',
-                                    'No reading yet',
-                                    'لا توجد قراءة بعد',
-                                  )
-                                : !hasTarget
+                            status: !hasTarget
                                 ? AppLocalizations.of(
                                     context,
                                   )!.dashboardTargetNotConfigured
@@ -757,6 +748,212 @@ class _PremiumState extends StatelessWidget {
                   const Spacer(flex: 2),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+class _EmptyPremiumDashboard extends StatelessWidget {
+  final ScrollController? scrollController;
+
+  const _EmptyPremiumDashboard({this.scrollController});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AminaTheme.isDark(context)
+          ? AminaTheme.bg(context)
+          : const Color(0xFFF4FBF9),
+      body: Stack(
+        children: [
+          const Positioned.fill(child: _AmbientBackground()),
+          SafeArea(
+            bottom: false,
+            child: CustomScrollView(
+              controller: scrollController,
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 20, 128),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      const _PremiumBrandHeader(),
+                      const SizedBox(height: 28),
+                      Text(
+                        _t(
+                          context,
+                          'Commencez par une première mesure',
+                          'Start with your first reading',
+                          'ابدأ بأول قياس',
+                        ),
+                        style: TextStyle(
+                          fontFamily: 'Georgia',
+                          fontSize: 30,
+                          height: 1.05,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -.7,
+                          color: AminaVisualLanguage.primaryText(context),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        _t(
+                          context,
+                          'Votre tableau de bord se construira uniquement à partir de vos données réelles.',
+                          'Your dashboard will be built only from your real data.',
+                          'سيتم إنشاء لوحة المتابعة فقط من بياناتك الحقيقية.',
+                        ),
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.5,
+                          color: AminaVisualLanguage.secondary(context),
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: AminaVisualLanguage.cardDecoration(
+                          context,
+                          radius: 24,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration:
+                                  AminaVisualLanguage.mintIconDecoration(context),
+                              child: const Icon(
+                                Icons.water_drop_outlined,
+                                color: AminaVisualLanguage.actionGreen,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _t(
+                                context,
+                                'Ajoutez une mesure maintenant',
+                                'Add a reading now',
+                                'أضف قياساً الآن',
+                              ),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color:
+                                    AminaVisualLanguage.primaryText(context),
+                              ),
+                            ),
+                            const SizedBox(height: 7),
+                            Text(
+                              _t(
+                                context,
+                                'Il suffit d’entrer votre glycémie. Le contexte et le repas restent facultatifs.',
+                                'Just enter your glucose reading. Context and meal details stay optional.',
+                                'يكفي إدخال قراءة السكر. يبقى السياق وتفاصيل الوجبة اختيارية.',
+                              ),
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                height: 1.45,
+                                color: AminaVisualLanguage.secondary(context),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: FilledButton.icon(
+                                key: const ValueKey(
+                                  'dashboard-first-reading-primary',
+                                ),
+                                onPressed: () => context.go('/ajouter'),
+                                icon: const Icon(Icons.add_rounded, size: 20),
+                                label: Text(
+                                  _t(
+                                    context,
+                                    'Ajouter ma première mesure',
+                                    'Add my first reading',
+                                    'إضافة أول قياس لي',
+                                  ),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor:
+                                      AminaVisualLanguage.forestDeep,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      AminaVisualLanguage.controlRadius,
+                                    ),
+                                  ),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 46,
+                              child: OutlinedButton.icon(
+                                key: const ValueKey(
+                                  'dashboard-first-import-secondary',
+                                ),
+                                onPressed: () => context.go('/importer'),
+                                icon: const Icon(
+                                  Icons.upload_file_outlined,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  _t(
+                                    context,
+                                    'Ou importer un document',
+                                    'Or import a document',
+                                    'أو استيراد مستند',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.verified_user_outlined,
+                            size: 17,
+                            color: AminaVisualLanguage.actionGreen,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _t(
+                                context,
+                                'Aucune tendance ni analyse n’est affichée avant d’avoir suffisamment de données.',
+                                'No trend or analysis is shown before there is enough data.',
+                                'لا يتم عرض أي اتجاه أو تحليل قبل توفر بيانات كافية.',
+                              ),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                height: 1.4,
+                                color: AminaVisualLanguage.secondary(context),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ]),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

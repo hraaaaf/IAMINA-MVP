@@ -128,7 +128,7 @@ jobs:
             python3 /tmp/first_use_capture.py "$target" "$port"
             kill "$CHROME_PID" 2>/dev/null || true
             wait "$CHROME_PID" 2>/dev/null || true
-            rm -rf "$profile_dir"
+            rm -rf "$profile_dir" || true
 
             test -s "$target"
             bytes="$(stat -c%s "$target")"
