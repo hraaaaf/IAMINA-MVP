@@ -1,5 +1,6 @@
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/data/models/proactive_preview_models.dart';
+import 'package:amina/core/localization/dashboard_insight_localized_copy.dart';
 import 'package:amina/features/companion/companion_conversation_screen.dart';
 import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
 import 'package:amina/features/dashboard/widgets/dashboard_insight_section.dart';
