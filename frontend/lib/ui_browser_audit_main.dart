@@ -111,6 +111,31 @@ class _BrowserAuditCompanionService extends CompanionService {
   );
 }
 
+class _BrowserFirstUseCompanionService extends CompanionService {
+  @override
+  Future<ProactivePreview?> fetchProactivePreview() async =>
+      const ProactivePreview(
+        status: 'insufficient_data',
+        attentionBudget: 'one_non_urgent_item_per_24h',
+        cooldownUntil: null,
+        pendingCount: 0,
+        safetyNotice: 'first_use_browser_fixture',
+        item: null,
+      );
+
+  @override
+  Future<CompanionChatReply?> sendChatMessage(
+    String message, {
+    int contextDays = 14,
+  }) async =>
+      const CompanionChatReply(
+        reply:
+            'Je peux t’aider à organiser ce que tu as enregistré, sans inventer ce que les données ne montrent pas.',
+        conversationId: 'first-use-browser',
+        replyLanguage: 'fr',
+      );
+}
+
 class _BrowserMealFavoritesRepository implements MealFoodFavoritesRepository {
   Set<String> _ids = <String>{'whole_grain_bread'};
 
@@ -142,7 +167,10 @@ Future<void> main() async {
     ..attachStream(db.watchProfile());
   final modules = ModulesProvider(api);
   final sync = SyncService(db, api);
-  final visualCompanion = _BrowserAuditCompanionService();
+  final shouldSeedDemo = Uri.base.queryParameters['seed'] != '0';
+  final CompanionService visualCompanion = shouldSeedDemo
+      ? _BrowserAuditCompanionService()
+      : _BrowserFirstUseCompanionService();
 
   runApp(
     MultiProvider(
@@ -167,7 +195,6 @@ Future<void> main() async {
     ),
   );
 
-  final shouldSeedDemo = Uri.base.queryParameters['seed'] != '0';
   if (shouldSeedDemo) {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
