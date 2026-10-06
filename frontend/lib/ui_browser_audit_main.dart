@@ -11,6 +11,8 @@ import 'core/widgets/mobile_page_header.dart';
 import 'data/drift/database.dart';
 import 'data/models/companion_models.dart';
 import 'data/models/proactive_preview_models.dart';
+import 'features/auth/consent_screen.dart';
+import 'features/auth/onboarding_chat_screen.dart';
 import 'features/companion/companion_conversation_screen.dart';
 import 'features/companion/companion_premium_screen.dart';
 import 'features/dashboard/dashboard_companion_entry_screen.dart';
@@ -35,6 +37,8 @@ import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/companion_service.dart';
 import 'services/consent_service.dart';
+import 'services/consent_evidence_store.dart';
+import 'services/locale_preference_service.dart';
 import 'services/meal_food_favorites_repository.dart';
 import 'services/modules_provider.dart';
 import 'services/sync_service.dart';
@@ -107,6 +111,31 @@ class _BrowserAuditCompanionService extends CompanionService {
   );
 }
 
+class _BrowserFirstUseCompanionService extends CompanionService {
+  @override
+  Future<ProactivePreview?> fetchProactivePreview() async =>
+      const ProactivePreview(
+        status: 'insufficient_data',
+        attentionBudget: 'one_non_urgent_item_per_24h',
+        cooldownUntil: null,
+        pendingCount: 0,
+        safetyNotice: 'first_use_browser_fixture',
+        item: null,
+      );
+
+  @override
+  Future<CompanionChatReply?> sendChatMessage(
+    String message, {
+    int contextDays = 14,
+  }) async =>
+      const CompanionChatReply(
+        reply:
+            'Je peux t’aider à organiser ce que tu as enregistré, sans inventer ce que les données ne montrent pas.',
+        conversationId: 'first-use-browser',
+        replyLanguage: 'fr',
+      );
+}
+
 class _BrowserMealFavoritesRepository implements MealFoodFavoritesRepository {
   Set<String> _ids = <String>{'whole_grain_bread'};
 
@@ -138,7 +167,10 @@ Future<void> main() async {
     ..attachStream(db.watchProfile());
   final modules = ModulesProvider(api);
   final sync = SyncService(db, api);
-  final visualCompanion = _BrowserAuditCompanionService();
+  final shouldSeedDemo = Uri.base.queryParameters['seed'] != '0';
+  final CompanionService visualCompanion = shouldSeedDemo
+      ? _BrowserAuditCompanionService()
+      : _BrowserFirstUseCompanionService();
 
   runApp(
     MultiProvider(
@@ -148,6 +180,10 @@ Future<void> main() async {
         Provider<ApiClient>.value(value: api),
         Provider<SyncService>.value(value: sync),
         ChangeNotifierProvider<ConsentService>.value(value: consent),
+        Provider<ConsentEvidenceStore>(create: (_) => ConsentEvidenceStore()),
+        ChangeNotifierProvider<LocalePreferenceService>(
+          create: (_) => LocalePreferenceService(api),
+        ),
         ChangeNotifierProvider<ModulesProvider>.value(value: modules),
         ChangeNotifierProvider<TweaksNotifier>(create: (_) => TweaksNotifier()),
         StreamProvider<PatientProfileData?>(
@@ -159,13 +195,15 @@ Future<void> main() async {
     ),
   );
 
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    try {
-      await db.seedDemoData();
-    } catch (error) {
-      debugPrint('Browser audit demo seed unavailable: $error');
-    }
-  });
+  if (shouldSeedDemo) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await db.seedDemoData();
+      } catch (error) {
+        debugPrint('Browser audit demo seed unavailable: $error');
+      }
+    });
+  }
 }
 
 class _BrowserAuditApp extends StatelessWidget {
@@ -203,6 +241,14 @@ class _BrowserAuditApp extends StatelessWidget {
           ],
         ),
         GoRoute(
+          path: '/onboarding',
+          builder: (context, state) => const OnboardingChatScreen(),
+        ),
+        GoRoute(
+          path: '/consent',
+          builder: (context, state) => const ConsentScreen(),
+        ),
+        GoRoute(
           path: '/importer',
           builder: (context, state) => const DocumentImportPremiumScreen(),
         ),
@@ -238,6 +284,15 @@ class _BrowserAuditApp extends StatelessWidget {
           path: '/amina-chat',
           builder: (context, state) =>
               CompanionConversationScreen(service: visualCompanion),
+        ),
+        GoRoute(
+          path: '/first-use-receipt',
+          builder: (context, state) => const _BrowserFirstUseReceiptSurface(),
+        ),
+        GoRoute(
+          path: '/first-use-chat',
+          builder: (context, state) =>
+              _BrowserFirstUseChatSurface(service: visualCompanion),
         ),
         GoRoute(
           path: '/trend',
@@ -334,6 +389,8 @@ class _BrowserAddLogMealSurfaceState extends State<_BrowserAddLogMealSurface> {
 }
 
 String _pathForSurface(String surface) => switch (surface) {
+  'onboarding' => '/onboarding',
+  'consent' => '/consent',
   'dashboard' => '/dashboard',
   'journal' => '/journal',
   'summary' => '/summary',
@@ -347,6 +404,8 @@ String _pathForSurface(String surface) => switch (surface) {
   'reminders' => '/reminders',
   'companion' => '/companion',
   'amina-chat' => '/amina-chat',
+  'first-use-receipt' => '/first-use-receipt',
+  'first-use-chat' => '/first-use-chat',
   'trend' => '/trend',
   'kpi' => '/kpi',
   'insight' => '/insight',
@@ -524,4 +583,116 @@ class _BrowserNextActionSurface extends StatelessWidget {
       ),
     );
   }
+}
+
+
+class _BrowserFirstUseReceiptSurface extends StatefulWidget {
+  const _BrowserFirstUseReceiptSurface();
+
+  @override
+  State<_BrowserFirstUseReceiptSurface> createState() =>
+      _BrowserFirstUseReceiptSurfaceState();
+}
+
+class _BrowserFirstUseReceiptSurfaceState
+    extends State<_BrowserFirstUseReceiptSurface> {
+  var _phase = 0;
+  var _attempts = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _advance());
+  }
+
+  void _advance() {
+    if (!mounted || _attempts++ > 20) return;
+
+    Element? target;
+    void visit(Element element) {
+      if (target != null) return;
+      if (_phase == 0 &&
+          element.widget.key == const Key('glucose-input')) {
+        target = element;
+        return;
+      }
+      if (_phase == 1 &&
+          element.widget.key == const Key('save-log-button')) {
+        target = element;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    context.visitChildElements(visit);
+    final widget = target?.widget;
+    if (_phase == 0 && widget is TextField) {
+      widget.controller?.text = '126';
+      widget.onChanged?.call('126');
+      _phase = 1;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _advance());
+      return;
+    }
+    if (_phase == 1 && widget is FilledButton && widget.onPressed != null) {
+      widget.onPressed!.call();
+      _phase = 2;
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _advance());
+  }
+
+  @override
+  Widget build(BuildContext context) => const AddLogScreen();
+}
+
+class _BrowserFirstUseChatSurface extends StatefulWidget {
+  final CompanionService service;
+
+  const _BrowserFirstUseChatSurface({required this.service});
+
+  @override
+  State<_BrowserFirstUseChatSurface> createState() =>
+      _BrowserFirstUseChatSurfaceState();
+}
+
+class _BrowserFirstUseChatSurfaceState
+    extends State<_BrowserFirstUseChatSurface> {
+  var _attempts = 0;
+  var _submitted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _submit());
+  }
+
+  void _submit() {
+    if (!mounted || _submitted || _attempts++ > 20) return;
+
+    Element? target;
+    void visit(Element element) {
+      if (target != null) return;
+      if (element.widget.key == const Key('companion-chat-input')) {
+        target = element;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    context.visitChildElements(visit);
+    final widget = target?.widget;
+    if (widget is TextField) {
+      const message = 'Que peux-tu faire avec cette première mesure ?';
+      widget.controller?.text = message;
+      widget.onChanged?.call(message);
+      widget.onSubmitted?.call(message);
+      _submitted = true;
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _submit());
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      CompanionConversationScreen(service: widget.service);
 }

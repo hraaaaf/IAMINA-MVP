@@ -1,0 +1,152 @@
+name: First-use mobile visual certification
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/ui_browser_audit_main.dart'
+      - 'frontend/lib/features/auth/**'
+      - 'frontend/lib/features/dashboard/**'
+      - 'frontend/lib/features/journal/**'
+      - 'frontend/lib/features/companion/**'
+      - 'frontend/lib/core/**'
+      - 'frontend/lib/l10n/**'
+      - '.github/workflows/first-use-mobile-visual-cert.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  first-use-mobile:
+    name: Virgin first-use 390x844
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Analyze first-use browser harness
+        run: flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart
+      - name: Build first-use browser harness
+        run: flutter build web --release -t lib/ui_browser_audit_main.dart
+      - name: Capture first-use sequence at 390x844
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="$GITHUB_WORKSPACE/first-use-mobile-cert"
+          mkdir -p "$OUT"
+          python3 -m pip install --quiet websocket-client
+          python3 -m http.server 7361 --directory build/web >/tmp/iamina-first-use-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7361 >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:7361 >/dev/null
+
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+
+          cat > /tmp/first_use_capture.py <<'PY'
+          import base64, json, sys, time, urllib.request
+          from websocket import create_connection
+
+          target, port = sys.argv[1], int(sys.argv[2])
+          endpoint = f'http://127.0.0.1:{port}/json/list'
+          pages = json.load(urllib.request.urlopen(endpoint))
+          page = next(item for item in pages if item.get('type') == 'page')
+          ws = create_connection(page['webSocketDebuggerUrl'], timeout=20)
+          counter = 0
+
+          def call(method, params=None):
+              global counter
+              counter += 1
+              ws.send(json.dumps({'id': counter, 'method': method, 'params': params or {}}))
+              while True:
+                  response = json.loads(ws.recv())
+                  if response.get('id') == counter:
+                      return response
+
+          call('Page.enable')
+          call('Emulation.setDeviceMetricsOverride', {
+              'width': 390,
+              'height': 844,
+              'deviceScaleFactor': 1,
+              'mobile': True,
+          })
+          call('Page.reload', {'ignoreCache': True})
+          time.sleep(10)
+          shot = call('Page.captureScreenshot', {
+              'format': 'png',
+              'captureBeyondViewport': False,
+              'fromSurface': True,
+          })
+          data = shot.get('result', {}).get('data')
+          if not data:
+              raise RuntimeError(f'No screenshot payload: {shot}')
+          with open(target, 'wb') as fh:
+              fh.write(base64.b64decode(data))
+          ws.close()
+          PY
+
+          surfaces=(onboarding consent dashboard add-log first-use-receipt insight first-use-chat)
+
+          idx=0
+          for surface in "${surfaces[@]}"; do
+            idx=$((idx+1))
+            port=$((9230+idx))
+            profile_dir="$(mktemp -d)"
+            target="$OUT/${idx}-${surface}-390x844.png"
+
+            "$CHROME"               --headless=new               --no-sandbox               --enable-unsafe-swiftshader               --hide-scrollbars               --remote-allow-origins='*'               --remote-debugging-port="$port"               --user-data-dir="$profile_dir"               --window-size=390,844               "http://127.0.0.1:7361/?surface=${surface}&seed=0"               >"/tmp/iamina-first-use-${surface}.log" 2>&1 &
+            CHROME_PID=$!
+
+            READY=0
+            for _ in $(seq 1 35); do
+              if curl -fsS "http://127.0.0.1:${port}/json/list" >/dev/null; then
+                READY=1
+                break
+              fi
+              sleep 1
+            done
+            if [ "$READY" != "1" ]; then
+              cat "/tmp/iamina-first-use-${surface}.log" >&2 || true
+              kill "$CHROME_PID" 2>/dev/null || true
+              exit 1
+            fi
+
+            python3 /tmp/first_use_capture.py "$target" "$port"
+            kill "$CHROME_PID" 2>/dev/null || true
+            wait "$CHROME_PID" 2>/dev/null || true
+            rm -rf "$profile_dir"
+
+            test -s "$target"
+            bytes="$(stat -c%s "$target")"
+            if [ "$bytes" -lt 9000 ]; then
+              echo "Capture $target suspiciously small: $bytes bytes" >&2
+              exit 1
+            fi
+          done
+
+          count="$(find "$OUT" -name '*-390x844.png' | wc -l)"
+          test "$count" -eq 7
+          unique="$(sha256sum "$OUT"/*.png | awk '{print $1}' | sort -u | wc -l)"
+          test "$unique" -eq 7
+      - name: Upload first-use visual proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-first-use-mobile-390x844
+          path: first-use-mobile-cert/*.png
+          if-no-files-found: warn
+          retention-days: 14
