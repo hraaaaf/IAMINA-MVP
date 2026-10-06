@@ -2,7 +2,7 @@
 
 ## Status
 
-CORE UX REMEDIATION MERGED — through PR #878. No Vercel deployment.
+CORE UX REMEDIATION MERGED — through PR #881. No Vercel deployment.
 
 ## Goal
 
@@ -225,3 +225,61 @@ Remaining product-level UX debt:
 - reduce empty-dashboard “À retenir aujourd’hui” density before the first measurement.
 
 No Vercel deployment performed. Production re-audit still requires an explicit deployment approval.
+
+
+## First-use >9/10 closeout — 2026-10-06
+
+PR #881 `feat(first-use): raise all mobile first-use steps above 9/10` merged to `main`.
+
+Final product/test HEAD before merge:
+- `b15e09d4bd08b09565dac810bd1c23bb1e80cfed`
+
+Merge commit:
+- `e577fff140066abf038dec38806ab34f603be2f0`
+
+Scope:
+- onboarding hierarchy/progress expectation;
+- empty-dashboard first-use hierarchy;
+- insufficient-data insight wording;
+- consent visual hierarchy and explicit secondary “continue without AI” affordance;
+- first IAmina exchange authorship labels;
+- first-use screenshot harness cleanup;
+- one stale compact-consent static test aligned with the approved layout.
+
+Safety / behavior preserved:
+- consent accept/decline handlers unchanged;
+- no clinical-authority expansion;
+- no deterministic safety behavior change;
+- no backend or DB behavior change;
+- no Vercel deployment.
+
+Exact-head CI evidence on `b15e09d4...`:
+- CI run `37477858158` ✅
+- First-use mobile visual certification `37477858317` ✅
+- Dashboard responsive visual certification `37477858204` ✅
+- P7 responsive Dashboard certification `37477858025` ✅
+- Companion real chat E2E screenshots `37477858236` ✅
+- CGM onboarding browser certification `37477858099` ✅
+- UI global missing routes certification `37477858243` ✅
+- TD-014 local app-lock certification `37477858072` ✅
+- UI geometry golden audit `37477858396` ✅
+- Auth local-first visual certification `37477858047` ✅
+- Offline demo UI certification `37477858257` ✅
+- UI browser screenshot certification `37477858269` ✅
+
+Result: 12/12 required workflows green on the exact final HEAD.
+
+390×844 visual certification:
+- Onboarding: 9.1/10
+- Consent: 9.2/10
+- Empty dashboard: 9.4/10
+- Add first measurement: 9.2/10
+- Post-save receipt: 9.2/10
+- Insufficient-data insight: 9.1/10
+- First IAmina exchange: 9.1/10
+
+Minimum observed score: 9.1/10. Goal “all certified first-use steps >9/10” met.
+
+The prior 8.5/10 first-use closeout and its three listed UX debts above are historical BEFORE state for this follow-up and are superseded by this section for current first-use status.
+
+No Vercel deployment performed.
