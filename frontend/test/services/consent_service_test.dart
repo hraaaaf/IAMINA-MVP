@@ -132,7 +132,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 50));
 
         notifications = 0;
-        await (db.update(db.patientProfiles)..where((tbl) => tbl.id.equals(1)))
+        await (db.update(db.patientProfiles)..where((tbl) => tbl.userId.equals(1)))
             .write(
           const PatientProfilesCompanion(
             diabetesType: drift.Value('type2'),
