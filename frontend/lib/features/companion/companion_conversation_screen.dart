@@ -929,24 +929,50 @@ class _MessageBubble extends StatelessWidget {
       ),
     );
 
+    final roleLabel = isUser
+        ? _chatText(context, 'Vous', 'You', 'أنت')
+        : 'IAmina';
+
+    final renderedBubble = emergency
+        ? Semantics(
+            liveRegion: true,
+            label: _chatText(
+              context,
+              'Alerte urgente IAmina. ${message.text}',
+              'Urgent IAmina alert. ${message.text}',
+              'تنبيه عاجل من IAmina. ${message.text}',
+            ),
+            child: ExcludeSemantics(child: bubble),
+          )
+        : bubble;
+
     return Align(
       alignment: isUser
           ? AlignmentDirectional.centerEnd
           : AlignmentDirectional.centerStart,
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: desktop ? 520 : 310),
-        child: emergency
-            ? Semantics(
-                liveRegion: true,
-                label: _chatText(
-                  context,
-                  'Alerte urgente IAmina. ${message.text}',
-                  'Urgent IAmina alert. ${message.text}',
-                  'تنبيه عاجل من IAmina. ${message.text}',
+        constraints: BoxConstraints(maxWidth: desktop ? 520 : 318),
+        child: Column(
+          crossAxisAlignment: isUser
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(4, 0, 4, 5),
+              child: ExcludeSemantics(
+                child: Text(
+                  roleLabel,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AminaVisualLanguage.secondary(context),
+                  ),
                 ),
-                child: ExcludeSemantics(child: bubble),
-              )
-            : bubble,
+              ),
+            ),
+            renderedBubble,
+          ],
+        ),
       ),
     );
   }
