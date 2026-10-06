@@ -9,7 +9,8 @@ const sleep = ms => new Promise(r=>setTimeout(r,ms));
 async function enableFlutterSemantics(page){
   const placeholder=page.locator('flt-semantics-placeholder');
   if(await placeholder.count()){
-    await placeholder.first().click({force:true});
+    await placeholder.first().focus();
+    await page.keyboard.press('Enter');
     await sleep(500);
   }
 }
