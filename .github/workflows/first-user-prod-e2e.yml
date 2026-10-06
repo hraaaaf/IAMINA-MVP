@@ -27,6 +27,18 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+      - name: Instrument signup result capture
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tools/first_user_prod_e2e.js')
+          s=p.read_text()
+          needle="    await page.getByText('Créer',{exact:true}).last().click();\n"
+          repl=needle+"    await sleep(2500);\n    await capture(page,'02-signup-result');\n"
+          if needle not in s:
+              raise SystemExit('signup click marker missing')
+          p.write_text(s.replace(needle,repl,1))
+          PY
       - name: Run real production first-user journey
         run: node tools/first_user_prod_e2e.js
       - name: Upload E2E proof
