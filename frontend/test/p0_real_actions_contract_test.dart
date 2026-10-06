@@ -96,7 +96,8 @@ void main() {
       contains("_CgmGuideEntryCard(onTap: () => context.push('/cgm'))"),
     );
     expect(cgmScreen, contains('class CgmScreen'));
-    expect(cgmScreen, contains('CgmConnectionsSection(service: service)'));
+    expect(cgmScreen, contains('CgmConnectionsSection(service: service, sourceFilter: sourceId)'));
+    expect(cgmScreen, contains("ValueKey('cgm-wizard-nightscout-yes')"));
     expect(cgm, contains("id: 'dexcom'"));
     expect(cgm, contains("id: 'libre'"));
     expect(cgm, contains("id: 'linx'"));

@@ -44,7 +44,7 @@ void main() {
     expect(journal, contains('viewportWidth >= 700'));
   });
 
-  test('dedicated CGM guide uses a desktop three-column connection layout', () {
+  test('dedicated CGM guide keeps a centered wizard and responsive filtered connection layout', () {
     final importer = _read('lib/features/import/import_screen.dart');
     final cgmScreen = _read('lib/features/import/cgm_screen.dart');
     final cgm = _read('lib/features/import/cgm_connections_section.dart');
@@ -58,10 +58,13 @@ void main() {
       contains("_CgmGuideEntryCard(onTap: () => context.push('/cgm'))"),
     );
     expect(cgmScreen, contains('ResponsiveContentSurface('));
-    expect(cgmScreen, contains('maxWidth: 1080'));
-    expect(cgmScreen, contains('CgmConnectionsSection(service: service)'));
-    expect(cgmScreen, contains('constraints.maxWidth >= 900'));
-    expect(cgmScreen, contains('Expanded(child: guides[i])'));
+    expect(cgmScreen, contains('maxWidth: 760'));
+    expect(
+      cgmScreen,
+      contains('CgmConnectionsSection(service: service, sourceFilter: sourceId)'),
+    );
+    expect(cgmScreen, contains('constraints.maxWidth < 480'));
+    expect(cgmScreen, contains("ValueKey('cgm-wizard-nightscout-yes')"));
     expect(cgm, contains('constraints.maxWidth >= 900'));
     expect(cgm, contains('Expanded(child: cards[i])'));
   });

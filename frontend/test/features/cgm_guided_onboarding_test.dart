@@ -80,32 +80,50 @@ void main() {
     binding.platformDispatcher.views.first.resetDevicePixelRatio();
   });
 
-  testWidgets('novice CGM guide exposes truthful source paths and Nightscout help', (
+  testWidgets('novice CGM wizard reveals only the selected source path', (
     tester,
   ) async {
     await _pumpGuide(tester, size: const Size(390, 844));
 
     expect(find.text('Connecter mon CGM'), findsOneWidget);
-    expect(find.text('Comment circulent vos mesures'), findsOneWidget);
-    expect(find.text('Dexcom G6/G7'), findsWidgets);
-    expect(find.text('FreeStyle Libre'), findsWidgets);
-    expect(find.text('LinX / AiDEX X'), findsWidgets);
+    expect(find.text('Quel capteur utilisez-vous ?'), findsOneWidget);
+    expect(find.text('Dexcom G6/G7'), findsOneWidget);
+    expect(find.text('FreeStyle Libre'), findsOneWidget);
+    expect(find.text('LinX / AiDEX X'), findsOneWidget);
+    expect(find.text('Je n’ai pas encore Nightscout'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('cgm-wizard-source-dexcom')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Avez-vous déjà Nightscout pour Dexcom G6/G7'),
+      findsOneWidget,
+    );
+    expect(find.text('FreeStyle Libre'), findsNothing);
+    expect(find.text('LinX / AiDEX X'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('cgm-wizard-nightscout-no')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Préparez Nightscout pour ce capteur'), findsOneWidget);
     expect(find.text('Je n’ai pas encore Nightscout'), findsOneWidget);
     expect(find.text('nightscout.github.io'), findsOneWidget);
-    expect(find.textContaining('IAMINA ne demande jamais votre mot de passe'), findsOneWidget);
-
-    await tester.tap(find.byKey(const ValueKey('cgm-guide-dexcom')));
-    await tester.pumpAndSettle();
     expect(find.textContaining('Partage/Share'), findsOneWidget);
     expect(find.textContaining('Nightscout Connect'), findsWidgets);
+    expect(find.textContaining('IAMINA ne demande jamais votre mot de passe'), findsNothing);
 
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('auth-required CGM state is truthful and non-actionable', (
+  testWidgets('auth-required CGM state stays truthful after wizard selection', (
     tester,
   ) async {
     await _pumpAuthRequiredGuide(tester);
+
+    await tester.tap(find.byKey(const ValueKey('cgm-wizard-source-dexcom')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('cgm-wizard-nightscout-yes')));
+    await tester.pumpAndSettle();
 
     expect(
       find.textContaining('un compte IAMINA authentifié est requis'),
@@ -120,9 +138,9 @@ void main() {
         })
         .toList();
 
-    expect(configureButtons, isNotEmpty);
-    expect(configureButtons.every((button) => button.onPressed == null), isTrue);
-    expect(find.byTooltip('Mode d’emploi'), findsWidgets);
+    expect(configureButtons, hasLength(1));
+    expect(configureButtons.single.onPressed, isNull);
+    expect(find.byTooltip('Mode d’emploi'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -145,7 +163,7 @@ void main() {
       locale: const Locale('en'),
     );
     expect(find.text('Connect my CGM'), findsOneWidget);
-    expect(find.text('I do not have Nightscout yet'), findsOneWidget);
+    expect(find.text('Which sensor do you use?'), findsOneWidget);
 
     await _pumpGuide(
       tester,
@@ -153,7 +171,7 @@ void main() {
       locale: const Locale('ar'),
     );
     expect(find.text('ربط جهاز CGM'), findsOneWidget);
-    expect(find.text('ليس لدي Nightscout بعد'), findsOneWidget);
+    expect(find.text('ما المستشعر الذي تستخدمه؟'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
