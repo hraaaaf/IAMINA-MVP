@@ -330,6 +330,15 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     ];
 
     final steps = widget.preferencesOnly ? preferenceSteps : onboardingSteps;
+    final onboardingProgress = widget.preferencesOnly
+        ? null
+        : _onboardingProgress(
+            language: _language,
+            country: _country,
+            tone: _tone,
+            diabetesType: _diabetesType,
+            treatment: _treatment,
+          );
 
     final ready =
         _language != null &&
@@ -401,6 +410,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
               savingLabel: l10n.onboardingSaving,
               startLabel: finishLabel,
               onFinish: _finish,
+              progress: onboardingProgress,
             );
 
             if (!desktop) {
@@ -464,6 +474,22 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   }
 }
 
+({int current, int total}) _onboardingProgress({
+  required String? language,
+  required String? country,
+  required String? tone,
+  required String? diabetesType,
+  required String? treatment,
+}) {
+  var current = 1;
+  if (language != null) current = 2;
+  if (country != null) current = 3;
+  if (tone != null) current = 4;
+  if (diabetesType != null) current = 5;
+  if (treatment != null) current = 6;
+  return (current: current, total: 6);
+}
+
 class _OnboardingQuestions extends StatelessWidget {
   final String welcome;
   final List<Widget> steps;
@@ -473,6 +499,7 @@ class _OnboardingQuestions extends StatelessWidget {
   final String savingLabel;
   final String startLabel;
   final VoidCallback onFinish;
+  final ({int current, int total})? progress;
 
   const _OnboardingQuestions({
     required this.welcome,
@@ -483,6 +510,7 @@ class _OnboardingQuestions extends StatelessWidget {
     required this.savingLabel,
     required this.startLabel,
     required this.onFinish,
+    this.progress,
   });
 
   @override
@@ -496,6 +524,48 @@ class _OnboardingQuestions extends StatelessWidget {
             context,
           ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
         ),
+        if (progress != null) ...[
+          const SizedBox(height: 14),
+          Semantics(
+            label: _preferencesCopy(
+              context,
+              fr: 'Étape ${progress!.current} sur ${progress!.total}',
+              en: 'Step ${progress!.current} of ${progress!.total}',
+              ar: 'الخطوة ${progress!.current} من ${progress!.total}',
+            ),
+            child: ExcludeSemantics(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        minHeight: 7,
+                        value: progress!.current / progress!.total,
+                        backgroundColor: AminaTheme.ink100,
+                        color: AminaTheme.teal500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    _preferencesCopy(
+                      context,
+                      fr: 'Étape ${progress!.current}/${progress!.total} · ~1 min',
+                      en: 'Step ${progress!.current}/${progress!.total} · ~1 min',
+                      ar: 'الخطوة ${progress!.current}/${progress!.total} · نحو دقيقة',
+                    ),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AminaTheme.textSecondary(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         ...steps,
         if (ready) ...[
