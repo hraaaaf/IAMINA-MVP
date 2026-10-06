@@ -11,6 +11,8 @@ import 'core/widgets/mobile_page_header.dart';
 import 'data/drift/database.dart';
 import 'data/models/companion_models.dart';
 import 'data/models/proactive_preview_models.dart';
+import 'features/auth/consent_screen.dart';
+import 'features/auth/onboarding_chat_screen.dart';
 import 'features/companion/companion_conversation_screen.dart';
 import 'features/companion/companion_premium_screen.dart';
 import 'features/dashboard/dashboard_companion_entry_screen.dart';
@@ -35,6 +37,8 @@ import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/companion_service.dart';
 import 'services/consent_service.dart';
+import 'services/consent_evidence_store.dart';
+import 'services/locale_preference_service.dart';
 import 'services/meal_food_favorites_repository.dart';
 import 'services/modules_provider.dart';
 import 'services/sync_service.dart';
@@ -148,6 +152,10 @@ Future<void> main() async {
         Provider<ApiClient>.value(value: api),
         Provider<SyncService>.value(value: sync),
         ChangeNotifierProvider<ConsentService>.value(value: consent),
+        Provider<ConsentEvidenceStore>(create: (_) => ConsentEvidenceStore()),
+        ChangeNotifierProvider<LocalePreferenceService>(
+          create: (_) => LocalePreferenceService(),
+        ),
         ChangeNotifierProvider<ModulesProvider>.value(value: modules),
         ChangeNotifierProvider<TweaksNotifier>(create: (_) => TweaksNotifier()),
         StreamProvider<PatientProfileData?>(
@@ -159,13 +167,16 @@ Future<void> main() async {
     ),
   );
 
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    try {
-      await db.seedDemoData();
-    } catch (error) {
-      debugPrint('Browser audit demo seed unavailable: $error');
-    }
-  });
+  final shouldSeedDemo = Uri.base.queryParameters['seed'] != '0';
+  if (shouldSeedDemo) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await db.seedDemoData();
+      } catch (error) {
+        debugPrint('Browser audit demo seed unavailable: $error');
+      }
+    });
+  }
 }
 
 class _BrowserAuditApp extends StatelessWidget {
@@ -201,6 +212,14 @@ class _BrowserAuditApp extends StatelessWidget {
               builder: (context, state) => const ProfileScreen(),
             ),
           ],
+        ),
+        GoRoute(
+          path: '/onboarding',
+          builder: (context, state) => const OnboardingChatScreen(),
+        ),
+        GoRoute(
+          path: '/consent',
+          builder: (context, state) => const ConsentScreen(),
         ),
         GoRoute(
           path: '/importer',
@@ -334,6 +353,8 @@ class _BrowserAddLogMealSurfaceState extends State<_BrowserAddLogMealSurface> {
 }
 
 String _pathForSurface(String surface) => switch (surface) {
+  'onboarding' => '/onboarding',
+  'consent' => '/consent',
   'dashboard' => '/dashboard',
   'journal' => '/journal',
   'summary' => '/summary',
