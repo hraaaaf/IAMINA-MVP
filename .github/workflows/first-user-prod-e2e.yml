@@ -34,7 +34,7 @@ jobs:
           p=Path('tools/first_user_prod_e2e.js')
           s=p.read_text()
           needle="    await page.getByText('Créer',{exact:true}).last().click();\n"
-          repl=needle+"    await sleep(2500);\n    await capture(page,'02-signup-result');\n    if(routeOf(page).includes('/app-lock/setup')){ await capture(page,'02-device-security'); await clickEnabledButton(page,20000); await waitPath(page,'/onboarding',20000); await sleep(1200); }\n"
+          repl=needle+"    const postSignupEnd=Date.now()+25000; while(Date.now()<postSignupEnd && !routeOf(page).includes('/app-lock/setup') && !routeOf(page).includes('/onboarding')){ await sleep(250); }\n    await capture(page,'02-signup-result');\n    if(routeOf(page).includes('/app-lock/setup')){ await enableFlutterSemantics(page); await capture(page,'02-device-security'); await clickEnabledButton(page,20000); await waitPath(page,'/onboarding',20000); await sleep(1200); await enableFlutterSemantics(page); }\n"
           if needle not in s:
               raise SystemExit('signup click marker missing')
           s=s.replace(needle,repl,1)
