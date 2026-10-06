@@ -2,7 +2,7 @@
 
 ## Status
 
-IN PROGRESS — PR #867. No Vercel deployment.
+CORE UX REMEDIATION MERGED — through PR #878. No Vercel deployment.
 
 ## Goal
 
@@ -135,3 +135,48 @@ Latest exact-head remediation on 2026-10-04:
 - BEFORE and AFTER evidence exists for 51 screenshots across 17 surfaces × 3 viewports. Critical mobile/tablet comparisons confirmed the approved hierarchy changes on Dashboard, Trend, Import, Add Measurement and Profile.
 - Final visual assessment for this remediation: 8.9/10. Main remaining product concern is the live Companion backend reliability/deployment drift, outside this no-deploy remediation closeout.
 - No Vercel deployment performed.
+
+
+## First-use / CGM follow-up closeout — 2026-10-06
+
+Merged follow-up sequence:
+- PR #871 — real first-use ordering: App Lock → minimum onboarding → consent → dashboard.
+- PR #872 — canonical exit/back affordances on Add Measurement and Import.
+- PR #873 — demo insight becomes a factual local summary instead of an unavailable governed preview.
+- PR #874 — CGM auth-required state made truthful and non-actionable while preserving setup help.
+- PR #876 — Nightscout secret visibility toggle receives localized accessible names.
+- PR #878 — novice CGM wizard merged to `main` at `3e188d14da3e6e5b49404efaab658767bed18ecd`.
+
+CGM wizard target:
+1. choose sensor;
+2. answer whether Nightscout already works;
+3. expose only the relevant source path;
+4. configure IAMINA for the selected source;
+5. automatically run the first sync test;
+6. show a recent reading + last sync on success, or an explicit failure state.
+
+Visual proof:
+- BEFORE: #874 certified CGM artifact at 390×844 / 768×1024 / 1280×900.
+- AFTER: exact wizard UI certified at the same viewports before the final test-only commits.
+- Final product delta after that certified UI consisted only of test files.
+- Visual assessment at 390×844: approximately 7.4/10 BEFORE → 9.1/10 AFTER.
+- Main improvement: immediate sensor choice, linear step hierarchy, removal of three competing setup paths from the initial viewport, and no mobile overflow.
+
+Final pre-merge evidence for PR #878 HEAD `115f4af2d19b9ed1f43b18fbe915fd69c59a87d0`:
+- CI ✅
+- P5-5 End-to-End Pilot Rehearsal ✅
+- UI geometry golden audit ✅
+- UI global missing routes ✅
+- UI browser screenshot certification ✅
+- CGM onboarding browser certification ✅ after one infrastructure-only rerun (initial Chrome DevTools port startup failure; CGM tests and web build had already passed).
+
+Post-merge:
+- PR #878 merged successfully.
+- `main` merge commit: `3e188d14da3e6e5b49404efaab658767bed18ecd`.
+- No post-merge workflow runs were visible at the first check; do not infer post-merge CI from absence of runs.
+- No Vercel deployment performed.
+
+Remaining audit work:
+- certify a true virgin zero-to-value first-use path independently from the pre-seeded demo;
+- run the final transversal mobile 390×844 audit and rescore;
+- deploy/re-audit production only after explicit Vercel approval.
