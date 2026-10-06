@@ -35,14 +35,17 @@ class ConsentService extends ChangeNotifier {
   }
 
   void _applyProfile(PatientProfileData? profile) {
-    _hasCompletedOnboarding = _profileCompletesOnboarding(profile);
+    final nextCompletedOnboarding = _profileCompletesOnboarding(profile);
+    final onboardingChanged =
+        nextCompletedOnboarding != _hasCompletedOnboarding;
+    _hasCompletedOnboarding = nextCompletedOnboarding;
+
     _profileHasTimestamp = profile?.aiConsentGivenAt != null;
-    final next = _profileHasTimestamp && _hasVerifiedEvidence;
-    if (next != _hasConsent) {
-      _hasConsent = next;
-      notifyListeners();
-    } else if (_hasConsent == null) {
-      _hasConsent = next;
+    final nextConsent = _profileHasTimestamp && _hasVerifiedEvidence;
+    final consentChanged = nextConsent != _hasConsent;
+    _hasConsent = nextConsent;
+
+    if (onboardingChanged || consentChanged) {
       notifyListeners();
     }
   }
