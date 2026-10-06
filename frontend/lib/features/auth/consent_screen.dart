@@ -252,7 +252,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.lock_outline,
                             size: 12,
                             color: dark ? AminaTheme.dark300 : AminaTheme.ink400,
