@@ -121,6 +121,32 @@ void main() {
       expect(svc.hasConsent, isFalse);
     });
 
+    test(
+      'onboarding completion notifies listeners when consent stays false',
+      () async {
+        await _insertProfile(db);
+        final svc = ConsentService();
+        var notifications = 0;
+        svc.addListener(() => notifications++);
+        svc.attachStream(db.watchProfile());
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        notifications = 0;
+        await (db.update(db.patientProfiles)..where((tbl) => tbl.id.equals(1)))
+            .write(
+          const PatientProfilesCompanion(
+            diabetesType: drift.Value('type2'),
+            treatment: drift.Value('tablets'),
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+
+        expect(svc.hasCompletedOnboarding, isTrue);
+        expect(svc.hasConsent, isFalse);
+        expect(notifications, greaterThan(0));
+      },
+    );
+
     test('stream timestamp with verified evidence sets consent true', () async {
       await _insertProfile(db, withConsent: true);
       final svc = ConsentService(hasVerifiedEvidence: true);
