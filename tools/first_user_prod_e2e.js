@@ -95,16 +95,16 @@ async function expectText(page,text,timeout=15000){
 
   if(routeOf(page).includes('/login')){
     await clickText(page,['Créer un compte']);
-    const dialog=page.getByRole('dialog');
-    await dialog.waitFor({state:'visible',timeout:10000});
-    const fields=dialog.getByRole('textbox');
-    if(await fields.count()<3) throw new Error('Signup dialog did not expose 3 textboxes');
+    await expectText(page,'Confirmer le mot de passe',10000);
+    const fields=page.getByRole('textbox');
+    const fieldCount=await fields.count();
+    if(fieldCount<3) throw new Error(`Signup modal exposed only ${fieldCount} textboxes`);
     const unique = `e2e-first-user-${process.env.GITHUB_RUN_ID || Date.now()}-${process.env.GITHUB_RUN_ATTEMPT || 1}@example.invalid`;
     const password = 'IAmina-E2E-2026!Strong#42';
-    await fields.nth(0).fill(unique);
-    await fields.nth(1).fill(password);
-    await fields.nth(2).fill(password);
-    await clickText(dialog,['Créer']);
+    await fields.nth(fieldCount-3).fill(unique);
+    await fields.nth(fieldCount-2).fill(password);
+    await fields.nth(fieldCount-1).fill(password);
+    await page.getByText('Créer',{exact:true}).last().click();
     await waitPath(page,'/onboarding',25000);
     await sleep(1500);
   }
