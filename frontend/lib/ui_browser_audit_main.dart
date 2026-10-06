@@ -182,7 +182,7 @@ Future<void> main() async {
         ChangeNotifierProvider<ConsentService>.value(value: consent),
         Provider<ConsentEvidenceStore>(create: (_) => ConsentEvidenceStore()),
         ChangeNotifierProvider<LocalePreferenceService>(
-          create: (_) => LocalePreferenceService(),
+          create: (_) => LocalePreferenceService(api),
         ),
         ChangeNotifierProvider<ModulesProvider>.value(value: modules),
         ChangeNotifierProvider<TweaksNotifier>(create: (_) => TweaksNotifier()),
