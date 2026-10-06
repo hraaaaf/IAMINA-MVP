@@ -6,6 +6,13 @@ const OUT = process.env.E2E_OUT || 'first-user-prod-e2e';
 fs.mkdirSync(OUT,{recursive:true});
 
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
+async function enableFlutterSemantics(page){
+  const placeholder=page.locator('flt-semantics-placeholder');
+  if(await placeholder.count()){
+    await placeholder.first().click({force:true});
+    await sleep(500);
+  }
+}
 async function capture(page,name){
   await page.screenshot({path:`${OUT}/${name}.png`,fullPage:false});
   const semantics = await page.locator('flt-semantics').evaluateAll(els =>
@@ -82,6 +89,7 @@ async function expectText(page,text,timeout=15000){
 
   await page.goto(BASE,{waitUntil:'domcontentloaded',timeout:30000});
   await sleep(8000);
+  await enableFlutterSemantics(page);
   await capture(page,'01-arrival');
 
   if(routeOf(page).includes('/login')){
@@ -125,6 +133,7 @@ async function expectText(page,text,timeout=15000){
 
   await page.reload({waitUntil:'domcontentloaded'});
   await sleep(6000);
+  await enableFlutterSemantics(page);
   await waitPath(page,'/consent',15000);
   if(await page.getByText('Bonjour ! Je suis IAmina',{exact:false}).count()){
     throw new Error('Onboarding resurfaced after reload: persistence regression');
