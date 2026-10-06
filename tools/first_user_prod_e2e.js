@@ -16,10 +16,11 @@ async function capture(page,name){
     ...semantics
   ].join('\n'));
 }
+function routeOf(page){ const u=new URL(page.url()); return u.pathname + u.hash; }
 async function waitPath(page, part, timeout=20000){
   const end=Date.now()+timeout;
   while(Date.now()<end){
-    if(new URL(page.url()).pathname.includes(part)) return;
+    if(routeOf(page).includes(part)) return;
     await sleep(250);
   }
   throw new Error(`Expected path containing ${part}, got ${page.url()}`);
@@ -83,14 +84,24 @@ async function expectText(page,text,timeout=15000){
   await sleep(8000);
   await capture(page,'01-arrival');
 
-  if(new URL(page.url()).pathname.includes('/login')){
-    await clickEnabledButton(page);
-    await waitPath(page,'/app-lock/setup');
+  if(routeOf(page).includes('/login')){
+    await clickText(page,['Créer un compte']);
+    const dialog=page.getByRole('dialog');
+    await dialog.waitFor({state:'visible',timeout:10000});
+    const fields=dialog.getByRole('textbox');
+    if(await fields.count()<3) throw new Error('Signup dialog did not expose 3 textboxes');
+    const unique = `e2e-first-user-${process.env.GITHUB_RUN_ID || Date.now()}-${process.env.GITHUB_RUN_ATTEMPT || 1}@example.invalid`;
+    const password = 'IAmina-E2E-2026!Strong#42';
+    await fields.nth(0).fill(unique);
+    await fields.nth(1).fill(password);
+    await fields.nth(2).fill(password);
+    await clickText(dialog,['Créer']);
+    await waitPath(page,'/onboarding',25000);
     await sleep(1500);
   }
-  await capture(page,'02-device-security');
+  await capture(page,'02-onboarding-arrival');
 
-  if(new URL(page.url()).pathname.includes('/app-lock/setup')){
+  if(routeOf(page).includes('/app-lock/setup')){
     await clickEnabledButton(page,20000);
     await waitPath(page,'/onboarding');
     await sleep(1200);
@@ -144,7 +155,7 @@ async function expectText(page,text,timeout=15000){
   await sleep(5000);
   await capture(page,'09-first-insight');
 
-  if(!new URL(page.url()).pathname.includes('/dashboard')){
+  if(!routeOf(page).includes('/dashboard')){
     await page.goto(BASE+'/dashboard',{waitUntil:'domcontentloaded'});
     await sleep(5000);
   }
