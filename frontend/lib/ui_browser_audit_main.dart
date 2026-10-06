@@ -286,6 +286,15 @@ class _BrowserAuditApp extends StatelessWidget {
               CompanionConversationScreen(service: visualCompanion),
         ),
         GoRoute(
+          path: '/first-use-receipt',
+          builder: (context, state) => const _BrowserFirstUseReceiptSurface(),
+        ),
+        GoRoute(
+          path: '/first-use-chat',
+          builder: (context, state) =>
+              _BrowserFirstUseChatSurface(service: visualCompanion),
+        ),
+        GoRoute(
           path: '/trend',
           builder: (context, state) => const _BrowserTrendSurface(),
         ),
@@ -395,6 +404,8 @@ String _pathForSurface(String surface) => switch (surface) {
   'reminders' => '/reminders',
   'companion' => '/companion',
   'amina-chat' => '/amina-chat',
+  'first-use-receipt' => '/first-use-receipt',
+  'first-use-chat' => '/first-use-chat',
   'trend' => '/trend',
   'kpi' => '/kpi',
   'insight' => '/insight',
@@ -572,4 +583,116 @@ class _BrowserNextActionSurface extends StatelessWidget {
       ),
     );
   }
+}
+
+
+class _BrowserFirstUseReceiptSurface extends StatefulWidget {
+  const _BrowserFirstUseReceiptSurface();
+
+  @override
+  State<_BrowserFirstUseReceiptSurface> createState() =>
+      _BrowserFirstUseReceiptSurfaceState();
+}
+
+class _BrowserFirstUseReceiptSurfaceState
+    extends State<_BrowserFirstUseReceiptSurface> {
+  var _phase = 0;
+  var _attempts = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _advance());
+  }
+
+  void _advance() {
+    if (!mounted || _attempts++ > 20) return;
+
+    Element? target;
+    void visit(Element element) {
+      if (target != null) return;
+      if (_phase == 0 &&
+          element.widget.key == const Key('glucose-input')) {
+        target = element;
+        return;
+      }
+      if (_phase == 1 &&
+          element.widget.key == const Key('save-log-button')) {
+        target = element;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    context.visitChildElements(visit);
+    final widget = target?.widget;
+    if (_phase == 0 && widget is TextField) {
+      widget.controller?.text = '126';
+      widget.onChanged?.call('126');
+      _phase = 1;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _advance());
+      return;
+    }
+    if (_phase == 1 && widget is FilledButton && widget.onPressed != null) {
+      widget.onPressed!.call();
+      _phase = 2;
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _advance());
+  }
+
+  @override
+  Widget build(BuildContext context) => const AddLogScreen();
+}
+
+class _BrowserFirstUseChatSurface extends StatefulWidget {
+  final CompanionService service;
+
+  const _BrowserFirstUseChatSurface({required this.service});
+
+  @override
+  State<_BrowserFirstUseChatSurface> createState() =>
+      _BrowserFirstUseChatSurfaceState();
+}
+
+class _BrowserFirstUseChatSurfaceState
+    extends State<_BrowserFirstUseChatSurface> {
+  var _attempts = 0;
+  var _submitted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _submit());
+  }
+
+  void _submit() {
+    if (!mounted || _submitted || _attempts++ > 20) return;
+
+    Element? target;
+    void visit(Element element) {
+      if (target != null) return;
+      if (element.widget.key == const Key('companion-chat-input')) {
+        target = element;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    context.visitChildElements(visit);
+    final widget = target?.widget;
+    if (widget is TextField) {
+      const message = 'Que peux-tu faire avec cette première mesure ?';
+      widget.controller?.text = message;
+      widget.onChanged?.call(message);
+      widget.onSubmitted?.call(message);
+      _submitted = true;
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) => _submit());
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      CompanionConversationScreen(service: widget.service);
 }
