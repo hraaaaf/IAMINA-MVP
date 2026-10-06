@@ -175,16 +175,13 @@ class _DashboardBody extends StatelessWidget {
     if (latest == null) {
       return _EmptyPremiumDashboard(scrollController: scrollController);
     }
-    final latestAt = latest == null
-        ? null
-        : (latest.loggedAt ?? latest.createdAt);
+    final latestAt = latest.loggedAt ?? latest.createdAt;
     final hasTarget = low != null && high != null && low! < high!;
     final inRange =
-        latest != null &&
         hasTarget &&
         latest.bloodSugar >= low! &&
         latest.bloodSugar <= high!;
-    final highValue = latest != null && hasTarget && latest.bloodSugar > high!;
+    final highValue = hasTarget && latest.bloodSugar > high!;
     final locale = _dashboardDateLocale(context);
 
     return Scaffold(
@@ -234,18 +231,9 @@ class _DashboardBody extends StatelessWidget {
                           _LatestReadingCard(
                             latest: latest,
                             latestAt: latestAt,
-                            display: latest == null
-                                ? '—'
-                                : _display(latest.bloodSugar),
+                            display: _display(latest.bloodSugar),
                             unit: unit,
-                            status: latest == null
-                                ? _t(
-                                    context,
-                                    'Aucune mesure',
-                                    'No reading yet',
-                                    'لا توجد قراءة بعد',
-                                  )
-                                : !hasTarget
+                            status: !hasTarget
                                 ? AppLocalizations.of(
                                     context,
                                   )!.dashboardTargetNotConfigured
