@@ -75,7 +75,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
               child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(
                   horizontal: 24,
-                  vertical: compactHeight ? 14 : 40,
+                  vertical: compactHeight ? 14 : 28,
                 ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 480),
@@ -131,7 +131,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      SizedBox(height: compactHeight ? 14 : 32),
+                      SizedBox(height: compactHeight ? 14 : 24),
                       Container(
                         padding: EdgeInsets.all(compactHeight ? 12 : 20),
                         decoration: BoxDecoration(
@@ -162,15 +162,25 @@ class _ConsentScreenState extends State<ConsentScreen> {
                         ),
                       ),
                       SizedBox(height: compactHeight ? 12 : 20),
-                      Text(
-                        l10n.consentBody,
-                        style: TextStyle(
-                          fontSize: compactHeight ? 11.5 : 13.5,
-                          color: AminaTheme.textSecondary(context),
-                          height: compactHeight ? 1.38 : 1.65,
+                      Container(
+                        padding: EdgeInsets.all(compactHeight ? 12 : 16),
+                        decoration: BoxDecoration(
+                          color: AminaTheme.teal500.withValues(alpha: 0.055),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AminaTheme.teal500.withValues(alpha: 0.16),
+                          ),
+                        ),
+                        child: Text(
+                          l10n.consentBody,
+                          style: TextStyle(
+                            fontSize: compactHeight ? 11.5 : 13.25,
+                            color: AminaTheme.textSecondary(context),
+                            height: compactHeight ? 1.38 : 1.52,
+                          ),
                         ),
                       ),
-                      SizedBox(height: compactHeight ? 14 : 36),
+                      SizedBox(height: compactHeight ? 14 : 24),
                       Align(
                         alignment: Alignment.center,
                         child: SizedBox(
@@ -207,22 +217,34 @@ class _ConsentScreenState extends State<ConsentScreen> {
                           ),
                         ),
                       ),
-                      SizedBox(height: compactHeight ? 4 : 12),
-                      TextButton(
-                        onPressed: _isLoading ? null : _declineWithoutAI,
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.symmetric(
-                            vertical: compactHeight ? 8 : 14,
-                          ),
-                          foregroundColor: dark
-                              ? AminaTheme.dark300
-                              : AminaTheme.ink400,
-                        ),
-                        child: Text(
-                          l10n.consentDeclineWithoutAI,
-                          style: TextStyle(
-                            fontSize: compactHeight ? 12 : 13,
-                            fontWeight: FontWeight.w500,
+                      SizedBox(height: compactHeight ? 8 : 10),
+                      Align(
+                        alignment: Alignment.center,
+                        child: SizedBox(
+                          width: desktop ? 300 : double.infinity,
+                          child: OutlinedButton(
+                            onPressed: _isLoading ? null : _declineWithoutAI,
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(
+                                vertical: compactHeight ? 11 : 14,
+                              ),
+                              foregroundColor: AminaTheme.textPrimary(context),
+                              side: BorderSide(
+                                color: AminaTheme.divider(context),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AminaTheme.radiusXL,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              l10n.consentDeclineWithoutAI,
+                              style: TextStyle(
+                                fontSize: compactHeight ? 12 : 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -233,7 +255,7 @@ class _ConsentScreenState extends State<ConsentScreen> {
                           const Icon(
                             Icons.lock_outline,
                             size: 12,
-                            color: AminaTheme.ink300,
+                            color: dark ? AminaTheme.dark300 : AminaTheme.ink400,
                           ),
                           const SizedBox(width: 6),
                           Flexible(
@@ -242,7 +264,9 @@ class _ConsentScreenState extends State<ConsentScreen> {
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: compactHeight ? 9.5 : 11,
-                                color: AminaTheme.ink300,
+                                color: dark
+                                    ? AminaTheme.dark300
+                                    : AminaTheme.ink400,
                               ),
                             ),
                           ),
