@@ -34,19 +34,24 @@ async function waitPath(page, part, timeout=20000){
   throw new Error(`Expected path containing ${part}, got ${page.url()}`);
 }
 async function clickText(page, texts, timeout=12000){
-  for(const text of texts){
-    const loc=page.getByText(text,{exact:false});
-    const n=await loc.count();
-    for(let i=0;i<n;i++){
-      const el=loc.nth(i);
-      if(await el.isVisible().catch(()=>false)){
-        await el.scrollIntoViewIfNeeded().catch(()=>{});
-        await el.click({timeout:3000});
-        return text;
+  const end=Date.now()+timeout;
+  while(Date.now()<end){
+    for(const text of texts){
+      for(const loc of [page.getByText(text,{exact:false}), page.getByLabel(text,{exact:false})]){
+        const n=await loc.count();
+        for(let i=0;i<n;i++){
+          const el=loc.nth(i);
+          if(await el.isVisible().catch(()=>false)){
+            await el.scrollIntoViewIfNeeded().catch(()=>{});
+            await el.click({timeout:3000});
+            return text;
+          }
+        }
       }
     }
+    await sleep(250);
   }
-  throw new Error(`None of texts clickable: ${texts.join(' | ')}`);
+  throw new Error(`None of texts/labels clickable: ${texts.join(' | ')}`);
 }
 async function clickEnabledButton(page, timeout=15000){
   const end=Date.now()+timeout;
@@ -65,7 +70,17 @@ async function clickEnabledButton(page, timeout=15000){
   throw new Error('No enabled visible button found');
 }
 async function expectText(page,text,timeout=15000){
-  await page.getByText(text,{exact:false}).first().waitFor({state:'visible',timeout});
+  const end=Date.now()+timeout;
+  while(Date.now()<end){
+    for(const loc of [page.getByText(text,{exact:false}), page.getByLabel(text,{exact:false})]){
+      const n=await loc.count();
+      for(let i=0;i<n;i++){
+        if(await loc.nth(i).isVisible().catch(()=>false)) return;
+      }
+    }
+    await sleep(250);
+  }
+  throw new Error(`Expected visible text or accessible label: ${text}`);
 }
 
 (async()=>{
