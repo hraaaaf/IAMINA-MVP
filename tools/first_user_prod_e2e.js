@@ -267,7 +267,7 @@ async function waitForChatResponse(page, timeout = 60000) {
     await activateButton(page, 'Activer le verrou sécurisé', 20000);
     await waitPath(page, '/onboarding', 20000);
     await sleep(1200);
-    await enableFlutterSemantics(pae);
+    await enableFlutterSemantics(page);
   }
 
   await waitPath(page, '/onboarding', 20000);
@@ -277,7 +277,7 @@ async function waitForChatResponse(page, timeout = 60000) {
   await clickText(page, ['Maroc']);
   await clickText(page, ['Simple et chaleureux', 'Neutre et professionnel']);
   await clickText(page, ['Diabète Type 2']);
-  await clickText(page, ['Comprinés']);
+  await clickText(page, ['Comprimés']);
   await clickText(page, ['mg/dL']);
   await capture(page, '03-onboarding-ready');
 
