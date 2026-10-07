@@ -314,7 +314,8 @@ async function waitForChatResponse(page, timeout = 60000) {
   const glucoseBox = await visibleTextbox(page, 0, 10000);
   await keyboardType(page, glucoseBox, '128');
   await waitButtonEnabled(page, 'Enregistrer la mesure', 10000);
-  await expectText(page, '128', 5000);
+  const enteredGlucose = await glucoseBox.inputValue();
+  if (enteredGlucose !== '128') throw new Error(`Glucose input mismatch: expected 128, got ${enteredGlucose}`);
   await capture(page, '07b-reading-entered');
   await activateButton(page, 'Enregistrer la mesure', 10000);
   await expectText(page, 'Mesure enregistrée.', 20000);
