@@ -27,26 +27,6 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Instrument signup result capture
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('tools/first_user_prod_e2e.js')
-          s=p.read_text()
-          needle="    await page.getByText('Créer',{exact:true}).last().click();\n"
-          repl=needle+"    const postSignupEnd=Date.now()+25000; while(Date.now()<postSignupEnd && !routeOf(page).includes('/app-lock/setup') && !routeOf(page).includes('/onboarding')){ await sleep(250); }\n    await capture(page,'02-signup-result');\n    if(routeOf(page).includes('/app-lock/setup')){ await enableFlutterSemantics(page); await capture(page,'02-device-security'); await clickEnabledButton(page,20000); await waitPath(page,'/onboarding',20000); await sleep(1200); await enableFlutterSemantics(page); }\n"
-          if needle not in s:
-              raise SystemExit('signup click marker missing')
-          s=s.replace(needle,repl,1)
-          s=s.replace("    await page.getByText('Créer',{exact:true}).last().click();\n", "    const signupButton=page.getByRole('button',{name:'Créer',exact:true}); await signupButton.focus(); await page.keyboard.press('Enter');\n", 1)
-          s=s.replace("    await waitPath(page,'/onboarding',25000);\n", "", 1)
-          s=s.replace("  await enableFlutterSemantics(page);\n  await waitPath(page,'/consent',15000);\n", "  await enableFlutterSemantics(page);\n  if(routeOf(page).includes('/app-lock/unlock')){ await capture(page,'05-app-lock-after-reload'); await clickEnabledButton(page,20000); await waitPath(page,'/consent',20000); await sleep(1200); await enableFlutterSemantics(page); } else { await waitPath(page,'/consent',15000); }\n", 1)
-          s=s.replace("    await clickText(page,['Commencer']);\n", "    const finish=page.getByRole('button',{name:'Commencer',exact:true}); await finish.scrollIntoViewIfNeeded(); await finish.click(); await sleep(2500); await capture(page,'04-after-commencer');\n", 1)
-          override="expectText=async function(page,text,timeout=15000){const end=Date.now()+timeout;while(Date.now()<end){const dom=page.getByText(text,{exact:false});const n=await dom.count();for(let i=0;i<n;i++){if(await dom.nth(i).isVisible().catch(()=>false))return;}const labels=await page.locator('flt-semantics[aria-label]').evaluateAll((els,needle)=>els.map(e=>e.getAttribute('aria-label')||'').some(v=>v.includes(needle)),text).catch(()=>false);if(labels)return;await sleep(250);}throw new Error('Expected visible text or Flutter aria-label: '+text);};\n\n"
-          s=s.replace("(async()=>{",override+"(async()=>{",1)
-          s=s.replace("  await clickText(page,['Commencer']);\n", "  await page.getByRole('button',{name:'Commencer',exact:true}).click();\n  await sleep(2500);\n  await capture(page,'04-after-commencer');\n", 1)
-          p.write_text(s)
-          PY
       - name: Run real production first-user journey
         run: node tools/first_user_prod_e2e.js
       - name: Upload E2E proof
