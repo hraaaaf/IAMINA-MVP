@@ -43,6 +43,7 @@ jobs:
           s=s.replace("    await clickText(page,['Commencer']);\n", "    const finish=page.getByRole('button',{name:'Commencer',exact:true}); await finish.scrollIntoViewIfNeeded(); await finish.click(); await sleep(2500); await capture(page,'04-after-commencer');\n", 1)
           override="expectText=async function(page,text,timeout=15000){const end=Date.now()+timeout;while(Date.now()<end){const dom=page.getByText(text,{exact:false});const n=await dom.count();for(let i=0;i<n;i++){if(await dom.nth(i).isVisible().catch(()=>false))return;}const labels=await page.locator('flt-semantics[aria-label]').evaluateAll((els,needle)=>els.map(e=>e.getAttribute('aria-label')||'').some(v=>v.includes(needle)),text).catch(()=>false);if(labels)return;await sleep(250);}throw new Error('Expected visible text or Flutter aria-label: '+text);};\n\n"
           s=s.replace("(async()=>{",override+"(async()=>{",1)
+          s=s.replace("  await clickText(page,['Commencer']);\n", "  await page.getByRole('button',{name:'Commencer',exact:true}).click();\n  await sleep(2500);\n  await capture(page,'04-after-commencer');\n", 1)
           p.write_text(s)
           PY
       - name: Run real production first-user journey
