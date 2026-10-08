@@ -2,6 +2,7 @@ import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/journal/reports_screen.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -24,6 +25,12 @@ void main() {
           value: db,
           child: MaterialApp(
             locale: const Locale('fr'),
+            supportedLocales: const [Locale('fr'), Locale('en'), Locale('ar')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
             home: MediaQuery(
               data: MediaQueryData(textScaler: TextScaler.linear(testScale)),
               child: const Scaffold(body: ReportsScreen()),
