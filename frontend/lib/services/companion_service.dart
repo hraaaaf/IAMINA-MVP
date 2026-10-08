@@ -26,12 +26,14 @@ class CompanionChatReply {
   final String reply;
   final String conversationId;
   final String replyLanguage;
+  final String responseMode;
   final bool isEmergency;
 
   const CompanionChatReply({
     required this.reply,
     required this.conversationId,
     required this.replyLanguage,
+    this.responseMode = 'standard',
     this.isEmergency = false,
   });
 
@@ -40,6 +42,9 @@ class CompanionChatReply {
       reply: json['reply'] as String? ?? '',
       conversationId: json['conversation_id'] as String? ?? '',
       replyLanguage: json['reply_language'] as String? ?? 'fr',
+      responseMode: json['response_mode'] == 'governance_fallback'
+          ? 'governance_fallback'
+          : 'standard',
       isEmergency: json['is_emergency'] as bool? ?? false,
     );
   }

@@ -372,6 +372,17 @@ def _governance_blocked_fallback(message: str, language: str) -> str:
     )
 
 
+def is_governance_blocked_reply(reply: str, message: str, language: str) -> bool:
+    """Identify the exact fail-closed processor-policy fallback.
+
+    This is response metadata, not a substitute for the processor authorization gate.
+    """
+    detected = detect_language(message, language)
+    return reply == _governance_blocked_fallback(
+        message, _deterministic_language(detected)
+    )
+
+
 def _get_context(patient, context_days: int, language: str = "fr") -> DomainContext:
     domain_language = _deterministic_language(language)
     if patient is None:
