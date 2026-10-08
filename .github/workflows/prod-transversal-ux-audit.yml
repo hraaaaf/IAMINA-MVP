@@ -1,0 +1,39 @@
+name: Production transverse UX audit (public demo)
+
+on:
+  pull_request:
+    paths:
+      - 'tools/audit_prod_transversal.js'
+      - '.github/workflows/prod-transversal-ux-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prod-ux-audit:
+    name: Real production Chrome 390x844 — public demo
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      IAMINA_PROD_URL: https://iamina-review.vercel.app
+      E2E_OUT: audit-prod-transversal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run production UX capture
+        run: node tools/audit_prod_transversal.js
+      - name: Upload screenshot and semantics evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-prod-transversal-390x844
+          path: audit-prod-transversal/*
+          if-no-files-found: warn
+          retention-days: 14
