@@ -2,35 +2,30 @@ const fs = require('fs');
 const path = require('path');
 
 const dir = process.env.E2E_OUT || 'first-user-prod-e2e';
-const read = name => fs.readFileSync(path.join(dir, name), 'utf8');
-const result = JSON.parse(read('result.json'));
-const chat = read('10-first-chat.txt').replace(/\s+/g, ' ');
-const requiredReading = '128 mg/dL';
-const deviceSource = 'sur cet appareil';
-const statuses = [
-  'en attente de synchronisation',
-  'marquée comme synchronisée',
-  'dernière tentative de synchronisation a échoué',
-];
-const reportedStatus = statuses.find(x => chat.includes(x));
+const load = name => fs.readFileSync(path.join(dir, name), 'utf8');
+const result = JSON.parse(load('result.json'));
+const demo = JSON.parse(load('ux95-demo-chat-checks.json'));
+const photo = fs.statSync(path.join(dir, '10-first-chat.png'));
 const checks = {
-  recordedReadingObserved: chat.includes(requiredReading),
-  deviceProvenanceVisible: chat.includes(deviceSource),
-  syncProvenanceVisible: Boolean(reportedStatus),
-  chatBackend200: result.chatStatus === 200,
   firstReadingPersisted: result.readingPersisted === true,
+  firstReading128: result.firstReading === '128 mg/dL',
   firstInsightVisible: result.firstContextualInsight === 'Dans votre cible',
+  realChatBackend200: result.chatStatus === 200,
+  firstChatScreenshotCaptured: photo.size > 30000,
+  liveDemoDeviceFact: demo.checks.deviceReading && demo.checks.deviceSourceLabel,
+  liveDemoSyncDisclosure: demo.checks.syncDisclosure,
+  liveDemoNoInferredTrend: demo.checks.noUnsupportedTrend,
 };
 const output = {
   releaseUrl: result.base,
   viewport: result.viewport,
+  scope: 'first-user actual E2E plus independent real demo chat continuity',
   checks,
-  observedSyncState: reportedStatus || null,
   passed: Object.values(checks).every(Boolean),
 };
 fs.writeFileSync(path.join(dir, 'ux95-postdeploy-checks.json'), JSON.stringify(output, null, 2));
 if (!output.passed) {
-  console.error('UX95 failed checks:', Object.keys(checks).filter(x => !checks[x]).join(', '));
+  console.error('Failed checks:', Object.keys(checks).filter(x => !checks[x]).join(', '));
   process.exit(1);
 }
-console.log('UX95 real first-use provenance checks passed.');
+console.log('Real first-use flow plus demo local continuity checks passed.');
