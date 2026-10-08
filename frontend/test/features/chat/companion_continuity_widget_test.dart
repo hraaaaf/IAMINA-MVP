@@ -43,6 +43,60 @@ void main() {
             (_) async => null);
   });
 
+  for (final language in ['fr', 'en', 'ar']) {
+    for (final size in const [Size(390, 844), Size(360, 560)]) {
+      testWidgets(
+          'empty chat suggests a question without submitting '
+          '$language at ${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final db = AppDatabase(NativeDatabase.memory());
+        addTearDown(db.close);
+
+        await tester.pumpWidget(MultiProvider(
+          providers: [
+            Provider<AppDatabase>.value(value: db),
+            Provider<AuthService>(create: (_) => _Authenticated()),
+          ],
+          child: MaterialApp(
+            locale: Locale(language),
+            supportedLocales: [Locale(language)],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: CompanionConversationScreen(service: _GovernedFallback()),
+          ),
+        ));
+        await tester.pump();
+        final suggestion =
+            find.byKey(const Key('companion-chat-suggestion-reading'));
+        expect(suggestion, findsOneWidget);
+        expect(
+          find.byKey(const Key('companion-chat-suggestion-capabilities')),
+          findsOneWidget,
+        );
+        await tester.ensureVisible(suggestion);
+        await tester.tap(suggestion);
+        await tester.pump();
+        final input = tester.widget<TextField>(
+          find.byKey(const Key('companion-chat-input')),
+        );
+        expect(input.controller!.text, isNotEmpty);
+        expect(
+          find.byKey(const Key('companion-chat-message-list')),
+          findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+      });
+    }
+  }
+
   testWidgets('first reading stays local and denied AI mode is explicit',
       (tester) async {
     tester.view.physicalSize = const Size(390, 844);
