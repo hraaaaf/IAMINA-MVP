@@ -74,6 +74,9 @@ void main() {
         expect(b.top, greaterThan(a.bottom));
       }
       expect(tester.takeException(), isNull);
+      // Detach Drift's watched streams before addTearDown closes the DB.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
     });
   }
 }
