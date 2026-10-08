@@ -97,6 +97,57 @@ void main() {
     }
   }
 
+  for (final entry in const <String, String>{
+    'fr': 'Réponse locale limitée — IA externe non utilisée',
+    'en': 'Limited local response — external AI not used',
+    'ar': 'رد محلي محدود — لم يُستخدم الذكاء الاصطناعي الخارجي',
+  }.entries) {
+    testWidgets('governed fallback provenance is honest in ${entry.key}',
+        (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MultiProvider(
+        providers: [
+          Provider<AuthService>(create: (_) => _Authenticated()),
+        ],
+        child: MaterialApp(
+          locale: Locale(entry.key),
+          supportedLocales: [Locale(entry.key)],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: CompanionConversationScreen(
+            service: _GovernedFallback(),
+            latestLocalReading: () async => null,
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.enterText(
+        find.byKey(const Key('companion-chat-input')),
+        'Une question simple',
+      );
+      await tester.tap(find.byKey(const Key('companion-chat-send')));
+      await tester.pump();
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      });
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('companion-governance-fallback-label')),
+        findsOneWidget,
+      );
+      expect(find.text(entry.value), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
   testWidgets('first reading stays local and denied AI mode is explicit',
       (tester) async {
     tester.view.physicalSize = const Size(390, 844);
