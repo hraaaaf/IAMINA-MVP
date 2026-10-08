@@ -6,6 +6,7 @@ on:
       - 'tools/first_user_prod_e2e.js'
       - 'tools/ux95_first_user_proof_check.js'
       - 'tools/ux95_live_demo_chat.js'
+      - 'tools/ux95_signup_diagnostic.js'
       - '.github/workflows/first-user-prod-e2e.yml'
   workflow_dispatch:
 
@@ -31,6 +32,9 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run real production first-user journey
         run: node tools/first_user_prod_e2e.js
+      - name: Diagnose synthetic pointer signup even when first-user fails
+        if: always()
+        run: node tools/ux95_signup_diagnostic.js
       - name: Independently verify demo chat with real browser text
         run: node tools/ux95_live_demo_chat.js
       - name: Verify local glucose and sync provenance in real deployed chat
