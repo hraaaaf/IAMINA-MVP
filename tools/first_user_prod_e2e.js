@@ -313,6 +313,10 @@ async function waitForChatResponse(page, timeout = 60000) {
 
   const glucoseBox = await visibleTextbox(page, 0, 10000);
   await keyboardType(page, glucoseBox, '128');
+  if (await glucoseBox.inputValue() !== '128') {
+    await glucoseBox.fill('128');
+    await sleep(600);
+  }
   await waitButtonEnabled(page, 'Enregistrer la mesure', 10000);
   const enteredGlucose = await glucoseBox.inputValue();
   if (enteredGlucose !== '128') throw new Error(`Glucose input mismatch: expected 128, got ${enteredGlucose}`);
