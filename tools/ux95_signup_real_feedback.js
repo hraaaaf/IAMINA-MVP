@@ -51,9 +51,32 @@ async function attempt(browser, width, height, method) {
     if (count < 3) throw new Error('Expected 3 signup fields, got '+count);
     const email = 'ux95-real-'+crypto.randomBytes(6).toString('hex')+'@example.invalid';
     const pass = 'A9!'+crypto.randomBytes(12).toString('hex')+'z';
-    await fields.nth(count - 3).fill(email);
-    await fields.nth(count - 2).fill(pass);
-    await fields.nth(count - 1).fill(pass+'wrong');
+    const typeField = async (locator, value) => {
+      await locator.click({timeout:8000});
+      await page.keyboard.press('Control+A');
+      await page.keyboard.type(value, {delay:20});
+      const observed = await locator.inputValue();
+      if (observed !== value) {
+        throw new Error('Field failed to retain typed input before submit');
+      }
+    };
+    await typeField(fields.nth(count - 3), email);
+    await typeField(fields.nth(count - 2), pass);
+    await typeField(fields.nth(count - 1), pass+'wrong');
+    const beforeMismatch = await Promise.all([
+      fields.nth(count-3).inputValue(),
+      fields.nth(count-2).inputValue(),
+      fields.nth(count-1).inputValue(),
+    ]);
+    result.beforeMismatch = {
+      emailPresent: beforeMismatch[0] === email,
+      passwordPresent: beforeMismatch[1] === pass,
+      confirmDifferent: beforeMismatch[2] !== beforeMismatch[1],
+    };
+    if (!Object.values(result.beforeMismatch).every(Boolean)) {
+      throw new Error('Fields lost input before mismatch validation');
+    }
+    await page.screenshot({path: path.join(OUT, name+'-before-mismatch.png')});
     await submit.click({timeout:8000});
     await page.getByText('Les mots de passe ne correspondent pas.', {exact:false})
       .first().waitFor({state:'visible', timeout:8000});
@@ -61,7 +84,20 @@ async function attempt(browser, width, height, method) {
     result.mismatchDidNotPOST = result.registerStatuses.length === 0;
     await page.screenshot({path: path.join(OUT, name+'-mismatch.png')});
     
-    await fields.nth(count - 1).fill(pass);
+    await typeField(fields.nth(count - 1), pass);
+    const beforeFinal = await Promise.all([
+      fields.nth(count-3).inputValue(),
+      fields.nth(count-2).inputValue(),
+      fields.nth(count-1).inputValue(),
+    ]);
+    result.beforeFinal = {
+      emailPresent: beforeFinal[0] === email,
+      passwordMatched: beforeFinal[1] === pass && beforeFinal[2] === pass,
+    };
+    if (!Object.values(result.beforeFinal).every(Boolean)) {
+      throw new Error('Fields lost input before valid submit');
+    }
+    await page.screenshot({path: path.join(OUT, name+'-before-submit.png')});
     if (method === 'keyboard') {
       await submit.focus();
       await page.keyboard.press('Enter');
