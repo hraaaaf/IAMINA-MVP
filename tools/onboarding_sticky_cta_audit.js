@@ -17,6 +17,7 @@ async function enableSemantics(page) {
 
 async function choose(page, label) {
   const candidates = [
+    page.getByRole('checkbox', {name: label, exact: true}),
     page.getByRole('button', {name: label, exact: false}),
     page.getByRole('radio', {name: label, exact: false}),
     page.getByText(label, {exact: true}),
