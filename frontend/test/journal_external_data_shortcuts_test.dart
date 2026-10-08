@@ -141,10 +141,12 @@ void main() {
 
   // Increased font size must keep both actions legible, visible and tappable
   // without depending on a two-column compact layout.
-  for (final locale in const [Locale('fr'), Locale('ar')]) {
-    testWidgets('journal shortcuts remain reachable at 160% in ${locale.languageCode}',
+  for (final locale in const [Locale('fr'), Locale('en'), Locale('ar')]) {
+    for (final size in const [Size(390, 844), Size(360, 560)]) {
+      for (final scale in const [1.3, 1.6]) {
+    testWidgets('journal shortcuts at ${size.width.toInt()}x${size.height.toInt()} scale $scale in ${locale.languageCode}',
         (tester) async {
-      tester.view.physicalSize = const Size(390, 844);
+      tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -185,7 +187,7 @@ void main() {
             supportedLocales: const [Locale('fr'), Locale('en'), Locale('ar')],
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context).copyWith(
-                textScaler: const TextScaler.linear(1.6),
+                textScaler: TextScaler.linear(scale),
               ),
               child: child!,
             ),
@@ -210,12 +212,14 @@ void main() {
       for (final rect in [a, b]) {
         expect(rect.height, greaterThanOrEqualTo(48));
         expect(rect.left, greaterThanOrEqualTo(0));
-        expect(rect.right, lessThanOrEqualTo(390));
-        expect(rect.bottom, lessThanOrEqualTo(844));
+        expect(rect.right, lessThanOrEqualTo(size.width));
+        expect(rect.bottom, lessThanOrEqualTo(size.height));
       }
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(const Duration(milliseconds: 20));
-    });
+        });
+      }
+    }
   }
 }
