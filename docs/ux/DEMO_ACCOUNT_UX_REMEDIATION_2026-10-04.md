@@ -283,3 +283,29 @@ Minimum observed score: 9.1/10. Goal “all certified first-use steps >9/10” m
 The prior 8.5/10 first-use closeout and its three listed UX debts above are historical BEFORE state for this follow-up and are superseded by this section for current first-use status.
 
 No Vercel deployment performed.
+
+## UX 9.5 convergence checkpoint — 2026-10-08 (NOT CERTIFIED 9.5)
+
+### Goal / criterion / proof
+Goal: close the final demo-account UX gaps and **prove** a retained UX score >=9.5/10 on an identified, published release. An isolated screenshot or a merged code change alone is not proof of production UX quality.
+
+- **Existing production BEFORE**, [real 390x844 transversal Chrome audit](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37778451228): frontend alias `iamina-review.vercel.app` deployed source `77ed76d2e562b0eaecd947a9ef7fed0a3436ac16` (verified 2026-10-08). Journal lacked Import/CGM direct actions; Reports showed four vertically stacked cards; /companion could show unavailable data; the first chat could degrade to a policy-governed generic fallback. This remains the last verified **live baseline**, not an AFTER for the commits below.
+
+### Implemented/verified this checkpoint
+
+1. **Journal Import + CGM shortcuts**: [PR #894](https://github.com/hraaaaf/IAMINA-MVP/pull/894) squash-merged to `main@d43400a202038509e46f319b57d445cf283a9e2d`. Final candidate `172c2a76b20d9ffa7424b4ed0061b950a66d449d`. Code adds FR/EN/AR actions below period filters, routes to /importer and /cgm without replacing the four canonical tabs. Exact-head [CI #37809016803](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37809016803), [first-use #37809016689](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37809016689), [geometry #37809016796](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37809016796), [browser screenshot #37809016745](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37809016745) **all SUCCESS**. Inspected Journal 390x844, 768x1024, 1280x900 Chrome captures: shortcuts visible and journal retained. Widget tests prove touch navigation FR/EN/AR and button min height. The original PR test had a 10-min pumpAndSettle deadlock and a route-overlay hit-test failure; both were corrected **only in the test** before exact-head green. No deployment.
+
+2. **Restore truthful Reports browser certification**: [PR #896](https://github.com/hraaaaf/IAMINA-MVP/pull/896) squash-merged to `main@0479eb98be9a05c7a660925676c80f796ddc7c98`. Candidate `86b1dba988e2088592a09e439b835d80ce639c4b`. Prior browser harness `/summary` incorrectly loaded legacy `AISummaryScreen` (its screenshot was an error) instead of production's descriptive `ReportsScreen`. Fix mounts the canonical ReportsScreen, preserves `/reports-local` alias and removes unused import. **Harness-only; no product/runtime change.** Exact-head [CI #37809876169](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37809876169), [UI browser screenshot #37809875942](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37809875942), [Reports KPI visual #37809876194](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37809876194), [first-use #37809876095](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37809876095), [onboarding Chrome #37809876109](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37809876109), [P7 responsive #37809875961](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37809875961) **all SUCCESS**. Inspected `summary` 390x844, 768x1024, 1280x900; the actual descriptive report and responsive two-column mobile KPIs render rather than an unrelated LLM-error card. This revalidates the already merged product PR #892 in isolated browser, not in updated production.
+
+### Explicit remaining acceptance / blockers
+
+- **#893 remains OPEN**: keyboard Tab/Enter focus navigation, text scaling 130%/160%, RTL and compact 360x560 on the actual routes need direct validation. Do not close from tap tests alone.
+- **#884 remains OPEN**: distinguish policy-governed fallback from a genuinely helpful conversation on the real deployed first-user path, prove local reading provenance and pending-sync behavior. #885 adds truthfulness locally but external Groq egress remains **PENDING legal/processor approval**, never bypass to improve superficial conversational scores.
+- **#125 UX-12 remains OPEN**: every primary patient page must meet dashboard visual consistency with independent Target↔Render, no missing/dead controls, and user-facing clarity. Separate browser harness and production observations.
+- **Review deployment human gate**: new current-main code has **not** been published at `iamina-review.vercel.app`. Explicit approval is mandatory before Vercel deployment; live real-patient release is a *distinct* CNDP/processor/residency approval gate [#320](https://github.com/hraaaaf/IAMINA-MVP/issues/320).
+- **Score rule** in `docs/QUALITY_SCORING_POLICY.md`: `RETAINED_SCORE = min(EXECUTION_SCORE, ADVERSARIAL_SCORE, all applicable caps, every critical dimension)`. Any retained >=9.5 requires a **genuinely independent** adversarial reviewer; a second pass by the same executor caps at 9.4, a required failing test/missing proof caps at 7.9, and missing faithful UI Target↔Render caps visual at 7.5. Perfection Pass and every required exact-HEAD binary gate are mandatory. **Retained 9.5 is NOT yet earned or declared.**
+
+### Next exact
+1. Certify post-merge code/docs HEAD and any changed evidence; address remaining live accessibility + Companion cases without violating provider gates.
+2. Verify 9.5 critical dimensions independently, with same-version BEFORE/TARGET/AFTER at 390x844, 360x560, tablet and desktop; run full first-use and transversal app interaction.
+3. Request **explicit Vercel deployment approval** for the exact release candidate; only after approval publish and verify actual site, then compute retained score under canonical policy.
