@@ -62,6 +62,7 @@ class _JournalScreenState extends State<JournalScreen> {
         slivers: [
           _buildSliverAppBar(context),
           _buildFilterChips(horizontalPadding),
+          _buildExternalDataActions(horizontalPadding),
           StreamBuilder<List<LogEntryData>>(
             stream: logsStream,
             builder: (context, snapshot) {
@@ -304,6 +305,80 @@ class _JournalScreenState extends State<JournalScreen> {
               )
               .toList(),
         ),
+      ),
+    );
+  }
+
+  Widget _buildExternalDataActions(double horizontalPadding) {
+    final code = Localizations.localeOf(context).languageCode;
+    String localized(String fr, String en, String ar) =>
+        code == 'ar' ? ar : code == 'en' ? en : fr;
+    final mobile = MediaQuery.sizeOf(context).width < 700;
+    final twoUp = MediaQuery.sizeOf(context).width >= 360 &&
+        mobile &&
+        MediaQuery.textScalerOf(context).scale(12) <= 15.5;
+
+    Widget shortcut({
+      required Key key,
+      required IconData icon,
+      required String label,
+      required String route,
+    }) {
+      return OutlinedButton.icon(
+        key: key,
+        onPressed: () => context.push(route),
+        icon: Icon(icon, size: 18),
+        label: Text(label, softWrap: true, textAlign: TextAlign.start),
+        style: OutlinedButton.styleFrom(
+          minimumSize: Size(0, mobile ? 56 : 48),
+          padding: EdgeInsets.symmetric(horizontal: mobile ? 8 : 12),
+          textStyle: TextStyle(fontSize: mobile ? 12 : 14),
+        ),
+      );
+    }
+
+    final importButton = shortcut(
+      key: const Key('journal-import-shortcut'),
+      icon: Icons.upload_file_outlined,
+      label: localized(
+        'Importer un document',
+        'Import a document',
+        'استيراد مستند',
+      ),
+      route: '/importer',
+    );
+    final cgmButton = shortcut(
+      key: const Key('journal-cgm-shortcut'),
+      icon: Icons.sensors_outlined,
+      label: localized(
+        'Connecter un CGM',
+        'Connect a CGM',
+        'ربط جهاز CGM',
+      ),
+      route: '/cgm',
+    );
+
+    return SliverPadding(
+      padding: EdgeInsetsDirectional.fromSTEB(
+        horizontalPadding,
+        12,
+        horizontalPadding,
+        0,
+      ),
+      sliver: SliverToBoxAdapter(
+        child: twoUp
+            ? Row(
+                children: [
+                  Expanded(child: importButton),
+                  const SizedBox(width: 8),
+                  Expanded(child: cgmButton),
+                ],
+              )
+            : Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [importButton, cgmButton],
+              ),
       ),
     );
   }
