@@ -62,8 +62,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('journal-import-shortcut')), findsOneWidget);
       expect(find.byKey(const Key('journal-cgm-shortcut')), findsOneWidget);
-      expect(tester.getRect(find.byKey(const Key('journal-import-shortcut'))).height,
-          greaterThanOrEqualTo(44));
+      final importRect = tester.getRect(
+        find.byKey(const Key('journal-import-shortcut')),
+      );
+      final cgmRect = tester.getRect(
+        find.byKey(const Key('journal-cgm-shortcut')),
+      );
+      expect(importRect.height, greaterThanOrEqualTo(48));
+      expect(cgmRect.height, greaterThanOrEqualTo(48));
+      // Standard 390px mobile fits both shortcuts on a single row.
+      expect((importRect.top - cgmRect.top).abs(), lessThan(4));
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.byKey(const Key('journal-import-shortcut')));
