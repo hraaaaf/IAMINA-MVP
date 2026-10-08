@@ -1,0 +1,39 @@
+name: UX95 live signup accessibility and reliability
+
+on:
+  pull_request:
+    paths:
+      - 'tools/ux95_signup_real_feedback.js'
+      - '.github/workflows/ux95-live-signup-feedback.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-signup:
+    name: Real signup 390 and 360 keyboard/pointer
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      IAMINA_PROD_URL: https://iamina-review.vercel.app
+      E2E_OUT: ux95-signup-real
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify real signup feedback and repeat transition
+        run: node tools/ux95_signup_real_feedback.js
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-ux95-real-signup-keyboard-pointer
+          path: ux95-signup-real/*
+          if-no-files-found: warn
+          retention-days: 14
