@@ -155,7 +155,7 @@ jobs:
           ws.close()
           PY
 
-          surfaces=(dashboard trend kpi insight next-action companion amina-chat summary profile journal importer document-import add-log add-log-meal meal-picker medications reminders)
+          surfaces=(dashboard trend kpi insight next-action companion companion-unavailable amina-chat summary profile journal importer document-import add-log add-log-meal meal-picker medications reminders)
           viewports=("390 844 true" "768 1024 false" "1280 900 false")
 
           for viewport in "${viewports[@]}"; do
