@@ -35,7 +35,11 @@ class _CompanionPremiumScreenState extends State<CompanionPremiumScreen> {
     super.dispose();
   }
 
-  void _reload() => setState(() => _future = _service.fetchOverview());
+  void _reload() {
+    setState(() {
+      _future = _service.fetchOverview();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
