@@ -62,6 +62,8 @@ void main() {
       loggedAt: Value(DateTime.now()),
     ));
 
+    expect((await db.getRecentLogs(limit: 1)).single.bloodSugar, 128);
+
     await tester.pumpWidget(RepaintBoundary(
       key: const Key('p1-chat-proof-root'),
       child: MultiProvider(
@@ -82,7 +84,16 @@ void main() {
     );
     await tester.tap(find.byKey(const Key('companion-chat-send')));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 800));
+    // Drift's native executor may complete asynchronously outside fake time.
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    });
+    await tester.pumpAndSettle();
+    final present = tester.widgetList<Text>(find.byType(Text))
+        .map((text) => text.data)
+        .whereType<String>()
+        .toList(growable: false);
+    debugPrint('P1 synthetic widget texts: $present');
 
     expect(find.textContaining('128 mg/dL'), findsOneWidget);
     expect(find.textContaining('n’est pas vérifiée'), findsOneWidget);

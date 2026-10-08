@@ -5917,6 +5917,11 @@
             "title": "Reply",
             "type": "string"
           },
+          "response_mode": {
+            "default": "standard",
+            "title": "Response Mode",
+            "type": "string"
+          },
           "conversation_id": {
             "title": "Conversation Id",
             "type": "string"
