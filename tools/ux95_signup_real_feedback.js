@@ -57,9 +57,22 @@ async function runCase(browser, spec) {
       if (count<3) throw new Error('Signup did not expose three fields');
       const email='ux95-reg-'+crypto.randomBytes(6).toString('hex')+'@example.invalid';
       const pass='A9!'+crypto.randomBytes(12).toString('hex')+'z';
-      await fields.nth(count-3).fill(email);
-      await fields.nth(count-2).fill(pass);
-      await fields.nth(count-1).fill(spec.kind==='mismatch' ? pass+'different' : pass);
+      const values = [email, pass,
+        spec.kind==='mismatch' ? pass+'different' : pass];
+      if (spec.kind==='valid') {
+        // Unlike locator.fill (which can update a transient Flutter Web
+        // semantics input), real key events exercise TextEditingController.
+        for (let i = 0; i < values.length; i++) {
+          await fields.nth(count-3+i).click({timeout:10000});
+          await page.keyboard.type(values[i], {delay:25});
+          await page.keyboard.press('Tab');
+        }
+      } else {
+        for (let i = 0; i < values.length; i++) {
+          await fields.nth(count-3+i).fill(values[i]);
+        }
+      }
+      await sleep(250);
       await page.screenshot({path:path.join(OUT,name+'-filled.png')});
       if (spec.kind==='mismatch') {
         await submit.click({timeout:10000});
