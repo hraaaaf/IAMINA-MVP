@@ -50,6 +50,7 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:7366 >/dev/null
+          NODE_PATH="$PWD/node_modules" \
           AUDIT_OUT="$GITHUB_WORKSPACE/onboarding-sticky-proof" \
             node ../tools/onboarding_sticky_cta_audit.js
       - name: Upload exact browser proof

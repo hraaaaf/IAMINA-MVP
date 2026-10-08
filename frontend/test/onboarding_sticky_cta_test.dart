@@ -48,7 +48,7 @@ void main() {
     await tester.pumpWidget(MultiProvider(
       providers: [
         Provider<AppDatabase>.value(value: db),
-        Provider<AuthService>.value(value: auth),
+        ChangeNotifierProvider<AuthService>.value(value: auth),
         ChangeNotifierProvider<LocalePreferenceService>.value(value: prefs),
       ],
       child: MaterialApp.router(
