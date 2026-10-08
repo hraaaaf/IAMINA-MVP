@@ -45,9 +45,10 @@ void main() {
 
   for (final language in ['fr', 'en', 'ar']) {
     for (final size in const [Size(390, 844), Size(360, 560)]) {
-      testWidgets(
+      for (final scale in const [1.0, 1.6]) {
+        testWidgets(
           'empty chat suggests a question without submitting '
-          '$language at ${size.width.toInt()}x${size.height.toInt()}',
+          '$language at ${size.width.toInt()}x${size.height.toInt()} text x$scale',
           (tester) async {
         tester.view.physicalSize = size;
         tester.view.devicePixelRatio = 1;
@@ -69,7 +70,16 @@ void main() {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            home: CompanionConversationScreen(service: _GovernedFallback()),
+            home: Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(scale),
+                ),
+                child: CompanionConversationScreen(
+                  service: _GovernedFallback(),
+                ),
+              ),
+            ),
           ),
         ));
         await tester.pump();
@@ -93,7 +103,8 @@ void main() {
         );
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
-      });
+        });
+      }
     }
   }
 
