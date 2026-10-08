@@ -129,13 +129,17 @@ void main() {
     expect(browserWorkflow, contains('suspiciously small'));
     expect(browserWorkflow, contains('distinct renders'));
     expect(browserWorkflow, contains('amina-chat'));
-    expect(browserWorkflow, contains('iamina-ui-browser-cert-multi-viewport'));
-    expect(browserWorkflow, contains('"390 844 true"'));
-    expect(browserWorkflow, contains('"768 1024 false"'));
-    expect(browserWorkflow, contains('"1280 900 false"'));
-    expect(
-      browserWorkflow,
-      contains(r'test "$total" -eq 51'.replaceAll(r'\"', '"')),
-    );
+    expect(browserWorkflow, contains('iamina-ui-browser-cert-'));
+    expect(browserWorkflow, contains('fail-fast: false'));
+    expect(browserWorkflow, contains('width: 390, height: 844, mobile: true'));
+    expect(browserWorkflow, contains('width: 768, height: 1024, mobile: false'));
+    expect(browserWorkflow, contains('width: 1280, height: 900, mobile: false'));
+    expect(browserWorkflow, contains(r'${{ matrix.width }}'));
+    expect(browserWorkflow, contains(r'${{ matrix.height }}'));
+    expect(browserWorkflow, contains(r'${{ matrix.mobile }}'));
+    expect(browserWorkflow, contains('--disable-dev-shm-usage'));
+    expect(browserWorkflow, contains('companion-unavailable'));
+    expect(browserWorkflow, contains(r'test "$total" -eq "${#surfaces[@]}"'));
+    expect(browserWorkflow, contains(r'test "$count" -eq "${#surfaces[@]}"'));
   });
 }

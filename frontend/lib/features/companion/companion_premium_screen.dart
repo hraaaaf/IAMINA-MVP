@@ -35,7 +35,11 @@ class _CompanionPremiumScreenState extends State<CompanionPremiumScreen> {
     super.dispose();
   }
 
-  void _reload() => setState(() => _future = _service.fetchOverview());
+  void _reload() {
+    setState(() {
+      _future = _service.fetchOverview();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,10 +78,11 @@ class _CompanionPremiumScreenState extends State<CompanionPremiumScreen> {
                       title: _t(context, 'Données indisponibles', 'Data unavailable', 'البيانات غير متاحة'),
                       body: _t(
                         context,
-                        'Votre suivi ne peut pas être chargé pour le moment. Aucune interprétation n’est inventée.',
-                        'Your companion view cannot be loaded right now. No interpretation is invented.',
-                        'يتعذر تحميل المتابعة حالياً. لا يتم اختراع أي تفسير.',
+                        'La synthèse n’est pas disponible pour le moment. Aucune interprétation n’est inventée. Vous pouvez ouvrir la conversation IAmina, dont les réponses peuvent rester limitées.',
+                        'The summary is unavailable right now. No interpretation is invented. You can open IAmina chat, where replies may remain limited.',
+                        'الملخص غير متاح حالياً. لا يتم اختراع أي تفسير. يمكنك فتح محادثة IAmina، وقد تبقى الردود محدودة.',
                       ),
+                      onChat: () => context.push('/companion/chat'),
                       actionLabel: _t(context, 'Réessayer', 'Retry', 'إعادة المحاولة'),
                       onAction: _reload,
                     ),

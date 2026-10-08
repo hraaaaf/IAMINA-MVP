@@ -594,6 +594,7 @@ class _StateCard extends StatelessWidget {
   final String body;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final VoidCallback? onChat;
 
   const _StateCard({
     this.loading = false,
@@ -602,6 +603,7 @@ class _StateCard extends StatelessWidget {
     required this.body,
     this.actionLabel,
     this.onAction,
+    this.onChat,
   });
 
   @override
@@ -648,12 +650,33 @@ class _StateCard extends StatelessWidget {
               color: AminaVisualLanguage.secondary(context),
             ),
           ),
-          if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 20),
+          if (onChat != null) ...[
+            const SizedBox(height: 22),
             SizedBox(
-              width: desktop ? 220 : double.infinity,
-              height: 46,
+              width: desktop ? 280 : double.infinity,
+              height: 48,
               child: FilledButton.icon(
+                key: const Key('companion-overview-chat-action'),
+                onPressed: onChat,
+                icon: const Icon(Icons.chat_bubble_outline_rounded, size: 19),
+                label: Text(
+                  _t(
+                    context,
+                    'Parler avec IAmina',
+                    'Chat with IAmina',
+                    'تحدث مع IAmina',
+                  ),
+                ),
+              ),
+            ),
+          ],
+          if (actionLabel != null && onAction != null) ...[
+            SizedBox(height: onChat == null ? 20 : 10),
+            SizedBox(
+              width: desktop ? 280 : double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                key: const Key('companion-overview-retry-action'),
                 onPressed: onAction,
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: Text(actionLabel!),

@@ -111,6 +111,14 @@ class _BrowserAuditCompanionService extends CompanionService {
   );
 }
 
+class _BrowserUnavailableCompanionService extends CompanionService {
+  @override
+  Future<CompanionOverview?> fetchOverview() async => null;
+
+  @override
+  void dispose() {}
+}
+
 class _BrowserFirstUseCompanionService extends CompanionService {
   @override
   Future<ProactivePreview?> fetchProactivePreview() async =>
@@ -281,6 +289,17 @@ class _BrowserAuditApp extends StatelessWidget {
           builder: (context, state) => const CompanionPremiumScreen(),
         ),
         GoRoute(
+          path: '/companion-unavailable',
+          builder: (context, state) => CompanionPremiumScreen(
+            service: _BrowserUnavailableCompanionService(),
+          ),
+        ),
+        GoRoute(
+          path: '/companion/chat',
+          builder: (context, state) =>
+              CompanionConversationScreen(service: visualCompanion),
+        ),
+        GoRoute(
           path: '/amina-chat',
           builder: (context, state) =>
               CompanionConversationScreen(service: visualCompanion),
@@ -403,6 +422,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'medications' => '/medications',
   'reminders' => '/reminders',
   'companion' => '/companion',
+  'companion-unavailable' => '/companion-unavailable',
   'amina-chat' => '/amina-chat',
   'first-use-receipt' => '/first-use-receipt',
   'first-use-chat' => '/first-use-chat',

@@ -44,6 +44,13 @@ jobs:
     name: Real Chrome patient surfaces mobile + desktop
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { width: 390, height: 844, mobile: true }
+          - { width: 768, height: 1024, mobile: false }
+          - { width: 1280, height: 900, mobile: false }
 
     defaults:
       run:
@@ -155,8 +162,8 @@ jobs:
           ws.close()
           PY
 
-          surfaces=(dashboard trend kpi insight next-action companion amina-chat summary profile journal importer document-import add-log add-log-meal meal-picker medications reminders)
-          viewports=("390 844 true" "768 1024 false" "1280 900 false")
+          surfaces=(dashboard trend kpi insight next-action companion companion-unavailable amina-chat summary profile journal importer document-import add-log add-log-meal meal-picker medications reminders)
+          viewports=("${{ matrix.width }} ${{ matrix.height }} ${{ matrix.mobile }}")
 
           for viewport in "${viewports[@]}"; do
             read -r width height mobile <<< "$viewport"
@@ -166,6 +173,7 @@ jobs:
               "$CHROME" \
                 --headless=new \
                 --no-sandbox \
+                --disable-dev-shm-usage \
                 --enable-unsafe-swiftshader \
                 --hide-scrollbars \
                 --remote-allow-origins='*' \
@@ -202,7 +210,7 @@ jobs:
             done
 
             count="$(find "$GITHUB_WORKSPACE/ui-browser-cert" -name "*-${width}x${height}.png" | wc -l)"
-            test "$count" -eq 17
+            test "$count" -eq "${#surfaces[@]}"
             unique="$(sha256sum "$GITHUB_WORKSPACE"/ui-browser-cert/*-${width}x${height}.png | awk '{print $1}' | sort -u | wc -l)"
             if [ "$unique" -lt 15 ]; then
               echo "Browser certification at ${width}x${height} produced only ${unique} distinct renders" >&2
@@ -211,13 +219,13 @@ jobs:
           done
 
           total="$(find "$GITHUB_WORKSPACE/ui-browser-cert" -name '*.png' | wc -l)"
-          test "$total" -eq 51
+          test "$total" -eq "${#surfaces[@]}"
 
       - name: Upload real browser screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iamina-ui-browser-cert-multi-viewport
+          name: iamina-ui-browser-cert-${{ matrix.width }}x${{ matrix.height }}
           path: ui-browser-cert/*.png
           if-no-files-found: warn
           retention-days: 7
