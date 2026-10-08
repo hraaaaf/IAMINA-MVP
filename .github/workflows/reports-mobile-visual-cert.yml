@@ -1,0 +1,63 @@
+name: Reports mobile KPI visual certification
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/journal/reports_screen_presentation.dart'
+      - 'frontend/lib/ui_browser_audit_main.dart'
+      - 'frontend/test/reports_mobile_metrics_layout_test.dart'
+      - 'tools/reports_mobile_visual_audit.js'
+      - '.github/workflows/reports-mobile-visual-cert.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reports-kpi-visual:
+    name: Report statistics 390 + 768 + 1280
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Run KPI layout tests
+        run: flutter test test/reports_mobile_metrics_layout_test.dart
+      - name: Analyze isolated report browser entrypoint
+        run: flutter analyze --no-fatal-infos lib/ui_browser_audit_main.dart
+      - name: Build browser harness
+        run: flutter build web --release -t lib/ui_browser_audit_main.dart
+      - name: Capture reports at three viewports
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          python3 -m http.server 7367 --directory build/web >/tmp/iamina-reports-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7367 >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:7367 >/dev/null
+          NODE_PATH="$PWD/node_modules" \
+          AUDIT_OUT="$GITHUB_WORKSPACE/reports-mobile-visual-proof" \
+            node ../tools/reports_mobile_visual_audit.js
+      - name: Upload browser proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-reports-kpi-390-768-1280
+          path: reports-mobile-visual-proof/*
+          if-no-files-found: warn
+          retention-days: 14

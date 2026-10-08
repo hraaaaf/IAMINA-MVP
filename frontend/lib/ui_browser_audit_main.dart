@@ -25,6 +25,7 @@ import 'features/documents/document_import_premium_screen.dart';
 import 'features/journal/add_log_screen.dart';
 import 'features/journal/ai_summary_screen.dart';
 import 'features/journal/journal_screen.dart';
+import 'features/journal/reports_screen.dart';
 import 'features/journal/widgets/food_pictogram_audit_fixture.dart';
 import 'features/journal/widgets/meal_capture_panel.dart';
 import 'features/medications/medication_screen.dart';
@@ -243,6 +244,10 @@ class _BrowserAuditApp extends StatelessWidget {
               builder: (context, state) => const AISummaryScreen(),
             ),
             GoRoute(
+              path: '/reports-local',
+              builder: (context, state) => const ReportsScreen(),
+            ),
+            GoRoute(
               path: '/profile',
               builder: (context, state) => const ProfileScreen(),
             ),
@@ -413,6 +418,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'dashboard' => '/dashboard',
   'journal' => '/journal',
   'summary' => '/summary',
+  'reports-local' => '/reports-local',
   'profile' => '/profile',
   'importer' => '/importer',
   'document-import' => '/document-import',
