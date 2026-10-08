@@ -103,6 +103,41 @@ async function openRoute(page, name, route) {
     ];
     for (const [name, route] of routes) await openRoute(page, name, route);
 
+    // Secondary states: test visibility beyond the first fold, using no writes.
+    async function secondary(name, route, action) {
+      try {
+        await page.evaluate(r => { location.hash = '#' + r; }, route);
+        await delay(2400);
+        await semantics(page);
+        await action();
+        await delay(1000);
+        await capture(page, name + '-390x844');
+        results.push({
+          name, requestedRoute: route, observedUrl: page.url(),
+          visibleText: (await visibleText(page)).slice(0, 2400),
+          interaction: true,
+        });
+      } catch (e) {
+        results.push({name, requestedRoute: route, error: String(e.message || e)});
+        await capture(page, name + '-blocked-390x844').catch(() => {});
+      }
+    }
+    await secondary('13-rapports-scroll', '/summary', async () => {
+      await page.mouse.move(170, 570);
+      await page.mouse.wheel(0, 680);
+    });
+    await secondary('14-profil-donnees', '/profile', async () => {
+      await page.getByText('Données & appareils', {exact: false})
+        .first().click({timeout: 4000});
+    });
+    await secondary('15-cgm-dexcom', '/cgm', async () => {
+      await page.getByText('Dexcom G6/G7', {exact: false})
+        .first().click({timeout: 4000});
+    });
+    await secondary('16-navigation-mesures', '/dashboard', async () => {
+      await page.getByRole('button', {name: /Mesures/i})
+        .first().click({timeout: 4000});
+    });
     fs.writeFileSync(out + '/result.json', JSON.stringify({
       base, viewport: '390x844', account: 'public-demo-only',
       startUrl, routes: results,
