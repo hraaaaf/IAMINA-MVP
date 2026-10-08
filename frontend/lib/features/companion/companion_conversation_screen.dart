@@ -373,7 +373,7 @@ class _CompanionConversationScreenState
           final language = Localizations.localeOf(context).languageCode;
           setState(() {
             _messages.add(_ConversationMessage.localFact(
-              localReadingFact(glucose, language),
+              localReadingFact(glucose!, language),
             ));
           });
           _scrollToBottom();
