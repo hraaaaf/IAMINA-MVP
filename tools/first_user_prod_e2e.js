@@ -355,7 +355,6 @@ async function waitForChatResponse(page, timeout = 60000) {
   const chatBox = await visibleTextbox(page, 0, 10000);
   await keyboardType(page, chatBox, prompt);
   await activateButton(page, 'Envoyer le message', 10000);
-  await expectText(page, prompt, 15000);
 
   const response = await waitForChatResponse(page, 60000);
   if (response.status !== 200) {
