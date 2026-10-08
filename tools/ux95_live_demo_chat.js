@@ -42,7 +42,8 @@ const browserOptions = { headless: true, args: ['--force-renderer-accessibility'
       deviceReading: /Votre dernière mesure enregistrée sur cet appareil est de [0-9]+(?:[.,][0-9]+)? mg\/dL/.test(text),
       syncDisclosure: /en attente de synchronisation|marquée comme synchronisée|dernière tentative de synchronisation a échoué/.test(text),
       noUnsupportedTrend: text.includes('Cette mesure seule ne permet pas'),
-      deviceSourceLabel: text.includes('Sur cet appareil'),
+      deviceSourceLabel: text.toLowerCase().includes('sur cet appareil'),
+      governedFallbackLabeled: !text.includes('Je peux continuer avec les fonctions locales') || text.includes('IA externe indisponible'),
     };
     const result = {base,viewport:'390x844',url:page.url(),checks,passed:Object.values(checks).every(Boolean)};
     fs.writeFileSync(path.join(out,'ux95-demo-chat-checks.json'),JSON.stringify(result,null,2));
