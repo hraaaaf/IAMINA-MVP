@@ -147,4 +147,52 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('128 mg/dL'), findsOneWidget);
   });
+
+  testWidgets('empty device states absence without inventing server history',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await tester.pumpWidget(MultiProvider(
+      providers: [
+        Provider<AppDatabase>.value(value: db),
+        Provider<AuthService>(create: (_) => _Authenticated()),
+      ],
+      child: MaterialApp(
+        locale: const Locale('fr'),
+        supportedLocales: const [Locale('fr')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: CompanionConversationScreen(
+          service: _GovernedFallback(),
+          latestLocalReading: () async => null,
+        ),
+      ),
+    ));
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const Key('companion-chat-input')),
+      'Que peux-tu me dire de ma première mesure ?',
+    );
+    await tester.tap(find.byKey(const Key('companion-chat-send')));
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    });
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Aucune mesure de glycémie'), findsOneWidget);
+    expect(find.textContaining('serveur'), findsOneWidget);
+    expect(
+      find.byKey(const Key('companion-governance-fallback-label')),
+      findsOneWidget,
+    );
+  });
 }
