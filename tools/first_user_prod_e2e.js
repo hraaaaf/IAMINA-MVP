@@ -255,7 +255,11 @@ async function waitForChatResponse(page, timeout = 60000) {
     await fields.nth(count - 3).fill(unique);
     await fields.nth(count - 2).fill(password);
     await fields.nth(count - 1).fill(password);
-    await activateButton(page, 'Créer', 10000);
+    // Certify the primary pointer signup flow here. Keyboard Enter activation
+    // is independently covered by ux95_signup_real_feedback.js.
+    // Flutter Web's semantics focus can differ from a real tap after filling.
+    const createAccount = page.getByRole('button', {name: 'Créer', exact: true});
+    await createAccount.click({timeout: 10000});
     await waitAnyPath(page, ['/app-lock/setup', '/onboarding'], 25000);
     await sleep(1000);
     await enableFlutterSemantics(page);
