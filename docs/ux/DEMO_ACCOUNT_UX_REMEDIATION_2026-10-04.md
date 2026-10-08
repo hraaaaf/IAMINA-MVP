@@ -309,3 +309,23 @@ Goal: close the final demo-account UX gaps and **prove** a retained UX score >=9
 1. Certify post-merge code/docs HEAD and any changed evidence; address remaining live accessibility + Companion cases without violating provider gates.
 2. Verify 9.5 critical dimensions independently, with same-version BEFORE/TARGET/AFTER at 390x844, 360x560, tablet and desktop; run full first-use and transversal app interaction.
 3. Request **explicit Vercel deployment approval** for the exact release candidate; only after approval publish and verify actual site, then compute retained score under canonical policy.
+
+### UX 9.5 follow-up — Journal accessibility and device-empty Companion (2026-10-08)
+
+#### Goal and success criteria
+Document exactly what closed at the **code and test level**, and what remains unverified in the **published patient application**. Pass requires (1) matching main merges + candidate exact-HEAD CI, (2) no safety/policy bypass, (3) real release AFTER/UX validation, and (4) independent scoring per `docs/QUALITY_SCORING_POLICY.md`. Only items 1–2 are supported below.
+
+#### Merged fixes, code and CI proof
+- [PR #898](https://github.com/hraaaaf/IAMINA-MVP/pull/898) merged to `a0c0ce1c3c27a3b72f8ee8b457c6a6642d92430a`. Exact candidate `0be74e547a19763a629594c234160731f73bdfa7`, [CI #37811747012](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37811747012) **SUCCESS**. Real Flutter widget tests check Tab-focus/Enter activation of Journal Import and CGM entry paths, FR/EN/AR at 390x844; enlarging text to 160% preserves button presence and geometry. No release deployment.
+- [PR #900](https://github.com/hraaaaf/IAMINA-MVP/pull/900) merged to `3c4d1f6b8662fba635842a7cd32a12d35f455579`. Candidate `8a2a050e1fd121f0906d4413ff14cfae18b4c118`, [CI #37812530860](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37812530860) **SUCCESS**. Twelve further parameterized widget contracts check Journal contextual actions at 390x844 and 360x560, text 130% and 160%, FR/EN/AR, RTL, >=48px tap targets and bounds, no Flutter exceptions. Tests-only, no visual product changes.
+- [PR #899](https://github.com/hraaaaf/IAMINA-MVP/pull/899) merged to `0f0fbaf216e525b62b17aba096eafb8cc55c1aa6`. Candidate `90274163db5be2c037fb7ca497a3e849e4c19c61`. All 7 exact-head workflows **SUCCESS**: [CI #37812258236](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37812258236), [Companion real chat E2E #37812258352](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37812258352), [first-use visual #37812258632](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37812258632), [browser screenshot #37812258319](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37812258319), [geometry #37812258343](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37812258343), [P5-5 pilot #37812258219](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37812258219), and [global routes #37812258217](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37812258217). The patient first-reading question now exposes a localized, deterministic local-only **missing-reading** message when local Drift contains no glucose value. No false server-history assertion, no provider authorization change, no clinical inference.
+- **Additional pending improvement (not complete):** [PR #901](https://github.com/hraaaaf/IAMINA-MVP/pull/901), candidate `c91f768b772603fd11db6ddea25a0d987b5b5320`, proposes local `syncStatus`/`errorSync` disclosure while retaining the provider fail-closed boundary. Its 7 workflows were **IN PROGRESS** at this documentation checkpoint. Do not call this merged or certified here.
+
+#### Outstanding gate
+- #884: real first-measure → local pending/synced → IAmina answer provenance, governed fallback visibility, authorized conversation tests. No external processor/Groq activation without the formal legal/privacy approvals (#320).
+- #893: browser keyboard and same-release 390x844/768x1024/1280x900 AFTER still required. Widget checks alone are not production proof.
+- #125 UX-12: all primary routes need true Dashboard-referenced Target↔Render, FR/EN/AR RTL, compact height, and page-level scoring.
+- Vercel review alias currently last verified deployed source `77ed76d2e562b0eaecd947a9ef7fed0a3436ac16`; newer `main` fixes are **not** published. Deployment is a **human gate requiring explicit approval**.
+- Per scoring policy, no independent adversarial score or end-to-end published release proof is yet available. **Do not declare retained 9.5/10.**
+
+**Next exact:** validate PR #901 exact-head, fix failures, merge only green, update canonical addendum from observed final result, independently audit visual accessibility and real first-use before release authorization.
