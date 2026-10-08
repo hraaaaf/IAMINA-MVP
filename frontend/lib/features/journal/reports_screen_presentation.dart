@@ -203,9 +203,14 @@ class _Metrics extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Two compact columns on a standard phone, but preserve one
+        // readable column at narrow widths or enlarged text settings.
+        final useCompactPhone = constraints.maxWidth >= 330 &&
+            constraints.maxWidth < 560 &&
+            MediaQuery.textScalerOf(context).scale(12) <= 15.5;
         final columns = constraints.maxWidth >= 980
             ? 4
-            : constraints.maxWidth >= 560
+            : constraints.maxWidth >= 560 || useCompactPhone
                 ? 2
                 : 1;
         const gap = 12.0;
@@ -214,6 +219,7 @@ class _Metrics extends StatelessWidget {
 
         final items = <Widget>[
           _Metric(
+            compact: useCompactPhone,
             icon: Icons.fact_check_outlined,
             value: '${stats.logs.length}',
             label: _t(
@@ -224,6 +230,7 @@ class _Metrics extends StatelessWidget {
             ),
           ),
           _Metric(
+            compact: useCompactPhone,
             icon: Icons.analytics_outlined,
             value: '${stats.display(stats.average)} ${stats.unit}',
             label: _t(
@@ -234,6 +241,7 @@ class _Metrics extends StatelessWidget {
             ),
           ),
           _Metric(
+            compact: useCompactPhone,
             icon: Icons.calendar_month_outlined,
             value: '${stats.daysCovered}',
             label: _t(
@@ -244,6 +252,7 @@ class _Metrics extends StatelessWidget {
             ),
           ),
           _Metric(
+            compact: useCompactPhone,
             icon: Icons.adjust_rounded,
             value: stats.hasTarget
                 ? '${stats.inside}/${stats.logs.length}'
@@ -280,39 +289,45 @@ class _Metric extends StatelessWidget {
   final IconData icon;
   final String value;
   final String label;
+  final bool compact;
 
   const _Metric({
     required this.icon,
     required this.value,
     required this.label,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return _Surface(
-      padding: 18,
+      padding: compact ? 12 : 18,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: AminaVisualLanguage.actionGreen),
-          const SizedBox(height: 10),
+          Icon(
+            icon,
+            size: compact ? 18 : 20,
+            color: AminaVisualLanguage.actionGreen,
+          ),
+          SizedBox(height: compact ? 7 : 10),
           Text(
             value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            // Allow the recorded unit and numbers to wrap instead of
+            // silently truncating medical measurement information.
+            softWrap: true,
             style: TextStyle(
               fontFamily: 'Georgia',
-              fontSize: 25,
-              height: 1,
+              fontSize: compact ? 21 : 25,
+              height: 1.1,
               fontWeight: FontWeight.w700,
               color: AminaVisualLanguage.primaryText(context),
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: compact ? 4 : 6),
           Text(
             label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            softWrap: true,
             style: TextStyle(
               fontSize: 11.5,
               height: 1.3,
@@ -372,8 +387,10 @@ class _Distribution extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           if (stats.hasTarget) ...[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.end,
+              spacing: 9,
+              runSpacing: 5,
               children: [
                 Text(
                   '${(ratio * 100).round()}%',
@@ -385,7 +402,6 @@ class _Distribution extends StatelessWidget {
                     color: AminaVisualLanguage.primaryText(context),
                   ),
                 ),
-                const SizedBox(width: 9),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text(
@@ -490,8 +506,10 @@ class _Latest extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.end,
+            spacing: 7,
+            runSpacing: 5,
             children: [
               Text(
                 stats.display(latest.bloodSugar),
@@ -503,7 +521,6 @@ class _Latest extends StatelessWidget {
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(width: 7),
               Padding(
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Text(
