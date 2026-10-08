@@ -157,6 +157,9 @@ void main() {
     expect(find.textContaining('n’est pas vérifiée'), findsOneWidget);
     expect(find.byKey(const Key('companion-governance-fallback-label')),
         findsOneWidget);
+    expect(find.text('Réponse locale limitée — IA externe non utilisée'),
+        findsOneWidget);
+    expect(find.textContaining('IA externe indisponible'), findsNothing);
     expect(find.text('Réponse locale limitée.'), findsOneWidget);
 
 
