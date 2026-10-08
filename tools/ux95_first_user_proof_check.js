@@ -15,6 +15,7 @@ const checks = {
   liveDemoDeviceFact: demo.checks.deviceReading && demo.checks.deviceSourceLabel,
   liveDemoSyncDisclosure: demo.checks.syncDisclosure,
   liveDemoNoInferredTrend: demo.checks.noUnsupportedTrend,
+  governedFallbackTruthfullyLabeled: demo.checks.governedFallbackLabeled,
 };
 const output = {
   releaseUrl: result.base,
