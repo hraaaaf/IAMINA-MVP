@@ -63,7 +63,15 @@ enum _VoiceState { idle, recording, processing }
 class CompanionConversationScreen extends StatefulWidget {
   final CompanionService? service;
 
-  const CompanionConversationScreen({super.key, this.service});
+  /// Optional deterministic local-data reader for isolated UI certification.
+  /// Production reads Drift from the existing AppDatabase provider.
+  final Future<double?> Function()? latestLocalReading;
+
+  const CompanionConversationScreen({
+    super.key,
+    this.service,
+    this.latestLocalReading,
+  });
 
   @override
   State<CompanionConversationScreen> createState() =>
@@ -350,21 +358,30 @@ class _CompanionConversationScreenState
     // Present device-only data separately; never smuggle it into the AI request.
     if (refersToRecordedGlucose(text)) {
       try {
-        if (!context.read<AuthService>().isAuditSession) {
-          final recent = await context.read<AppDatabase>().getRecentLogs(limit: 1);
+        if (widget.latestLocalReading != null ||
+            !context.read<AuthService>().isAuditSession) {
+          final double? glucose;
+          if (widget.latestLocalReading != null) {
+            glucose = await widget.latestLocalReading!();
+          } else {
+            final recent =
+                await context.read<AppDatabase>().getRecentLogs(limit: 1);
+            glucose = recent.isEmpty ? null : recent.first.bloodSugar;
+          }
           if (!mounted) return;
-          if (recent.isNotEmpty) {
+          if (glucose != null && glucose.isFinite && glucose > 0) {
             final language = Localizations.localeOf(context).languageCode;
             setState(() {
               _messages.add(_ConversationMessage.localFact(
-                localReadingFact(recent.first.bloodSugar, language),
+                localReadingFact(glucose!, language),
               ));
             });
             _scrollToBottom();
           }
         }
-      } catch (_) {
-        // Unavailable local data must never be fabricated as AI context.
+      } catch (error) {
+        // No patient value or identifier is included in the diagnostic.
+        debugPrint('IAmina local reading unavailable: ${error.runtimeType}');
       }
     }
 

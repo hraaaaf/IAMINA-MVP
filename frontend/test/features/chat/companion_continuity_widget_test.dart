@@ -8,6 +8,7 @@ import 'package:amina/services/companion_service.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -73,7 +74,17 @@ void main() {
         ],
         child: MaterialApp(
           locale: const Locale('fr'),
-          home: CompanionConversationScreen(service: _GovernedFallback()),
+          supportedLocales: const [Locale('fr')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: CompanionConversationScreen(
+            service: _GovernedFallback(),
+            latestLocalReading: () async =>
+                (await db.getRecentLogs(limit: 1)).first.bloodSugar,
+          ),
         ),
       ),
     ));
@@ -113,5 +124,45 @@ void main() {
     File('test-artifacts/p1-chat-after-390x844.png')
         .writeAsBytesSync(bytes!.buffer.asUint8List());
     image.dispose();
+  });
+
+  testWidgets('production provider path reads Drift without injection',
+      (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await db.into(db.logEntries).insert(LogEntriesCompanion.insert(
+      createdAt: DateTime.now(),
+      bloodSugar: 128,
+      clientUuid: 'synthetic-reading-2',
+      loggedAt: Value(DateTime.now()),
+    ));
+    expect((await db.getRecentLogs(limit: 1)).single.bloodSugar, 128);
+
+    await tester.pumpWidget(MultiProvider(
+      providers: [
+        Provider<AppDatabase>.value(value: db),
+        Provider<AuthService>(create: (_) => _Authenticated()),
+      ],
+      child: MaterialApp(
+        locale: const Locale('fr'),
+        supportedLocales: const [Locale('fr')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: CompanionConversationScreen(service: _GovernedFallback()),
+      ),
+    ));
+    await tester.enterText(
+      find.byKey(const Key('companion-chat-input')),
+      'Que peux-tu me dire de ma première mesure ?',
+    );
+    await tester.tap(find.byKey(const Key('companion-chat-send')));
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    });
+    await tester.pumpAndSettle();
+    expect(find.textContaining('128 mg/dL'), findsOneWidget);
   });
 }
