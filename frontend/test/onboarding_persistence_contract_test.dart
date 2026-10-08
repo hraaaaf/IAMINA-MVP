@@ -19,4 +19,13 @@ void main() {
     expect(source, contains('setState(() => _saving = false)'));
     expect(source, contains("context.go('/dashboard')"));
   });
+  test('onboarding finish uses AuthService Firebase fallback', () {
+    final source = File(
+      'lib/features/auth/onboarding_chat_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains("context.read<AuthService>().firebaseUser"));
+    expect(source, isNot(contains('FirebaseAuth.instance.currentUser')));
+  });
+
 }

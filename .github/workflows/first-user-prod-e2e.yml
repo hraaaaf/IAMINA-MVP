@@ -1,0 +1,39 @@
+name: First-user production E2E
+
+on:
+  pull_request:
+    paths:
+      - 'tools/first_user_prod_e2e.js'
+      - '.github/workflows/first-user-prod-e2e.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-first-user-prod:
+    name: Real prod first-user 390x844
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      IAMINA_PROD_URL: https://iamina-review.vercel.app
+      E2E_OUT: first-user-prod-e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run real production first-user journey
+        run: node tools/first_user_prod_e2e.js
+      - name: Upload E2E proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-real-first-user-prod-390x844
+          path: first-user-prod-e2e/*
+          if-no-files-found: warn
+          retention-days: 14

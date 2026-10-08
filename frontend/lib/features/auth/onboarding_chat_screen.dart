@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:drift/drift.dart' as drift;
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/mobile_page_header.dart';
 import '../../data/drift/database.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/auth_service.dart';
 import '../../services/locale_preference_service.dart';
 
 String _preferencesCopy(
@@ -108,7 +108,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       }
 
       final db = context.read<AppDatabase>();
-      final firebaseUser = FirebaseAuth.instance.currentUser;
+      final firebaseUser = context.read<AuthService>().firebaseUser;
       final userId = firebaseUser?.uid.hashCode.abs() ?? 1;
       final profile = PatientProfilesCompanion.insert(
         userId: drift.Value(userId),
