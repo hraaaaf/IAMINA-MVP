@@ -32,8 +32,23 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      // Drift streams emit asynchronously beyond the widget frame scheduler.
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+      });
+      await tester.pumpAndSettle();
 
       final first = find.text('Mesures enregistrées');
+      if (first.evaluate().isEmpty) {
+        final rendered = tester.widgetList<Text>(find.byType(Text))
+            .map((text) => text.data ?? text.textSpan?.toPlainText() ?? '')
+            .where((text) => text.isNotEmpty)
+            .take(30)
+            .toList();
+        // Only printed on failure to locate the true async UI state.
+        // ignore: avoid_print
+        print('REPORT_TEST_RENDERED_TEXTS: $rendered');
+      }
       final second = find.text('Moyenne enregistrée');
       expect(first, findsOneWidget);
       expect(second, findsOneWidget);
