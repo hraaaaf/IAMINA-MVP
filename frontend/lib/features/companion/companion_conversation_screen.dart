@@ -361,19 +361,31 @@ class _CompanionConversationScreenState
         // The source is local Drift, never the remote AI context.
         // Even an audit session may only display data already on this device.
         final double? glucose;
+        final String? localSyncStatus;
+        final bool localSyncFailed;
         if (widget.latestLocalReading != null) {
+          // Synthetic proof supplies only a reading, not sync provenance.
           glucose = await widget.latestLocalReading!();
+          localSyncStatus = null;
+          localSyncFailed = false;
         } else {
           final recent =
               await context.read<AppDatabase>().getRecentLogs(limit: 1);
           glucose = recent.isEmpty ? null : recent.first.bloodSugar;
+          localSyncStatus = recent.isEmpty ? null : recent.first.syncStatus;
+          localSyncFailed = recent.isNotEmpty && recent.first.errorSync;
         }
         if (!mounted) return;
         final language = Localizations.localeOf(context).languageCode;
         setState(() {
           _messages.add(_ConversationMessage.localFact(
             glucose != null && glucose.isFinite && glucose > 0
-                ? localReadingFact(glucose, language)
+                ? '${localReadingFact(glucose, language)}'
+                    '${localReadingSyncDisclosure(
+                      localSyncStatus,
+                      language,
+                      syncFailed: localSyncFailed,
+                    )}'
                 : localReadingUnavailableFact(language),
           ));
         });

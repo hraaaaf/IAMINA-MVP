@@ -23,6 +23,36 @@ void main() {
     expect(localReadingUnavailableFact('ar'), contains('الخادم'));
   });
 
+  test('local synchronization status never promises server AI context', () {
+    for (final language in ['fr', 'en', 'ar']) {
+      final pending = localReadingSyncDisclosure('pending', language);
+      final synced = localReadingSyncDisclosure('synced', language);
+      final failed = localReadingSyncDisclosure(
+        'pending',
+        language,
+        syncFailed: true,
+      );
+      expect(pending, isNotEmpty);
+      expect(synced, isNotEmpty);
+      expect(failed, isNotEmpty);
+      expect(pending, isNot(equals(synced)));
+      expect(failed, isNot(equals(pending)));
+      expect(localReadingSyncDisclosure(null, language), isEmpty);
+    }
+    expect(localReadingSyncDisclosure('pending', 'fr'),
+        contains('en attente de synchronisation'));
+    expect(localReadingSyncDisclosure('synced', 'fr'),
+        contains('son accès par IAmina n’est pas vérifié'));
+    expect(localReadingSyncDisclosure('pending', 'en'),
+        contains('awaiting synchronization'));
+    expect(localReadingSyncDisclosure('synced', 'en'),
+        contains('unverified'));
+    expect(localReadingSyncDisclosure('pending', 'ar'),
+        contains('انتظار المزامنة'));
+    expect(localReadingSyncDisclosure('synced', 'ar'),
+        contains('التحقق'));
+  });
+
   test('uses local provenance and avoids trend inference', () {
     final fr = localReadingFact(128, 'fr');
     expect(fr, contains('128 mg/dL'));

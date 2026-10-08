@@ -108,17 +108,21 @@ void main() {
 
   });
 
-  testWidgets('production provider path reads Drift without injection',
-      (tester) async {
+  for (final synced in [false, true]) {
+    testWidgets('production path reads Drift ${synced ? 'synced' : 'pending'}',
+        (tester) async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    await db.into(db.logEntries).insert(LogEntriesCompanion.insert(
+    final rowId = await db.into(db.logEntries).insert(LogEntriesCompanion.insert(
       createdAt: DateTime.now(),
       bloodSugar: 128,
       clientUuid: 'synthetic-reading-2',
       loggedAt: Value(DateTime.now()),
     ));
-    expect((await db.getRecentLogs(limit: 1)).single.bloodSugar, 128);
+    if (synced) await db.markLogAsSynced(rowId);
+    final recorded = (await db.getRecentLogs(limit: 1)).single;
+    expect(recorded.bloodSugar, 128);
+    expect(recorded.syncStatus, synced ? 'synced' : 'pending');
 
     await tester.pumpWidget(MultiProvider(
       providers: [
@@ -146,7 +150,16 @@ void main() {
     });
     await tester.pumpAndSettle();
     expect(find.textContaining('128 mg/dL'), findsOneWidget);
+    expect(
+      find.textContaining(
+        synced ? 'marquée comme synchronisée' : 'en attente de synchronisation',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('companion-governance-fallback-label')),
+        findsOneWidget);
   });
+  }
 
   testWidgets('empty device states absence without inventing server history',
       (tester) async {
