@@ -465,7 +465,15 @@ class _CompanionConversationScreenState
                 ),
                 Expanded(
                   child: _messages.isEmpty
-                      ? const _EmptyConversation()
+                      ? _EmptyConversation(
+                          onSuggestionSelected: (suggestion) {
+                            _controller.text = suggestion;
+                            _controller.selection = TextSelection.collapsed(
+                              offset: suggestion.length,
+                            );
+                            _inputFocusNode.requestFocus();
+                          },
+                        )
                       : ListView.separated(
                           key: const Key('companion-chat-message-list'),
                           controller: _scrollController,
@@ -652,7 +660,9 @@ class _ConversationHeader extends StatelessWidget {
 }
 
 class _EmptyConversation extends StatelessWidget {
-  const _EmptyConversation();
+  final ValueChanged<String> onSuggestionSelected;
+
+  const _EmptyConversation({required this.onSuggestionSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -704,6 +714,89 @@ class _EmptyConversation extends StatelessWidget {
                   fontSize: 13,
                   color: AminaVisualLanguage.secondary(context),
                 ),
+              ),
+              const SizedBox(height: 22),
+              Text(
+                _chatText(
+                  context,
+                  'Pour commencer',
+                  'To get started',
+                  'للبدء',
+                ),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AminaVisualLanguage.secondary(context),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  ActionChip(
+                    key: const Key('companion-chat-suggestion-reading'),
+                    tooltip: _chatText(
+                      context,
+                      'Préremplit le message sans l’envoyer',
+                      'Fills the message without sending it',
+                      'يملأ الرسالة دون إرسالها',
+                    ),
+                    materialTapTargetSize: MaterialTapTargetSize.padded,
+                    backgroundColor: AminaVisualLanguage.controlSurface(context),
+                    side: BorderSide(
+                      color: AminaVisualLanguage.controlBorder(context),
+                    ),
+                    label: Text(
+                      _chatText(
+                        context,
+                        'Ma dernière mesure',
+                        'My latest reading',
+                        'آخر قياس سكر',
+                      ),
+                    ),
+                    onPressed: () => onSuggestionSelected(
+                      _chatText(
+                        context,
+                        'Ma dernière mesure de glycémie ?',
+                        'My latest glucose reading?',
+                        'ما هو آخر قياس سكر مسجل؟',
+                      ),
+                    ),
+                  ),
+                  ActionChip(
+                    key: const Key('companion-chat-suggestion-capabilities'),
+                    tooltip: _chatText(
+                      context,
+                      'Préremplit le message sans l’envoyer',
+                      'Fills the message without sending it',
+                      'يملأ الرسالة دون إرسالها',
+                    ),
+                    materialTapTargetSize: MaterialTapTargetSize.padded,
+                    backgroundColor: AminaVisualLanguage.controlSurface(context),
+                    side: BorderSide(
+                      color: AminaVisualLanguage.controlBorder(context),
+                    ),
+                    label: Text(
+                      _chatText(
+                        context,
+                        'Que peux-tu faire ?',
+                        'What can you do?',
+                        'ماذا يمكنك أن تفعل؟',
+                      ),
+                    ),
+                    onPressed: () => onSuggestionSelected(
+                      _chatText(
+                        context,
+                        'Que peux-tu faire ?',
+                        'What can you do?',
+                        'ماذا يمكنك أن تفعل؟',
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
