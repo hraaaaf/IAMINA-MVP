@@ -114,6 +114,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+    response_mode: str = "standard"
     conversation_id: str
     timestamp: str
     is_emergency: bool = False
@@ -359,7 +360,7 @@ def chat_with_amina(request, data: ChatRequest):
     user = request.user
     language = _get_patient_language(user)
 
-    from companion.conversation import detect_language
+    from companion.conversation import detect_language, is_governance_blocked_reply
 
     decision = evaluate_input_safety(data.message, language)
     if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
@@ -392,6 +393,11 @@ def chat_with_amina(request, data: ChatRequest):
 
     return {
         "reply": reply,
+        "response_mode": (
+            "governance_fallback"
+            if is_governance_blocked_reply(reply, data.message, language)
+            else "standard"
+        ),
         "conversation_id": f"conv-{user.id}",
         "timestamp": timezone.now().isoformat(),
         "is_emergency": False,

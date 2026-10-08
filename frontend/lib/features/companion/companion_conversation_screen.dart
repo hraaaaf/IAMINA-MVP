@@ -13,6 +13,8 @@ import '../../core/theme/app_theme.dart';
 import '../../services/api_client.dart';
 import '../../services/companion_service.dart';
 import '../../services/auth_service.dart';
+import '../../data/drift/database.dart';
+import 'local_reading_context.dart';
 
 String _chatText(BuildContext context, String fr, String en, String ar) {
   final code = Localizations.localeOf(context).languageCode;
@@ -61,7 +63,15 @@ enum _VoiceState { idle, recording, processing }
 class CompanionConversationScreen extends StatefulWidget {
   final CompanionService? service;
 
-  const CompanionConversationScreen({super.key, this.service});
+  /// Optional deterministic local-data reader for isolated UI certification.
+  /// Production reads Drift from the existing AppDatabase provider.
+  final Future<double?> Function()? latestLocalReading;
+
+  const CompanionConversationScreen({
+    super.key,
+    this.service,
+    this.latestLocalReading,
+  });
 
   @override
   State<CompanionConversationScreen> createState() =>
@@ -345,6 +355,35 @@ class _CompanionConversationScreenState
     });
     _scrollToBottom();
 
+    // Present device-only data separately; never smuggle it into the AI request.
+    if (refersToRecordedGlucose(text)) {
+      try {
+        // The source is local Drift, never the remote AI context.
+        // Even an audit session may only display data already on this device.
+        final double? glucose;
+        if (widget.latestLocalReading != null) {
+          glucose = await widget.latestLocalReading!();
+        } else {
+          final recent =
+              await context.read<AppDatabase>().getRecentLogs(limit: 1);
+          glucose = recent.isEmpty ? null : recent.first.bloodSugar;
+        }
+        if (!mounted) return;
+        if (glucose != null && glucose.isFinite && glucose > 0) {
+          final language = Localizations.localeOf(context).languageCode;
+          setState(() {
+            _messages.add(_ConversationMessage.localFact(
+              localReadingFact(glucose!, language),
+            ));
+          });
+          _scrollToBottom();
+        }
+      } catch (error) {
+        // No patient value or identifier is included in the diagnostic.
+        debugPrint('IAmina local reading unavailable: ${error.runtimeType}');
+      }
+    }
+
     CompanionChatReply? result;
     ProviderApiException? failure;
     try {
@@ -370,6 +409,7 @@ class _CompanionConversationScreenState
           _ConversationMessage.assistant(
             result.reply,
             isEmergency: result.isEmergency,
+            isGovernanceFallback: result.responseMode == 'governance_fallback',
           ),
         );
       }
@@ -883,6 +923,7 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == _ConversationRole.user;
+    final isLocal = message.role == _ConversationRole.localFact;
     final emergency = message.isEmergency;
     final desktop = MediaQuery.sizeOf(context).width >= 900;
 
@@ -931,6 +972,8 @@ class _MessageBubble extends StatelessWidget {
 
     final roleLabel = isUser
         ? _chatText(context, 'Vous', 'You', 'أنت')
+        : isLocal
+        ? _chatText(context, 'Sur cet appareil', 'On this device', 'على هذا الجهاز')
         : 'IAmina';
 
     final renderedBubble = emergency
@@ -970,6 +1013,24 @@ class _MessageBubble extends StatelessWidget {
                 ),
               ),
             ),
+            if (message.isGovernanceFallback)
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(4, 0, 4, 8),
+                child: Text(
+                  _chatText(
+                    context,
+                    'IA externe indisponible — réponse locale limitée',
+                    'External AI unavailable — limited local response',
+                    'الذكاء الاصطناعي الخارجي غير متاح — رد محلي محدود',
+                  ),
+                  key: const Key('companion-governance-fallback-label'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AminaVisualLanguage.secondary(context),
+                  ),
+                ),
+              ),
             renderedBubble,
           ],
         ),
@@ -1002,17 +1063,19 @@ class _TypingBubble extends StatelessWidget {
   }
 }
 
-enum _ConversationRole { user, assistant }
+enum _ConversationRole { user, assistant, localFact }
 
 class _ConversationMessage {
   final _ConversationRole role;
   final String text;
   final bool isEmergency;
+  final bool isGovernanceFallback;
 
   const _ConversationMessage._(
     this.role,
     this.text, {
     this.isEmergency = false,
+    this.isGovernanceFallback = false,
   });
 
   factory _ConversationMessage.user(String text) =>
@@ -1021,9 +1084,14 @@ class _ConversationMessage {
   factory _ConversationMessage.assistant(
     String text, {
     bool isEmergency = false,
+    bool isGovernanceFallback = false,
   }) => _ConversationMessage._(
     _ConversationRole.assistant,
     text,
     isEmergency: isEmergency,
+    isGovernanceFallback: isGovernanceFallback,
   );
+
+  factory _ConversationMessage.localFact(String text) =>
+      _ConversationMessage._(_ConversationRole.localFact, text);
 }
