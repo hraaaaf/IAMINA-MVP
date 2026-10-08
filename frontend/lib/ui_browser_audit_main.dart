@@ -23,7 +23,6 @@ import 'features/dashboard/widgets/dashboard_next_action_section.dart';
 import 'features/dashboard/widgets/dashboard_trend_section.dart';
 import 'features/documents/document_import_premium_screen.dart';
 import 'features/journal/add_log_screen.dart';
-import 'features/journal/ai_summary_screen.dart';
 import 'features/journal/journal_screen.dart';
 import 'features/journal/reports_screen.dart';
 import 'features/journal/widgets/food_pictogram_audit_fixture.dart';
@@ -241,7 +240,9 @@ class _BrowserAuditApp extends StatelessWidget {
             ),
             GoRoute(
               path: '/summary',
-              builder: (context, state) => const AISummaryScreen(),
+              // Match the actual patient Reports tab, not the deprecated
+              // AI summary endpoint that can show an unrelated error state.
+              builder: (context, state) => const ReportsScreen(),
             ),
             GoRoute(
               path: '/reports-local',
