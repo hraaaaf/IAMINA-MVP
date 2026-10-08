@@ -38,7 +38,11 @@ async function runCase(browser, spec) {
     }
     await page.getByRole('button',{name:/Créer un compte/i})
       .first().click({timeout:15000});
+    // Flutter routes and semantics materialize asynchronously after the tap.
+    // Wait for the dialog's actual submit control; never treat the background
+    // login textboxes as proof that the signup form has opened.
     const submit=page.getByRole('button',{name:'Créer',exact:true});
+    await submit.waitFor({state:'visible',timeout:10000});
     if (spec.kind==='empty') {
       await submit.click({timeout:10000});
       await page.getByText('Renseignez les trois champs pour créer votre compte.',{exact:false})
