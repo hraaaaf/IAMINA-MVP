@@ -1124,9 +1124,9 @@ class _MessageBubble extends StatelessWidget {
                 child: Text(
                   _chatText(
                     context,
-                    'IA externe indisponible — réponse locale limitée',
-                    'External AI unavailable — limited local response',
-                    'الذكاء الاصطناعي الخارجي غير متاح — رد محلي محدود',
+                    'Réponse locale limitée — IA externe non utilisée',
+                    'Limited local response — external AI not used',
+                    'رد محلي محدود — لم يُستخدم الذكاء الاصطناعي الخارجي',
                   ),
                   key: const Key('companion-governance-fallback-label'),
                   style: TextStyle(
