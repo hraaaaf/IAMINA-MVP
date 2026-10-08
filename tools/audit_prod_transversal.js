@@ -138,6 +138,17 @@ async function openRoute(page, name, route) {
       await page.getByRole('button', {name: /Mesures/i})
         .first().click({timeout: 4000});
     });
+    await secondary('17-navigation-mesures-clavier', '/dashboard', async () => {
+      const control = page.getByRole('button', {name: /Mesures/i}).first();
+      await control.focus();
+      await page.keyboard.press('Enter');
+    });
+    await secondary('18-navigation-mesures-tactile', '/dashboard', async () => {
+      await page.mouse.click(140, 805);
+    });
+    await secondary('19-navigation-rapports-tactile', '/dashboard', async () => {
+      await page.mouse.click(251, 805);
+    });
     fs.writeFileSync(out + '/result.json', JSON.stringify({
       base, viewport: '390x844', account: 'public-demo-only',
       startUrl, routes: results,
