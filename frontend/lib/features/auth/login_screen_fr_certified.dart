@@ -95,6 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final passwordCtrl = TextEditingController();
     final confirmCtrl = TextEditingController();
     bool obscure = true;
+    String? validationError;
     await showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -136,6 +137,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 hint: '••••••••',
                 obscureText: obscure,
               ),
+              if (validationError != null) ...[
+                const SizedBox(height: 12),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    validationError!,
+                    key: const Key('signup-validation-feedback'),
+                    style: TextStyle(
+                      color: Theme.of(ctx).colorScheme.error,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -151,14 +167,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 final email = emailCtrl.text.trim();
                 final password = passwordCtrl.text;
                 final confirm = confirmCtrl.text;
-                if (email.isEmpty || password.isEmpty) return;
+                if (email.isEmpty || password.isEmpty || confirm.isEmpty) {
+                  setDlgState(() => validationError =
+                      'Renseignez les trois champs pour créer votre compte.');
+                  return;
+                }
                 if (password != confirm) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Les mots de passe ne correspondent pas'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                  setDlgState(() => validationError =
+                      'Les mots de passe ne correspondent pas.');
                   return;
                 }
                 Navigator.pop(ctx);
