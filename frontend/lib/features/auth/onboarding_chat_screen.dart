@@ -380,8 +380,32 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
           )
         : l10n.onboardingStart;
 
+    final compact = MediaQuery.sizeOf(context).width < 900;
+
     return Scaffold(
       backgroundColor: AminaTheme.surfaceMuted,
+      bottomNavigationBar: compact && ready
+          ? SafeArea(
+              top: false,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AminaTheme.surfaceMuted,
+                  border: Border(
+                    top: BorderSide(color: Theme.of(context).dividerColor),
+                  ),
+                ),
+                padding: const EdgeInsetsDirectional.fromSTEB(20, 10, 20, 12),
+                child: SizedBox(
+                  height: 52,
+                  child: FilledButton(
+                    key: const Key('onboarding-sticky-start'),
+                    onPressed: _saving ? null : _finish,
+                    child: Text(_saving ? l10n.onboardingSaving : finishLabel),
+                  ),
+                ),
+              ),
+            )
+          : null,
       appBar: AppBar(
         leading: widget.preferencesOnly
             ? const AminaPageExitButton(fallbackRoute: '/profile')
@@ -411,6 +435,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
               startLabel: finishLabel,
               onFinish: _finish,
               progress: onboardingProgress,
+              showInlineFinish: !compact,
             );
 
             if (!desktop) {
@@ -500,6 +525,7 @@ class _OnboardingQuestions extends StatelessWidget {
   final String startLabel;
   final VoidCallback onFinish;
   final ({int current, int total})? progress;
+  final bool showInlineFinish;
 
   const _OnboardingQuestions({
     required this.welcome,
@@ -511,6 +537,7 @@ class _OnboardingQuestions extends StatelessWidget {
     required this.startLabel,
     required this.onFinish,
     this.progress,
+    this.showInlineFinish = true,
   });
 
   @override
@@ -568,7 +595,7 @@ class _OnboardingQuestions extends StatelessWidget {
         ],
         const SizedBox(height: 20),
         ...steps,
-        if (ready) ...[
+        if (ready && showInlineFinish) ...[
           const SizedBox(height: 4),
           Text(readyLabel),
           const SizedBox(height: 16),
