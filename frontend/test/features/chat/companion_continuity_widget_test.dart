@@ -91,6 +91,13 @@ void main() {
           findsOneWidget,
         );
         await tester.ensureVisible(suggestion);
+        await tester.pump();
+        final rect = tester.getRect(suggestion);
+        expect(rect.left, greaterThanOrEqualTo(0));
+        expect(rect.right, lessThanOrEqualTo(size.width));
+        expect(rect.top, greaterThanOrEqualTo(0));
+        expect(rect.bottom, lessThanOrEqualTo(size.height));
+        expect(rect.height, greaterThanOrEqualTo(48));
         await tester.tap(suggestion);
         await tester.pump();
         final input = tester.widget<TextField>(
