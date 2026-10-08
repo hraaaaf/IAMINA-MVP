@@ -11,6 +11,7 @@ import '../data/models/ai_models.dart';
 import '../data/models/companion_models.dart';
 import '../data/models/companion_next_action_models.dart';
 import '../data/models/proactive_preview_models.dart';
+import 'companion_legacy_governance_fallback.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
 
@@ -38,13 +39,18 @@ class CompanionChatReply {
   });
 
   factory CompanionChatReply.fromJson(Map<String, dynamic> json) {
+    final reply = json['reply'] as String? ?? '';
+    // The pinned certified backend predates response_mode. Recognize only
+    // its exact deterministic policy-denied reply so the patient sees the
+    // governed fallback label. Explicit server metadata stays authoritative.
+    final governed = json['response_mode'] == 'governance_fallback' ||
+        (json['response_mode'] == null &&
+            isLegacyGovernanceFallback(reply));
     return CompanionChatReply(
-      reply: json['reply'] as String? ?? '',
+      reply: reply,
       conversationId: json['conversation_id'] as String? ?? '',
       replyLanguage: json['reply_language'] as String? ?? 'fr',
-      responseMode: json['response_mode'] == 'governance_fallback'
-          ? 'governance_fallback'
-          : 'standard',
+      responseMode: governed ? 'governance_fallback' : 'standard',
       isEmergency: json['is_emergency'] as bool? ?? false,
     );
   }
