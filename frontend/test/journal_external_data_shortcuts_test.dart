@@ -84,11 +84,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Import destination'), findsOneWidget);
 
-      router.go('/journal');
-      // Journal may show a repeating loading shimmer while Drift emits its
-      // initial stream value. Do not wait for animations to settle forever.
+      // Return through the same imperative stack used by context.push.
+      // router.go() can leave the old page's outgoing overlay hit-testing
+      // above Journal while the transition is still in flight.
+      router.pop();
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 450));
+      expect(find.text('Import destination'), findsNothing);
       await tester.tap(find.byKey(const Key('journal-cgm-shortcut')));
       // Journal may show a repeating loading shimmer while Drift emits its
       // initial stream value. Do not wait for animations to settle forever.
