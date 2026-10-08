@@ -34,7 +34,8 @@ fs.mkdirSync(out,{recursive:true});
       await page.keyboard.press('Enter');
     }
     await page.getByRole('button',{name:/Créer un compte/i}).first().click({timeout:12000});
-    await sleep(350);
+    const submit=page.getByRole('button',{name:'Créer',exact:true});
+    await submit.waitFor({state:'visible',timeout:12000});
     const boxes=page.getByRole('textbox');
     const count=await boxes.count();
     report.textboxCount=count;
@@ -42,20 +43,24 @@ fs.mkdirSync(out,{recursive:true});
     const suffix=crypto.randomBytes(5).toString('hex');
     const email='ux95-signup-'+suffix+'@example.invalid';
     const pass='Ax!'+crypto.randomBytes(12).toString('hex')+'Z9';
-    await boxes.nth(count-3).fill(email);
-    await boxes.nth(count-2).fill(pass);
-    await boxes.nth(count-1).fill(pass);
-    report.fieldsPopulated=[
-      (await boxes.nth(count-3).inputValue()).length>3,
-      (await boxes.nth(count-2).inputValue()).length>=12,
-      (await boxes.nth(count-1).inputValue()).length>=12,
-    ];
+    for (const [i,value] of [email,pass,pass].entries()) {
+      await boxes.nth(count-3+i).click({timeout:10000});
+      await page.keyboard.type(value,{delay:25});
+      await page.keyboard.press('Tab');
+    }
+    report.inputMethod='real keyboard events';
     await page.screenshot({path:path.join(out,'ux95-signup-filled-390x844.png')});
-    await page.getByRole('button',{name:'Créer',exact:true}).click({timeout:12000});
-    await sleep(4000);
+    await submit.click({timeout:12000});
+    const until=Date.now()+30000;
+    while(Date.now()<until &&
+          !/\/#\/(?:app-lock\/setup|onboarding)/.test(page.url())) {
+      await sleep(250);
+    }
+    await sleep(250);
     report.finalRoute=new URL(page.url()).hash;
-    report.signupApiObserved=responses.some(x=>x.method==='POST');
-    report.success=report.signupApiObserved && (report.finalRoute.includes('/onboarding') || report.finalRoute.includes('/app-lock/setup'));
+    report.signupApiObserved=responses.some(x=>x.method==='POST' && x.status===200);
+    report.success=report.signupApiObserved &&
+      (report.finalRoute.includes('/onboarding') || report.finalRoute.includes('/app-lock/setup'));
     await page.screenshot({path:path.join(out,'ux95-signup-after-submit-390x844.png')});
     fs.writeFileSync(path.join(out,'ux95-signup-diagnostic.json'),JSON.stringify(report,null,2));
     if(!report.success)throw new Error('Signup did not send POST and enter onboarding/app-lock');
