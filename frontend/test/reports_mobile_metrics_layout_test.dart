@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  for (final testScale in <double>[1, 1.6]) {
+  for (final testScale in <double>[1, 1.3, 1.6]) {
     testWidgets('report metrics at 390x844 scale $testScale preserve information', (
       tester,
     ) async {
