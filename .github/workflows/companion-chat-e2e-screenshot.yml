@@ -345,6 +345,14 @@ jobs:
               raise RuntimeError(f'Unexpected real chat response: {payload}')
           time.sleep(2)
           screenshot('chat-reply-390x844.png')
+          call('Page.navigate', {'url': 'http://127.0.0.1:7358/?p1-proof=1'})
+          time.sleep(8)
+          click(155, 793)
+          call('Input.insertText', {'text': 'Que peux-tu me dire de ma première mesure ?'})
+          time.sleep(1)
+          click(354, 793)
+          time.sleep(2)
+          screenshot('p1-after-390x844.png')
           ws.close()
           PY
 
@@ -367,6 +375,7 @@ jobs:
               'chat-empty-390x844.png',
               'chat-typed-390x844.png',
               'chat-reply-390x844.png',
+              'p1-after-390x844.png',
           ):
               path = Path('companion-chat-e2e') / name
               assert path.stat().st_size > 10000, (name, path.stat().st_size)
