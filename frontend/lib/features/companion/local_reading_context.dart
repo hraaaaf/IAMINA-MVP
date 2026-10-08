@@ -26,3 +26,18 @@ String localReadingFact(double mgdl, String language) {
       'n’est pas vérifiée. Cette mesure seule ne permet pas '
       'd’établir une tendance.';
 }
+
+ 
+/// Truthful local empty state: never infer what a remote account has stored.
+String localReadingUnavailableFact(String language) {
+  if (language == 'en') {
+    return 'No glucose reading is recorded on this device yet. '
+        'I have not verified whether a reading exists on the server.';
+  }
+  if (language == 'ar') {
+    return 'لا يوجد قياس سكر مسجل على هذا الجهاز حتى الآن. '
+        'لم أتحقق من وجود قياس على الخادم.';
+  }
+  return 'Aucune mesure de glycémie n’est enregistrée sur cet appareil '
+      'pour le moment. Je n’ai pas vérifié si une mesure existe sur le serveur.';
+}

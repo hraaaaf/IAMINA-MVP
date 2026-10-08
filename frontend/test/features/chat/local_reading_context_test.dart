@@ -9,6 +9,20 @@ void main() {
     expect(refersToRecordedGlucose('Salut IAmina'), isFalse);
   });
 
+  test('missing local reading never implies an empty server account', () {
+    for (final language in ['fr', 'en', 'ar']) {
+      final copy = localReadingUnavailableFact(language);
+      expect(copy, isNotEmpty);
+      expect(copy, isNot(contains('128')));
+    }
+    expect(localReadingUnavailableFact('fr'), contains('sur cet appareil'));
+    expect(localReadingUnavailableFact('fr'), contains('serveur'));
+    expect(localReadingUnavailableFact('en'), contains('this device'));
+    expect(localReadingUnavailableFact('en'), contains('server'));
+    expect(localReadingUnavailableFact('ar'), contains('الجهاز'));
+    expect(localReadingUnavailableFact('ar'), contains('الخادم'));
+  });
+
   test('uses local provenance and avoids trend inference', () {
     final fr = localReadingFact(128, 'fr');
     expect(fr, contains('128 mg/dL'));
