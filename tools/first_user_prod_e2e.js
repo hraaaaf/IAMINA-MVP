@@ -246,17 +246,24 @@ async function waitForChatResponse(page, timeout = 60000) {
 
   if (routeOf(page).includes('/login')) {
     await clickText(page, ['Créer un compte']);
+    // Wait for Flutter's real dialog submit after its entrance animation.
+    const signupSubmit = page.getByRole('button', { name: 'Créer', exact: true });
+    await signupSubmit.waitFor({ state: 'visible', timeout: 15000 });
     await expectText(page, 'Confirmer le mot de passe', 10000);
     const fields = page.getByRole('textbox');
     const count = await fields.count();
     if (count < 3) throw new Error(`Signup modal exposed only ${count} textboxes`);
     const unique = `e2e-first-user-${process.env.GITHUB_RUN_ID || Date.now()}-${process.env.GITHUB_RUN_ATTEMPT || 1}@example.invalid`;
     const password = 'IAmina-E2E-2026!Strong#42';
-    await fields.nth(count - 3).fill(unique);
-    await fields.nth(count - 2).fill(password);
-    await fields.nth(count - 1).fill(password);
-    await activateButton(page, 'Créer', 10000);
-    await waitAnyPath(page, ['/app-lock/setup', '/onboarding'], 25000);
+    // Actual keyboard events populate Flutter TextEditingControllers; .fill()
+    // may update a transient semantics proxy without committing field state.
+    for (const [i, value] of [unique, password, password].entries()) {
+      await fields.nth(count - 3 + i).click({ timeout: 10000 });
+      await page.keyboard.type(value, { delay: 25 });
+      await page.keyboard.press('Tab');
+    }
+    await signupSubmit.click({ timeout: 15000 });
+    await waitAnyPath(page, ['/app-lock/setup', '/onboarding'], 30000);
     await sleep(1000);
     await enableFlutterSemantics(page);
     await capture(page, '02-signup-result');

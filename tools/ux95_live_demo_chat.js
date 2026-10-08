@@ -43,7 +43,8 @@ const browserOptions = { headless: true, args: ['--force-renderer-accessibility'
       syncDisclosure: /en attente de synchronisation|marquée comme synchronisée|dernière tentative de synchronisation a échoué/.test(text),
       noUnsupportedTrend: text.includes('Cette mesure seule ne permet pas'),
       deviceSourceLabel: text.toLowerCase().includes('sur cet appareil'),
-      governedFallbackLabeled: !text.includes('Je peux continuer avec les fonctions locales') || text.includes('IA externe indisponible'),
+      governedFallbackLabeled: !text.includes('Je peux continuer avec les fonctions locales') || text.includes('Réponse locale limitée — IA externe non utilisée'),
+      noMisleadingAIOutageClaim: !text.includes('IA externe indisponible — réponse locale limitée'),
     };
     const result = {base,viewport:'390x844',url:page.url(),checks,passed:Object.values(checks).every(Boolean)};
     fs.writeFileSync(path.join(out,'ux95-demo-chat-checks.json'),JSON.stringify(result,null,2));
