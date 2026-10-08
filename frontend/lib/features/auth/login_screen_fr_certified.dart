@@ -100,6 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) => AlertDialog(
+          scrollable: true,
           title: const Text('Créer un compte'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
