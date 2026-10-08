@@ -23,6 +23,7 @@ void main() {
         Provider<AppDatabase>.value(
           value: db,
           child: MaterialApp(
+            locale: const Locale('fr'),
             home: MediaQuery(
               data: MediaQueryData(textScaler: TextScaler.linear(testScale)),
               child: const Scaffold(body: ReportsScreen()),

@@ -387,8 +387,10 @@ class _Distribution extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           if (stats.hasTarget) ...[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.end,
+              spacing: 9,
+              runSpacing: 5,
               children: [
                 Text(
                   '${(ratio * 100).round()}%',
@@ -400,7 +402,6 @@ class _Distribution extends StatelessWidget {
                     color: AminaVisualLanguage.primaryText(context),
                   ),
                 ),
-                const SizedBox(width: 9),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text(
@@ -505,8 +506,10 @@ class _Latest extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.end,
+            spacing: 7,
+            runSpacing: 5,
             children: [
               Text(
                 stats.display(latest.bloodSugar),
@@ -518,7 +521,6 @@ class _Latest extends StatelessWidget {
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(width: 7),
               Padding(
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Text(
