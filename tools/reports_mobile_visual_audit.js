@@ -36,6 +36,11 @@ const sleep = n => new Promise(resolve => setTimeout(resolve, n));
           fullPage:false,
         });
         await capture('first-fold');
+        const firstSemantics = await page.locator('flt-semantics')
+          .evaluateAll(xs => xs.map(x => ({
+            label:x.getAttribute('aria-label'),
+            text:x.textContent?.trim()?.slice(0,160),
+          }))).catch(() => []);
         await page.mouse.move(width/2, height/2);
         await page.mouse.wheel(0, 570);
         await sleep(1200);
@@ -46,7 +51,7 @@ const sleep = n => new Promise(resolve => setTimeout(resolve, n));
             label:x.getAttribute('aria-label'),
             text:x.textContent?.trim()?.slice(0,160),
           }))).catch(() => []);
-        const joined = semantics
+        const joined = [...firstSemantics, ...semantics]
           .flatMap(x => [x.label,x.text])
           .filter(Boolean).join(' ');
         observations.push({
