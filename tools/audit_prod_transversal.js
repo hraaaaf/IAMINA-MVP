@@ -5,6 +5,9 @@ const base = process.env.IAMINA_PROD_URL || 'https://iamina-review.vercel.app';
 const out = process.env.E2E_OUT || 'audit-prod-transversal';
 fs.mkdirSync(out, { recursive: true });
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const viewportWidth = Number(process.env.UX95_WIDTH || 390);
+const viewportHeight = Number(process.env.UX95_HEIGHT || 844);
+const viewportLabel = `${viewportWidth}x${viewportHeight}`;
 const results = [];
 const events = [];
 
@@ -37,11 +40,11 @@ async function openRoute(page, name, route) {
     item.observedUrl = page.url();
     item.visibleText = (await visibleText(page)).slice(0, 2400);
     item.blocked = !page.url().includes('#' + route);
-    await capture(page, name + '-390x844');
+    await capture(page, name + '-' + viewportLabel);
   } catch (e) {
     item.error = String(e.message || e);
     item.blocked = true;
-    await capture(page, name + '-blocked-390x844').catch(() => {});
+    await capture(page, name + '-blocked-' + viewportLabel).catch(() => {});
   }
   results.push(item);
 }
@@ -52,7 +55,7 @@ async function openRoute(page, name, route) {
   });
   try {
     const context = await browser.newContext({
-      viewport: {width: 390, height: 844},
+      viewport: {width: viewportWidth, height: viewportHeight},
       locale: 'fr-FR', colorScheme: 'light', serviceWorkers: 'block',
     });
     const page = await context.newPage();
@@ -64,7 +67,7 @@ async function openRoute(page, name, route) {
     await page.goto(base, {waitUntil: 'domcontentloaded', timeout: 30000});
     await delay(8500);
     await semantics(page);
-    await capture(page, '01-arrival-390x844');
+    await capture(page, '01-arrival-' + viewportLabel);
 
     const end = Date.now() + 15000;
     let entered = false;
@@ -86,7 +89,7 @@ async function openRoute(page, name, route) {
 
     await delay(8000);
     await semantics(page);
-    await capture(page, '02-demo-arrival-390x844');
+    await capture(page, '02-demo-arrival-' + viewportLabel);
     const startUrl = page.url();
 
     const routes = [
@@ -111,7 +114,14 @@ async function openRoute(page, name, route) {
         await semantics(page);
         await action();
         await delay(1000);
-        await capture(page, name + '-390x844');
+        // Visibility of a button is not proof of navigating to a new route.
+        const expected = name.startsWith('16-') || name.startsWith('17-') ||
+          name.startsWith('18-') ? '#/journal'
+          : name.startsWith('19-') ? '#/summary' : null;
+        if (expected && !page.url().includes(expected)) {
+          throw new Error(`Navigation ${name} did not reach ${expected}: ${page.url()}`);
+        }
+        await capture(page, name + '-' + viewportLabel);
         results.push({
           name, requestedRoute: route, observedUrl: page.url(),
           visibleText: (await visibleText(page)).slice(0, 2400),
@@ -119,11 +129,11 @@ async function openRoute(page, name, route) {
         });
       } catch (e) {
         results.push({name, requestedRoute: route, error: String(e.message || e)});
-        await capture(page, name + '-blocked-390x844').catch(() => {});
+        await capture(page, name + '-blocked-' + viewportLabel).catch(() => {});
       }
     }
     await secondary('13-rapports-scroll', '/summary', async () => {
-      await page.mouse.move(170, 570);
+      await page.mouse.move(Math.round(viewportWidth * 170 / 390), Math.min(570, viewportHeight - 70));
       await page.mouse.wheel(0, 680);
     });
     await secondary('14-profil-donnees', '/profile', async () => {
@@ -135,22 +145,22 @@ async function openRoute(page, name, route) {
         .first().click({timeout: 4000});
     });
     await secondary('16-navigation-mesures', '/dashboard', async () => {
-      await page.getByRole('button', {name: /Mesures/i})
+      await page.getByRole('button', {name: 'Mesures', exact: true})
         .first().click({timeout: 4000});
     });
     await secondary('17-navigation-mesures-clavier', '/dashboard', async () => {
-      const control = page.getByRole('button', {name: /Mesures/i}).first();
+      const control = page.getByRole('button', {name: 'Mesures', exact: true}).first();
       await control.focus();
       await page.keyboard.press('Enter');
     });
     await secondary('18-navigation-mesures-tactile', '/dashboard', async () => {
-      await page.mouse.click(140, 805);
+      await page.mouse.click(Math.round(viewportWidth * 140 / 390), viewportHeight - 39);
     });
     await secondary('19-navigation-rapports-tactile', '/dashboard', async () => {
-      await page.mouse.click(251, 805);
+      await page.mouse.click(Math.round(viewportWidth * 251 / 390), viewportHeight - 39);
     });
     fs.writeFileSync(out + '/result.json', JSON.stringify({
-      base, viewport: '390x844', account: 'public-demo-only',
+      base, viewport: viewportLabel, account: 'public-demo-only',
       startUrl, routes: results,
     }, null, 2));
     fs.writeFileSync(out + '/runtime.log', events.join('\n'));
