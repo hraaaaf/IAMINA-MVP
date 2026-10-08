@@ -369,15 +369,15 @@ class _CompanionConversationScreenState
           glucose = recent.isEmpty ? null : recent.first.bloodSugar;
         }
         if (!mounted) return;
-        if (glucose != null && glucose.isFinite && glucose > 0) {
-          final language = Localizations.localeOf(context).languageCode;
-          setState(() {
-            _messages.add(_ConversationMessage.localFact(
-              localReadingFact(glucose!, language),
-            ));
-          });
-          _scrollToBottom();
-        }
+        final language = Localizations.localeOf(context).languageCode;
+        setState(() {
+          _messages.add(_ConversationMessage.localFact(
+            glucose != null && glucose.isFinite && glucose > 0
+                ? localReadingFact(glucose, language)
+                : localReadingUnavailableFact(language),
+          ));
+        });
+        _scrollToBottom();
       } catch (error) {
         // No patient value or identifier is included in the diagnostic.
         debugPrint('IAmina local reading unavailable: ${error.runtimeType}');
