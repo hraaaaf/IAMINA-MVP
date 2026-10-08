@@ -1,6 +1,3 @@
-import 'dart:io';
-import 'dart:ui' as ui;
-
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/companion/companion_conversation_screen.dart';
 import 'package:amina/services/auth_service.dart';
@@ -9,7 +6,6 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -65,9 +61,7 @@ void main() {
 
     expect((await db.getRecentLogs(limit: 1)).single.bloodSugar, 128);
 
-    await tester.pumpWidget(RepaintBoundary(
-      key: const Key('p1-chat-proof-root'),
-      child: MultiProvider(
+    await tester.pumpWidget(MultiProvider(
         providers: [
           Provider<AppDatabase>.value(value: db),
           Provider<AuthService>(create: (_) => _Authenticated()),
@@ -86,7 +80,6 @@ void main() {
                 (await db.getRecentLogs(limit: 1)).first.bloodSugar,
           ),
         ),
-      ),
     ));
     await tester.pump();
     await tester.enterText(
@@ -112,18 +105,7 @@ void main() {
         findsOneWidget);
     expect(find.text('Réponse locale limitée.'), findsOneWidget);
 
-    // A real 390×844 rasterization of the revised Flutter widget, no prod deploy.
-    final boundary = tester.renderObject(
-      find.byKey(const Key('p1-chat-proof-root')),
-    ) as RenderRepaintBoundary;
-    final image = await boundary.toImage(pixelRatio: 1);
-    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    expect(bytes, isNotNull);
-    final directory = Directory('test-artifacts');
-    directory.createSync(recursive: true);
-    File('test-artifacts/p1-chat-after-390x844.png')
-        .writeAsBytesSync(bytes!.buffer.asUint8List());
-    image.dispose();
+
   });
 
   testWidgets('production provider path reads Drift without injection',

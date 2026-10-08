@@ -358,26 +358,25 @@ class _CompanionConversationScreenState
     // Present device-only data separately; never smuggle it into the AI request.
     if (refersToRecordedGlucose(text)) {
       try {
-        if (widget.latestLocalReading != null ||
-            !context.read<AuthService>().isAuditSession) {
-          final double? glucose;
-          if (widget.latestLocalReading != null) {
-            glucose = await widget.latestLocalReading!();
-          } else {
-            final recent =
-                await context.read<AppDatabase>().getRecentLogs(limit: 1);
-            glucose = recent.isEmpty ? null : recent.first.bloodSugar;
-          }
-          if (!mounted) return;
-          if (glucose != null && glucose.isFinite && glucose > 0) {
-            final language = Localizations.localeOf(context).languageCode;
-            setState(() {
-              _messages.add(_ConversationMessage.localFact(
-                localReadingFact(glucose!, language),
-              ));
-            });
-            _scrollToBottom();
-          }
+        // The source is local Drift, never the remote AI context.
+        // Even an audit session may only display data already on this device.
+        final double? glucose;
+        if (widget.latestLocalReading != null) {
+          glucose = await widget.latestLocalReading!();
+        } else {
+          final recent =
+              await context.read<AppDatabase>().getRecentLogs(limit: 1);
+          glucose = recent.isEmpty ? null : recent.first.bloodSugar;
+        }
+        if (!mounted) return;
+        if (glucose != null && glucose.isFinite && glucose > 0) {
+          final language = Localizations.localeOf(context).languageCode;
+          setState(() {
+            _messages.add(_ConversationMessage.localFact(
+              localReadingFact(glucose, language),
+            ));
+          });
+          _scrollToBottom();
         }
       } catch (error) {
         // No patient value or identifier is included in the diagnostic.
