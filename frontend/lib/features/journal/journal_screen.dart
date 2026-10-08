@@ -62,6 +62,7 @@ class _JournalScreenState extends State<JournalScreen> {
         slivers: [
           _buildSliverAppBar(context),
           _buildFilterChips(horizontalPadding),
+          _buildExternalDataActions(horizontalPadding),
           StreamBuilder<List<LogEntryData>>(
             stream: logsStream,
             builder: (context, snapshot) {
@@ -303,6 +304,57 @@ class _JournalScreenState extends State<JournalScreen> {
                 ),
               )
               .toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExternalDataActions(double horizontalPadding) {
+    final code = Localizations.localeOf(context).languageCode;
+    String localized(String fr, String en, String ar) =>
+        code == 'ar' ? ar : code == 'en' ? en : fr;
+
+    return SliverPadding(
+      padding: EdgeInsetsDirectional.fromSTEB(
+        horizontalPadding,
+        12,
+        horizontalPadding,
+        0,
+      ),
+      sliver: SliverToBoxAdapter(
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            OutlinedButton.icon(
+              key: const Key('journal-import-shortcut'),
+              onPressed: () => context.push('/importer'),
+              icon: const Icon(Icons.upload_file_outlined, size: 18),
+              label: Text(localized(
+                'Importer un document',
+                'Import a document',
+                'استيراد مستند',
+              )),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 48),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+            ),
+            OutlinedButton.icon(
+              key: const Key('journal-cgm-shortcut'),
+              onPressed: () => context.push('/cgm'),
+              icon: const Icon(Icons.sensors_outlined, size: 18),
+              label: Text(localized(
+                'Connecter un CGM',
+                'Connect a CGM',
+                'ربط جهاز CGM',
+              )),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 48),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+            ),
+          ],
         ),
       ),
     );
