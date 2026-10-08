@@ -59,7 +59,10 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      // Journal may show a repeating loading shimmer while Drift emits its
+      // initial stream value. Do not wait for animations to settle forever.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       expect(find.byKey(const Key('journal-import-shortcut')), findsOneWidget);
       expect(find.byKey(const Key('journal-cgm-shortcut')), findsOneWidget);
       final importRect = tester.getRect(
@@ -75,14 +78,28 @@ void main() {
       expect(tester.takeException(), isNull);
 
       await tester.tap(find.byKey(const Key('journal-import-shortcut')));
-      await tester.pumpAndSettle();
+      // Journal may show a repeating loading shimmer while Drift emits its
+      // initial stream value. Do not wait for animations to settle forever.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('Import destination'), findsOneWidget);
 
       router.go('/journal');
-      await tester.pumpAndSettle();
+      // Journal may show a repeating loading shimmer while Drift emits its
+      // initial stream value. Do not wait for animations to settle forever.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       await tester.tap(find.byKey(const Key('journal-cgm-shortcut')));
-      await tester.pumpAndSettle();
+      // Journal may show a repeating loading shimmer while Drift emits its
+      // initial stream value. Do not wait for animations to settle forever.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
       expect(find.text('CGM destination'), findsOneWidget);
+
+      // Drain Drift QueryStream cancellation timers after route teardown, so
+      // each locale test leaves a clean fake-async scheduler.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 20));
     });
   }
 }
