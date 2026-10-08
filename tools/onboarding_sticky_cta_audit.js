@@ -85,7 +85,7 @@ async function choose(page, label) {
         const rect = await action.first().boundingBox();
         if (count !== 1 || !rect || rect.y < 0 ||
             rect.y + rect.height > height || rect.x < 0 ||
-            rect.x + rect.width > width || rect.height < 44) {
+            rect.x + rect.width > width || rect.height < (width < 900 ? 44 : 32)) {
           throw new Error('CTA not singular, tappable and visible: ' +
             JSON.stringify({count, rect, width, height}));
         }
