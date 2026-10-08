@@ -56,6 +56,24 @@ async function choose(page, label) {
           {waitUntil: 'domcontentloaded', timeout: 30000});
         await sleep(7000);
         await enableSemantics(page);
+        await page.screenshot({
+          path: out + '/debug-onboarding-initial-' + width + 'x' + height + '.png',
+          fullPage: false,
+        });
+        const sem = await page.locator('flt-semantics').evaluateAll(elements =>
+          elements.map(el => ({
+            label: el.getAttribute('aria-label'),
+            text: el.textContent?.trim()?.slice(0, 200),
+            outer: el.outerHTML.slice(0, 450),
+          })),
+        ).catch(() => []);
+        const placeholderCount = await page.locator('flt-semantics-placeholder').count();
+        const body = await page.locator('body').innerText().catch(() => '');
+        fs.writeFileSync(out + '/debug-dom-' + width + 'x' + height + '.json',
+          JSON.stringify({
+            url: page.url(), placeholderCount, semantics: sem.slice(0, 80),
+            visibleText: body.slice(0, 2000),
+          }, null, 2));
         for (const choice of [
           'Français', 'Maroc', 'Simple et chaleureux',
           'Diabète Type 2', 'Comprimés',
