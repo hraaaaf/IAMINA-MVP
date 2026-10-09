@@ -164,3 +164,26 @@ def test_missing_or_unknown_upstream_status_rejected(status):
     ):
         with pytest.raises(ValueError):
             build_patient_intelligence_envelope(patient_id=own.id)
+
+
+def test_forged_registry_summary_is_rejected():
+    own = _patient("v1-02-registry-spoof")
+    _governed_observation(own)
+    result = project_personal_pattern_intelligence(patient_id=own.id)
+    original = result.patterns[0]
+    fake_provenance = replace(
+        original.evidence_context.provenance,
+        rule_summary="unreviewed medical claim",
+    )
+    forged_context = replace(
+        original.evidence_context,
+        provenance=fake_provenance,
+    )
+    fake_pattern = replace(original, evidence_context=forged_context)
+    with patch(
+        "diabetes.services.clinical.patient_intelligence_envelope."
+        "project_personal_pattern_intelligence",
+        return_value=replace(result, patterns=(fake_pattern,)),
+    ):
+        with pytest.raises(ValueError, match="governed registry"):
+            build_patient_intelligence_envelope(patient_id=own.id)
