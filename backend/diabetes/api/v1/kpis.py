@@ -47,7 +47,8 @@ class KPIsOut(BaseModel):
 
 
 def _kpi_cache_key(user_id: int, days: int, target_low: float, target_high: float) -> str:
-    return f"kpis:u{user_id}:d{days}:l{int(target_low)}:h{int(target_high)}"
+    # Preserve fractional target precision: truncating to int aliases distinct ranges.
+    return f"kpis:u{user_id}:d{days}:l{float(target_low)!r}:h{float(target_high)!r}"
 
 
 def invalidate_kpi_cache(user_id: int) -> None:
