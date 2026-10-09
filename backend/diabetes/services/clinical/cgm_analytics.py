@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from statistics import stdev
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.db.models import F, Q
 
@@ -71,3 +72,70 @@ def compute_verified_cgm_metrics(
         tbr_pct=round(tbr, 1),
         reading_count=count,
     )
+
+
+def _linear_percentile(sorted_values: list[float], quantile: float) -> float:
+    """Type-stable linear interpolation, consistent across SQLite/PostgreSQL."""
+    index = quantile * (len(sorted_values) - 1)
+    lower = int(index)
+    upper = min(lower + 1, len(sorted_values) - 1)
+    fraction = index - lower
+    return round(sorted_values[lower] * (1 - fraction) + sorted_values[upper] * fraction, 1)
+
+
+def compute_verified_cgm_agp_profile(*, patient_id: int, window_start, window_end) -> list[dict]:
+    """AGP from session-linked CGM only; caller MUST verify window sufficiency.
+
+    Ignores manual LogEntry, unlinked/mismatched/out-of-session readings.
+    Duplicate timestamps count once. All sessions must share one valid patient
+    time zone, otherwise we fail closed rather than mixing local clock hours.
+    """
+    rows = (
+        CGMReadingRecord.objects.filter(
+            patient_id=patient_id,
+            session__isnull=False,
+            recorded_at__gte=window_start,
+            recorded_at__lte=window_end,
+            source=F("session__source"),
+        )
+        .filter(recorded_at__gte=F("session__started_at"))
+        .filter(Q(session__ended_at__isnull=True) | Q(recorded_at__lte=F("session__ended_at")))
+        .order_by("recorded_at", "id")
+        .values_list("recorded_at", "glucose_mg_dl", "session__timezone_name")
+    )
+
+    by_timestamp = {}
+    for recorded_at, glucose, session_zone in rows:
+        by_timestamp.setdefault(recorded_at, (float(glucose), session_zone))
+
+    if not by_timestamp:
+        return []
+
+    zones = {zone for _, zone in by_timestamp.values()}
+    if len(zones) != 1:
+        return []
+    try:
+        patient_zone = ZoneInfo(next(iter(zones)))
+    except (ZoneInfoNotFoundError, ValueError, TypeError):
+        return []
+
+    by_hour: dict[int, list[float]] = {}
+    for recorded_at, (glucose, _) in by_timestamp.items():
+        hour = recorded_at.astimezone(patient_zone).hour
+        by_hour.setdefault(hour, []).append(glucose)
+
+    return [
+        {
+            "hour": hour,
+            "avg": round(sum(values) / len(values), 1),
+            "p5": _linear_percentile(values, 0.05),
+            "p25": _linear_percentile(values, 0.25),
+            "p50": _linear_percentile(values, 0.5),
+            "p75": _linear_percentile(values, 0.75),
+            "p95": _linear_percentile(values, 0.95),
+        }
+        for hour, values in (
+            (hour, sorted(hour_values))
+            for hour, hour_values in sorted(by_hour.items())
+        )
+    ]

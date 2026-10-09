@@ -30,7 +30,7 @@ from django.db.models import Q
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from ninja import Router
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
 from core.contracts.capabilities import Capability
@@ -40,14 +40,11 @@ from core.locale import resolve_patient_locale
 from core.models import BasePatientProfile
 from core.observability import EVT_CHAT_MESSAGE, EVT_SUMMARY_VIEWED, track
 from diabetes.api.v1.kpis import project_patient_kpis
+from diabetes.services.clinical.cgm_analytics import compute_verified_cgm_agp_profile
 from diabetes.models import LogEntry
 from diabetes.services.clinical.engine import run_clinical_analysis
 from diabetes.services.clinical.semantic_compressor import build_chat_context, compress
-from diabetes.services.clinical.sql_analytics import (
-    compute_agp_profile,
-    compute_daily_averages,
-    compute_kpis,
-)
+from diabetes.services.clinical.sql_analytics import compute_daily_averages, compute_kpis
 from llm.factory import get_ai_provider_name
 
 logger = logging.getLogger(__name__)
@@ -101,6 +98,8 @@ class SummaryResponse(BaseModel):
     kpis: KPISchema
     insights: List[InsightSchema]
     daily_averages: List[dict]
+    # CGM-only, governed percentile profile. Manual series never populate this.
+    agp_profile: List[dict] = Field(default_factory=list)
     generated_at: str
     has_sufficient_data: bool
     # "groq" | "kimi" | "claude" | "quota-exhausted" | "fallback"
@@ -209,8 +208,18 @@ def get_summary(request, data: SummaryRequest):
         kpis=kpis,
     )
 
-    # ── Step 5: AGP 24h profile + daily averages for Flutter chart ──
-    agp_profile = compute_agp_profile(user.id, data.days)
+    # ── Step 5: CGM-only AGP (requires already governed public metrics) ──
+    # The old SQL profile aggregated LogEntry manual/mixed readings; do not
+    # expose it as a clinical AGP. The public KPI gate verifies actual sensor
+    # session coverage and derives these three values from CGMReadingRecord.
+    agp_profile = []
+    if all(public_kpis[field] is not None for field in ("tir_pct", "tar_pct", "tbr_pct")):
+        window_end = timezone.now()
+        agp_profile = compute_verified_cgm_agp_profile(
+            patient_id=user.id,
+            window_start=window_end - timedelta(days=data.days),
+            window_end=window_end,
+        )
     daily_avgs = compute_daily_averages(user.id, data.days)
 
     track(EVT_SUMMARY_VIEWED, patient_id=user.id, props={"days": data.days})

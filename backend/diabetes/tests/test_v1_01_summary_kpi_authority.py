@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from django.test import SimpleTestCase
 
-from ai.api.v1.ai import SummaryRequest, get_doctor_brief, get_summary
+from ai.api.v1.ai import SummaryRequest, SummaryResponse, get_doctor_brief, get_summary
 from diabetes.api.v1.kpis import project_patient_kpis
 from diabetes.services.clinical.cgm_analytics import VerifiedCgmMetrics
 from diabetes.services.clinical.cgm_eligibility import CgmWindowSufficiency
@@ -60,7 +60,7 @@ class SummaryKpiAuthorityTests(SimpleTestCase):
             patch("ai.api.v1.ai._call_llm_for_summary", return_value=[]),
             patch("core.medical_safety.sanitize_patient_visible", return_value=[]),
             patch("ai.api.v1.ai.LogEntry.objects.filter") as logs,
-            patch("ai.api.v1.ai.compute_agp_profile", return_value=[]),
+            patch("ai.api.v1.ai.compute_verified_cgm_agp_profile") as agp_engine,
             patch("ai.api.v1.ai.compute_daily_averages", return_value=[]),
             patch("ai.api.v1.ai.track"),
             patch("ai.api.v1.ai.get_ai_provider_name", return_value="fallback"),
@@ -90,6 +90,8 @@ class SummaryKpiAuthorityTests(SimpleTestCase):
         window_check.assert_called_once()
         self.assertEqual(window_check.call_args.kwargs["patient_id"], 42)
         verified_metric_engine.assert_not_called()
+        agp_engine.assert_not_called()
+        self.assertEqual(SummaryResponse.model_validate(response).model_dump()["agp_profile"], [])
 
 
     def test_doctor_brief_prompt_omits_unverified_cgm_claims(self):
