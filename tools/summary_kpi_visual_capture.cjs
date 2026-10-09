@@ -42,6 +42,36 @@ fs.mkdirSync(output, { recursive: true });
         await page.screenshot({ path: target });
         const data = fs.readFileSync(target);
         if (data.length < 7000) throw new Error(`Empty UI capture ${target}`);
+        if (phase === 'after' && mode === 'agp-verified') {
+          // An AGP with legends but a zero-width painter previously passed CI.
+          // Inspect the actual screenshot pixels inside the chart, not just the
+          // presence/size of CustomPaint or a nonempty screenshot.
+          const stats = await page.evaluate(async (base64) => {
+            const img = document.createElement('img');
+            img.src = 'data:image/png;base64,' + base64;
+            await img.decode();
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            if (!ctx) throw new Error('PNG pixel canvas unavailable');
+            ctx.drawImage(img, 0, 0);
+            const box = img.width === 390
+              ? { x: 50, y: 160, w: 300, h: 110 }
+              : { x: 65, y: 170, w: 660, h: 120 };
+            const pixels = ctx.getImageData(box.x, box.y, box.w, box.h).data;
+            let greenPixels = 0;
+            for (let i = 0; i < pixels.length; i += 4) {
+              const r = pixels[i], g = pixels[i + 1], b = pixels[i + 2];
+              if (g > r + 12 && g > b + 9) greenPixels += 1;
+            }
+            return { greenPixels, width: img.width, height: img.height };
+          }, data.toString('base64'));
+          if (stats.greenPixels < 100) {
+            throw new Error(`AGP canvas appears blank in ${target}: ${JSON.stringify(stats)}`);
+          }
+          console.log(`Verified CGM chart painted: ${JSON.stringify(stats)}`);
+        }
         console.log(`${phase} ${mode}: ${data.length} bytes, sha256=${crypto.createHash('sha256').update(data).digest('hex')}`);
       } finally {
         await page.close();
