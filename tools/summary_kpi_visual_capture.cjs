@@ -18,9 +18,14 @@ fs.mkdirSync(output, { recursive: true });
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   });
   try {
-    for (const mode of ['cards', 'hero', 'agp']) {
+    const modes = ['cards', 'hero', 'agp'].map(mode => [mode, 390, 844]);
+    if (phase === 'after') {
+      // Separate positive CGM rendering evidence, not fake paired baselines.
+      modes.push(['agp-verified', 390, 844], ['agp-verified', 768, 1024]);
+    }
+    for (const [mode, width, height] of modes) {
       const page = await browser.newPage({
-        viewport: { width: 390, height: 844 },
+        viewport: { width, height },
         deviceScaleFactor: 1,
         locale: 'fr-FR',
         colorScheme: 'light',
@@ -33,7 +38,7 @@ fs.mkdirSync(output, { recursive: true });
         await page.waitForTimeout(6000);
         const pane = await page.locator('flt-glass-pane').count();
         if (!pane) throw new Error(`Flutter renderer absent in ${phase}/${mode}`);
-        const target = path.join(output, `${phase}-${mode}-390x844.png`);
+        const target = path.join(output, `${phase}-${mode}-${width}x${height}.png`);
         await page.screenshot({ path: target });
         const data = fs.readFileSync(target);
         if (data.length < 7000) throw new Error(`Empty UI capture ${target}`);
