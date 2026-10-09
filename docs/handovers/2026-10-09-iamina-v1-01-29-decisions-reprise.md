@@ -21,6 +21,7 @@
 ## What was actually done
 
 - CAL-07: AddLog and EditLog preserve entered number together with its unit when preference changes; unknown write unit rejected; Profile offers unit before target entries, converts to canonical mg/dL and preserves unchanged stored `69.9` through unit roundtrips; 390×844 overflow fixed. 12 actual Chrome PNGs and real Drift tests passed on verified candidates; no unrelated clinical threshold changed.
+- **New CAL-10 candidate on this branch (verify CI before claiming):** personal_response had no upper `now` bound while paired_meal did; closed interval guard and three negative tests prevent future-dated journal records from manufacturing evidence sufficiency. No new threshold, no patient-local day policy.
 - Evidence across UTC/UTC+01 day boundary added for CAL-09/10: three engines count UTC `.date()`, while same samples can be one UTC+01 day. **Characterization, not approval of UTC as patient's clinical day.** Long-duration explicitly UUID-linked meal pair currently remains descriptively paired; no arbitrary time limit introduced.
 - Active backend + Flutter glucose factor both `18.016`. Legacy helper still uses `18.018` with permissive fallback; AST test guards direct imports, not all possible dynamically imported callers.
 - V1-02 governed engine envelope exists in #921 only partly; no complete Home/Reports/chat integration or patient-info third-party LLM path authorized.
@@ -40,7 +41,7 @@
 ## Next exact, and full remaining sequence
 
 1. Read `docs/ROADMAP.md`, this handover and current audit. **Verify `main`, both PR HEADs, exact-head workflows** at GitHub (do not trust the static SHA if branch advanced).
-2. Resume **CAL-09/10** `test_v1_01_evidence_day_boundaries.py` → source/day-window and patient-timezone authority audit; add independent negative tests only if technically justified, record policy/clinician decision gate without changing medical definitions.
+2. Resume **CAL-09/10** `test_v1_01_evidence_day_boundaries.py` → verify three new **future-dated evidence exclusion** regressions in `personal_response` (source `logged_at`, legacy `created_at` fallback, paired-meal comparison), plus UTC/patient-local date boundary characterization; record clinician/product timezone and meal-pair policy gate without inventing medical thresholds.
 3. Audit CAL-11 nutrition provenance, then CAL-12 reports/export/LLM projection; finish CAL-01–12 source→consumer matrix with SQLite/PG, Flutter/real navigation and adversarial test results.
 4. Reconcile V1-02/03 privacy boundary, obtain independent clinical/privacy/UX/RTL reviews; if passed, run exact final-head CI, closeout canonical docs and PR, decide merge subject to true clinical gates, verify post-merge, advance to V1-04. If blocked by clinic/release human gate, stop there and report exact gate; **never deploy to Vercel without explicit approval**.
 

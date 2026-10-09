@@ -117,7 +117,18 @@ def _window_queryset(patient_id: int, window_days: int) -> QuerySet[LogEntry]:
     return (
         LogEntry.objects.filter(patient_id=patient_id)
         .filter(source__in=log_input.JOURNAL_LONGITUDINAL_SOURCE_VALUES)
-        .filter(Q(logged_at__gte=cutoff) | Q(logged_at__isnull=True, created_at__gte=cutoff))
+        # Future-dated journal entries must never manufacture a second day
+        # of evidence or promote an insufficient pattern to "ready".
+        # This is the same bounded [cutoff, now] window already used by
+        # paired_meal_response, not a new clinical time-zone definition.
+        .filter(
+            Q(logged_at__gte=cutoff, logged_at__lte=now)
+            | Q(
+                logged_at__isnull=True,
+                created_at__gte=cutoff,
+                created_at__lte=now,
+            )
+        )
         .order_by("logged_at", "created_at", "id")
     )
 

@@ -182,3 +182,63 @@ class EvidenceDayBoundaryCharacterizationTests(TestCase):
         self.assertEqual(
             len({t.astimezone(self.plus_one).date() for t in times}), 1
         )
+
+    def test_future_logged_at_cannot_promote_personal_evidence_to_ready(self):
+        """The current evidence window may not include a later calendar day."""
+        for index, at in enumerate(
+            (self.before, self.before + dt.timedelta(minutes=4))
+        ):
+            self._reading(at, glucose=130 + index * 10, stressed="yes")
+        # Without an upper bound, this future journal reading made two UTC
+        # days and promoted a three-observation stress pattern to ready.
+        self._reading(
+            timezone.now() + dt.timedelta(days=2),
+            glucose=180,
+            stressed="yes",
+        )
+
+        result = compute_personal_response(patient_id=self.patient.id)
+
+        self.assertEqual(result.total_readings, 2)
+        self.assertEqual(result.distinct_days, 1)
+        self.assertEqual(result.status, "insufficient_data")
+        self.assertIsNone(result.window_median_glucose_mg_dl)
+        self.assertEqual(result.patterns, ())
+
+    def test_future_created_at_fallback_cannot_promote_personal_evidence(self):
+        """Rows without logged_at must also use a closed historical window."""
+        for index, at in enumerate(
+            (self.before, self.before + dt.timedelta(minutes=4))
+        ):
+            self._reading(at, glucose=135 + index * 10, stressed="yes")
+        fallback = LogEntry.objects.create(
+            patient=self.patient,
+            source="manual",
+            logged_at=None,
+            blood_sugar=190,
+            stressed="yes",
+        )
+        # Simulate a corrupt/imported legacy created_at without implying
+        # that a public write API accepts arbitrary future timestamps.
+        LogEntry.objects.filter(pk=fallback.pk).update(
+            created_at=timezone.now() + dt.timedelta(days=2)
+        )
+
+        result = compute_personal_response(patient_id=self.patient.id)
+
+        self.assertEqual(result.total_readings, 2)
+        self.assertEqual(result.distinct_days, 1)
+        self.assertEqual(result.status, "insufficient_data")
+        self.assertEqual(result.patterns, ())
+
+    def test_future_explicit_pair_remains_outside_paired_meal_window(self):
+        """The paired-meal engine already bounds both sides at current now."""
+        future = timezone.now() + dt.timedelta(days=2)
+        self._meal_pair(future, base=140)
+
+        result = compute_paired_meal_response(patient_id=self.patient.id)
+
+        self.assertEqual(result.status, "insufficient_data")
+        self.assertEqual(result.explicit_episode_count, 0)
+        self.assertEqual(result.complete_pair_count, 0)
+        self.assertEqual(result.patterns, ())
