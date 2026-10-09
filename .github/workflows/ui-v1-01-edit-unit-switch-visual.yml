@@ -65,7 +65,7 @@ jobs:
                   for phase in ('before', 'after'):
                       path = folder / f'{phase}-{surface}-unit-switch-{width}x{height}.png'
                       data = path.read_bytes()
-                    assert data[:8] == b'\x89PNG\r\n\x1a\n', path
+                      assert data[:8] == b'\x89PNG\r\n\x1a\n', path
                       got_width, got_height = struct.unpack('>II', data[16:24])
                       assert (got_width, got_height) == (width, height), (
                           path, got_width, got_height
