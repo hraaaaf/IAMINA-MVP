@@ -57,6 +57,7 @@ class SummaryKpiAuthorityTests(SimpleTestCase):
             ),
             patch("ai.api.v1.ai._call_llm_for_summary", return_value=[]),
             patch("core.medical_safety.sanitize_patient_visible", return_value=[]),
+            patch("ai.api.v1.ai.LogEntry.objects.filter") as logs,
             patch("ai.api.v1.ai.compute_agp_profile", return_value=[]),
             patch("ai.api.v1.ai.compute_daily_averages", return_value=[]),
             patch("ai.api.v1.ai.track"),
@@ -71,6 +72,7 @@ class SummaryKpiAuthorityTests(SimpleTestCase):
         ):
             # Unit-test the actual endpoint implementation without executing its
             # consent decorator: zero network/LLM calls, fixed synthetic patient.
+            logs.return_value.order_by.return_value = []
             response = get_summary.__wrapped__(request, SummaryRequest(days=14))
 
         public = response["kpis"]
