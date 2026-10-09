@@ -28,7 +28,7 @@ fs.mkdirSync(output, { recursive: true });
       try {
         await page.goto(
           `http://127.0.0.1:7367/?surface=summary-kpi-cert&mode=${mode}`,
-          { waitUntil: 'networkidle', timeout: 45000 },
+          { waitUntil: 'domcontentloaded', timeout: 45000 },
         );
         await page.waitForTimeout(6000);
         const pane = await page.locator('flt-glass-pane').count();
