@@ -47,6 +47,9 @@ void main() {
   testWidgets('AGP does not render invented 100% breakdown from manual logs', (tester) async {
     await render(tester, 'agp');
     expect(find.text('100%'), findsNothing);
+    // Even if raw manual-only percentile points exist, no AGP legend.
+    expect(find.text('25–75%'), findsNothing);
+    expect(find.text('5–95%'), findsNothing);
     // The AGP panel uses the localized extension copy (with a period),
     // not the Dashboard-specific insufficiency caption.
     expect(find.text('Données insuffisantes.'), findsOneWidget);

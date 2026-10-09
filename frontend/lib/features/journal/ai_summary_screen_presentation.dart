@@ -326,19 +326,23 @@ extension _AISummaryScreenPresentation on _AISummaryScreenState {
     SummaryResponse summary,
     KpisResponse? kpis,
   ) {
-    final agpData = summary.agpProfile.isNotEmpty
-        ? summary.agpProfile
-        : summary.dailyAverages;
-    final useHourly = summary.agpProfile.isNotEmpty;
+    // Raw profile/daily series may include manual readings: never label
+    // them as verified CGM data without the governed KPI eligibility gate.
+    final hasVerifiedCgm = kpis?.tirPct != null &&
+        kpis?.tarPct != null &&
+        kpis?.tbrPct != null;
+    final agpData = hasVerifiedCgm ? summary.agpProfile : const <dynamic>[];
+    final hasSeries = summary.agpProfile.isNotEmpty ||
+        summary.dailyAverages.isNotEmpty;
     return [
       if (kpis != null && kpis.hasSufficientData) ...[
         _KpiRow(kpis: kpis),
         const SizedBox(height: 16),
       ],
-      if (agpData.isNotEmpty) ...[
+      if (hasSeries) ...[
         _AgpCard(
           agpData: agpData,
-          isHourly: useHourly,
+          isHourly: true,
           periodDays: _periodDays,
           kpis: kpis,
         ),
@@ -868,7 +872,9 @@ class _AgpCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final hasData = agpData.any((e) {
+    final hasVerifiedBreakdown =
+        kpis?.tirPct != null && kpis?.tarPct != null && kpis?.tbrPct != null;
+    final hasData = hasVerifiedBreakdown && agpData.any((e) {
       final m = e as Map<String, dynamic>;
       final v = (m['p50'] ?? m['avg'] ?? m['avg_glucose'] ?? 0);
       return (v as num) > 0;
@@ -876,8 +882,6 @@ class _AgpCard extends StatelessWidget {
     final tir = kpis?.tirPct ?? 0.0;
     final tar = kpis?.tarPct ?? 0.0;
     final tbr = kpis?.tbrPct ?? 0.0;
-    final hasVerifiedBreakdown =
-        kpis?.tirPct != null && kpis?.tarPct != null && kpis?.tbrPct != null;
     final vtar = (100 - tir - tar - tbr).clamp(0.0, 100.0);
 
     return ClinicalCard(
@@ -1095,10 +1099,11 @@ class _AgpCard extends StatelessWidget {
                 );
               },
             ),
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 12),
-            child: Wrap(
-              spacing: 10,
+          if (hasData)
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 12),
+              child: Wrap(
+                spacing: 10,
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [

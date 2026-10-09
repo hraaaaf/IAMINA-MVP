@@ -168,8 +168,11 @@ class AISummaryKpiVisualFixture extends StatelessWidget {
     final summary = SummaryResponse(
       insights: const [],
       kpis: const {},
-      dailyAverages: const [],
-      agpProfile: const [],
+      // A manual-only patient can still have a raw SQL percentile series.
+      dailyAverages: const [{'day': '2026-09-19', 'avg': 130}],
+      agpProfile: const [
+        {'hour': 12, 'p5': 110, 'p25': 120, 'p50': 130, 'p75': 140, 'p95': 150},
+      ],
       generatedAt: '2026-09-20T12:00:00Z',
       hasSufficientData: true,
     );
@@ -181,7 +184,9 @@ class AISummaryKpiVisualFixture extends StatelessWidget {
           onChatTap: () {},
         ),
       'agp' => _AgpCard(
-          agpData: const [],
+          agpData: const [
+            {'hour': 12, 'p5': 110, 'p25': 120, 'p50': 130, 'p75': 140, 'p95': 150},
+          ],
           isHourly: true,
           periodDays: 14,
           kpis: kpis,
