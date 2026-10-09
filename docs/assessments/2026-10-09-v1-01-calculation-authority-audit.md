@@ -1,6 +1,6 @@
 # V1-01 — Calculation & clinical-authority inventory (working audit)
 
-> Status: **OPEN / INITIAL STATIC PASS**, not a complete calculation inventory, clinical certification, or runtime validation.
+> Status: **OPEN / partial source audit + exact-head automated/UI evidence**, not a complete calculation inventory, clinical certification, or patient-level validation.
 > Baseline: `hraaaaf/IAMINA-MVP main@13b7cce12c86daf60119fb703f22e8c6c192cf8d` (PR #919 post-merge).
 > Scope: new V1-01 in `docs/ROADMAP.md`; retain historical P5 pre-real-patient gates.
 > Change policy: audit and regression proof first; no new clinical target, therapeutic advice, LLM medical authority or deployment.
@@ -183,3 +183,22 @@ D. Two isolated adversarial perspectives (clinical/safety vs cross-layer/data), 
 
 - **Exact-head result on `8cac30c`:** **16/17 GitHub workflows SUCCESS**, including main CI `#37967580068` and glucose cross-surface real Chrome `#37967579790`. Only `V1-01 edit glucose unit switch visual proof #37967579947` failed during BEFORE Profile capture: Playwright `getByText('Suivi médical')` timed out after it had saved four BEFORE EditLog/AddLog PNGs. Flutter CanvasKit does not expose the canvas text as a stable HTML text locator; **not a product render or numerical integrity regression**.
 - **Next candidate test-harness-only:** drive the actual Flutter medical `ExpansionTile` via its built `ListTile.onTap` in the isolated synthetic web entrypoint, wait for the true `AminaTextField` controllers and actual `Cible glycémique` title, print the observed values to the browser log, and require the Playwright runner to independently assert BEFORE `70/180 mg/dL` against AFTER `3.9/10.0 mmol/L`. Capture 12 screenshot PNGs at 390×844 and 768×1024, same source and layouts. No product runtime changes, no schema or clinical thresholds changed. **Exact-head rerun required before claiming success**.
+
+## 2026-10-09 exact-head closeout of unit-entry substep only (not V1-01)
+
+**Source of truth:** [PR #920, HEAD b0e971e8d087dca9cd73023a5bc7afd57f420096](https://github.com/hraaaaf/IAMINA-MVP/pull/920), OPEN/DRAFT, main baseline 13b7cce12c86daf60119fb703f22e8c6c192cf8d.
+
+**Goal:** a glucose number must not silently change units when the profile preference changes during AddLog/EditLog, and editable target ranges must display selected units while remaining canonical mg/dL in storage. No unsupported normative TIR/GMI or fabricated CGM AGP for manual-only samples.
+
+**Executed proof on exact SHA b0e971e:**
+- **17/17 GitHub workflows SUCCESS**, no failed/pending, including [CI #37969874153](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37969874153), [real Chrome glucose cross-surface #37969874258](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37969874258), and [real Chrome AddLog/EditLog/Profile before/after #37969874302](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37969874302). PostgreSQL, Flutter/Drift and API contracts pass within the scope of their test fixtures; not proof of deployed patient safety.
+- **12 real Chrome PNGs downloaded and visually inspected** from [artifact #11635771127](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37969874302/artifacts/11635771127): AddLog, EditLog and actual ProfileScreen, BEFORE and AFTER at 390×844 and 768×1024. Profile BEFORE shows 70/180 under mg/dL title, AFTER 3.9/10.0 under mmol/L title; the selected unit now precedes target fields. No visible horizontal clipping in these states. EditLog binds 3.9 to mmol/L and AddLog 4.0 to mmol/L despite a synthetic live profile preference change; AddLog no longer shows false low-glucose warning.
+- **Pixel cross-check, max RGB channel delta > 12:** EditLog 390/768 = 309/309 changed pixels; AddLog 390/768 = 69,165/57,815; Profile 390/768 = 16,615/16,496. Images are dimension-matched; timestamp in AddLog also varied, so not every pixel difference is caused by the unit fix.
+- **Visual-quality provisional 8/10 on these six FR before/after pairs only.** No Chrome Arabic RTL, real patient UI review, accessibility score, or full clinical certification.
+- **Tested canonical target values in widget/Drift:** unchanged 69.9/180 mg/dL survives unit changes; edited 4.0/10.5 mmol/L persists 72.064/189.168 mg/dL using active 18.016 write factor. This does **not** settle RISK-08: active write 18.016 versus shared UI 18.018 versus legacy UI 18.0. Keep factor/rounding authority OPEN.
+
+**Outstanding CAL gates:** complete CAL-01…12 source-to-consumer register and independent numeric oracles; independent clinical and security/UX reviewers; Arabic RTL and accessibility; actual country→unit→target onboarding in V1-04; patient-local time-zone contract for CAL-09/10 evidence days; CAL-11 source provenance and CAL-12 exports/LLM claims. No merge before independent approvals or Vercel deployment without explicit authorization.
+
+**29-decision tracking:** 0/29 fully delivered, #19/#22/#28 IN PROGRESS, 26/29 not started in V1. Unit-entry substep passing does not mark #22 delivered.
+
+**Next exact:** independently establish conversion factor and display rounding authority, test active backend 18.016 against Flutter 18.018 and legacy 18.0 near boundary values; fix only verified discrepancies without introducing clinical targets. Complete remaining registry and independent review.
