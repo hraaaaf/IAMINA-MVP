@@ -26,7 +26,7 @@ from diabetes.services.clinical.companion_evidence_uncertainty import (
     build_companion_evidence_context,
 )
 from diabetes.services.clinical.companion_pattern_intelligence import (
-    SOURCE_VERSION as PATTERN_SOURCE_VERSION,
+    SOURCE_VERSION,
     project_personal_pattern_intelligence,
 )
 from diabetes.services.clinical.governed_longitudinal import (
@@ -246,7 +246,7 @@ def build_patient_intelligence_envelope(
 
     observations: list[PatientIntelligenceObservation] = []
     for item in result.patterns:
-        if item.source_version != PATTERN_SOURCE_VERSION:
+        if item.source_version != SOURCE_VERSION:
             raise ValueError("unknown governed pattern contract version")
 
         evidence = item.evidence_context
