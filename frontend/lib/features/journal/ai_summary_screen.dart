@@ -147,3 +147,69 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
 
 
 }
+
+
+/// Synthetic patient-safe view of real KPI widgets for browser screenshot CI.
+/// Not linked from production routes; no user data or backend access.
+@visibleForTesting
+class AISummaryKpiVisualFixture extends StatelessWidget {
+  final String mode;
+  const AISummaryKpiVisualFixture({super.key, required this.mode});
+
+  @override
+  Widget build(BuildContext context) {
+    final kpis = KpisResponse(
+      avgGlucose: 130.0,
+      logCount: 60,
+      daysWithData: 14,
+      hasSufficientData: true,
+      gmiBasis: 'couverture CGM non vérifiée',
+    );
+    final summary = SummaryResponse(
+      insights: const [],
+      kpis: const {},
+      dailyAverages: const [],
+      agpProfile: const [],
+      generatedAt: '2026-09-20T12:00:00Z',
+      hasSufficientData: true,
+    );
+    final Widget subject = switch (mode) {
+      'hero' => _HeroInsightCard(
+          summary: summary,
+          kpis: kpis,
+          onDiscoverTap: () {},
+          onChatTap: () {},
+        ),
+      'agp' => _AgpCard(
+          agpData: const [],
+          isHourly: true,
+          periodDays: 14,
+          kpis: kpis,
+        ),
+      _ => _KpiRow(kpis: kpis),
+    };
+    return Scaffold(
+      backgroundColor: AminaTheme.bg(context),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'CERTIFICATION VISUELLE — 60 MESURES MANUELLES, AUCUN CGM',
+                style: TextStyle(
+                  color: AminaTheme.textSecondary(context),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              subject,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

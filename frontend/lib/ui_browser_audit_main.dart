@@ -23,6 +23,7 @@ import 'features/dashboard/widgets/dashboard_next_action_section.dart';
 import 'features/dashboard/widgets/dashboard_trend_section.dart';
 import 'features/documents/document_import_premium_screen.dart';
 import 'features/journal/add_log_screen.dart';
+import 'features/journal/ai_summary_screen.dart';
 import 'features/journal/journal_screen.dart';
 import 'features/journal/reports_screen.dart';
 import 'features/journal/widgets/food_pictogram_audit_fixture.dart';
@@ -255,6 +256,12 @@ class _BrowserAuditApp extends StatelessWidget {
           ],
         ),
         GoRoute(
+          path: '/summary-kpi-cert',
+          builder: (context, state) => AISummaryKpiVisualFixture(
+            mode: Uri.base.queryParameters['mode'] ?? 'cards',
+          ),
+        ),
+        GoRoute(
           path: '/onboarding',
           builder: (context, state) => const OnboardingChatScreen(),
         ),
@@ -419,6 +426,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'dashboard' => '/dashboard',
   'journal' => '/journal',
   'summary' => '/summary',
+  'summary-kpi-cert' => '/summary-kpi-cert',
   'reports-local' => '/reports-local',
   'profile' => '/profile',
   'importer' => '/importer',

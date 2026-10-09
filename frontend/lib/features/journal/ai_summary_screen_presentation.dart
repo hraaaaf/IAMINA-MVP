@@ -568,7 +568,7 @@ class _HeroInsightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final tir = kpis?.tirPct ?? 0.0;
+    final tir = kpis?.tirPct;
     final discussionCount = summary.insightCards
         .where((c) => c.action.isNotEmpty)
         .length;
@@ -615,7 +615,11 @@ class _HeroInsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Text(
-            tir >= 70 ? l10n.mostlyInTarget : l10n.someReadingsNeedReview,
+            tir == null
+                ? l10n.dashboardInsufficientData
+                : tir >= 70
+                    ? l10n.mostlyInTarget
+                    : l10n.someReadingsNeedReview,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
@@ -702,31 +706,33 @@ class _KpiRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final tir = kpis.tirPct ?? 0.0;
-    final gmi = kpis.gmi ?? 0.0;
-    final cv = kpis.cvPct ?? 0.0;
+    final tir = kpis.tirPct;
+    final gmi = kpis.gmi;
+    final cv = kpis.cvPct;
     final coverage = l10n.coverage(kpis.logCount, kpis.daysWithData);
 
     final cards = <Widget>[
       _KpiCard(
         label: l10n.readingsInRange,
-        value: '${tir.toStringAsFixed(0)}%',
+        value: tir == null ? l10n.unavailable : '${tir.toStringAsFixed(0)}%',
         color: AminaTheme.teal500,
-        reference: l10n.generalRangeReference,
+        reference: tir == null ? l10n.dashboardInsufficientData : l10n.generalRangeReference,
       ),
       _KpiCard(
         label: l10n.estimatedGmi,
-        value: '${gmi.toStringAsFixed(1)}%',
+        value: gmi == null ? l10n.unavailable : '${gmi.toStringAsFixed(1)}%',
         color: AminaTheme.ocean500,
-        reference: kpis.gmiBasis.isNotEmpty
-            ? l10n.gmiBasis(kpis.gmiBasis)
-            : l10n.gmiAvailableMean,
+        reference: gmi == null
+            ? l10n.dashboardInsufficientData
+            : kpis.gmiBasis.isNotEmpty
+                ? l10n.gmiBasis(kpis.gmiBasis)
+                : l10n.gmiAvailableMean,
       ),
       _KpiCard(
         label: l10n.variabilityCv,
-        value: '${cv.toStringAsFixed(0)}%',
+        value: cv == null ? l10n.unavailable : '${cv.toStringAsFixed(0)}%',
         color: AminaTheme.ambre500,
-        reference: l10n.generalCvReference,
+        reference: cv == null ? l10n.dashboardInsufficientData : l10n.generalCvReference,
       ),
     ];
 
@@ -869,6 +875,8 @@ class _AgpCard extends StatelessWidget {
     final tir = kpis?.tirPct ?? 0.0;
     final tar = kpis?.tarPct ?? 0.0;
     final tbr = kpis?.tbrPct ?? 0.0;
+    final hasVerifiedBreakdown =
+        kpis?.tirPct != null && kpis?.tarPct != null && kpis?.tbrPct != null;
     final vtar = (100 - tir - tar - tbr).clamp(0.0, 100.0);
 
     return ClinicalCard(
@@ -920,7 +928,7 @@ class _AgpCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          if (kpis != null && kpis!.hasSufficientData)
+          if (hasVerifiedBreakdown)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
