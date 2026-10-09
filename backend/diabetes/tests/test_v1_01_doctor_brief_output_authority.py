@@ -9,8 +9,8 @@ from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
 from ai.api.v1.ai import DoctorBriefResponse, get_doctor_brief
-from diabetes.models.entry import LogEntry
 from core.contracts.truth import TruthKind
+from diabetes.models.entry import LogEntry
 from diabetes.services.clinical.consultation_brief_contract import (
     ConsultationBriefEnvelope,
     ConsultationComparisonBasis,
