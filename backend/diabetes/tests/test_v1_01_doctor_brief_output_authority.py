@@ -248,3 +248,37 @@ class DoctorBriefIsolationDBTests(TestCase):
         self.assertEqual(approved["evidence"][0]["value"], 120.0)
         self.assertNotIn("350", str(approved))
         gateway.assert_not_called()
+
+    def test_actual_http_requires_auth_and_keeps_patient_records_separate(self):
+        first = User.objects.create_user(username="cal12-http-first", password="testpass")
+        second = User.objects.create_user(username="cal12-http-second", password="testpass")
+        now = timezone.now()
+        for i in range(5):
+            LogEntry.objects.create(
+                patient=first, blood_sugar=120,
+                logged_at=now - timedelta(days=i + 1), source="manual",
+            )
+            LogEntry.objects.create(
+                patient=second, blood_sugar=340,
+                logged_at=now - timedelta(days=i + 1), source="manual",
+            )
+
+        path = "/api/v1/ai/doctor-brief?days=14"
+        denied = self.client.get(path)
+        self.assertIn(denied.status_code, (401, 403))
+        with patch("ai.api.v1.ai.get_gateway_llm", side_effect=AssertionError("no LLM")):
+            self.client.force_login(first)
+            authorized = self.client.get(path)
+            self.assertEqual(authorized.status_code, 200)
+            first_body = authorized.json()
+            self.assertTrue(first_body["has_sufficient_data"])
+            self.assertEqual(first_body["schema_version"], "consultation-brief.v1")
+            self.assertEqual(first_body["evidence"][0]["value"], 120.0)
+            self.assertIn("120.0 mg/dL", first_body["doctor_brief"])
+            self.assertNotIn("340.0", str(first_body))
+            self.client.force_login(second)
+            other_response = self.client.get(path)
+            self.assertEqual(other_response.status_code, 200)
+            self.assertEqual(other_response.json()["evidence"][0]["value"], 340.0)
+            self.assertNotIn("120.0", str(other_response.json()))
+
