@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:amina/core/theme/app_theme.dart';
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/journal/edit_log_screen.dart';
+import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
@@ -140,4 +141,82 @@ void main() {
       await tester.pumpAndSettle();
     });
   }
+  for (final size in <Size>[const Size(390, 844), const Size(768, 1024)]) {
+    testWidgets('AddLog unit switch visual proof ${size.width.toInt()}px, $phase',
+        (tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final timestamp = DateTime(2026, 9, 20, 10, 30);
+      await db.into(db.patientProfiles).insert(
+        PatientProfilesCompanion.insert(
+          userId: const Value(1),
+          updatedAt: timestamp,
+          unitPreference: const Value('mmol/L'),
+        ),
+      );
+      final profile = await db.select(db.patientProfiles).getSingle();
+      final notifier = ValueNotifier<PatientProfileData?>(profile);
+      addTearDown(notifier.dispose);
+      const key = Key('v101-add-unit-proof-canvas');
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: key,
+          child: ValueListenableBuilder<PatientProfileData?>(
+            valueListenable: notifier,
+            builder: (_, currentProfile, __) => MaterialApp(
+              locale: const Locale('fr'),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Scaffold(
+                body: MultiProvider(
+                  providers: [
+                    Provider<AppDatabase>.value(value: db),
+                    Provider<PatientProfileData?>.value(value: currentProfile),
+                  ],
+                  child: const AddLogSheet(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final input = find.byKey(const Key('glucose-input'));
+      await tester.enterText(input, '4.0');
+      await tester.pumpAndSettle();
+      notifier.value = profile.copyWith(unitPreference: 'mg/dL');
+      await tester.pumpAndSettle();
+      final expectedUnit = phase == 'before' ? 'mg/dL' : 'mmol/L';
+      expect(tester.widget<TextField>(input).controller!.text, '4.0');
+      expect(tester.widget<Text>(find.byKey(const Key('glucose-unit'))).data,
+          expectedUnit);
+      expect(tester.takeException(), isNull);
+      tester.testTextInput.hide();
+      await tester.pumpAndSettle();
+      final output = Platform.environment['IAMINA_V101_PROOF_DIR'];
+      if (output == null || output.isEmpty) {
+        throw StateError('Missing IAMINA_V101_PROOF_DIR');
+      }
+      Directory(output).createSync(recursive: true);
+      final image = await tester
+          .renderObject<RenderRepaintBoundary>(find.byKey(key))
+          .toImage(pixelRatio: 1);
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      expect(bytes, isNotNull);
+      final png = bytes!.buffer.asUint8List();
+      expect(png.length, greaterThan(5000));
+      File(
+        '$output/$phase-add-unit-switch-'
+        '${size.width.toInt()}x${size.height.toInt()}.png',
+      ).writeAsBytesSync(png);
+      image.dispose();
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    });
+  }
+
 }

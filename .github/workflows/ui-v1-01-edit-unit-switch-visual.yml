@@ -59,20 +59,23 @@ jobs:
           python3 - <<'PY'
           import hashlib, pathlib, struct
           folder = pathlib.Path('v1-01-edit-unit-proof')
-          for width, height in [(390, 844), (768, 1024)]:
-              images = []
-              for phase in ('before', 'after'):
-                  path = folder / f'{phase}-edit-unit-switch-{width}x{height}.png'
-                  data = path.read_bytes()
-                  assert data[:8] == b'\x89PNG\r\n\x1a\n', path
-                  got_width, got_height = struct.unpack('>II', data[16:24])
-                  assert (got_width, got_height) == (width, height), (
-                      path, got_width, got_height
+          for surface in ('edit', 'add'):
+              for width, height in [(390, 844), (768, 1024)]:
+                  images = []
+                  for phase in ('before', 'after'):
+                      path = folder / f'{phase}-{surface}-unit-switch-{width}x{height}.png'
+                      data = path.read_bytes()
+                    assert data[:8] == b'\x89PNG\r\n\x1a\n', path
+                      got_width, got_height = struct.unpack('>II', data[16:24])
+                      assert (got_width, got_height) == (width, height), (
+                          path, got_width, got_height
+                      )
+                      assert len(data) > 5000
+                      print(path, len(data), hashlib.sha256(data).hexdigest())
+                      images.append(data)
+                  assert images[0] != images[1], (
+                      f'Identical {surface} BEFORE/AFTER at {width}'
                   )
-                  assert len(data) > 5000
-                  print(path, len(data), hashlib.sha256(data).hexdigest())
-                  images.append(data)
-              assert images[0] != images[1], f'Identical BEFORE/AFTER at {width}'
           PY
       - name: Upload real Flutter screenshots and source-comparable evidence
         if: always()

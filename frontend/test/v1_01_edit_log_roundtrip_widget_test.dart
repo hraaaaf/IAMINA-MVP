@@ -201,7 +201,7 @@ void main() {
           // After editing a TextField, focused keyboard/scroll position can
           // leave the footer below the 390px test viewport. Exercise a real
           // scroll gesture until the save control is actually hit-testable.
-          await tester.testTextInput.hide();
+          tester.testTextInput.hide();
           await tester.pumpAndSettle();
           await tester.dragUntilVisible(
             save,

@@ -94,6 +94,8 @@ class _AddLogSheetState extends State<AddLogSheet> {
   final Map<String, MealPortionSelection> _mealPortionSelections =
       <String, MealPortionSelection>{};
 
+  /// A typed glucose value keeps the unit it was entered with.
+  String? _draftGlucoseUnit;
   String? _glycemicContext;
   String? _mealType;
   DateTime _selectedTime = DateTime.now();
@@ -353,7 +355,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
   Widget build(BuildContext context) {
     final db = context.read<AppDatabase>();
     final profile = context.watch<PatientProfileData?>();
-    final unit = profile?.unitPreference ?? 'mg/dL';
+    final unit = _draftGlucoseUnit ?? profile?.unitPreference ?? 'mg/dL';
     final l10n = AppLocalizations.of(context)!;
 
     final savedReceipt = _savedReceipt;
@@ -362,7 +364,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
         key: const Key('post-save-receipt'),
         data: savedReceipt,
         onViewJournal: _openJournal,
-        onAddAnother: () => setState(() => _savedReceipt = null),
+        onAddAnother: () => setState(() {
+          _savedReceipt = null;
+          _draftGlucoseUnit = null;
+        }),
         onDone: _close,
       );
     }
@@ -385,7 +390,13 @@ class _AddLogSheetState extends State<AddLogSheet> {
           controller: _glucoseController,
           unit: unit,
           mgdl: _mgdlGlucose(unit),
-          onChanged: (_) => setState(() {}),
+          onChanged: (_) => setState(() {
+            if (_glucoseController.text.trim().isEmpty) {
+              _draftGlucoseUnit = null;
+            } else {
+              _draftGlucoseUnit ??= unit;
+            }
+          }),
         ),
         const SizedBox(height: 18),
         AddLogMeasurementContext(
@@ -614,6 +625,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
   void _clearDraftForNextEntry() {
     _glucoseController.clear();
+    _draftGlucoseUnit = null;
     _mealNoteController.clear();
     _selectedMealItemIds.clear();
     _mealPortionSelections.clear();
