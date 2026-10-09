@@ -56,10 +56,47 @@ void main() {
       },
     );
 
-    test('invalid gram quantities never produce an estimate', () {
-      expect(estimateCarbsForGrams('msemen', 0), isNull);
-      expect(estimateCarbsForGrams('msemen', -1), isNull);
-      expect(estimateCarbsForGrams('msemen', double.nan), isNull);
+    test('invalid gram quantities fail closed even for supported foods', () {
+      // Using only msemen here would be a false positive: it has no
+      // numeric carbohydrate reference even for a valid gram quantity.
+      for (final grams in <double>[
+        0,
+        -1,
+        double.nan,
+        double.infinity,
+        double.negativeInfinity,
+      ]) {
+        expect(estimateCarbsForGrams('apple', grams), isNull);
+        expect(estimateCarbsForGrams('banana', grams), isNull);
+      }
+      expect(estimateCarbsForGrams('apple', 100), isNotNull);
+    });
+
+    test('all numeric estimates carry resolvable catalogue provenance', () {
+      final supported = mealNutritionProfiles
+          .where((profile) => profile.carbohydrate != null)
+          .toList();
+      expect(supported, isNotEmpty);
+      for (final profile in supported) {
+        final reference = profile.carbohydrate!;
+        expect(
+          nutritionSourceFor(reference.sourceId),
+          isNotNull,
+          reason: 'Missing source for ${profile.foodId}',
+        );
+        expect(
+          reference.sourceFoodRef.trim(),
+          isNotEmpty,
+          reason: 'Missing source food ID for ${profile.foodId}',
+        );
+        expect(reference.carbsPer100gLow.isFinite, isTrue);
+        expect(reference.carbsPer100gHigh.isFinite, isTrue);
+        expect(reference.carbsPer100gLow, greaterThanOrEqualTo(0));
+        expect(
+          reference.carbsPer100gHigh,
+          greaterThanOrEqualTo(reference.carbsPer100gLow),
+        );
+      }
     });
 
     test('portion vocabulary remains trilingual', () {
