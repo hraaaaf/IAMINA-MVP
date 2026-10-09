@@ -769,7 +769,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       label: label,
       hint: l10n.enterValue,
       controller: controller,
-      keyboardType: TextInputType.number,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
     );
   }
 }

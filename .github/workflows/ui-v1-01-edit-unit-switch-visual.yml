@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'frontend/lib/features/journal/edit_log_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen_presentation.dart'
       - 'frontend/lib/features/dashboard/widgets/add_log_sheet.dart'
       - 'frontend/lib/core/utils/glucose_formatter.dart'
       - 'frontend/lib/v1_01_unit_switch_browser_main.dart'
@@ -51,7 +53,7 @@ jobs:
       - name: BEFORE actual baseline product widgets
         run: |
           set -euo pipefail
-          for file in frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/journal/edit_log_screen.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart; do
+          for file in frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/journal/edit_log_screen.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart frontend/lib/features/profile/profile_screen.dart frontend/lib/features/profile/profile_screen_presentation.dart; do
             git show "a1ee4175b295cffe9514980975263c7637b0f5e2:$file" > "$file"
           done
           cd frontend
@@ -68,7 +70,7 @@ jobs:
       - name: AFTER actual exact HEAD product widgets
         run: |
           set -euo pipefail
-          git restore --source=HEAD -- frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/journal/edit_log_screen.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart
+          git restore --source=HEAD -- frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/journal/edit_log_screen.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart frontend/lib/features/profile/profile_screen.dart frontend/lib/features/profile/profile_screen_presentation.dart
           cd frontend
           flutter build web --release -t lib/v1_01_unit_switch_browser_main.dart
           python3 -m http.server 7367 --directory build/web >/tmp/v101-unit-after.log 2>&1 &

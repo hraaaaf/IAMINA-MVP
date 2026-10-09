@@ -54,6 +54,15 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      final medicalSection =
+          find.byKey(const ValueKey('profile-medical-section'));
+      await tester.ensureVisible(medicalSection);
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(
+        of: medicalSection,
+        matching: find.byType(ExpansionTile),
+      ));
+      await tester.pumpAndSettle();
 
       Finder unitFields(String unit) => find.byWidgetPredicate(
         (widget) =>
@@ -97,6 +106,10 @@ void main() {
       final highInput = find.descendant(
         of: targetFields.at(1),
         matching: find.byType(TextField),
+      );
+      expect(
+        tester.widget<TextField>(lowInput).keyboardType,
+        const TextInputType.numberWithOptions(decimal: true),
       );
       await tester.ensureVisible(lowInput);
       await tester.enterText(lowInput, '4.0');
@@ -151,6 +164,14 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+    final section = find.byKey(const ValueKey('profile-medical-section'));
+    await tester.ensureVisible(section);
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(
+      of: section,
+      matching: find.byType(ExpansionTile),
+    ));
     await tester.pumpAndSettle();
     final save = find.byKey(const Key('profile-save-targets-button'));
     await tester.ensureVisible(save);

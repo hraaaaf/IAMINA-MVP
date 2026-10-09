@@ -10,6 +10,8 @@ on:
       - 'frontend/lib/ui_browser_audit_main.dart'
       - 'frontend/lib/features/dashboard/widgets/add_log_sheet.dart'
       - 'frontend/lib/features/journal/edit_log_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen_presentation.dart'
       - 'frontend/lib/features/dashboard/dashboard_screen.dart'
       - 'frontend/lib/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart'
       - 'frontend/lib/features/dashboard/widgets/dashboard_trend_view.dart'
@@ -57,7 +59,7 @@ jobs:
       - name: Capture real BEFORE with exact old product code and same fixture
         run: |
           set -euo pipefail
-          for f in frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/journal/reports_screen.dart frontend/lib/features/journal/reports_screen_presentation.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart frontend/lib/features/journal/edit_log_screen.dart frontend/lib/features/dashboard/dashboard_screen.dart frontend/lib/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart frontend/lib/features/dashboard/widgets/dashboard_trend_view.dart frontend/lib/features/journal/journal_screen.dart; do
+          for f in frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/journal/reports_screen.dart frontend/lib/features/journal/reports_screen_presentation.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart frontend/lib/features/journal/edit_log_screen.dart frontend/lib/features/dashboard/dashboard_screen.dart frontend/lib/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart frontend/lib/features/dashboard/widgets/dashboard_trend_view.dart frontend/lib/features/journal/journal_screen.dart frontend/lib/features/profile/profile_screen.dart frontend/lib/features/profile/profile_screen_presentation.dart; do
             git show "c0420cebcb8c2e8f79229978064ff365901f3edc:$f" > "$f"
           done
           cd frontend
@@ -71,7 +73,7 @@ jobs:
       - name: Capture real AFTER from exact PR HEAD
         run: |
           set -euo pipefail
-          git restore --source=HEAD -- frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/journal/reports_screen.dart frontend/lib/features/journal/reports_screen_presentation.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart frontend/lib/features/journal/edit_log_screen.dart frontend/lib/features/dashboard/dashboard_screen.dart frontend/lib/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart frontend/lib/features/dashboard/widgets/dashboard_trend_view.dart frontend/lib/features/journal/journal_screen.dart
+          git restore --source=HEAD -- frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/journal/reports_screen.dart frontend/lib/features/journal/reports_screen_presentation.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart frontend/lib/features/journal/edit_log_screen.dart frontend/lib/features/dashboard/dashboard_screen.dart frontend/lib/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart frontend/lib/features/dashboard/widgets/dashboard_trend_view.dart frontend/lib/features/journal/journal_screen.dart frontend/lib/features/profile/profile_screen.dart frontend/lib/features/profile/profile_screen_presentation.dart
           cd frontend
           flutter build web --release -t lib/ui_browser_audit_main.dart
           python3 -m http.server 7367 --directory build/web >/tmp/iamina-unit-after.log 2>&1 &
