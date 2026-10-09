@@ -30,11 +30,12 @@
 - `status` is `ready` only with admitted governed observations; otherwise `insufficient_data` with explicit missing data.
 - Each admitted observation retains source version, time span, descriptive lifecycle/baseline, evidence registry provenance (rule, producer, maturity, authority, supporting citations), uncertainty (evidence density, missing data, limitations), and a descriptive-only ceiling.
 - Evidence density is repetition density, **not** clinical confidence. `llm_egress_authorized=False` is an explicit fail-closed marker but is **not** a substitute for V1-03 enforcement.
+- Optional governed longitudinal evidence requires an explicit typed request with window and V2-D contract. The assembler checks patient identity on each fact, requested populations, contract/window consistency and source-ref counts. It preserves source-specific medians only for sufficient populations; insufficient means unavailable. Raw facts and any cross-source aggregate are not added to the envelope.
 - No configured target becomes a clinician-confirmed target, no sensor coverage is inferred from manual records, no automatic safety/clinical action is activated.
 
 ## Planned subsequent V1-02 increments (not completed by first slice)
 
-1. Compose validated source-separated longitudinal facts via explicit opt-in V2-C/V2-D contracts, with source refs/eligibility and cross-patient/invalid-session tests.
+1. **Implemented initial explicit source-separated composition, tests pending:** V2-C/V2-D opt-in with source refs, per-population sufficiency and cross-patient forgery negative tests. Add invalid CGM-session/ineligible imported identity and repeated fixture parity; do not claim exhaustive certification.
 2. Compose Clinical Twin changes and target assessments *only if* independently governed producer/evidence context already certifies the specific claim. Otherwise explicit unavailable.
 3. Build authenticated, privacy-reviewed internal API projection for Home and Reports; compare both to the same original envelope with fixed fixtures.
 4. Route IAmina through the same governed envelope **only after V1-03 outbound egress boundary is independently proven**. Do not pass raw patient context to an LLM.
@@ -44,7 +45,7 @@
 
 Goal: first deterministic patient-scoped envelope.
 Success criterion: provenance-preserving, read-only fail-closed source projection with passing independent oracles.
-Evidence: code and added tests; **exact-HEAD CI not yet observed at creation**.
+Evidence: first source code + source-separated extension and added tests; **latest exact-HEAD CI still to check**.
 Critical dimensions: privacy, provenance, clinical authority, source scope, versioning, release gate.
 EXECUTION_SCORE: 7.0/10 (provisional)
 ADVERSARIAL_SCORE: 6.8/10 (provisional)
@@ -52,7 +53,7 @@ Gap: 0.2
 Applicable caps: required runtime/independent evidence missing (<=7.9)
 RETAINED_SCORE: 6.8/10
 Status: OPEN
-Remaining weaknesses: not yet integrated with longitudinal/multisource or all three UI consumers; source-ref lineage limited by upstream Clinical Twin projection; no current CI or independent review at time of creation.
-Next exact action: inspect exact-HEAD CI, remediate tests, validate security and clinical boundaries; continue source-separated composition without depending on V1-01 calculator changes.
+Remaining weaknesses: explicit longitudinal opt-in composed but incomplete negative session/import fixtures; no integration with all three UI consumers; source-ref lineage limited by upstream Clinical Twin projection; no exact-HEAD CI or independent review evidenced at documentation update.
+Next exact action: inspect exact-HEAD CI and source isolation/sufficiency tests, remediate defects, add invalid CGM/import fixtures, then independent clinical/data/security review; continue without V1-01 calculator changes.
 
 No Vercel deployment authorized or performed. Historical P5 pilot pre-real-patient gates remain unchanged.
