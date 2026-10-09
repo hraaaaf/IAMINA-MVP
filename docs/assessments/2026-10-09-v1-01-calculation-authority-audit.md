@@ -11,7 +11,7 @@
 
 **Success means** every relevant backend/frontend calculation path has a row with its provenance, units, missingness, clinical authority, target population and downstream Home/Reports/IAmina/export consumers; independent numeric oracles, negative/insufficient-data tests, SQLite/PostgreSQL parity, API projection and mobile flow evidence are attached to the exact final HEAD.
 
-**Not yet proven:** exhaustive call graph, non-default run-time execution, all calculation outputs, data isolation across clients, CI on this audit branch, independent specialist review, certification. No V1-01 completion percentage.
+**Not yet proven:** exhaustive call graph, all calculation outputs and consumers, integration UI runs/screenshots, patient isolation across every call path, independent specialist review, certification. Exact-head regression CI succeeded on commit \`100355d17...\`; any newer documentation commit requires rechecking its own SHA. No V1-01 completion percentage.
 
 ## Discovery perimeter (Git tree, 1,761 tracked blobs)
 
@@ -45,7 +45,7 @@ On the baseline tree, `backend/diabetes/services/clinical/` contains **55 direct
 
 Existing code protections already observed: API `project_public_kpis` checks verified CGM/evidence and recomputes from session-linked readings; offline GMI card displays no estimate; `target_applicability.py` requires explicit authority. Existing tests **present in the tree** include `test_p0_clinical_analytics_integrity.py`, `test_cgm_sufficiency_contract.py`, `test_governed_cgm_promotion.py`, and Flutter smart-insight/summary truthfulness contracts. Their presence is **not** proof they were executed on this branch.
 
-- **RISK-07 (confirmed internal calculation defect; remediation candidate): fractional 5-zone gap.** `LogEntry.blood_sugar` is a decimal with **2 places** (`backend/diabetes/models/entry.py`), but both PG/SQLite `sql_analytics.py` 5-zone queries used `BETWEEN 54 AND 69` and `BETWEEN 181 AND 250`. Thus 69.50 counted in aggregate TBR but not TBR1/TBR2; 180.50 counted in aggregate TAR but not TAR1/TAR2. Candidate changes both SQLs to `>=54 AND <70` and `>180 AND <=250`, keeping all existing clinical endpoints and 70/180/54/250 thresholds unchanged. Three independent synthetic fractional-boundary regression cases added to `test_battelino_kpis.py`. Await exact-head SQLite **and PostgreSQL** execution and downstream exposure review before claiming verified.
+- **RISK-07 (confirmed internal calculation defect; remediation candidate): fractional 5-zone gap.** `LogEntry.blood_sugar` is a decimal with **2 places** (`backend/diabetes/models/entry.py`), but both PG/SQLite `sql_analytics.py` 5-zone queries used `BETWEEN 54 AND 69` and `BETWEEN 181 AND 250`. Thus 69.50 counted in aggregate TBR but not TBR1/TBR2; 180.50 counted in aggregate TAR but not TAR1/TAR2. Candidate changes both SQLs to `>=54 AND <70` and `>180 AND <=250`, keeping all existing clinical endpoints and 70/180/54/250 thresholds unchanged. Three independent synthetic fractional-boundary regression cases added to `test_battelino_kpis.py`. Exact-head check on commit \`100355d17baf1e6544e322ca2e6e5ed2db6c89dc\`: CI #37867405403 SUCCESS (backend Ruff + full pytest, PostgreSQL full suite, guards, secrets); migration drift #37867405395 SUCCESS. These are **automated regressions only**, not downstream consumer/clinical-authority certification. The inventory remains OPEN.
 - **RISK-08 (P1 investigation): normalization-factor divergence.** Canonical active `backend/diabetes/contracts/log_entry.py` uses `MMOL_L_TO_MG_DL=18.016`; legacy `backend/diabetes/services/clinical/unit_guard.py` and shared Flutter `GlucoseFormatter` use 18.018; live premium Home and Reports use 18.0 in patient display. Determine single authoritative factor, test boundary display equivalence and unit round-trips before UI changes, with mandatory visual BEFORE/AFTER evidence.
 
 ### Evidence-only inventory refinements
@@ -54,6 +54,14 @@ Existing code protections already observed: API `project_public_kpis` checks ver
 - `backend/diabetes/services/clinical/correlations.py` and `prediction.py` are retired compatibility prototypes explicitly returning `[]` and `None`. They are not evidence that patient-facing causal/predictive analytics are implemented.
 - Clinical `LogEntry.blood_sugar` storage permits two decimal places, so tests using only whole mg/dL inputs were insufficient to catch the 5-zone partition gaps.
 
+
+
+## Verified automated evidence (2026-10-09, historical exact HEAD)
+
+- [CI #37867405403](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37867405403) **SUCCESS** on `100355d17baf1e6544e322ca2e6e5ed2db6c89dc`: backend Ruff, import architecture, LLM/egress anti-bypass, Bandit, OpenAPI, full pytest; full suite also executed with PostgreSQL source-of-truth. Flutter was intentionally skipped (no changed Flutter path).
+- [Django migration drift #37867405395](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/37867405395) **SUCCESS** on the same SHA.
+- Candidate RISK-01 cached fractional target collision and RISK-07 SQL 5-zone fractional gaps were covered by committed synthetic regression tests on that HEAD; both automated pipelines passed. This proves **test-gated backend changes**, not complete runtime/clinical audits.
+- Clinical threshold rationale and source-to-public-consumer semantics require specialist review. Patient-visible Home/Reports/IAmina screenshots and all-unit parity not yet evidenced. No merge, no Vercel deployment.
 
 ## Test/oracle matrix for continuation
 
