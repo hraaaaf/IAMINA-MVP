@@ -7,6 +7,9 @@ import 'core/theme/app_theme.dart';
 import 'data/drift/database.dart';
 import 'features/dashboard/widgets/add_log_sheet.dart';
 import 'features/journal/edit_log_screen.dart';
+import 'features/profile/profile_screen.dart';
+import 'services/auth_service.dart';
+import 'services/consent_service.dart';
 import 'l10n/app_localizations.dart';
 
 /// Isolated synthetic visual-certification entrypoint, never used by the app.
@@ -23,7 +26,9 @@ class _ProofApp extends StatefulWidget {
 
 class _ProofAppState extends State<_ProofApp> {
   final _db = AppDatabase.defaults();
-  late final bool _edit = Uri.base.queryParameters['mode'] == 'edit';
+  late final String _mode = Uri.base.queryParameters['mode'] ?? 'add';
+  bool get _edit => _mode == 'edit';
+  bool get _profileMode => _mode == 'profile';
   PatientProfileData? _profile;
   GoRouter? _router;
   bool _switched = false;
@@ -43,6 +48,10 @@ class _ProofAppState extends State<_ProofApp> {
           userId: const Value(1),
           updatedAt: recordedAt,
           unitPreference: const Value('mmol/L'),
+          targetRangeLow: const Value(69.9),
+          targetRangeHigh: const Value(180.0),
+          diabetesType: const Value('type2'),
+          treatment: const Value('lifestyle'),
         ),
       );
       final profile = await _db.select(_db.patientProfiles).getSingle();
@@ -60,8 +69,11 @@ class _ProofAppState extends State<_ProofApp> {
         routes: [
           GoRoute(
             path: '/',
-            builder: (context, state) =>
-                _edit ? EditLogScreen(logId: id) : const AddLogSheet(isPage: true),
+            builder: (context, state) => _profileMode
+                ? const ProfileScreen()
+                : _edit
+                    ? EditLogScreen(logId: id)
+                    : const AddLogSheet(isPage: true),
           ),
           GoRoute(
             path: '/journal',
@@ -71,11 +83,20 @@ class _ProofAppState extends State<_ProofApp> {
         ],
       );
       setState(() => _profile = profile);
-      WidgetsBinding.instance.addPostFrameCallback((_) => _changeUnit());
+      WidgetsBinding.instance.addPostFrameCallback((_) => _profileMode
+          ? _signalProfileReady()
+          : _changeUnit());
     } catch (error, stackTrace) {
       debugPrint('V101_UNIT_SWITCH_ERROR $error');
       debugPrintStack(stackTrace: stackTrace);
     }
+  }
+
+  void _signalProfileReady() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) debugPrint('V101_UNIT_SWITCH_READY');
+    });
   }
 
   void _changeUnit() {
@@ -136,6 +157,10 @@ class _ProofAppState extends State<_ProofApp> {
         Provider<AppDatabase>.value(value: _db),
         Provider<PatientProfileData?>.value(value: profile),
         ChangeNotifierProvider<TweaksNotifier>(create: (_) => TweaksNotifier()),
+        ChangeNotifierProvider<AuthService>(create: (_) => AuthService()),
+        ChangeNotifierProvider<ConsentService>(
+          create: (_) => ConsentService()..seedInitialProfile(profile),
+        ),
       ],
       child: MaterialApp.router(
         theme: ThemeData.light(),

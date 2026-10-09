@@ -17,7 +17,7 @@ fs.mkdirSync(output, { recursive: true });
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   });
   try {
-    for (const mode of ['edit', 'add']) {
+    for (const mode of ['edit', 'add', 'profile']) {
       for (const [width, height] of [[390, 844], [768, 1024]]) {
         const page = await browser.newPage({
           viewport: { width, height },
@@ -48,6 +48,30 @@ fs.mkdirSync(output, { recursive: true });
             }),
           ]);
           await page.waitForTimeout(1000);
+          if (mode === 'profile') {
+            const placeholder = page.locator('flt-semantics-placeholder');
+            if (await placeholder.count()) {
+              await placeholder.first().focus();
+              await page.keyboard.press('Enter');
+              await page.waitForTimeout(750);
+            }
+            // The synthetic saved profile is complete: the medical header
+            // has "Suivi médical" but no first-use prompt.
+            const medical = page.getByText('Suivi médical', { exact: true });
+            await medical.last().click({ timeout: 10000 });
+            await page.waitForTimeout(1000);
+            const semantics = await page.locator('flt-semantics').evaluateAll(els =>
+              els.map(el => el.getAttribute('aria-label') || el.textContent || '').join(' '));
+            const expectedTitle = phase === 'before'
+              ? 'Cible glycémique (mg/dL)'
+              : 'Cible glycémique (mmol/L)';
+            if (!semantics.includes(expectedTitle)) {
+              throw new Error('Profile targets not visible: expected '+expectedTitle+
+                ', observed '+semantics.slice(0,1800));
+            }
+            await page.mouse.wheel(0, 350);
+            await page.waitForTimeout(400);
+          }
           if (!(await page.locator('flt-glass-pane').count())) {
             throw new Error('No real Flutter renderer: ' + mode);
           }

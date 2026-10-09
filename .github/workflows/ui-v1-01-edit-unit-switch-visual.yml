@@ -15,7 +15,7 @@ permissions:
   contents: read
 jobs:
   real-browser-unit-switch:
-    name: Real Chrome AddLog and EditLog 390 and 768
+    name: Real Chrome AddLog EditLog Profile 390 and 768
     runs-on: ubuntu-latest
     timeout-minutes: 55
     defaults:
@@ -82,12 +82,12 @@ jobs:
           done
           curl -fsS http://127.0.0.1:7367/ >/dev/null
           NODE_PATH="$PWD/node_modules" AUDIT_PHASE=after AUDIT_OUT="$GITHUB_WORKSPACE/v101-unit-switch-proof" node ../tools/v1_01_unit_switch_browser_capture.cjs
-      - name: Check 8 real PNGs at identical viewports
+      - name: Check 12 real PNGs at identical viewports
         run: |
           python3 - <<'PY'
           import pathlib, struct, hashlib
           folder = pathlib.Path('v101-unit-switch-proof')
-          for surface in ('edit', 'add'):
+          for surface in ('edit', 'add', 'profile'):
               for width, height in ((390, 844), (768, 1024)):
                   images = []
                   for phase in ('before', 'after'):
