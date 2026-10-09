@@ -43,6 +43,22 @@ void main() {
     expect(GlucoseFormatter.toMgDl(190, 'mg/dL'), 190);
   });
 
+  test('unknown profile units are rejected rather than silently stored as mg/dL', () {
+    for (final unit in <String>['', 'unknown', 'g/L', 'mmol', 'mgdl']) {
+      expect(GlucoseFormatter.isSupportedUnit(unit), isFalse);
+      expect(() => GlucoseFormatter.toMgDl(110, unit), throwsArgumentError);
+      expect(
+        () => GlucoseFormatter.editedToMgDl(
+          3.9, unit, initialDisplayedValue: 3.9, initialMgDl: 69.9,
+        ),
+        throwsArgumentError,
+      );
+    }
+    expect(GlucoseFormatter.isSupportedUnit('mmol/L'), isTrue);
+    expect(GlucoseFormatter.isSupportedUnit('MG/DL'), isTrue);
+    expect(GlucoseFormatter.toMgDl(3.9, 'mmol/L'), closeTo(70.2624, 1e-7));
+  });
+
   test('reachable Home and Reports use the shared normalization factor', () {
     final dashboard = File('lib/features/dashboard/dashboard_premium_screen.dart')
         .readAsStringSync();
@@ -58,6 +74,9 @@ void main() {
         .readAsStringSync();
     expect(addLog, contains('GlucoseFormatter.toMgDl'));
     expect(editLog, contains('GlucoseFormatter.editedToMgDl'));
+    expect(editLog, contains('_initialUnit ?? profile?.unitPreference'));
+    expect(addLog, contains('GlucoseFormatter.isSupportedUnit'));
+    expect(editLog, contains('GlucoseFormatter.isSupportedUnit'));
     expect(addLog, isNot(contains('value * 18.0')));
     expect(editLog, isNot(contains('value * 18.0')));
     for (final path in <String>[

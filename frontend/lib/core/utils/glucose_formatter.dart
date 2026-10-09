@@ -24,9 +24,23 @@ class GlucoseFormatter {
     return valueMgDl;
   }
 
+  /// Only these persisted profile units can authorize a glucose write.
+  /// Read-only legacy screens are audited separately; writes fail closed.
+  static bool isSupportedUnit(String unit) {
+    final normalized = unit.trim().toLowerCase();
+    return normalized == 'mg/dl' || normalized == 'mmol/l';
+  }
+
   /// Converts user-entered values into canonical mg/dL storage.
-  static double toMgDl(double value, String unit) =>
-      unit.toLowerCase() == 'mmol/l' ? value * mgdlToMmolFactor : value;
+  /// An unknown profile unit must never silently become mg/dL.
+  static double toMgDl(double value, String unit) {
+    if (!isSupportedUnit(unit)) {
+      throw ArgumentError.value(unit, 'unit', 'Unknown glucose unit');
+    }
+    return unit.trim().toLowerCase() == 'mmol/l'
+        ? value * mgdlToMmolFactor
+        : value;
+  }
 
   /// An unchanged rounded display must never rewrite the recorded glucose.
   static double editedToMgDl(
@@ -35,6 +49,9 @@ class GlucoseFormatter {
     double? initialDisplayedValue,
     double? initialMgDl,
   }) {
+    if (!isSupportedUnit(unit)) {
+      throw ArgumentError.value(unit, 'unit', 'Unknown glucose unit');
+    }
     if (initialDisplayedValue != null &&
         initialMgDl != null &&
         value == initialDisplayedValue) {

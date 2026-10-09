@@ -105,4 +105,130 @@ void main() {
       await tester.pumpAndSettle();
     },
   );
+  for (final viewport in <Size>[const Size(390, 844), const Size(768, 1024)]) {
+    for (final modifyGlucose in <bool>[false, true]) {
+      testWidgets(
+        'unit preference switch during edit cannot reinterpret glucose '
+        '${viewport.width.toInt()}px, modified=$modifyGlucose',
+        (tester) async {
+          tester.view.physicalSize = viewport;
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+
+          final db = AppDatabase(NativeDatabase.memory());
+          addTearDown(db.close);
+          final recordedAt = DateTime(2026, 9, 20, 10, 30);
+          await db.into(db.patientProfiles).insert(
+            PatientProfilesCompanion.insert(
+              userId: const Value(1),
+              updatedAt: recordedAt,
+              unitPreference: const Value('mmol/L'),
+            ),
+          );
+          final id = await db.into(db.logEntries).insert(
+            LogEntriesCompanion.insert(
+              createdAt: recordedAt,
+              bloodSugar: 69.9,
+              clientUuid: 'v1-01-switch-${viewport.width}-$modifyGlucose',
+              loggedAt: Value(recordedAt),
+            ),
+          );
+          final initialProfile =
+              await db.select(db.patientProfiles).getSingle();
+          final profileNotifier =
+              ValueNotifier<PatientProfileData?>(initialProfile);
+          addTearDown(profileNotifier.dispose);
+          final router = GoRouter(
+            initialLocation: '/journal/$id/edit',
+            routes: [
+              GoRoute(
+                path: '/journal/:id/edit',
+                builder: (_, state) => EditLogScreen(
+                  logId: int.parse(state.pathParameters['id']!),
+                ),
+              ),
+              GoRoute(
+                path: '/journal',
+                builder: (_, __) =>
+                    const Scaffold(body: Text('Journal returned')),
+              ),
+            ],
+          );
+          addTearDown(router.dispose);
+          await tester.pumpWidget(
+            ValueListenableBuilder<PatientProfileData?>(
+              valueListenable: profileNotifier,
+              builder: (_, profile, __) => MultiProvider(
+                providers: [
+                  Provider<AppDatabase>.value(value: db),
+                  Provider<PatientProfileData?>.value(value: profile),
+                  ChangeNotifierProvider<TweaksNotifier>(
+                    create: (_) => TweaksNotifier(),
+                  ),
+                ],
+                child: MaterialApp.router(
+                  locale: const Locale('fr'),
+                  localizationsDelegates:
+                      AppLocalizations.localizationsDelegates,
+                  supportedLocales: AppLocalizations.supportedLocales,
+                  routerConfig: router,
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          final glucoseInput = find.byKey(const Key('edit-glucose-input'));
+          expect(glucoseInput, findsOneWidget);
+          expect(tester.widget<TextField>(glucoseInput).controller!.text, '3.9');
+          expect(tester.widget<TextField>(glucoseInput).decoration?.suffixText,
+              'mmol/L');
+
+          profileNotifier.value =
+              initialProfile.copyWith(unitPreference: 'mg/dL');
+          await tester.pumpAndSettle();
+          // The profile changed, but the editor keeps its original unit
+          // together with the displayed value; it never reinterprets 3.9.
+          expect(tester.widget<TextField>(glucoseInput).controller!.text, '3.9');
+          expect(tester.widget<TextField>(glucoseInput).decoration?.suffixText,
+              'mmol/L');
+
+          if (modifyGlucose) {
+            await tester.enterText(glucoseInput, '4.0');
+          }
+          final save = find.byKey(const Key('save-edit-log-button'));
+          await tester.ensureVisible(save);
+          await tester.pumpAndSettle();
+          await tester.tap(save);
+          await tester.pumpAndSettle();
+
+          if (!modifyGlucose) {
+            final dialog = find.byType(AlertDialog);
+            expect(dialog, findsOneWidget);
+            final confirm = find.descendant(
+              of: dialog,
+              matching: find.byType(FilledButton),
+            );
+            expect(confirm, findsOneWidget);
+            await tester.tap(confirm);
+            await tester.pumpAndSettle();
+          } else {
+            // 4.0 mmol/L = 72.064 mg/dL: not a low-glucose alert.
+            expect(find.byType(AlertDialog), findsNothing);
+          }
+
+          final stored = await db.getLogById(id);
+          expect(stored, isNotNull);
+          expect(
+            stored!.bloodSugar,
+            closeTo(modifyGlucose ? 72.064 : 69.9, 1e-7),
+          );
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pumpAndSettle();
+        },
+      );
+    }
+  }
+
 }

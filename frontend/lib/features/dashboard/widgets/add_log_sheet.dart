@@ -128,7 +128,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
   double? _mgdlGlucose(String unit) {
     final value = _displayGlucose();
-    if (value == null || !value.isFinite) return null;
+    if (value == null || !value.isFinite ||
+        !GlucoseFormatter.isSupportedUnit(unit)) {
+      return null;
+    }
     return GlucoseFormatter.toMgDl(value, unit);
   }
 

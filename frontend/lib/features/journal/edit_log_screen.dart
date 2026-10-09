@@ -109,7 +109,10 @@ class _EditLogScreenState extends State<EditLogScreen> {
 
   double? _mgdlGlucose(String unit) {
     final value = _displayGlucose();
-    if (value == null || !value.isFinite) return null;
+    if (value == null || !value.isFinite ||
+        !GlucoseFormatter.isSupportedUnit(unit)) {
+      return null;
+    }
     return GlucoseFormatter.editedToMgDl(
       value,
       unit,
@@ -122,7 +125,10 @@ class _EditLogScreenState extends State<EditLogScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final profile = context.watch<PatientProfileData?>();
-    final unit = profile?.unitPreference ?? 'mg/dL';
+    // The displayed number was loaded using _initialUnit. Lock its unit for
+    // this form even if profile preferences change elsewhere mid-edit.
+    // Otherwise 3.9 mmol/L can silently be saved as 3.9 mg/dL.
+    final unit = _initialUnit ?? profile?.unitPreference ?? 'mg/dL';
     final desktop = MediaQuery.sizeOf(context).width >= 900;
 
     return Scaffold(
