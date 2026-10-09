@@ -135,7 +135,8 @@ void main() {
 
       final proofDir = Platform.environment['IAMINA_V101_PROOF_DIR'];
       if (proofDir == null || proofDir.isEmpty) {
-        throw StateError('Missing IAMINA_V101_PROOF_DIR');
+        // Main CI checks behavior; dedicated UI run owns screenshots.
+        return;
       }
       Directory(proofDir).createSync(recursive: true);
       final boundary =
@@ -214,7 +215,8 @@ void main() {
       await tester.pumpAndSettle();
       final output = Platform.environment['IAMINA_V101_PROOF_DIR'];
       if (output == null || output.isEmpty) {
-        throw StateError('Missing IAMINA_V101_PROOF_DIR');
+        // Main CI checks behavior; dedicated UI run owns screenshots.
+        return;
       }
       Directory(output).createSync(recursive: true);
       final image = await tester
