@@ -59,3 +59,9 @@
 - PR #920 CAL-12 `9b8df3bd846c62f6969519808c8e52c88749c520` main CI #37989573966: backend Ruff+pytest GREEN, PostgreSQL job #114020065551 RED *before any test*, because 3 unauthenticated `postgres:16-alpine` Docker Hub pulls were rejected with `toomanyrequests` (runner infrastructure, not diagnosed product failure).
 - Narrow CI-only candidate: switch `.github/workflows/ci.yml` PostgreSQL service to verified-official repository `public.ecr.aws/docker/library/postgres:16-alpine`. Keep same major+Alpine tag, DB health, migration, tests, runtime unchanged.
 - New candidate exact-head CI must prove image pull, healthy PostgreSQL, migrations and test suite + remaining workflows; registry availability is not yet proven by reading docs. If red again inspect exact log. No merge, no deploy. CAL-12 clinical/provenance gates remain open.
+
+## 2026-10-09 CI red #2 — Dashboard Docker Hub pull cap
+
+- **Proof:** parent `b5d799489dc73df5f24c08c36658707cda1070b2`: 16/17 exact-head workflows passed; full `CI` run #37990100247 passed backend, PostgreSQL (service mirror), and frontend. Dashboard visual run #37990100284 job #114021764081 FAILED *before images/test startup*, 3x `toomanyrequests` from independent `postgres:16-alpine` service in dashboard workflow. **No visual defect inferred**.
+- **Minimal repair:** switch only `.github/workflows/dashboard-responsive-visual-cert.yml` service to `public.ecr.aws/docker/library/postgres:16-alpine`, same tag, DB, migration and screenshot steps. New exact-head run must prove 9/9 captures; previous 16/17 cannot be transferred as certification.
+- **Next:** verify all 17 exact-head runs, inspect/repair any red, preserve clinician provenance/privacy and Vercel gates. No merge or deploy.
