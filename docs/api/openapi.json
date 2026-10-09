@@ -5986,7 +5986,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Window Start"
           },
           "window_end": {
@@ -5998,7 +5997,6 @@
                 "type": "null"
               }
             ],
-            "default": null,
             "title": "Window End"
           },
           "evidence": {

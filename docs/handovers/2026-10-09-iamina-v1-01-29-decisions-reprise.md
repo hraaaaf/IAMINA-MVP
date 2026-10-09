@@ -86,3 +86,8 @@
 
 - Old HEAD `7801d68e` 16/17 SUCCESS, only backend `OpenAPI schema is current` failed; PG and frontend SUCCESS. Exact exporter diff `5883a5884,5943` means DoctorBriefEvidence belongs after SummaryRequest, immediately before DoctorBriefResponse. Previous attempt incorrectly moved it to end; correction limits to schema block order, no property changes.
 - New HEAD must pass byte-identical `export_openapi` plus SQLite/PostgreSQL and all 17 workflows. Clinical/privacy/Arabic-Darija/RTL and consent gates still open; PR #920 draft, no merge/Vercel.
+
+## 2026-10-09 CAL-12 CI OpenAPI two-line fix
+
+- Parent `6608ba9`, [CI #38006477206](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38006477206), backend `OpenAPI schema is current` failure: generator deletes the checked-in `"default": null` on `DoctorBriefResponse.window_start` and `window_end`. Exact diff only those 2 lines (`5989d5988`, `6001d5999`), source/projection unchanged.
+- Remove 2 generated-schema discrepancies only; JSON roundtrip comparison excludes precisely two default properties. Validate new HEAD and 17/17 workflows. Clinical independent human gates remain; no merge/deploy.

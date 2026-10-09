@@ -342,3 +342,11 @@ On `d71258c6`, [CI #37998993533](https://github.com/hraaaaf/IAMINA-MVP/actions/r
 **Surgical candidate fix:** Move DoctorBriefEvidence JSON block to exactly line 5884 before DoctorBriefResponse, preserving all properties, original float literals, other schema entries/paths/docstring, and backend/frontend product code. Check original and candidate JSON equal as structures, separately verifying nested DoctorBriefEvidence equality; first inserted line 5884, response shifts to 5944. This static proof establishes shape/order against the first exporter diff but not a successful CI byte comparison: new exact-head CI is required.
 
 **Follow-up:** inspect new main CI OpenAPI step first, then 17/17 exact HEAD; any further discrepancy should use actual generated OpenAPI rather than guess. Clinical reviewer/privacy/localized-content gates remain, no merge/deploy.
+
+## CAL-12 OpenAPI exact-byte correction #3 (2026-10-09)
+
+**Verified red:** exact HEAD `6608ba992dc95a1c20e27c8edf73b9268f2f2a68`, [CI #38006477206](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38006477206), backend job #114076365834 failed at `OpenAPI schema is current`. Direct exporter diff `5989d5988` and `6001d5999` shows **only the redundant `"default": null`** for `DoctorBriefResponse.window_start` and `window_end` in versioned `docs/api/openapi.json`; generated Ninja schema omits both. The prior schema-order correction succeeded in aligning all lines preceding the two defaults. Ruff, architecture, security jobs green through schema phase; other workflow jobs were still in progress at check.
+
+**Candidate correction:** remove exactly those 2 `default:null` properties from the versioned OpenAPI only (plus assessment and canonical handover notes). Django/Pydantic runtime, contract optional/null type, endpoint code, PostgreSQL and Flutter unchanged. Automated in-memory JSON structural comparison passes with only those two properties removed; **exact-byte exporter proof remains CI dependent**.
+
+**Next:** new exact-head CI backend OpenAPI must pass followed by SQLite/Python tests and exact 17/17 workflows; if still red, obtain actual exported bytes, not reorder fields by guess. CAL-12 independent clinical/privacy/FR-AR-Darija/RTL gates remain unapproved; draft/no merge/Vercel.
