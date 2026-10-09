@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta, timezone as utc_timezone
+from datetime import UTC, datetime, time, timedelta
 
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
@@ -63,7 +63,7 @@ class PersonalResponseApiTests(TestCase):
         same_day = datetime.combine(
             (now - timedelta(days=10)).date(),
             time(hour=12),
-            tzinfo=utc_timezone.utc,
+            tzinfo=UTC,
         )
         for i in range(2):
             LogEntry.objects.create(
