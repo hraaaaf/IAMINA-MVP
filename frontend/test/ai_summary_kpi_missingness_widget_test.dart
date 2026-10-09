@@ -1,4 +1,5 @@
 import 'package:amina/core/theme/app_theme.dart';
+import 'package:amina/features/dashboard/widgets/agp_chart.dart';
 import 'package:amina/features/journal/ai_summary_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -50,7 +51,15 @@ void main() {
       expect(find.text('25–75%'), findsOneWidget);
       expect(find.text('5–95%'), findsOneWidget);
       expect(find.text('Données insuffisantes.'), findsNothing);
-      expect(find.byType(CustomPaint), findsWidgets);
+      final chart = find.byWidgetPredicate(
+        (widget) => widget is CustomPaint && widget.painter is AgpPainter,
+      );
+      expect(chart, findsOneWidget);
+      final chartSize = tester.getSize(chart);
+      expect(chartSize.width, greaterThan(100));
+      expect(chartSize.height, greaterThan(100));
+      final painter = tester.widget<CustomPaint>(chart).painter! as AgpPainter;
+      expect(painter.points.length, 24);
       expect(tester.takeException(), isNull);
     });
   }

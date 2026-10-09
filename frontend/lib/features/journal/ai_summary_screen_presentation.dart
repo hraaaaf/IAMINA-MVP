@@ -1078,14 +1078,19 @@ class _AgpCard extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: ClipRect(
-                                  child: CustomPaint(
-                                    painter: AgpPainter(
+                                  // Expanded in a Column constrains height but
+                                  // not width. A bare CustomPaint with no child
+                                  // otherwise paints into a zero-width canvas.
+                                  child: SizedBox.expand(
+                                    child: CustomPaint(
+                                      painter: AgpPainter(
                                       points: pts,
                                       minY: minY,
                                       maxY: maxY,
                                       low: 70,
                                       high: 180,
-                                      isDark: isDark,
+                                        isDark: isDark,
+                                      ),
                                     ),
                                   ),
                                 ),
