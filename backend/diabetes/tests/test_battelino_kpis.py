@@ -149,3 +149,58 @@ class CgmActivePctTest(TestCase):
         kpis = compute_kpis(patient_id=user.id, days=7)
         # 3/5 = 60%
         self.assertAlmostEqual(kpis.cgm_active_pct or 0, 60.0, delta=0.5)
+
+
+class FractionalFiveZoneBoundaryTests(TestCase):
+    """Stored glucose has two decimals; categories must be disjoint and exhaustive."""
+
+    def test_fractional_readings_have_no_unclassified_gap(self):
+        user = _mkuser("fractional_all_zones")
+        _seed(user, [
+            (53.99, "manual"),   # TBR level 2
+            (54.00, "manual"),   # TBR level 1
+            (69.50, "manual"),   # TBR level 1; old 54..69 SQL missed this
+            (70.00, "manual"),   # Inside range
+            (179.99, "manual"),  # Inside range
+            (180.00, "manual"),  # Inside range
+            (180.50, "manual"),  # TAR level 1; old 181..250 SQL missed this
+            (181.00, "manual"),  # TAR level 1
+            (250.00, "manual"),  # TAR level 1
+            (250.50, "manual"),  # TAR level 2
+        ])
+        kpis = compute_kpis(patient_id=user.id, days=7)
+        self.assertEqual(kpis.log_count, 10)
+        self.assertEqual(kpis.tbr_level2_pct, 10.0)
+        self.assertEqual(kpis.tbr_level1_pct, 20.0)
+        self.assertEqual(kpis.tir_pct, 30.0)
+        self.assertEqual(kpis.tar_level1_pct, 30.0)
+        self.assertEqual(kpis.tar_level2_pct, 10.0)
+        self.assertEqual(kpis.tbr_pct, 30.0)
+        self.assertEqual(kpis.tar_pct, 40.0)
+        self.assertAlmostEqual(
+            sum((
+                kpis.tbr_level2_pct,
+                kpis.tbr_level1_pct,
+                kpis.tir_pct,
+                kpis.tar_level1_pct,
+                kpis.tar_level2_pct,
+            )),
+            100.0,
+            delta=0.1,
+        )
+
+    def test_fractional_below_seventy_belongs_to_tbr_level_one(self):
+        user = _mkuser("fractional_tbr1")
+        _seed(user, [(69.50, "manual")] * 5)
+        kpis = compute_kpis(patient_id=user.id, days=7)
+        self.assertEqual(kpis.tbr_pct, 100.0)
+        self.assertEqual(kpis.tbr_level1_pct, 100.0)
+        self.assertEqual(kpis.tbr_level2_pct, 0.0)
+
+    def test_fractional_above_one_eighty_belongs_to_tar_level_one(self):
+        user = _mkuser("fractional_tar1")
+        _seed(user, [(180.50, "manual")] * 5)
+        kpis = compute_kpis(patient_id=user.id, days=7)
+        self.assertEqual(kpis.tar_pct, 100.0)
+        self.assertEqual(kpis.tar_level1_pct, 100.0)
+        self.assertEqual(kpis.tar_level2_pct, 0.0)
