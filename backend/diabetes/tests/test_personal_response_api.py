@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, time, timedelta, timezone as utc_timezone
 
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
@@ -58,7 +58,13 @@ class PersonalResponseApiTests(TestCase):
     def test_future_logged_at_is_absent_from_api_and_clinical_memory(self):
         """The public projection must not promote next-day future evidence."""
         now = timezone.now()
-        same_day = now - timedelta(days=10)
+        # Pin the two valid rows to UTC noon, never a near-midnight
+        # boundary dependent on when CI happens to execute.
+        same_day = datetime.combine(
+            (now - timedelta(days=10)).date(),
+            time(hour=12),
+            tzinfo=utc_timezone.utc,
+        )
         for i in range(2):
             LogEntry.objects.create(
                 patient=self.patient,
