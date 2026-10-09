@@ -119,13 +119,13 @@ def test_invalid_subject_rejected_before_database(patient_id):
         upstream.assert_not_called()
 
 
-def test_unapproved_persisted_observation_fails_closed():
+def test_corrupt_recorded_context_fails_closed():
     own = _patient("v1-02-corrupt")
     row = _governed_observation(own)
-    row.producer = "unreviewed.inference.v1"
-    row.save(update_fields=["producer"])
+    row.context_modifiers = {"source_field": "stressed", "recorded_value": "no"}
+    row.save(update_fields=["context_modifiers"])
 
-    with pytest.raises(ValueError, match="unapproved producer"):
+    with pytest.raises(ValueError, match="recorded context"):
         build_patient_intelligence_envelope(patient_id=own.id)
 
 
