@@ -296,3 +296,21 @@ def test_source_window_must_be_explicit_and_time_zone_aware():
         build_patient_intelligence_envelope(
             patient_id=patient.id, source_request=bad
         )
+
+
+
+def test_source_window_rejects_reversed_or_missing_dates():
+    patient = get_user_model().objects.create_user(username="v1-02-bad-window")
+    for start, end, match in (
+        (END, START, "precede"),
+        (None, END, "datetimes"),
+    ):
+        request = GovernedSourceRequest(
+            window_start=start,
+            window_end=end,
+            contract=_contract(),
+        )
+        with pytest.raises(ValueError, match=match):
+            build_patient_intelligence_envelope(
+                patient_id=patient.id, source_request=request
+            )
