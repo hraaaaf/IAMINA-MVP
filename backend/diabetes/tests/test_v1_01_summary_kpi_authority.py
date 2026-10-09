@@ -1,7 +1,7 @@
 """V1-01 regression: all patient-visible AI-summary KPI claims require CGM proof."""
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
@@ -94,68 +94,33 @@ class SummaryKpiAuthorityTests(SimpleTestCase):
         self.assertEqual(SummaryResponse.model_validate(response).model_dump()["agp_profile"], [])
 
 
-    def test_doctor_brief_prompt_omits_unverified_cgm_claims(self):
+    def test_doctor_brief_uses_governed_dossier_without_raw_cgm_or_provider(self):
         raw = self._raw_manual_kpis()
-        window = CgmWindowSufficiency(
-            verified=False,
-            reason="no_verified_sensor_session",
-            window_days=14.0,
-            active_window_pct=0.0,
-            capture_pct=0.0,
-            coverage_pct=0.0,
-            expected_readings=0,
-            received_readings=0,
-            session_count=0,
-            gap_count=0,
-            evidence_id="source.ada.2026.section6",
-        )
         request = SimpleNamespace(user=SimpleNamespace(id=43))
-        llm = SimpleNamespace(
-            complete=MagicMock(
-                return_value=SimpleNamespace(
-                    content=(
-                        '{"narrative":"Recorded readings summarized.",'
-                        '"key_insight":"The recorded glucose average is available.",'
-                        '"doctor_brief":"Descriptive recorded values only."}'
-                    )
-                )
-            )
-        )
-
         with (
             patch("ai.api.v1.ai._get_patient_language", return_value="fr"),
+            patch("ai.api.v1.ai.compute_kpis", return_value=raw),
             patch(
-                "diabetes.services.clinical.sql_analytics.compute_kpis",
-                return_value=raw,
-            ),
+                "diabetes.services.clinical.consultation_brief_assembler.assemble_consultation_brief",
+                side_effect=ValueError("synthetic no approved dossier"),
+            ) as dossier,
             patch(
-                "diabetes.services.clinical.engine.run_clinical_analysis",
-                return_value=SimpleNamespace(patterns=[]),
-            ),
-            patch("ai.api.v1.ai.LogEntry.objects.filter") as logs,
-            patch("companion.memory.IAminaMemory.load"),
+                "ai.api.v1.ai.project_patient_kpis",
+                side_effect=AssertionError("raw SQL must not promote CGM"),
+            ) as projection,
             patch(
-                "companion.tone.select_tone",
-                return_value=SimpleNamespace(mode=SimpleNamespace(value="practical")),
-            ),
-            patch("companion.tone.get_tone_instruction", return_value=""),
-            patch("ai.api.v1.ai.get_gateway_llm", return_value=llm),
-            patch(
-                "diabetes.api.v1.kpis.assess_cgm_window",
-                return_value=window,
-            ),
+                "ai.api.v1.ai.get_gateway_llm",
+                side_effect=AssertionError("patient data must not reach LLM"),
+            ) as gateway,
         ):
-            logs.return_value.order_by.return_value = []
-            get_doctor_brief.__wrapped__(request, days=14)
-
-        llm.complete.assert_called_once()
-        prompt = llm.complete.call_args.args[1]
-        self.assertIn("RECORDED_AVG_GLUCOSE: 130.0 mg/dL", prompt)
-        self.assertNotIn("TIR:", prompt)
-        self.assertNotIn("CV:", prompt)
-        self.assertNotIn("GMI", prompt)
-        self.assertNotIn("78.0%", prompt)
-        self.assertNotIn("24.6%", prompt)
+            result = get_doctor_brief.__wrapped__(request, days=14)
+        self.assertEqual(dossier.call_args.kwargs["patient_id"], 43)
+        self.assertFalse(result["has_sufficient_data"])
+        self.assertEqual(result["evidence"], [])
+        self.assertEqual(result["doctor_brief"], "")
+        self.assertEqual(result["schema_version"], "consultation-brief.v1")
+        projection.assert_not_called()
+        gateway.assert_not_called()
 
 
     def test_verified_sensor_metrics_replace_raw_row_metrics_but_not_candidate_gmi(self):

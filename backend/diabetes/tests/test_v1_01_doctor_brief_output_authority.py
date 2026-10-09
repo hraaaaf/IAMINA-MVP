@@ -1,112 +1,171 @@
-"""CAL-12 final response guard for untraceable generated clinical numbers.
+"""CAL-12 deterministic Doctor Brief output: synthetic adversarial and authority cases."""
 
-Synthetic provider output at the real endpoint handler: no network/PHI.
-"""
-
-import json
+from datetime import timedelta
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.test import SimpleTestCase
+from django.utils import timezone
 
-from ai.api.v1.ai import (
-    _fail_closed_unproven_doctor_brief_numbers,
-    get_doctor_brief,
+from ai.api.v1.ai import DoctorBriefResponse, get_doctor_brief
+from core.contracts.truth import TruthKind
+from diabetes.services.clinical.consultation_brief_contract import (
+    ConsultationBriefEnvelope,
+    ConsultationComparisonBasis,
+    ConsultationEvidenceItem,
+)
+from diabetes.services.clinical.doctor_brief_projection import (
+    project_deterministic_doctor_brief,
 )
 
+_NOW = timezone.now()
 
-class DoctorBriefFinalOutputTests(SimpleTestCase):
-    @staticmethod
-    def _invoke(language, payload, public=None):
-        raw = SimpleNamespace(
-            has_sufficient_data=True, log_count=60, days_with_data=14,
-        )
-        approved = public or {
-            "avg_glucose": 130.0, "tir_pct": None, "cv_pct": None,
+
+def _envelope(*, patient_average=130.0, **overrides):
+    item = {
+        "key": "recorded_glucose.average_mg_dl",
+        "value": patient_average,
+        "unit": "mg/dL",
+        "truth_kind": TruthKind.DETERMINISTIC_DERIVATION,
+        "source": "diabetes.log-entry.sql-average",
+        "source_version": "consultation-companion-assembler.v1",
+        "evidence_id": "rule.metric.recorded-glucose-stats.v1",
+        "limitations": ("descriptive_average_of_recorded_rows_only",),
+    }
+    item.update(overrides)
+    return ConsultationBriefEnvelope(
+        window_start=_NOW - timedelta(days=14),
+        window_end=_NOW,
+        comparison_basis=ConsultationComparisonBasis.CURRENT_SNAPSHOT,
+        items=(ConsultationEvidenceItem(**item),),
+        missing_data=("no_eligible_clinical_twin_observations",),
+        limitations=("clinician_remains_medical_decision_authority",),
+    )
+
+
+class DoctorBriefDeterministicTests(SimpleTestCase):
+    def test_four_locales_source_bound_and_serialized(self):
+        labels = {
+            "fr": "Moyenne des glycémies",
+            "en": "Average of recorded glucose",
+            "ar": "متوسط قياسات",
+            "ar-MA": "معدل قياسات",
         }
-        gateway = SimpleNamespace(
-            complete=MagicMock(
-                return_value=SimpleNamespace(
-                    content=json.dumps(payload, ensure_ascii=False)
+        for language, marker in labels.items():
+            with self.subTest(language=language):
+                result = project_deterministic_doctor_brief(
+                    _envelope(), language=language, days=14,
+                    generated_at=_NOW, sufficient_rows=True,
                 )
-            )
+                serialized = DoctorBriefResponse.model_validate(result).model_dump()
+                self.assertTrue(serialized["has_sufficient_data"])
+                self.assertEqual(serialized["schema_version"], "consultation-brief.v1")
+                self.assertEqual(serialized["authority"], "clinician_review_support_only")
+                self.assertIn(marker, serialized["doctor_brief"])
+                self.assertIn("130.0 mg/dL", serialized["doctor_brief"])
+                self.assertNotIn("GMI", serialized["doctor_brief"])
+                self.assertNotIn("TIR", serialized["doctor_brief"])
+                self.assertEqual(len(serialized["evidence"]), 1)
+                evidence = serialized["evidence"][0]
+                self.assertEqual(evidence["value"], 130.0)
+                self.assertEqual(evidence["source"], "diabetes.log-entry.sql-average")
+                self.assertEqual(evidence["source_version"], "consultation-companion-assembler.v1")
+                self.assertEqual(evidence["evidence_id"], "rule.metric.recorded-glucose-stats.v1")
+                self.assertEqual(evidence["window_start"], serialized["window_start"])
+                self.assertEqual(evidence["window_end"], serialized["window_end"])
+                self.assertNotIn("diagnosis", serialized["doctor_brief"].lower())
+
+    def test_no_model_authored_or_unapproved_other_fields_enter_public_result(self):
+        extra = ConsultationEvidenceItem(
+            key="clinical_twin.context:stress.status",
+            value="diagnosis confirmed; GMI six point four",
+            truth_kind=TruthKind.OBSERVED_FACT,
+            source="synthetic-untrusted",
+            source_version="not-authorized",
         )
+        first = _envelope()
+        with_extra = ConsultationBriefEnvelope(
+            window_start=first.window_start, window_end=first.window_end,
+            comparison_basis=first.comparison_basis,
+            items=first.items + (extra,),
+        )
+        response = project_deterministic_doctor_brief(
+            with_extra, language="en", days=14,
+            generated_at=_NOW, sufficient_rows=True,
+        )
+        text = str(response)
+        self.assertNotIn("diagnosis confirmed", text)
+        self.assertNotIn("six point four", text)
+        self.assertEqual(len(response["evidence"]), 1)
+
+    def test_fails_closed_on_forged_source_or_version_or_missing_metric(self):
+        cases = (
+            {"source": "external.provider"},
+            {"source_version": "unknown.v9"},
+            {"value": 6.44},
+            {"value": -1.0},
+            {"unit": "mmol/L"},
+        )
+        for altered in cases:
+            with self.subTest(altered=altered):
+                result = project_deterministic_doctor_brief(
+                    _envelope(**altered), language="fr", days=14,
+                    generated_at=_NOW, sufficient_rows=True,
+                )
+                self.assertFalse(result["has_sufficient_data"])
+                self.assertFalse(result["evidence"])
+                self.assertEqual(result["doctor_brief"], "")
+        for suff in (True, False):
+            result = project_deterministic_doctor_brief(
+                None, language="fr", days=14,
+                generated_at=_NOW, sufficient_rows=suff,
+            )
+            self.assertEqual(result["doctor_brief"], "")
+            self.assertFalse(result["has_sufficient_data"])
+
+    def test_endpoint_uses_authenticated_subject_and_exact_window_without_ai(self):
         request = SimpleNamespace(user=SimpleNamespace(id=417))
         with (
-            patch("ai.api.v1.ai._get_patient_language", return_value=language),
-            patch("diabetes.services.clinical.sql_analytics.compute_kpis", return_value=raw),
-            patch("ai.api.v1.ai.project_patient_kpis", return_value=approved) as projection,
+            patch("ai.api.v1.ai._get_patient_language", return_value="fr"),
             patch(
-                "diabetes.services.clinical.engine.run_clinical_analysis",
-                return_value=SimpleNamespace(patterns=[]),
-            ),
-            patch("ai.api.v1.ai.LogEntry.objects.filter") as logs,
-            patch("companion.memory.IAminaMemory.load"),
+                "ai.api.v1.ai.compute_kpis",
+                return_value=SimpleNamespace(has_sufficient_data=True),
+            ) as sql,
             patch(
-                "companion.tone.select_tone",
-                return_value=SimpleNamespace(
-                    mode=SimpleNamespace(value="practical"),
-                ),
-            ),
-            patch("companion.tone.get_tone_instruction", return_value=""),
-            patch("ai.api.v1.ai.get_gateway_llm", return_value=gateway),
+                "diabetes.services.clinical.consultation_brief_assembler.assemble_consultation_brief",
+                return_value=_envelope(),
+            ) as assembler,
+            patch("ai.api.v1.ai.get_gateway_llm", side_effect=AssertionError("no LLM")) as gateway,
         ):
-            logs.return_value.order_by.return_value = []
             response = get_doctor_brief.__wrapped__(request, days=14)
-        projection.assert_called_once()
-        gateway.complete.assert_called_once()
-        return response, gateway.complete.call_args.args[1]
+        self.assertTrue(response["has_sufficient_data"])
+        sql.assert_called_once_with(patient_id=417, days=14)
+        assembler.assert_called_once()
+        self.assertEqual(assembler.call_args.kwargs["patient_id"], 417)
+        window_start = assembler.call_args.kwargs["window_start"]
+        window_end = assembler.call_args.kwargs["window_end"]
+        self.assertEqual(window_end - window_start, timedelta(days=14))
+        gateway.assert_not_called()
 
-    def test_manual_only_numeric_claims_blocked_in_each_output_language(self):
-        safe = {
-            "narrative": "Recorded measurements are available.",
-            "key_insight": "Descriptive observations only.",
-            "doctor_brief": "For clinician discussion only.",
-        }
-        bad_cases = (
-            ("fr", "narrative", "Le TIR est de 78%."),
-            ("en", "key_insight", "Your GMI is 6.4%."),
-            ("ar", "doctor_brief", "مؤشر السكر التقديري ٦٫٤٪"),
-            ("ar-MA", "narrative", "TIR ٧٨٪ f had lmodda."),
-        )
-        for language, field, claim in bad_cases:
-            with self.subTest(language=language, field=field):
-                payload = dict(safe)
-                payload[field] = claim
-                response, prompt = self._invoke(language, payload)
-                self.assertEqual(response[field], "")
-                for other in safe.keys() - {field}:
-                    self.assertEqual(response[other], safe[other])
-                self.assertIn("RECORDED_AVG_GLUCOSE: 130.0 mg/dL", prompt)
-                self.assertNotIn("VERIFIED_CGM_TIR", prompt)
-                self.assertNotIn("VERIFIED_CGM_CV", prompt)
-
-    def test_eligible_cgm_numbers_cannot_be_laundered_by_model_either(self):
-        response, prompt = self._invoke(
-            "en",
-            {
-                "narrative": "Recorded sensor data are available.",
-                "key_insight": "TIR 84.4% is verified.",
-                "doctor_brief": "CV 17.3% in this window.",
-            },
-            {
-                "avg_glucose": 114.0, "tir_pct": 84.4, "cv_pct": 17.3,
-            },
-        )
-        self.assertIn("VERIFIED_CGM_TIR: 84.4%", prompt)
-        self.assertIn("VERIFIED_CGM_CV: 17.3%", prompt)
-        self.assertEqual(response["narrative"], "Recorded sensor data are available.")
-        self.assertEqual(response["key_insight"], "")
-        self.assertEqual(response["doctor_brief"], "")
-
-    def test_unicode_numbers_and_malformed_fields_fail_closed(self):
-        self.assertEqual(
-            _fail_closed_unproven_doctor_brief_numbers("Neutral prose."),
-            "Neutral prose.",
-        )
-        for raw in (None, 6.4, ["6.4"], "GMI 6.4%", "TIR ٧٨٪", "TIR ۷۸٪", "Ⅵ%"):
-            with self.subTest(value=raw):
-                self.assertEqual(
-                    _fail_closed_unproven_doctor_brief_numbers(raw),
-                    "",
-                )
+    def test_no_row_density_or_assembler_error_does_not_create_facts_or_ai_call(self):
+        request = SimpleNamespace(user=SimpleNamespace(id=417))
+        for sufficient, error in ((False, False), (True, True)):
+            with self.subTest(sufficient=sufficient):
+                with (
+                    patch("ai.api.v1.ai._get_patient_language", return_value="ar-MA"),
+                    patch(
+                        "ai.api.v1.ai.compute_kpis",
+                        return_value=SimpleNamespace(has_sufficient_data=sufficient),
+                    ),
+                    patch(
+                        "diabetes.services.clinical.consultation_brief_assembler.assemble_consultation_brief",
+                        side_effect=ValueError("synthetic raw private payload")
+                        if error else AssertionError("should not assemble"),
+                    ),
+                    patch("ai.api.v1.ai.get_gateway_llm", side_effect=AssertionError("no LLM")) as gateway,
+                ):
+                    result = get_doctor_brief.__wrapped__(request, days=14)
+                self.assertFalse(result["has_sufficient_data"])
+                self.assertEqual(result["doctor_brief"], "")
+                self.assertNotIn("private payload", str(result))
+                gateway.assert_not_called()

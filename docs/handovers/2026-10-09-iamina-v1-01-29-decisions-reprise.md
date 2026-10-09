@@ -65,3 +65,9 @@
 - **Proof:** parent `b5d799489dc73df5f24c08c36658707cda1070b2`: 16/17 exact-head workflows passed; full `CI` run #37990100247 passed backend, PostgreSQL (service mirror), and frontend. Dashboard visual run #37990100284 job #114021764081 FAILED *before images/test startup*, 3x `toomanyrequests` from independent `postgres:16-alpine` service in dashboard workflow. **No visual defect inferred**.
 - **Minimal repair:** switch only `.github/workflows/dashboard-responsive-visual-cert.yml` service to `public.ecr.aws/docker/library/postgres:16-alpine`, same tag, DB, migration and screenshot steps. New exact-head run must prove 9/9 captures; previous 16/17 cannot be transferred as certification.
 - **Next:** verify all 17 exact-head runs, inspect/repair any red, preserve clinician provenance/privacy and Vercel gates. No merge or deploy.
+
+## V1-01 CAL-12 typed doctor brief candidate — 2026-10-09
+
+- Last verified prior HEAD `4f49db75c60ddea01f78166996e897ff0af1bcbc`: 17/17 SUCCESS CI; Dashboard 9/9 distinct screenshots; PR #920 draft.
+- Candidate removes free-form `GatewayLLM.complete` from `GET /ai/doctor-brief`, uses existing `assemble_consultation_brief` patient-bound typed contract and a new allowlisted deterministic locale formatter with source/version/evidence ID/window/unit/missingness in backward-compatible response metadata. Only descriptive recorded average is surfaced; invalid/unavailable data yields no claim, no third-party patient-context LLM. Synthetic FR/EN/AR/Darija negative and API schema tests; test of old LLM prompt removed, replaced with absence-of-egress negative.
+- Need exact candidate SHA backend Ruff/pytest + PostgreSQL and all 17 workflows; inspect real HTTP auth/consent, mixed/demo/other-patient fixtures and mobile route consumers; clinical/privacy/locale independent reviewers required. Stop only on human gate; no merge/Vercel. Roadmap remains 0/29 delivered.
