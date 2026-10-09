@@ -5881,6 +5881,66 @@
         "title": "SummaryRequest",
         "type": "object"
       },
+      "DoctorBriefEvidence": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "truth_kind": {
+            "title": "Truth Kind",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_version": {
+            "title": "Source Version",
+            "type": "string"
+          },
+          "evidence_id": {
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "window_start": {
+            "title": "Window Start",
+            "type": "string"
+          },
+          "window_end": {
+            "title": "Window End",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "unit",
+          "truth_kind",
+          "source",
+          "source_version",
+          "evidence_id",
+          "window_start",
+          "window_end"
+        ],
+        "title": "DoctorBriefEvidence",
+        "type": "object"
+      },
       "DoctorBriefResponse": {
         "properties": {
           "doctor_brief": {
@@ -6166,66 +6226,6 @@
           "transcript"
         ],
         "title": "TranscribeResponse",
-        "type": "object"
-      },
-      "DoctorBriefEvidence": {
-        "properties": {
-          "key": {
-            "title": "Key",
-            "type": "string"
-          },
-          "value": {
-            "title": "Value",
-            "type": "number"
-          },
-          "unit": {
-            "title": "Unit",
-            "type": "string"
-          },
-          "truth_kind": {
-            "title": "Truth Kind",
-            "type": "string"
-          },
-          "source": {
-            "title": "Source",
-            "type": "string"
-          },
-          "source_version": {
-            "title": "Source Version",
-            "type": "string"
-          },
-          "evidence_id": {
-            "title": "Evidence Id",
-            "type": "string"
-          },
-          "window_start": {
-            "title": "Window Start",
-            "type": "string"
-          },
-          "window_end": {
-            "title": "Window End",
-            "type": "string"
-          },
-          "limitations": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Limitations",
-            "type": "array"
-          }
-        },
-        "required": [
-          "key",
-          "value",
-          "unit",
-          "truth_kind",
-          "source",
-          "source_version",
-          "evidence_id",
-          "window_start",
-          "window_end"
-        ],
-        "title": "DoctorBriefEvidence",
         "type": "object"
       }
     },

@@ -334,3 +334,11 @@ On `d71258c6`, [CI #37998993533](https://github.com/hraaaaf/IAMINA-MVP/actions/r
 **Minimal candidate fix:** move solely the `DoctorBriefEvidence` JSON schema block from immediately after `DoctorBriefResponse` to the end of `components.schemas`, leaving bytes and floating-point defaults for all other schemas untouched; JSON semantics checked after movement, schema final key checked. The CI must prove exact-byte equality on the new HEAD. No backend/frontend/product change.
 
 **Next:** new exact-head CI incl. generated OpenAPI and full PG/frontend/17 visual workflows; if red again, inspect exact diff and use actual exporter instead of guessing schema text. CAL-12 clinical reviewer gates remain open despite CI greens.
+
+## CI #38005636789 — exact diagnosis of OpenAPI nested class order (2026-10-09)
+
+**Proof parent `7801d68e2c885e48a543bf7fd7f098419e98235a`:** 16/17 workflows successful and zero pending. Main [CI #38005636789](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38005636789) failed only in Backend — ruff + pytest job #114073694634, step `OpenAPI schema is current`; PostgreSQL job #114073694603 and frontend #114073694577 both successful. The exact unified diff from the exporter says `5883a5884,5943`: **the actual Django Ninja export adds DoctorBriefEvidence immediately AFTER SummaryRequest and BEFORE DoctorBriefResponse**. The prior candidate placed it LAST because the earlier diff was misread.
+
+**Surgical candidate fix:** Move DoctorBriefEvidence JSON block to exactly line 5884 before DoctorBriefResponse, preserving all properties, original float literals, other schema entries/paths/docstring, and backend/frontend product code. Check original and candidate JSON equal as structures, separately verifying nested DoctorBriefEvidence equality; first inserted line 5884, response shifts to 5944. This static proof establishes shape/order against the first exporter diff but not a successful CI byte comparison: new exact-head CI is required.
+
+**Follow-up:** inspect new main CI OpenAPI step first, then 17/17 exact HEAD; any further discrepancy should use actual generated OpenAPI rather than guess. Clinical reviewer/privacy/localized-content gates remain, no merge/deploy.

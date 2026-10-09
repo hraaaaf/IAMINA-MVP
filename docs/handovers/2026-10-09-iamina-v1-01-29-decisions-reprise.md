@@ -81,3 +81,8 @@
 ## CI red #37999657343 — OpenAPI schema ordering (2026-10-09)
 - Parent `fa6d2b6`: 16/17 success. Only failed check `Backend — ruff + pytest` at OpenAPI exact-byte comparison; PG and Flutter/PWA jobs SUCCESS. Exporter appends `DoctorBriefEvidence` at end of components.schemas, whereas versioned JSON had it adjacent to `DoctorBriefResponse`. No product/runtime failure inferred.
 - Fix candidate moves only that nested schema block to final component position, preserving all parsed schema values and other bytes. Verify via new exact-head CI. No merge or Vercel; clinician/privacy/native-locale gates still open.
+
+## CAL-12 CI red #38005636789 — nested OpenAPI order (09/10/2026)
+
+- Old HEAD `7801d68e` 16/17 SUCCESS, only backend `OpenAPI schema is current` failed; PG and frontend SUCCESS. Exact exporter diff `5883a5884,5943` means DoctorBriefEvidence belongs after SummaryRequest, immediately before DoctorBriefResponse. Previous attempt incorrectly moved it to end; correction limits to schema block order, no property changes.
+- New HEAD must pass byte-identical `export_openapi` plus SQLite/PostgreSQL and all 17 workflows. Clinical/privacy/Arabic-Darija/RTL and consent gates still open; PR #920 draft, no merge/Vercel.
