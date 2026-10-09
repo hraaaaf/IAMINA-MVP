@@ -202,3 +202,10 @@ D. Two isolated adversarial perspectives (clinical/safety vs cross-layer/data), 
 **29-decision tracking:** 0/29 fully delivered, #19/#22/#28 IN PROGRESS, 26/29 not started in V1. Unit-entry substep passing does not mark #22 delivered.
 
 **Next exact:** prove or refute reachability of retained backend/diabetes/services/clinical/unit_guard.py (legacy 18.018 and unknown-unit default), then independently validate current 18.016 display/write rounding and historical active-route elimination with authoritative boundary oracles. Fix only reachable discrepancies; complete CAL-01…12 registry and independent review.
+
+## 2026-10-09 CAL-07 static import reachability guard (pending exact-head CI)
+
+- **Source correction independently verified:** active Flutter `GlucoseFormatter.mgdlToMmolFactor=18.016`, active `diabetes/contracts/log_entry.py::MMOL_L_TO_MG_DL=18.016`, active premium Home and Reports delegate to `GlucoseFormatter.convert`. Historical descriptions that these active screens still use 18.0 or the Flutter formatter still uses 18.018 are stale; do not treat them as patient defects.
+- **Remaining candidate:** `diabetes/services/clinical/unit_guard.py` retains a permissive unknown-unit default and 18.018, unlike strict active middleware. Whether any real patient path imports it remains unproven.
+- **New test candidate:** `backend/diabetes/tests/test_v1_01_legacy_unit_guard_reachability.py` statically parses production Python AST across backend, excluding test suites and the legacy module itself, to reject direct imports, relative clinical-package imports, and literal `import_module`/`__import__` calls to this permissive module. This is a limited guard: nonliteral dynamic imports and external callers are not fully proved absent. **Test not yet executed on its own exact HEAD**; if it fails, inspect import sites and change reachability only with confirmed contract intent.
+- Clinical factor choice and display rounding remain reviewer decisions where distinct output is demonstrated. No threshold changes/merge/deploy.
