@@ -642,14 +642,15 @@ class _HeroInsightCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 32),
-          Row(
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
             children: [
               _HeroButton(
                 label: l10n.seeFindings,
                 onTap: onDiscoverTap,
                 isPrimary: true,
               ),
-              const SizedBox(width: 12),
               _HeroButton(
                 label: l10n.discussWithIamina,
                 onTap: onChatTap,
@@ -1096,20 +1097,20 @@ class _AgpCard extends StatelessWidget {
             ),
           Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 12),
-            child: Row(
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _LegendDot(color: AminaTheme.teal700, label: l10n.median),
-                const SizedBox(width: 10),
                 _LegendDot(
                   color: AminaTheme.teal400.withValues(alpha: 0.55),
                   label: '25–75%',
                 ),
-                const SizedBox(width: 10),
                 _LegendDot(
                   color: AminaTheme.teal400.withValues(alpha: 0.25),
                   label: '5–95%',
                 ),
-                const Spacer(),
                 Text(
                   l10n.generalRangeShort,
                   style: TextStyle(
