@@ -17,11 +17,7 @@ from typing import Literal
 
 from django.utils import timezone
 
-from core.contracts.clinical_fact import (
-    UCUM_SYSTEM,
-    ClinicalFactDecision,
-    ClinicalFactSource,
-)
+from core.contracts.clinical_fact import UCUM_SYSTEM, ClinicalFactDecision, ClinicalFactSource
 from diabetes.contracts.governed_longitudinal import GovernedLongitudinalContract
 from diabetes.contracts.multi_source_fusion import FusionPopulation
 from diabetes.services.clinical.companion_evidence_uncertainty import (
