@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -208,6 +209,22 @@ Future<void> main() async {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         await db.seedDemoData();
+        // Isolated opt-in V1-01 test fixture: no real patient/runtime path.
+        if (Uri.base.queryParameters['v101'] == 'unit-190') {
+          final observedAt = DateTime.now().subtract(const Duration(seconds: 30));
+          await db.update(db.patientProfiles).write(
+            const PatientProfilesCompanion(unitPreference: Value('mmol/L')),
+          );
+          await db.into(db.logEntries).insert(
+            LogEntriesCompanion.insert(
+              createdAt: observedAt,
+              loggedAt: Value(observedAt),
+              bloodSugar: 190.0,
+              clientUuid: '00000000-0000-4000-8000-000000000190',
+              syncStatus: const Value('synced'),
+            ),
+          );
+        }
       } catch (error) {
         debugPrint('Browser audit demo seed unavailable: $error');
       }

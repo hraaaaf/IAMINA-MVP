@@ -1,7 +1,9 @@
 import 'dart:math';
 
 class GlucoseFormatter {
-  static const double mgdlToMmolFactor = 18.018;
+  /// Same precision as the active backend log-entry normalization contract.
+  /// Display-only conversion; no change to clinical target thresholds.
+  static const double mgdlToMmolFactor = 18.016;
 
   /// Formate une valeur de glycémie selon la préférence de l'utilisateur.
   /// [valueMgDl] : Valeur brute en mg/dL (stockage standard).

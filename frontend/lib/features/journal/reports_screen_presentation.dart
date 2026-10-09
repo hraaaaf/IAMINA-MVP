@@ -803,9 +803,8 @@ class _Stats {
 
   bool get hasTarget => low != null && high != null && low! < high!;
 
-  String display(double mgDl) => unit == 'mmol/L'
-      ? (mgDl / 18.0).toStringAsFixed(1)
-      : mgDl.toStringAsFixed(0);
+  String display(double mgDl) =>
+      GlucoseFormatter.convert(mgDl, unit).toStringAsFixed(unit == 'mmol/L' ? 1 : 0);
 
   factory _Stats.from(
     List<LogEntryData> logs,

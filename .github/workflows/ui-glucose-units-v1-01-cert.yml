@@ -1,0 +1,84 @@
+name: V1-01 glucose units real Chrome BEFORE AFTER
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/core/utils/glucose_formatter.dart'
+      - 'frontend/lib/features/dashboard/dashboard_premium_screen.dart'
+      - 'frontend/lib/features/journal/reports_screen.dart'
+      - 'frontend/lib/features/journal/reports_screen_presentation.dart'
+      - 'frontend/lib/ui_browser_audit_main.dart'
+      - 'frontend/test/v1_01_glucose_display_conversion_test.dart'
+      - 'tools/v1_01_glucose_units_capture.cjs'
+      - '.github/workflows/ui-glucose-units-v1-01-cert.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  glucose-units-before-after:
+    name: Clinical unit conversion 390 + 768
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Verify exact HEAD and original baseline
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          git cat-file -e c0420cebcb8c2e8f79229978064ff365901f3edc^{commit}
+          git merge-base --is-ancestor c0420cebcb8c2e8f79229978064ff365901f3edc HEAD
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Setup and independent Dart oracle
+        working-directory: frontend
+        run: |
+          flutter pub get
+          flutter analyze --no-fatal-infos lib/core/utils/glucose_formatter.dart lib/features/dashboard/dashboard_premium_screen.dart lib/features/journal/reports_screen.dart lib/ui_browser_audit_main.dart test/v1_01_glucose_display_conversion_test.dart
+          flutter test --no-pub test/v1_01_glucose_display_conversion_test.dart
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Capture real BEFORE with exact old product code and same fixture
+        run: |
+          set -euo pipefail
+          for f in frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/journal/reports_screen.dart frontend/lib/features/journal/reports_screen_presentation.dart; do
+            git show "c0420cebcb8c2e8f79229978064ff365901f3edc:$f" > "$f"
+          done
+          cd frontend
+          flutter build web --release -t lib/ui_browser_audit_main.dart
+          python3 -m http.server 7367 --directory build/web >/tmp/iamina-unit-before.log 2>&1 &
+          SERVER=$!
+          trap 'kill "$SERVER" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:7367/ >/dev/null; then break; fi; sleep 1; done
+          curl -fsS http://127.0.0.1:7367/ >/dev/null
+          NODE_PATH="$PWD/node_modules" AUDIT_PHASE=before AUDIT_OUT="$GITHUB_WORKSPACE/v1-01-unit-proof" node ../tools/v1_01_glucose_units_capture.cjs
+      - name: Capture real AFTER from exact PR HEAD
+        run: |
+          set -euo pipefail
+          git restore --source=HEAD -- frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/journal/reports_screen.dart frontend/lib/features/journal/reports_screen_presentation.dart
+          cd frontend
+          flutter build web --release -t lib/ui_browser_audit_main.dart
+          python3 -m http.server 7367 --directory build/web >/tmp/iamina-unit-after.log 2>&1 &
+          SERVER=$!
+          trap 'kill "$SERVER" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:7367/ >/dev/null; then break; fi; sleep 1; done
+          curl -fsS http://127.0.0.1:7367/ >/dev/null
+          NODE_PATH="$PWD/node_modules" AUDIT_PHASE=after AUDIT_OUT="$GITHUB_WORKSPACE/v1-01-unit-proof" node ../tools/v1_01_glucose_units_capture.cjs
+      - name: Upload source-comparable Chrome evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-v1-01-glucose-190-before-after-390-768
+          path: v1-01-unit-proof/*
+          if-no-files-found: warn
+          retention-days: 21
