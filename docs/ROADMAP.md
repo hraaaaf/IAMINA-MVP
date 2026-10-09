@@ -8,6 +8,63 @@
 >
 > **Release posture:** `NOT_RELEASE_AUTHORIZED`. No current release candidate is frozen or authorized for deployment or real-patient processing. Engineering, UX, reliability, security and synthetic/non-patient work may continue. P5-6A/#318 and P5-6B/#320 are retained as mandatory **pre-real-patient gates**, not as the current engineering critical path.
 
+## Product V1 — 29 approved decisions (2026-10-09)
+
+> **Status:** product decisions **29/29 approved**; the V1 implementation lots below are **PLANNED, not automatically built, tested or clinically certified**. This forward product workstream supplements — and **does not erase or renumber** — the retained P5 pilot-readiness/release workstream, its \`6/12\` historical atomic completion baseline, or the mandatory pre-real-patient P5-6A/P5-6B gates.
+>
+> **Decisions source:** [IAMINA — 29-discussion register](https://app.notion.com/p/3f377c663362812dbe78cead75e71922). **Linked Notion canonical roadmap:** [01 — ROADMAP CANONIQUE](https://app.notion.com/p/3df77c66336281f5b308ec17f7f0a63b). The original source #28.1 means **intelligence/analytics BEFORE the chatbot**; our workshop subnumber #28.1 refers separately to **LLM isolation**. Do not interchange them.
+>
+> **Baseline inspected:** \`main@f6f5a0a07b9d9ae243dda699e1f5fe58c69fe192\`, CI run \`37836917174\` success. Existing clinical engines and companion contracts are retained; PRs #865/#866/#869 (Intent Envelope) and #918 (UX tests) are open and must be reconciled, not assumed merged. Existing first-use certification #879/#880 is evidence of that earlier, narrower flow, not certification for these new requirements.
+
+### Goal and architecture
+
+**IAMINA Intelligence Engine is independent of the chat surface.** Patient-scoped, provenance-bearing data → verified eligibility, units and timing → governed deterministic calculations, comparisons and observations → a versioned, evidence/uncertainty-bearing insight/decision envelope → the same authorized result in **Home, Reports and the guided IAmina conversation**.
+
+A generative LLM may **only** generate non-patient generic wording or an opaque-token-only wrapper, with strict egress proof, no clinical authority and local final assembly. No patient message, history, measurements, demographics, clinical facts or correlated metadata may reach a third-party LLM. If privacy/policy/verification fails, **use no LLM**. Clinical predictions remain hidden research-only until independent scientific, clinical and regulatory approvals; no arbitrary one-month forecast.
+
+### New implementation lanes — priority is proposed engineering order, not clinical authority
+
+| Order | Lot | Priority | Deliverable and source decisions |
+| --- | --- | --- | --- |
+| 01 | **V1-01 — Full calculation and clinical-authority audit** | P0 | Enumerate every clinical, statistical, conversion, report and nutrition calculation and UI consumer; classify normative vs descriptive and fail closed on missing evidence. **#19 #11 #22** |
+| 02 | **V1-02 — Intelligence Engine / governed patient context** | P0 | Reuse Clinical Twin, observations, evidence registry, longitudinal and multi-source contracts; one versioned patient-scoped fact/insight envelope with source, eligibility, uncertainty and authority, consumable by all three surfaces. **#28 original source-first intent #7 #18** |
+| 03 | **V1-03 — Strict model/AI privacy boundary** | P0 | Enumerate all LLM egress paths, replace/disable patient-context prompts, enforce generic/opaque allowlisted payloads and negative egress tests, preserve effective global AI opt-out. **#28 workshop 28.1 #24 #26** |
+| 04 | **V1-04 — True first-use and progressive profile** | P0 | Country/unit before targets, editable multi-treatment and unknown-type profile, no real-account demo records, existing-account continuity, secure recovery/app-lock, first-measure value, opt-in feedback; reuse previous merged first-use work. **#5 #7 #8 #9 #10 #11 #18 #22 #29** |
+| 05 | **V1-05 — Guided IAmina conversation** | P0 | Deterministic question graph from opening, 2–4 options, reversible narrowing, repeat/back/free text locally routed, bounded responses, one main message, FR/AR/darija and RTL, non-floating chat mini-avatar. Home-only floating avatar. **#28 workshop 28.2/28.4/28.5 #6 #16 #27** |
+| 06 | **V1-06 — Native-feeling CGM Integration Hub** | P1 | Manufacturer/model selection and allowed authorization, read-only connector orchestration behind IAMINA; authorized official APIs first, isolated audited adapters where lawful, legacy Nightscout compatibility, import fallback, real freshness/availability and revocation. No patient-run Nightscout requirement and no claim of universal CGM support. **#1 #25** |
+| 07 | **V1-07 — Reliable intelligent capture** | P1 | Premium and precise glucose slider, unsaved-change guard, expandable secondary entry details; one editable meal draft from voice, text, form or assistive photo suggestions, natural portions, explicit human confirmation. **#12 #13 #14 #15 #17** |
+| 08 | **V1-08 — Insights, reminders, notifications and deterministic reports** | P1 | Notification bell distinct from reminders, 2–3 upcoming reminders on home, one consented meaningful nonurgent insight per initial 24 h, chat/bell event-ID deduplication, opt-in weight trend, deterministic FR/AR PDF and CSV/XLSX exports. **#2 #3 #4 #20 #28 workshop 28.3** |
+| 09 | **V1-09 — Premium UX, settings and accessibility** | P1 | Global and AI preference hierarchy, effective AI off without losing measurements, separate privacy/account actions and logout, Ramadan feature flag disabled, text copy/selection, home avatar target and reduced motion. **#16 #21 #23 #24 #26 #27** |
+| 10 | **V1-10 — Predictive ML research in shadow** | P2 | Predefine scientifically meaningful target/horizon and population; ethical, isolated study data, temporal/external/prospective validation, calibration, bias and subgroups; no patient-facing predictions or effects on clinical advice or notifications. **#28 workshop 28.6** |
+| 11 | **V1-11 — Whole-product certification and pilot safety gate** | Release gate | Cross-feature true first-use to first measurement/insight/chat, CGM and exports; clinical validation, egress/patient isolation, security/accessibility and exact-head CI/post-merge. P5-6A/P5-6B pre-real-patient/legal/data-residency/processor prerequisites remain mandatory. No Vercel deploy without explicit approval. **All 29** |
+
+### Critical path, parallelism and evidence
+
+1. **Start with V1-01** (audit register, actual backend→frontend call graph, bad/unknown inputs, units and model authority). In parallel, non-invasive inventory of reused V1-02 contracts and external egress paths V1-03. Do not replace an already certified module merely because a new layer name exists.
+2. **One vertical proving slice**: authenticated patient → eligible existing measurement → versioned, provenance-bearing deterministic observation → exact same fact, uncertainty and status in Home, Reports and guided Chat → prove no patient information can exit via LLM. This is the first functional milestone before broad visual changes.
+3. **V1-04 and V1-05** follow the certified data/safety contracts; **V1-06** may progress in parallel once consent, patient isolation and manufacturer access checks are proven. Manual measurement remains usable without any CGM account.
+4. **V1-07/V1-08/V1-09** converge capture, actionable observations and design consistency; refine against actual screenshots. **V1-10** is independent research and never a release dependency for descriptive V1.
+5. Each lot requires exact **Goal → observable success → test evidence**. Backend Django/SQLite+PostgreSQL where relevant, provenance/negative/cross-patient tests, API/frontend/real navigation, and **BEFORE → written target → approved mockup → implementation → AFTER at identical viewports**, including 390×844, accessibility and honest visual score when UI changes.
+6. **Never present an unverified CGM feed as real-time safety monitoring, a descriptive trend as causal/predictive medical advice, a demo record as real patient data, or an unreviewed narrator as clinical authority.** Emergency safety routing is independent from the 24-hour nonurgent attention budget and global AI toggle.
+7. Deployment to Vercel remains human-approved separately. The historical P5 pilot release gate requires explicit release re-freeze and competent professional/legal authorization before identifiable real-patient processing. Historical progress figures are not transferable to V1-01…V1-11. **No V1 implementation completion percentage is claimed yet.**
+
+### Traceability — all original 29 issue numbers
+
+| Original remarks | Assigned implementation lots |
+| --- | --- |
+| #1 #25 | V1-06 |
+| #2 #3 #4 #20 | V1-08 |
+| #5 #7 #8 #9 #10 #18 #22 #29 | V1-04 (also V1-01/V1-02 for evidence and context) |
+| #6 #16 #27 | V1-05 / V1-09 |
+| #11 #19 | V1-01 / V1-04 |
+| #12 #13 #14 #15 #17 | V1-07 |
+| #21 #23 #24 #26 | V1-03 / V1-09 |
+| #28 | V1-02 / V1-03 / V1-05 / V1-08 / V1-10 |
+
+**Next exact:** establish the V1-01 full-calculation audit manifest on current main; check source→derivation→patient output, mark evidence gaps, author tests with no unsupported clinical promotion; then run exact-head checks and proceed with the first vertical proving slice. Keep P5 release gates untouched.
+
+---
+
 ## North star
 
 Ship one safe, measurable Morocco/MENA diabetes-companion PWA pilot, collect real evidence, then make an explicit go/no-go decision before broader rollout or a second disease capsule.
