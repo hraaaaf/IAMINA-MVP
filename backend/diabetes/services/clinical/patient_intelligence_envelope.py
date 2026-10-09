@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
+from django.utils import timezone
+
 from diabetes.services.clinical.companion_evidence_uncertainty import (
     CompanionEvidenceProvenance,
     CompanionUncertainty,
@@ -113,6 +115,17 @@ def _governed_sources(
 
     if not isinstance(request.contract, GovernedLongitudinalContract):
         raise ValueError("explicit governed longitudinal contract required")
+    if not isinstance(request.window_start, datetime) or not isinstance(
+        request.window_end, datetime
+    ):
+        raise ValueError("source window must contain datetimes")
+    # Validate awareness before comparing: naive-vs-aware raises TypeError.
+    if not timezone.is_aware(request.window_start) or not timezone.is_aware(
+        request.window_end
+    ):
+        raise ValueError("source window must be timezone-aware")
+    if request.window_end <= request.window_start:
+        raise ValueError("source window_start must precede window_end")
     result = compute_governed_longitudinal_intelligence(
         patient_id=patient_id,
         window_start=request.window_start,
