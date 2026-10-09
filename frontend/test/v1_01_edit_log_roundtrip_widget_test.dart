@@ -198,7 +198,16 @@ void main() {
             await tester.enterText(glucoseInput, '4.0');
           }
           final save = find.byKey(const Key('save-edit-log-button'));
-          await tester.ensureVisible(save);
+          // After editing a TextField, focused keyboard/scroll position can
+          // leave the footer below the 390px test viewport. Exercise a real
+          // scroll gesture until the save control is actually hit-testable.
+          await tester.testTextInput.hide();
+          await tester.pumpAndSettle();
+          await tester.dragUntilVisible(
+            save,
+            find.byType(SingleChildScrollView).first,
+            const Offset(0, -250),
+          );
           await tester.pumpAndSettle();
           await tester.tap(save);
           await tester.pumpAndSettle();
