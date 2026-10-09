@@ -18,6 +18,7 @@ from typing import Literal
 from diabetes.services.clinical.companion_evidence_uncertainty import (
     CompanionEvidenceProvenance,
     CompanionUncertainty,
+    build_companion_evidence_context,
 )
 from diabetes.services.clinical.companion_pattern_intelligence import (
     SOURCE_VERSION as PATTERN_SOURCE_VERSION,
@@ -144,6 +145,16 @@ def _governed_sources(
         )
         if item.fact_count != len(related) or item.source_refs != related:
             raise ValueError("governed source counts/provenance disagree")
+        expected_sufficiency = (
+            item.fact_count >= request.contract.minimum_facts_per_population
+            and item.distinct_days >= request.contract.minimum_distinct_days_per_population
+        )
+        if (
+            item.sufficient != expected_sufficiency
+            or item.distinct_days > item.fact_count
+            or (item.sufficient and item.median_glucose_mg_dl is None)
+        ):
+            raise ValueError("governed source sufficiency evidence disagrees")
         populations.append(
             GovernedPopulationEvidence(
                 population=item.population,
@@ -212,6 +223,16 @@ def build_patient_intelligence_envelope(
             raise ValueError("pattern and approved evidence context disagree")
         if provenance.clinical_authority != "governed_rule":
             raise ValueError("unapproved evidence authority")
+        canonical_evidence = build_companion_evidence_context(
+            evidence_id=item.evidence_id,
+            producer=item.producer,
+            evidence_density=item.evidence_density,
+            evidence_density_trend=item.evidence_density_trend,
+            missing_data=uncertainty.missing_data,
+            limitations=item.limitations,
+        )
+        if evidence != canonical_evidence:
+            raise ValueError("companion evidence differs from governed registry")
         if item.first_observed_at > item.last_observed_at:
             raise ValueError("observation timestamps are inconsistent")
 
