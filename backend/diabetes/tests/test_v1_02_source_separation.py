@@ -12,7 +12,7 @@ from diabetes.contracts.multi_source_fusion import (
     FusionPopulation,
     GovernedGlucoseFusionContract,
 )
-from diabetes.models import LogEntry
+from diabetes.models import CGMReadingRecord, CGMSensorSession, LogEntry
 from diabetes.services.clinical.governed_longitudinal import (
     compute_governed_longitudinal_intelligence,
 )
@@ -224,3 +224,74 @@ def test_forged_longitudinal_status_rejected():
             build_patient_intelligence_envelope(
                 patient_id=patient.id, source_request=_request()
             )
+
+
+def test_unverified_import_legacy_cgm_and_wrong_session_are_excluded():
+    patient = get_user_model().objects.create_user(username="v1-02-untrusted")
+    other = get_user_model().objects.create_user(username="v1-02-wrong-session")
+    manual = _seed(patient, source="manual", when=START, glucose=120)
+    # Untrusted historical import lacks server-generated identity.
+    _seed(patient, source="import", when=START, glucose=130)
+    # Legacy LogEntry(cgm) is not an authorized normalized sensor reading.
+    _seed(patient, source="cgm", when=START, glucose=160)
+    session = CGMSensorSession.objects.create(
+        patient=other,
+        source="linx",
+        session_key="v1-02-foreign-session",
+        started_at=START,
+        ended_at=END,
+        expected_interval_minutes=5,
+        timezone_name="UTC",
+        end_reason=CGMSensorSession.EndReason.REPLACED,
+    )
+    CGMReadingRecord.objects.create(
+        patient=patient,
+        source="linx",
+        session=session,
+        recorded_at=START + timedelta(hours=1),
+        glucose_mg_dl=170,
+        dedupe_key="v1-02-cross-patient-session",
+    )
+    contract = GovernedLongitudinalContract(
+        fusion_contract=GovernedGlucoseFusionContract.journal_with(
+            FusionPopulation.IMPORT, FusionPopulation.CGM
+        )
+    )
+    result = build_patient_intelligence_envelope(
+        patient_id=patient.id,
+        source_request=GovernedSourceRequest(
+            window_start=START,
+            window_end=END,
+            contract=contract,
+        ),
+    )
+
+    assert result.status == "insufficient_data"
+    sources = result.longitudinal_sources
+    assert sources is not None
+    by_source = {item.population: item for item in sources.populations}
+    assert by_source[FusionPopulation.JOURNAL].source_refs == (
+        f"log_entry:{manual.id}",
+    )
+    assert by_source[FusionPopulation.IMPORT].fact_count == 0
+    assert by_source[FusionPopulation.CGM].fact_count == 0
+    assert all(item.median_glucose_mg_dl is None for item in sources.populations)
+    assert set(sources.missing_data) == {
+        "insufficient_journal_evidence",
+        "insufficient_import_evidence",
+        "insufficient_cgm_evidence",
+    }
+    assert "cgm_requires_valid_session_linkage" in sources.limitations
+
+
+def test_source_window_must_be_explicit_and_time_zone_aware():
+    patient = get_user_model().objects.create_user(username="v1-02-naive")
+    bad = GovernedSourceRequest(
+        window_start=datetime(2026, 9, 1),
+        window_end=END,
+        contract=_contract(),
+    )
+    with pytest.raises(ValueError, match="timezone-aware"):
+        build_patient_intelligence_envelope(
+            patient_id=patient.id, source_request=bad
+        )
