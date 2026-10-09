@@ -101,6 +101,7 @@ def test_patient_scoped_read_only_and_existing_evidence_only():
     assert item.first_observed_at == row.first_seen_at
     assert item.last_observed_at == row.last_seen_at
     assert result.llm_egress_authorized is False
+    assert result.clinical_metrics_authorized is False
     assert "not_authorized_for_llm_egress" in result.limitations
     assert not hasattr(item, "treatment_recommendation")
     assert not hasattr(item, "clinical_risk_score")
