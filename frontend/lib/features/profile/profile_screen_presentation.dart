@@ -130,7 +130,10 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           (val) => _changeTargetUnit(val),
         ),
         const SizedBox(height: 28),
-        _buildSectionTitle(Icons.show_chart, l10n.glucoseTarget),
+        _buildSectionTitle(
+          Icons.show_chart,
+          l10n.glucoseTarget.replaceAll('mg/dL', _unit),
+        ),
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -714,9 +717,12 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       children: [
         Icon(icon, size: 20, color: AminaVisualLanguage.primaryText(context)),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+        Flexible(
+          child: Text(
+            title,
+            softWrap: true,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
         ),
       ],
     );
