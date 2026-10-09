@@ -8,7 +8,10 @@ from django.test import TestCase
 
 from ai.api.v1.ai import SummaryRequest, SummaryResponse, get_summary
 from diabetes.models import CGMReadingRecord, CGMSensorSession, LogEntry
-from diabetes.services.clinical.cgm_analytics import (compute_verified_cgm_agp_profile, compute_verified_cgm_metrics)
+from diabetes.services.clinical.cgm_analytics import (
+    compute_verified_cgm_agp_profile,
+    compute_verified_cgm_metrics,
+)
 from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
 
 

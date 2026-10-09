@@ -40,8 +40,8 @@ from core.locale import resolve_patient_locale
 from core.models import BasePatientProfile
 from core.observability import EVT_CHAT_MESSAGE, EVT_SUMMARY_VIEWED, track
 from diabetes.api.v1.kpis import project_patient_kpis
-from diabetes.services.clinical.cgm_analytics import compute_verified_cgm_agp_profile
 from diabetes.models import LogEntry
+from diabetes.services.clinical.cgm_analytics import compute_verified_cgm_agp_profile
 from diabetes.services.clinical.engine import run_clinical_analysis
 from diabetes.services.clinical.semantic_compressor import build_chat_context, compress
 from diabetes.services.clinical.sql_analytics import compute_daily_averages, compute_kpis
