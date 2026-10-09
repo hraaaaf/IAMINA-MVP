@@ -38,6 +38,13 @@ jobs:
       - name: Install Flutter packages
         working-directory: frontend
         run: flutter pub get
+      - name: Ensure readable Flutter widget screenshots
+        shell: bash
+        run: |
+          if ! test -r /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq fonts-dejavu-core
+          fi
       - name: BEFORE — baseline product, current visual fixture
         shell: bash
         run: |

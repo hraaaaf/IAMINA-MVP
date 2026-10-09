@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:amina/core/theme/app_theme.dart';
@@ -10,6 +11,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart' show FontLoader;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -22,6 +24,19 @@ void main() {
     defaultValue: 'after',
   );
   assert(phase == 'before' || phase == 'after');
+
+  setUpAll(() async {
+    // Widget tests default to the Ahem placeholder. Load an actual open
+    // system font so the BEFORE/AFTER text and units can be inspected.
+    final file = File('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf');
+    if (!file.existsSync()) {
+      throw StateError('Missing CI proof font: DejaVu Sans');
+    }
+    final fontBytes = ByteData.sublistView(file.readAsBytesSync());
+    final loader = FontLoader('Roboto')
+      ..addFont(Future<ByteData>.value(fontBytes));
+    await loader.load();
+  });
 
   for (final size in <Size>[const Size(390, 844), const Size(768, 1024)]) {
     testWidgets('unit-switch visual proof ${size.width.toInt()}px, $phase',
@@ -85,6 +100,7 @@ void main() {
                 ),
               ],
               child: MaterialApp.router(
+                theme: ThemeData(fontFamily: 'Roboto'),
                 locale: const Locale('fr'),
                 localizationsDelegates:
                     AppLocalizations.localizationsDelegates,
@@ -135,10 +151,8 @@ void main() {
         '${size.width.toInt()}x${size.height.toInt()}.png',
       ).writeAsBytesSync(png);
       image.dispose();
-
-      // Do not leave subscribed state alive when sqlite and notifier close.
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pumpAndSettle();
+      // Do not wait for a second pump after a render-to-image operation.
+      // The test framework owns widget teardown.
     });
   }
   for (final size in <Size>[const Size(390, 844), const Size(768, 1024)]) {
@@ -168,6 +182,7 @@ void main() {
           child: ValueListenableBuilder<PatientProfileData?>(
             valueListenable: notifier,
             builder: (_, currentProfile, __) => MaterialApp(
+              theme: ThemeData(fontFamily: 'Roboto'),
               locale: const Locale('fr'),
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
@@ -214,8 +229,7 @@ void main() {
         '${size.width.toInt()}x${size.height.toInt()}.png',
       ).writeAsBytesSync(png);
       image.dispose();
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pumpAndSettle();
+      // Do not call pumpWidget during post-image asynchronous teardown.
     });
   }
 
