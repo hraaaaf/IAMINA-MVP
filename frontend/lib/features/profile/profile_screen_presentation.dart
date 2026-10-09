@@ -121,18 +121,27 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           (val) => _setPresentationState(() => _treatment = val),
         ),
         const SizedBox(height: 28),
+        _buildSectionTitle(Icons.straighten, l10n.measureUnit),
+        const SizedBox(height: 12),
+        _buildChoiceGrid(
+          ['mg/dL', 'mmol/L'],
+          ['mg/dL', 'mmol/L'],
+          _unit,
+          (val) => _changeTargetUnit(val),
+        ),
+        const SizedBox(height: 28),
         _buildSectionTitle(Icons.show_chart, l10n.glucoseTarget),
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxWidth < 460;
             final low = _buildTextField(
-              AuditedPageCopy.of(context).minimum,
+              '${AuditedPageCopy.of(context).minimum} ($_unit)',
               _targetLowController,
               l10n,
             );
             final high = _buildTextField(
-              AuditedPageCopy.of(context).maximum,
+              '${AuditedPageCopy.of(context).maximum} ($_unit)',
               _targetHighController,
               l10n,
             );
@@ -149,18 +158,10 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           },
         ),
         const SizedBox(height: 28),
-        _buildSectionTitle(Icons.straighten, l10n.measureUnit),
-        const SizedBox(height: 12),
-        _buildChoiceGrid(
-          ['mg/dL', 'mmol/L'],
-          ['mg/dL', 'mmol/L'],
-          _unit,
-          (val) => _setPresentationState(() => _unit = val),
-        ),
-        const SizedBox(height: 28),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
+            key: const Key('profile-save-targets-button'),
             onPressed: _saveProfile,
             style: ElevatedButton.styleFrom(
               backgroundColor: AminaVisualLanguage.actionGreen,
