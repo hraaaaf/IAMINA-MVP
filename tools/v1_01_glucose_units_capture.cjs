@@ -21,9 +21,19 @@ async function capture(browser, surface, width, height) {
   });
   try {
     const page = await context.newPage();
+    const runtimeErrors = [];
+    page.on('pageerror', e => runtimeErrors.push('pageerror: '+e.message));
+    page.on('console', m => { if (m.type()==='error') runtimeErrors.push('console: '+m.text()); });
     await page.goto(base+'/?surface='+surface+'&seed=1&v101=unit-190', {waitUntil:'domcontentloaded',timeout:30000});
+    // Flutter only creates the semantics tree after its Web engine initializes.
+    // The earlier immediate count() saw zero placeholders and never enabled it.
+    await page.waitForTimeout(9000);
     const ph = page.locator('flt-semantics-placeholder');
-    if (await ph.count()) { await ph.first().focus(); await page.keyboard.press('Enter'); }
+    if (await ph.count()) {
+      await ph.first().focus();
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(750);
+    }
     let seen = false; let sample = '';
     for (let k=0;k<55;k++){
       if (surface==='reports-local' && k%3===0) await page.mouse.wheel(0,410);
@@ -31,7 +41,20 @@ async function capture(browser, surface, width, height) {
       if(sample.includes(expected)) { seen=true; break; }
       await page.waitForTimeout(400);
     }
-    if(!seen) throw new Error(phase+' '+surface+' '+width+' expected '+expected+' mmol/L in semantics; observed='+sample.slice(0,2400));
+    if(!seen) {
+      const diagnostic = out+'/diagnostic-'+phase+'-'+surface+'-'+width+'x'+height+'.png';
+      await page.screenshot({path:diagnostic,fullPage:false});
+      const dom = await page.evaluate(() => ({
+        title: document.title,
+        placeholders: document.querySelectorAll('flt-semantics-placeholder').length,
+        panes: document.querySelectorAll('flt-glass-pane').length,
+        semanticNodes: document.querySelectorAll('flt-semantics').length,
+        bodyText: document.body.innerText.slice(0,250),
+      }));
+      throw new Error(phase+' '+surface+' '+width+' expected '+expected+
+        ' mmol/L in semantics; observed='+sample.slice(0,1800)+
+        '; dom='+JSON.stringify(dom)+'; errors='+JSON.stringify(runtimeErrors.slice(0,6)));
+    }
     if(surface==='reports-local') await page.mouse.wheel(0,130);
     await page.waitForTimeout(250);
     const filename = phase+'-'+surface+'-'+width+'x'+height+'.png';
