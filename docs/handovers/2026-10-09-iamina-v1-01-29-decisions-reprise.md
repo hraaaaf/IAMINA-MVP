@@ -46,3 +46,10 @@
 4. Reconcile V1-02/03 privacy boundary, obtain independent clinical/privacy/UX/RTL reviews; if passed, run exact final-head CI, closeout canonical docs and PR, decide merge subject to true clinical gates, verify post-merge, advance to V1-04. If blocked by clinic/release human gate, stop there and report exact gate; **never deploy to Vercel without explicit approval**.
 
 **Effort next:** 🔴 clinical/timezone audit. **Roadmap forward authority remains `docs/ROADMAP.md`**, not this handover or Notion. Last review status: **OPEN / DRAFT / NOT RELEASE AUTHORIZED**.
+
+## CAL-12 doctor-brief numerical guard — candidate (2026-10-09)
+
+- Parent PR #920 HEAD `acb5a1cc3867619b8da626ee55f4a45b784d3b23`, draft; CI #37988641337 SUCCESS main job, some independent visual workflows in progress at initial inspection.
+- Candidate route-only final-output fail-closed check (Unicode numerals and non-string model fields withheld) + isolated FR/EN/AR/Darija adversarial handler tests, no new clinical numeric authority, no schema or DB change.
+- Important scope limit: spelled numbers/qualitative claims not covered; require typed evidence-bound deterministic brief, independent reviewers and actual exact-head CI. Clinical certification OPEN, no merge/Vercel.
+- Next exact: verify new candidate GitHub Actions; diagnose failures; challenge clinical output in two independent perspectives; close CAL-12 only after qualified review and further typed/provenance controls.

@@ -278,3 +278,11 @@ D. Two isolated adversarial perspectives (clinical/safety vs cross-layer/data), 
 4. For reports/PDF, retain direct-caller quarantine until typed clinical report owner, consent/delivery, data window/source and Unicode/RTL font pipeline are approved and end-to-end exercised.
 
 **Exact evidence boundary:** CI #37987882570 succeeded on `87e45e5` including backend + PostgreSQL + Flutter; the screenshot browser suite was still running at the last review. Any documentation successor HEAD requires its own exact-head checks. PR #920 stays OPEN/DRAFT. No merge, Vercel deploy or clinical certification.
+
+## CAL-12 P1 doctor-brief numerals — candidate fail-closed runtime guard (2026-10-09)
+
+**BEFORE code:** `GET /ai/doctor-brief` projected `public_kpis` in its LLM input but trusted model-authored `narrative`, `key_insight` and `doctor_brief` after epistemic/prescription regex checks; ungoverned TIR/GMI numbers could still reach the output. No real-patient or actual-provider hallucination has been demonstrated.
+
+**Candidate narrow mitigation:** `_fail_closed_unproven_doctor_brief_numbers` rejects every non-string/Unicode-numeral-bearing free-form model field after parsing; neutral text remains, even valid sensor values are not laundered through unverifiable model authorship. The shared JSON parser and metrics remain untouched. Synthetic handler tests: manual-only FR/EN/Arabic/Darija and positive-CGM prompt but rejected model numerals, malformed types, Persian/Arabic-Indic digits. No real patient data/provider calls.
+
+**Limit:** numeric words, qualitative false reassurance and invented diagnostic descriptions remain potentially undetected; only a reviewed typed `consultation-brief.v1`/protected deterministic body with exact source/window/consent binding can close CAL-12. This is not a claim of zero medical hallucinations, clinical clearance or release readiness. Exact-HEAD CI + two independent adversarial perspectives + clinical/linguistic/security-human gates remain mandatory.

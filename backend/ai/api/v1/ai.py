@@ -252,6 +252,19 @@ def get_summary(request, data: SummaryRequest):
 # ──────────────────────────────────────────────────────────────
 
 
+def _fail_closed_unproven_doctor_brief_numbers(value: object) -> str:
+    """Reject untraceable model-authored numerals in this legacy clinical route.
+
+    A free-form string has no fact-to-claim provenance: even a number present in
+    the *input* cannot become an authorized model-authored numerical assertion.
+    This deliberately narrow safeguard cannot catch spelled-out values or all
+    qualitative clinical claims; clinician review and typed evidence remain open.
+    """
+    if not isinstance(value, str) or any(char.isnumeric() for char in value):
+        return ""
+    return value
+
+
 @router.get("/ai/doctor-brief", response=DoctorBriefResponse)
 @patient_ai_egress_scope("doctor_brief", TEXT)
 def get_doctor_brief(request, days: int = 14):
@@ -362,9 +375,17 @@ def get_doctor_brief(request, days: int = 14):
         logger.exception("doctor_brief LLM call failed for patient=%s", user.id)
         narrative = "Résumé indisponible — réessaie dans quelques instants."
 
-    narrative = apply_no_prescription_policy(narrative, language)
-    key_insight = apply_no_prescription_policy(key_insight, language)
-    doctor_brief = apply_no_prescription_policy(doctor_brief, language)
+    # CAL-12: free-form model output cannot attest its own clinical numbers.
+    # Fail closed on every Unicode numerical character until typed claim binding.
+    narrative = apply_no_prescription_policy(
+        _fail_closed_unproven_doctor_brief_numbers(narrative), language
+    )
+    key_insight = apply_no_prescription_policy(
+        _fail_closed_unproven_doctor_brief_numbers(key_insight), language
+    )
+    doctor_brief = apply_no_prescription_policy(
+        _fail_closed_unproven_doctor_brief_numbers(doctor_brief), language
+    )
 
     return {
         "doctor_brief": doctor_brief,
