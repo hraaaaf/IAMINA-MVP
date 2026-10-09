@@ -17,6 +17,11 @@ from typing import Literal
 
 from django.utils import timezone
 
+from core.contracts.clinical_fact import (
+    UCUM_SYSTEM,
+    ClinicalFactDecision,
+    ClinicalFactSource,
+)
 from diabetes.contracts.governed_longitudinal import GovernedLongitudinalContract
 from diabetes.contracts.multi_source_fusion import FusionPopulation
 from diabetes.services.clinical.companion_evidence_uncertainty import (
@@ -34,6 +39,14 @@ from diabetes.services.clinical.governed_longitudinal import (
 
 ENVELOPE_VERSION = "patient-intelligence-envelope.v1"
 EnvelopeStatus = Literal["ready", "insufficient_data"]
+
+_EXPECTED_SOURCE_TYPES = {
+    FusionPopulation.JOURNAL: frozenset({
+        ClinicalFactSource.MANUAL, ClinicalFactSource.VOICE,
+    }),
+    FusionPopulation.IMPORT: frozenset({ClinicalFactSource.IMPORT}),
+    FusionPopulation.CGM: frozenset({ClinicalFactSource.CGM}),
+}
 
 _NO_MEDICAL_AUTHORITY = (
     "descriptive_observation_only",
@@ -152,6 +165,16 @@ def _governed_sources(
             or fact.population not in expected
         ):
             raise ValueError("cross-patient or unrequested source evidence")
+        if (
+            fact.fact.concept != "glucose"
+            or fact.fact.unit != "mg/dL"
+            or fact.fact.unit_system != UCUM_SYSTEM
+            or fact.fact.decision != ClinicalFactDecision.ACCEPTED
+            or fact.fact.source_type not in _EXPECTED_SOURCE_TYPES[fact.population]
+            or fact.fact.provenance is None
+            or fact.fact.provenance.source_ref != fact.fact.source_ref
+        ):
+            raise ValueError("source fact lacks approved glucose provenance")
 
     populations: list[GovernedPopulationEvidence] = []
     for item in result.populations:
@@ -178,9 +201,12 @@ def _governed_sources(
                 fact_count=item.fact_count,
                 distinct_days=item.distinct_days,
                 source_refs=item.source_refs,
-                # Descriptive medians must not escape an insufficient population.
+                # The existing V2-D contract requires every explicitly
+                # requested population to be sufficient for interpretation.
                 median_glucose_mg_dl=(
-                    item.median_glucose_mg_dl if item.sufficient else None
+                    item.median_glucose_mg_dl
+                    if result.status == "ready" and item.sufficient
+                    else None
                 ),
             )
         )
@@ -281,7 +307,8 @@ def build_patient_intelligence_envelope(
         ),
         observations=tuple(observations),
         missing_data=(
-            () if observations else ("no_eligible_governed_patterns",)
+            (() if observations else ("no_eligible_governed_patterns",))
+            + (sources.missing_data if sources is not None else ())
         ),
         limitations=_NO_MEDICAL_AUTHORITY + tuple(result.limitations),
         longitudinal_sources=sources,
