@@ -24,6 +24,25 @@ class GlucoseFormatter {
     return valueMgDl;
   }
 
+  /// Converts user-entered values into canonical mg/dL storage.
+  static double toMgDl(double value, String unit) =>
+      unit.toLowerCase() == 'mmol/l' ? value * mgdlToMmolFactor : value;
+
+  /// An unchanged rounded display must never rewrite the recorded glucose.
+  static double editedToMgDl(
+    double value,
+    String unit, {
+    double? initialDisplayedValue,
+    double? initialMgDl,
+  }) {
+    if (initialDisplayedValue != null &&
+        initialMgDl != null &&
+        value == initialDisplayedValue) {
+      return initialMgDl;
+    }
+    return toMgDl(value, unit);
+  }
+
   /// Calcule les bornes optimales pour l'axe Y du graphique.
   /// Retourne [min, max] avec une marge de respiration.
   static List<double> getChartBounds(List<double> values, String unit) {

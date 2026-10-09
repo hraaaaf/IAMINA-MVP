@@ -13,6 +13,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/data/meal_food_catalog.dart';
 import '../../../core/data/nutrition_catalog.dart';
 import '../../../core/data/ramadan_context.dart';
+import '../../../core/utils/glucose_formatter.dart';
 import '../../../data/drift/database.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/api_client.dart';
@@ -127,13 +128,13 @@ class _AddLogSheetState extends State<AddLogSheet> {
 
   double? _mgdlGlucose(String unit) {
     final value = _displayGlucose();
-    if (value == null) return null;
-    return unit == 'mmol/L' ? value * 18.0 : value;
+    if (value == null || !value.isFinite) return null;
+    return GlucoseFormatter.toMgDl(value, unit);
   }
 
   bool get _hasValidGlucose {
     final value = _displayGlucose();
-    return value != null && value > 0;
+    return value != null && value.isFinite && value > 0;
   }
 
   bool get _hasUnsavedData =>
