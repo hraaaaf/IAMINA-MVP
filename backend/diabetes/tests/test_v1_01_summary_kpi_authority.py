@@ -1,11 +1,11 @@
 """V1-01 regression: all patient-visible AI-summary KPI claims require CGM proof."""
 
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.test import SimpleTestCase
 
-from ai.api.v1.ai import SummaryRequest, get_summary
+from ai.api.v1.ai import SummaryRequest, get_doctor_brief, get_summary
 from diabetes.services.clinical.cgm_eligibility import CgmWindowSufficiency
 from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
 
@@ -86,3 +86,67 @@ class SummaryKpiAuthorityTests(SimpleTestCase):
         window_check.assert_called_once()
         self.assertEqual(window_check.call_args.kwargs["patient_id"], 42)
         verified_metric_engine.assert_not_called()
+
+
+    def test_doctor_brief_prompt_omits_unverified_cgm_claims(self):
+        raw = self._raw_manual_kpis()
+        window = CgmWindowSufficiency(
+            verified=False,
+            reason="no_verified_sensor_session",
+            window_days=14.0,
+            active_window_pct=0.0,
+            capture_pct=0.0,
+            coverage_pct=0.0,
+            expected_readings=0,
+            received_readings=0,
+            session_count=0,
+            gap_count=0,
+            evidence_id="source.ada.2026.section6",
+        )
+        request = SimpleNamespace(user=SimpleNamespace(id=43))
+        llm = SimpleNamespace(
+            complete=MagicMock(
+                return_value=SimpleNamespace(
+                    content=(
+                        '{"narrative":"Recorded readings summarized.",'
+                        '"key_insight":"The recorded glucose average is available.",'
+                        '"doctor_brief":"Descriptive recorded values only."}'
+                    )
+                )
+            )
+        )
+
+        with (
+            patch("ai.api.v1.ai._get_patient_language", return_value="fr"),
+            patch(
+                "diabetes.services.clinical.sql_analytics.compute_kpis",
+                return_value=raw,
+            ),
+            patch(
+                "diabetes.services.clinical.engine.run_clinical_analysis",
+                return_value=SimpleNamespace(patterns=[]),
+            ),
+            patch("ai.api.v1.ai.LogEntry.objects.filter") as logs,
+            patch("companion.memory.IAminaMemory.load"),
+            patch(
+                "companion.tone.select_tone",
+                return_value=SimpleNamespace(mode=SimpleNamespace(value="practical")),
+            ),
+            patch("companion.tone.get_tone_instruction", return_value=""),
+            patch("ai.api.v1.ai.get_gateway_llm", return_value=llm),
+            patch(
+                "diabetes.api.v1.kpis.assess_cgm_window",
+                return_value=window,
+            ),
+        ):
+            logs.return_value.order_by.return_value = []
+            get_doctor_brief.__wrapped__(request, days=14)
+
+        llm.complete.assert_called_once()
+        prompt = llm.complete.call_args.args[1]
+        self.assertIn("RECORDED_AVG_GLUCOSE: 130.0 mg/dL", prompt)
+        self.assertNotIn("TIR:", prompt)
+        self.assertNotIn("CV:", prompt)
+        self.assertNotIn("GMI", prompt)
+        self.assertNotIn("78.0%", prompt)
+        self.assertNotIn("24.6%", prompt)
