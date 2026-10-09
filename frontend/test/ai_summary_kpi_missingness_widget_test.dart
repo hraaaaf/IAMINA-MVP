@@ -1,4 +1,4 @@
-import 'package:amina/features/dashboard/widgets/tweaks_panel.dart';
+import 'package:amina/core/theme/app_theme.dart';
 import 'package:amina/features/journal/ai_summary_screen.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
