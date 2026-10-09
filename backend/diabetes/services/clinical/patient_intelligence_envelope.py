@@ -89,6 +89,8 @@ class GovernedSourceEvidence:
     populations: tuple[GovernedPopulationEvidence, ...]
     missing_data: tuple[str, ...]
     limitations: tuple[str, ...]
+    # V2-D sufficiency is descriptive product evidence, never CGM coverage.
+    clinical_metrics_authorized: Literal[False] = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +102,7 @@ class PatientIntelligenceEnvelope:
     limitations: tuple[str, ...]
     source_version: str = ENVELOPE_VERSION
     llm_egress_authorized: Literal[False] = False
+    clinical_metrics_authorized: Literal[False] = False
     longitudinal_sources: GovernedSourceEvidence | None = None
 
 
