@@ -124,7 +124,17 @@ void main() {
       stored = await db.select(db.patientProfiles).getSingle();
       expect(stored.targetRangeLow, closeTo(72.064, 1e-7));
       expect(stored.targetRangeHigh, closeTo(189.168, 1e-7));
-      expect(tester.takeException(), isNull);
+      // If a mobile RenderFlex overflows, surface its full diagnostics.
+      // A generic expect(takeException(), isNull) hides the owning widget.
+      final renderException = tester.takeException();
+      if (renderException != null) {
+        if (renderException is FlutterError) {
+          debugPrint('V101_PROFILE_RENDER_TRACE: ${renderException.toStringDeep()}');
+        } else {
+          debugPrint('V101_PROFILE_RENDER_TRACE: $renderException');
+        }
+        fail('Profile layout error at ${size.width.toInt()}px: $renderException');
+      }
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
     });
