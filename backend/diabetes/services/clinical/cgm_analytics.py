@@ -37,6 +37,7 @@ def compute_verified_cgm_metrics(
     rows = (
         CGMReadingRecord.objects.filter(
             patient_id=patient_id,
+            session__patient_id=patient_id,
             session__isnull=False,
             recorded_at__gte=window_start,
             recorded_at__lte=window_end,
@@ -93,6 +94,7 @@ def compute_verified_cgm_agp_profile(*, patient_id: int, window_start, window_en
     rows = (
         CGMReadingRecord.objects.filter(
             patient_id=patient_id,
+            session__patient_id=patient_id,
             session__isnull=False,
             recorded_at__gte=window_start,
             recorded_at__lte=window_end,

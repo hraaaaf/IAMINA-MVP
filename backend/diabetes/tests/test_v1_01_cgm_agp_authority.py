@@ -8,7 +8,7 @@ from django.test import TestCase
 
 from ai.api.v1.ai import SummaryRequest, SummaryResponse, get_summary
 from diabetes.models import CGMReadingRecord, CGMSensorSession, LogEntry
-from diabetes.services.clinical.cgm_analytics import compute_verified_cgm_agp_profile
+from diabetes.services.clinical.cgm_analytics import (compute_verified_cgm_agp_profile, compute_verified_cgm_metrics)
 from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
 
 
@@ -61,12 +61,27 @@ class VerifiedCgmAgpTests(TestCase):
             patient=self.other, source="linx", session=self.session,
             recorded_at=first + dt.timedelta(days=4), glucose_mg_dl=490, dedupe_key="other-user",
         )
+        foreign_session = CGMSensorSession.objects.create(
+            patient=self.other, source="linx", session_key="foreign-session",
+            started_at=self.start, ended_at=self.end,
+            expected_interval_minutes=60, timezone_name="UTC",
+        )
+        # Defense in depth: a mislinked row cannot join a foreign user's session.
+        CGMReadingRecord.objects.create(
+            patient=self.patient, source="linx", session=foreign_session,
+            recorded_at=first + dt.timedelta(days=5), glucose_mg_dl=499,
+            dedupe_key="cross-owned-session",
+        )
         # Deliberately extreme MANUAL row: not a sensor fact, even with valid CGM.
         LogEntry.objects.create(
             patient=self.patient, blood_sugar=390, source="manual",
             logged_at=first,
         )
         profile = self._profile()
+        metrics = compute_verified_cgm_metrics(
+            patient_id=self.patient.id, window_start=self.start, window_end=self.end
+        )
+        self.assertEqual(metrics.reading_count, 2)
         hour = first.hour
         self.assertEqual(profile, [{
             "hour": hour, "avg": 110.0,
