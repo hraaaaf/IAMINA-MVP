@@ -13,7 +13,7 @@ class PHIPseudonymizer:
     # Direct identifiers that can be recognized without patient calibration.
     _CIN_PATTERN = re.compile(r"(?<!\w)[A-Z]{1,2}[\s-]?\d{5,8}(?!\w)", re.IGNORECASE)
     _EMAIL_PATTERN = re.compile(
-        r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+(?![\w.-])",
+        r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+(?![\w-])",
         re.IGNORECASE,
     )
     _MOROCCO_PHONE_PATTERN = re.compile(

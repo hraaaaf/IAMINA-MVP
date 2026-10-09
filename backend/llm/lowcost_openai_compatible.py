@@ -155,6 +155,53 @@ class OpenAICompatibleLowCostProvider(BaseLLMProvider):
             usage=_usage_from_response(response),
         )
 
+    def complete_json_schema(
+        self,
+        system: str,
+        user: str,
+        *,
+        schema_name: str,
+        schema: dict,
+        max_output_tokens: int = _GPT_OSS_MAX_OUTPUT_TOKENS,
+    ) -> LLMResponse:
+        """Single-turn strict JSON completion for a caller-supplied bounded schema."""
+        if not self._is_groq_gpt_oss():
+            raise RuntimeError("strict JSON schema completion is currently certified only for Groq GPT-OSS")
+        if not schema_name.strip():
+            raise ValueError("schema_name is required")
+        if not isinstance(schema, dict):
+            raise TypeError("schema must be a dict")
+        if max_output_tokens <= 0 or max_output_tokens > _GPT_OSS_MAX_OUTPUT_TOKENS:
+            raise ValueError("max_output_tokens exceeds bounded GPT-OSS ceiling")
+
+        tuning = {
+            "reasoning_effort": "low",
+            "max_completion_tokens": max_output_tokens,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": schema_name,
+                    "strict": True,
+                    "schema": schema,
+                },
+            },
+            "extra_body": {"reasoning_format": "hidden"},
+        }
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=self._messages(system, user),
+                timeout=self.timeout_seconds,
+                **tuning,
+            )
+        except Exception as exc:
+            raise normalize_provider_exception(exc, self.provider_id) from exc
+        return LLMResponse(
+            content=response.choices[0].message.content or "",
+            provider=self.model,
+            usage=_usage_from_response(response),
+        )
+
     def complete_text(self, system: str, user: str) -> LLMResponse:
         """Single-turn plain-text completion for bounded non-JSON contracts."""
         tuning = self._request_tuning()

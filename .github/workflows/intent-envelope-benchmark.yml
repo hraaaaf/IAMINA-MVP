@@ -1,0 +1,36 @@
+name: Companion intent envelope benchmark
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Run synthetic intent classification benchmark
+        env:
+          DJANGO_SETTINGS_MODULE: amina.settings
+          SECRET_KEY: intent-benchmark-nonproduction
+          DEBUG: "True"
+          ALLOWED_HOSTS: localhost,127.0.0.1
+          DATABASE_URL: sqlite:///intent-benchmark.db
+        working-directory: backend
+        run: python evaluation/intent_envelope_benchmark.py --output ../artifacts/intent-envelope-benchmark.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: intent-envelope-benchmark
+          path: artifacts/intent-envelope-benchmark.json
+          retention-days: 14

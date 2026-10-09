@@ -167,3 +167,46 @@ def test_reasoning_and_structured_output_do_not_leak_to_other_pairs(provider_id,
     assert "reasoning_effort" not in kwargs
     assert "response_format" not in kwargs
     assert "extra_body" not in kwargs
+
+
+def test_groq_gpt_oss_supports_caller_supplied_strict_json_schema():
+    provider, client = _successful_provider("groq", "openai/gpt-oss-120b")
+    schema = {
+        "type": "object",
+        "properties": {"intent": {"type": "string"}},
+        "required": ["intent"],
+        "additionalProperties": False,
+    }
+
+    provider.complete_json_schema(
+        "system",
+        "synthetic user",
+        schema_name="intent_test",
+        schema=schema,
+        max_output_tokens=200,
+    )
+
+    kwargs = client.chat.completions.create.call_args.kwargs
+    assert kwargs["max_completion_tokens"] == 200
+    assert kwargs["reasoning_effort"] == "low"
+    assert kwargs["extra_body"] == {"reasoning_format": "hidden"}
+    assert kwargs["response_format"] == {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "intent_test",
+            "strict": True,
+            "schema": schema,
+        },
+    }
+
+
+def test_caller_json_schema_is_rejected_outside_groq_gpt_oss():
+    provider, _client = _successful_provider("groq", "llama-3.3-70b-versatile")
+
+    with pytest.raises(RuntimeError, match="Groq GPT-OSS"):
+        provider.complete_json_schema(
+            "system",
+            "synthetic user",
+            schema_name="intent_test",
+            schema={"type": "object"},
+        )

@@ -56,7 +56,7 @@ _TEXT_PAYLOAD_LIMITS: dict[str, dict[str, int]] = {
 _DLP_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "email",
-        re.compile(r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+(?![\w.-])", re.IGNORECASE),
+        re.compile(r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+(?![\w-])", re.IGNORECASE),
     ),
     (
         "phone",
