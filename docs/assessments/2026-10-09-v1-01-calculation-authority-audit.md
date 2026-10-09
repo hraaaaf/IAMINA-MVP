@@ -101,3 +101,15 @@ D. Two isolated adversarial perspectives (clinical/safety vs cross-layer/data), 
 - Independent reviewers: **not yet performed**.
 - Certification/clinical clearance: **none**.
 - Deployments: **none authorized or performed**.
+
+## Patient-visible Flutter null-vs-zero remediation + GitHub Actions visual goal
+
+**Goal:** patient with 60 manual readings over 14 days and *no verified CGM session* must never see fabricated 0% GMI/TIR/CV, adverse hero inference, or a 100% fabricated AGP distribution.
+
+**BEFORE (source-verified):** null TIR/GMI/CV in `ai_summary_screen_presentation.dart` were replaced with 0.0; `hasSufficientData` counted manual rows, so the AGP bar could show fabricated composition. Actual browser BEFORE proof pending on GitHub Actions.
+
+**Target:** use `Non disponible` and `Données insuffisantes` for unavailable normative fields, no numeric range reference with missing value, neutral hero until clinical CGM proof, no AGP percent legend/bar without all three approved fractions. Preserve descriptive count/mean. No new threshold.
+
+**Implementation:** conditional unavailability render and semantics, production widgets exercised through a *synthetic test-only fixture* `AISummaryKpiVisualFixture`. No patient data/LLM/backend in harness.
+
+**Validation:** GitHub Actions `ui-summary-kpi-visual-cert.yml` checks out exact PR SHA and original base presentation file in turn, builds real Chrome Flutter Web for both states, records three same-state 390×844 captures `cards/hero/agp`, checks distinct hashes, uploads six PNGs, and runs targeted Flutter widget tests. Other `ui-browser-screenshot.yml` / `ui-screenshot-audit.yml` checks are also triggered by touched frontend paths. **Screenshots and tests remain pending until actual CI result.** The older backend CI is superseded. Independent clinical+UI reviewers and scoring/perfection pass remain open. No merge/deploy.
