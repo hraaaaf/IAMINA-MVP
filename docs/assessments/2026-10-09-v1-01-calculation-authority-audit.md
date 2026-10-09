@@ -45,6 +45,16 @@ On the baseline tree, `backend/diabetes/services/clinical/` contains **55 direct
 
 Existing code protections already observed: API `project_public_kpis` checks verified CGM/evidence and recomputes from session-linked readings; offline GMI card displays no estimate; `target_applicability.py` requires explicit authority. Existing tests **present in the tree** include `test_p0_clinical_analytics_integrity.py`, `test_cgm_sufficiency_contract.py`, `test_governed_cgm_promotion.py`, and Flutter smart-insight/summary truthfulness contracts. Their presence is **not** proof they were executed on this branch.
 
+- **RISK-07 (confirmed internal calculation defect; remediation candidate): fractional 5-zone gap.** `LogEntry.blood_sugar` is a decimal with **2 places** (`backend/diabetes/models/entry.py`), but both PG/SQLite `sql_analytics.py` 5-zone queries used `BETWEEN 54 AND 69` and `BETWEEN 181 AND 250`. Thus 69.50 counted in aggregate TBR but not TBR1/TBR2; 180.50 counted in aggregate TAR but not TAR1/TAR2. Candidate changes both SQLs to `>=54 AND <70` and `>180 AND <=250`, keeping all existing clinical endpoints and 70/180/54/250 thresholds unchanged. Three independent synthetic fractional-boundary regression cases added to `test_battelino_kpis.py`. Await exact-head SQLite **and PostgreSQL** execution and downstream exposure review before claiming verified.
+- **RISK-08 (P1 investigation): normalization-factor divergence.** Canonical active `backend/diabetes/contracts/log_entry.py` uses `MMOL_L_TO_MG_DL=18.016`; legacy `backend/diabetes/services/clinical/unit_guard.py` and shared Flutter `GlucoseFormatter` use 18.018; live premium Home and Reports use 18.0 in patient display. Determine single authoritative factor, test boundary display equivalence and unit round-trips before UI changes, with mandatory visual BEFORE/AFTER evidence.
+
+### Evidence-only inventory refinements
+
+- Nutrition arithmetic is not an all-food calculator: `frontend/lib/core/data/nutrition_catalog.dart` returns null without documented `NutritionReferenceValue`, uses `carbsPer100g × grams / 100` for direct grams, and range bounds for sourced natural portion equivalents; `nutrition_portion_editor.dart` requires a confirmed selection. Validate source version, locale and roundtrip behavior; do not imply all foods have numeric nutrition.
+- `backend/diabetes/services/clinical/correlations.py` and `prediction.py` are retired compatibility prototypes explicitly returning `[]` and `None`. They are not evidence that patient-facing causal/predictive analytics are implemented.
+- Clinical `LogEntry.blood_sugar` storage permits two decimal places, so tests using only whole mg/dL inputs were insufficient to catch the 5-zone partition gaps.
+
+
 ## Test/oracle matrix for continuation
 
 1. **Provenance and eligibility:** manual-only, mixed, valid 14-day CGM, below-threshold coverage, gaps, duplicate timestamps, overlapping sessions, device mismatch, stale/unknown data; normative fields null unless correctly verified.
@@ -56,16 +66,16 @@ Existing code protections already observed: API `project_public_kpis` checks ver
 
 ## First remediation candidate and verification status
 
-- Cache-key fractional precision corrected in `backend/diabetes/api/v1/kpis.py` using round-trippable float representations, preserving user/window isolation and making distinct fractional ranges distinct keys. The old keys expire normally with the existing 300-second TTL.
+- Cache-key fractional precision candidate correction in `backend/diabetes/api/v1/kpis.py` using round-trippable float representations, preserving user/window isolation and making distinct fractional ranges distinct keys. The old keys expire normally with the existing 300-second TTL.
 - Added `backend/diabetes/tests/test_kpi_cache_target_precision.py` with numeric-key separation and mocked endpoint recomputation assertions. **Written tests are not yet execution evidence**; final exact-head CI required.
 - **Initial risk perspective A (clinical/authority):** a stale standard-window result might be returned for an altered range if cache keys collide; verify API gate and negative test, do not claim exposed patient incident.
-- **Initial risk perspective B (data/UX):** frontend numeric display factors differ and old/new dashboard have different reachability; tests must target the actual premium route rather than legacy-only coverage.
+- **Initial risk perspective B (data/UX):** frontend numeric display factors differ and old/new dashboard have different reachability; tests must target actual premium route. Decimal 5-zone SQL gaps warrant independent PG/SQLite testing as part of this same audit.
 - **Provisional material-step score (not certification):** execution 6.9/10; adversarial 6.6/10; retained 6.6/10 due to incomplete producer/consumer enumeration, absent branch runtime evidence and pending independent review; no binary gate declared green.
 
 ## Immediate next actions
 
 A. Fully reconstruct CAL-01/02/03 API/cache/projection flow, independently reproduce RISK-01 and add a regression test or close with contrary evidence.
-B. Static + test-index scan of all 55 clinical service modules and their import/call sites; extend every candidate to a complete input→calculation→consumer registry.
+B. Verify fractional 5-zone SQL partition invariants on SQLite and PostgreSQL; then static + test-index scan of all 55 clinical service modules and their import/call sites; extend every candidate to a complete input→calculation→consumer registry.
 C. Validate independent numerical oracles and negative paths on both supported DB engines; confirm Flutter/Drift offline semantics and outputs.
 D. Two isolated adversarial perspectives (clinical/safety vs cross-layer/data), fix supported defects, rerun tests on new HEAD; specialist reviewers and Release Certifier; do not merge/close without required proof.
 
