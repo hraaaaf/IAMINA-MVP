@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/amina_text_field.dart';
 import 'data/drift/database.dart';
 import 'features/dashboard/widgets/add_log_sheet.dart';
 import 'features/journal/edit_log_screen.dart';
@@ -33,6 +34,8 @@ class _ProofAppState extends State<_ProofApp> {
   GoRouter? _router;
   bool _switched = false;
   int _attempt = 0;
+  int _profileAttempts = 0;
+  bool _medicalExpanded = false;
 
   @override
   void initState() {
@@ -92,11 +95,86 @@ class _ProofAppState extends State<_ProofApp> {
     }
   }
 
+  /// Open the real medical ExpansionTile through its ListTile callback.
+  /// Flutter CanvasKit text is not a normal HTML DOM node: querying the page
+  /// with Playwright getByText() cannot reliably click this Flutter control.
   void _signalProfileReady() {
     if (!mounted) return;
+    if (++_profileAttempts > 90) {
+      debugPrint('V101_UNIT_SWITCH_ERROR profile controls never became ready');
+      return;
+    }
+    Element? section;
+    void findMedical(Element element) {
+      if (section != null) return;
+      if (element.widget.key == const ValueKey('profile-medical-section')) {
+        section = element;
+        return;
+      }
+      element.visitChildren(findMedical);
+    }
+    context.visitChildElements(findMedical);
+
+    void again() {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _signalProfileReady());
+      WidgetsBinding.instance.scheduleFrame();
+    }
+
+    if (section == null) {
+      again();
+      return;
+    }
+    if (!_medicalExpanded) {
+      ListTile? header;
+      void findHeader(Element element) {
+        if (header != null) return;
+        final widget = element.widget;
+        if (widget is ListTile && widget.onTap != null) {
+          header = widget;
+          return;
+        }
+        element.visitChildren(findHeader);
+      }
+      section!.visitChildren(findHeader);
+      if (header == null) {
+        again();
+        return;
+      }
+      _medicalExpanded = true;
+      header!.onTap!.call();
+      again();
+      return;
+    }
+
+    final targetFields = <AminaTextField>[];
+    String? targetTitle;
+    void inspect(Element element) {
+      final widget = element.widget;
+      if (widget is AminaTextField) targetFields.add(widget);
+      if (widget is Text &&
+          (widget.data ?? '').startsWith('Cible glycémique')) {
+        targetTitle = widget.data;
+      }
+      element.visitChildren(inspect);
+    }
+    section!.visitChildren(inspect);
+    if (targetFields.length < 2 ||
+        targetFields[0].controller.text.isEmpty ||
+        targetFields[1].controller.text.isEmpty ||
+        targetTitle == null) {
+      again();
+      return;
+    }
+    // Proof read from actual built ProfileScreen widgets, not a hard-coded
+    // expected string. The Chrome runner compares baseline and candidate.
+    debugPrint('V101_PROFILE_TARGETS '
+        'low=${targetFields[0].controller.text} '
+        'high=${targetFields[1].controller.text} '
+        'title=$targetTitle');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) debugPrint('V101_UNIT_SWITCH_READY');
     });
+    WidgetsBinding.instance.scheduleFrame();
   }
 
   void _changeUnit() {

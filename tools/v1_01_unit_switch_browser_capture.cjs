@@ -26,6 +26,7 @@ fs.mkdirSync(output, { recursive: true });
           colorScheme: 'light',
         });
         try {
+          let profileProof = null;
           let resolveReady;
           let rejectReady;
           const ready = new Promise((resolve, reject) => {
@@ -34,6 +35,7 @@ fs.mkdirSync(output, { recursive: true });
           });
           page.on('console', (event) => {
             const line = event.text();
+            if (line.includes('V101_PROFILE_TARGETS ')) profileProof = line;
             if (line.includes('V101_UNIT_SWITCH_READY')) resolveReady();
             if (line.includes('V101_UNIT_SWITCH_ERROR')) rejectReady(new Error(line));
           });
@@ -49,28 +51,20 @@ fs.mkdirSync(output, { recursive: true });
           ]);
           await page.waitForTimeout(1000);
           if (mode === 'profile') {
-            const placeholder = page.locator('flt-semantics-placeholder');
-            if (await placeholder.count()) {
-              await placeholder.first().focus();
-              await page.keyboard.press('Enter');
-              await page.waitForTimeout(750);
+            // The synthetic harness has opened the REAL medical accordion
+            // through Flutter's ListTile.onTap. CanvasKit is not HTML text.
+            // Verify values read back from the actual ProfileScreen fields.
+            const expected = phase === 'before'
+              ? 'low=70 high=180 title=Cible glycémique (mg/dL)'
+              : 'low=3.9 high=10.0 title=Cible glycémique (mmol/L)';
+            if (!profileProof || !profileProof.includes(expected)) {
+              throw new Error('Profile widget mismatch: expected '+expected+
+                ', observed '+String(profileProof).slice(0,700));
             }
-            // The synthetic saved profile is complete: the medical header
-            // has "Suivi médical" but no first-use prompt.
-            const medical = page.getByText('Suivi médical', { exact: true });
-            await medical.last().click({ timeout: 10000 });
-            await page.waitForTimeout(1000);
-            const semantics = await page.locator('flt-semantics').evaluateAll(els =>
-              els.map(el => el.getAttribute('aria-label') || el.textContent || '').join(' '));
-            const expectedTitle = phase === 'before'
-              ? 'Cible glycémique (mg/dL)'
-              : 'Cible glycémique (mmol/L)';
-            if (!semantics.includes(expectedTitle)) {
-              throw new Error('Profile targets not visible: expected '+expectedTitle+
-                ', observed '+semantics.slice(0,1800));
-            }
+            console.log('VERIFIED_PROFILE_WIDGET '+phase+' '+width+'x'+height+
+              ': '+profileProof);
             await page.mouse.wheel(0, 350);
-            await page.waitForTimeout(400);
+            await page.waitForTimeout(500);
           }
           if (!(await page.locator('flt-glass-pane').count())) {
             throw new Error('No real Flutter renderer: ' + mode);
