@@ -30,12 +30,12 @@
 - `status` is `ready` only with admitted governed observations; otherwise `insufficient_data` with explicit missing data.
 - Each admitted observation retains source version, time span, descriptive lifecycle/baseline, evidence registry provenance (rule, producer, maturity, authority, supporting citations), uncertainty (evidence density, missing data, limitations), and a descriptive-only ceiling.
 - Evidence density is repetition density, **not** clinical confidence. `llm_egress_authorized=False` is an explicit fail-closed marker but is **not** a substitute for V1-03 enforcement.
-- Optional governed longitudinal evidence requires an explicit typed request with window and V2-D contract. The assembler checks patient identity on each fact, requested populations, contract/window consistency and source-ref counts. It preserves source-specific medians only for sufficient populations; insufficient means unavailable. Raw facts and any cross-source aggregate are not added to the envelope.
-- No configured target becomes a clinician-confirmed target, no sensor coverage is inferred from manual records, no automatic safety/clinical action is activated.
+- Optional governed longitudinal evidence requires an explicit typed request with window and V2-D contract. The assembler checks patient identity on each fact, requested populations, contract/window consistency, source-ref counts and the existing V2-D fact/day sufficiency minima. It preserves source-specific medians only for sufficient populations; insufficient means unavailable. Raw facts and any cross-source aggregate are not added to the envelope.
+- Both the envelope and source snapshot permanently mark `clinical_metrics_authorized=False`. A V2-D `ready` state means **descriptive source sufficiency only**, never verified clinical CGM coverage, GMI/TIR or target achievement. No configured target becomes a clinician-confirmed target, no sensor coverage is inferred from manual records, no automatic safety/clinical action is activated.
 
 ## Planned subsequent V1-02 increments (not completed by first slice)
 
-1. **Implemented initial explicit source-separated composition, tests pending:** V2-C/V2-D opt-in with source refs, per-population sufficiency and cross-patient forgery negative tests. Add invalid CGM-session/ineligible imported identity and repeated fixture parity; do not claim exhaustive certification.
+1. **Implemented initial explicit source-separated composition, tests pending:** V2-C/V2-D opt-in with source refs, per-population sufficiency and cross-patient forgery negative tests. Tests added for invalid cross-patient CGM-session and import identity; still need broader temporal/session fixture parity and runtime consumer certification.
 2. Compose Clinical Twin changes and target assessments *only if* independently governed producer/evidence context already certifies the specific claim. Otherwise explicit unavailable.
 3. Build authenticated, privacy-reviewed internal API projection for Home and Reports; compare both to the same original envelope with fixed fixtures.
 4. Route IAmina through the same governed envelope **only after V1-03 outbound egress boundary is independently proven**. Do not pass raw patient context to an LLM.
@@ -53,7 +53,7 @@ Gap: 0.2
 Applicable caps: required runtime/independent evidence missing (<=7.9)
 RETAINED_SCORE: 6.8/10
 Status: OPEN
-Remaining weaknesses: explicit longitudinal opt-in composed but incomplete negative session/import fixtures; no integration with all three UI consumers; source-ref lineage limited by upstream Clinical Twin projection; no exact-HEAD CI or independent review evidenced at documentation update.
+Remaining weaknesses: broad sensor-session/time-window oracles and all three UI consumers not completed; source-ref lineage limited by upstream Clinical Twin projection; exact-HEAD CI and independent clinical/security/data review not yet demonstrated at documentation update.
 Next exact action: inspect exact-HEAD CI and source isolation/sufficiency tests, remediate defects, add invalid CGM/import fixtures, then independent clinical/data/security review; continue without V1-01 calculator changes.
 
 No Vercel deployment authorized or performed. Historical P5 pilot pre-real-patient gates remain unchanged.
