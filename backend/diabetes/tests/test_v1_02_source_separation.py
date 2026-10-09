@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 from django.contrib.auth import get_user_model
 
+from core.contracts.clinical_fact import ClinicalFactDecision, ClinicalFactSource
 from diabetes.contracts.governed_longitudinal import GovernedLongitudinalContract
 from diabetes.contracts.multi_source_fusion import (
     FusionPopulation,
@@ -320,10 +321,10 @@ def test_source_window_rejects_reversed_or_missing_dates():
 
 
 @pytest.mark.parametrize("field,value", [
-    ("source_type", "demo"),
+    ("source_type", ClinicalFactSource.DEMO),
     ("concept", "insulin"),
     ("unit", "mmol/L"),
-    ("decision", "review_required"),
+    ("decision", ClinicalFactDecision.REVIEW_REQUIRED),
 ])
 def test_forged_source_type_concept_unit_or_decision_fails_closed(field, value):
     patient = get_user_model().objects.create_user(
