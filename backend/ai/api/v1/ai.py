@@ -269,6 +269,13 @@ def get_doctor_brief(request, days: int = 14):
     from diabetes.services.clinical.sql_analytics import compute_kpis
 
     kpis = compute_kpis(patient_id=user.id, days=days)
+    public_kpis = project_patient_kpis(
+        patient_id=user.id,
+        days=days,
+        target_low=70.0,
+        target_high=180.0,
+        kpis=kpis,
+    )
 
     if not kpis.has_sufficient_data:
         return {
@@ -294,16 +301,28 @@ def get_doctor_brief(request, days: int = 14):
     report = run_clinical_analysis(entries, kpis)
 
     IAminaMemory.load(user)
-    tone_ctx = select_tone(tir_pct=kpis.tir_pct, cv_pct=kpis.cv_pct)
+    tone_ctx = select_tone(
+        tir_pct=public_kpis["tir_pct"], cv_pct=public_kpis["cv_pct"]
+    )
     # The structured JSON response remains endpoint-specific, but provider access
     # now goes through GatewayLLM so capability, PHI and egress controls are shared.
     llm = get_gateway_llm()
 
+    # Only governed public metrics may enter the clinician-brief prompt.
+    # Raw row fractions/GMI are never presented as CGM evidence.
     stats_lines = [
-        f"AVG_GLUCOSE: {kpis.avg_glucose} mg/dL" if kpis.avg_glucose else "",
-        f"TIR: {kpis.tir_pct}%" if kpis.tir_pct else "",
-        f"GMI_EST_HBA1C: {kpis.gmi}%" if kpis.gmi else "",
-        f"CV: {kpis.cv_pct}%" if kpis.cv_pct else "",
+        (
+            f"RECORDED_AVG_GLUCOSE: {public_kpis['avg_glucose']} mg/dL"
+            if public_kpis["avg_glucose"] is not None else ""
+        ),
+        (
+            f"VERIFIED_CGM_TIR: {public_kpis['tir_pct']}%"
+            if public_kpis["tir_pct"] is not None else ""
+        ),
+        (
+            f"VERIFIED_CGM_CV: {public_kpis['cv_pct']}%"
+            if public_kpis["cv_pct"] is not None else ""
+        ),
         f"LOGS: {kpis.log_count} entries over {kpis.days_with_data} days",
     ]
     stats = "\n".join(s for s in stats_lines if s)
