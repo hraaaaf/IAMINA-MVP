@@ -53,3 +53,9 @@
 - Candidate route-only final-output fail-closed check (Unicode numerals and non-string model fields withheld) + isolated FR/EN/AR/Darija adversarial handler tests, no new clinical numeric authority, no schema or DB change.
 - Important scope limit: spelled numbers/qualitative claims not covered; require typed evidence-bound deterministic brief, independent reviewers and actual exact-head CI. Clinical certification OPEN, no merge/Vercel.
 - Next exact: verify new candidate GitHub Actions; diagnose failures; challenge clinical output in two independent perspectives; close CAL-12 only after qualified review and further typed/provenance controls.
+
+## CI RED — registry throttling triage and repair candidate (2026-10-09)
+
+- PR #920 CAL-12 `9b8df3bd846c62f6969519808c8e52c88749c520` main CI #37989573966: backend Ruff+pytest GREEN, PostgreSQL job #114020065551 RED *before any test*, because 3 unauthenticated `postgres:16-alpine` Docker Hub pulls were rejected with `toomanyrequests` (runner infrastructure, not diagnosed product failure).
+- Narrow CI-only candidate: switch `.github/workflows/ci.yml` PostgreSQL service to verified-official repository `public.ecr.aws/docker/library/postgres:16-alpine`. Keep same major+Alpine tag, DB health, migration, tests, runtime unchanged.
+- New candidate exact-head CI must prove image pull, healthy PostgreSQL, migrations and test suite + remaining workflows; registry availability is not yet proven by reading docs. If red again inspect exact log. No merge, no deploy. CAL-12 clinical/provenance gates remain open.
