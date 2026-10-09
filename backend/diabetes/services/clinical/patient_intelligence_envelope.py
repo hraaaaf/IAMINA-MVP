@@ -17,6 +17,8 @@ from typing import Literal
 
 from django.utils import timezone
 
+from diabetes.contracts.governed_longitudinal import GovernedLongitudinalContract
+from diabetes.contracts.multi_source_fusion import FusionPopulation
 from diabetes.services.clinical.companion_evidence_uncertainty import (
     CompanionEvidenceProvenance,
     CompanionUncertainty,
@@ -26,8 +28,6 @@ from diabetes.services.clinical.companion_pattern_intelligence import (
     SOURCE_VERSION as PATTERN_SOURCE_VERSION,
     project_personal_pattern_intelligence,
 )
-from diabetes.contracts.governed_longitudinal import GovernedLongitudinalContract
-from diabetes.contracts.multi_source_fusion import FusionPopulation
 from diabetes.services.clinical.governed_longitudinal import (
     compute_governed_longitudinal_intelligence,
 )
