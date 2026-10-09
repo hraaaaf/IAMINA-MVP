@@ -96,6 +96,7 @@ def test_source_separation_reuses_governed_authority_and_patient_scope():
     assert result.status == "ready"
     assert result.observations == ()
     assert result.llm_egress_authorized is False
+    assert result.clinical_metrics_authorized is False
     sources = result.longitudinal_sources
     assert sources is not None
     assert sources.status == "ready"
