@@ -5828,6 +5828,14 @@
             "title": "Daily Averages",
             "type": "array"
           },
+          "agp_profile": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Agp Profile",
+            "type": "array"
+          },
           "generated_at": {
             "title": "Generated At",
             "type": "string"

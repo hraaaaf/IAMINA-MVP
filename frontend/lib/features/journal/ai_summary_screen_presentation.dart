@@ -974,27 +974,30 @@ class _AgpCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Row(
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       _TirLegend(
                         color: AminaTheme.teal500,
                         label: l10n.inTarget,
                         value: '${tir.toStringAsFixed(0)}%',
                       ),
-                      const SizedBox(width: 10),
                       _TirLegend(
                         color: AminaTheme.ambre500,
                         label: l10n.elevated,
                         value: '${tar.toStringAsFixed(0)}%',
                       ),
-                      const SizedBox(width: 10),
                       _TirLegend(
                         color: AminaTheme.dangerFg,
                         label: l10n.lowLabel,
                         value: '${tbr.toStringAsFixed(0)}%',
                       ),
-                      const Spacer(),
-                      Text(
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
                         l10n.adaReference,
                         style: TextStyle(
                           fontSize: 9,
@@ -1003,14 +1006,16 @@ class _AgpCard extends StatelessWidget {
                               : AminaTheme.textSecondary(context),
                         ),
                       ),
-                      if (tir >= 70) ...[
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.check_circle,
-                          size: 11,
-                          color: AminaTheme.teal500,
-                        ),
-                      ],
+                          if (tir >= 70) ...[
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.check_circle,
+                              size: 11,
+                              color: AminaTheme.teal500,
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
