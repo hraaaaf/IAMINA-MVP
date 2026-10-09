@@ -145,10 +145,11 @@ def test_insufficient_import_suppresses_its_median_without_inventing_readiness()
     assert sources is not None
     assert sources.status == "insufficient_data"
     by_source = {x.population: x for x in sources.populations}
-    assert by_source[FusionPopulation.JOURNAL].median_glucose_mg_dl == 120.0
+    assert by_source[FusionPopulation.JOURNAL].median_glucose_mg_dl is None
     assert by_source[FusionPopulation.IMPORT].fact_count == 1
     assert by_source[FusionPopulation.IMPORT].median_glucose_mg_dl is None
     assert sources.missing_data == ("insufficient_import_evidence",)
+    assert "insufficient_import_evidence" in result.missing_data
 
 
 @pytest.mark.parametrize("invalid", [object(), {}, "journal", 0])
@@ -315,4 +316,39 @@ def test_source_window_rejects_reversed_or_missing_dates():
         with pytest.raises(ValueError, match=match):
             build_patient_intelligence_envelope(
                 patient_id=patient.id, source_request=request
+            )
+
+
+@pytest.mark.parametrize("field,value", [
+    ("source_type", "demo"),
+    ("concept", "insulin"),
+    ("unit", "mmol/L"),
+    ("decision", "review_required"),
+])
+def test_forged_source_type_concept_unit_or_decision_fails_closed(field, value):
+    patient = get_user_model().objects.create_user(
+        username="v1-02-forged-" + field
+    )
+    _seed(patient, source="manual", when=START, glucose=120)
+    genuine = compute_governed_longitudinal_intelligence(
+        patient_id=patient.id,
+        window_start=START,
+        window_end=END,
+        contract=_contract(),
+    )
+    original = genuine.facts[0]
+    forged = replace(
+        genuine,
+        facts=(
+            replace(original, fact=replace(original.fact, **{field: value})),
+        ),
+    )
+    with patch(
+        "diabetes.services.clinical.patient_intelligence_envelope."
+        "compute_governed_longitudinal_intelligence",
+        return_value=forged,
+    ):
+        with pytest.raises(ValueError, match="approved glucose provenance"):
+            build_patient_intelligence_envelope(
+                patient_id=patient.id, source_request=_request()
             )
