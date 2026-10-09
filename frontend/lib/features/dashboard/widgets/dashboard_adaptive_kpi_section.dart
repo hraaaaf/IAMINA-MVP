@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/localization/dashboard_kpi_localized_copy.dart';
 import '../../../core/theme/amina_visual_language.dart';
+import '../../../core/utils/glucose_formatter.dart';
 import '../../../data/drift/dashboard_trend_queries.dart';
 import '../../../data/drift/database.dart';
 
@@ -21,9 +22,8 @@ class DashboardAdaptiveKpiSection extends StatelessWidget {
 
   DateTime _recordedAt(LogEntryData log) => log.loggedAt ?? log.createdAt;
 
-  String _displayValue(double mgDl) => unit == 'mmol/L'
-      ? (mgDl / 18.0).toStringAsFixed(1)
-      : mgDl.toStringAsFixed(0);
+  String _displayValue(double mgDl) =>
+      GlucoseFormatter.convert(mgDl, unit).toStringAsFixed(unit == 'mmol/L' ? 1 : 0);
 
   bool _looksCgmLabelled(String source) {
     final normalized = source.trim().toLowerCase();

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/localization/dashboard_trend_localized_copy.dart';
 import '../../../core/theme/amina_visual_language.dart';
+import '../../../core/utils/glucose_formatter.dart';
 import '../../../data/drift/database.dart';
 import 'dashboard_trend_painter.dart';
 
@@ -89,9 +90,8 @@ class DashboardTrendSummary extends StatelessWidget {
     required this.unit,
   });
 
-  String _display(double mgDl) => unit == 'mmol/L'
-      ? (mgDl / 18.0).toStringAsFixed(1)
-      : mgDl.toStringAsFixed(0);
+  String _display(double mgDl) =>
+      GlucoseFormatter.convert(mgDl, unit).toStringAsFixed(unit == 'mmol/L' ? 1 : 0);
 
   @override
   Widget build(BuildContext context) {
@@ -397,9 +397,8 @@ class DashboardTrendLegend extends StatelessWidget {
     required this.medicationCount,
   });
 
-  String _display(double mgDl) => unit == 'mmol/L'
-      ? (mgDl / 18.0).toStringAsFixed(1)
-      : mgDl.toStringAsFixed(0);
+  String _display(double mgDl) =>
+      GlucoseFormatter.convert(mgDl, unit).toStringAsFixed(unit == 'mmol/L' ? 1 : 0);
 
   @override
   Widget build(BuildContext context) {
@@ -460,9 +459,8 @@ class DashboardTrendSelectionCard extends StatelessWidget {
     required this.locale,
   });
 
-  String _value() => unit == 'mmol/L'
-      ? (log.bloodSugar / 18.0).toStringAsFixed(1)
-      : log.bloodSugar.toStringAsFixed(0);
+  String _value() => GlucoseFormatter.convert(log.bloodSugar, unit)
+      .toStringAsFixed(unit == 'mmol/L' ? 1 : 0);
 
   @override
   Widget build(BuildContext context) {

@@ -10,6 +10,10 @@ on:
       - 'frontend/lib/ui_browser_audit_main.dart'
       - 'frontend/lib/features/dashboard/widgets/add_log_sheet.dart'
       - 'frontend/lib/features/journal/edit_log_screen.dart'
+      - 'frontend/lib/features/dashboard/dashboard_screen.dart'
+      - 'frontend/lib/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart'
+      - 'frontend/lib/features/dashboard/widgets/dashboard_trend_view.dart'
+      - 'frontend/lib/features/journal/journal_screen.dart'
       - 'frontend/test/v1_01_glucose_display_conversion_test.dart'
       - 'tools/v1_01_glucose_units_capture.cjs'
       - '.github/workflows/ui-glucose-units-v1-01-cert.yml'
@@ -46,14 +50,14 @@ jobs:
         working-directory: frontend
         run: |
           flutter pub get
-          flutter analyze --no-fatal-infos lib/core/utils/glucose_formatter.dart lib/features/dashboard/dashboard_premium_screen.dart lib/features/journal/reports_screen.dart lib/ui_browser_audit_main.dart lib/features/dashboard/widgets/add_log_sheet.dart lib/features/journal/edit_log_screen.dart test/v1_01_glucose_display_conversion_test.dart
+          flutter analyze --no-fatal-infos lib/core/utils/glucose_formatter.dart lib/features/dashboard/dashboard_premium_screen.dart lib/features/journal/reports_screen.dart lib/ui_browser_audit_main.dart lib/features/dashboard/widgets/add_log_sheet.dart lib/features/journal/edit_log_screen.dart lib/features/dashboard/dashboard_screen.dart lib/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart lib/features/dashboard/widgets/dashboard_trend_view.dart lib/features/journal/journal_screen.dart test/v1_01_glucose_display_conversion_test.dart
           flutter test --no-pub test/v1_01_glucose_display_conversion_test.dart
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
       - name: Capture real BEFORE with exact old product code and same fixture
         run: |
           set -euo pipefail
-          for f in frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/journal/reports_screen.dart frontend/lib/features/journal/reports_screen_presentation.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart frontend/lib/features/journal/edit_log_screen.dart; do
+          for f in frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/journal/reports_screen.dart frontend/lib/features/journal/reports_screen_presentation.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart frontend/lib/features/journal/edit_log_screen.dart frontend/lib/features/dashboard/dashboard_screen.dart frontend/lib/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart frontend/lib/features/dashboard/widgets/dashboard_trend_view.dart frontend/lib/features/journal/journal_screen.dart; do
             git show "c0420cebcb8c2e8f79229978064ff365901f3edc:$f" > "$f"
           done
           cd frontend
@@ -67,7 +71,7 @@ jobs:
       - name: Capture real AFTER from exact PR HEAD
         run: |
           set -euo pipefail
-          git restore --source=HEAD -- frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/journal/reports_screen.dart frontend/lib/features/journal/reports_screen_presentation.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart frontend/lib/features/journal/edit_log_screen.dart
+          git restore --source=HEAD -- frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/dashboard/dashboard_premium_screen.dart frontend/lib/features/journal/reports_screen.dart frontend/lib/features/journal/reports_screen_presentation.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart frontend/lib/features/journal/edit_log_screen.dart frontend/lib/features/dashboard/dashboard_screen.dart frontend/lib/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart frontend/lib/features/dashboard/widgets/dashboard_trend_view.dart frontend/lib/features/journal/journal_screen.dart
           cd frontend
           flutter build web --release -t lib/ui_browser_audit_main.dart
           python3 -m http.server 7367 --directory build/web >/tmp/iamina-unit-after.log 2>&1 &
@@ -80,7 +84,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iamina-v1-01-glucose-190-before-after-390-768
+          name: iamina-v1-01-glucose-cross-surface-before-after-390-768
           path: v1-01-unit-proof/*
           if-no-files-found: warn
           retention-days: 21

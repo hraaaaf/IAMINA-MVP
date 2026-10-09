@@ -60,5 +60,15 @@ void main() {
     expect(editLog, contains('GlucoseFormatter.editedToMgDl'));
     expect(addLog, isNot(contains('value * 18.0')));
     expect(editLog, isNot(contains('value * 18.0')));
+    for (final path in <String>[
+      'lib/features/dashboard/dashboard_screen.dart',
+      'lib/features/dashboard/widgets/dashboard_adaptive_kpi_section.dart',
+      'lib/features/dashboard/widgets/dashboard_trend_view.dart',
+      'lib/features/journal/journal_screen.dart',
+    ]) {
+      final code = File(path).readAsStringSync();
+      expect(code, contains('GlucoseFormatter.convert'));
+      expect(code, isNot(contains('/ 18.0')));
+    }
   });
 }
