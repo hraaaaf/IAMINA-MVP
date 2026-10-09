@@ -165,6 +165,29 @@ class AISummaryKpiVisualFixture extends StatelessWidget {
       hasSufficientData: true,
       gmiBasis: 'couverture CGM non vérifiée',
     );
+    final cgmKpis = KpisResponse(
+      avgGlucose: 114.0,
+      cvPct: 18.0,
+      tirPct: 84.0,
+      tarPct: 11.0,
+      tbrPct: 5.0,
+      logCount: 336,
+      daysWithData: 14,
+      hasSufficientData: true,
+      gmiBasis: 'règle GMI non promue',
+    );
+    final cgmProfile = List<Map<String, dynamic>>.generate(24, (hour) {
+      final adjustment = (hour - 12).abs();
+      return {
+        'hour': hour,
+        'avg': 115 + adjustment,
+        'p5': 95 + adjustment,
+        'p25': 105 + adjustment,
+        'p50': 115 + adjustment,
+        'p75': 125 + adjustment,
+        'p95': 135 + adjustment,
+      };
+    });
     final summary = SummaryResponse(
       insights: const [],
       kpis: const {},
@@ -182,6 +205,12 @@ class AISummaryKpiVisualFixture extends StatelessWidget {
           kpis: kpis,
           onDiscoverTap: () {},
           onChatTap: () {},
+        ),
+      'agp-verified' => _AgpCard(
+          agpData: cgmProfile,
+          isHourly: true,
+          periodDays: 14,
+          kpis: cgmKpis,
         ),
       'agp' => _AgpCard(
           agpData: const [
@@ -202,7 +231,9 @@ class AISummaryKpiVisualFixture extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'CERTIFICATION VISUELLE — 60 MESURES MANUELLES, AUCUN CGM',
+                mode == 'agp-verified'
+                    ? 'CERTIFICATION VISUELLE — CGM ADMISSIBLE, GMI NON PROMU'
+                    : 'CERTIFICATION VISUELLE — 60 MESURES MANUELLES, AUCUN CGM',
                 style: TextStyle(
                   color: AminaTheme.textSecondary(context),
                   fontSize: 11,

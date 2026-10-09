@@ -7,14 +7,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  Future<void> render(WidgetTester tester, String mode) async {
-    await tester.binding.setSurfaceSize(const Size(390, 844));
+  Future<void> render(WidgetTester tester, String mode, {Size size = const Size(390, 844), Locale locale = const Locale('fr')}) async {
+    await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       ChangeNotifierProvider<TweaksNotifier>(
         create: (_) => TweaksNotifier(),
         child: MaterialApp(
-          locale: const Locale('fr'),
+          locale: locale,
           localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
@@ -42,6 +42,23 @@ void main() {
     await render(tester, 'hero');
     expect(find.text('Données insuffisantes'), findsOneWidget);
     expect(find.textContaining('à revoir'), findsNothing);
+  });
+
+  for (final size in <Size>[const Size(390, 844), const Size(768, 1024)]) {
+    testWidgets('verified CGM chart paints at ${size.width.toInt()}px', (tester) async {
+      await render(tester, 'agp-verified', size: size);
+      expect(find.text('25–75%'), findsOneWidget);
+      expect(find.text('5–95%'), findsOneWidget);
+      expect(find.text('Données insuffisantes.'), findsNothing);
+      expect(find.byType(CustomPaint), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+  }
+  testWidgets('verified CGM chart supports Arabic RTL', (tester) async {
+    await render(tester, 'agp-verified', locale: const Locale('ar'));
+    expect(find.text('25–75%'), findsOneWidget);
+    expect(find.text('5–95%'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('AGP does not render invented 100% breakdown from manual logs', (tester) async {
