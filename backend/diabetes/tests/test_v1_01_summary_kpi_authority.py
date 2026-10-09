@@ -6,6 +6,8 @@ from unittest.mock import MagicMock, patch
 from django.test import SimpleTestCase
 
 from ai.api.v1.ai import SummaryRequest, get_doctor_brief, get_summary
+from diabetes.api.v1.kpis import project_patient_kpis
+from diabetes.services.clinical.cgm_analytics import VerifiedCgmMetrics
 from diabetes.services.clinical.cgm_eligibility import CgmWindowSufficiency
 from diabetes.services.clinical.sql_analytics import AnalyticalKPIs
 
@@ -152,3 +154,89 @@ class SummaryKpiAuthorityTests(SimpleTestCase):
         self.assertNotIn("GMI", prompt)
         self.assertNotIn("78.0%", prompt)
         self.assertNotIn("24.6%", prompt)
+
+
+    def test_verified_sensor_metrics_replace_raw_row_metrics_but_not_candidate_gmi(self):
+        raw = self._raw_manual_kpis()
+        window = CgmWindowSufficiency(
+            verified=True,
+            reason="verified",
+            window_days=14.0,
+            active_window_pct=100.0,
+            capture_pct=90.0,
+            coverage_pct=90.0,
+            expected_readings=4032,
+            received_readings=3629,
+            session_count=1,
+            gap_count=0,
+            evidence_id="source.ada.2026.section6",
+        )
+        observed = VerifiedCgmMetrics(
+            cv_pct=17.3,
+            tir_pct=84.4,
+            tar_pct=12.2,
+            tbr_pct=3.4,
+            reading_count=3629,
+        )
+        with (
+            patch(
+                "diabetes.api.v1.kpis.assess_cgm_window",
+                return_value=window,
+            ),
+            patch(
+                "diabetes.api.v1.kpis.compute_verified_cgm_metrics",
+                return_value=observed,
+            ) as sensor_engine,
+        ):
+            output = project_patient_kpis(
+                patient_id=42, days=14,
+                target_low=70.0, target_high=180.0,
+                kpis=raw,
+            )
+
+        self.assertEqual(output["avg_glucose"], 130.0)
+        self.assertEqual(output["cv_pct"], 17.3)
+        self.assertEqual(output["tir_pct"], 84.4)
+        self.assertEqual(output["tar_pct"], 12.2)
+        self.assertEqual(output["tbr_pct"], 3.4)
+        self.assertIsNone(output["gmi"])
+        self.assertIsNone(output["gmi_confidence"])
+        self.assertEqual(output["cgm_metric_reading_count"], 3629)
+        sensor_engine.assert_called_once()
+        self.assertEqual(sensor_engine.call_args.kwargs["patient_id"], 42)
+        self.assertEqual(sensor_engine.call_args.kwargs["target_low"], 70.0)
+        self.assertEqual(sensor_engine.call_args.kwargs["target_high"], 180.0)
+
+    def test_verified_sensor_with_nonstandard_target_does_not_promote_metrics(self):
+        raw = self._raw_manual_kpis()
+        window = CgmWindowSufficiency(
+            verified=True,
+            reason="verified",
+            window_days=14.0,
+            active_window_pct=100.0,
+            capture_pct=90.0,
+            coverage_pct=90.0,
+            expected_readings=4032,
+            received_readings=3629,
+            session_count=1,
+            gap_count=0,
+            evidence_id="source.ada.2026.section6",
+        )
+        with (
+            patch(
+                "diabetes.api.v1.kpis.assess_cgm_window",
+                return_value=window,
+            ),
+            patch(
+                "diabetes.api.v1.kpis.compute_verified_cgm_metrics"
+            ) as sensor_engine,
+        ):
+            output = project_patient_kpis(
+                patient_id=42, days=14,
+                target_low=72.5, target_high=180.0,
+                kpis=raw,
+            )
+        sensor_engine.assert_not_called()
+        self.assertIsNone(output["tir_pct"])
+        self.assertIsNone(output["cv_pct"])
+        self.assertIsNone(output["gmi"])
