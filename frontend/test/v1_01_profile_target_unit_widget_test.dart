@@ -7,6 +7,7 @@ import 'package:amina/services/consent_service.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -130,6 +131,33 @@ void main() {
       if (renderException != null) {
         if (renderException is FlutterError) {
           debugPrint('V101_PROFILE_RENDER_TRACE: ${renderException.toStringDeep()}');
+          // Diagnostic from concrete RenderFlex layout, not assumptions.
+          for (final element in tester.allElements) {
+            final render = element.renderObject;
+            if (render is! RenderFlex ||
+                render.direction != Axis.horizontal ||
+                !render.hasSize) {
+              continue;
+            }
+            double maxRight = 0;
+            RenderBox? child = render.firstChild;
+            while (child != null) {
+              if (child.hasSize && child.parentData is FlexParentData) {
+                final offset = (child.parentData! as FlexParentData).offset;
+                final edge = offset.dx + child.size.width;
+                if (edge > maxRight) maxRight = edge;
+              }
+              child = render.childAfter(child);
+            }
+            if (maxRight > render.size.width + 1) {
+              debugPrint(
+                'V101_OVERFLOW_ROW width=${render.size.width.toStringAsFixed(1)} '
+                'edge=${maxRight.toStringAsFixed(1)} '
+                'widget=${element.widget.runtimeType} '
+                'creator=${render.debugCreator}',
+              );
+            }
+          }
         } else {
           debugPrint('V101_PROFILE_RENDER_TRACE: $renderException');
         }

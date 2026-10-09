@@ -210,6 +210,16 @@ Future<void> main() async {
       try {
         await db.seedDemoData();
         // Isolated opt-in V1-01 test fixture: no real patient/runtime path.
+        if (Uri.base.queryParameters['v101'] == 'profile-targets-699') {
+          // Browser-only clinical unit proof, never a production patient path.
+          await db.update(db.patientProfiles).write(
+            const PatientProfilesCompanion(
+              unitPreference: Value('mmol/L'),
+              targetRangeLow: Value(69.9),
+              targetRangeHigh: Value(180.0),
+            ),
+          );
+        }
         if (Uri.base.queryParameters['v101'] == 'unit-190') {
           final observedAt = DateTime.now().subtract(const Duration(seconds: 30));
           await db.update(db.patientProfiles).write(
