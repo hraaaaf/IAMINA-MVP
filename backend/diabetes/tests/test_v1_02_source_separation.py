@@ -231,8 +231,10 @@ def test_unverified_import_legacy_cgm_and_wrong_session_are_excluded():
     patient = get_user_model().objects.create_user(username="v1-02-untrusted")
     other = get_user_model().objects.create_user(username="v1-02-wrong-session")
     manual = _seed(patient, source="manual", when=START, glucose=120)
-    # Untrusted historical import lacks server-generated identity.
-    _seed(patient, source="import", when=START, glucose=130)
+    # Historical import inserted without server ingestion identity.
+    LogEntry.objects.create(
+        patient=patient, source="import", logged_at=START, blood_sugar=130,
+    )
     # Legacy LogEntry(cgm) is not an authorized normalized sensor reading.
     _seed(patient, source="cgm", when=START, glucose=160)
     session = CGMSensorSession.objects.create(
