@@ -4,10 +4,12 @@ from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from django.test import SimpleTestCase
+from django.contrib.auth.models import User
+from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
 from ai.api.v1.ai import DoctorBriefResponse, get_doctor_brief
+from diabetes.models.entry import LogEntry
 from core.contracts.truth import TruthKind
 from diabetes.services.clinical.consultation_brief_contract import (
     ConsultationBriefEnvelope,
@@ -21,7 +23,7 @@ from diabetes.services.clinical.doctor_brief_projection import (
 _NOW = timezone.now()
 
 
-def _envelope(*, patient_average=130.0, **overrides):
+def _envelope(*, patient_average=130.0, sample_count=5, **overrides):
     item = {
         "key": "recorded_glucose.average_mg_dl",
         "value": patient_average,
@@ -37,7 +39,18 @@ def _envelope(*, patient_average=130.0, **overrides):
         window_start=_NOW - timedelta(days=14),
         window_end=_NOW,
         comparison_basis=ConsultationComparisonBasis.CURRENT_SNAPSHOT,
-        items=(ConsultationEvidenceItem(**item),),
+        items=(
+            ConsultationEvidenceItem(**item),
+            ConsultationEvidenceItem(
+                key="recorded_glucose.sample_count",
+                value=sample_count,
+                unit="readings",
+                truth_kind=TruthKind.DETERMINISTIC_DERIVATION,
+                source="diabetes.log-entry.sql-average",
+                source_version="consultation-companion-assembler.v1",
+                evidence_id="rule.metric.recorded-glucose-stats.v1",
+            ),
+        ),
         missing_data=("no_eligible_clinical_twin_observations",),
         limitations=("clinician_remains_medical_decision_authority",),
     )
@@ -123,10 +136,32 @@ class DoctorBriefDeterministicTests(SimpleTestCase):
             self.assertEqual(result["doctor_brief"], "")
             self.assertFalse(result["has_sufficient_data"])
 
+    def test_fewer_than_five_real_samples_and_stale_window_fail_closed(self):
+        for count in (0, 1, 4):
+            with self.subTest(count=count):
+                result = project_deterministic_doctor_brief(
+                    _envelope(sample_count=count),
+                    language="en", days=14, generated_at=_NOW,
+                    sufficient_rows=True,
+                )
+                self.assertFalse(result["has_sufficient_data"])
+                self.assertEqual(result["doctor_brief"], "")
+                self.assertIn(
+                    "insufficient_non_demo_recorded_samples",
+                    result["missing_data"],
+                )
+        result = project_deterministic_doctor_brief(
+            _envelope(), language="en", days=15,
+            generated_at=_NOW, sufficient_rows=True,
+        )
+        self.assertFalse(result["has_sufficient_data"])
+        self.assertEqual(result["evidence"], [])
+
     def test_endpoint_uses_authenticated_subject_and_exact_window_without_ai(self):
         request = SimpleNamespace(user=SimpleNamespace(id=417))
         with (
             patch("ai.api.v1.ai._get_patient_language", return_value="fr"),
+            patch("ai.api.v1.ai.timezone.now", return_value=_NOW),
             patch(
                 "ai.api.v1.ai.compute_kpis",
                 return_value=SimpleNamespace(has_sufficient_data=True),
@@ -169,3 +204,47 @@ class DoctorBriefDeterministicTests(SimpleTestCase):
                 self.assertEqual(result["doctor_brief"], "")
                 self.assertNotIn("private payload", str(result))
                 gateway.assert_not_called()
+
+
+class DoctorBriefIsolationDBTests(TestCase):
+    def test_legacy_brief_ignores_other_patients_and_demo_rows_even_if_raw_sql_passes(self):
+        patient = User.objects.create_user(username="cal12-patient")
+        another = User.objects.create_user(username="cal12-other")
+        now = timezone.now()
+        for i in range(5):
+            LogEntry.objects.create(
+                patient=another, blood_sugar=350,
+                logged_at=now - timedelta(days=i), source="manual",
+            )
+            LogEntry.objects.create(
+                patient=patient, blood_sugar=350,
+                logged_at=now - timedelta(days=i), source="demo",
+            )
+        LogEntry.objects.create(
+            patient=patient, blood_sugar=120,
+            logged_at=now - timedelta(days=1), source="manual",
+        )
+        request = SimpleNamespace(user=patient)
+        with (
+            patch("ai.api.v1.ai._get_patient_language", return_value="en"),
+            patch("ai.api.v1.ai.compute_kpis", return_value=SimpleNamespace(has_sufficient_data=True)),
+            patch("ai.api.v1.ai.get_gateway_llm", side_effect=AssertionError("no external LLM")) as gateway,
+        ):
+            unavailable = get_doctor_brief.__wrapped__(request, days=14)
+        self.assertFalse(unavailable["has_sufficient_data"])
+        self.assertEqual(unavailable["evidence"], [])
+        for i in range(4):
+            LogEntry.objects.create(
+                patient=patient, blood_sugar=120,
+                logged_at=now - timedelta(days=i + 2), source="manual",
+            )
+        with (
+            patch("ai.api.v1.ai._get_patient_language", return_value="en"),
+            patch("ai.api.v1.ai.compute_kpis", return_value=SimpleNamespace(has_sufficient_data=True)),
+            patch("ai.api.v1.ai.get_gateway_llm", side_effect=AssertionError("no external LLM")),
+        ):
+            approved = get_doctor_brief.__wrapped__(request, days=14)
+        self.assertTrue(approved["has_sufficient_data"])
+        self.assertEqual(approved["evidence"][0]["value"], 120.0)
+        self.assertNotIn("350", str(approved))
+        gateway.assert_not_called()

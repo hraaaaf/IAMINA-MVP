@@ -97,6 +97,11 @@ class ConsultationCompanionAssemblerTests(TestCase):
         by_key = {item.key: item for item in brief.items}
         self.assertEqual(by_key["recorded_glucose.latest_mg_dl"].value, 180.0)
         self.assertEqual(by_key["recorded_glucose.average_mg_dl"].value, 150.0)
+        self.assertEqual(by_key["recorded_glucose.sample_count"].value, 2)
+        self.assertEqual(
+            by_key["recorded_glucose.sample_count"].source_version,
+            "consultation-companion-assembler.v1",
+        )
         twin = by_key["clinical_twin.context:stress.status"]
         self.assertEqual(twin.truth_kind, TruthKind.DETERMINISTIC_DERIVATION)
         self.assertEqual(twin.allowed_next_step, ConsultationNextStep.MONITOR)

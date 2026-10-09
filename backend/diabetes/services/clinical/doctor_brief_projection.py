@@ -9,7 +9,7 @@ The reviewer-facing numbers and sources are exactly those present in evidence.
 from __future__ import annotations
 
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from core.contracts.truth import TruthKind
 from diabetes.services.clinical.consultation_brief_assembler import (
@@ -103,6 +103,14 @@ def project_deterministic_doctor_brief(
     ):
         return result
 
+    # An upstream assembler result must match the requested patient-facing
+    # exact window. Do not render a stale or mismatched snapshot.
+    if (
+        envelope.window_end != generated_at
+        or envelope.window_start != generated_at - timedelta(days=days)
+    ):
+        return result
+
     result["window_start"] = envelope.window_start.isoformat()
     result["window_end"] = envelope.window_end.isoformat()
     result["missing_data"] = list(envelope.missing_data)
@@ -117,6 +125,30 @@ def project_deterministic_doctor_brief(
     if len(matching) != 1:
         result["missing_data"].append(_MISSING[0])
         return result
+    # Five is the pre-existing AnalyticalKPIs sufficiency floor. Raw SQL
+    # sufficiency may include demo rows, so it cannot authorize a brief unless
+    # the typed assembler independently counts five real patient samples in
+    # this exact window.
+    counts = [
+        item for item in envelope.items
+        if item.key == "recorded_glucose.sample_count"
+    ]
+    if len(counts) != 1:
+        result["missing_data"].append("insufficient_non_demo_recorded_samples")
+        return result
+    count = counts[0]
+    if (
+        count.truth_kind is not TruthKind.DETERMINISTIC_DERIVATION
+        or count.source != RECORDED_STATS_SOURCE
+        or count.source_version != SOURCE_ADAPTER_VERSION
+        or count.evidence_id != RECORDED_STATS_EVIDENCE_ID
+        or count.unit != "readings"
+        or type(count.value) is not int
+        or count.value < 5
+    ):
+        result["missing_data"].append("insufficient_non_demo_recorded_samples")
+        return result
+
     metric = matching[0]
     if (
         metric.truth_kind is not TruthKind.DETERMINISTIC_DERIVATION

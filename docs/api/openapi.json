@@ -1031,7 +1031,7 @@
             "in": "query",
             "name": "target_low",
             "schema": {
-              "default": 70,
+              "default": 70.0,
               "title": "Target Low",
               "type": "number"
             },
@@ -1041,7 +1041,7 @@
             "in": "query",
             "name": "target_high",
             "schema": {
-              "default": 180,
+              "default": 180.0,
               "title": "Target High",
               "type": "number"
             },
@@ -1919,7 +1919,7 @@
             }
           }
         },
-        "description": "GET /api/v1/ai/doctor-brief?days=14\n\nGenerates a compact medical summary (narrative + doctor_brief + key_insight)\nusing IAmina's narrator module. Intended for pre-consultation export.\n\nReturns all three fields from the SUMMARY_USER prompt:\n  - narrative: warm patient-facing summary\n  - key_insight: the single most important observation\n  - doctor_brief: one-sentence clinical digest for the physician",
+        "description": "Produce a deterministic, source-bound consultation-preparation snapshot.\n\nCAL-12 / V1-03: no gateway, LLM, prompt, memory or unconstrained patient\nnarration. Only approved facts from consultation-brief.v1 may become numbers.\nThe existing AI scope remains for route-contract compatibility; declaring\na scope does not itself authorize or cause external AI egress.",
         "tags": [
           "ai"
         ],
@@ -2817,8 +2817,8 @@
           "grams": {
             "anyOf": [
               {
-                "exclusiveMinimum": 0,
-                "maximum": 3000,
+                "exclusiveMinimum": 0.0,
+                "maximum": 3000.0,
                 "type": "number"
               },
               {
@@ -2903,8 +2903,8 @@
             "title": "Meal Episode Id"
           },
           "blood_sugar": {
-            "maximum": 600,
-            "minimum": 30,
+            "maximum": 600.0,
+            "minimum": 30.0,
             "title": "Blood Sugar",
             "type": "number"
           },
@@ -2934,7 +2934,7 @@
           "insulin_units": {
             "anyOf": [
               {
-                "minimum": 0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -3069,8 +3069,8 @@
           "blood_sugar": {
             "anyOf": [
               {
-                "maximum": 600,
-                "minimum": 30,
+                "maximum": 600.0,
+                "minimum": 30.0,
                 "type": "number"
               },
               {
@@ -3125,7 +3125,7 @@
           "insulin_units": {
             "anyOf": [
               {
-                "minimum": 0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -5868,12 +5868,12 @@
             "type": "integer"
           },
           "target_low": {
-            "default": 70,
+            "default": 70.0,
             "title": "Target Low",
             "type": "number"
           },
           "target_high": {
-            "default": 180,
+            "default": 180.0,
             "title": "Target High",
             "type": "number"
           }

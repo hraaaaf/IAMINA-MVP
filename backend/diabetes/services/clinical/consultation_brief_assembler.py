@@ -18,7 +18,7 @@ from datetime import datetime
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Avg
+from django.db.models import Avg, Count
 from django.db.models.functions import Coalesce
 
 from core.contracts.truth import TruthKind
@@ -138,23 +138,36 @@ def _latest_glucose_items(logs) -> tuple[ConsultationEvidenceItem, ...]:
     )
 
 
-def _average_glucose_item(logs) -> ConsultationEvidenceItem | None:
-    average = logs.aggregate(value=Avg("blood_sugar"))["value"]
-    if average is None:
-        return None
-    return ConsultationEvidenceItem(
-        key="recorded_glucose.average_mg_dl",
-        value=round(float(average), 1),
-        unit="mg/dL",
-        truth_kind=TruthKind.DETERMINISTIC_DERIVATION,
-        source=RECORDED_STATS_SOURCE,
-        source_version=SOURCE_ADAPTER_VERSION,
-        evidence_id=RECORDED_STATS_EVIDENCE_ID,
-        limitations=(
-            "descriptive_average_of_recorded_rows_only",
-            "not_cgm_time_weighted_and_not_target_assessment",
+def _recorded_glucose_stats_items(logs) -> tuple[ConsultationEvidenceItem, ...]:
+    """Count and average the same synchronized, non-demo patient SQL rows."""
+    stats = logs.aggregate(value=Avg("blood_sugar"), count=Count("blood_sugar"))
+    if stats["value"] is None or stats["count"] <= 0:
+        return ()
+    common = {
+        "truth_kind": TruthKind.DETERMINISTIC_DERIVATION,
+        "source": RECORDED_STATS_SOURCE,
+        "source_version": SOURCE_ADAPTER_VERSION,
+        "evidence_id": RECORDED_STATS_EVIDENCE_ID,
+        "allowed_next_step": ConsultationNextStep.MONITOR,
+    }
+    return (
+        ConsultationEvidenceItem(
+            key="recorded_glucose.average_mg_dl",
+            value=round(float(stats["value"]), 1),
+            unit="mg/dL",
+            limitations=(
+                "descriptive_average_of_recorded_rows_only",
+                "not_cgm_time_weighted_and_not_target_assessment",
+            ),
+            **common,
         ),
-        allowed_next_step=ConsultationNextStep.MONITOR,
+        ConsultationEvidenceItem(
+            key="recorded_glucose.sample_count",
+            value=int(stats["count"]),
+            unit="readings",
+            limitations=("synchronized_non_demo_samples_in_window_only",),
+            **common,
+        ),
     )
 
 
@@ -332,7 +345,7 @@ def assemble_consultation_brief(
         window_end=window_end,
     )
     latest_items = _latest_glucose_items(logs)
-    average = _average_glucose_item(logs)
+    recorded_stats = _recorded_glucose_stats_items(logs)
 
     pattern_result = project_personal_pattern_intelligence(patient_id=patient_id)
     patterns_by_key = {
@@ -353,8 +366,7 @@ def assemble_consultation_brief(
     )
 
     items = latest_items
-    if average is not None:
-        items += (average,)
+    items += recorded_stats
     items += clinical_twin + change_items
 
     missing_data = list(change_missing)
