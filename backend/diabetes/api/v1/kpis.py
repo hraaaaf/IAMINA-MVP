@@ -58,6 +58,48 @@ def invalidate_kpi_cache(user_id: int) -> None:
         logger.debug("invalidate_kpi_cache: cache.delete_pattern unavailable (Redis down?)")
 
 
+def project_patient_kpis(
+    *,
+    patient_id: int,
+    days: int,
+    target_low: float,
+    target_high: float,
+    kpis: AnalyticalKPIs,
+) -> dict[str, object]:
+    """Single authorized projection for /kpis and patient-visible AI summary.
+
+    LogEntry aggregates alone cannot establish CGM duration/coverage.
+    Recompute eligible metrics from verified sensor-session records.
+    """
+
+    window_end = timezone.now()
+    window_start = window_end - timedelta(days=days)
+    cgm_window = assess_cgm_window(
+        patient_id=patient_id,
+        window_start=window_start,
+        window_end=window_end,
+    )
+    standard_range = (
+        float(target_low) == _STANDARD_TARGET_LOW
+        and float(target_high) == _STANDARD_TARGET_HIGH
+    )
+    cgm_metrics = None
+    if cgm_window.verified and standard_range:
+        cgm_metrics = compute_verified_cgm_metrics(
+            patient_id=patient_id,
+            window_start=window_start,
+            window_end=window_end,
+            target_low=_STANDARD_TARGET_LOW,
+            target_high=_STANDARD_TARGET_HIGH,
+        )
+
+    return project_public_kpis(
+        kpis,
+        cgm_window=cgm_window,
+        cgm_metrics=cgm_metrics,
+    )
+
+
 @router.get("/kpis/", response=KPIsOut)
 def get_kpis(
     request,
@@ -86,31 +128,12 @@ def get_kpis(
         target_high=target_high,
     )
 
-    window_end = timezone.now()
-    window_start = window_end - timedelta(days=days)
-    cgm_window = assess_cgm_window(
+    projection = project_patient_kpis(
         patient_id=request.user.id,
-        window_start=window_start,
-        window_end=window_end,
-    )
-    standard_range = (
-        float(target_low) == _STANDARD_TARGET_LOW
-        and float(target_high) == _STANDARD_TARGET_HIGH
-    )
-    cgm_metrics = None
-    if cgm_window.verified and standard_range:
-        cgm_metrics = compute_verified_cgm_metrics(
-            patient_id=request.user.id,
-            window_start=window_start,
-            window_end=window_end,
-            target_low=_STANDARD_TARGET_LOW,
-            target_high=_STANDARD_TARGET_HIGH,
-        )
-
-    projection = project_public_kpis(
-        kpis,
-        cgm_window=cgm_window,
-        cgm_metrics=cgm_metrics,
+        days=days,
+        target_low=target_low,
+        target_high=target_high,
+        kpis=kpis,
     )
     result = {
         "avg_glucose": projection["avg_glucose"],
