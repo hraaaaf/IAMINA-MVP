@@ -2,6 +2,15 @@
 
 **STATUS: TECHNICAL CANDIDATE / NOT CLINICALLY CERTIFIED / UNMERGED.**
 
+## 2026-10-10 — Second slice: Doctor Brief local and log privacy (code HEAD `c2effc0`)
+
+- `backend/ai/api/v1/ai.py` replaces the legacy Doctor Brief LLM prompt and call with `build_local_doctor_brief`. This is an authenticated, local, non-prescriptive count/mean summary; output schema unchanged. No raw CGM TIR, CV, TAR, TBR or GMI promoted. Four language templates are **translation candidates**, not native-certified clinical copy.
+- `backend/diabetes/tests/test_v1_03_local_doctor_brief.py`: synthetic two-patient separation, no-consent local display, 401 anonymous, insufficient data, no gateway construction/inference, and normative CGM exclusion. `backend/companion/narrator.py` removes successful Doctor Brief content + patient ID log; `backend/companion/test_narrator_privacy.py` exercises the log with synthetic text.
+- **Code-head evidence:** [CI #38036057381](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38036057381) SUCCESS (SQLite **2785 passed, 5 skipped, 3 xfailed**; PG **2789 passed, 1 skipped, 3 xfailed**; 125 subtests). Ruff, gateway anti-bypass, egress authorization anti-bypass, OpenAPI guard passed. [Migration #38036057344](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38036057344) SUCCESS; [Companion E2E #38036057367](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38036057367) SUCCESS. Flutter job SKIPPED and is not proof of frontend.
+- **Contradictory check and remediation:** [CI #38035782616](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38035782616) FAILED because static tests required removed `get_gateway_llm` import and a new test had an unsupported direct-`get_llm` mock string. Fixed stale tests; scanner left intact. No external patient call was made to validate these changes.
+- **Limit:** `companion/conversation.py` and `companion/narrator.py.summarize` retain patient-derived text gateway paths; processor network status PENDING means no actual leak proven. Verify final provider-bound payload and enforce generic/opaque-only or zero external model. No clinical/native-language/privacy reviewer signoff, before/after UX, merge, or release.
+- This note is a **new docs-only HEAD** relative to `c2effc0`; no exact-head CI success can be claimed for it until freshly checked.
+
 ## PRE → Goal → Observable success → Proof
 
 - Repository `hraaaaf/IAMINA-MVP`; base `main@13b7cce12c86daf60119fb703f22e8c6c192cf8d`.

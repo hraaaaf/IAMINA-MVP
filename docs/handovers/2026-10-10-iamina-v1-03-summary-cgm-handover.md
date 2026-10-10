@@ -2,6 +2,14 @@
 
 **Goal:** local deterministic patient summary and no unverified normative CGM promotion in summary or companion. **Status:** PR #922 DRAFT/UNMERGED, technical success on code parent HEAD only, release NOT AUTHORIZED.
 
+## 2026-10-10 — Verified new code slice / handover update
+
+- Code HEAD `c2effc096f86eb08e7c73118e17042fec3106ba2`, [CI #38036057381](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38036057381) SUCCESS (SQLite 2785 passed, PG 2789 passed; 125 subtests; dedicated Flutter skipped), [migration #38036057344](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38036057344) SUCCESS, [Companion #38036057367](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38036057367) SUCCESS. PR remains DRAFT/unmerged.
+- Doctor Brief legacy generated-patient-data LLM route replaced by local-only descriptive copy; synthetic auth/no-consent/patient-isolation/zero-gateway/locale and CGM negative tests. Success log no longer contains patient ID + doctor brief content.
+- Earlier [CI #38035782616](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38035782616) was genuinely red; obsolete tests/mocks corrected, scanner unchanged.
+- Remaining: chat/stream and narrator patient-derived prompts and final provider egress allowlist, global AI opt-out, `ai_provider=fallback` UI truth and screenshots, qualified privacy/clinical/native language reviewers. This update itself creates a new SHA whose CI must be proved.
+- Next exact: verify docs HEAD CI; then audit synthetic provider-bound payloads in chat/stream/narrator without network, and close only bounded proof. No merge, patient release or Vercel authorization.
+
 ## References
 - Repository: `hraaaaf/IAMINA-MVP`; base `main@13b7cce12c86daf60119fb703f22e8c6c192cf8d`.
 - Branch: `security/v1-03-summary-local-only-20261010`.
