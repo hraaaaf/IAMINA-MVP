@@ -279,9 +279,10 @@ class PatientSsePostPrivacyTests(TestCase):
             )
             return original_get_key(auth, request)
 
+        from ninja.operation import Operation
+
         from core.input_safety import ALLOW, evaluate_input_safety
         from core.middleware.triage_vital import TriageVitalMiddleware
-        from ninja.operation import Operation
         from diabetes.api.v1.security import HybridBearerAuth
 
         observed_callbacks = []
