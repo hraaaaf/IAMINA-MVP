@@ -5,6 +5,7 @@ import 'package:chopper/chopper.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'auth_service.dart';
+import 'consent_service.dart';
 import 'document_ingest_minimizer.dart';
 import 'sync_api_contract.dart';
 import '../data/models/ai_models.dart';
@@ -58,6 +59,8 @@ class ProviderApiException implements Exception {
         return 'Le service IA est temporairement indisponible. Réessaie dans quelques instants.';
       case 'provider_quota_exceeded':
         return 'Le service IA est temporairement saturé. Réessaie plus tard.';
+      case 'ai_declined_locally':
+        return 'Vous avez choisi de continuer sans IA sur cet appareil.';
       case 'provider_malformed_response':
       case 'provider_internal_failure':
         return 'La réponse IA n’a pas pu être traitée en toute sécurité.';
@@ -162,11 +165,21 @@ bool isDocumentUploadSizeAllowed(int byteLength) =>
 class ApiClient {
   final String baseUrl;
   final AuthService _authService;
+  final ConsentService? _consentService;
+
+  /// Local refusal closes patient AI HTTP paths before any network request.
+  /// The server's independent consent scope remains authoritative.
+  bool get _aiDeclinedLocally => _consentService?.hasDeclinedLocally ?? false;
+
   final PendingDocumentDeduplicator<PulperPreview> _documentDeduplicator =
       PendingDocumentDeduplicator<PulperPreview>();
 
-  ApiClient({this.baseUrl = kBaseUrl, AuthService? authService})
-    : _authService = authService ?? AuthService();
+  ApiClient({
+    this.baseUrl = kBaseUrl,
+    AuthService? authService,
+    ConsentService? consentService,
+  }) : _authService = authService ?? AuthService(),
+       _consentService = consentService;
 
   late final ChopperClient _client = ChopperClient(
     baseUrl: Uri.parse(baseUrl),
@@ -270,6 +283,14 @@ class ApiClient {
 
   /// Streaming SSE chat — yields token strings as they arrive.
   Stream<String> chatStream(String message) async* {
+    if (_aiDeclinedLocally) {
+      throw const ProviderApiException(
+        code: 'ai_declined_locally',
+        message: 'External AI is disabled locally.',
+        retryable: false,
+        statusCode: 403,
+      );
+    }
     final token = await _authService.getIdToken();
     final uri = Uri.parse(
       '$baseUrl/api/v1/ai/chat/stream',
@@ -385,6 +406,7 @@ class ApiClient {
     String mimeType, {
     int contextDays = 14,
   }) async {
+    if (_aiDeclinedLocally) return null;
     try {
       final token = await _authService.getIdToken();
       final uri = Uri.parse(
@@ -425,6 +447,7 @@ class ApiClient {
     String base64Image,
     String mimeType,
   ) async {
+    if (_aiDeclinedLocally) return null;
     try {
       final token = await _authService.getIdToken();
       final uri = Uri.parse('$baseUrl/api/v1/ai/analyze-glucometer-image');
@@ -453,6 +476,7 @@ class ApiClient {
   /// Transcribe audio to text (STT only — no IAmina pipeline).
   /// Used for vocal input in the add-log page meal note field.
   Future<String?> transcribeAudio(Uint8List audioBytes, String mimeType) async {
+    if (_aiDeclinedLocally) return null;
     try {
       final token = await _authService.getIdToken();
       final uri = Uri.parse('$baseUrl/api/v1/ai/transcribe');
@@ -567,6 +591,7 @@ class ApiClient {
     Uint8List imageBytes, {
     String mimeType = 'image/jpeg',
   }) async {
+    if (_aiDeclinedLocally) return null;
     try {
       final b64 = base64Encode(imageBytes);
       final response = await _client.post(

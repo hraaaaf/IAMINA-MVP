@@ -14,6 +14,7 @@ import '../data/models/proactive_preview_models.dart';
 import 'companion_legacy_governance_fallback.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
+import 'consent_service.dart';
 
 const String companionApiBaseUrl = kBaseUrl;
 
@@ -67,6 +68,7 @@ class _DemoHistoryTurn {
 
 class CompanionService {
   final AuthService _authService;
+  final ConsentService? _consentService;
   final http.Client _http;
   final String baseUrl;
   final String demoLanguage;
@@ -79,12 +81,14 @@ class CompanionService {
 
   CompanionService({
     AuthService? authService,
+    ConsentService? consentService,
     http.Client? httpClient,
     this.baseUrl = companionApiBaseUrl,
     this.demoLanguage = 'fr',
     String? demoSessionId,
     CompanionFailureLogger? failureLogger,
   }) : _authService = authService ?? AuthService(),
+       _consentService = consentService,
        _http = httpClient ?? http.Client(),
        demoSessionId = demoSessionId ?? _newDemoSessionId(),
        _failureLogger = failureLogger ?? _defaultFailureLogger;
@@ -179,12 +183,24 @@ class CompanionService {
     }
   }
 
+  void _denyLocallyDeclinedAI() {
+    if (_consentService?.hasDeclinedLocally ?? false) {
+      throw const ProviderApiException(
+        code: 'ai_declined_locally',
+        message: 'External AI is disabled locally.',
+        retryable: false,
+        statusCode: 403,
+      );
+    }
+  }
+
   Future<CompanionChatReply?> sendChatMessage(
     String message, {
     int contextDays = 14,
   }) async {
     final trimmed = message.trim();
     if (trimmed.isEmpty) return null;
+    _denyLocallyDeclinedAI();
 
     if (_authService.isAuditSession) {
       return _sendDemoChat(trimmed);
@@ -283,6 +299,7 @@ class CompanionService {
     int contextDays = 14,
   }) async {
     if (audioBytes.isEmpty) return null;
+    _denyLocallyDeclinedAI();
 
     if (_authService.isAuditSession) {
       throw const ProviderApiException(
