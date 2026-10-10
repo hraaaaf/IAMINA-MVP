@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from core.ai_processor_policy import AIProcessorPolicyDenied
 
+
 def assert_v1_external_media_egress_denied(modality: str) -> None:
     """Reject patient-origin media at the irreversible external call boundary."""
     # This module is the non-text network boundary: all modalities, including
