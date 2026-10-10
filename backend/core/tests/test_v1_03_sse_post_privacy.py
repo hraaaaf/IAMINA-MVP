@@ -281,11 +281,39 @@ class PatientSsePostPrivacyTests(TestCase):
 
         from core.input_safety import ALLOW, evaluate_input_safety
         from core.middleware.triage_vital import TriageVitalMiddleware
+        from ninja.operation import Operation
+        from diabetes.api.v1.security import HybridBearerAuth
+
+        observed_callbacks = []
+        original_run_checks = Operation._run_checks
+        original_bearer_call = HybridBearerAuth.__call__
+        original_session_call = SessionAuth.__call__
+
+        def observe_run_checks(operation, request):
+            observed_callbacks.append({
+                "path": operation.path,
+                "auth_classes": [
+                    type(callback).__name__ for callback in operation.auth_callbacks
+                ],
+                "authorization_present": bool(request.META.get("HTTP_AUTHORIZATION")),
+            })
+            return original_run_checks(operation, request)
+
+        def observe_bearer_call(auth, request):
+            observed_callbacks.append({"bearer_invoked": True})
+            return original_bearer_call(auth, request)
+
+        def observe_session_call(auth, request):
+            observed_callbacks.append({"session_invoked": True})
+            return original_session_call(auth, request)
 
         message = "Bonjour."
         self.assertEqual(evaluate_input_safety(message).action, ALLOW)
         with (
             patch.object(SessionAuth, "_get_key", observe_get_key),
+            patch.object(SessionAuth, "__call__", observe_session_call),
+            patch.object(HybridBearerAuth, "__call__", observe_bearer_call),
+            patch.object(Operation, "_run_checks", observe_run_checks),
             patch.object(TriageVitalMiddleware, "_log_emergency") as triage_log,
         ):
             without_token = self._post(browser, message)
@@ -295,6 +323,7 @@ class PatientSsePostPrivacyTests(TestCase):
                 403,
                 msg=(
                     f"session_auth={observed_auth}; "
+                    f"callbacks={observed_callbacks}; "
                     f"triage_intercepted={triage_log.called}; "
                     f"iterator_type={type(getattr(without_token, '_iterator', None)).__name__}; "
                     f"streaming={without_token.streaming}; "
