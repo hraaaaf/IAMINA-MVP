@@ -39,9 +39,9 @@ class V103LocalDoctorBriefTests(TestCase):
                 side_effect=AssertionError("Patient data sent to model gateway"),
             ) as gateway,
             patch(
-                "llm.factory.get_llm",
+                "core.llm_gateway.GatewayLLM.__init__",
                 side_effect=AssertionError("Doctor Brief initialized a model"),
-            ) as factory,
+            ) as gateway_initializer,
         ):
             response = self.client.get("/api/v1/ai/doctor-brief?days=14")
 
@@ -55,7 +55,7 @@ class V103LocalDoctorBriefTests(TestCase):
         self.assertNotIn("CGM", data["key_insight"])
         self.assertNotIn("insuline", str(data).lower())
         gateway.assert_not_called()
-        factory.assert_not_called()
+        gateway_initializer.assert_not_called()
 
     def test_insufficient_data_remains_local_without_fabricated_clinical_claims(self):
         self.client.force_login(self.patient)
