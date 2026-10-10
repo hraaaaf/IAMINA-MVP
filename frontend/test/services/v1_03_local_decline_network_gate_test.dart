@@ -5,7 +5,6 @@ import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/companion_service.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 class _NoBearerAuth extends AuthService {
