@@ -16,6 +16,7 @@ from core.ai_egress import (
     revoke_media_consent,
 )
 from core.ai_processor_policy import AIProcessorPolicyDenied
+from core.external_media_v1 import assert_v1_external_media_egress_denied
 from core.tests.consent_helpers import grant_current_ai_consent
 from llm.runtime import execute_external_provider_call
 
@@ -104,3 +105,11 @@ def test_media_revocation_fails_before_processor_or_network(
             "gemini", IMAGE, "generate", lambda: pytest.fail("network was called")
         )
     assert processor_calls == []
+
+
+@pytest.mark.parametrize(
+    "modality", [AUDIO, IMAGE, DOCUMENT, "future_external_media_kind"]
+)
+def test_v1_external_media_gate_does_not_default_allow_new_modalities(modality):
+    with pytest.raises(AIProcessorPolicyDenied, match="privacy-preserving media"):
+        assert_v1_external_media_egress_denied(modality)
