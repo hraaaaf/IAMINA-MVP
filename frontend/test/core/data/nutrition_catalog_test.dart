@@ -72,6 +72,54 @@ void main() {
       expect(estimateCarbsForGrams('apple', 100), isNotNull);
     });
 
+    test('direct carbohydrate calculations honor the persisted gram limit', () {
+      expect(estimateCarbsForGrams('apple', 3000), isNotNull);
+      for (final grams in <double>[3000.01, 3001, 1000000, 1e308]) {
+        expect(estimateCarbsForGrams('apple', grams), isNull);
+        expect(estimateCarbsForGrams('banana', grams), isNull);
+      }
+    });
+
+    test('unsupported exact and ranged portions fail closed', () {
+      const label = LocalizedPortionLabel(fr: 'Test', en: 'Test', ar: 'تجربة');
+      for (final grams in <double>[-1, 0, 3001, double.infinity, double.nan]) {
+        final portion = NutritionPortion(
+          id: 'invalid_exact',
+          label: label,
+          grams: grams,
+        );
+        expect(estimateCarbsForPortion('banana', portion), isNull);
+      }
+      for (final invalidRange in <List<double>>[
+        <double>[-1, 110],
+        <double>[0, 110],
+        <double>[110, 3001],
+        <double>[115, 110],
+        <double>[110, double.infinity],
+        <double>[double.nan, 115],
+      ]) {
+        final portion = NutritionPortion(
+          id: 'invalid_range',
+          label: label,
+          gramsLow: invalidRange[0],
+          gramsHigh: invalidRange[1],
+        );
+        expect(estimateCarbsForPortion('banana', portion), isNull);
+      }
+      expect(
+        estimateCarbsForPortion(
+          'banana',
+          const NutritionPortion(
+            id: 'valid_range',
+            label: label,
+            gramsLow: 110,
+            gramsHigh: 115,
+          ),
+        ),
+        isNotNull,
+      );
+    });
+
     test('all numeric estimates carry resolvable catalogue provenance', () {
       final supported = mealNutritionProfiles
           .where((profile) => profile.carbohydrate != null)
