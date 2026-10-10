@@ -762,7 +762,8 @@ class DiabetesEngine(BaseEngine):
         from diabetes.services.clinical.semantic_compressor import build_chat_context
         from diabetes.services.clinical.sql_analytics import compute_kpis, compute_trend
 
-        kpis = compute_kpis(patient_id=patient_id, days=days)
+        # Never publish row-fraction CGM metrics as normative companion state.
+        kpis = guard_normative_kpis(compute_kpis(patient_id=patient_id, days=days))
         if not kpis.has_sufficient_data:
             return DomainContext.empty(language=language)
 
@@ -778,7 +779,9 @@ class DiabetesEngine(BaseEngine):
 
         report = run_clinical_analysis(entries, kpis, language=language)
         pivot = build_chat_context(kpis, report.patterns)
-        trend = compute_trend(patient_id=patient_id)
+        # Historical TIR trend is based on recorded rows, not verified CGM.
+        # With no governed CGM metric, suppress its normative TIR wording.
+        trend = compute_trend(patient_id=patient_id) if kpis.tir_pct is not None else {}
         trend_text = _trend_line(trend)
         if trend_text:
             pivot = pivot + " " + trend_text if pivot else trend_text
@@ -801,7 +804,7 @@ class DiabetesEngine(BaseEngine):
             has_sufficient_data=True,
             tone_signals={"primary": kpis.tir_pct, "stability": kpis.cv_pct},
             trend=trend,
-            primary_label="TIR",
+            primary_label="TIR" if kpis.tir_pct is not None else "recorded_glucose",
             patterns_detail=[
                 {
                     "code": p.code,
