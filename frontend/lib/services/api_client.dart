@@ -61,6 +61,8 @@ class ProviderApiException implements Exception {
         return 'Le service IA est temporairement saturé. Réessaie plus tard.';
       case 'ai_declined_locally':
         return 'Vous avez choisi de continuer sans IA sur cet appareil.';
+      case 'ai_consent_unverified_locally':
+        return 'Un consentement IA vérifié est requis sur cet appareil.';
       case 'provider_malformed_response':
       case 'provider_internal_failure':
         return 'La réponse IA n’a pas pu être traitée en toute sécurité.';
@@ -167,9 +169,16 @@ class ApiClient {
   final AuthService _authService;
   final ConsentService? _consentService;
 
-  /// Local refusal closes patient AI HTTP paths before any network request.
-  /// The server's independent consent scope remains authoritative.
-  bool get _aiDeclinedLocally => _consentService?.hasDeclinedLocally ?? false;
+  /// Production-injected local notice must be verified and not declined before
+  /// patient AI HTTP. Server consent remains independently authoritative.
+  /// A missing service is permitted for isolated legacy and test clients only.
+  String? get _localAiDenialCode {
+    final consent = _consentService;
+    if (consent == null) return null;
+    if (consent.hasDeclinedLocally) return 'ai_declined_locally';
+    if (!consent.hasConsent) return 'ai_consent_unverified_locally';
+    return null;
+  }
 
   final PendingDocumentDeduplicator<PulperPreview> _documentDeduplicator =
       PendingDocumentDeduplicator<PulperPreview>();
@@ -283,10 +292,11 @@ class ApiClient {
 
   /// Streaming SSE chat — yields token strings as they arrive.
   Stream<String> chatStream(String message) async* {
-    if (_aiDeclinedLocally) {
-      throw const ProviderApiException(
-        code: 'ai_declined_locally',
-        message: 'External AI is disabled locally.',
+    final localDenial = _localAiDenialCode;
+    if (localDenial != null) {
+      throw ProviderApiException(
+        code: localDenial,
+        message: 'Local verified AI consent is required.',
         retryable: false,
         statusCode: 403,
       );
@@ -378,6 +388,7 @@ class ApiClient {
     String message, {
     String contextType = 'general',
   }) async {
+    if (_localAiDenialCode != null) return null;
     try {
       final response = await _client.post(
         Uri.parse('/api/v1/ai/chat'),
@@ -406,7 +417,7 @@ class ApiClient {
     String mimeType, {
     int contextDays = 14,
   }) async {
-    if (_aiDeclinedLocally) return null;
+    if (_localAiDenialCode != null) return null;
     try {
       final token = await _authService.getIdToken();
       final uri = Uri.parse(
@@ -447,7 +458,7 @@ class ApiClient {
     String base64Image,
     String mimeType,
   ) async {
-    if (_aiDeclinedLocally) return null;
+    if (_localAiDenialCode != null) return null;
     try {
       final token = await _authService.getIdToken();
       final uri = Uri.parse('$baseUrl/api/v1/ai/analyze-glucometer-image');
@@ -476,7 +487,7 @@ class ApiClient {
   /// Transcribe audio to text (STT only — no IAmina pipeline).
   /// Used for vocal input in the add-log page meal note field.
   Future<String?> transcribeAudio(Uint8List audioBytes, String mimeType) async {
-    if (_aiDeclinedLocally) return null;
+    if (_localAiDenialCode != null) return null;
     try {
       final token = await _authService.getIdToken();
       final uri = Uri.parse('$baseUrl/api/v1/ai/transcribe');
@@ -591,7 +602,7 @@ class ApiClient {
     Uint8List imageBytes, {
     String mimeType = 'image/jpeg',
   }) async {
-    if (_aiDeclinedLocally) return null;
+    if (_localAiDenialCode != null) return null;
     try {
       final b64 = base64Encode(imageBytes);
       final response = await _client.post(

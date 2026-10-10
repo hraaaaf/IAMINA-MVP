@@ -183,15 +183,19 @@ class CompanionService {
     }
   }
 
-  void _denyLocallyDeclinedAI() {
-    if (_consentService?.hasDeclinedLocally ?? false) {
-      throw const ProviderApiException(
-        code: 'ai_declined_locally',
-        message: 'External AI is disabled locally.',
-        retryable: false,
-        statusCode: 403,
-      );
-    }
+  void _denyUnverifiedLocalAI() {
+    final consent = _consentService;
+    if (consent == null) return; // Legacy tests; server gate stays authoritative.
+    final declined = consent.hasDeclinedLocally;
+    // The governed public demo has no patient AI egress, but an explicit local
+    // refusal still wins even in audit mode.
+    if (!declined && (_authService.isAuditSession || consent.hasConsent)) return;
+    throw ProviderApiException(
+      code: declined ? 'ai_declined_locally' : 'ai_consent_unverified_locally',
+      message: 'Local verified AI consent is required.',
+      retryable: false,
+      statusCode: 403,
+    );
   }
 
   Future<CompanionChatReply?> sendChatMessage(
@@ -200,7 +204,7 @@ class CompanionService {
   }) async {
     final trimmed = message.trim();
     if (trimmed.isEmpty) return null;
-    _denyLocallyDeclinedAI();
+    _denyUnverifiedLocalAI();
 
     if (_authService.isAuditSession) {
       return _sendDemoChat(trimmed);
@@ -299,7 +303,7 @@ class CompanionService {
     int contextDays = 14,
   }) async {
     if (audioBytes.isEmpty) return null;
-    _denyLocallyDeclinedAI();
+    _denyUnverifiedLocalAI();
 
     if (_authService.isAuditSession) {
       throw const ProviderApiException(

@@ -32,6 +32,12 @@ String _failureText(BuildContext context, ProviderApiException failure) {
       'You chose to continue without AI on this device.',
       'اخترت المتابعة دون ذكاء اصطناعي على هذا الجهاز.',
     ),
+    'ai_consent_unverified_locally' => _chatText(
+      context,
+      'Un consentement IA vérifié est requis sur cet appareil.',
+      'Verified AI consent is required on this device.',
+      'يلزم الحصول على موافقة موثقة للذكاء الاصطناعي على هذا الجهاز.',
+    ),
     'provider_timeout' => _chatText(
       context,
       'IAmina met trop de temps à répondre. Réessaie dans un instant.',
