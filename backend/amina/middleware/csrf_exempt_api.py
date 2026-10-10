@@ -19,6 +19,9 @@ class CsrfExemptApiMiddleware:
     """Apply CSRF exemption only to non-cookie authentication flows."""
 
     _EXEMPT_PATHS = frozenset({"/api/v1/auth/firebase"})
+    # Public login does not use the protected session-auth route contract.
+    # Keep existing web re-auth behaviour (separate login-CSRF threat review).
+    _PUBLIC_LOGIN_PATH = "/api/v1/auth/login"
     _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
 
     def __init__(self, get_response):
@@ -36,6 +39,7 @@ class CsrfExemptApiMiddleware:
             has_session_cookie
             and request.method not in self._SAFE_METHODS
             and request.path.startswith("/api/v1/")
+            and request.path != self._PUBLIC_LOGIN_PATH
             and check_iamina_csrf(request)
         ):
             return JsonResponse(
