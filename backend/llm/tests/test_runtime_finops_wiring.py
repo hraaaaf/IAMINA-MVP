@@ -9,6 +9,8 @@ from django.utils import timezone
 
 from core.ai_egress import ai_egress_scope
 from core.ai_operation_identity import ai_operation_request_scope
+from core.ai_processor_policy import AIProcessorPolicyDenied
+from core.external_text_v1 import GENERIC_SYSTEM_PROMPT, GENERIC_USER_PROMPT
 from core.models import (
     AIBudgetAccount,
     AIBudgetReservationRecord,
@@ -19,8 +21,6 @@ from core.tests.consent_helpers import grant_current_ai_consent
 from llm.base import BaseLLMProvider, LLMResponse, LLMUsage
 from llm.budget import BudgetExceeded
 from llm.errors import LLMProviderQuotaExceeded
-from core.ai_processor_policy import AIProcessorPolicyDenied
-from core.external_text_v1 import GENERIC_SYSTEM_PROMPT, GENERIC_USER_PROMPT
 from llm.factory import _enforce_text_payload_policy
 from llm.provider_guard import ProviderCircuitOpen
 from llm.runtime_finops import RuntimeFinOpsConfigurationError
