@@ -31,6 +31,21 @@ void main() {
     expect(handler, isNot(contains('consent.declineLocally();\n                      if (mounted)')));
   });
 
+  test('withdraw API requires explicit revoked consent in response body', () {
+    final source = File('lib/services/api_client.dart').readAsStringSync();
+    final start = source.indexOf('Future<bool> withdrawConsent() async');
+    expect(start, greaterThanOrEqualTo(0));
+    final end = source.indexOf('  // ── Modules', start);
+    expect(end, greaterThan(start));
+    final implementation = source.substring(start, end);
+    expect(
+      implementation,
+      contains('!response.isSuccessful || response.body is! Map'),
+    );
+    expect(implementation, contains("body['ai_consent_given'] == false"));
+    expect(implementation, isNot(contains('return response.isSuccessful;')));
+  });
+
   test('V1-03 server failure never implies local withdrawal success', () {
     final source = File('lib/features/profile/profile_screen.dart')
         .readAsStringSync();
