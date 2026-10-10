@@ -514,7 +514,10 @@ class ApiClient {
       final response = await _client.delete(
         Uri.parse('/api/v1/account/consent'),
       );
-      return response.isSuccessful;
+      // A successful HTTP status alone is not proof that consent was revoked.
+      if (!response.isSuccessful || response.body is! Map) return false;
+      final body = response.body as Map;
+      return body['ai_consent_given'] == false;
     } catch (_) {
       return false;
     }
