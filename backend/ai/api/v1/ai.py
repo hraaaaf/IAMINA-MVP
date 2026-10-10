@@ -427,7 +427,11 @@ def chat_stream(request, data: ChatRequest):
             yield f"data: {json.dumps({'token': emergency_msg})}\n\n"
             yield "data: [DONE]\n\n"
 
-        return StreamingHttpResponse(_urgent_event_generator(), content_type="text/event-stream")
+        return StreamingHttpResponse(
+            _urgent_event_generator(),
+            content_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
 
     if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
 
@@ -438,7 +442,11 @@ def chat_stream(request, data: ChatRequest):
             yield f"data: {json.dumps({'token': refusal})}\n\n"
             yield "data: [DONE]\n\n"
 
-        return StreamingHttpResponse(_insulin_event_generator(), content_type="text/event-stream")
+        return StreamingHttpResponse(
+            _insulin_event_generator(),
+            content_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
 
     # Fetch entries only for the urgency glucose check in the router
     since = timezone.now() - timedelta(days=context_days)
@@ -529,7 +537,7 @@ def chat_stream(request, data: ChatRequest):
         _scoped_event_generator(),
         content_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-store",
             "X-Accel-Buffering": "no",
         },
     )
