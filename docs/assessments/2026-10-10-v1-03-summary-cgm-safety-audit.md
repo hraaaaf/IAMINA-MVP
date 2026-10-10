@@ -2,6 +2,20 @@
 
 **STATUS: TECHNICAL CANDIDATE / NOT CLINICALLY CERTIFIED / UNMERGED.**
 
+## 2026-10-10 — External text last-hop generic-only gate (code HEAD `8292a13`)
+
+**PRE / risk (code read):** `companion/conversation.py` builds free-text message, history, memory and clinical-context prompts for chat and buffered stream; `companion/narrator.py.summarize` also prepares patient-derived text. `llm.factory` formerly relied on a regex minimizer and DLP risk rules before a potentially approved external model request. Numeric/history clinical context without units need not be caught by anonymization heuristics. Network processors remain PENDING; **no actual external patient transfer was demonstrated or performed**.
+
+**Goal:** regardless of future consent, processor-policy or FinOps settings, final external LLM text call never receives dynamic patient context.
+
+**Implementation:** `backend/core/external_text_v1.py` contains one immutable nonclinical generic prompt pair; `backend/llm/factory.py::_execute_external_complete` checks the exact pair before invoking the external provider. Any other payload raises `AIProcessorPolicyDenied`. Existing local fallback remains available; this test-only generic exception is **not** a general AI patient capability. Opaque-token `companion/protected_provider_shadow.py` uses a distinct direct adapter, OFF by default/staff gated, so needs its own audit.
+
+**Proof:** [CI #38037493525](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38037493525) on exact `8292a130a674e132f011aea3d1d819547fba0571` **SUCCESS** (SQLite **2791 passed/5 skipped/3 xfailed**; PostgreSQL **2795 passed/1 skipped/3 xfailed**; 125 subtests). Ruff, gateway and egress anti-bypass gates passed. [Migration #38037493457](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38037493457) **SUCCESS**; [Companion E2E #38037493521](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38037493521) **SUCCESS**. `backend/llm/tests/test_runtime_finops_wiring.py` verifies six synthetic dynamic prompts (unitless numerical evidence, FR/Darija, medication, memory/locale) produce **zero provider calls** even with mocked-approved processor and complete FinOps; legacy synthetic FinOps exercises the exact static pair. Dedicated Flutter job skipped; no native medical or UX certification.
+
+**Adversarial history:** first code HEAD `eec1e0e` failed Ruff I001 (new import ordering). Fixed without removing the security guard in `8292a13`; exact-head CI then green.
+
+**Unclosed:** actual chat/stream/narrator local failure behavior with patient context, protected shadow token-only direct adapter, media, consent/opt-out, `ai_provider=fallback` UI perception and screenshots, all clinical/linguistic/privacy independent reviews. No release/merge/deploy. This documentation itself creates a new HEAD needing exact-head CI.
+
 ## 2026-10-10 — Second slice: Doctor Brief local and log privacy (code HEAD `c2effc0`)
 
 - `backend/ai/api/v1/ai.py` replaces the legacy Doctor Brief LLM prompt and call with `build_local_doctor_brief`. This is an authenticated, local, non-prescriptive count/mean summary; output schema unchanged. No raw CGM TIR, CV, TAR, TBR or GMI promoted. Four language templates are **translation candidates**, not native-certified clinical copy.

@@ -1,6 +1,13 @@
 # IAMINA V1-03 — Summary + CGM Safety Handover — 2026-10-10
 
-**Goal:** local deterministic patient summary and no unverified normative CGM promotion in summary or companion. **Status:** PR #922 DRAFT/UNMERGED, technical success on code parent HEAD only, release NOT AUTHORIZED.
+**Goal:** local deterministic patient summary and no unverified normative CGM promotion in summary or companion. **Status:** PR #922 DRAFT/UNMERGED, technical code HEAD proven (see chronology below); docs SHA awaiting exact-head CI, release NOT AUTHORIZED.
+
+## 2026-10-10 — V1-03 external text egress last-hop verified
+
+- **Code HEAD:** `8292a130a674e132f011aea3d1d819547fba0571`; exact [CI #38037493525](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38037493525) **SUCCESS** (SQLite 2791 pass/5 skip/3 xfail; PG 2795 pass/1 skip/3 xfail; 125 subtests, anti-bypass+Ruff green), [migrations #38037493457](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38037493457) **SUCCESS**, [Companion #38037493521](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38037493521) **SUCCESS**. Flutter job skipped. PR #922 DRAFT/unmerged. `main@13b7cce` unaffected.
+- **Change:** external provider text boundary `llm.factory::_execute_external_complete` now permits only exact static nonpatient generic pair from `core/external_text_v1.py` before network. Six synthetic adversarial patient prompt variants denied with zero provider calls despite mocked-approved provider+FinOps. Regex anonymization is not a release-safe anonymity guarantee.
+- **Still open:** chat/stream/narrator build patient-derived prompts internally but provider text gateway denies them. Prove safe local UX and global AI optout; shadow `complete_text` adapter is a separate OFF-by-default staff-gated opaque-token route, evaluate separately; audit image/audio. `ai_provider=fallback` UI may misleadingly mark intentional local output as degraded. Qualified clinician/privacy/native language/RTL/accessibility + visual BEFORE/AFTER and legal pre-patient gate remain uncompleted. 29 approved decisions, 0 fully delivered.
+- **Next:** CI of this subsequent docs-only HEAD; evaluate shadow/other egress and optout locally with synthetic fixtures; update Notion, correct defects, then seek independent human review. No merge, Vercel, real patients, pilot release.
 
 ## 2026-10-10 — Verified new code slice / handover update
 
