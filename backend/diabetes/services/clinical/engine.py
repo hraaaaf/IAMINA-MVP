@@ -25,6 +25,7 @@ from core.contracts.capabilities import Capability
 from core.llm_gateway import get_gateway_llm
 from core.medical_safety import sanitize_patient_visible
 
+from .evidence_projection import guard_normative_kpis
 from .sql_analytics import AnalyticalKPIs
 
 if TYPE_CHECKING:
@@ -702,7 +703,10 @@ def run_clinical_analysis(
     entries = list(entries)
     patterns: list[ClinicalPattern] = []
 
-    cgm_variability = _high_variability_from_kpis(kpis)
+    # Reject row-fraction CGM authority before any patient-facing pattern.
+    # Without session-linked CGM metrics the normative fields remain unavailable.
+    safe_kpis = guard_normative_kpis(kpis)
+    cgm_variability = _high_variability_from_kpis(safe_kpis)
     if cgm_variability is not None:
         patterns.append(cgm_variability)
 
@@ -718,7 +722,7 @@ def run_clinical_analysis(
     patterns.sort(key=lambda p: (p.priority, p.code))
     # V1-03: patient observations stay local; no model narration on this path.
     insights = _format_fallback(patterns, language) if patterns else []
-    return ClinicalReport(kpis=kpis, patterns=patterns, insights=insights)
+    return ClinicalReport(kpis=safe_kpis, patterns=patterns, insights=insights)
 
 
 from core.engine.base import BaseEngine  # noqa: E402
