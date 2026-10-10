@@ -207,6 +207,27 @@ void main() {
     expect(consentService.hasDeclinedLocally, isTrue);
   });
 
+  testWidgets('decline masks pre-existing local AI consent without server claim', (
+    tester,
+  ) async {
+    // Simulate local verified evidence surviving from an earlier consent epoch.
+    // This checks local UI enforcement only, NOT a server revocation receipt.
+    consentService.markVerifiedConsent();
+    expect(consentService.hasConsent, isTrue);
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    final declineBtn = find.text('Continuer sans IA');
+    await tester.ensureVisible(declineBtn);
+    await tester.tap(declineBtn);
+    await tester.pumpAndSettle();
+
+    expect(consentService.hasDeclinedLocally, isTrue);
+    expect(consentService.hasConsent, isFalse);
+    expect(capturedRequest, isNull);
+    expect(find.text('Dashboard'), findsOneWidget);
+  });
+
   testWidgets('accept posts exact claim and persists verified evidence', (tester) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();

@@ -124,7 +124,7 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
         : lower.endsWith('.webp')
         ? 'image/webp'
         : 'image/jpeg';
-    return ApiClient().analyzeMealImage(bytes, mimeType: mime);
+    return context.read<ApiClient>().analyzeMealImage(bytes, mimeType: mime);
   }
 
   Future<void> _recognizePhoto(AppLocalizations l10n) async {
@@ -375,7 +375,9 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
         const SizedBox(height: 16),
         OutlinedButton.icon(
           key: const Key('meal-photo-button'),
-          onPressed: _recognizing ? null : () => _recognizePhoto(l10n),
+          onPressed: _recognizing || !widget.canUsePhotoRecognition
+              ? null
+              : () => _recognizePhoto(l10n),
           icon: _recognizing
               ? const SizedBox.square(
                   dimension: 18,

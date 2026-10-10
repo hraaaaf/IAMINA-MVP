@@ -108,7 +108,10 @@ Future<void> main() async {
     offlineDemo: kOfflineDemo,
   );
 
-  final apiClient = ApiClient(authService: authService);
+  final apiClient = ApiClient(
+    authService: authService,
+    consentService: consentService,
+  );
   final syncService = SyncService(db, apiClient)..init();
   final localePreferenceService = LocalePreferenceService(
     apiClient,

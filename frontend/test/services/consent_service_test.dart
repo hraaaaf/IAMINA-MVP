@@ -100,6 +100,39 @@ void main() {
       svc.declineLocally();
       expect(svc.hasConsent, isFalse);
     });
+
+    test('local decline masks earlier locally verified consent immediately', () {
+      final svc = ConsentService();
+      svc.seedInitialProfile(null);
+      svc.markVerifiedConsent();
+      expect(svc.hasConsent, isTrue);
+
+      svc.declineLocally();
+      expect(svc.hasDeclinedLocally, isTrue);
+      expect(svc.hasConsent, isFalse);
+
+      // A newly verified explicit acceptance is required to re-enable UI AI.
+      svc.markVerifiedConsent();
+      expect(svc.hasDeclinedLocally, isFalse);
+      expect(svc.hasConsent, isTrue);
+    });
+
+    test('profile stream updates cannot undo an active local decline', () async {
+      final db = _openDb();
+      addTearDown(db.close);
+      await _insertProfile(db, withConsent: true);
+      final svc = ConsentService(hasVerifiedEvidence: true);
+      addTearDown(svc.dispose);
+      svc.attachStream(db.watchProfile());
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(svc.hasConsent, isTrue);
+
+      svc.declineLocally();
+      await db.setAiConsent(granted: true);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(svc.hasDeclinedLocally, isTrue);
+      expect(svc.hasConsent, isFalse);
+    });
   });
 
   group('ConsentService — attachStream', () {

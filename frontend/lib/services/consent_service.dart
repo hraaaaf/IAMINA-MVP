@@ -19,8 +19,9 @@ class ConsentService extends ChangeNotifier {
   /// True once the first profile stream event has been processed or seeded.
   bool get isInitialized => _hasConsent != null;
 
-  /// Safe default is false. Both local timestamp and verified evidence required.
-  bool get hasConsent => _hasConsent ?? false;
+  /// A current local receipt is necessary, but an explicit local decline must
+  /// still suppress UI access. This does NOT revoke prior server consent.
+  bool get hasConsent => (_hasConsent ?? false) && !_hasDeclinedLocally;
 
   /// True only when the minimum patient onboarding fields are persisted.
   bool get hasCompletedOnboarding => _hasCompletedOnboarding;

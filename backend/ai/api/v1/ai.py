@@ -3,12 +3,12 @@ AI endpoints — ai/ app (engine-shaped routes)
 ==============================================
 Migrated from diabetes/api/v1/ai.py in Phase 5 of engine-decomposition.
 
-POST /api/v1/ai/summary              — Full analytical pipeline: SQL → Compress → Pivot → LLM
+POST /api/v1/ai/summary              — Deterministic local clinical observations (no LLM)
 POST /api/v1/ai/chat                 — Contextual conversation with English Pivot Layer
-GET  /api/v1/ai/doctor-brief         — Compact medical summary for pre-consultation export
+GET  /api/v1/ai/doctor-brief         — Deterministic local recorded-data summary
 POST /api/v1/ai/analyze-meal-image   — Gemini Vision meal recognition
 POST /api/v1/ai/analyze-glucometer-image — Gemini Vision glucometer OCR (web fallback)
-GET  /api/v1/ai/chat/stream          — SSE streaming chat
+POST /api/v1/ai/chat/stream          — SSE streaming chat
 
 Architecture (Analytical-First):
   1. SQL KPIs computed by sql_analytics.compute_kpis() — no Python arithmetic.
@@ -32,22 +32,21 @@ from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
-from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
-from core.contracts.capabilities import Capability
+from core.ai_egress import IMAGE, TEXT, ai_egress_scope, patient_ai_egress_scope
+from core.ai_processor_policy import AIProcessorPolicyDenied
 from core.input_safety import INSULIN_BLOCK, PRESCRIPTION_BLOCK, evaluate_input_safety
-from core.llm_gateway import get_gateway_llm
 from core.locale import resolve_patient_locale
 from core.models import BasePatientProfile
 from core.observability import EVT_CHAT_MESSAGE, EVT_SUMMARY_VIEWED, track
 from diabetes.models import LogEntry
 from diabetes.services.clinical.engine import run_clinical_analysis
-from diabetes.services.clinical.semantic_compressor import build_chat_context, compress
+from diabetes.services.clinical.evidence_projection import project_public_kpis
+from diabetes.services.clinical.semantic_compressor import build_chat_context
 from diabetes.services.clinical.sql_analytics import (
     compute_agp_profile,
     compute_daily_averages,
     compute_kpis,
 )
-from llm.factory import get_ai_provider_name
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["ai"])
@@ -102,8 +101,8 @@ class SummaryResponse(BaseModel):
     daily_averages: List[dict]
     generated_at: str
     has_sufficient_data: bool
-    # "groq" | "kimi" | "claude" | "quota-exhausted" | "fallback"
-    # Lets the Flutter client show a degraded-mode banner when AI is unavailable.
+    # "fallback" for deterministic local-only narration; no external LLM call.
+    # Lets Flutter distinguish the locally generated summary from remote AI.
     ai_provider: str = "groq"
 
 
@@ -161,8 +160,8 @@ def get_summary(request, data: SummaryRequest):
 
     Step 1: SQL computes all KPIs (never Python arithmetic).
     Step 2: Pattern detection engine runs against ORM queryset.
-    Step 3: SemanticCompressor → English pivot text.
-    Step 4: Groq GPT-OSS-120B formats the governed patient response.
+    Step 3: Local, deterministic presentation of evidence-qualified patterns.
+    No third-party model sees patient observations or measurements.
     """
     user = request.user
     patient_language = _get_patient_language(user)
@@ -175,6 +174,9 @@ def get_summary(request, data: SummaryRequest):
         target_high=data.target_high,
     )
 
+    # CGM row provenance is not verified wear-time; patient fields must be governed.
+    public_kpis = project_public_kpis(kpis)
+
     # ── Step 2: Pattern detection (requires ORM entries for time-aware rules) ──
     since = timezone.now() - timedelta(days=data.days)
     entries = list(
@@ -185,18 +187,11 @@ def get_summary(request, data: SummaryRequest):
             blood_sugar__gt=0,
         ).order_by("logged_at", "created_at")
     )
-    report = run_clinical_analysis(entries, kpis)
+    report = run_clinical_analysis(entries, kpis, language=patient_language)
 
-    # ── Step 3: Semantic Compression → English Pivot ──
-    compressed = compress(kpis, report.patterns, patient_language)
-
-    # ── Step 4: LLM formatting (Groq GPT-OSS-120B narrates; it does not calculate) ──
-    from core.medical_safety import sanitize_patient_visible
-
-    insights = sanitize_patient_visible(
-        _call_llm_for_summary(compressed.full_pivot_text, report.patterns, patient_language),
-        patient_language,
-    )
+    # ── Step 3: Use the local clinical engine output exactly once ──
+    # V1-03: no prompt is built or passed to a model for this patient summary.
+    insights = report.insights
 
     # ── Step 5: AGP 24h profile + daily averages for Flutter chart ──
     agp_profile = compute_agp_profile(user.id, data.days)
@@ -206,24 +201,24 @@ def get_summary(request, data: SummaryRequest):
 
     return {
         "kpis": {
-            "avg_glucose": kpis.avg_glucose,
-            "std_dev": kpis.std_dev,
-            "cv_pct": kpis.cv_pct,
-            "tir_pct": kpis.tir_pct,
-            "tar_pct": kpis.tar_pct,
-            "tbr_pct": kpis.tbr_pct,
-            "gmi": kpis.gmi,
-            "log_count": kpis.log_count,
-            "days_with_data": kpis.days_with_data,
-            "gmi_confidence": kpis.gmi_confidence,
-            "gmi_basis": kpis.gmi_basis,
+            "avg_glucose": public_kpis["avg_glucose"],
+            "std_dev": public_kpis["std_dev"],
+            "cv_pct": public_kpis["cv_pct"],
+            "tir_pct": public_kpis["tir_pct"],
+            "tar_pct": public_kpis["tar_pct"],
+            "tbr_pct": public_kpis["tbr_pct"],
+            "gmi": public_kpis["gmi"],
+            "log_count": public_kpis["log_count"],
+            "days_with_data": public_kpis["days_with_data"],
+            "gmi_confidence": public_kpis["gmi_confidence"],
+            "gmi_basis": public_kpis["gmi_basis"],
         },
         "insights": insights,
         "daily_averages": daily_avgs,
         "agp_profile": agp_profile,
         "generated_at": timezone.now().isoformat(),
         "has_sufficient_data": kpis.has_sufficient_data,
-        "ai_provider": get_ai_provider_name(),
+        "ai_provider": "fallback",  # Honest local-only narration status.
     }
 
 
@@ -233,107 +228,27 @@ def get_summary(request, data: SummaryRequest):
 
 
 @router.get("/ai/doctor-brief", response=DoctorBriefResponse)
-@patient_ai_egress_scope("doctor_brief", TEXT)
 def get_doctor_brief(request, days: int = 14):
+    """Bounded local consultation-preparation description; never invoke an LLM.
+
+    No verified CGM interpretation, cause, prognosis, diagnosis or dose advice
+    is available from raw recorded glucose rows. No third-party egress scope
+    is needed because the full response stays in the authenticated backend.
+    The localized wording requires specialist review before patient release.
     """
-    GET /api/v1/ai/doctor-brief?days=14
-
-    Generates a compact medical summary (narrative + doctor_brief + key_insight)
-    using IAmina's narrator module. Intended for pre-consultation export.
-
-    Returns all three fields from the SUMMARY_USER prompt:
-      - narrative: warm patient-facing summary
-      - key_insight: the single most important observation
-      - doctor_brief: one-sentence clinical digest for the physician
-    """
-    user = request.user
-    language = _get_patient_language(user)
-
-    from companion.memory import IAminaMemory
-    from companion.parser import parse_llm_json
-    from companion.prompts import SUMMARY_USER, SYSTEM_BASE, get_language_label
-    from companion.tone import get_tone_instruction, select_tone
-    from core.medical_safety import apply_no_prescription_policy
-    from diabetes.services.clinical.engine import run_clinical_analysis
+    from diabetes.services.clinical.doctor_brief_local import build_local_doctor_brief
     from diabetes.services.clinical.sql_analytics import compute_kpis
 
+    user = request.user
     kpis = compute_kpis(patient_id=user.id, days=days)
-
-    if not kpis.has_sufficient_data:
-        return {
-            "doctor_brief": "",
-            "narrative": (
-                f"Pas encore assez de données sur les {days} derniers jours "
-                "pour générer un résumé médical."
-            ),
-            "key_insight": "",
-            "days": days,
-            "generated_at": timezone.now().isoformat(),
-            "has_sufficient_data": False,
-        }
-
-    since = timezone.now() - timedelta(days=days)
-    entries = list(
-        LogEntry.objects.filter(
-            Q(logged_at__gte=since) | Q(logged_at__isnull=True, created_at__gte=since),
-            patient=user,
-            blood_sugar__isnull=False,
-        ).order_by("logged_at", "created_at")
+    local = build_local_doctor_brief(
+        kpis, days=days, language=_get_patient_language(user)
     )
-    report = run_clinical_analysis(entries, kpis)
-
-    IAminaMemory.load(user)
-    tone_ctx = select_tone(tir_pct=kpis.tir_pct, cv_pct=kpis.cv_pct)
-    # The structured JSON response remains endpoint-specific, but provider access
-    # now goes through GatewayLLM so capability, PHI and egress controls are shared.
-    llm = get_gateway_llm()
-
-    stats_lines = [
-        f"AVG_GLUCOSE: {kpis.avg_glucose} mg/dL" if kpis.avg_glucose else "",
-        f"TIR: {kpis.tir_pct}%" if kpis.tir_pct else "",
-        f"GMI_EST_HBA1C: {kpis.gmi}%" if kpis.gmi else "",
-        f"CV: {kpis.cv_pct}%" if kpis.cv_pct else "",
-        f"LOGS: {kpis.log_count} entries over {kpis.days_with_data} days",
-    ]
-    stats = "\n".join(s for s in stats_lines if s)
-    patterns_text = (
-        "\n".join(f"- [{p.priority}] {p.code}: {p.evidence}" for p in report.patterns)
-        or "Aucun pattern significatif."
-    )
-
-    system = SYSTEM_BASE.format(language=get_language_label(language), tone=tone_ctx.mode.value)
-    system += "\n" + get_tone_instruction(tone_ctx)
-    user_prompt = SUMMARY_USER.format(window_days=days, stats=stats, patterns=patterns_text)
-
-    narrative = ""
-    key_insight = ""
-    doctor_brief = ""
-
-    try:
-        result = llm.complete(
-            system,
-            user_prompt,
-            capability=Capability.SUMMARIZE_APPROVED_DATA,
-        )
-        parsed = parse_llm_json(result.content, ["narrative", "key_insight", "doctor_brief"])
-        narrative = parsed["narrative"]
-        key_insight = parsed["key_insight"]
-        doctor_brief = parsed["doctor_brief"]
-    except Exception:
-        logger.exception("doctor_brief LLM call failed for patient=%s", user.id)
-        narrative = "Résumé indisponible — réessaie dans quelques instants."
-
-    narrative = apply_no_prescription_policy(narrative, language)
-    key_insight = apply_no_prescription_policy(key_insight, language)
-    doctor_brief = apply_no_prescription_policy(doctor_brief, language)
-
     return {
-        "doctor_brief": doctor_brief,
-        "narrative": narrative,
-        "key_insight": key_insight,
+        **local,
         "days": days,
         "generated_at": timezone.now().isoformat(),
-        "has_sufficient_data": True,
+        "has_sufficient_data": kpis.has_sufficient_data,
     }
 
 
@@ -430,7 +345,12 @@ def analyze_glucometer_image_web(request, data: MealImageRequest):
         logger.warning("analyze_glucometer_image: input rejected — %s", error)
         return {"value": None, "unit": "mg/dL", "confidence": "low", "fallback": True}
 
-    return _analyze_gluco(data.image_base64, data.mime_type)
+    try:
+        return _analyze_gluco(data.image_base64, data.mime_type)
+    except AIProcessorPolicyDenied:
+        # Cloud image analysis is intentionally disabled for V1-03.
+        # Preserve the manual glucometer-entry path without claiming OCR success.
+        return {"value": None, "unit": "mg/dL", "confidence": "low", "fallback": True}
 
 
 @router.post("/ai/analyze-meal-image", response=MealImageResponse)
@@ -461,8 +381,11 @@ def analyze_meal_image(request, data: MealImageRequest):
         logger.warning("analyze_meal_image: input rejected — %s", error)
         return {"foods": [], "confidence": "low", "fallback": True}
 
-    result = _analyze(data.image_base64, data.mime_type)
-    return result
+    try:
+        return _analyze(data.image_base64, data.mime_type)
+    except AIProcessorPolicyDenied:
+        # Do not turn expected privacy-policy refusal into a server error.
+        return {"foods": [], "confidence": "low", "fallback": True}
 
 
 # ──────────────────────────────────────────────────────────────
@@ -470,14 +393,28 @@ def analyze_meal_image(request, data: MealImageRequest):
 # ──────────────────────────────────────────────────────────────
 
 
-@router.get("/ai/chat/stream")
+@router.post("/ai/chat/stream")
 @patient_ai_egress_scope("companion_chat", TEXT)
-def chat_stream(request, message: str, context_days: int = 14):
+def chat_stream(request, data: ChatRequest):
     """
-    GET /api/v1/ai/chat/stream?message=...
+    POST /api/v1/ai/chat/stream — JSON body with message and context_days.
     Returns Server-Sent Events — one `data:` line per token chunk.
     Terminal event: `data: [DONE]`
     """
+    # Django-Ninja may select an earlier auth callback before SessionAuth.
+    # A browser session cookie must therefore never bypass CSRF on this
+    # sensitive streaming POST, even with a spoofed Authorization header.
+    from django.conf import settings
+    from ninja.errors import HttpError
+
+    if request.COOKIES.get(settings.SESSION_COOKIE_NAME):
+        from amina.vercel_session_auth import check_iamina_csrf
+
+        if check_iamina_csrf(request):
+            raise HttpError(403, "CSRF check Failed")
+
+    message = data.message
+    context_days = data.context_days
     from core.input_safety import (
         INSULIN_BLOCK,
         PRESCRIPTION_BLOCK,
@@ -502,7 +439,11 @@ def chat_stream(request, message: str, context_days: int = 14):
             yield f"data: {json.dumps({'token': emergency_msg})}\n\n"
             yield "data: [DONE]\n\n"
 
-        return StreamingHttpResponse(_urgent_event_generator(), content_type="text/event-stream")
+        return StreamingHttpResponse(
+            _urgent_event_generator(),
+            content_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
 
     if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
 
@@ -513,7 +454,11 @@ def chat_stream(request, message: str, context_days: int = 14):
             yield f"data: {json.dumps({'token': refusal})}\n\n"
             yield "data: [DONE]\n\n"
 
-        return StreamingHttpResponse(_insulin_event_generator(), content_type="text/event-stream")
+        return StreamingHttpResponse(
+            _insulin_event_generator(),
+            content_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
 
     # Fetch entries only for the urgency glucose check in the router
     since = timezone.now() - timedelta(days=context_days)
@@ -576,16 +521,36 @@ def chat_stream(request, message: str, context_days: int = 14):
 
             yield "data: [DONE]\n\n"
 
-        except Exception:
-            logger.exception("SSE chat stream failed")
+        except Exception as exc:
+            # Avoid exception messages and tracebacks potentially containing PHI.
+            logger.error("SSE chat stream failed safely: %s", type(exc).__name__)
             yield f"data: {json.dumps({'token': 'Une erreur est survenue.'})}\n\n"
             yield "data: [DONE]\n\n"
 
+    def _scoped_event_generator():
+        """Scope each deferred next() independently, resetting before yielding SSE.
+
+        A scope held across yield would risk cross-patient ContextVar inheritance
+        when separately streaming requests are interleaved on the same worker.
+        """
+        stream = _event_generator()
+        try:
+            while True:
+                with ai_egress_scope(user.id, "companion_chat", TEXT):
+                    try:
+                        event = next(stream)
+                    except StopIteration:
+                        return
+                yield event
+        finally:
+            with ai_egress_scope(user.id, "companion_chat", TEXT):
+                stream.close()
+
     return StreamingHttpResponse(
-        _event_generator(),
+        _scoped_event_generator(),
         content_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-store",
             "X-Accel-Buffering": "no",
         },
     )
@@ -621,10 +586,11 @@ def _build_iamina_system_prompt(user, kpis, report, language: str) -> str:
 
 
 def _call_llm_for_summary(pivot_text: str, patterns, language: str = "fr") -> list[dict]:
-    """Delegates pattern formatting to the single source of truth in engine.py."""
-    from diabetes.services.clinical.engine import _format_with_llm
+    """Legacy compatibility helper: format locally, never forward patient pivot."""
+    from diabetes.services.clinical.engine import _format_fallback
 
-    return _format_with_llm(patterns, language)
+    del pivot_text
+    return _format_fallback(patterns, language)
 
 
 # ──────────────────────────────────────────────────────────────

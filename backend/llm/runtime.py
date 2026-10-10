@@ -10,6 +10,7 @@ from typing import TypeVar
 
 from core.ai_egress import assert_ai_egress_allowed
 from core.ai_processor_policy import authorize_processor_policy
+from core.external_media_v1 import assert_v1_external_media_egress_denied
 
 from .circuit_breaker import (
     assert_provider_available,
@@ -45,6 +46,9 @@ def execute_external_provider_call(
     """
     context = assert_ai_egress_allowed(modality)
     authorize_processor_policy(provider, context.purpose, modality)
+    # Separate V1 privacy certification is required even after contractual
+    # approval; media cannot be made safe by a prompt/regex text filter.
+    assert_v1_external_media_egress_denied(modality)
     assert_provider_available(provider)
 
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="iamina-provider")
