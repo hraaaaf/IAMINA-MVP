@@ -3,7 +3,7 @@ AI endpoints — ai/ app (engine-shaped routes)
 ==============================================
 Migrated from diabetes/api/v1/ai.py in Phase 5 of engine-decomposition.
 
-POST /api/v1/ai/summary              — Full analytical pipeline: SQL → Compress → Pivot → LLM
+POST /api/v1/ai/summary              — Deterministic local clinical observations (no LLM)
 POST /api/v1/ai/chat                 — Contextual conversation with English Pivot Layer
 GET  /api/v1/ai/doctor-brief         — Compact medical summary for pre-consultation export
 POST /api/v1/ai/analyze-meal-image   — Gemini Vision meal recognition
@@ -41,13 +41,12 @@ from core.models import BasePatientProfile
 from core.observability import EVT_CHAT_MESSAGE, EVT_SUMMARY_VIEWED, track
 from diabetes.models import LogEntry
 from diabetes.services.clinical.engine import run_clinical_analysis
-from diabetes.services.clinical.semantic_compressor import build_chat_context, compress
+from diabetes.services.clinical.semantic_compressor import build_chat_context
 from diabetes.services.clinical.sql_analytics import (
     compute_agp_profile,
     compute_daily_averages,
     compute_kpis,
 )
-from llm.factory import get_ai_provider_name
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["ai"])
@@ -102,8 +101,8 @@ class SummaryResponse(BaseModel):
     daily_averages: List[dict]
     generated_at: str
     has_sufficient_data: bool
-    # "groq" | "kimi" | "claude" | "quota-exhausted" | "fallback"
-    # Lets the Flutter client show a degraded-mode banner when AI is unavailable.
+    # "fallback" for deterministic local-only narration; no external LLM call.
+    # Lets Flutter distinguish the locally generated summary from remote AI.
     ai_provider: str = "groq"
 
 
@@ -161,8 +160,8 @@ def get_summary(request, data: SummaryRequest):
 
     Step 1: SQL computes all KPIs (never Python arithmetic).
     Step 2: Pattern detection engine runs against ORM queryset.
-    Step 3: SemanticCompressor → English pivot text.
-    Step 4: Groq GPT-OSS-120B formats the governed patient response.
+    Step 3: Local, deterministic presentation of evidence-qualified patterns.
+    No third-party model sees patient observations or measurements.
     """
     user = request.user
     patient_language = _get_patient_language(user)
@@ -185,18 +184,11 @@ def get_summary(request, data: SummaryRequest):
             blood_sugar__gt=0,
         ).order_by("logged_at", "created_at")
     )
-    report = run_clinical_analysis(entries, kpis)
+    report = run_clinical_analysis(entries, kpis, language=patient_language)
 
-    # ── Step 3: Semantic Compression → English Pivot ──
-    compressed = compress(kpis, report.patterns, patient_language)
-
-    # ── Step 4: LLM formatting (Groq GPT-OSS-120B narrates; it does not calculate) ──
-    from core.medical_safety import sanitize_patient_visible
-
-    insights = sanitize_patient_visible(
-        _call_llm_for_summary(compressed.full_pivot_text, report.patterns, patient_language),
-        patient_language,
-    )
+    # ── Step 3: Use the local clinical engine output exactly once ──
+    # V1-03: no prompt is built or passed to a model for this patient summary.
+    insights = report.insights
 
     # ── Step 5: AGP 24h profile + daily averages for Flutter chart ──
     agp_profile = compute_agp_profile(user.id, data.days)
@@ -223,7 +215,7 @@ def get_summary(request, data: SummaryRequest):
         "agp_profile": agp_profile,
         "generated_at": timezone.now().isoformat(),
         "has_sufficient_data": kpis.has_sufficient_data,
-        "ai_provider": get_ai_provider_name(),
+        "ai_provider": "fallback",  # Honest local-only narration status.
     }
 
 
@@ -621,10 +613,11 @@ def _build_iamina_system_prompt(user, kpis, report, language: str) -> str:
 
 
 def _call_llm_for_summary(pivot_text: str, patterns, language: str = "fr") -> list[dict]:
-    """Delegates pattern formatting to the single source of truth in engine.py."""
-    from diabetes.services.clinical.engine import _format_with_llm
+    """Legacy compatibility helper: format locally, never forward patient pivot."""
+    from diabetes.services.clinical.engine import _format_fallback
 
-    return _format_with_llm(patterns, language)
+    del pivot_text
+    return _format_fallback(patterns, language)
 
 
 # ──────────────────────────────────────────────────────────────
