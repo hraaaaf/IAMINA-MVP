@@ -302,11 +302,12 @@ class ApiClient {
       );
     }
     final token = await _authService.getIdToken();
-    final uri = Uri.parse(
-      '$baseUrl/api/v1/ai/chat/stream',
-    ).replace(queryParameters: {'message': message});
+    final uri = Uri.parse('$baseUrl/api/v1/ai/chat/stream');
 
-    final request = http.Request('GET', uri);
+    // Patient text belongs in the authenticated JSON body, never the URL.
+    final request = http.Request('POST', uri)
+      ..headers['Content-Type'] = 'application/json'
+      ..body = jsonEncode({'message': message, 'context_days': 14});
     if (token != null && token.isNotEmpty) {
       request.headers['Authorization'] = 'Bearer $token';
     }

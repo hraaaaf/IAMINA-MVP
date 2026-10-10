@@ -2057,39 +2057,29 @@
       }
     },
     "/api/v1/ai/chat/stream": {
-      "get": {
+      "post": {
         "operationId": "ai_api_v1_ai_chat_stream",
         "summary": "Chat Stream",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "message",
-            "schema": {
-              "title": "Message",
-              "type": "string"
-            },
-            "required": true
-          },
-          {
-            "in": "query",
-            "name": "context_days",
-            "schema": {
-              "default": 14,
-              "title": "Context Days",
-              "type": "integer"
-            },
-            "required": false
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "OK"
           }
         },
-        "description": "GET /api/v1/ai/chat/stream?message=...\nReturns Server-Sent Events \u2014 one `data:` line per token chunk.\nTerminal event: `data: [DONE]`",
+        "description": "POST /api/v1/ai/chat/stream — JSON body with message and context_days.\nReturns Server-Sent Events \u2014 one `data:` line per token chunk.\nTerminal event: `data: [DONE]`",
         "tags": [
           "ai"
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "security": [
           {
             "HybridBearerAuth": []
