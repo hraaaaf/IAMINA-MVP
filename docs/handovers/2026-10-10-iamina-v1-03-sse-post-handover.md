@@ -10,6 +10,12 @@
 
 **Verified code-only baseline:** HEAD 44d6c27dd3aaa4bf5b60bdac6e112efba92a523c, [CI #38069507466](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38069507466) **15/15 SUCCESS**: SQLite 2831 passed/5 skipped/3 xfailed; PostgreSQL 2835 passed/1 skipped/3 xfailed; Flutter 660 passed/1 skipped; PWA, iOS/mobile, browser and all other workflows success. Prior CI #38068847596 found two old direct str-based SSE tests; fixed tests-only in 44d6c27. This new test/documentation commit requires **its own exact-head CI**; do not claim that the old CI covers it.
 
+## Session CSRF red / root-cause hardening
+
+The newly added Django Client(enforce_csrf_checks=True) regression on candidate 1bc5cb returned HTTP 200 **without CSRF token** for an authenticated session POST, so **that candidate is red and unsafe to certify** ([CI #38070369320](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38070369320), backend SQLite failure, other jobs may still run). Source review: Django-Ninja session fallback may be skipped by an operation-scoped _ninja_csrf_exempt flag; IAMINA's existing SessionAuth had a conditional skip; CsrfExemptApiMiddleware also exempted any bearer-looking HTTP header at Django middleware level, which could allow an invalid bearer to fall back to session without CSRF. No real-patient exploit or incident established.
+
+The following **candidate, not yet certified** hardening changes require new exact-head CI: SessionAuth checks CSRF on *all unsafe cookie-session requests*, regardless of Ninja operation flag, but skips checking requests that do not actually have a session cookie. The check temporarily ignores prior bearer-looking-header CSRF bypass and restores the original request flag afterward; a forged invalid bearer can no longer waive cookie-session CSRF. New synthetic tests expect 403 without token, 403 with invalid bearer header, 200 with valid cookie+CSRF token. Existing bearer-only authentication is still not subject to cookie CSRF. Do not merge/release until exact-head backend and full workflows succeed.
+
 ## Reviewed changes
 
 - backend/ai/api/v1/ai.py — POST JSON SSE, deferred per-next scoped egress, sanitized error logs.

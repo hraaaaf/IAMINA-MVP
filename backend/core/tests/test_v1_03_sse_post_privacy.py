@@ -263,6 +263,19 @@ class PatientSsePostPrivacyTests(TestCase):
         self.assertEqual(without_token.status_code, 403)
         ai_cls.assert_not_called()
 
+        # An invalid bearer header must not disable cookie-session CSRF
+        # when the bearer authenticator falls back to SessionAuth.
+        spoofed_bearer = browser.post(
+            "/api/v1/ai/chat/stream",
+            data=json.dumps(
+                {"message": "Synthetic session message", "context_days": 14}
+            ),
+            content_type="application/json",
+            HTTP_AUTHORIZATION="Bearer invalid.synthetic.credential",
+        )
+        self.assertEqual(spoofed_bearer.status_code, 403)
+        ai_cls.assert_not_called()
+
         csrf_secret = "a" * 32
         browser.cookies["csrftoken"] = csrf_secret
         with_token = browser.post(
