@@ -92,6 +92,45 @@ class V103LocalSummaryTests(TestCase):
         self.assertEqual(response.json()["ai_provider"], "fallback")
         gateway.assert_not_called()
 
+    def test_cgm_row_fraction_without_sensor_window_cannot_promote_clinical_metrics(self):
+        # 80% of rows labeled CGM is not a verified 80% sensor wear-time.
+        # Alternating synthetic values yield a high raw SQL CV over 16 days.
+        anchor = timezone.now() - timedelta(days=1)
+        for index in range(100):
+            logged_at = (anchor - timedelta(days=index % 16)).replace(
+                hour=12, minute=0, second=0, microsecond=0
+            )
+            LogEntry.objects.create(
+                patient=self.patient,
+                blood_sugar=240 if index % 2 == 0 else 90,
+                source="cgm" if index < 80 else "manual",
+                logged_at=logged_at,
+            )
+
+        with patch(
+            "diabetes.services.clinical.engine.get_gateway_llm",
+            side_effect=AssertionError("unverified CGM evidence reached a model"),
+        ) as gateway:
+            response = self.client.post(
+                "/api/v1/ai/summary",
+                data='{"days": 21}',
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200, response.content[:500])
+        payload = response.json()
+        self.assertEqual(payload["kpis"]["log_count"], 100)
+        self.assertGreaterEqual(payload["kpis"]["days_with_data"], 14)
+        self.assertIsNotNone(payload["kpis"]["avg_glucose"])
+        for normative in ("cv_pct", "tir_pct", "tar_pct", "tbr_pct", "gmi"):
+            self.assertIsNone(payload["kpis"][normative], normative)
+        self.assertIsNone(payload["kpis"]["gmi_confidence"])
+        self.assertNotIn(
+            "CGM_HIGH_VARIABILITY",
+            {insight["code"] for insight in payload["insights"]},
+        )
+        gateway.assert_not_called()
+
     def test_legacy_summary_helper_does_not_forward_patient_pivot(self):
         pattern = ClinicalPattern(
             code="SYNTHETIC_OBSERVATION",
