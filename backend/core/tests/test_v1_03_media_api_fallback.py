@@ -13,7 +13,7 @@ from core.ai_processor_policy import AIProcessorPolicyDenied
 
 
 @pytest.fixture
-def request():
+def fake_request():
     return SimpleNamespace(user=SimpleNamespace(id=41))
 
 
@@ -41,7 +41,7 @@ def image_request():
     ],
 )
 def test_denied_vision_returns_manual_fallback(
-    request, image_request, monkeypatch, route, backend, expected
+    fake_request, image_request, monkeypatch, route, backend, expected
 ):
     calls = []
 
@@ -50,7 +50,7 @@ def test_denied_vision_returns_manual_fallback(
         raise AIProcessorPolicyDenied("synthetic blocked provider")
 
     monkeypatch.setattr(f"media.vision.{backend}", denied)
-    assert route(request, image_request) == expected
+    assert route(fake_request, image_request) == expected
     assert calls == ["attempt"]
 
 
@@ -62,19 +62,19 @@ def test_denied_vision_returns_manual_fallback(
     ],
 )
 def test_missing_consent_is_not_misreported_as_successful_fallback(
-    request, image_request, monkeypatch, route, backend
+    fake_request, image_request, monkeypatch, route, backend
 ):
     def denied(*args):
         raise AIEgressDenied("consent missing")
 
     monkeypatch.setattr(f"media.vision.{backend}", denied)
     with pytest.raises(AIEgressDenied, match="consent missing"):
-        route(request, image_request)
+        route(fake_request, image_request)
 
 
 @pytest.mark.parametrize("route", ["voice_chat", "transcribe_audio"])
 def test_denied_voice_returns_safely_without_transcript_or_chat(
-    request, monkeypatch, route
+    fake_request, monkeypatch, route
 ):
     monkeypatch.setattr("ai.api.v1.voice._get_language", lambda user: "fr")
     calls = []
@@ -85,7 +85,7 @@ def test_denied_voice_returns_safely_without_transcript_or_chat(
 
     monkeypatch.setattr("ai.api.v1.voice.transcribe", blocked_transcriber)
     audio = SimpleNamespace(content_type="audio/mp4", read=lambda: b"synthetic-audio")
-    result = getattr(voice_routes, route)(request, audio)
+    result = getattr(voice_routes, route)(fake_request, audio)
     assert calls == ["transcribe"]
     if route == "voice_chat":
         assert result["transcript"] == ""
@@ -95,7 +95,7 @@ def test_denied_voice_returns_safely_without_transcript_or_chat(
         assert result == {"transcript": "", "confidence": "low"}
 
 
-def test_voice_consent_denial_is_not_swallowed(request, monkeypatch):
+def test_voice_consent_denial_is_not_swallowed(fake_request, monkeypatch):
     monkeypatch.setattr("ai.api.v1.voice._get_language", lambda user: "fr")
 
     def denied(*args, **kwargs):
@@ -104,4 +104,4 @@ def test_voice_consent_denial_is_not_swallowed(request, monkeypatch):
     monkeypatch.setattr("ai.api.v1.voice.transcribe", denied)
     audio = SimpleNamespace(content_type="audio/mp4", read=lambda: b"synthetic-audio")
     with pytest.raises(AIEgressDenied, match="consent missing"):
-        voice_routes.voice_chat(request, audio)
+        voice_routes.voice_chat(fake_request, audio)
