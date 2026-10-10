@@ -45,7 +45,7 @@ class V103LocalSummaryTests(TestCase):
                 side_effect=AssertionError("clinical engine attempted a model call"),
             ) as engine_gateway,
             patch(
-                "ai.api.v1.ai.get_gateway_llm",
+                "core.llm_gateway.GatewayLLM.complete",
                 side_effect=AssertionError("summary API attempted a model call"),
             ) as api_gateway,
             patch(
