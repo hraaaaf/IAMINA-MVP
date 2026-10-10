@@ -184,6 +184,47 @@ class ConsultationCompanionAssemblerTests(TestCase):
         )
         self.assertLess(anchor.captured_at, self.end)
 
+    def test_pattern_observed_exactly_at_window_end_is_not_included(self):
+        """Half-open dossiers must reject next-window Twin observations."""
+        observation = self._observation(self.patient)
+        ClinicalObservationState.objects.filter(pk=observation.pk).update(
+            last_seen_at=self.end,
+            last_refreshed_at=self.end,
+        )
+
+        brief = assemble_consultation_brief(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=self.end,
+        )
+        self.assertNotIn(
+            "clinical_twin.context:stress.status",
+            {item.key for item in brief.items},
+        )
+        self.assertIn(
+            "no_eligible_clinical_twin_observations", brief.missing_data,
+        )
+
+    def test_pattern_state_change_exactly_at_window_end_is_not_included(self):
+        """The end-boundary Twin lifecycle update cannot enter an earlier brief."""
+        observation = self._observation(self.patient)
+        ClinicalObservationState.objects.filter(pk=observation.pk).update(
+            status_changed_at=self.end,
+        )
+
+        brief = assemble_consultation_brief(
+            patient_id=self.patient.id,
+            window_start=self.start,
+            window_end=self.end,
+        )
+        self.assertNotIn(
+            "clinical_twin.context:stress.status",
+            {item.key for item in brief.items},
+        )
+        self.assertIn(
+            "no_eligible_clinical_twin_observations", brief.missing_data,
+        )
+
     def test_unknown_change_stays_unknown_and_only_authorizes_missing_data_collection(self):
         observation = self._observation(self.patient)
         capture_companion_review_anchor(patient_id=self.patient.id)

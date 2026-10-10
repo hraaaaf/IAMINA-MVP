@@ -182,9 +182,12 @@ def _pattern_is_eligible_for_window(
 ) -> bool:
     """Prevent current P2-2 state from leaking evidence beyond dossier time bounds."""
 
-    if pattern.first_observed_at > window_end or pattern.last_observed_at > window_end:
+    # Consistent with recorded glucose and the review checkpoint, the dossier
+    # window is half-open. A pattern observed or transitioned exactly at
+    # window_end belongs to a later dossier, not this one.
+    if pattern.first_observed_at >= window_end or pattern.last_observed_at >= window_end:
         return False
-    if pattern.state_changed_at > window_end:
+    if pattern.state_changed_at >= window_end:
         return False
     if pattern.current_state == "resolved" and pattern.state_changed_at < window_start:
         return False
