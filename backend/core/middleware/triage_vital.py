@@ -257,7 +257,7 @@ class TriageVitalMiddleware:
                     # not JSON middleware responses. Keep triage upstream of AI.
                     event = json.dumps(response.as_stream_event(), ensure_ascii=False)
                     return StreamingHttpResponse(
-                        iter((f"data: {event}\\n\\n", "data: [DONE]\\n\\n")),
+                        iter((f"data: {event}\n\n", "data: [DONE]\n\n")),
                         content_type="text/event-stream",
                         headers={
                             "Cache-Control": "no-store",
