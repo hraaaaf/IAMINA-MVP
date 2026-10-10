@@ -164,3 +164,34 @@ class PatientSsePostPrivacyTests(TestCase):
         )
         self.assertEqual(response.status_code, 422)
         ai_cls.assert_not_called()
+
+    @patch("companion.core.IAmina")
+    def test_urgent_post_stream_returns_canonical_sse_not_json(self, ai_cls):
+        synthetic = "Je suis inconscient, urgence glycémie"
+        with self.assertLogs("core.middleware.triage_vital", level="CRITICAL") as observed:
+            response = self._post(self.client, synthetic)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.streaming)
+        self.assertEqual(response["Content-Type"], "text/event-stream")
+        self.assertEqual(response["Cache-Control"], "no-store")
+        body = b"".join(response.streaming_content).decode("utf-8")
+        self.assertIn("data: [DONE]", body)
+        first = next(line[6:] for line in body.splitlines() if line.startswith("data: {"))
+        event = json.loads(first)
+        self.assertTrue(event["is_emergency"])
+        self.assertIn("token", event)
+        self.assertTrue(event["token"])
+        self.assertNotIn(synthetic, "\\n".join(observed.output))
+        ai_cls.assert_not_called()
+
+    @patch("companion.core.IAmina")
+    def test_nonstream_urgent_keeps_json_response_contract(self, ai_cls):
+        response = self.client.post(
+            "/api/v1/ai/chat",
+            data=json.dumps({"message": "Je suis inconscient, urgence glycémie"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.streaming)
+        self.assertTrue(response.json()["is_emergency"])
+        ai_cls.assert_not_called()
