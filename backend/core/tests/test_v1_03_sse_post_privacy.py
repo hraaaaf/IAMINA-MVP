@@ -250,7 +250,7 @@ class PatientSsePostPrivacyTests(TestCase):
         self.assertIn('"token"', next(iterator).decode())
         with self.assertRaises(AIEgressDenied):
             assert_ai_egress_allowed(TEXT)
-        response.close()
+        response._iterator.close()
         self.assertEqual(closed_for_patient, [self.patient.id])
         with self.assertRaises(AIEgressDenied):
             assert_ai_egress_allowed(TEXT)
@@ -279,21 +279,34 @@ class PatientSsePostPrivacyTests(TestCase):
             )
             return original_get_key(auth, request)
 
-        with patch.object(SessionAuth, "_get_key", observe_get_key):
-            without_token = self._post(browser, "Synthetic session message")
+        from core.input_safety import ALLOW, evaluate_input_safety
+        from core.middleware.triage_vital import TriageVitalMiddleware
+
+        message = "Bonjour."
+        self.assertEqual(evaluate_input_safety(message).action, ALLOW)
+        with (
+            patch.object(SessionAuth, "_get_key", observe_get_key),
+            patch.object(TriageVitalMiddleware, "_log_emergency") as triage_log,
+        ):
+            without_token = self._post(browser, message)
         try:
             self.assertEqual(
                 without_token.status_code,
                 403,
                 msg=(
                     f"session_auth={observed_auth}; "
+                    f"triage_intercepted={triage_log.called}; "
+                    f"iterator_type={type(getattr(without_token, '_iterator', None)).__name__}; "
                     f"streaming={without_token.streaming}; "
                     f"content_type={without_token['Content-Type']}; "
                     f"cookie_names={list(browser.cookies.keys())}"
                 ),
             )
         finally:
-            without_token.close()
+            # response.close() sends request_finished and closes PostgreSQL
+            # connection while this TestCase transaction is still active.
+            if without_token.streaming:
+                without_token._iterator.close()
         ai_cls.assert_not_called()
 
         # An invalid bearer header must not disable cookie-session CSRF
@@ -321,7 +334,7 @@ class PatientSsePostPrivacyTests(TestCase):
         )
         self.assertEqual(with_token.status_code, 200)
         self.assertTrue(with_token.streaming)
-        with_token.close()
+        with_token._iterator.close()
         ai_cls.assert_not_called()
 
     @patch("companion.router.route")
