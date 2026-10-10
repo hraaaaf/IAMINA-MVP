@@ -2,6 +2,13 @@
 
 **Goal:** local deterministic patient summary and no unverified normative CGM promotion in summary or companion. **Status:** PR #922 DRAFT/UNMERGED, technical code HEAD proven (see chronology below); docs SHA awaiting exact-head CI, release NOT AUTHORIZED.
 
+## 2026-10-10 — Third V1-03 slice: protected direct model wrapper exact-head green
+
+- **Code** `bc31fe06d4efb9279968893d1c5399d54b6882bb`. [CI #38042006742](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006742) SUCCESS (SQLite 2802 pass, PG 2806 pass, 125 subtests, anti-bypass green); [migrations #38042006680](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006680) SUCCESS; [Companion #38042006751](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006751) SUCCESS; [Protected Shadow live #38042006598](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006598) SUCCESS (43 targeted tests; 3 synthetic token-only calls FR/Darija Arabic/Latin `machine_passed=true`, no patient data). Flutter dedicated job skipped.
+- Direct provider transport outside `llm.factory` now checks locale-script allowlist and exact opaque token format before model creation in BOTH shadow modes. Previous candidate `9fd4e30` had Ruff import ordering failure; no network call at that failed probe; fixed `bc31fe0`.
+- **Unclosed:** V1-03 is not globally completed: local UX/AI optout, image/audio, frontend degraded interpretation of fallback, visual BEFORE/AFTER, legal/Groq patient-data approval, clinician and language/safety/privacy/accessibility reviewers. PR #922 remains draft/unmerged; no Vercel, real-patient handling or clinical signoff. This docs update triggers a new SHA requiring exact-head CI.
+- **NEXT exact:** check docs HEAD CI incl protected live probe; independently audit model input boundaries and optout, then reviewer/human release gates. 29 product decisions approved, zero fully delivered.
+
 ## 2026-10-10 — V1-03 external text egress last-hop verified
 
 - **Code HEAD:** `8292a130a674e132f011aea3d1d819547fba0571`; exact [CI #38037493525](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38037493525) **SUCCESS** (SQLite 2791 pass/5 skip/3 xfail; PG 2795 pass/1 skip/3 xfail; 125 subtests, anti-bypass+Ruff green), [migrations #38037493457](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38037493457) **SUCCESS**, [Companion #38037493521](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38037493521) **SUCCESS**. Flutter job skipped. PR #922 DRAFT/unmerged. `main@13b7cce` unaffected.

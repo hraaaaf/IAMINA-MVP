@@ -2,6 +2,18 @@
 
 **STATUS: TECHNICAL CANDIDATE / NOT CLINICALLY CERTIFIED / UNMERGED.**
 
+## 2026-10-10 — Protected Shadow independent direct-adapter hardening (code HEAD `bc31fe0`)
+
+**PRE:** patient-context text calls through `llm.factory` were previously restricted by the external static-generic pair, but `companion/protected_provider_shadow.py` invokes the OpenAI-compatible `complete_text` transport directly in a gated experimental token-only path. `LocaleContract` accepts arbitrary nonempty locale strings, so locale/script metadata was not a separate strict network allowlist.
+
+**Goal/success:** reject arbitrary/dynamic or clinical-looking locale metadata, mismatched script and a malformed protected-body token before provider construction, including the staff-only internal-live branch. Preserve fixed FR/Darija scripts and original local patient reply.
+
+**Change:** `_verify_provider_shadow_payload` now permits only `fr/default`, `en/default`, `ar/default`, `ar-MA/arabic`, `ar-MA/latin` with `{{NVB_[A-F0-9]{32}}}` token. Called once before either processor/network branch; added negative/positive parametric tests. Feature remains OFF by default, internal-live requires active staff and explicit allowlist, patient visible reply unchanged.
+
+**Proof:** exact code HEAD `bc31fe06d4efb9279968893d1c5399d54b6882bb`: [CI #38042006742](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006742) SUCCESS, SQLite **2802 pass/5 skip/3 xfail**, PostgreSQL **2806 pass/1 skip/3 xfail**, 125 subtests, Ruff + security anti-bypass green; [migrations #38042006680](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006680) SUCCESS; [Companion E2E #38042006751](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006751) SUCCESS. [Protected Shadow live probe #38042006598](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006598) SUCCESS: Ruff green, **43 targeted tests passed**, synthetic 3-call machine proof `machine_passed=true`, `patient_data=false`, FR/Darija Arabic/Latin passed with zero violations. Previous [probe #38041934929](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38041934929) FAILED at test import sorting before provider; corrected without changing safeguards.
+
+**Limits:** bounded synthetic token-only internal live transport is not general patient model authorization, not native clinical copy signoff, not certification of AI optout/media/UX, and not pilot/merge/deployment approval. Other patient-origin prompts may still be constructed internally but externally denied by `llm.factory`. New docs-only HEAD must be rechecked.
+
 ## 2026-10-10 — External text last-hop generic-only gate (code HEAD `8292a13`)
 
 **PRE / risk (code read):** `companion/conversation.py` builds free-text message, history, memory and clinical-context prompts for chat and buffered stream; `companion/narrator.py.summarize` also prepares patient-derived text. `llm.factory` formerly relied on a regex minimizer and DLP risk rules before a potentially approved external model request. Numeric/history clinical context without units need not be caught by anonymization heuristics. Network processors remain PENDING; **no actual external patient transfer was demonstrated or performed**.
