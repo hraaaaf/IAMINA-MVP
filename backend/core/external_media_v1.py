@@ -8,16 +8,13 @@ implemented; an environment switch must not silently reopen this gate.
 """
 from __future__ import annotations
 
-from core.ai_egress import AUDIO, DOCUMENT, IMAGE
 from core.ai_processor_policy import AIProcessorPolicyDenied
-
-_PATIENT_MEDIA_MODALITIES = frozenset({AUDIO, IMAGE, DOCUMENT})
-
 
 def assert_v1_external_media_egress_denied(modality: str) -> None:
     """Reject patient-origin media at the irreversible external call boundary."""
-    if modality in _PATIENT_MEDIA_MODALITIES:
-        raise AIProcessorPolicyDenied(
-            "V1-03 external raw patient media is disabled pending a certified "
-            "privacy-preserving media contract"
-        )
+    # This module is the non-text network boundary: all modalities, including
+    # future ones, remain denied until a separately certified allowlist exists.
+    raise AIProcessorPolicyDenied(
+        "V1-03 external raw patient media is disabled pending a certified "
+        "privacy-preserving media contract"
+    )
