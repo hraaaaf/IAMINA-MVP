@@ -3,7 +3,7 @@
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 
-from core.native_auth import issue_native_token
+from core.native_auth import issue_native_token, verify_native_token
 
 
 class ProtectedApiCookieCsrfTests(TestCase):
@@ -57,6 +57,7 @@ class ProtectedApiCookieCsrfTests(TestCase):
 
     def test_native_bearer_only_is_not_subject_to_cookie_csrf(self):
         token = issue_native_token(self.user)
+        self.assertEqual(verify_native_token(token).pk, self.user.pk)
         native = Client(enforce_csrf_checks=True)
         for method, path, expected in self.CASES:
             with self.subTest(method=method, path=path):
@@ -66,7 +67,16 @@ class ProtectedApiCookieCsrfTests(TestCase):
                     path,
                     HTTP_AUTHORIZATION=f"Bearer {token}",
                 )
-                self.assertEqual(response.status_code, expected)
+                self.assertEqual(
+                    response.status_code,
+                    expected,
+                    msg=(
+                        f"authorization_seen="
+                        f"{response.wsgi_request.META.get('HTTP_AUTHORIZATION') == f'Bearer {token}'}; "
+                        f"cookies={list(response.wsgi_request.COOKIES)}; "
+                        f"payload={response.content[:350]!r}"
+                    ),
+                )
 
     def test_valid_native_bearer_with_session_cookie_still_needs_csrf(self):
         token = issue_native_token(self.user)
