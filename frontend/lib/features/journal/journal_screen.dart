@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../data/drift/database.dart';
 import '../../core/data/meal_food_catalog.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/glucose_formatter.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
@@ -463,9 +464,8 @@ class _JournalScreenState extends State<JournalScreen> {
   ) {
     final l10n = AppLocalizations.of(context)!;
     final val = log.bloodSugar;
-    final displayValue = unit == 'mmol/L'
-        ? (val / 18.0).toStringAsFixed(1)
-        : val.toStringAsFixed(0);
+    final displayValue = GlucoseFormatter.convert(val, unit)
+        .toStringAsFixed(unit == 'mmol/L' ? 1 : 0);
     final mealLabels = decodeMealItemIds(log.mealItemsJson)
         .map(mealFoodById)
         .whereType<MealFoodItem>()

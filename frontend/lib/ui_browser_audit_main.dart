@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -23,6 +24,7 @@ import 'features/dashboard/widgets/dashboard_next_action_section.dart';
 import 'features/dashboard/widgets/dashboard_trend_section.dart';
 import 'features/documents/document_import_premium_screen.dart';
 import 'features/journal/add_log_screen.dart';
+import 'features/journal/ai_summary_screen.dart';
 import 'features/journal/journal_screen.dart';
 import 'features/journal/reports_screen.dart';
 import 'features/journal/widgets/food_pictogram_audit_fixture.dart';
@@ -207,6 +209,22 @@ Future<void> main() async {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         await db.seedDemoData();
+        // Isolated opt-in V1-01 test fixture: no real patient/runtime path.
+        if (Uri.base.queryParameters['v101'] == 'unit-190') {
+          final observedAt = DateTime.now().subtract(const Duration(seconds: 30));
+          await db.update(db.patientProfiles).write(
+            const PatientProfilesCompanion(unitPreference: Value('mmol/L')),
+          );
+          await db.into(db.logEntries).insert(
+            LogEntriesCompanion.insert(
+              createdAt: observedAt,
+              loggedAt: Value(observedAt),
+              bloodSugar: 190.0,
+              clientUuid: '00000000-0000-4000-8000-000000000190',
+              syncStatus: const Value('synced'),
+            ),
+          );
+        }
       } catch (error) {
         debugPrint('Browser audit demo seed unavailable: $error');
       }
@@ -253,6 +271,12 @@ class _BrowserAuditApp extends StatelessWidget {
               builder: (context, state) => const ProfileScreen(),
             ),
           ],
+        ),
+        GoRoute(
+          path: '/summary-kpi-cert',
+          builder: (context, state) => AISummaryKpiVisualFixture(
+            mode: Uri.base.queryParameters['mode'] ?? 'cards',
+          ),
         ),
         GoRoute(
           path: '/onboarding',
@@ -419,6 +443,7 @@ String _pathForSurface(String surface) => switch (surface) {
   'dashboard' => '/dashboard',
   'journal' => '/journal',
   'summary' => '/summary',
+  'summary-kpi-cert' => '/summary-kpi-cert',
   'reports-local' => '/reports-local',
   'profile' => '/profile',
   'importer' => '/importer',

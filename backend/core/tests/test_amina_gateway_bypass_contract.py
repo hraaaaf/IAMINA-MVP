@@ -9,7 +9,12 @@ def test_ai_api_does_not_reintroduce_direct_text_provider_access():
     assert "from llm.factory import get_llm" not in source
     assert "get_llm()" not in source
     assert "get_gateway_llm" in source
-    assert "Capability.SUMMARIZE_APPROVED_DATA" in source
+    doctor_handler = source.split("def get_doctor_brief(", 1)[1].split(
+        "# 3. CHAT ENDPOINT", 1
+    )[0]
+    assert "assemble_consultation_brief" in doctor_handler
+    assert "get_gateway_llm(" not in doctor_handler
+    assert "Capability.SUMMARIZE_APPROVED_DATA" not in doctor_handler
 
 
 def test_structured_diabetes_formatter_uses_capability_aware_gateway():

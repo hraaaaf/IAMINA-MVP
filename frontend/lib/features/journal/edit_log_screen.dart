@@ -8,6 +8,7 @@ import '../../core/data/meal_food_catalog.dart';
 import '../../core/data/nutrition_catalog.dart';
 import '../../core/data/ramadan_context.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/glucose_formatter.dart';
 import '../../core/widgets/mobile_page_header.dart';
 import '../../data/drift/database.dart';
 import '../../l10n/app_localizations.dart';
@@ -26,6 +27,9 @@ class EditLogScreen extends StatefulWidget {
 
 class _EditLogScreenState extends State<EditLogScreen> {
   final TextEditingController _glucoseController = TextEditingController();
+  double? _initialMgDl;
+  double? _initialDisplayedValue;
+  String? _initialUnit;
   final TextEditingController _insulinController = TextEditingController();
   final TextEditingController _mealNoteController = TextEditingController();
   final List<String> _selectedMealItemIds = <String>[];
@@ -67,8 +71,11 @@ class _EditLogScreenState extends State<EditLogScreen> {
       return;
     }
     final unit = profile?.unitPreference ?? 'mg/dL';
-    final display = unit == 'mmol/L' ? log.bloodSugar / 18.0 : log.bloodSugar;
+    final display = GlucoseFormatter.convert(log.bloodSugar, unit);
     _glucoseController.text = display.toStringAsFixed(unit == 'mmol/L' ? 1 : 0);
+    _initialMgDl = log.bloodSugar;
+    _initialDisplayedValue = double.tryParse(_glucoseController.text);
+    _initialUnit = unit;
     _insulinController.text = log.insulinUnits == null
         ? ''
         : formatTakenInsulinUnits(log.insulinUnits!);
@@ -102,15 +109,26 @@ class _EditLogScreenState extends State<EditLogScreen> {
 
   double? _mgdlGlucose(String unit) {
     final value = _displayGlucose();
-    if (value == null) return null;
-    return unit == 'mmol/L' ? value * 18.0 : value;
+    if (value == null || !value.isFinite ||
+        !GlucoseFormatter.isSupportedUnit(unit)) {
+      return null;
+    }
+    return GlucoseFormatter.editedToMgDl(
+      value,
+      unit,
+      initialDisplayedValue: unit == _initialUnit ? _initialDisplayedValue : null,
+      initialMgDl: unit == _initialUnit ? _initialMgDl : null,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final profile = context.watch<PatientProfileData?>();
-    final unit = profile?.unitPreference ?? 'mg/dL';
+    // The displayed number was loaded using _initialUnit. Lock its unit for
+    // this form even if profile preferences change elsewhere mid-edit.
+    // Otherwise 3.9 mmol/L can silently be saved as 3.9 mg/dL.
+    final unit = _initialUnit ?? profile?.unitPreference ?? 'mg/dL';
     final desktop = MediaQuery.sizeOf(context).width >= 900;
 
     return Scaffold(
@@ -464,7 +482,8 @@ class _EditLogScreenState extends State<EditLogScreen> {
   Future<void> _saveChanges(String unit, AppLocalizations l10n) async {
     final glucose = _displayGlucose();
     final mgdl = _mgdlGlucose(unit);
-    if (glucose == null || mgdl == null || glucose <= 0) {
+    if (glucose == null || mgdl == null || !glucose.isFinite ||
+        !mgdl.isFinite || glucose <= 0) {
       _message(l10n.journalInvalidGlucose);
       return;
     }

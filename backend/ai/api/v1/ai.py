@@ -30,7 +30,7 @@ from django.db.models import Q
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from ninja import Router
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
 from core.contracts.capabilities import Capability
@@ -39,14 +39,12 @@ from core.llm_gateway import get_gateway_llm
 from core.locale import resolve_patient_locale
 from core.models import BasePatientProfile
 from core.observability import EVT_CHAT_MESSAGE, EVT_SUMMARY_VIEWED, track
+from diabetes.api.v1.kpis import project_patient_kpis
 from diabetes.models import LogEntry
+from diabetes.services.clinical.cgm_analytics import compute_verified_cgm_agp_profile
 from diabetes.services.clinical.engine import run_clinical_analysis
 from diabetes.services.clinical.semantic_compressor import build_chat_context, compress
-from diabetes.services.clinical.sql_analytics import (
-    compute_agp_profile,
-    compute_daily_averages,
-    compute_kpis,
-)
+from diabetes.services.clinical.sql_analytics import compute_daily_averages, compute_kpis
 from llm.factory import get_ai_provider_name
 
 logger = logging.getLogger(__name__)
@@ -64,6 +62,19 @@ class SummaryRequest(BaseModel):
     target_high: float = 180.0
 
 
+class DoctorBriefEvidence(BaseModel):
+    key: str
+    value: float
+    unit: str
+    truth_kind: str
+    source: str
+    source_version: str
+    evidence_id: str
+    window_start: str
+    window_end: str
+    limitations: List[str] = Field(default_factory=list)
+
+
 class DoctorBriefResponse(BaseModel):
     doctor_brief: str
     narrative: str
@@ -71,6 +82,14 @@ class DoctorBriefResponse(BaseModel):
     days: int
     generated_at: str
     has_sufficient_data: bool
+    # CAL-12 backward-compatible typed provenance for clinician review.
+    schema_version: str = "consultation-brief.v1"
+    authority: str = "clinician_review_support_only"
+    window_start: Optional[str] = None
+    window_end: Optional[str] = None
+    evidence: List[DoctorBriefEvidence] = Field(default_factory=list)
+    missing_data: List[str] = Field(default_factory=list)
+    limitations: List[str] = Field(default_factory=list)
 
 
 class KPISchema(BaseModel):
@@ -100,6 +119,8 @@ class SummaryResponse(BaseModel):
     kpis: KPISchema
     insights: List[InsightSchema]
     daily_averages: List[dict]
+    # CGM-only, governed percentile profile. Manual series never populate this.
+    agp_profile: List[dict] = Field(default_factory=list)
     generated_at: str
     has_sufficient_data: bool
     # "groq" | "kimi" | "claude" | "quota-exhausted" | "fallback"
@@ -198,25 +219,45 @@ def get_summary(request, data: SummaryRequest):
         patient_language,
     )
 
-    # ── Step 5: AGP 24h profile + daily averages for Flutter chart ──
-    agp_profile = compute_agp_profile(user.id, data.days)
+    # Raw SQL metrics remain internal descriptive inputs. Patient-visible
+    # GMI/TIR/TAR/TBR/CV must use the same governed projection as GET /kpis/.
+    public_kpis = project_patient_kpis(
+        patient_id=user.id,
+        days=data.days,
+        target_low=data.target_low,
+        target_high=data.target_high,
+        kpis=kpis,
+    )
+
+    # ── Step 5: CGM-only AGP (requires already governed public metrics) ──
+    # The old SQL profile aggregated LogEntry manual/mixed readings; do not
+    # expose it as a clinical AGP. The public KPI gate verifies actual sensor
+    # session coverage and derives these three values from CGMReadingRecord.
+    agp_profile = []
+    if all(public_kpis[field] is not None for field in ("tir_pct", "tar_pct", "tbr_pct")):
+        window_end = timezone.now()
+        agp_profile = compute_verified_cgm_agp_profile(
+            patient_id=user.id,
+            window_start=window_end - timedelta(days=data.days),
+            window_end=window_end,
+        )
     daily_avgs = compute_daily_averages(user.id, data.days)
 
     track(EVT_SUMMARY_VIEWED, patient_id=user.id, props={"days": data.days})
 
     return {
         "kpis": {
-            "avg_glucose": kpis.avg_glucose,
-            "std_dev": kpis.std_dev,
-            "cv_pct": kpis.cv_pct,
-            "tir_pct": kpis.tir_pct,
-            "tar_pct": kpis.tar_pct,
-            "tbr_pct": kpis.tbr_pct,
-            "gmi": kpis.gmi,
-            "log_count": kpis.log_count,
-            "days_with_data": kpis.days_with_data,
-            "gmi_confidence": kpis.gmi_confidence,
-            "gmi_basis": kpis.gmi_basis,
+            "avg_glucose": public_kpis["avg_glucose"],
+            "std_dev": public_kpis["std_dev"],
+            "cv_pct": public_kpis["cv_pct"],
+            "tir_pct": public_kpis["tir_pct"],
+            "tar_pct": public_kpis["tar_pct"],
+            "tbr_pct": public_kpis["tbr_pct"],
+            "gmi": public_kpis["gmi"],
+            "log_count": public_kpis["log_count"],
+            "days_with_data": public_kpis["days_with_data"],
+            "gmi_confidence": public_kpis["gmi_confidence"],
+            "gmi_basis": public_kpis["gmi_basis"],
         },
         "insights": insights,
         "daily_averages": daily_avgs,
@@ -235,106 +276,57 @@ def get_summary(request, data: SummaryRequest):
 @router.get("/ai/doctor-brief", response=DoctorBriefResponse)
 @patient_ai_egress_scope("doctor_brief", TEXT)
 def get_doctor_brief(request, days: int = 14):
-    """
-    GET /api/v1/ai/doctor-brief?days=14
+    """Produce a deterministic, source-bound consultation-preparation snapshot.
 
-    Generates a compact medical summary (narrative + doctor_brief + key_insight)
-    using IAmina's narrator module. Intended for pre-consultation export.
-
-    Returns all three fields from the SUMMARY_USER prompt:
-      - narrative: warm patient-facing summary
-      - key_insight: the single most important observation
-      - doctor_brief: one-sentence clinical digest for the physician
+    CAL-12 / V1-03: no gateway, LLM, prompt, memory or unconstrained patient
+    narration. Only approved facts from consultation-brief.v1 may become numbers.
+    The existing AI scope remains for route-contract compatibility; declaring
+    a scope does not itself authorize or cause external AI egress.
     """
+    from diabetes.services.clinical.consultation_brief_assembler import (
+        assemble_consultation_brief,
+    )
+    from diabetes.services.clinical.doctor_brief_projection import (
+        project_deterministic_doctor_brief,
+    )
+
     user = request.user
     language = _get_patient_language(user)
+    generated_at = timezone.now()
+    if days <= 0:
+        # Invalid windows do not obtain clinical narrative or DB evidence.
+        return project_deterministic_doctor_brief(
+            None, language=language, days=days,
+            generated_at=generated_at, sufficient_rows=False,
+        )
 
-    from companion.memory import IAminaMemory
-    from companion.parser import parse_llm_json
-    from companion.prompts import SUMMARY_USER, SYSTEM_BASE, get_language_label
-    from companion.tone import get_tone_instruction, select_tone
-    from core.medical_safety import apply_no_prescription_policy
-    from diabetes.services.clinical.engine import run_clinical_analysis
-    from diabetes.services.clinical.sql_analytics import compute_kpis
-
+    # Retain existing row-density gate; typed dossier additionally enforces
+    # synchronized, non-demo, patient-owned, bounded facts. SQL values are NEVER
+    # directly promoted to clinician-visible assertions.
     kpis = compute_kpis(patient_id=user.id, days=days)
-
     if not kpis.has_sufficient_data:
-        return {
-            "doctor_brief": "",
-            "narrative": (
-                f"Pas encore assez de données sur les {days} derniers jours "
-                "pour générer un résumé médical."
-            ),
-            "key_insight": "",
-            "days": days,
-            "generated_at": timezone.now().isoformat(),
-            "has_sufficient_data": False,
-        }
-
-    since = timezone.now() - timedelta(days=days)
-    entries = list(
-        LogEntry.objects.filter(
-            Q(logged_at__gte=since) | Q(logged_at__isnull=True, created_at__gte=since),
-            patient=user,
-            blood_sugar__isnull=False,
-        ).order_by("logged_at", "created_at")
-    )
-    report = run_clinical_analysis(entries, kpis)
-
-    IAminaMemory.load(user)
-    tone_ctx = select_tone(tir_pct=kpis.tir_pct, cv_pct=kpis.cv_pct)
-    # The structured JSON response remains endpoint-specific, but provider access
-    # now goes through GatewayLLM so capability, PHI and egress controls are shared.
-    llm = get_gateway_llm()
-
-    stats_lines = [
-        f"AVG_GLUCOSE: {kpis.avg_glucose} mg/dL" if kpis.avg_glucose else "",
-        f"TIR: {kpis.tir_pct}%" if kpis.tir_pct else "",
-        f"GMI_EST_HBA1C: {kpis.gmi}%" if kpis.gmi else "",
-        f"CV: {kpis.cv_pct}%" if kpis.cv_pct else "",
-        f"LOGS: {kpis.log_count} entries over {kpis.days_with_data} days",
-    ]
-    stats = "\n".join(s for s in stats_lines if s)
-    patterns_text = (
-        "\n".join(f"- [{p.priority}] {p.code}: {p.evidence}" for p in report.patterns)
-        or "Aucun pattern significatif."
-    )
-
-    system = SYSTEM_BASE.format(language=get_language_label(language), tone=tone_ctx.mode.value)
-    system += "\n" + get_tone_instruction(tone_ctx)
-    user_prompt = SUMMARY_USER.format(window_days=days, stats=stats, patterns=patterns_text)
-
-    narrative = ""
-    key_insight = ""
-    doctor_brief = ""
+        return project_deterministic_doctor_brief(
+            None, language=language, days=days,
+            generated_at=generated_at, sufficient_rows=False,
+        )
 
     try:
-        result = llm.complete(
-            system,
-            user_prompt,
-            capability=Capability.SUMMARIZE_APPROVED_DATA,
+        envelope = assemble_consultation_brief(
+            patient_id=user.id,
+            window_start=generated_at - timedelta(days=days),
+            window_end=generated_at,
         )
-        parsed = parse_llm_json(result.content, ["narrative", "key_insight", "doctor_brief"])
-        narrative = parsed["narrative"]
-        key_insight = parsed["key_insight"]
-        doctor_brief = parsed["doctor_brief"]
+        return project_deterministic_doctor_brief(
+            envelope, language=language, days=days,
+            generated_at=generated_at, sufficient_rows=True,
+        )
     except Exception:
-        logger.exception("doctor_brief LLM call failed for patient=%s", user.id)
-        narrative = "Résumé indisponible — réessaie dans quelques instants."
-
-    narrative = apply_no_prescription_policy(narrative, language)
-    key_insight = apply_no_prescription_policy(key_insight, language)
-    doctor_brief = apply_no_prescription_policy(doctor_brief, language)
-
-    return {
-        "doctor_brief": doctor_brief,
-        "narrative": narrative,
-        "key_insight": key_insight,
-        "days": days,
-        "generated_at": timezone.now().isoformat(),
-        "has_sufficient_data": True,
-    }
+        # No partial model response, unverified statistic or raw exception text.
+        logger.exception("governed doctor brief unavailable for patient=%s", user.id)
+        return project_deterministic_doctor_brief(
+            None, language=language, days=days,
+            generated_at=generated_at, sufficient_rows=False,
+        )
 
 
 # ──────────────────────────────────────────────────────────────

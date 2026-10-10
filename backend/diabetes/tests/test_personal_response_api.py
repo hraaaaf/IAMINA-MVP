@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import UTC, datetime, time, timedelta
 
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
@@ -54,3 +54,44 @@ class PersonalResponseApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["window_days"], 90)
+
+    def test_future_logged_at_is_absent_from_api_and_clinical_memory(self):
+        """The public projection must not promote next-day future evidence."""
+        now = timezone.now()
+        # Pin the two valid rows to UTC noon, never a near-midnight
+        # boundary dependent on when CI happens to execute.
+        same_day = datetime.combine(
+            (now - timedelta(days=10)).date(),
+            time(hour=12),
+            tzinfo=UTC,
+        )
+        for i in range(2):
+            LogEntry.objects.create(
+                patient=self.patient,
+                logged_at=same_day + timedelta(minutes=4 * i),
+                blood_sugar=130 + i * 10,
+                stressed="yes",
+                source="manual",
+            )
+        LogEntry.objects.create(
+            patient=self.patient,
+            logged_at=now + timedelta(days=2),
+            blood_sugar=190,
+            stressed="yes",
+            source="manual",
+        )
+
+        self.client.force_login(self.patient)
+        response = self.client.get("/api/v1/personal-response/?days=90")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["status"], "insufficient_data")
+        self.assertEqual(payload["total_readings"], 2)
+        self.assertEqual(payload["distinct_days"], 1)
+        self.assertEqual(payload["patterns"], [])
+        from diabetes.models.clinical_observation import ClinicalObservationState
+
+        self.assertFalse(
+            ClinicalObservationState.objects.filter(patient=self.patient).exists()
+        )

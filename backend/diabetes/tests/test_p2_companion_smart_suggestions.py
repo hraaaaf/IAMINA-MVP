@@ -243,10 +243,17 @@ class CompanionSmartSuggestionTests(TestCase):
 
         self.now = anchor.captured_at + timedelta(days=1)
         self._log(days_ago=0, glucose=175, stressed="yes")
-        result = evaluate_companion_smart_suggestion(
-            patient_id=self.patient.id,
-            evaluated_at=self.now,
-        )
+        # The test advances its evaluation date by one day. Advance the
+        # production evidence clock as well: future records must not be
+        # accepted against the runner's unadvanced real wall clock.
+        with patch(
+            "diabetes.services.clinical.personal_response.timezone.now",
+            return_value=self.now,
+        ):
+            result = evaluate_companion_smart_suggestion(
+                patient_id=self.patient.id,
+                evaluated_at=self.now,
+            )
 
         self.assertEqual(result.status, "suggested")
         assert result.suggestion is not None

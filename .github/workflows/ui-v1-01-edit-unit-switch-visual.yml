@@ -1,0 +1,110 @@
+name: V1-01 edit glucose unit switch visual proof
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/journal/edit_log_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen.dart'
+      - 'frontend/lib/features/profile/profile_screen_presentation.dart'
+      - 'frontend/lib/features/dashboard/widgets/add_log_sheet.dart'
+      - 'frontend/lib/core/utils/glucose_formatter.dart'
+      - 'frontend/lib/v1_01_unit_switch_browser_main.dart'
+      - 'tools/v1_01_unit_switch_browser_capture.cjs'
+      - '.github/workflows/ui-v1-01-edit-unit-switch-visual.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-browser-unit-switch:
+    name: Real Chrome AddLog EditLog Profile 390 and 768
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Lock exact PR HEAD and baseline
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          git cat-file -e a1ee4175b295cffe9514980975263c7637b0f5e2^{commit}
+          git merge-base --is-ancestor a1ee4175b295cffe9514980975263c7637b0f5e2 HEAD
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare Flutter and Chromium
+        working-directory: frontend
+        run: |
+          flutter pub get
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test actual AddLog and EditLog storage behavior
+        working-directory: frontend
+        run: |
+          flutter test --no-pub test/v1_01_edit_log_roundtrip_widget_test.dart test/features/add_log_sheet_test.dart test/v1_01_glucose_display_conversion_test.dart
+      - name: BEFORE actual baseline product widgets
+        run: |
+          set -euo pipefail
+          for file in frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/journal/edit_log_screen.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart frontend/lib/features/profile/profile_screen.dart frontend/lib/features/profile/profile_screen_presentation.dart; do
+            git show "a1ee4175b295cffe9514980975263c7637b0f5e2:$file" > "$file"
+          done
+          cd frontend
+          flutter build web --release -t lib/v1_01_unit_switch_browser_main.dart
+          python3 -m http.server 7367 --directory build/web >/tmp/v101-unit-before.log 2>&1 &
+          SERVER=$!
+          trap 'kill "$SERVER" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7367/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:7367/ >/dev/null
+          NODE_PATH="$PWD/node_modules" AUDIT_PHASE=before AUDIT_OUT="$GITHUB_WORKSPACE/v101-unit-switch-proof" node ../tools/v1_01_unit_switch_browser_capture.cjs
+      - name: AFTER actual exact HEAD product widgets
+        run: |
+          set -euo pipefail
+          git restore --source=HEAD -- frontend/lib/core/utils/glucose_formatter.dart frontend/lib/features/journal/edit_log_screen.dart frontend/lib/features/dashboard/widgets/add_log_sheet.dart frontend/lib/features/profile/profile_screen.dart frontend/lib/features/profile/profile_screen_presentation.dart
+          cd frontend
+          flutter build web --release -t lib/v1_01_unit_switch_browser_main.dart
+          python3 -m http.server 7367 --directory build/web >/tmp/v101-unit-after.log 2>&1 &
+          SERVER=$!
+          trap 'kill "$SERVER" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7367/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:7367/ >/dev/null
+          NODE_PATH="$PWD/node_modules" AUDIT_PHASE=after AUDIT_OUT="$GITHUB_WORKSPACE/v101-unit-switch-proof" node ../tools/v1_01_unit_switch_browser_capture.cjs
+      - name: Check 12 real PNGs at identical viewports
+        run: |
+          python3 - <<'PY'
+          import pathlib, struct, hashlib
+          folder = pathlib.Path('v101-unit-switch-proof')
+          for surface in ('edit', 'add', 'profile'):
+              for width, height in ((390, 844), (768, 1024)):
+                  images = []
+                  for phase in ('before', 'after'):
+                      p = folder / f'{phase}-{surface}-unit-switch-{width}x{height}.png'
+                      raw = p.read_bytes()
+                      assert raw[:8] == b'\x89PNG\r\n\x1a\n', p
+                      assert struct.unpack('>II', raw[16:24]) == (width, height), p
+                      assert len(raw) > 7000, p
+                      print(p, len(raw), hashlib.sha256(raw).hexdigest())
+                      images.append(raw)
+                  assert images[0] != images[1], (surface, width, height)
+          PY
+      - name: Archive browser BEFORE AFTER evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v101-real-chrome-unit-switch-before-after
+          path: v101-unit-switch-proof/*.png
+          retention-days: 21
+          if-no-files-found: warn
