@@ -5,7 +5,7 @@ Migrated from diabetes/api/v1/ai.py in Phase 5 of engine-decomposition.
 
 POST /api/v1/ai/summary              — Deterministic local clinical observations (no LLM)
 POST /api/v1/ai/chat                 — Contextual conversation with English Pivot Layer
-GET  /api/v1/ai/doctor-brief         — Compact medical summary for pre-consultation export
+GET  /api/v1/ai/doctor-brief         — Deterministic local recorded-data summary
 POST /api/v1/ai/analyze-meal-image   — Gemini Vision meal recognition
 POST /api/v1/ai/analyze-glucometer-image — Gemini Vision glucometer OCR (web fallback)
 GET  /api/v1/ai/chat/stream          — SSE streaming chat
@@ -33,9 +33,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
-from core.contracts.capabilities import Capability
 from core.input_safety import INSULIN_BLOCK, PRESCRIPTION_BLOCK, evaluate_input_safety
-from core.llm_gateway import get_gateway_llm
 from core.locale import resolve_patient_locale
 from core.models import BasePatientProfile
 from core.observability import EVT_CHAT_MESSAGE, EVT_SUMMARY_VIEWED, track
@@ -229,107 +227,27 @@ def get_summary(request, data: SummaryRequest):
 
 
 @router.get("/ai/doctor-brief", response=DoctorBriefResponse)
-@patient_ai_egress_scope("doctor_brief", TEXT)
 def get_doctor_brief(request, days: int = 14):
+    """Bounded local consultation-preparation description; never invoke an LLM.
+
+    No verified CGM interpretation, cause, prognosis, diagnosis or dose advice
+    is available from raw recorded glucose rows. No third-party egress scope
+    is needed because the full response stays in the authenticated backend.
+    The localized wording requires specialist review before patient release.
     """
-    GET /api/v1/ai/doctor-brief?days=14
-
-    Generates a compact medical summary (narrative + doctor_brief + key_insight)
-    using IAmina's narrator module. Intended for pre-consultation export.
-
-    Returns all three fields from the SUMMARY_USER prompt:
-      - narrative: warm patient-facing summary
-      - key_insight: the single most important observation
-      - doctor_brief: one-sentence clinical digest for the physician
-    """
-    user = request.user
-    language = _get_patient_language(user)
-
-    from companion.memory import IAminaMemory
-    from companion.parser import parse_llm_json
-    from companion.prompts import SUMMARY_USER, SYSTEM_BASE, get_language_label
-    from companion.tone import get_tone_instruction, select_tone
-    from core.medical_safety import apply_no_prescription_policy
-    from diabetes.services.clinical.engine import run_clinical_analysis
+    from diabetes.services.clinical.doctor_brief_local import build_local_doctor_brief
     from diabetes.services.clinical.sql_analytics import compute_kpis
 
+    user = request.user
     kpis = compute_kpis(patient_id=user.id, days=days)
-
-    if not kpis.has_sufficient_data:
-        return {
-            "doctor_brief": "",
-            "narrative": (
-                f"Pas encore assez de données sur les {days} derniers jours "
-                "pour générer un résumé médical."
-            ),
-            "key_insight": "",
-            "days": days,
-            "generated_at": timezone.now().isoformat(),
-            "has_sufficient_data": False,
-        }
-
-    since = timezone.now() - timedelta(days=days)
-    entries = list(
-        LogEntry.objects.filter(
-            Q(logged_at__gte=since) | Q(logged_at__isnull=True, created_at__gte=since),
-            patient=user,
-            blood_sugar__isnull=False,
-        ).order_by("logged_at", "created_at")
+    local = build_local_doctor_brief(
+        kpis, days=days, language=_get_patient_language(user)
     )
-    report = run_clinical_analysis(entries, kpis)
-
-    IAminaMemory.load(user)
-    tone_ctx = select_tone(tir_pct=kpis.tir_pct, cv_pct=kpis.cv_pct)
-    # The structured JSON response remains endpoint-specific, but provider access
-    # now goes through GatewayLLM so capability, PHI and egress controls are shared.
-    llm = get_gateway_llm()
-
-    stats_lines = [
-        f"AVG_GLUCOSE: {kpis.avg_glucose} mg/dL" if kpis.avg_glucose else "",
-        f"TIR: {kpis.tir_pct}%" if kpis.tir_pct else "",
-        f"GMI_EST_HBA1C: {kpis.gmi}%" if kpis.gmi else "",
-        f"CV: {kpis.cv_pct}%" if kpis.cv_pct else "",
-        f"LOGS: {kpis.log_count} entries over {kpis.days_with_data} days",
-    ]
-    stats = "\n".join(s for s in stats_lines if s)
-    patterns_text = (
-        "\n".join(f"- [{p.priority}] {p.code}: {p.evidence}" for p in report.patterns)
-        or "Aucun pattern significatif."
-    )
-
-    system = SYSTEM_BASE.format(language=get_language_label(language), tone=tone_ctx.mode.value)
-    system += "\n" + get_tone_instruction(tone_ctx)
-    user_prompt = SUMMARY_USER.format(window_days=days, stats=stats, patterns=patterns_text)
-
-    narrative = ""
-    key_insight = ""
-    doctor_brief = ""
-
-    try:
-        result = llm.complete(
-            system,
-            user_prompt,
-            capability=Capability.SUMMARIZE_APPROVED_DATA,
-        )
-        parsed = parse_llm_json(result.content, ["narrative", "key_insight", "doctor_brief"])
-        narrative = parsed["narrative"]
-        key_insight = parsed["key_insight"]
-        doctor_brief = parsed["doctor_brief"]
-    except Exception:
-        logger.exception("doctor_brief LLM call failed for patient=%s", user.id)
-        narrative = "Résumé indisponible — réessaie dans quelques instants."
-
-    narrative = apply_no_prescription_policy(narrative, language)
-    key_insight = apply_no_prescription_policy(key_insight, language)
-    doctor_brief = apply_no_prescription_policy(doctor_brief, language)
-
     return {
-        "doctor_brief": doctor_brief,
-        "narrative": narrative,
-        "key_insight": key_insight,
+        **local,
         "days": days,
         "generated_at": timezone.now().isoformat(),
-        "has_sufficient_data": True,
+        "has_sufficient_data": kpis.has_sufficient_data,
     }
 
 
