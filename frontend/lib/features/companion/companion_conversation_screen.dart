@@ -13,6 +13,7 @@ import '../../core/theme/app_theme.dart';
 import '../../services/api_client.dart';
 import '../../services/companion_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/consent_service.dart';
 import '../../data/drift/database.dart';
 import 'local_reading_context.dart';
 
@@ -25,6 +26,18 @@ String _chatText(BuildContext context, String fr, String en, String ar) {
 
 String _failureText(BuildContext context, ProviderApiException failure) {
   return switch (failure.code) {
+    'ai_declined_locally' => _chatText(
+      context,
+      'Vous avez choisi de continuer sans IA sur cet appareil.',
+      'You chose to continue without AI on this device.',
+      'اخترت المتابعة دون ذكاء اصطناعي على هذا الجهاز.',
+    ),
+    'ai_consent_unverified_locally' => _chatText(
+      context,
+      'Un consentement IA vérifié est requis sur cet appareil.',
+      'Verified AI consent is required on this device.',
+      'يلزم الحصول على موافقة موثقة للذكاء الاصطناعي على هذا الجهاز.',
+    ),
     'provider_timeout' => _chatText(
       context,
       'IAmina met trop de temps à répondre. Réessaie dans un instant.',
@@ -119,6 +132,7 @@ class _CompanionConversationScreenState
     } else {
       _service = CompanionService(
         authService: context.read<AuthService>(),
+        consentService: context.read<ConsentService>(),
         demoLanguage: Localizations.localeOf(context).languageCode,
       );
       _ownsService = true;

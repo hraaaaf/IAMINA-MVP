@@ -13,6 +13,7 @@ import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
+import '../../services/consent_evidence_store.dart';
 import '../../services/consent_service.dart';
 
 part 'profile_screen_presentation.dart';
@@ -369,15 +370,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       final api = context.read<ApiClient>();
                       final db = context.read<AppDatabase>();
                       final consent = context.read<ConsentService>();
+                      final evidence = context.read<ConsentEvidenceStore>();
                       Navigator.pop(sheetCtx);
-                      await api.withdrawConsent().catchError((_) => false);
-                      await db.setAiConsent(granted: false);
+                      // Never claim withdrawal or clear local evidence until
+                      // the server has acknowledged the authoritative revocation.
+                      final withdrawn = await api.withdrawConsent();
+                      if (!withdrawn) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(l10n.syncFailed)),
+                          );
+                        }
+                        return;
+                      }
+
+                      // Revocation is authoritative on the server; shut the
+                      // local AI gate immediately, then clear both durable stores.
+                      consent.clearVerifiedConsent();
                       consent.declineLocally();
+                      var localCleared = true;
+                      try {
+                        await db.setAiConsent(granted: false);
+                      } catch (_) {
+                        localCleared = false;
+                      }
+                      try {
+                        await evidence.clear();
+                      } catch (_) {
+                        localCleared = false;
+                      }
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              AppLocalizations.of(context)!.consentWithdrawn,
+                              localCleared
+                                  ? l10n.consentWithdrawn
+                                  : l10n.syncFailed,
                             ),
                           ),
                         );

@@ -1867,7 +1867,7 @@
             }
           }
         },
-        "description": "Full Phase 6 analytical pipeline.\n\nStep 1: SQL computes all KPIs (never Python arithmetic).\nStep 2: Pattern detection engine runs against ORM queryset.\nStep 3: SemanticCompressor \u2192 English pivot text.\nStep 4: Groq GPT-OSS-120B formats the governed patient response.",
+        "description": "Full Phase 6 analytical pipeline.\n\nStep 1: SQL computes all KPIs (never Python arithmetic).\nStep 2: Pattern detection engine runs against ORM queryset.\nStep 3: Local, deterministic presentation of evidence-qualified patterns.\nNo third-party model sees patient observations or measurements.",
         "tags": [
           "ai"
         ],
@@ -1919,7 +1919,7 @@
             }
           }
         },
-        "description": "GET /api/v1/ai/doctor-brief?days=14\n\nGenerates a compact medical summary (narrative + doctor_brief + key_insight)\nusing IAmina's narrator module. Intended for pre-consultation export.\n\nReturns all three fields from the SUMMARY_USER prompt:\n  - narrative: warm patient-facing summary\n  - key_insight: the single most important observation\n  - doctor_brief: one-sentence clinical digest for the physician",
+        "description": "Bounded local consultation-preparation description; never invoke an LLM.\n\nNo verified CGM interpretation, cause, prognosis, diagnosis or dose advice\nis available from raw recorded glucose rows. No third-party egress scope\nis needed because the full response stays in the authenticated backend.\nThe localized wording requires specialist review before patient release.",
         "tags": [
           "ai"
         ],

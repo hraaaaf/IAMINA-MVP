@@ -7,6 +7,10 @@ PR: #840
 Branch: `conversation/protected-shadow-internal-live-bounded`
 Certified code HEAD: `0f4033248b2f945424239840070f2d759630782a`
 
+## Addendum 2026-10-10 — V1-03 independent adapter edge (unmerged)
+
+**Distinct evidence, not a replacement of 2026-09-30 certification.** [PR #922](https://github.com/hraaaaf/IAMINA-MVP/pull/922) code HEAD `bc31fe06d4efb9279968893d1c5399d54b6882bb`: additional locale/script allowlist and `NVB` token format validation before direct `complete_text` provider construction in both protected-shadow variants. [Live synthetic probe #38042006598](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006598) **SUCCESS**, Ruff green, **43 targeted tests passed**, `machine_passed=true`, `planned_calls=3`, `patient_data=false`, cases FR/default, Darija/arabic, Darija/latin passed, zero violations. [CI #38042006742](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006742), [migration #38042006680](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006680) and [Companion #38042006751](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006751) **SUCCESS** at exact code SHA; Flutter job skipped. New documentation commit needs its own exact-head validation. Processor patient-policy remains PENDING; no general patient-model, clinical or release authorization.
+
 ## Goal
 
 Prove that IAMINA can execute a bounded real Groq protected-shadow wrapper call for

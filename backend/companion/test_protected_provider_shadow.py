@@ -1,3 +1,4 @@
+from dataclasses import replace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -5,6 +6,8 @@ from django.test import override_settings
 
 from companion.narration_envelope import build_shadow_envelope
 from companion.protected_provider_shadow import (
+    ProtectedProviderShadowRequest,
+    _verify_provider_shadow_payload,
     build_protected_provider_shadow_request,
     generate_protected_provider_shadow_candidate,
 )
@@ -15,6 +18,7 @@ from core.contracts.advice_decision import (
     AdviceDisposition,
 )
 from core.contracts.advice_resolution import AdviceResolution
+from core.contracts.narration_envelope import LocaleContract
 
 
 def _resolution() -> AdviceResolution:
@@ -46,6 +50,80 @@ def test_request_contains_only_locale_script_and_opaque_token():
     assert "mg/dL" not in prompt
     assert "certified_consultation_brief" not in prompt
     assert "diabetes.clinician_prep" not in prompt
+
+
+@pytest.mark.parametrize(
+    ("locale", "script"),
+    [
+        ("fr\\npatient=175", "default"),
+        ("glucose-175", "default"),
+        ("fr", "arabic"),
+        ("ar-MA", "default"),
+        ("en-US", "default"),
+    ],
+)
+@override_settings(
+    NARRATION_PROTECTED_PROVIDER_SHADOW=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE=False,
+)
+def test_unapproved_locale_or_script_denied_before_policy_and_network(locale, script):
+    envelope = replace(
+        build_shadow_envelope(_resolution(), language="fr"),
+        locale=LocaleContract(locale=locale, script=script),
+    )
+    with (
+        patch("companion.protected_provider_shadow.authorize_processor_policy") as policy,
+        patch("companion.protected_provider_shadow.build_openai_compatible_provider") as build,
+        pytest.raises(PermissionError, match="unapproved protected wrapper locale/script"),
+    ):
+        generate_protected_provider_shadow_candidate(
+            envelope, internal_authorized=True
+        )
+    policy.assert_not_called()
+    build.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("locale", "script"),
+    [
+        ("fr", "default"),
+        ("en", "default"),
+        ("ar", "default"),
+        ("ar-MA", "arabic"),
+        ("ar-MA", "latin"),
+    ],
+)
+def test_supported_shadow_locale_script_remains_allowed(locale, script):
+    envelope = replace(
+        build_shadow_envelope(_resolution(), language="fr"),
+        locale=LocaleContract(locale=locale, script=script),
+    )
+    _verify_provider_shadow_payload(build_protected_provider_shadow_request(envelope))
+
+
+@override_settings(
+    NARRATION_PROTECTED_PROVIDER_SHADOW=True,
+    NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE=False,
+)
+def test_shadow_nonopaque_token_fails_before_processor_or_provider():
+    envelope = build_shadow_envelope(_resolution(), language="fr")
+    request = ProtectedProviderShadowRequest(
+        locale="fr", script="default", protected_body_token="{{NVB_patient_210}}"
+    )
+    with (
+        patch(
+            "companion.protected_provider_shadow.build_protected_provider_shadow_request",
+            return_value=request,
+        ),
+        patch("companion.protected_provider_shadow.authorize_processor_policy") as policy,
+        patch("companion.protected_provider_shadow.build_openai_compatible_provider") as build,
+        pytest.raises(PermissionError, match="token format invalid"),
+    ):
+        generate_protected_provider_shadow_candidate(
+            envelope, internal_authorized=True
+        )
+    policy.assert_not_called()
+    build.assert_not_called()
 
 
 @override_settings(NARRATION_PROTECTED_PROVIDER_SHADOW=False)

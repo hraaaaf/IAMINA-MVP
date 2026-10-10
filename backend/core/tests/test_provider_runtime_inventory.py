@@ -35,6 +35,10 @@ def test_document_image_ocr_delegates_to_governed_vision_boundary():
 
 def test_runtime_checks_scope_and_processor_policy_before_provider_call(monkeypatch):
     events: list[str] = []
+    # Simulated provider only: exercise ordering without enabling media egress.
+    monkeypatch.setattr(
+        "llm.runtime.assert_v1_external_media_egress_denied", lambda modality: None
+    )
 
     monkeypatch.setattr(
         "llm.runtime.assert_ai_egress_allowed",
@@ -91,6 +95,10 @@ def test_processor_policy_denial_prevents_provider_invocation(monkeypatch):
 
 
 def test_multimodal_timeout_is_typed_and_non_sensitive(monkeypatch):
+    monkeypatch.setattr(
+        "llm.runtime.assert_v1_external_media_egress_denied", lambda modality: None
+    )
+
     class PendingFuture:
         def result(self, timeout):
             from concurrent.futures import TimeoutError
@@ -130,6 +138,9 @@ def test_multimodal_timeout_is_typed_and_non_sensitive(monkeypatch):
 
 
 def test_multimodal_vendor_exception_is_normalized(monkeypatch):
+    monkeypatch.setattr(
+        "llm.runtime.assert_v1_external_media_egress_denied", lambda modality: None
+    )
     monkeypatch.setattr(
         "llm.runtime.assert_ai_egress_allowed",
         lambda modality: SimpleNamespace(purpose="document_ingest"),
