@@ -33,6 +33,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
+from core.ai_processor_policy import AIProcessorPolicyDenied
 from core.input_safety import INSULIN_BLOCK, PRESCRIPTION_BLOCK, evaluate_input_safety
 from core.locale import resolve_patient_locale
 from core.models import BasePatientProfile
@@ -344,7 +345,12 @@ def analyze_glucometer_image_web(request, data: MealImageRequest):
         logger.warning("analyze_glucometer_image: input rejected — %s", error)
         return {"value": None, "unit": "mg/dL", "confidence": "low", "fallback": True}
 
-    return _analyze_gluco(data.image_base64, data.mime_type)
+    try:
+        return _analyze_gluco(data.image_base64, data.mime_type)
+    except AIProcessorPolicyDenied:
+        # Cloud image analysis is intentionally disabled for V1-03.
+        # Preserve the manual glucometer-entry path without claiming OCR success.
+        return {"value": None, "unit": "mg/dL", "confidence": "low", "fallback": True}
 
 
 @router.post("/ai/analyze-meal-image", response=MealImageResponse)
@@ -375,8 +381,11 @@ def analyze_meal_image(request, data: MealImageRequest):
         logger.warning("analyze_meal_image: input rejected — %s", error)
         return {"foods": [], "confidence": "low", "fallback": True}
 
-    result = _analyze(data.image_base64, data.mime_type)
-    return result
+    try:
+        return _analyze(data.image_base64, data.mime_type)
+    except AIProcessorPolicyDenied:
+        # Do not turn expected privacy-policy refusal into a server error.
+        return {"foods": [], "confidence": "low", "fallback": True}
 
 
 # ──────────────────────────────────────────────────────────────
