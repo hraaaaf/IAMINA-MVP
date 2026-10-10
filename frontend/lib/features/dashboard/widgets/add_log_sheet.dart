@@ -187,7 +187,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
     final transcriber = widget.voiceTranscriber;
     return transcriber != null
         ? transcriber(audioBytes, mimeType)
-        : ApiClient().transcribeAudio(audioBytes, mimeType);
+        : context.read<ApiClient>().transcribeAudio(audioBytes, mimeType);
   }
 
   Future<void> _toggleMealVoice() async {
