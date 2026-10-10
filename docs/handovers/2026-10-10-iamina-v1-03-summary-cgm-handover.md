@@ -1,6 +1,13 @@
 # IAMINA V1-03 — Summary + CGM Safety Handover — 2026-10-10
 
-**Goal:** local deterministic patient summary and no unverified normative CGM promotion in summary or companion. **Status:** PR #922 DRAFT/UNMERGED, technical code HEAD proven (see chronology below); docs SHA awaiting exact-head CI, release NOT AUTHORIZED.
+**Goal:** local deterministic patient summary and no unverified normative CGM promotion in summary or companion. **Status:** PR #922 DRAFT/UNMERGED, technical code HEAD proven (see chronology below); newest documentation SHA pending exact-head CI, release NOT AUTHORIZED.
+
+## 2026-10-10 — Fourth V1-03 slice: raw media provider-bound denial green
+
+- **Code HEAD:** `d1abf68056f0b5d4ded534a5f2afb8aff2e3c0dd`, PR #922 DRAFT/unmerged. Exact [CI #38043299895](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38043299895) SUCCESS (SQLite 2814 pass/5 skip/3 xfail; PG 2818 pass/1 skip/3 xfail; 125 subtests; Ruff and anti-bypass), [migrations #38043299841](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38043299841), [Companion #38043299888](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38043299888), [Protected Shadow #38043299942](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38043299942) all SUCCESS. Flutter dedicated job skipped.
+- New final outbound `core/external_media_v1.py` veto in `llm/runtime.py::execute_external_provider_call`: even with consent plus simulated approved processor, reject **all raw external image/audio/document and unknown future non-text modalities**. Six synthetic approved-consent cases require zero vendor callbacks; missing/revoked consent and unknown modality also denied. Existing synthetic circuit-breaker/timeout tests mock this new gate ONLY to test their unrelated isolated algorithms.
+- Real earlier failure [CI #38042757860](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042757860) was Ruff I001 import format; correction-only HEAD `d1abf68` tested green. This is intentional external media feature restriction, not proof OCR/STT succeeds under release conditions. Text static-generic and Protected Shadow token-only gates remain unchanged.
+- **NEXT:** certify this docs HEAD; audit global opt-out and local chat failure UX, alternative media/manual capture UI and all other network paths. Clinician/privacy/security/legal/native language/accessibility reviewers and P5-6A/B prereal-patient gates remain. No merge/Vercel/real patients; 29 approved product decisions, zero fully delivered.
 
 ## 2026-10-10 — Third V1-03 slice: protected direct model wrapper exact-head green
 

@@ -2,6 +2,18 @@
 
 **STATUS: TECHNICAL CANDIDATE / NOT CLINICALLY CERTIFIED / UNMERGED.**
 
+## 2026-10-10 — External raw media gateway fail-closed (code HEAD `d1abf68`)
+
+**BEFORE / risk verified in code:** `backend/media/voice.py` and `backend/media/vision.py` invoke `llm.runtime.execute_external_provider_call` with an audio recording or image bytes. That boundary authorizes patient scope, current consent + per-purpose media grant and processor policy, then executes the provider call. The network processor statuses are PENDING today; **no patient transfer or leak was observed**. However an approved policy in the future was sufficient to permit raw-media egress without a distinct V1-03 proof of safe content. The static generic-only text guard is unrelated. Document image OCR delegates to the governed vision adapter, whose patient-context cloud eligibility is separately denied.
+
+**Goal / observable success:** every external non-text provider invocation remains denied by V1-03 even with a future simulated-approved processor plus signed patient and modality consent. Revocation/no-consent remains a separate earlier denial. No provider callback after any negative gate, including unforeseen media types.
+
+**Implementation:** new `backend/core/external_media_v1.py` contains a fail-closed final-hop media blocker; `backend/llm/runtime.py::execute_external_provider_call` invokes it after original patient/processor authorization and before transport construction. `backend/core/tests/test_v1_03_external_media_egress.py` tests six media purpose/modality pairs with synthetic authorized patient and mocked approved processor, zero vendor callbacks, missing/revoked consent and future unknown modality. `test_multimodal_provider_circuit_breaker.py` and `test_provider_runtime_inventory.py` simulate the historical transport algorithm with only the new gate monkeypatched inside individual test fixtures; this is not a product bypass.
+
+**Exact-head proof:** `d1abf68056f0b5d4ded534a5f2afb8aff2e3c0dd`: [CI #38043299895](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38043299895) **SUCCESS**, SQLite **2814 pass/5 skip/3 xfail**, PostgreSQL **2818 pass/1 skip/3 xfail**, 125 subtests; Ruff, LLM gateway and AI egress anti-bypass passed. [Migration #38043299841](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38043299841), [Companion E2E #38043299888](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38043299888) and [Protected Shadow #38043299942](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38043299942) **SUCCESS**. Flutter dedicated job skipped. [Earlier CI #38042757860](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042757860) actually FAILED Ruff I001 over one missing blank line in new module; corrected in `d1abf68` with no safety logic removed.
+
+**Operational limitation:** this explicitly disables external meal photo/glucometer image interpretation and external voice STT; manual/local alternatives and honest UX must be validated before any rollout. Does not prove global UI or privacy certification, and does not license image/audio patient egress when Gemini's policy becomes approved. This documentation update itself creates an unverified new HEAD until the exact workflows complete.
+
 ## 2026-10-10 — Protected Shadow independent direct-adapter hardening (code HEAD `bc31fe0`)
 
 **PRE:** patient-context text calls through `llm.factory` were previously restricted by the external static-generic pair, but `companion/protected_provider_shadow.py` invokes the OpenAI-compatible `complete_text` transport directly in a gated experimental token-only path. `LocaleContract` accepts arbitrary nonempty locale strings, so locale/script metadata was not a separate strict network allowlist.
