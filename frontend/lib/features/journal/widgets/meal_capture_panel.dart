@@ -124,7 +124,7 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
         : lower.endsWith('.webp')
         ? 'image/webp'
         : 'image/jpeg';
-    return ApiClient().analyzeMealImage(bytes, mimeType: mime);
+    return context.read<ApiClient>().analyzeMealImage(bytes, mimeType: mime);
   }
 
   Future<void> _recognizePhoto(AppLocalizations l10n) async {
