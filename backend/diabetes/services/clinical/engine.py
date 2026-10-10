@@ -716,7 +716,8 @@ def run_clinical_analysis(
             logger.warning("ClinicalEngine: detector %s failed: %s", detector_name, exc)
 
     patterns.sort(key=lambda p: (p.priority, p.code))
-    insights = _format_with_llm(patterns, language) if patterns else []
+    # V1-03: patient observations stay local; no model narration on this path.
+    insights = _format_fallback(patterns, language) if patterns else []
     return ClinicalReport(kpis=kpis, patterns=patterns, insights=insights)
 
 
