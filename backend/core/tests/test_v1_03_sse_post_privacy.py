@@ -225,6 +225,59 @@ class PatientSsePostPrivacyTests(TestCase):
         for call in critical_log.call_args_list:
             self.assertNotIn(message, str(call))
 
+    @patch("companion.advice_filter.contains_medical_advice", return_value=False)
+    @patch("companion.router.route")
+    @patch("companion.core.IAmina")
+    def test_client_disconnect_closes_provider_stream_in_scope(
+        self, ai_cls, _route, _advice
+    ):
+        closed_for_patient = []
+
+        def chunks(_message, context_days):
+            self.assertEqual(context_days, 14)
+            try:
+                self.assertEqual(
+                    assert_ai_egress_allowed(TEXT).patient_id, self.patient.id
+                )
+                yield "Bonjour. "
+                self.fail("Provider was advanced after SSE client disconnect")
+            finally:
+                closed_for_patient.append(assert_ai_egress_allowed(TEXT).patient_id)
+
+        ai_cls.return_value.stream_chat.side_effect = chunks
+        response = self._post(self.client, "Synthetic interrupted stream")
+        iterator = iter(response.streaming_content)
+        self.assertIn('"token"', next(iterator).decode())
+        with self.assertRaises(AIEgressDenied):
+            assert_ai_egress_allowed(TEXT)
+        response.close()
+        self.assertEqual(closed_for_patient, [self.patient.id])
+        with self.assertRaises(AIEgressDenied):
+            assert_ai_egress_allowed(TEXT)
+
+    @patch("companion.core.IAmina")
+    def test_session_post_requires_csrf_and_accepts_valid_token(self, ai_cls):
+        browser = Client(enforce_csrf_checks=True)
+        browser.force_login(self.patient)
+        without_token = self._post(browser, "Synthetic session message")
+        self.assertEqual(without_token.status_code, 403)
+        ai_cls.assert_not_called()
+
+        csrf_secret = "a" * 32
+        browser.cookies["csrftoken"] = csrf_secret
+        with_token = browser.post(
+            "/api/v1/ai/chat/stream",
+            data=json.dumps(
+                {"message": "Synthetic session message", "context_days": 14}
+            ),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf_secret,
+        )
+        self.assertEqual(with_token.status_code, 200)
+        self.assertTrue(with_token.streaming)
+        with_token.close()
+        ai_cls.assert_not_called()
+
     @patch("companion.router.route")
     @patch("companion.core.IAmina")
     def test_stream_exception_does_not_log_patient_body(self, ai_cls, _route):
