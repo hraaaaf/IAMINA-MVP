@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from ai.api.v1.ai import _call_llm_for_summary
 from diabetes.models import LogEntry
-from diabetes.services.clinical.engine import ClinicalPattern
+from diabetes.services.clinical.engine import ClinicalPattern, DiabetesEngine
 
 
 class V103LocalSummaryTests(TestCase):
@@ -92,9 +92,8 @@ class V103LocalSummaryTests(TestCase):
         self.assertEqual(response.json()["ai_provider"], "fallback")
         gateway.assert_not_called()
 
-    def test_cgm_row_fraction_without_sensor_window_cannot_promote_clinical_metrics(self):
-        # 80% of rows labeled CGM is not a verified 80% sensor wear-time.
-        # Alternating synthetic values yield a high raw SQL CV over 16 days.
+    def _seed_unverified_cgm_fraction(self):
+        # Provenance: 80% labeled CGM, but no CGM sensor-session proof.
         anchor = timezone.now() - timedelta(days=1)
         for index in range(100):
             logged_at = (anchor - timedelta(days=index % 16)).replace(
@@ -107,6 +106,8 @@ class V103LocalSummaryTests(TestCase):
                 logged_at=logged_at,
             )
 
+    def test_cgm_row_fraction_without_sensor_window_cannot_promote_clinical_metrics(self):
+        self._seed_unverified_cgm_fraction()
         with patch(
             "diabetes.services.clinical.engine.get_gateway_llm",
             side_effect=AssertionError("unverified CGM evidence reached a model"),
@@ -129,6 +130,25 @@ class V103LocalSummaryTests(TestCase):
             "CGM_HIGH_VARIABILITY",
             {insight["code"] for insight in payload["insights"]},
         )
+        gateway.assert_not_called()
+
+    def test_companion_context_does_not_claim_cgm_tir_without_sensor_evidence(self):
+        self._seed_unverified_cgm_fraction()
+        with patch(
+            "diabetes.services.clinical.engine.get_gateway_llm",
+            side_effect=AssertionError("companion generated patient narration"),
+        ) as gateway:
+            context = DiabetesEngine().analyze(self.patient.id, days=21)
+
+        self.assertTrue(context.has_sufficient_data)
+        self.assertEqual(context.kpi_summary["log_count"], 100)
+        self.assertIsNotNone(context.kpi_summary["avg_glucose"])
+        for normative in ("cv_pct", "tir_pct", "tar_pct", "tbr_pct", "gmi"):
+            self.assertIsNone(context.kpi_summary[normative], normative)
+        self.assertNotIn("CGM_HIGH_VARIABILITY", context.detected_patterns)
+        self.assertNotIn("CGM TIR", context.pivot_text)
+        self.assertEqual(context.trend, {})
+        self.assertEqual(context.primary_label, "recorded_glucose")
         gateway.assert_not_called()
 
     def test_legacy_summary_helper_does_not_forward_patient_pivot(self):
