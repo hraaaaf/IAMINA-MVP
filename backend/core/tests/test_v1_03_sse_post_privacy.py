@@ -195,3 +195,32 @@ class PatientSsePostPrivacyTests(TestCase):
         self.assertFalse(response.streaming)
         self.assertTrue(response.json()["is_emergency"])
         ai_cls.assert_not_called()
+
+    @patch("companion.core.IAmina")
+    @patch("core.middleware.triage_vital.logger.critical")
+    @patch("core.middleware.triage_vital.evaluate_input_safety")
+    def test_urgent_post_preserves_sse_and_no_patient_message_logging(
+        self, triage_decision, critical_log, ai_cls
+    ):
+        from core.input_safety import URGENT, InputSafetyDecision
+
+        triage_decision.return_value = InputSafetyDecision(
+            URGENT, "glycemic_emergency"
+        )
+        message = "Synthetic patient emergency phrase."
+        response = self._post(self.client, message)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.streaming)
+        self.assertEqual(response["Content-Type"], "text/event-stream")
+        self.assertEqual(response["Cache-Control"], "no-store")
+        raw_events = b"".join(response.streaming_content).decode()
+        first_event = raw_events.split("\n\n")[0]
+        self.assertTrue(first_event.startswith("data: "))
+        event = json.loads(first_event.removeprefix("data: "))
+        self.assertTrue(event["is_emergency"])
+        self.assertTrue(event["token"])
+        self.assertIn("data: [DONE]", raw_events)
+        ai_cls.assert_not_called()
+        critical_log.assert_called()
+        for call in critical_log.call_args_list:
+            self.assertNotIn(message, str(call))
