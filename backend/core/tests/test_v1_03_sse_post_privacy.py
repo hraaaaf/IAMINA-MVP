@@ -259,8 +259,41 @@ class PatientSsePostPrivacyTests(TestCase):
     def test_session_post_requires_csrf_and_accepts_valid_token(self, ai_cls):
         browser = Client(enforce_csrf_checks=True)
         browser.force_login(self.patient)
-        without_token = self._post(browser, "Synthetic session message")
-        self.assertEqual(without_token.status_code, 403)
+        from amina.vercel_session_auth import SessionAuth
+
+        observed_auth = []
+        original_get_key = SessionAuth._get_key
+
+        def observe_get_key(auth, request):
+            observed_auth.append(
+                {
+                    "session_cookie": auth.param_name in request.COOKIES,
+                    "method": request.method,
+                    "ninja_csrf_exempt": getattr(
+                        request, "_ninja_csrf_exempt", None
+                    ),
+                    "test_csrf_bypass": getattr(
+                        request, "_dont_enforce_csrf_checks", None
+                    ),
+                }
+            )
+            return original_get_key(auth, request)
+
+        with patch.object(SessionAuth, "_get_key", observe_get_key):
+            without_token = self._post(browser, "Synthetic session message")
+        try:
+            self.assertEqual(
+                without_token.status_code,
+                403,
+                msg=(
+                    f"session_auth={observed_auth}; "
+                    f"streaming={without_token.streaming}; "
+                    f"content_type={without_token['Content-Type']}; "
+                    f"cookie_names={list(browser.cookies.keys())}"
+                ),
+            )
+        finally:
+            without_token.close()
         ai_cls.assert_not_called()
 
         # An invalid bearer header must not disable cookie-session CSRF
