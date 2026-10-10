@@ -509,8 +509,9 @@ def chat_stream(request, data: ChatRequest):
 
             yield "data: [DONE]\n\n"
 
-        except Exception:
-            logger.exception("SSE chat stream failed")
+        except Exception as exc:
+            # Avoid exception messages and tracebacks potentially containing PHI.
+            logger.error("SSE chat stream failed safely: %s", type(exc).__name__)
             yield f"data: {json.dumps({'token': 'Une erreur est survenue.'})}\n\n"
             yield "data: [DONE]\n\n"
 

@@ -12,6 +12,15 @@ import '../data/models/ai_models.dart';
 import '../data/models/document_models.dart';
 import '../data/models/personal_response_models.dart';
 
+/// Build patient SSE requests with private text only in a JSON body.
+http.Request buildPatientSseRequest(String baseUrl, String message) {
+  final request = http.Request('POST', Uri.parse('$baseUrl/api/v1/ai/chat/stream'));
+  request.headers['Content-Type'] = 'application/json';
+  request.headers['Accept'] = 'text/event-stream';
+  request.body = jsonEncode({'message': message, 'context_days': 14});
+  return request;
+}
+
 class ProviderApiException implements Exception {
   final String code;
   final String message;
@@ -302,12 +311,7 @@ class ApiClient {
       );
     }
     final token = await _authService.getIdToken();
-    final uri = Uri.parse('$baseUrl/api/v1/ai/chat/stream');
-
-    // Patient text belongs in the authenticated JSON body, never the URL.
-    final request = http.Request('POST', uri)
-      ..headers['Content-Type'] = 'application/json'
-      ..body = jsonEncode({'message': message, 'context_days': 14});
+    final request = buildPatientSseRequest(baseUrl, message);
     if (token != null && token.isNotEmpty) {
       request.headers['Authorization'] = 'Bearer $token';
     }

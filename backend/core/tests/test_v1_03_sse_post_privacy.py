@@ -224,3 +224,14 @@ class PatientSsePostPrivacyTests(TestCase):
         critical_log.assert_called()
         for call in critical_log.call_args_list:
             self.assertNotIn(message, str(call))
+
+    @patch("companion.router.route")
+    @patch("companion.core.IAmina")
+    def test_stream_exception_does_not_log_patient_body(self, ai_cls, _route):
+        synthetic_secret = "SYNTHETIC_PRIVATE_PATIENT_DIABETES_175"
+        ai_cls.return_value.stream_chat.side_effect = RuntimeError(synthetic_secret)
+        with self.assertLogs("ai.api.v1.ai", level="ERROR") as observed:
+            response = self._post(self.client, synthetic_secret)
+            body = b"".join(response.streaming_content).decode()
+        self.assertIn("Une erreur est survenue.", body)
+        self.assertNotIn(synthetic_secret, "\n".join(observed.output))
