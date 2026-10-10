@@ -375,7 +375,9 @@ class _MealCapturePanelState extends State<MealCapturePanel> {
         const SizedBox(height: 16),
         OutlinedButton.icon(
           key: const Key('meal-photo-button'),
-          onPressed: _recognizing ? null : () => _recognizePhoto(l10n),
+          onPressed: _recognizing || !widget.canUsePhotoRecognition
+              ? null
+              : () => _recognizePhoto(l10n),
           icon: _recognizing
               ? const SizedBox.square(
                   dimension: 18,

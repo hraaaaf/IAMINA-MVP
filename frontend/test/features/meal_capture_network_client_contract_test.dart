@@ -12,6 +12,10 @@ void main() {
     );
     expect(source, isNot(contains('ApiClient().analyzeMealImage(')));
     expect(source, contains('if (!widget.canUsePhotoRecognition)'));
+    expect(
+      source,
+      contains('onPressed: _recognizing || !widget.canUsePhotoRecognition'),
+    );
   });
   test('photo action requires current evidence-bound local AI consent', () {
     final source = File('lib/features/dashboard/widgets/add_log_sheet.dart')
