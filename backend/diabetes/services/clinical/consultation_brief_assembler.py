@@ -97,7 +97,10 @@ def _eligible_logs(*, patient_id: int, window_start: datetime, window_end: datet
         .filter(
             patient_id=patient_id,
             consultation_effective_at__gte=window_start,
-            consultation_effective_at__lte=window_end,
+            # A half-open [start, end) prevents adjacent dossiers from
+            # claiming the same source row twice. The Companion review
+            # checkpoint already treats window_end as exclusive.
+            consultation_effective_at__lt=window_end,
         )
         .exclude(source="demo")
     )

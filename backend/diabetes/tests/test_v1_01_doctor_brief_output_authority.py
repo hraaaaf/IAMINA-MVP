@@ -249,6 +249,54 @@ class DoctorBriefIsolationDBTests(TestCase):
         self.assertNotIn("350", str(approved))
         gateway.assert_not_called()
 
+    def test_exact_window_end_cannot_forge_the_fifth_recorded_sample(self):
+        """A boundary row cannot authorize a descriptive Doctor Brief."""
+        patient = User.objects.create_user(username="cal12-window-edge")
+        now = timezone.now()
+        for i in range(1, 5):
+            LogEntry.objects.create(
+                patient=patient, blood_sugar=120,
+                logged_at=now - timedelta(days=i), source="manual",
+            )
+        # A reading exactly at the end of the clinical brief is not in
+        # [window_start, window_end) and cannot supply its fifth sample.
+        LogEntry.objects.create(
+            patient=patient, blood_sugar=390,
+            logged_at=now, source="manual",
+        )
+        request = SimpleNamespace(user=patient)
+        with (
+            patch("ai.api.v1.ai.timezone.now", return_value=now),
+            patch("ai.api.v1.ai._get_patient_language", return_value="en"),
+            patch(
+                "ai.api.v1.ai.compute_kpis",
+                return_value=SimpleNamespace(has_sufficient_data=True),
+            ),
+            patch(
+                "ai.api.v1.ai.get_gateway_llm",
+                side_effect=AssertionError("no external LLM"),
+            ) as gateway,
+        ):
+            insufficient = get_doctor_brief.__wrapped__(request, days=14)
+            self.assertFalse(insufficient["has_sufficient_data"])
+            self.assertEqual(insufficient["doctor_brief"], "")
+            self.assertEqual(insufficient["evidence"], [])
+            self.assertIn(
+                "insufficient_non_demo_recorded_samples",
+                insufficient["missing_data"],
+            )
+            # An additional legitimately in-window record may authorize
+            # the exact same bounded, descriptive mean without the edge row.
+            LogEntry.objects.create(
+                patient=patient, blood_sugar=120,
+                logged_at=now - timedelta(days=6), source="manual",
+            )
+            sufficient = get_doctor_brief.__wrapped__(request, days=14)
+        self.assertTrue(sufficient["has_sufficient_data"])
+        self.assertEqual(sufficient["evidence"][0]["value"], 120.0)
+        self.assertNotIn("390", str(sufficient))
+        gateway.assert_not_called()
+
     def test_actual_http_requires_auth_and_keeps_patient_records_separate(self):
         first = User.objects.create_user(username="cal12-http-first", password="testpass")
         second = User.objects.create_user(username="cal12-http-second", password="testpass")

@@ -221,6 +221,77 @@ class ConsultationCompanionAssemblerTests(TestCase):
         self.assertEqual(by_key["recorded_glucose.latest_mg_dl"].value, 140.0)
         self.assertNotIn("clinical_twin.context:activity.status", by_key)
 
+    def test_adjacent_dossier_windows_do_not_double_count_end_boundary(self):
+        """Exactly-on-end readings belong only to the next half-open window."""
+        pivot = self.now - timedelta(days=3)
+        window_start = pivot - timedelta(days=1)
+        window_end = pivot + timedelta(days=1)
+        for patient, at, glucose, source in (
+            (self.patient, pivot - timedelta(minutes=30), 110, "manual"),
+            (self.patient, pivot, 130, "manual"),
+            (self.patient, pivot + timedelta(minutes=30), 150, "manual"),
+            (self.patient, window_end, 170, "manual"),
+            (self.other, pivot, 450, "manual"),
+            (self.patient, pivot, 600, "demo"),
+        ):
+            LogEntry.objects.create(
+                patient=patient, logged_at=at, blood_sugar=glucose, source=source,
+            )
+
+        first = assemble_consultation_brief(
+            patient_id=self.patient.id,
+            window_start=window_start,
+            window_end=pivot,
+        )
+        second = assemble_consultation_brief(
+            patient_id=self.patient.id,
+            window_start=pivot,
+            window_end=window_end,
+        )
+        first_items = {item.key: item.value for item in first.items}
+        second_items = {item.key: item.value for item in second.items}
+        self.assertEqual(first_items["recorded_glucose.sample_count"], 1)
+        self.assertEqual(first_items["recorded_glucose.average_mg_dl"], 110.0)
+        self.assertEqual(first_items["recorded_glucose.latest_mg_dl"], 110.0)
+        self.assertEqual(second_items["recorded_glucose.sample_count"], 2)
+        self.assertEqual(second_items["recorded_glucose.average_mg_dl"], 140.0)
+        self.assertEqual(second_items["recorded_glucose.latest_mg_dl"], 150.0)
+        # Three authorized rows across the disjoint windows, never four.
+        self.assertEqual(
+            first_items["recorded_glucose.sample_count"]
+            + second_items["recorded_glucose.sample_count"],
+            3,
+        )
+
+    def test_created_at_fallback_exactly_at_end_belongs_to_next_window(self):
+        """Legacy rows without logged_at follow the same boundary contract."""
+        pivot = self.now - timedelta(days=3)
+        fallback = LogEntry.objects.create(
+            patient=self.patient, logged_at=None,
+            blood_sugar=125, source="manual",
+        )
+        LogEntry.objects.filter(pk=fallback.pk).update(created_at=pivot)
+        previous = assemble_consultation_brief(
+            patient_id=self.patient.id,
+            window_start=pivot - timedelta(days=1),
+            window_end=pivot,
+        )
+        next_brief = assemble_consultation_brief(
+            patient_id=self.patient.id,
+            window_start=pivot,
+            window_end=pivot + timedelta(days=1),
+        )
+        self.assertNotIn(
+            "recorded_glucose.sample_count",
+            {item.key for item in previous.items},
+        )
+        self.assertEqual(
+            {item.key: item.value for item in next_brief.items}[
+                "recorded_glucose.sample_count"
+            ],
+            1,
+        )
+
     def test_malformed_twin_state_cannot_bypass_companion_projection_validation(self):
         observation = self._observation(self.patient)
         ClinicalObservationState.objects.filter(pk=observation.pk).update(
