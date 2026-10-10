@@ -147,3 +147,20 @@ class PatientSsePostPrivacyTests(TestCase):
         self.assertEqual(calls, [])
         with self.assertRaises(AIEgressDenied):
             assert_ai_egress_allowed(TEXT)
+
+    @patch("companion.core.IAmina")
+    def test_unauthenticated_post_is_denied(self, ai_cls):
+        anonymous = Client()
+        response = self._post(anonymous, "Synthetic unauthed text")
+        self.assertIn(response.status_code, (401, 403))
+        ai_cls.assert_not_called()
+
+    @patch("companion.core.IAmina")
+    def test_invalid_json_body_is_rejected_before_stream(self, ai_cls):
+        response = self.client.post(
+            "/api/v1/ai/chat/stream",
+            data=json.dumps({"context_days": 14}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 422)
+        ai_cls.assert_not_called()
