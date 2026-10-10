@@ -92,12 +92,14 @@ class PatientSsePostPrivacyTests(TestCase):
         other_client = Client()
         other_client.force_login(patient_b)
 
+        testcase = self
+
         def construct(patient, language):
             class FakeAi:
                 def stream_chat(self, message, context_days):
                     for value in ["Bonjour. ", "Encore. ", "Fin."]:
                         context = assert_ai_egress_allowed(TEXT)
-                        self.assertEqual(context.patient_id, patient.id)
+                        testcase.assertEqual(context.patient_id, patient.id)
                         yield value
 
             return FakeAi()
@@ -112,7 +114,36 @@ class PatientSsePostPrivacyTests(TestCase):
         with self.assertRaises(AIEgressDenied):
             assert_ai_egress_allowed(TEXT)
         self.assertTrue(next(b).startswith(b"data: "))
-        self.assertIn("[DONE]", b"".join(a).decode())
-        self.assertIn("[DONE]", b"".join(b).decode())
+        output_a = b"".join(a).decode()
+        output_b = b"".join(b).decode()
+        self.assertIn("[DONE]", output_a)
+        self.assertIn("[DONE]", output_b)
+        self.assertIn("Fin.", output_a)
+        self.assertIn("Fin.", output_b)
+        self.assertNotIn("Une erreur", output_a + output_b)
+        with self.assertRaises(AIEgressDenied):
+            assert_ai_egress_allowed(TEXT)
+
+    @patch("companion.router.route")
+    @patch("companion.core.IAmina")
+    def test_denied_server_consent_never_enters_provider(self, ai_cls, _route):
+        patient = self.patient
+        profile = patient.base_profile
+        profile.ai_consent_given_at = None
+        profile.save(update_fields=["ai_consent_given_at"])
+        calls = []
+
+        def blocked_stream(_message, context_days):
+            assert_ai_egress_allowed(TEXT)
+            calls.append("provider-entered")
+            yield "Should never be emitted"
+
+        ai_cls.return_value.stream_chat.side_effect = blocked_stream
+        response = self._post(self.client, "Synthetic forbidden chat")
+        self.assertEqual(response.status_code, 200)
+        payload = b"".join(response.streaming_content).decode()
+        self.assertIn("Une erreur est survenue.", payload)
+        self.assertNotIn("Should never", payload)
+        self.assertEqual(calls, [])
         with self.assertRaises(AIEgressDenied):
             assert_ai_egress_allowed(TEXT)
