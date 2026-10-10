@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.utils import timezone
 
-from core.ai_egress import AIEgressDenied, TEXT, assert_ai_egress_allowed
+from core.ai_egress import TEXT, AIEgressDenied, assert_ai_egress_allowed
 from core.consent_notice import expected_notice_claim
 from core.models import BasePatientProfile
 
