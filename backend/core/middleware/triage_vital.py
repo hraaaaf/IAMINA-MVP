@@ -12,7 +12,7 @@ import json
 import logging
 import re
 
-from django.http import JsonResponse
+from django.http import JsonResponse, StreamingHttpResponse
 from django.utils import timezone
 
 from core.emergency_response import compose_emergency_response
@@ -249,6 +249,21 @@ class TriageVitalMiddleware:
                     locale=locale,
                     message=user_message,
                 )
+                if request.path.rstrip("/") in {
+                    "/api/v1/ai/chat/stream",
+                    "/api/v1/diabetes/ai/chat/stream",
+                }:
+                    # Critical: streaming Flutter clients consume SSE tokens,
+                    # not JSON middleware responses. Keep triage upstream of AI.
+                    event = json.dumps(response.as_stream_event(), ensure_ascii=False)
+                    return StreamingHttpResponse(
+                        iter((f"data: {event}\n\n", "data: [DONE]\n\n")),
+                        content_type="text/event-stream",
+                        headers={
+                            "Cache-Control": "no-store",
+                            "X-Accel-Buffering": "no",
+                        },
+                    )
                 return JsonResponse(
                     response.as_payload(timestamp=timezone.now().isoformat()),
                     status=200,
@@ -331,11 +346,10 @@ class TriageVitalMiddleware:
         return _message_language(message)
 
     def _log_emergency(self, request, message: str, kind: str = "legacy") -> None:
-        user_id = getattr(request.user, "id", "anonymous")
+        # Never put patient-authored health text or identifiers into
+        # application logs; classification and path are enough for telemetry.
         logger.critical(
-            "TriageVital: EMERGENCY DETECTED — kind=%s | user_id=%s | path=%s | snippet='%s'",
+            "TriageVital: EMERGENCY DETECTED — kind=%s | path=%s",
             kind,
-            user_id,
             request.path,
-            message[:120],
         )

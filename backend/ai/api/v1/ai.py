@@ -8,7 +8,7 @@ POST /api/v1/ai/chat                 — Contextual conversation with English Pi
 GET  /api/v1/ai/doctor-brief         — Deterministic local recorded-data summary
 POST /api/v1/ai/analyze-meal-image   — Gemini Vision meal recognition
 POST /api/v1/ai/analyze-glucometer-image — Gemini Vision glucometer OCR (web fallback)
-GET  /api/v1/ai/chat/stream          — SSE streaming chat
+POST /api/v1/ai/chat/stream          — SSE streaming chat
 
 Architecture (Analytical-First):
   1. SQL KPIs computed by sql_analytics.compute_kpis() — no Python arithmetic.
@@ -32,7 +32,7 @@ from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
-from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
+from core.ai_egress import IMAGE, TEXT, ai_egress_scope, patient_ai_egress_scope
 from core.ai_processor_policy import AIProcessorPolicyDenied
 from core.input_safety import INSULIN_BLOCK, PRESCRIPTION_BLOCK, evaluate_input_safety
 from core.locale import resolve_patient_locale
@@ -393,14 +393,28 @@ def analyze_meal_image(request, data: MealImageRequest):
 # ──────────────────────────────────────────────────────────────
 
 
-@router.get("/ai/chat/stream")
+@router.post("/ai/chat/stream")
 @patient_ai_egress_scope("companion_chat", TEXT)
-def chat_stream(request, message: str, context_days: int = 14):
+def chat_stream(request, data: ChatRequest):
     """
-    GET /api/v1/ai/chat/stream?message=...
+    POST /api/v1/ai/chat/stream — JSON body with message and context_days.
     Returns Server-Sent Events — one `data:` line per token chunk.
     Terminal event: `data: [DONE]`
     """
+    # Django-Ninja may select an earlier auth callback before SessionAuth.
+    # A browser session cookie must therefore never bypass CSRF on this
+    # sensitive streaming POST, even with a spoofed Authorization header.
+    from django.conf import settings
+    from ninja.errors import HttpError
+
+    if request.COOKIES.get(settings.SESSION_COOKIE_NAME):
+        from amina.vercel_session_auth import check_iamina_csrf
+
+        if check_iamina_csrf(request):
+            raise HttpError(403, "CSRF check Failed")
+
+    message = data.message
+    context_days = data.context_days
     from core.input_safety import (
         INSULIN_BLOCK,
         PRESCRIPTION_BLOCK,
@@ -425,7 +439,11 @@ def chat_stream(request, message: str, context_days: int = 14):
             yield f"data: {json.dumps({'token': emergency_msg})}\n\n"
             yield "data: [DONE]\n\n"
 
-        return StreamingHttpResponse(_urgent_event_generator(), content_type="text/event-stream")
+        return StreamingHttpResponse(
+            _urgent_event_generator(),
+            content_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
 
     if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
 
@@ -436,7 +454,11 @@ def chat_stream(request, message: str, context_days: int = 14):
             yield f"data: {json.dumps({'token': refusal})}\n\n"
             yield "data: [DONE]\n\n"
 
-        return StreamingHttpResponse(_insulin_event_generator(), content_type="text/event-stream")
+        return StreamingHttpResponse(
+            _insulin_event_generator(),
+            content_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
 
     # Fetch entries only for the urgency glucose check in the router
     since = timezone.now() - timedelta(days=context_days)
@@ -499,16 +521,36 @@ def chat_stream(request, message: str, context_days: int = 14):
 
             yield "data: [DONE]\n\n"
 
-        except Exception:
-            logger.exception("SSE chat stream failed")
+        except Exception as exc:
+            # Avoid exception messages and tracebacks potentially containing PHI.
+            logger.error("SSE chat stream failed safely: %s", type(exc).__name__)
             yield f"data: {json.dumps({'token': 'Une erreur est survenue.'})}\n\n"
             yield "data: [DONE]\n\n"
 
+    def _scoped_event_generator():
+        """Scope each deferred next() independently, resetting before yielding SSE.
+
+        A scope held across yield would risk cross-patient ContextVar inheritance
+        when separately streaming requests are interleaved on the same worker.
+        """
+        stream = _event_generator()
+        try:
+            while True:
+                with ai_egress_scope(user.id, "companion_chat", TEXT):
+                    try:
+                        event = next(stream)
+                    except StopIteration:
+                        return
+                yield event
+        finally:
+            with ai_egress_scope(user.id, "companion_chat", TEXT):
+                stream.close()
+
     return StreamingHttpResponse(
-        _event_generator(),
+        _scoped_event_generator(),
         content_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-store",
             "X-Accel-Buffering": "no",
         },
     )
