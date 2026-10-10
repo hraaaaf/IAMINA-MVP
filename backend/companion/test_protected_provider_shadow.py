@@ -12,13 +12,13 @@ from companion.protected_provider_shadow import (
     generate_protected_provider_shadow_candidate,
 )
 from core.ai_processor_policy import AIProcessorPolicyDenied
-from core.contracts.narration_envelope import LocaleContract
 from core.contracts.advice_decision import (
     AdviceAuthorityLevel,
     AdviceDecision,
     AdviceDisposition,
 )
 from core.contracts.advice_resolution import AdviceResolution
+from core.contracts.narration_envelope import LocaleContract
 
 
 def _resolution() -> AdviceResolution:
