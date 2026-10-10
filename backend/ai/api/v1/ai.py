@@ -401,6 +401,18 @@ def chat_stream(request, data: ChatRequest):
     Returns Server-Sent Events — one `data:` line per token chunk.
     Terminal event: `data: [DONE]`
     """
+    # Django-Ninja may select an earlier auth callback before SessionAuth.
+    # A browser session cookie must therefore never bypass CSRF on this
+    # sensitive streaming POST, even with a spoofed Authorization header.
+    from django.conf import settings
+    from ninja.errors import HttpError
+
+    if request.COOKIES.get(settings.SESSION_COOKIE_NAME):
+        from amina.vercel_session_auth import check_iamina_csrf
+
+        if check_iamina_csrf(request):
+            raise HttpError(403, "CSRF check Failed")
+
     message = data.message
     context_days = data.context_days
     from core.input_safety import (
