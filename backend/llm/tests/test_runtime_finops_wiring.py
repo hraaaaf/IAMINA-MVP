@@ -19,6 +19,8 @@ from core.tests.consent_helpers import grant_current_ai_consent
 from llm.base import BaseLLMProvider, LLMResponse, LLMUsage
 from llm.budget import BudgetExceeded
 from llm.errors import LLMProviderQuotaExceeded
+from core.ai_processor_policy import AIProcessorPolicyDenied
+from core.external_text_v1 import GENERIC_SYSTEM_PROMPT, GENERIC_USER_PROMPT
 from llm.factory import _enforce_text_payload_policy
 from llm.provider_guard import ProviderCircuitOpen
 from llm.runtime_finops import RuntimeFinOpsConfigurationError
@@ -178,7 +180,39 @@ def _complete(guarded, patient, *, idempotency_key="request-1"):
         ai_egress_scope(patient.id, "companion_chat", "text"),
         usage_workload_scope("conversation"),
     ):
-        return guarded.complete("system", "bonjour")
+        return guarded.complete(GENERIC_SYSTEM_PROMPT, GENERIC_USER_PROMPT)
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize(
+    "unsafe_user_prompt",
+    [
+        "recorded average 175",
+        "7 readings on 3 separate days",
+        "Ma glycémie est élevée depuis 2 jours",
+        "فـ 3 أيام كانت عندي 7 قياسات",
+        "My insulin changed this morning",
+        "locale=ar-MA; history=two previous patient messages",
+    ],
+)
+def test_v1_03_last_network_hop_denies_patient_context_even_with_approved_policy(
+    consenting_patient, monkeypatch, unsafe_user_prompt
+):
+    # Simulate a future approved processor and fully configured FinOps.
+    # The final irreversible provider call must still block patient prompts.
+    _configure(monkeypatch)
+    provider = SyntheticProvider()
+    guarded = _external_guard(provider, monkeypatch)
+
+    with (
+        ai_operation_request_scope("v1-03-egress-denial"),
+        ai_egress_scope(consenting_patient.id, "companion_chat", "text"),
+        usage_workload_scope("conversation"),
+        pytest.raises(AIProcessorPolicyDenied, match="preapproved static generic"),
+    ):
+        guarded.complete(GENERIC_SYSTEM_PROMPT, unsafe_user_prompt)
+
+    assert provider.calls == 0
 
 
 @pytest.mark.django_db(transaction=True)
