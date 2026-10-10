@@ -16,6 +16,7 @@ import '../../../core/data/ramadan_context.dart';
 import '../../../data/drift/database.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/api_client.dart';
+import '../../../services/consent_service.dart';
 import '../../journal/widgets/post_save_receipt.dart';
 import 'add_log_view.dart';
 
@@ -349,6 +350,10 @@ class _AddLogSheetState extends State<AddLogSheet> {
   Widget build(BuildContext context) {
     final db = context.read<AppDatabase>();
     final profile = context.watch<PatientProfileData?>();
+    // A historical database timestamp is not current, verified AI consent.
+    // This also reacts immediately to an explicit local AI decline.
+    final canUsePhotoRecognition =
+        context.watch<ConsentService?>()?.hasConsent ?? false;
     final unit = profile?.unitPreference ?? 'mg/dL';
     final l10n = AppLocalizations.of(context)!;
 
@@ -397,7 +402,7 @@ class _AddLogSheetState extends State<AddLogSheet> {
           selectedMealItemIds: _selectedMealItemIds,
           mealPortionSelections: _mealPortionSelections,
           mealNoteController: _mealNoteController,
-          canUsePhotoRecognition: profile?.aiConsentGivenAt != null,
+          canUsePhotoRecognition: canUsePhotoRecognition,
           voiceRecording: _mealVoiceRecording,
           voiceTranscribing: _mealVoiceTranscribing,
           onVoiceToggle: _toggleMealVoice,
