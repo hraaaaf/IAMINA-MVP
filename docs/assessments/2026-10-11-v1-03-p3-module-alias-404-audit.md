@@ -25,3 +25,7 @@ D. Avant toute activation, arbitrer **alias P3 attendu ou dormant**; s'il est do
 - **Non prouvé:** cause exacte du 404, version Ninja du runner, nécessité métier de la route P3.
 - **Gate:** aucune activation/modification du routage avant décision et tests HTTP/OpenAPI/CSRF exact-head SQLite+PostgreSQL.
 Next exact: script diagnostic non intrusif dans la branche, puis correction conditionnelle exclusivement après preuve de la cause et décision de surface.
+
+## Complement technique — 2026-10-11
+- Test de caractérisation ajouté : `backend/core/tests/test_p3_dormant_alias_route_guard.py` sur registry, OpenAPI et resolver HTTP. Il prévient une activation accidentelle tant que l'alias est considéré dormant ; toute activation voulue requiert mise à jour explicite des tests et gate de sécurité.
+- Ce test n'établit pas la cause racine du 404. Verdict CI exact-head à établir.
