@@ -16,3 +16,7 @@
 
 ## Suite / critères d'acceptation
 Inventorier tous les entrypoints alternatifs et les tests d'injection, fixer par revue clinique le traitement des cas ambigus, implémenter uniquement sous feature flag désactivé par défaut un futur parcours capture→confirmation explicite→persistance, avec tests de refus/absence d'autosave et BEFORE/AFTER si UI touchée. Ne pas rouvrir l'egress média sans revue privacy/processor. Aucun usage patient, merge ou Vercel.
+
+## Complement technique — 2026-10-11
+- Test de characterization ajouté : `frontend/test/glucose_ocr_activation_boundary_test.dart`. Il protège le statut non connecté des callers OCR et vérifie que HI/LO ne deviennent pas des valeurs numériques, tandis que des nombres multiples exigent correction.
+- Ce test ne prouve pas la provenance optique ni un parcours UI ; son verdict exact-head GitHub reste à établir. Aucune activation patient.
