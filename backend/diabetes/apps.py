@@ -14,9 +14,10 @@ class DiabetesConfig(AppConfig):
 
     def ready(self) -> None:
         from core.safety_registry import TRIAGE_REGISTRY
+        from diabetes.manifest import DIABETES_MANIFEST
+
         # Only active manifest endpoints receive emergency triage.  P3
         # namespaced aliases are intentionally dormant for V1 (#929).
-        from diabetes.manifest import DIABETES_MANIFEST
 
         for path in DIABETES_MANIFEST.interactive_endpoints:
             TRIAGE_REGISTRY.register_path(path)

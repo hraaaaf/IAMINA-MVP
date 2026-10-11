@@ -10,10 +10,13 @@ import subprocess
 import sys
 import textwrap
 from pathlib import Path
+from unittest.mock import patch
 
-from django.test import SimpleTestCase
+from django.contrib.auth.models import AnonymousUser
+from django.test import Client, RequestFactory, SimpleTestCase
 from django.urls import Resolver404, resolve
 
+from core.middleware.triage_vital import TriageVitalMiddleware
 from core.registry import ModuleRegistry
 from diabetes.api.main import api
 from diabetes.api.v1.logs import router as logs_router
@@ -180,13 +183,6 @@ class P3DormantAliasRouteGuardTest(SimpleTestCase):
 
     def test_urgent_text_cannot_revive_dormant_patient_chat_route(self):
         """Even emergency text must not turn a nonexistent P3 URL into HTTP 200."""
-        import json
-        from unittest.mock import patch
-
-        from django.test import Client, RequestFactory
-        from django.contrib.auth.models import AnonymousUser
-        from core.middleware.triage_vital import TriageVitalMiddleware
-
         urgent = json.dumps({"message": "Je suis inconscient"}).encode()
         with patch("companion.core.IAmina") as provider:
             reply = Client().post(
