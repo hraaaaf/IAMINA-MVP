@@ -8,6 +8,7 @@ endpoint are exempted here.
 from django.conf import settings
 from django.http import JsonResponse
 
+from amina.vercel_session_auth import check_iamina_csrf
 from core.ai_operation_identity import (
     InvalidIdempotencyKey,
     ai_operation_request_scope,
@@ -18,6 +19,10 @@ class CsrfExemptApiMiddleware:
     """Apply CSRF exemption only to non-cookie authentication flows."""
 
     _EXEMPT_PATHS = frozenset({"/api/v1/auth/firebase"})
+    # Public login does not use the protected session-auth route contract.
+    # Keep existing web re-auth behaviour (separate login-CSRF threat review).
+    _PUBLIC_LOGIN_PATH = "/api/v1/auth/login"
+    _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE"})
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -25,14 +30,26 @@ class CsrfExemptApiMiddleware:
     def __call__(self, request):
         authorization = request.META.get("HTTP_AUTHORIZATION", "")
         uses_bearer_auth = authorization.lower().startswith("bearer ")
-        has_session_cookie = bool(
-            request.COOKIES.get(settings.SESSION_COOKIE_NAME)
-        )
+        has_session_cookie = bool(request.COOKIES.get(settings.SESSION_COOKIE_NAME))
 
-        # An Authorization header cannot waive CSRF while a session cookie
-        # exists. The bearer exemption is for cookie-less native clients only.
-        if (uses_bearer_auth and not has_session_cookie) or (
-            request.path in self._EXEMPT_PATHS
+        # All unsafe API requests carrying a browser session cookie must
+        # satisfy CSRF, independently of Ninja auth callback dispatch.
+        # Never trust a Bearer-looking header before credential verification.
+        if (
+            has_session_cookie
+            and request.method not in self._SAFE_METHODS
+            and request.path.startswith("/api/v1/")
+            and request.path != self._PUBLIC_LOGIN_PATH
+            and check_iamina_csrf(request)
+        ):
+            return JsonResponse(
+                {"error": {"code": "csrf_failed", "message": "CSRF check failed."}},
+                status=403,
+            )
+
+        if (
+            (uses_bearer_auth and not has_session_cookie)
+            or request.path in self._EXEMPT_PATHS
         ):
             setattr(request, "_dont_enforce_csrf_checks", True)
 
