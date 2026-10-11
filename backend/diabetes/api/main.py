@@ -98,9 +98,8 @@ api.add_router("/v1", voice_router, auth=_auth)
 # ── analytics/ staff-only retention dashboard (S5 DA-03) ─────────────────────
 api.add_router("/v1", analytics_router, auth=_auth)
 
-# ── P3: Registry-driven module routes (/v1/{prefix}/...) ─────────────────────
-# Old routes above remain alive until P6 (Flutter migration).
-from core.registry import ModuleRegistry as _ModuleRegistry  # noqa: E402
-
-for _mod in _ModuleRegistry.all():
-    api.add_router(f"/v1{_mod.manifest.url_prefix}", _mod.router, auth=_auth)
+# P3 module HTTP aliases are intentionally dormant for V1 (#929).
+# ModuleRegistry retains diabetes engine identity, but its reserved /diabetes
+# prefix must NOT create an HTTP router here.  Explicit architecture, auth,
+# CSRF, patient-consent and clinical review is required before any new mount.
+# Canonical /api/v1/* routers above remain unchanged.
