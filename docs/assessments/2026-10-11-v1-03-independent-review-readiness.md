@@ -69,3 +69,33 @@ Ces chiffres attestent des runs GitHub associés aux HEAD ci-dessus, **pas** d'u
 - **GitHub releases :** API releases de `hraaaaf/IAMINA-MVP`, première page, renvoie zéro release publiée ou draft dans cette collection. **Cela ne prouve pas** qu'aucun ancien APK/PWA/IPA n'a été distribué hors GitHub, ni qu'aucun client utilise encore l'ancien GET SSE ; obtenir un registre de distribution/installation autorisé reste nécessaire.
 
 **Verdict :** les assertions sources et leurs workflows sont contrôlés ; aucun nouveau test réellement exécuté ici. Les preuves infra, optiques, appareils et clinique demeurent ouvertes. Ne pas assimiler ce travail à une seconde revue humaine indépendante.
+
+
+## 7. Reprise approfondie — frontière LLM et Vercel en lecture seule (2026-10-11)
+
+### A. Constat source sur la barrière de sortie effective
+
+- Dans `backend/companion/conversation.py`, `_build_runtime_prompt` rassemble encore message, historique local et `DomainContext`. Les chemins `chat()` et `stream_chat()` passent ces prompts à `GatewayLLM.complete()` lorsque la narration est autorisée. Ces descriptions ne constituent **pas** une preuve que les prompts ont été envoyés à un tiers.
+- `backend/core/llm_gateway.py` applique pseudonymisation et règles de gouvernance, puis appelle `LLMPipeline`. **Ce filtrage seul serait insuffisant** pour assurer « zéro contexte patient ».
+- `backend/llm/factory.py::_enforce_text_payload_policy` impose le contexte, le contrat processeur et, pour tout provider externe, `_execute_external_complete` invoque **avant** `original_complete` la garde `assert_v1_external_text_generic_only`. `backend/core/external_text_v1.py` n'accepte qu'une **paire exacte, immuable, non-patient** : `GENERIC_SYSTEM_PROMPT` + `GENERIC_USER_PROMPT` ; les prompts dynamiques sont rejetés. Le chemin external `stream` / `think` reste refusé dans la fabrique. La porte externe `backend/llm/runtime.py` refuse aussi tout média patient via `assert_v1_external_media_egress_denied`.
+- Test existant `backend/llm/tests/test_runtime_finops_wiring.py::test_v1_03_last_network_hop_denies_patient_context_even_with_approved_policy` : **six fixtures** FR/AR/EN et statistiques/historique/insuline ; le test simule un processeur externe approuvé + budget configuré, attend `AIProcessorPolicyDenied`, affirme `provider.calls == 0`. Les workflows CI du parent #932 sont verts sur leur HEAD. **Aucun nouveau test lancé à cette reprise**.
+- **Exception bornée distincte :** `backend/companion/protected_provider_shadow.py` dispose d'un chemin `complete_text` vers Groq, sous feature flag OFF par défaut, réservé à un sujet interne/staff dans son mode live, et limité par vérification stricte au triplet `locale/script/opaque token`. Les tests `test_protected_provider_shadow.py` examinent refus des tokens non opaques, locales interdites et sujets non autorisés. Cette exception demande une revue des corrélations de locale/script et de sa configuration *réelle* avant toute activation ; elle **n'autorise pas** d'egress patient standard.
+- **Verdict de portée :** la preuve source et les tests préexistants étayent le refus des **prompts patients dynamiques** avant l'ultime appel externe des chemins parcourus ; cela ne certifie pas tous les environnements, les processus externes, une config future ou une conformité réglementaire. Les docstrings anciennes d'AI endpoint décrivent encore « call LLM » et doivent être lues comme descriptions historiques, non comme preuve d'egress effectif.
+
+### B. Observation Vercel liée aux journaux, sans lecture de contenu patient
+
+Deux projets ont été revérifiés via `get_project` authentifié : `iamina-certified` et `iamina-review`. Sur `iamina-certified`, indicateur Vercel `ssoProtection.enabled=true` avec `all_except_custom_domains`; sur `iamina-review`, `ssoProtection.enabled=false`, `passwordProtection.enabled=false`, `trustedIps.enabled=false`. Ces **flags projet** ne prouvent pas que l'application est accessible sans son propre contrôle d'accès, ni que des données patient sont présentes. C'est un **point de revue de l'exposition des surfaces review**, pas un incident de fuite établi.
+
+`list_project_routes` renvoie `routes=[]` pour les deux projets ; cette API représente les règles de routage Vercel contrôlées par elle, **pas** nécessairement toutes les rewrites définies dans les fichiers `vercel.json`. `list_drains` renvoie HTTP 404 pour les projets, **y compris avec teamId explicite** : configuration des drains **UNKNOWN**, jamais « aucun drain ». Les réponses `get_project` ne fournissent ni politique de collecte des URLs, ni masquage du corps/headers, ni durée de rétention.
+
+Source technique primaire Vercel : [documentation du format Log Drains](https://vercel.com/docs/llms-full.txt) contient un exemple de champ `proxy.path` incluant `?page=1`. Cette **possibilité documentaire** rend important l'audit des anciennes URL GET avec query ; ce n'est pas une preuve qu'une URL patient IAMINA a été enregistrée. Sources de surface : [protection des déploiements Vercel](https://vercel.com/docs/deployment-protection/methods-to-protect-deployments/vercel-authentication).
+
+**Gate technique non substituable :** obtenir une vue autorisée et minimisée des réglages réels des collecteurs, rétention, redaction et sites de destination ; évaluer les réglages de protection du projet review ; tester avec une marque synthétique unique seulement dans un environnement expressément autorisé, sans consulter de PHI ni déclencher de déploiement. Aucun test live ni modification d'infrastructure dans cette reprise.
+
+### C. Recommandation de la revue indépendante
+
+**Perspective sécurité :** ne pas lever le gate SSE tant que l'inventaire de distribution et des collecteurs est UNKNOWN ; ne pas considérer HTTP 405 comme une suppression rétroactive d'une query reçue à l'ingress.
+
+**Perspective clinique et privacy :** ne pas élargir la barrière générique en se fondant sur des regex de pseudonymisation. Conserver la comparaison exacte au dernier appel externe, les refus média et la dormance P3 ; examiner séparément l'exception staff/opaque avant toute activation. Aucun essai sur vrais patients.
+
+**Statut :** audit source/read-only et caractérisation de preuve existante, **pas** qualification indépendante humaine, pas de test exécuté ici, pas de CI déclenchée sur HEAD documentaire #933.
