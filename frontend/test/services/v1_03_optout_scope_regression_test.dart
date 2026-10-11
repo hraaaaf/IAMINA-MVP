@@ -95,11 +95,14 @@ void main() {
     final onboarding = File(
       'lib/features/auth/consent_screen.dart',
     ).readAsStringSync();
-    final decline = onboarding.substring(
-      onboarding.indexOf('void _declineWithoutAI()'),
-      onboarding.indexOf('@override', onboarding.indexOf('void _declineWithoutAI()')),
-    );
-    expect(decline, contains('declineLocally()'));
+    const method = 'Future<void> _declineWithoutAI()';
+    final start = onboarding.indexOf(method);
+    expect(start, greaterThanOrEqualTo(0));
+    final end = onboarding.indexOf('@override', start);
+    expect(end, greaterThan(start));
+    final decline = onboarding.substring(start, end);
+    expect(decline, contains('declineLocally(notify: false)'));
+    expect(decline, contains('await evidenceStore.persistLocalDecline()'));
     expect(decline, isNot(contains('withdrawConsent()')));
 
     final profile = File(
