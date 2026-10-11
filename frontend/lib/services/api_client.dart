@@ -205,7 +205,6 @@ class ApiClient {
       TimeoutInterceptor(), // 30 s hard cap — before auth so it covers all latency
       AuthInterceptor(_authService),
       RetryInterceptor(_authService),
-      CurlInterceptor(),
     ],
     converter: const JsonConverter(),
   );
