@@ -8,6 +8,8 @@ from unittest.mock import patch
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 
+from diabetes.api.main import api
+
 
 class LegacySseNoProviderTest(TestCase):
     def setUp(self):
@@ -24,3 +26,25 @@ class LegacySseNoProviderTest(TestCase):
         self.assertEqual(response.status_code, 405)
         self.assertNotIn(secret, response.content.decode("utf-8"))
         ai_cls.assert_not_called()
+
+    @patch("companion.core.IAmina")
+    def test_legacy_get_never_redirects_patient_query_to_new_url(self, ai_cls):
+        """No 30x compatibility redirect may propagate query-text into Location."""
+        marker = "SYNTHETIC_LEGACY_QUERY_DO_NOT_REDIRECT"
+        response = self.browser.get(
+            "/api/v1/ai/chat/stream",
+            {"message": marker, "context_days": 14},
+        )
+        self.assertEqual(response.status_code, 405)
+        self.assertNotIn("Location", response.headers)
+        self.assertNotIn(marker, response.content.decode("utf-8"))
+        ai_cls.assert_not_called()
+
+    def test_openapi_advertises_post_json_only_and_not_legacy_get(self):
+        """Upgrade target is body-based POST; no GET route in public API contract."""
+        paths = api.get_openapi_schema()["paths"]
+        operations = paths["/api/v1/ai/chat/stream"]
+        self.assertIn("post", operations)
+        self.assertNotIn("get", operations)
+        json_contract = operations["post"]["requestBody"]["content"]
+        self.assertIn("application/json", json_contract)
