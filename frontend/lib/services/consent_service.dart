@@ -91,9 +91,11 @@ class ConsentService extends ChangeNotifier {
 
   bool get hasDeclinedLocally => _hasDeclinedLocally;
 
-  void declineLocally() {
+  /// During durable persistence, block every local AI client immediately
+  /// without triggering router redirects until the write has succeeded.
+  void declineLocally({bool notify = true}) {
     _hasDeclinedLocally = true;
-    notifyListeners();
+    if (notify) notifyListeners();
   }
 
   @override
