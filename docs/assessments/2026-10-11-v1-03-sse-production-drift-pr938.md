@@ -49,3 +49,15 @@ Dans `main/backend/core/middleware/triage_vital.py`, `_log_emergency` écrit `us
 5. **Human gate explicite :** autorisation pour tout merge, Vercel production/preview deploy ou traitement d'éventuels logs de production ; pas de passage silencieux à V1 clinique.
 
 **Status :** `OPEN — HOTFIX DRAFT, NOT_DEPLOYED, NOT_RELEASE_AUTHORIZED`.
+
+## Distribution : traces source ≠ parc réellement installé
+
+Le dépôt GitHub `hraaaaf/IAMINA-MVP` renvoie **zéro GitHub Release** dans la liste interrogée et **aucune latest Release** (HTTP 404) à la date de l'audit. Il serait incorrect d'en déduire l'absence d'un déploiement web, d'APK partagé hors GitHub ou de distribution Apple/Google.
+
+Inventaire des workflows `main` :
+- `.github/workflows/pilot-ios-packaging.yml` valide un `flutter build ios --release --no-codesign`. C'est une compilation, **pas** une distribution TestFlight/App Store.
+- `.github/workflows/pilot-mobile-packaging.yml` construit et vérifie un **debug APK** `flutter build apk --debug` ; cela ne prouve pas de release Play Store.
+- `.github/workflows/p5-android-cloud-upgrade-rehearsal-v2.yml` signe temporairement des APK N-1/N avec un **keystore CI non-production**, lance un émulateur et supprime les APK/clefs en fin de job. Ce n'est pas une preuve d'installation/upgrade de clients utilisateurs.
+- `.github/workflows/p5-4a-pwa-update-recovery-proof.yml` utilise un serveur et des releases simulées en CI pour tester le recovery PWA. Ce n'est pas une preuve du cache des navigateurs réels installés.
+
+**Gate non comblé :** obtenir via les contrôles de distribution autorisés (et sans identifiants personnels) le nombre par version et plateforme, la version/service worker effectivement servie, l'âge des caches et les éventuels clients continuant à envoyer du GET, avant toute affirmation de migration complète. Le passage du site review vers POST pourra dégrader les clients PWA non actualisés ; le backend 405 protège le traitement mais **pas l'URL émise par un ancien client**.
