@@ -59,3 +59,7 @@ Le commit de sécurité `a6f3090078acaf9417266036ea6242fcbfbbcb32` a obtenu **15
 - Deux instances de `ConsentService` (simulant des appareils indépendants) : refus local A ne révoque pas B. **Ce n'est PAS** un test multi-device réel, ni un test du serveur, ni de l'absence de provider egress après reconnexion.
 
 **Non implémenté** : persistance de refus sur l'appareil ou révocation serveur globale, migration de profil et UX. Cette décision reste humaine (#924). **Les tests ci-dessus ne sont pas encore certifiés exact-HEAD** ; attendre CI GitHub avant d'en faire des assertions exécutées. Le durcissement précédent reste certifié sur son propre SHA.
+
+## Matrice de test CI : suivi du SHA (preuve après exécution)
+
+Ce complément est lancé sur la branche DRAFT #934 temporairement ciblée sur `main` pour activer GitHub Actions `pull_request` : l'ancien parent #932 reste inchangé. Les 3 nouveaux tests doivent passer avec les vérifications Flutter, backend PostgreSQL et E2E sans aucune simulation de patient réel. La CI n'est **pas** une autorisation de changer le comportement consentement ou d'exposer les alias P3. Après succès exact-HEAD, restaurer la base `safety/v1-03-glucose-ocr-unit-provenance-20261011`, actualiser GitHub/Notion/roadmap et conserver DRAFT/non-fusionné.
