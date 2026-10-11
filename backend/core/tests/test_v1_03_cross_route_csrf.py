@@ -65,13 +65,29 @@ class ProtectedApiCookieCsrfTests(TestCase):
         native = Client(enforce_csrf_checks=True)
         seen = []
         original_bearer = HybridBearerAuth.__call__
+        original_authenticate = HybridBearerAuth.authenticate
         original_session = SessionAuth.__call__
 
+        def observe_authenticate(auth, request, received_token):
+            result = original_authenticate(auth, request, received_token)
+            seen.append({
+                "backend": "native_authenticate",
+                "token_matches_issued": received_token == token,
+                "accepted": bool(result),
+            })
+            return result
+
         def observe_bearer(auth, request):
+            header = request.headers.get("Authorization", "")
+            scheme, separator, credential = header.partition(" ")
             result = original_bearer(auth, request)
             seen.append({
                 "backend": "bearer",
-                "header_present": bool(request.headers.get("Authorization")),
+                "header_present": bool(header),
+                "header_matches": bool(request.headers.get(auth.header)),
+                "scheme_matches": scheme.lower() == auth.openapi_scheme,
+                "separator_present": bool(separator),
+                "credential_matches_issued": credential == token,
                 "accepted": bool(result),
             })
             return result
@@ -83,6 +99,7 @@ class ProtectedApiCookieCsrfTests(TestCase):
 
         with (
             patch.object(HybridBearerAuth, "__call__", observe_bearer),
+            patch.object(HybridBearerAuth, "authenticate", observe_authenticate),
             patch.object(SessionAuth, "__call__", observe_session),
         ):
             for method, path, expected in self.CASES:
@@ -97,7 +114,7 @@ class ProtectedApiCookieCsrfTests(TestCase):
                             f"auth_header_present="
                             f"{bool(response.wsgi_request.headers.get('Authorization'))}; "
                             f"cookies={list(response.wsgi_request.COOKIES)}; "
-                            f"auth_callbacks={seen[-3:]}; "
+                            f"auth_callbacks={seen[-5:]}; "
                             f"payload={response.content[:200]!r}"
                         ),
                     )
