@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import math
 import os
 import time
 from typing import Optional, Protocol
@@ -55,7 +56,8 @@ _GLUCO_USER = (
     "Rules:\n"
     "- value: the numeric reading (integer or one decimal). null if not visible.\n"
     "- unit: exactly \"mg/dL\" or \"mmol/L\" based on what is shown on the display.\n"
-    "  If unit is not visible: guess from value magnitude (>30 → mg/dL, ≤30 → mmol/L).\n"
+    "  If the unit is absent, unreadable, or ambiguous, return value null and confidence low.\n"
+    "  Never infer the unit from the number or its magnitude.\n"
     "- confidence: \"high\" if display is clear, \"medium\" if partially visible, \"low\" if unclear.\n"
     "- Return ONLY the JSON, no markdown fences, no extra text."
 )
@@ -297,22 +299,26 @@ def analyze_glucometer_image(
             temperature=0.0,
         )
         parsed = json.loads(_strip_fences(raw))
+        # The OCR model cannot establish a trustworthy reading without
+        # an explicit valid unit. Never infer mg/dL from missing/invalid units.
+        if not isinstance(parsed, dict):
+            return _gluco_fallback()
         value = parsed.get("value")
-        if value is not None:
-            value = float(value)
-        unit = parsed.get("unit", "mg/dL")
-        confidence = parsed.get("confidence", "low")
+        unit = parsed.get("unit")
+        if value is None or unit not in ("mg/dL", "mmol/L") or isinstance(value, bool):
+            return _gluco_fallback()
+        value = float(value)
+        if not math.isfinite(value):
+            return _gluco_fallback()
 
-        if unit not in ("mg/dL", "mmol/L"):
-            unit = "mg/dL"
+        confidence = parsed.get("confidence", "low")
         if confidence not in ("high", "medium", "low"):
             confidence = "low"
-
         return {
             "value": value,
             "unit": unit,
             "confidence": confidence,
-            "fallback": value is None,
+            "fallback": False,
         }
     except (AIEgressDenied, AIProcessorPolicyDenied):
         raise
