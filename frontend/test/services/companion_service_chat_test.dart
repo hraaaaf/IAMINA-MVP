@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:amina/services/api_client.dart';
 import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/companion_service.dart';
+import 'package:amina/services/consent_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -224,6 +225,7 @@ void main() {
     });
     final service = CompanionService(
       authService: _TokenAuthService(),
+      consentService: ConsentService()..markVerifiedConsent(),
       httpClient: client,
       baseUrl: 'http://127.0.0.1:8000',
       demoSessionId: 'test-session',
@@ -268,6 +270,7 @@ void main() {
     });
     final service = CompanionService(
       authService: _TokenAuthService(),
+      consentService: ConsentService()..markVerifiedConsent(),
       httpClient: client,
       baseUrl: 'http://127.0.0.1:8000',
       demoSessionId: 'test-session',

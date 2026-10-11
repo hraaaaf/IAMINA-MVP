@@ -43,7 +43,10 @@ String _profileValidationMessage(BuildContext context) {
 }
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.accountInitiallyExpanded = false});
+
+  /// Audit browser fixture only; the normal patient profile remains collapsed.
+  final bool accountInitiallyExpanded;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();

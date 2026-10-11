@@ -34,6 +34,27 @@ final class _TestApiClient extends ApiClient {
 
 class _FakeConsentEvidenceStore extends ConsentEvidenceStore {
   ConsentNoticeClaim? written;
+  bool declinedOnDevice = false;
+  bool failPersistDecline = false;
+  bool failClearDecline = false;
+  Completer<void>? persistGate;
+
+  @override
+  Future<bool> hasPersistedLocalDecline() async => declinedOnDevice;
+
+  @override
+  Future<void> persistLocalDecline() async {
+    if (failPersistDecline) throw StateError('Synthetic secure write failure');
+    final gate = persistGate;
+    if (gate != null) await gate.future;
+    declinedOnDevice = true;
+  }
+
+  @override
+  Future<void> clearPersistedLocalDecline() async {
+    if (failClearDecline) throw StateError('Synthetic secure erase failure');
+    declinedOnDevice = false;
+  }
 
   @override
   Future<ConsentNoticeClaim?> readCurrent() async => written;
@@ -226,6 +247,89 @@ void main() {
     expect(consentService.hasConsent, isFalse);
     expect(capturedRequest, isNull);
     expect(find.text('Dashboard'), findsOneWidget);
+  });
+
+
+  testWidgets('decline waits for durable marker before dashboard navigation', (
+    tester,
+  ) async {
+    final gate = Completer<void>();
+    evidenceStore.persistGate = gate;
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final declineBtn = find.text('Continuer sans IA');
+    await tester.ensureVisible(declineBtn);
+    await tester.tap(declineBtn);
+    await tester.pump();
+
+    expect(consentService.hasDeclinedLocally, isTrue);
+    expect(consentService.hasConsent, isFalse);
+    expect(evidenceStore.declinedOnDevice, isFalse);
+    expect(find.byType(ConsentScreen), findsOneWidget);
+    expect(capturedRequest, isNull);
+
+    gate.complete();
+    await tester.pumpAndSettle();
+    expect(evidenceStore.declinedOnDevice, isTrue);
+    expect(find.text('Dashboard'), findsOneWidget);
+  });
+
+  testWidgets('storage failure preserves local AI denial and does not navigate', (
+    tester,
+  ) async {
+    evidenceStore.failPersistDecline = true;
+    consentService.markVerifiedConsent();
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final declineBtn = find.text('Continuer sans IA');
+    await tester.ensureVisible(declineBtn);
+    await tester.tap(declineBtn);
+    await tester.pumpAndSettle();
+
+    expect(consentService.hasDeclinedLocally, isTrue);
+    expect(consentService.hasConsent, isFalse);
+    expect(evidenceStore.declinedOnDevice, isFalse);
+    expect(find.byType(ConsentScreen), findsOneWidget);
+    expect(capturedRequest, isNull);
+  });
+
+  testWidgets('verified new acceptance clears per-device decline', (tester) async {
+    evidenceStore.declinedOnDevice = true;
+    consentService.declineLocally();
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final acceptBtn = find.text('Accepter et continuer');
+    await tester.ensureVisible(acceptBtn);
+    await tester.tap(acceptBtn);
+    await tester.pumpAndSettle();
+
+    expect(evidenceStore.declinedOnDevice, isFalse);
+    expect(consentService.hasDeclinedLocally, isFalse);
+    expect(consentService.hasConsent, isTrue);
+    expect(find.text('Dashboard'), findsOneWidget);
+  });
+
+  testWidgets('secure erase failure cannot re-enable declined patient AI', (
+    tester,
+  ) async {
+    evidenceStore.declinedOnDevice = true;
+    evidenceStore.failClearDecline = true;
+    consentService.declineLocally();
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final acceptBtn = find.text('Accepter et continuer');
+    await tester.ensureVisible(acceptBtn);
+    await tester.tap(acceptBtn);
+    await tester.pumpAndSettle();
+
+    expect(evidenceStore.declinedOnDevice, isTrue);
+    expect(consentService.hasConsent, isFalse);
+    expect(consentService.hasDeclinedLocally, isTrue);
+    expect(find.byType(ConsentScreen), findsOneWidget);
   });
 
   testWidgets('accept posts exact claim and persists verified evidence', (tester) async {

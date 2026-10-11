@@ -150,4 +150,63 @@ void main() {
     consent.dispose();
   });
 
+  test('missing companion consent gate blocks patient text and voice before HTTP', () async {
+    final auth = _NoBearerAuth();
+    var networkCalls = 0;
+    final service = CompanionService(
+      authService: auth,
+      httpClient: MockClient((_) async {
+        networkCalls += 1;
+        throw StateError('An unconsented patient request escaped');
+      }),
+    );
+
+    for (final action in <Future<Object?> Function()>[
+      () => service.sendChatMessage('Synthetic patient question'),
+      () => service.sendVoiceMessage(
+            Uint8List.fromList(<int>[1, 2, 3]),
+            'audio/webm',
+          ),
+    ]) {
+      await expectLater(
+        action(),
+        throwsA(
+          isA<ProviderApiException>().having(
+            (failure) => failure.code,
+            'code',
+            'ai_consent_unverified_locally',
+          ),
+        ),
+      );
+    }
+    expect(auth.bearerCalls, 0);
+    expect(networkCalls, 0);
+    service.dispose();
+  });
+
+  test('missing ApiClient consent gate refuses every patient AI call', () async {
+    final auth = _NoBearerAuth();
+    final api = ApiClient(
+      authService: auth,
+      baseUrl: 'http://127.0.0.1:8000',
+    );
+
+    await expectLater(
+      api.chatStream('Synthetic patient question').toList(),
+      throwsA(
+        isA<ProviderApiException>().having(
+          (failure) => failure.code,
+          'code',
+          'ai_consent_unverified_locally',
+        ),
+      ),
+    );
+    expect(await api.chatWithAmina('Synthetic patient question'), isNull);
+    expect(await api.sendVoiceMessage(Uint8List.fromList(<int>[1]), 'audio/mp4'), isNull);
+    expect(await api.transcribeAudio(Uint8List.fromList(<int>[1]), 'audio/mp4'), isNull);
+    expect(await api.analyzeMealImage(Uint8List.fromList(<int>[1])), isNull);
+    expect(await api.analyzeGlucometerImage('c3ludGhldGlj', 'image/jpeg'), isNull);
+    expect(auth.bearerCalls, 0);
+  });
+
 }

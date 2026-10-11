@@ -54,6 +54,81 @@ void main() {
     });
   });
 
+  group('ConsentService — persistent per-device refusal (#924 option A)', () {
+    test('a stored refusal survives new ConsentService with existing receipt', () async {
+      final db = _openDb();
+      addTearDown(db.close);
+      await _insertProfile(db, withConsent: true);
+      final profile = await db.select(db.patientProfiles).getSingle();
+
+      final sessionOne = ConsentService(hasVerifiedEvidence: true)
+        ..seedInitialProfile(profile);
+      addTearDown(sessionOne.dispose);
+      expect(sessionOne.hasConsent, isTrue);
+      sessionOne.declineLocally();
+      expect(sessionOne.hasConsent, isFalse);
+
+      // The secure-storage marker is read before bootstrap and passed here.
+      final restarted = ConsentService(
+        hasVerifiedEvidence: true,
+        initiallyDeclinedLocally: true,
+      )..seedInitialProfile(profile);
+      addTearDown(restarted.dispose);
+      expect(restarted.isInitialized, isTrue);
+      expect(restarted.hasDeclinedLocally, isTrue);
+      expect(restarted.hasConsent, isFalse);
+
+      // Later profile-stream updates cannot erase the local opt-out.
+      restarted.attachStream(db.watchProfile());
+      await db.setAiConsent(granted: true);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(restarted.hasConsent, isFalse);
+    });
+
+    test('restart with missing notice proof remains fail closed', () async {
+      final db = _openDb();
+      addTearDown(db.close);
+      await _insertProfile(db, withConsent: true);
+      final profile = await db.select(db.patientProfiles).getSingle();
+      final restarted = ConsentService(
+        hasVerifiedEvidence: false,
+        initiallyDeclinedLocally: true,
+      )..seedInitialProfile(profile);
+      addTearDown(restarted.dispose);
+      expect(restarted.hasConsent, isFalse);
+    });
+
+    test('one installation decline does not silently revoke another device', () async {
+      final db = _openDb();
+      addTearDown(db.close);
+      await _insertProfile(db, withConsent: true);
+      final profile = await db.select(db.patientProfiles).getSingle();
+
+      final deviceA = ConsentService(
+        hasVerifiedEvidence: true,
+        initiallyDeclinedLocally: true,
+      )..seedInitialProfile(profile);
+      final deviceB = ConsentService(hasVerifiedEvidence: true)
+        ..seedInitialProfile(profile);
+      addTearDown(deviceA.dispose);
+      addTearDown(deviceB.dispose);
+      expect(deviceA.hasConsent, isFalse);
+      expect(deviceB.hasConsent, isTrue);
+    });
+
+    test('a renewed verified acceptance can re-enable an initially refused device', () {
+      final service = ConsentService(
+        hasVerifiedEvidence: true,
+        initiallyDeclinedLocally: true,
+      )..seedInitialProfile(null);
+      addTearDown(service.dispose);
+      expect(service.hasConsent, isFalse);
+      service.markVerifiedConsent();
+      expect(service.hasDeclinedLocally, isFalse);
+      expect(service.hasConsent, isTrue);
+    });
+  });
+
   group('ConsentService — onboarding completeness', () {
     test('null profile is not completed', () {
       final svc = ConsentService();

@@ -185,7 +185,17 @@ class CompanionService {
 
   void _denyUnverifiedLocalAI() {
     final consent = _consentService;
-    if (consent == null) return; // Legacy tests; server gate stays authoritative.
+    // The public audit demo has no patient AI provider egress; otherwise a
+    // missing injected consent gate fails closed before authentication/HTTP.
+    if (consent == null && _authService.isAuditSession) return;
+    if (consent == null) {
+      throw const ProviderApiException(
+        code: 'ai_consent_unverified_locally',
+        message: 'Local verified AI consent is required.',
+        retryable: false,
+        statusCode: 403,
+      );
+    }
     final declined = consent.hasDeclinedLocally;
     // The governed public demo has no patient AI egress, but an explicit local
     // refusal still wins even in audit mode.

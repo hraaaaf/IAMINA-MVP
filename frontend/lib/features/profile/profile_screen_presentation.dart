@@ -409,7 +409,14 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           en: 'Local session',
           ar: 'جلسة محلية',
         );
-    final consentLabel = consent.hasConsent
+    final consentLabel = consent.hasDeclinedLocally
+        ? _profileUiText(
+            context,
+            fr: 'IAmina désactivée sur cet appareil',
+            en: 'IAmina disabled on this device',
+            ar: 'تم إيقاف IAmina على هذا الجهاز',
+          )
+        : consent.hasConsent
         ? _profileUiText(
             context,
             fr: 'Consentement IAmina actif',
@@ -427,7 +434,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       icon: Icons.shield_outlined,
       title: l10n.profileAccountSection,
       subtitle: l10n.profileAccountSectionHint,
-      initiallyExpanded: false,
+      initiallyExpanded: widget.accountInitiallyExpanded,
       children: [
         _buildAccountInfoRow(
           icon: Icons.person_outline_rounded,
@@ -438,6 +445,26 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           icon: Icons.privacy_tip_outlined,
           label: consentLabel,
         ),
+        if (consent.hasDeclinedLocally) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            key: const ValueKey('profile-ai-reaccept'),
+            onPressed: () => context.go('/consent'),
+            icon: const Icon(Icons.psychology_outlined, size: 18),
+            label: Text(_profileUiText(
+              context,
+              fr: 'Réactiver IAmina avec mon consentement',
+              en: 'Re-enable IAmina with my consent',
+              ar: 'إعادة تفعيل IAmina بموافقتي',
+            )),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 14),
         Container(
           width: double.infinity,

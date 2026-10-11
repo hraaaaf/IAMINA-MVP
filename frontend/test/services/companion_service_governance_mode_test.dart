@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/companion_service.dart';
+import 'package:amina/services/consent_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -15,6 +16,7 @@ void main() {
   Future<CompanionChatReply?> callWithMode(String? mode) async {
     final service = CompanionService(
       authService: _Authenticated(),
+      consentService: ConsentService()..markVerifiedConsent(),
       httpClient: MockClient((request) async {
         final body = jsonDecode(request.body) as Map<String, dynamic>;
         expect(body.keys.toSet(), {'message', 'context_days'});

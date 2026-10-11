@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:amina/services/api_client.dart';
 import 'package:amina/services/auth_service.dart';
 import 'package:amina/services/companion_service.dart';
+import 'package:amina/services/consent_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -16,6 +17,7 @@ void main() {
   test('chat propagates canonical retryable provider timeout', () async {
     final service = CompanionService(
       authService: _TokenAuthService(),
+      consentService: ConsentService()..markVerifiedConsent(),
       httpClient: MockClient(
         (_) async => http.Response(
           jsonEncode({
@@ -46,6 +48,7 @@ void main() {
   test('malformed provider error body fails closed without leaking it', () async {
     final service = CompanionService(
       authService: _TokenAuthService(),
+      consentService: ConsentService()..markVerifiedConsent(),
       httpClient: MockClient(
         (_) async => http.Response('vendor-secret-detail', 503),
       ),
@@ -69,6 +72,7 @@ void main() {
     final failures = <String>[];
     final service = CompanionService(
       authService: _TokenAuthService(),
+      consentService: ConsentService()..markVerifiedConsent(),
       httpClient: MockClient(
         (_) async => throw StateError('synthetic-sensitive-overview'),
       ),
@@ -90,6 +94,7 @@ void main() {
     final failures = <String>[];
     final service = CompanionService(
       authService: _TokenAuthService(),
+      consentService: ConsentService()..markVerifiedConsent(),
       httpClient: MockClient(
         (_) async => throw StateError('synthetic-sensitive-proactive'),
       ),
@@ -111,6 +116,7 @@ void main() {
     final failures = <String>[];
     final service = CompanionService(
       authService: _TokenAuthService(),
+      consentService: ConsentService()..markVerifiedConsent(),
       httpClient: MockClient(
         (_) async => throw StateError('synthetic-sensitive-next-action'),
       ),
@@ -132,6 +138,7 @@ void main() {
     final failures = <String>[];
     final service = CompanionService(
       authService: _TokenAuthService(),
+      consentService: ConsentService()..markVerifiedConsent(),
       httpClient: MockClient((_) async => http.Response('{}', 503)),
       baseUrl: 'http://127.0.0.1:8000',
       failureLogger: (operation, errorType, stackTrace) {
