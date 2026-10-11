@@ -39,3 +39,5 @@ Next exact: obtenir l'arbitrage A/B au gate produit/privacy ou mettre en sécuri
 Le test `frontend/test/services/v1_03_local_decline_network_gate_test.dart` ajoute deux cas négatifs : appel texte et voix sans gate `CompanionService`; SSE, chat, voix, STT, photo repas et web OCR sans gate `ApiClient`, tous avant token et HTTP. Les fixtures de clients synthétiques consentis injectent maintenant une `ConsentService()..markVerifiedConsent()` explicite au lieu de profiter du bypass ancien.
 
 **Ne résout PAS** la différence locale persistante versus retrait serveur, ni la continuité après redémarrage, ni le consentement multi-appareils. Le serveur reste autorité finale; ancien test CI 16/16 ne certifie pas ces nouveaux commits. Exiger CI Flutter tests/analyze et full suite exact-head avant de conclure.
+
+**Certification requise pour ce durcissement :** le HEAD doit déclencher `pull_request` vers `main` afin d'exécuter Flutter analyze/tests/PWA, backend SQLite/PostgreSQL et les protections historiques. Toute réponse sans CI exacte est provisoire ; la base finale de revue demeure #932 (et non `main`).
