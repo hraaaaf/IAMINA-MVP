@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'features/companion/companion_conversation_screen.dart';
 import 'services/auth_service.dart';
 import 'services/companion_service.dart';
+import 'services/consent_service.dart';
 
 class _E2EProxyAuthService extends AuthService {
   @override
@@ -27,8 +28,13 @@ class _SyntheticP1FallbackService extends CompanionService {
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final isP1Proof = Uri.base.queryParameters['p1-proof'] == '1';
+  // Synthetic browser-only harness: explicitly inject consent so that the
+  // real patient-path client exercises HTTP without weakening production's
+  // missing-consent fail-closed contract. Backend still enforces its own gate.
+  final testConsent = ConsentService()..markVerifiedConsent();
   final service = CompanionService(
     authService: _E2EProxyAuthService(),
+    consentService: testConsent,
     baseUrl: companionApiBaseUrl,
   );
 
