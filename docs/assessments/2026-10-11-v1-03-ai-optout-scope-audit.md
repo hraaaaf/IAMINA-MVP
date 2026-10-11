@@ -31,3 +31,11 @@ Next exact: obtenir l'arbitrage A/B au gate produit/privacy ou mettre en sécuri
 ## Complement technique — 2026-10-11
 - Test de caractérisation ajouté : `frontend/test/services/v1_03_optout_scope_regression_test.dart`. Il protège injection du consentement dans les chemins principaux et séparation du refus local de la révocation serveur.
 - Il ne choisit ni ne certifie la politique redémarrage / multi-appareils, encore soumise au gate privacy/produit. Verdict CI exact-head à établir.
+
+## Durcissement fail-closed local — 2026-10-11
+
+**Correctif de sécurité sans changement de politique produit ni modification UI :** les clients `ApiClient` et `CompanionService` peuvent toujours être construits sans service de consentement pour les appels déterministes/lecture, mais **tous les appels IA patient qu'ils émettent directement doivent être bloqués en l'absence du `ConsentService` injecté**. Le code retourne `ai_consent_unverified_locally` avant récupération de token ou HTTP. Une exception locale reste explicitement permise pour la démo d'audit sans egress IA patient dans `CompanionService` : pas de traitement patient réel.
+
+Le test `frontend/test/services/v1_03_local_decline_network_gate_test.dart` ajoute deux cas négatifs : appel texte et voix sans gate `CompanionService`; SSE, chat, voix, STT, photo repas et web OCR sans gate `ApiClient`, tous avant token et HTTP. Les fixtures de clients synthétiques consentis injectent maintenant une `ConsentService()..markVerifiedConsent()` explicite au lieu de profiter du bypass ancien.
+
+**Ne résout PAS** la différence locale persistante versus retrait serveur, ni la continuité après redémarrage, ni le consentement multi-appareils. Le serveur reste autorité finale; ancien test CI 16/16 ne certifie pas ces nouveaux commits. Exiger CI Flutter tests/analyze et full suite exact-head avant de conclure.
