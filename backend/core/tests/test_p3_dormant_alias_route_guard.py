@@ -4,6 +4,13 @@ The project must first decide whether this advertised alias is intentional.
 Do not make a new patient mutation route reachable without auth/CSRF review.
 """
 
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import textwrap
+
 from django.test import SimpleTestCase
 from django.urls import Resolver404, resolve
 
@@ -53,3 +60,98 @@ class P3DormantAliasRouteGuardTest(SimpleTestCase):
 
         # The actively supported canonical path must remain reachable.
         self.assertIsNotNone(resolve("/api/v1/logs/batch"))
+
+    def test_fresh_django_bootstrap_registry_timeline(self):
+        """Measure API assembly vs ModuleRegistry.register in a NEW interpreter.
+
+        The current test process cannot prove import order because Django and
+        URLconf are already initialized by pytest/Django's test runner.
+        Nothing is mounted or modified in this process or any live service.
+        """
+        script = textwrap.dedent(
+            """
+            import json
+            import os
+            import sys
+            os.environ.setdefault("DJANGO_SETTINGS_MODULE", "amina.settings")
+            events = []
+
+            def trace(frame, event, _arg):
+                if event != "call":
+                    return
+                code = frame.f_code
+                if not code.co_filename.replace("\\", "/").endswith("/core/registry.py"):
+                    return
+                if code.co_name not in ("all", "register"):
+                    return
+                caller = frame.f_back.f_code.co_filename.replace("\\", "/")
+                if code.co_name == "all" and not caller.endswith("/diabetes/api/main.py"):
+                    return
+                cls = frame.f_locals.get("cls")
+                if cls is None:
+                    return
+                events.append({
+                    "step": code.co_name,
+                    "registered_before": sorted(cls._modules.keys()),
+                    "api_in_modules": "diabetes.api.main" in sys.modules,
+                    "caller": caller.rsplit("/", 2)[-2:],
+                })
+
+            sys.setprofile(trace)
+            import django
+            django.setup()
+            from diabetes.api.main import api
+            from diabetes.api.v1.logs import router as logs_router
+            from core.registry import ModuleRegistry
+            import ninja
+            sys.setprofile(None)
+            mounts = [
+                prefix for prefix, router in api._routers if router is logs_router
+            ]
+            print("P3_TRACE=" + json.dumps({
+                "events": events,
+                "registered_final": sorted(ModuleRegistry._modules.keys()),
+                "mounts": mounts,
+                "django": django.get_version(),
+                "ninja": getattr(ninja, "__version__", "unknown"),
+            }))
+            """
+        )
+        env = os.environ.copy()
+        env.setdefault("DJANGO_SETTINGS_MODULE", "amina.settings")
+        completed = subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=Path(__file__).resolve().parents[2],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=40,
+            check=False,
+        )
+        self.assertEqual(
+            completed.returncode,
+            0,
+            msg=f"Fresh Django bootstrap probe failed: {completed.stderr[-1000:]}",
+        )
+        traces = [
+            line.removeprefix("P3_TRACE=")
+            for line in completed.stdout.splitlines()
+            if line.startswith("P3_TRACE=")
+        ]
+        self.assertEqual(len(traces), 1, msg=completed.stdout[-700:])
+        observed = json.loads(traces[0])
+        self.assertIn("diabetes", observed["registered_final"])
+        self.assertEqual(observed["mounts"], ["/v1"])
+
+        assembly = [
+            (i, e) for i, e in enumerate(observed["events"])
+            if e["step"] == "all"
+        ]
+        registration = [
+            (i, e) for i, e in enumerate(observed["events"])
+            if e["step"] == "register"
+        ]
+        self.assertEqual(len(assembly), 1, msg=str(observed))
+        self.assertTrue(registration, msg=str(observed))
+        self.assertEqual(assembly[0][1]["registered_before"], [], msg=str(observed))
+        self.assertLess(assembly[0][0], registration[0][0], msg=str(observed))
