@@ -38,6 +38,17 @@ void main() {
     expect(source, contains('_service.sendChatMessage(text)'));
   });
 
+  test('isolated browser chat E2E injects synthetic consent explicitly', () {
+    final harness = File('lib/ui_companion_chat_e2e_main.dart').readAsStringSync();
+    expect(harness, contains('final testConsent = ConsentService()..markVerifiedConsent();'));
+    expect(harness, contains('consentService: testConsent,'));
+
+    // This fixture must not be imported into the ordinary app entrypoint.
+    final production = File('lib/main.dart').readAsStringSync();
+    expect(production, isNot(contains('ui_companion_chat_e2e_main.dart')));
+    expect(production, isNot(contains('markVerifiedConsent();')));
+  });
+
   test('Continue without AI stays distinct from profile server withdrawal', () {
     final onboarding = File(
       'lib/features/auth/consent_screen.dart',
