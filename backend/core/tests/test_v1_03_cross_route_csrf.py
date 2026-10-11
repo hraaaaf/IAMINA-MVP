@@ -1,14 +1,9 @@
 """V1-03 #927: real Django-client cookie CSRF matrix, no patient mutation."""
 
-from unittest.mock import patch
-
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
-from ninja.security import HttpBearer
 
-from amina.vercel_session_auth import SessionAuth
 from core.native_auth import issue_native_token, verify_native_token
-from diabetes.api.v1.security import HybridBearerAuth
 
 
 class ProtectedApiCookieCsrfTests(TestCase):
@@ -64,63 +59,28 @@ class ProtectedApiCookieCsrfTests(TestCase):
         token = issue_native_token(self.user)
         self.assertEqual(verify_native_token(token).pk, self.user.pk)
         native = Client(enforce_csrf_checks=True)
-        seen = []
-        original_bearer = HybridBearerAuth.__call__
-        original_authenticate = HybridBearerAuth.authenticate
-        original_session = SessionAuth.__call__
 
-        def observe_authenticate(auth, request, received_token):
-            result = original_authenticate(auth, request, received_token)
-            seen.append({
-                "backend": "native_authenticate",
-                "token_matches_issued": received_token == token,
-                "accepted": bool(result),
-            })
-            return result
+        for method, path, expected in self.CASES:
+            with self.subTest(method=method, path=path):
+                response = self._send(
+                    native,
+                    method,
+                    path,
+                    HTTP_AUTHORIZATION=f"Bearer {token}",
+                )
+                self.assertEqual(response.status_code, expected)
 
-        def observe_bearer(auth, request):
-            header = request.headers.get("Authorization", "")
-            scheme, separator, credential = header.partition(" ")
-            result = original_bearer(auth, request)
-            seen.append({
-                "backend": "bearer",
-                "header_present": bool(header),
-                "bearer_impl_matches_library": original_bearer is HttpBearer.__call__,
-                "bearer_impl": getattr(original_bearer, "__qualname__", "unknown"),
-                "header_matches": bool(request.headers.get(auth.header)),
-                "scheme_matches": scheme.lower() == auth.openapi_scheme,
-                "separator_present": bool(separator),
-                "credential_matches_issued": credential == token,
-                "accepted": bool(result),
-            })
-            return result
-
-        def observe_session(auth, request):
-            result = original_session(auth, request)
-            seen.append({"backend": "session", "accepted": bool(result)})
-            return result
-
-        with (
-            patch.object(HybridBearerAuth, "__call__", observe_bearer),
-            patch.object(HybridBearerAuth, "authenticate", observe_authenticate),
-            patch.object(SessionAuth, "__call__", observe_session),
-        ):
-            for method, path, expected in self.CASES:
-                with self.subTest(method=method, path=path):
-                    response = self._send(
-                        native, method, path,
-                        HTTP_AUTHORIZATION=f"Bearer {token}",
-                    )
-                    self.assertEqual(
-                        response.status_code, expected,
-                        msg=(
-                            f"auth_header_present="
-                            f"{bool(response.wsgi_request.headers.get('Authorization'))}; "
-                            f"cookies={list(response.wsgi_request.COOKIES)}; "
-                            f"auth_callbacks={seen[-5:]}; "
-                            f"payload={response.content[:200]!r}"
-                        ),
-                    )
+    def test_forged_bearer_without_session_cookie_is_unauthorized(self):
+        native = Client(enforce_csrf_checks=True)
+        for method, path, _expected in self.CASES:
+            with self.subTest(method=method, path=path):
+                response = self._send(
+                    native,
+                    method,
+                    path,
+                    HTTP_AUTHORIZATION="Bearer invalid.synthetic.credential",
+                )
+                self.assertEqual(response.status_code, 401)
 
     def test_valid_native_bearer_with_session_cookie_still_needs_csrf(self):
         token = issue_native_token(self.user)
@@ -131,6 +91,21 @@ class ProtectedApiCookieCsrfTests(TestCase):
             HTTP_AUTHORIZATION=f"Bearer {token}",
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_valid_native_bearer_with_session_cookie_and_csrf_reaches_contract(self):
+        token = issue_native_token(self.user)
+        secret = "b" * 32
+        self.browser.cookies["csrftoken"] = secret
+        for method, path, expected in self.CASES:
+            with self.subTest(method=method, path=path):
+                response = self._send(
+                    self.browser,
+                    method,
+                    path,
+                    HTTP_AUTHORIZATION=f"Bearer {token}",
+                    HTTP_X_CSRFTOKEN=secret,
+                )
+                self.assertEqual(response.status_code, expected)
 
     def test_public_login_remains_reachable_after_session_is_created(self):
         # Regression: dashboard visual cert repeats login after receiving a
