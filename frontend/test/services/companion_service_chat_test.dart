@@ -225,6 +225,7 @@ void main() {
     });
     final service = CompanionService(
       authService: _TokenAuthService(),
+      consentService: ConsentService()..markVerifiedConsent(),
       httpClient: client,
       baseUrl: 'http://127.0.0.1:8000',
       demoSessionId: 'test-session',
@@ -269,6 +270,7 @@ void main() {
     });
     final service = CompanionService(
       authService: _TokenAuthService(),
+      consentService: ConsentService()..markVerifiedConsent(),
       httpClient: client,
       baseUrl: 'http://127.0.0.1:8000',
       demoSessionId: 'test-session',
