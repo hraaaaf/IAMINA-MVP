@@ -1,6 +1,6 @@
 # IAMINA V1-03 — SSE POST privacy #925 — 2026-10-10
 
-> **Reprise enfant #928 (2026-10-11) :** [Handover canonique CSRF transversal](2026-10-11-iamina-v1-03-cross-route-csrf-handover.md). Le HEAD enfant `7a6f62a` a obtenu **15/15 workflows verts** ([CI #38103406096](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38103406096)) ; la PR #928 fut vérifiée empilée sur #926, puis temporairement ciblée vers main pour les 15 jobs de closeout. Elle reste DRAFT/non mergée. Ce dernier commit documentaire devra passer sa CI exacte, puis la base #926 sera restaurée ; revue humaine sécurité/privacy encore ouverte.
+> **Reprise enfant #928 (2026-10-11) :** [Handover canonique CSRF transversal](2026-10-11-iamina-v1-03-cross-route-csrf-handover.md). Le SHA code enfant `513655b8` a **15/15 workflows verts** ([CI #38104035936](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38104035936)), incluant l'inventaire dynamique des 28 opérations unsafe protégées. Nouveau commit de docs à recertifier ; base #928 temporairement `main` pour CI puis #926. Revue indépendante humaine sécurité/privacy toujours manquante, aucun merge ni déploiement.
 
 ## Latest security/CI checkpoint — SSE route direct CSRF guard (2026-10-10)
 
