@@ -63,3 +63,36 @@ Le commit de sécurité `a6f3090078acaf9417266036ea6242fcbfbbcb32` a obtenu **15
 ## Matrice de test CI : suivi du SHA (preuve après exécution)
 
 Ce complément est lancé sur la branche DRAFT #934 temporairement ciblée sur `main` pour activer GitHub Actions `pull_request` : l'ancien parent #932 reste inchangé. Les 3 nouveaux tests doivent passer avec les vérifications Flutter, backend PostgreSQL et E2E sans aucune simulation de patient réel. La CI n'est **pas** une autorisation de changer le comportement consentement ou d'exposer les alias P3. Après succès exact-HEAD, restaurer la base `safety/v1-03-glucose-ocr-unit-provenance-20261011`, actualiser GitHub/Notion/roadmap et conserver DRAFT/non-fusionné.
+
+## DÉCISION PRODUIT — Option A explicitement choisie (2026-10-11)
+
+**Décision utilisateur : A.** « Continuer sans IA » est un **refus persistant sur cet appareil**, **pas** une révocation du consentement sur le serveur ni sur un autre appareil. Les passages historiques de cet audit parlant de « session-only », de l'arbitrage A/B ouvert ou du test de caractérisation antérieur décrivent **la baseline avant cette décision**, et non la cible actuelle.
+
+### Goal / succès / preuves requises
+
+**Goal exact :** aucune requête IA patient depuis un appareil ayant enregistré le refus, y compris après reconstruction de l'application, tant qu'aucune nouvelle acceptation explicite et vérifiée ne l'a levé. Le serveur garde son consentement indépendant et fait son propre contrôle. **Succès observable :** refus durable dans `FlutterSecureStorage`, lecture avant `ApiClient/CompanionService`, fail-closed sur lecture inconnue/erreur, aucune navigation annonçant « sans IA » avant écriture confirmée, réactivation uniquement après serveur + notice + profil + suppression du marqueur ; un autre appareil reste indépendant.
+
+**Implémentation :**
+- `ConsentEvidenceStore` ajoute un marqueur sécurisé séparé `iamina.ai_consent.local_declined_v1` (présent = refus, valeur inconnue non-nulle = refus). `hasPersistedLocalDecline()`, `persistLocalDecline()`, `clearPersistedLocalDecline()` ne changent ni receipt notice ni serveur.
+- `main.dart` attend les deux lectures; en cas d'erreur du marqueur, initialise un refus local (fail-closed). `ConsentService(initiallyDeclinedLocally: ...)` est initialisé avant le `ApiClient` partagé; la profile stream ne peut pas lever la suppression.
+- `ConsentScreen` supprime l'IA locale immédiatement **sans notifier le routeur** jusqu'au succès de l'écriture, puis émet la notification et navigue. Échec d'écriture = rester sur l'écran, afficher erreur et garder la session IA bloquée; ne pas prétendre avoir sauvegardé. Après nouvelle acceptation exacte serveur, notice et profil, supprimer le marqueur **avant** de rappeler `markVerifiedConsent()` ; toute erreur garde la porte fermée.
+- Le routeur permet de revisiter `/consent` en cas de refus local ; le profil montre l'état « IAmina désactivée sur cet appareil » et un bouton d'acceptation volontaire. L'enregistrement du refus ne déclenche aucune révocation serveur.
+- Limites honnêtes : stockage sécurisé réellement indisponible = impossibilité de garantir la persistance au prochain démarrage ; l'UI refuse donc de confirmer l'action. Le refus existant avant cette mise à jour n'avait pas de trace durable : aucune migration rétroactive fictive. Ce marqueur est **par installation**, pas par compte ou appareil distant.
+
+### UI/UX — BEFORE → target → AFTER → test visuel
+
+**BEFORE code source :** profil compte avec simple état « Consentement IAmina non activé » sans lien de réacceptation; routeur renvoyant un utilisateur ayant refusé de `/consent` vers accueil; bouton de refus naviguant immédiatement. Viewports de référence navigateur existants : **390×844, 768×1024, 1280×900**, artefacts de [run #38147733708](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38147733708), surfaces `profile`. Ces références ne montrent pas de bouton d'opt-out durable car il n'existait pas.
+
+**Target mockup logique dans la section Compte étendue (sans refonte visuelle) :**
+```text
+Compte / Confidentialité
+IAmina désactivée sur cet appareil
+[ Réactiver IAmina avec mon consentement ]
+Zone sensible
+  Déconnexion
+```
+**AFTER prévu :** état et bouton profil uniquement si refus local, libellés FR / EN / AR, minimum 48px, route consentement explicite ; section Compte fermée par défaut hors fixture. Workflow `ui-browser-screenshot.yml` étendu à une **surface exclusivement synthétique** `profile-ai-disabled` avec section compte étendue pour les trois viewports, sans données patient. Les captures après et score visuel ne peuvent être revendiqués qu'après workflow vert et inspection des captures mêmes viewports.
+
+**Tests ajoutés :** tests Mocktail du stockage sécurisé (écriture, lecture après nouvelle instance, effacement, marqueur invalide, erreur), tests Flutter widget consentement (écriture bloquée, navigation différée, erreur de stockage fail-closed, réacceptation, erreur de suppression fail-closed), tests `ConsentService` avec profil et preuve préexistants, divergence indépendante entre appareils simulés, contracts source bootstrap/routes/UX. Les précédents tests « le refus disparaît après restart » sont **remplacés** par le contrat option A ; jamais faire passer une caractérisation ancienne comme produit approuvé.
+
+**Statut :** implémentation sur PR #934 DRAFT, **pas encore certifiée sur le HEAD courant**. Exact-head GitHub CI, captures 390/768/1280, tests fonctionnels, audits sécurité/privacy puis décision merge restent obligatoires. La CI antérieure de caractérisation `8c2b545...` a eu un échec **Android packaging** sur résolution externe `org.jetbrains.kotlin:...:2.0.21` dans Gradle, sans preuve de défaut du produit ; ne pas compter comme succès. Aucun merge, Vercel, patient réel ou levée du gate clinique global.
