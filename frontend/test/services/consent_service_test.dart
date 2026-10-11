@@ -77,8 +77,11 @@ void main() {
         ..seedInitialProfile(profile);
       addTearDown(sessionTwo.dispose);
       expect(sessionTwo.hasDeclinedLocally, isFalse);
-      expect(sessionTwo.hasConsent, isTrue,
-          reason: 'Known session-only opt-out gap; requires product/privacy gate');
+      expect(
+        sessionTwo.hasConsent,
+        isTrue,
+        reason: 'Known session-only opt-out gap; requires product/privacy gate',
+      );
     });
 
     test('restart with no verified secure evidence remains fail-closed', () async {
@@ -109,8 +112,11 @@ void main() {
 
       deviceA.declineLocally();
       expect(deviceA.hasConsent, isFalse);
-      expect(deviceB.hasConsent, isTrue,
-          reason: 'Local refusal is not a server-wide consent withdrawal');
+      expect(
+        deviceB.hasConsent,
+        isTrue,
+        reason: 'Local refusal is not a server-wide consent withdrawal',
+      );
     });
   });
 
