@@ -27,3 +27,7 @@ Critère: refus effectif avant HTTP sur chaque voie patient IA et sémantique no
 - Contrôle cohérence FR/AR/Darija/a11y et BEFORE/AFTER si UI modifiée.
 
 Next exact: obtenir l'arbitrage A/B au gate produit/privacy ou mettre en sécurité par défaut la persistance locale avec consentement serveur inchangé si c'est contractuellement autorisé; ne pas prétendre « global » sans serveur.
+
+## Complement technique — 2026-10-11
+- Test de caractérisation ajouté : `frontend/test/services/v1_03_optout_scope_regression_test.dart`. Il protège injection du consentement dans les chemins principaux et séparation du refus local de la révocation serveur.
+- Il ne choisit ni ne certifie la politique redémarrage / multi-appareils, encore soumise au gate privacy/produit. Verdict CI exact-head à établir.
