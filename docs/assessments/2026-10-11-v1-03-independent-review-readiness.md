@@ -99,3 +99,18 @@ Source technique primaire Vercel : [documentation du format Log Drains](https://
 **Perspective clinique et privacy :** ne pas élargir la barrière générique en se fondant sur des regex de pseudonymisation. Conserver la comparaison exacte au dernier appel externe, les refus média et la dormance P3 ; examiner séparément l'exception staff/opaque avant toute activation. Aucun essai sur vrais patients.
 
 **Statut :** audit source/read-only et caractérisation de preuve existante, **pas** qualification indépendante humaine, pas de test exécuté ici, pas de CI déclenchée sur HEAD documentaire #933.
+
+
+## 8. Inventaire Flutter ciblé de consommation app-compatibility (2026-10-11)
+
+**Baseline du scan :** PR #934, `f0b02165b478db6b6bb25d33f534a502ffa542f8`, sans modifier le code.
+
+- Sous `frontend/lib/services`, la liste Git tree de **33 fichiers Dart** a été reconstruite puis chacun de ces fichiers a été lu. Inclut `api_client.dart`, `companion_service.dart`, `auth_service.dart`, `consent_service.dart`, `sync_service.dart` et les fichiers `api/generated`.
+- Six points d'entrée supplémentaires inspectés : `frontend/lib/main.dart`, `routes/app_router.dart`, `features/auth/consent_screen.dart`, `features/auth/local_device_enrollment_screen.dart`, `features/profile/profile_screen.dart`, `features/profile/profile_screen_presentation.dart`.
+- Recherche ciblée et insensible à la casse : `app-compatibility`, `appCompatibility`, `version_unknown`, `update_required`, `minimumSupported`, `clientBuild`, `client_version`. **Zéro référence trouvée dans ces 39 fichiers Dart source.** Ceci est un inventaire statique de chemins choisis, **pas** une preuve d'absence sur tous les modules/features, ressources natives, distributions et versions historiques.
+- En parallèle, `backend/core/app_compatibility.py` expose déjà une logique déterministe version/build ; `version_unknown` ne force pas de mise à jour lorsque les métadonnées manquent. `backend/core/tests/test_app_compatibility.py` couvre ces états serveur. **Pas de preuve d'un appel Flutter associé** dans le périmètre inspecté.
+- **Finding pré-distribution (à traiter)** : le backend peut annoncer une version minimale, mais le mécanisme observable de consultation, affichage et reprise côté client reste **NON PROUVÉ**. Ne pas inventer une migration automatique, un parc historique distribué, ou une compatibilité assurée. Si un client ancien envoie toujours GET avec contenu patient, le nouveau serveur le bloque à 405, mais le contenu a déjà été présenté en URL à l'ingress.
+
+**Next engineering proposé, non implémenté :** établir la liste des canaux de distribution et versions effectivement installées (sans PHI), puis concevoir une consultation facultative/non bloquante de l'API de compatibilité tenant compte du **local-first**. Une transition de sécurité/upgrade vers POST ne doit **jamais réactiver** GET avec message en query, et un état `version_unknown` ne doit pas être présenté comme « client sûr/à jour ». Toute modification UX exige BEFORE/target/AFTER et tests de panne offline, anciens clients, iOS/Android/PWA. Aucune politique de mise à jour forcée n'a été autorisée ici.
+
+**Validation :** vérification de source sur 39 chemins au SHA indiqué, aucune compilation, test nouveau, audit de distribution ou validation de CI supplémentaires à ce HEAD.
