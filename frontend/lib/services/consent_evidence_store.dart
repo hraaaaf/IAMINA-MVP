@@ -6,6 +6,8 @@ class ConsentEvidenceStore {
   static const _versionKey = 'iamina.ai_consent.notice_version';
   static const _hashKey = 'iamina.ai_consent.notice_hash';
   static const _localeKey = 'iamina.ai_consent.notice_locale';
+  // Per-installation opt-out: intentionally not a server-wide withdrawal.
+  static const _localDeclineKey = 'iamina.ai_consent.local_declined_v1';
 
   final FlutterSecureStorage _storage;
 
@@ -48,6 +50,22 @@ class ConsentEvidenceStore {
     await _storage.write(key: _versionKey, value: claim.version);
     await _storage.write(key: _hashKey, value: claim.noticeHash);
     await _storage.write(key: _localeKey, value: claim.locale);
+  }
+
+  /// A legacy installation with no opt-out marker is unaffected. Any unknown
+  /// non-null value is treated as declined to fail closed.
+  Future<bool> hasPersistedLocalDecline() async {
+    final marker = await _storage.read(key: _localDeclineKey);
+    return marker != null;
+  }
+
+  Future<void> persistLocalDecline() async {
+    await _storage.write(key: _localDeclineKey, value: '1');
+  }
+
+  /// Only call after verified, explicit AI re-acceptance by the patient.
+  Future<void> clearPersistedLocalDecline() async {
+    await _storage.delete(key: _localDeclineKey);
   }
 
   Future<void> clear() async {
