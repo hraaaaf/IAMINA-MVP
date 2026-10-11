@@ -212,6 +212,8 @@ def test_chat_wires_active_staff_to_internal_shadow():
         patch("companion.conversation.record_clinical_decision_audit"),
         patch("companion.conversation.record_companion_route"),
         patch("companion.conversation._append_turn"),
+        # Keep these unit tests isolated from the real conversation database.
+        patch("companion.conversation._recent_turns", return_value=[]),
     ):
         reply = conversation.chat(
             "Aide-moi à préparer les questions pour mon médecin.",
@@ -252,6 +254,8 @@ def test_stream_wires_active_staff_to_internal_shadow():
         patch("companion.conversation.record_clinical_decision_audit"),
         patch("companion.conversation.record_companion_route"),
         patch("companion.conversation._append_turn"),
+        # Keep these unit tests isolated from the real conversation database.
+        patch("companion.conversation._recent_turns", return_value=[]),
     ):
         chunks = list(
             conversation.stream_chat(

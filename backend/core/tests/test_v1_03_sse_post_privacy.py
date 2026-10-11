@@ -291,6 +291,37 @@ class PatientSsePostPrivacyTests(TestCase):
         with_token._iterator.close()
         ai_cls.assert_not_called()
 
+    @patch("companion.core.IAmina")
+    def test_urgent_sse_cookie_csrf_preserves_emergency_contract(self, ai_cls):
+        browser = Client(enforce_csrf_checks=True)
+        browser.force_login(self.patient)
+        body = json.dumps({
+            "message": "Je suis inconscient, urgence glycémie",
+            "context_days": 14,
+        })
+        forbidden = browser.post(
+            "/api/v1/ai/chat/stream", data=body, content_type="application/json"
+        )
+        self.assertEqual(forbidden.status_code, 403)
+        ai_cls.assert_not_called()
+
+        secret = "d" * 32
+        browser.cookies["csrftoken"] = secret
+        response = browser.post(
+            "/api/v1/ai/chat/stream",
+            data=body,
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=secret,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.streaming)
+        self.assertEqual(response["Content-Type"], "text/event-stream")
+        self.assertEqual(response["Cache-Control"], "no-store")
+        events = b"".join(response.streaming_content).decode("utf-8")
+        self.assertIn('"is_emergency": true', events)
+        self.assertIn("data: [DONE]", events)
+        ai_cls.assert_not_called()
+
     @patch("companion.router.route")
     @patch("companion.core.IAmina")
     def test_stream_exception_does_not_log_patient_body(self, ai_cls, _route):
