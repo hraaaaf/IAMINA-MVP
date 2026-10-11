@@ -2,6 +2,9 @@
 
 > **Reprise V1-03 actuelle (2026-10-11) :** [`docs/handovers/2026-10-11-iamina-v1-03-option-a-p3-dormant-handover.md`](handovers/2026-10-11-iamina-v1-03-option-a-p3-dormant-handover.md) — PR #937 option A, code `4d287bb...`, 16/16 CI, DRAFT et base #936, sans merge ni release. Toujours revérifier GitHub HEAD et CI à l'ouverture d'une nouvelle session.
 
+
+> **Pack des revues V1-03 — 2026-10-11 :** [preuves & gates indépendants](assessments/2026-10-11-v1-03-independent-review-readiness.md) — tests #932/#934/#935/#936/#937 verts sur leurs HEAD individuels, aucun CI exact-HEAD sur la documentation #933. SSE ingress/anciens clients, refus IA sur vrais appareils, OCR clinique et intégration de la pile restent OPEN. Aucun merge ni Vercel. `NOT_RELEASE_AUTHORIZED`.
+
 > **Authority:** this is the single canonical forward tracker for IAMINA. If an issue, PR body, handover, assessment, AGENTS note, architecture note or historical phase document conflicts with this file on current status, priority or next work, **this file wins**. Historical documents remain evidence only.
 >
 > **Global audit:** 2026-09-17, reconciled against `main@df457cfdcc574439adb791fbfc44d484a1224417`, P5-4A merge #639, TD-014 merge #649, P5-6 release-gate evidence, #318/#320, `docs/TECHDEBT.md`, and the clarified local-first runtime boundary. The last explicitly frozen P5-6 candidate is `fb42e4d641b7b057607fe6a2de3d5104ccf15d0b`; later runtime/code changes mean it is retained as historical freeze evidence only, not as the current release candidate. The predecessor `5b27a22fc5c05a06e7eeeb0e841bb0e7dadce7f6` remains the last exact **remote development/certification** deployment proof. Vercel/Django/Neon is not the patient production runtime. No current release candidate exists until an explicit re-freeze is performed when the pre-real-patient gate is reactivated.
