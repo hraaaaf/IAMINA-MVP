@@ -61,3 +61,17 @@ Inventaire des workflows `main` :
 - `.github/workflows/p5-4a-pwa-update-recovery-proof.yml` utilise un serveur et des releases simulées en CI pour tester le recovery PWA. Ce n'est pas une preuve du cache des navigateurs réels installés.
 
 **Gate non comblé :** obtenir via les contrôles de distribution autorisés (et sans identifiants personnels) le nombre par version et plateforme, la version/service worker effectivement servie, l'âge des caches et les éventuels clients continuant à envoyer du GET, avant toute affirmation de migration complète. Le passage du site review vers POST pourra dégrader les clients PWA non actualisés ; le backend 405 protège le traitement mais **pas l'URL émise par un ancien client**.
+
+## Contre-audit d'intégration de la pile DRAFT — ne pas fusionner naïvement
+
+GitHub `compare_commits(main 13b7cce1 → head)` confirme :
+- #938 : **10 commits / 7 fichiers** par rapport à `main` (hotfix autonome et tests, pas clinique V1 entièrement intégré).
+- #932 : **101 commits / 59 fichiers** par rapport à `main` ; contient déjà un changement SSE POST et des modifications OCR / gardes provenant de sa longue base ancestrale.
+- #934 : **141 commits / 72 fichiers** par rapport à `main` ; contient les changements locaux de consentement/opt-out.
+- #937 : **113 commits / 65 fichiers** par rapport à `main` ; garde la dormance des aliases P3.
+
+**Fichiers qui se chevauchent entre #938 et les ancêtres DRAFT :** `backend/ai/api/v1/ai.py`, `backend/core/middleware/triage_vital.py`, `frontend/lib/services/api_client.dart`, `docs/api/openapi.json`, `frontend/test/services/v1_03_sse_privacy_contract_test.dart`. La suite de tests GET legacy de #935 est également reprise dans #938.
+
+**Décision technique recommandée après human gate :** ne pas traiter un merge vert de #938 comme validation de #932–#937. Conserver les garanties les plus restrictives de chaque version lors d'une réconciliation ultérieure : POST JSON sans query, CSRF cookie même Bearer, urgence canonique SSE **après** auth, pas de log PHI, dormance P3, opt-out local persistant, gardes egress. La variante #932 intercepte les urgences SSE dans le middleware ; la variante #938 choisit d'abord Ninja auth/CSRF : comportement volontairement différent, à tester explicitement avant toute déduplication. Faire valider la CI sur **chaque HEAD d'intégration** et les comportements end-to-end, sans attribuer à #938 des protections qui restent seulement dans #932–#937.
+
+**État immuable :** #938 est DRAFT, n'a pas été merge ni déployée. Un feu vert CI ne constituerait pas l'autorisation Vercel ni la preuve des migrations de clients réels.
