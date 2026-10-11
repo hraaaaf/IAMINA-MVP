@@ -515,8 +515,8 @@ def chat_stream(request, data: ChatRequest):
         )
 
         def _urgent_event_generator():
-            yield f"data: {json.dumps(emergency.as_stream_event(), ensure_ascii=False)}\\n\\n"
-            yield "data: [DONE]\\n\\n"
+            yield f"data: {json.dumps(emergency.as_stream_event(), ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
 
         return StreamingHttpResponse(
             _urgent_event_generator(),
