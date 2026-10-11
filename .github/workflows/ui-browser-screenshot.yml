@@ -149,6 +149,17 @@ jobs:
           })
           call('Page.reload', {'ignoreCache': True})
           time.sleep(12)
+          # The consent-off audit surface needs the expanded account section
+          # fully in view, not a meaningless capture of the profile header.
+          if '/profile-ai-disabled-' in target:
+              call('Input.dispatchMouseEvent', {
+                  'type': 'mouseWheel',
+                  'x': int(width * 0.7),
+                  'y': min(height - 150, 610),
+                  'deltaX': 0,
+                  'deltaY': 600 if mobile else 380,
+              })
+              time.sleep(2)
           shot = call('Page.captureScreenshot', {
               'format': 'png',
               'captureBeyondViewport': False,
