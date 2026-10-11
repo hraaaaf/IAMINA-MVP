@@ -34,3 +34,14 @@ Succès: tests exact-head sur code + log-redaction ingress effectif + stratégie
 Via le connecteur Vercel authentifié, `list_projects(search="iamina")` a renvoyé exactement deux projets accessibles sous le même compte : `iamina-review` (`prj_AYaUi32KTDHak8I7dmdQpDrqd8SI`) et `iamina-certified` (`prj_Pn9FnyconF3h2w9gOU74iV98kJoU`). `get_project` confirme ces deux identifiants ; son payload minimal ne fournit **ni stratégie de journalisation ni politique de rétention ni config de logs CDN/proxy**. `list_drains(teamId)` a répondu **HTTP 404 `not_found`** : il est interdit d'interpréter cet échec comme l'absence de drains. Aucun log runtime potentiellement patient n'a été consulté, aucun secret lu, aucune configuration/deployment modifiée.
 
 **Verdict de preuve corrigé :** vérification d'identité des projets uniquement. Pour vérifier la redaction réelle de query/body/headers et la rétention, un accès autorisé à la configuration et à un environnement synthetic dédié est encore nécessaire. Les 16/16 verts précédents portent sur le code/tests, non sur l'infrastructure Vercel.
+
+
+## Prévention de régression des anciens GET SSE — 2026-10-11
+
+**Goal** : si un ancien client envoie du texte synthétique dans l'URL `GET /api/v1/ai/chat/stream?message=...`, refuser sans réactiver le provider ni rediriger ce texte vers une autre URL ; annoncer dans l'OpenAPI le contrat de migration **POST JSON-body exclusivement**. Ce sont des tests d'API in-process, pas une vérification de logs de proxy ni une preuve d'inventaire de clients installés.
+
+Deux tests ajoutés à `backend/core/tests/test_v1_03_legacy_sse_no_provider.py` :
+- requête GET avec marqueur synthétique : HTTP **405**, **pas de Location** ni de reflet du marqueur dans la réponse ; `companion.core.IAmina` non instancié ;
+- schéma `api.get_openapi_schema()` : `/api/v1/ai/chat/stream` annonce `post`, **pas `get`**, avec `requestBody.content.application/json`.
+
+Le test initial GET 405 + aucun provider est conservé. **Sans changement runtime ni compatibilité GET réactivée**. Certifier ce nouveau HEAD en CI Django SQLite/PostgreSQL, puis restituer #935 à la base #932 ; n'inférer aucune politique CDN/WAF/log/retention depuis cette preuve. Avant release : analyser les anciens clients, concevoir une notification de version minimale ou migration côté client, et réaliser un audit ingress autorisé avec requêtes **strictement synthétiques**. Aucun déploiement Vercel, merge ni patient réel.
