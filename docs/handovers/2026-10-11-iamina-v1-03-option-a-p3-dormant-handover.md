@@ -75,3 +75,7 @@
 **Fichier canonique :** `docs/handovers/2026-10-11-iamina-v1-03-option-a-p3-dormant-handover.md` — adossé à `docs/ROADMAP.md`.
 
 **NE PAS PROCLAMER `PRODUCTION_READY`, `GO-LIVE` ou V1-03 clôturé.**
+
+## 7. Reprise complémentaire — pack des revues indépendantes (2026-10-11)
+
+Le pack `docs/assessments/2026-10-11-v1-03-independent-review-readiness.md` a été ajouté sur la branche documentaire #933. Il synthétise les gates SSE/ingress/anciens clients, consentement IA par installation sur appareils réels, revue clinique de l'OCR, et l'intégration de #932–#937. C'est un document de préparation, pas un test exécuté, une validation clinique/privacy ou une approbation de merge. Reprise live : #932/#934/#935/#936/#937 exact-HEAD verts, #933 HEAD documentaire sans CI exacte; main@13b7cce12c86daf60119fb703f22e8c6c192cf8d. Prochaine action : revues indépendantes + essais synthétiques appareils/environnement autorisé, puis nouvelle CI sur tout candidat intégré. Aucun merge/Vercel/patient réel. `NOT_RELEASE_AUTHORIZED`.
