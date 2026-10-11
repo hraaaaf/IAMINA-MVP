@@ -1,5 +1,7 @@
 # IAMINA V1-03 — SSE POST privacy #925 — 2026-10-10
 
+> **Reprise enfant #928 (2026-10-11) :** [Handover canonique CSRF transversal](2026-10-11-iamina-v1-03-cross-route-csrf-handover.md). Attention : CI enfant rouge, distincte du 15/15 parent #926.
+
 ## Latest security/CI checkpoint — SSE route direct CSRF guard (2026-10-10)
 
 **Code HEAD:** `2c61bc77a682d67b33cfba0f01bf90de4ac96ca4`, DRAFT [PR #926](https://github.com/hraaaaf/IAMINA-MVP/pull/926), base `main` **TEMPORARY** for CI (parent DRAFT [PR #922](https://github.com/hraaaaf/IAMINA-MVP/pull/922) branch `security/v1-03-summary-local-only-20261010` HEAD `cce2b5716d59add380846f3b3a18ef84e33fa41c`). Compared with parent: 17 commits ahead, 0 behind, 10 changed paths. No merge or deployment.
