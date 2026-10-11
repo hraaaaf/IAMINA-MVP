@@ -6,15 +6,15 @@
 
 **Succès observable (NON atteint) :** cookie sans CSRF → 403 ; cookie + Bearer falsifié → 403 ; cookie + CSRF valide → contrat route ; Bearer natif vérifié sans cookie → contrat route ; cas Bearer+cookie explicitement défini et testé ; routes publiques et réponses urgentes inchangées ; SQLite/PG + Flutter/PWA + Chrome + 15/15 GitHub exact-head ; revue sécurité/confidentialité indépendante.
 
-**Preuve actuellement :** Chrome Dashboard visuel ✅ sur HEAD code, tests backend Bearer ❌. Aucun merge ni déploiement.
+**Preuve fonctionnelle validée :** SHA `509c7274` 15/15 verts avant la nouvelle modification de tests/docs. Aucun merge ni déploiement.
 
 ## Repo, branches, PR, HEAD
 - Repo `hraaaaf/IAMINA-MVP`.
 - Parent **DRAFT [#922](https://github.com/hraaaaf/IAMINA-MVP/pull/922)**, branche `security/v1-03-summary-local-only-20261010`, HEAD `cce2b5716d59add380846f3b3a18ef84e33fa41c`, non mergé.
 - Intermédiaire **DRAFT [#926](https://github.com/hraaaaf/IAMINA-MVP/pull/926)**, branche `fix/v1-03-sse-post-scoped-20261010`, HEAD `05276ef08319dc4a79c50bbcd6063975c3e0e3af`, base parent #922, **15/15 exact-head CI GREEN** ([run #38086677013](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38086677013)). Validation du transport SSE, pas du CSRF transversal.
-- Enfant **DRAFT [#928](https://github.com/hraaaaf/IAMINA-MVP/pull/928)**, branche `security/v1-03-cross-route-cookie-csrf-20261010`, HEAD *code testé* `1d399c5700999d6d350a70fb05e48060fdcd9a68`, base `main` **temporaire pour déclencher CI**. **Doit être rebasé par ciblage de PR (base branch) sur #926 après exact-head green, pas mergé.** Ce commit documentaire changera le HEAD et exigera sa propre CI.
+- Enfant **DRAFT [#928](https://github.com/hraaaaf/IAMINA-MVP/pull/928)**, branche `security/v1-03-cross-route-cookie-csrf-20261010`, SHA fonctionnel validé `509c7274cda2c3262e431b54a4ebcfc177b954b1`, base `main` temporaire pour la CI. Nouveau SHA tests/docs à vérifier, puis cibler #926 (non mergé).
 
-## Modifications et preuves
+## Chronologie des modifications et preuves (historique des anciens échecs)
 1. Inventaire #927 : **15 fichiers de routeurs protégés**, **28 décorateurs POST/PUT/PATCH/DELETE dans 12 fichiers** (comptage statique partiel, ne constitue PAS 28 vulnérabilités). Un module enregistré remonte aussi le routeur des logs sous `/api/v1/diabetes/logs*`. `CsrfExemptApiMiddleware` exemptait tout en-tête ayant la forme Bearer *avant vérification* ; risque d'authentification mixte identifié.
 2. Code enfant : `backend/amina/middleware/csrf_exempt_api.py` contrôle en amont le CSRF pour toute requête unsafe `/api/v1/` avec cookie de session, sans exempter un faux Bearer ; les clients Bearer sans cookie gardent le chemin exempté. Exception ciblée réintroduite pour **login public** `/api/v1/auth/login`.
 3. Tests `backend/core/tests/test_v1_03_cross_route_csrf.py` : matrice Client(enforce_csrf_checks=True) compte/consentement, logs batch, profil PATCH et CGM PUT ; sans jeton 403 ; cookie/faux Bearer 403 ; cookie+CSRF valide atteint la validation ; Bearer natif sans cookie ; Bearer+cookie ; GET et reconnexion login ; entrées synthétiques sans modification patient par cas positif.
@@ -23,15 +23,25 @@
 6. HEAD code `1d399c5` [Dashboard #38092863710](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38092863710) ✅ sur la certification responsive après exemption du login public ; les autres routes sensibles restent protégées. [CI principale #38092863670](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38092863670) ❌, **14/15 workflows SUCCESS, 1 CI FAILED** : SQLite et PostgreSQL échouent chacun sur 4 sous-tests du même scénario natif. Le wrapper observateur a démontré **Authorization présente, aucun cookie, `HybridBearerAuth.__call__` appelé mais résultat faux, puis `SessionAuth.__call__` faux → 401**. Signature native `issue_native_token` → `verify_native_token` réussie dans ce test. La cause précise dans le callback HttpBearer/token parsing n'est PAS encore prouvée. Jamais écrire les jetons ou données patients dans les logs.
 7. Politique **Bearer valide + cookie** : la garde actuelle exige CSRF même avec un jeton éventuellement valide. Risque de compatibilité PWA/mobile web qui conserve un cookie et envoie aussi Authorization ; décisions et preuves nécessaires. Ne JAMAIS relâcher le CSRF seulement sur la forme de l'en-tête.
 
+## Dernière preuve et contre-vérification — 2026-10-11
+
+**Goal :** garder l'ensemble des mutations d'API authentifiées par cookie protégées du CSRF, sans invalider Bearer-only et SSE urgent autorisé. **Succès :** réponse HTTP 403 avant toute mutation pour cookie unsafe sans CSRF, authentification Bearer native réelle, SSE d'urgence avec CSRF valide et absence d'appel LLM. **Preuve ancien HEAD :** SHA `509c7274cda2c3262e431b54a4ebcfc177b954b1`, [15/15 CI success](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38101620136), SQLite 2842 passed/149 subtests ; PostgreSQL 2846 passed/149 subtests ; Flutter 660 passed/1 skipped, PWA, Chrome, migration drift et Protected Shadow success.
+
+**Cause racine prouvée :** une fixture pytest globale `autouse` dans `backend/conftest.py` remplaçait `FirebaseAuth.__call__` par `_session_aware_call`. `FirebaseAuth` étant l'alias de `HybridBearerAuth`, elle neutralisait le vrai Bearer sur toutes les routes. La suppression de ce mock (sans retirer le scope DB historique des tests) explique le 401 auparavant observé et l'apparence initiale d'un CSRF SSE non protégé. **Aucune vulnérabilité en production n'est prouvée par cette observation contaminée.**
+
+**Perfection Pass du nouveau commit :** matrice `/api/v1/diabetes/logs/batch` alias ModuleRegistry et test explicite du POST SSE urgent cookie sans CSRF 403 / avec CSRF valide 200 SSE déterministe sans LLM. Le changement de SHA invalide les attestations de CI précédentes ; aucune validation du nouveau HEAD n'est encore attribuable.
+
+**Risques et gates OPEN :** au-delà des quatre familles de routes + alias, inventaire dynamique exhaustif encore à prouver ; compatibilité client Bearer+cookie, exception de login public, sécurité/origine/proxy/ingress, accès au triage d'urgence sans CSRF, revue réellement indépendante auth/privacy, demandes humaines #923/#924. Pas de fusion, de déploiement Vercel, ni d'usage patient.
+
+**Scores techniques provisoires (revue contradictoire non indépendante) :** EXECUTION_SCORE 8.0/10, ADVERSARIAL_SCORE 7.8/10, écart 0.2, RETAINED 7.8/10 (plafond preuve nouvelle CI manquante) ; `NO-GO` / `OPEN` et non `VERIFIED`. À réévaluer après la nouvelle CI et revue indépendante.
+
 ## NEXT EXACT et chemin de clôture
-1. Reprendre sur cette branche et le dernier HEAD ; vérifier PR #928 / #926, GitHub exact HEAD CI. Inspecter `backend/diabetes/api/v1/security.py`, `HttpBearer.__call__` django-ninja 1.7.1, le test `test_native_bearer_only_is_not_subject_to_cookie_csrf` et la chaîne Authorization complète **sans jamais afficher la valeur du jeton**. Comprendre pourquoi `HybridBearerAuth.__call__` retourne faux malgré la signature directement valide. Éviter de transformer le test en 401 attendu ou de contourner les protections.
-2. Fix minimal ; tests ciblés SQLite+PostgreSQL : cookie seul manquant/faux/valide ; Bearer natif seul ; Bearer falsifié+cookie ; Bearer réel+cookie avec politique explicitement sécurisée ; connexion web/relogin ; GET ; urgence SSE.
-3. **15/15 workflows GitHub exact-head** (backend, Flutter/PWA, Chrome Dashboard responsive, Android/iOS, visuels). En cas de rouge : logs → cause → patch → nouveau HEAD/CI ; ne pas clôturer sur CI queued/running. Ne pas lancer de benchmark lourd à l'aveugle.
-4. Après green : mettre à jour ce fichier, `docs/ROADMAP.md`, PR #928 et issue #927, Notion ; faire certifier HEAD docs si nouveau commit. Rétablir **base #928 = `fix/v1-03-sse-post-scoped-20261010`**, comparer ahead/behind/diff, conserver DRAFT, aucune fusion.
-5. Revue indépendante sécurité/compatibilité/auth, logs de proxy/ingress, routes générées, migration ancien GET SSE → POST et rollback. Gates humaines [#923](https://github.com/hraaaaf/IAMINA-MVP/issues/923) unité glycémie OCR et [#924](https://github.com/hraaaaf/IAMINA-MVP/issues/924) consentement local/global ; CNDP, processor, a11y, FR/AR/Darija-RTL et pilotes P5-6A/P5-6B. Aucun merge, déploiement Vercel ou usage patient sans autorisation.
-6. Puis suite logique V1-01 audit calcul/autorité clinique, V1-02 Intelligence Engine, lots V1 restants selon `docs/ROADMAP.md`.
+1. Vérifier que la PR #928 pointe sur le nouveau SHA ; certifier **15/15 workflows du nouveau HEAD**. En cas de rouge : diagnostiquer → corriger → CI exacte, jamais contourner CSRF.
+2. Contrôler le périmètre et risques persistants ; demander une revue humaine réellement indépendante de sécurité et privacy, plus arbitrages sur cookie+Bearer/login/triage ; faire clôturer les gates #923/#924 et release applicables.
+3. Après CI exacte, corriger si nécessaire les documents canonique/Notion/PR et revalider nouveau SHA ; rattacher la base de #928 à `fix/v1-03-sse-post-scoped-20261010` (#926), contrôler diff et ahead/behind ; **conserver DRAFT et ne pas merger/déployer sans gate humain**.
+4. Ensuite seulement certifieur indépendant et chemin merge/post-merge si explicitement autorisé ; V1-03 et toutes les 29 décisions non closes restent OPEN.
 
 ## Repères de roadmap
 Décisions V1 : **29/29 approuvées, 0/29 entièrement livrées** ; V1-03 EN COURS. Ancien programme P5 : **6/12 lots atomiques clos = 50%**, métrique distincte. Référence Notion : [roadmap maître](https://app.notion.com/p/3f477c66336281b28c78eb11c22f5ee6).
 
-**NON CERTIFIÉ sur #928 / NON MERGÉ / NON DÉPLOYÉ.** Le Dashboard est vert, le backend Bearer-only est rouge. Ne pas confondre succès parent #926 et succès enfant #928.
+**NON CERTIFIÉ sur #928 / NON MERGÉ / NON DÉPLOYÉ.** Le dernier SHA fonctionnel 509c7274 est 15/15 vert ; ce nouveau commit tests/docs demande sa propre CI et une revue externe.

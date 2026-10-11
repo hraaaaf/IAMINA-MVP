@@ -1,6 +1,6 @@
 # IAMINA V1-03 — SSE POST privacy #925 — 2026-10-10
 
-> **Reprise enfant #928 (2026-10-11) :** [Handover canonique CSRF transversal](2026-10-11-iamina-v1-03-cross-route-csrf-handover.md). Attention : CI enfant rouge, distincte du 15/15 parent #926.
+> **Reprise enfant #928 (2026-10-11) :** [Handover canonique CSRF transversal](2026-10-11-iamina-v1-03-cross-route-csrf-handover.md). La CI enfant SHA 509c7274 est 15/15 verte ; ce commit tests/docs change le SHA et exige un nouveau contrôle. Revue sécurité humaine encore ouverte.
 
 ## Latest security/CI checkpoint — SSE route direct CSRF guard (2026-10-10)
 

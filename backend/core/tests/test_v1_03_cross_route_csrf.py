@@ -13,6 +13,8 @@ class ProtectedApiCookieCsrfTests(TestCase):
     CASES = (
         ("POST", "/api/v1/account/consent", 422),
         ("POST", "/api/v1/logs/batch", 422),
+        # Registry also mounts the protected diabetes logs router.
+        ("POST", "/api/v1/diabetes/logs/batch", 422),
         ("PATCH", "/api/v1/profile", 404),
         ("PUT", "/api/v1/cgm/connection", 422),
     )
