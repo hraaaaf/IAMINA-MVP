@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
+from ninja.security import HttpBearer
 
 from amina.vercel_session_auth import SessionAuth
 from core.native_auth import issue_native_token, verify_native_token
@@ -84,6 +85,8 @@ class ProtectedApiCookieCsrfTests(TestCase):
             seen.append({
                 "backend": "bearer",
                 "header_present": bool(header),
+                "bearer_impl_matches_library": original_bearer is HttpBearer.__call__,
+                "bearer_impl": getattr(original_bearer, "__qualname__", "unknown"),
                 "header_matches": bool(request.headers.get(auth.header)),
                 "scheme_matches": scheme.lower() == auth.openapi_scheme,
                 "separator_present": bool(separator),
