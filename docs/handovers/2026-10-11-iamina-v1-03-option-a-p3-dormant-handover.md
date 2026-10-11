@@ -79,3 +79,8 @@
 ## 7. Reprise complémentaire — pack des revues indépendantes (2026-10-11)
 
 Le pack `docs/assessments/2026-10-11-v1-03-independent-review-readiness.md` a été ajouté sur la branche documentaire #933. Il synthétise les gates SSE/ingress/anciens clients, consentement IA par installation sur appareils réels, revue clinique de l'OCR, et l'intégration de #932–#937. C'est un document de préparation, pas un test exécuté, une validation clinique/privacy ou une approbation de merge. Reprise live : #932/#934/#935/#936/#937 exact-HEAD verts, #933 HEAD documentaire sans CI exacte; main@13b7cce12c86daf60119fb703f22e8c6c192cf8d. Prochaine action : revues indépendantes + essais synthétiques appareils/environnement autorisé, puis nouvelle CI sur tout candidat intégré. Aucun merge/Vercel/patient réel. `NOT_RELEASE_AUTHORIZED`.
+
+
+## 8. Reprise complémentaire — 11 octobre 2026
+
+Le dossier `docs/assessments/2026-10-11-v1-03-independent-review-readiness.md` documente les audits de frontière LLM, de configuration Vercel en lecture seule et de compatibilité des clients. Vérification ciblée au SHA #934 `f0b02165` : 33 services Dart et 6 entrées Flutter inspectés sans référence retrouvée à la consultation de l'API de compatibilité. L'inventaire des versions distribuées, les réglages réels de journalisation et les essais sur appareils restent non prouvés. Les nouveaux commits documentaires de #933 n'ont pas de CI exacte. Aucune activation, fusion ou mise en production n'est autorisée. Suite : revue externe qualifiée et preuves environnementales, puis autorisation de fusion distincte.
