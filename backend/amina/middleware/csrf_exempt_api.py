@@ -5,6 +5,7 @@ CsrfViewMiddleware. Only bearer-token requests and the Firebase token bootstrap
 endpoint are exempted here.
 """
 
+from django.conf import settings
 from django.http import JsonResponse
 
 from core.ai_operation_identity import (
@@ -24,8 +25,15 @@ class CsrfExemptApiMiddleware:
     def __call__(self, request):
         authorization = request.META.get("HTTP_AUTHORIZATION", "")
         uses_bearer_auth = authorization.lower().startswith("bearer ")
+        has_session_cookie = bool(
+            request.COOKIES.get(settings.SESSION_COOKIE_NAME)
+        )
 
-        if uses_bearer_auth or request.path in self._EXEMPT_PATHS:
+        # An Authorization header cannot waive CSRF while a session cookie
+        # exists. The bearer exemption is for cookie-less native clients only.
+        if (uses_bearer_auth and not has_session_cookie) or (
+            request.path in self._EXEMPT_PATHS
+        ):
             setattr(request, "_dont_enforce_csrf_checks", True)
 
         try:
