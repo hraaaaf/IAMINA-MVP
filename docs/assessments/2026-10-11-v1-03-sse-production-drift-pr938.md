@@ -98,3 +98,16 @@ Au HEAD #938 `9e7ca998e0666cebb6367bfabc2d3099d8f4da67` (run GitHub CI `38184659
 **Si et seulement si merge ET déploiement séparément autorisés :** préparer simultanément artefacts backend/frontend avec SHA et version explicites ; respecter la fenêtre contrôlée et l'éventuelle dégradation de la messagerie SSE pendant la bascule. Préférer un fallback local déterministe connu plutôt que dégrader la confidentialité par une redirection ou restauration GET. Les clients périmés peuvent encore former une URL patient **avant** le 405 : communiquer l'upgrade, évaluer cache purge et bloquer la collecte des URL de cette route au plus en amont possible. Faire un smoke synthétique exact déploiement, vérifier métriques non PHI et faire approuver le closeout. En cas de régression, ne pas rebasculer silencieusement vers une version qui accepte le message dans l'URL.
 
 **Human gates distincts :** (1) accès/revue des logs ou appareils réels ; (2) merge ; (3) déploiement Vercel. Un CI vert autorise seulement une étape de revue technique.
+
+## Contre-validation deuxième run — protection pré-Ninja (2026-10-11)
+
+Le run CI `38184949625`, job `114605240652`, HEAD #938 `cbddb5621af3e82ac63ca6b98cbaa72ef82fe4eb`, confirme l'évolution : **2 786 tests réussis, 5 sub-échecs, 5 skips et 3 xfail**. Les 2 tests directs à signature GET et le contrôle CSRF du POST valide avec Bearer forgé ont cessé d'échouer ; les 5 **nouveaux** sous-tests de matrice ont montré que les corps JSON malformés de routes protégées étaient encore acceptés jusqu'à validation de schéma (422/404 au lieu de 403). Il ne s'agit **pas** d'un simple artefact de test ; le contrôle de session devait être centralisé **avant** toute validation Ninja pour les requêtes mutatrices.
+
+Après **deux runs avec échec de la même zone**, changement de stratégie : reprise à l'identique des 2 implémentations de la pile #932 **déjà passée en CI sur son HEAD** :
+- `backend/amina/middleware/csrf_exempt_api.py` : vérification `check_iamina_csrf` **en entrée du middleware** si session cookie + méthode unsafe sous `/api/v1/`, avant `get_response`/Ninja, avec exception existante de la route de login public. Bearer ne peut dispenser du CSRF si un cookie de session existe.
+- `backend/amina/vercel_session_auth.py` : `SessionAuth._get_key` vérifie explicitement le CSRF sur les appels unsafe avec cookie ; `check_iamina_csrf` évite l'ancienne exemption Bearer falsifiée.
+- Les tests synthétiques de la matrice 5 routes ajoutés à #938 restent inchangés ; ils doivent maintenant prouver la protection **avant** validation de schéma, plus la compatibilité avec cookie + bon token.
+
+La copie de référence a été confirmée par **égalité des SHA blob** avec #932, pas par une reformulation. Nouveau HEAD hotfix **`e2bbb9a34fccf643c62d329641217648522e7f41`**, 11 fichiers. Quatre nouveaux workflows déclenchés au HEAD, initialement `queued/in_progress` ; la CI de ce HEAD **n'est pas encore déclarée verte**. Ce changement de middleware est transverse, et doit être retenu comme risque de non-régression de toutes les routes protégées, publiques et de l'auth mobile, non pas traité comme une simple correction SSE.
+
+**Ni les 2 786 tests du HEAD précédent ni le succès CI #932 ne remplacent la preuve CI exacte pour #938.** Aucun merge, Vercel ou consultation PHI.
