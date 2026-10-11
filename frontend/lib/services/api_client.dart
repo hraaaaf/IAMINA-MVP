@@ -180,7 +180,7 @@ class ApiClient {
 
   /// Production-injected local notice must be verified and not declined before
   /// patient AI HTTP. Server consent remains independently authoritative.
-  /// A missing service is permitted for isolated legacy and test clients only.
+  /// Missing injection is tolerated for non-AI clients, but AI calls fail closed.
   String? get _localAiDenialCode {
     final consent = _consentService;
     // A missing injected consent gate must never permit patient AI transport.
