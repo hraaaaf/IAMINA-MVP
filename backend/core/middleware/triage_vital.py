@@ -259,6 +259,11 @@ class TriageVitalMiddleware:
     def _is_chat_endpoint(self, request) -> bool:
         from core.safety_registry import TRIAGE_REGISTRY
 
+        # The SSE endpoint must pass through Ninja auth/CSRF before any
+        # patient-facing urgent response. Its view owns deterministic urgency.
+        if request.path.rstrip("/") == "/api/v1/ai/chat/stream":
+            return False
+
         return request.method == "POST" and any(
             request.path.startswith(path) for path in TRIAGE_REGISTRY._paths
         )
@@ -331,11 +336,10 @@ class TriageVitalMiddleware:
         return _message_language(message)
 
     def _log_emergency(self, request, message: str, kind: str = "legacy") -> None:
-        user_id = getattr(request.user, "id", "anonymous")
+        # Never log patient-authored symptoms, identifiers, or snippets.
+        # Keep only static classification and the Django-normalized path.
         logger.critical(
-            "TriageVital: EMERGENCY DETECTED — kind=%s | user_id=%s | path=%s | snippet='%s'",
+            "TriageVital: EMERGENCY DETECTED — kind=%s | path=%s",
             kind,
-            user_id,
             request.path,
-            message[:120],
         )
