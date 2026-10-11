@@ -434,7 +434,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       icon: Icons.shield_outlined,
       title: l10n.profileAccountSection,
       subtitle: l10n.profileAccountSectionHint,
-      initiallyExpanded: false,
+      initiallyExpanded: widget.accountInitiallyExpanded,
       children: [
         _buildAccountInfoRow(
           icon: Icons.person_outline_rounded,
