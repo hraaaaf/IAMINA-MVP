@@ -30,6 +30,8 @@ Each condition module exposes a manifest/registration contract used by the chass
 Rules:
 
 - route prefixes are static configuration, not dynamic path-parameter tricks;
+- **V1 #929 decision A:** the diabetes module's `url_prefix="/diabetes"` is RESERVED metadata, **not** a mounted HTTP alias. The only live public clinical paths are explicitly mounted canonical `/api/v1/*` routers. Registry registration must never implicitly expose `/api/v1/diabetes/*` in V1;
+- `interactive_endpoints` is an inventory of **actually reachable** routes needing vital triage, not an aspirational list of future URLs. The live diabetes entry names `/api/v1/ai/chat`; adding any alias is a separate reviewed security/clinical change;
 - interactive endpoints must not bypass safety registration;
 - a manifest is configuration, not a place to embed secrets or patient data;
 - supported-language metadata does **not** by itself authorize a locale for real-patient use — MENA locale gates live in `docs/ROADMAP.md`.

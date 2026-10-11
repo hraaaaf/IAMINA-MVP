@@ -251,7 +251,6 @@ class TriageVitalMiddleware:
                 )
                 if request.path.rstrip("/") in {
                     "/api/v1/ai/chat/stream",
-                    "/api/v1/diabetes/ai/chat/stream",
                 }:
                     # Critical: streaming Flutter clients consume SSE tokens,
                     # not JSON middleware responses. Keep triage upstream of AI.

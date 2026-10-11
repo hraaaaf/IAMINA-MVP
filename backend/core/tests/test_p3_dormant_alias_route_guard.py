@@ -10,10 +10,13 @@ import subprocess
 import sys
 import textwrap
 from pathlib import Path
+from unittest.mock import patch
 
-from django.test import SimpleTestCase
+from django.contrib.auth.models import AnonymousUser
+from django.test import Client, RequestFactory, SimpleTestCase
 from django.urls import Resolver404, resolve
 
+from core.middleware.triage_vital import TriageVitalMiddleware
 from core.registry import ModuleRegistry
 from diabetes.api.main import api
 from diabetes.api.v1.logs import router as logs_router
@@ -61,12 +64,11 @@ class P3DormantAliasRouteGuardTest(SimpleTestCase):
         # The actively supported canonical path must remain reachable.
         self.assertIsNotNone(resolve("/api/v1/logs/batch"))
 
-    def test_fresh_django_bootstrap_registry_timeline(self):
-        """Measure API assembly vs ModuleRegistry.register in a NEW interpreter.
+    def test_fresh_django_bootstrap_keeps_p3_alias_dormant(self):
+        """A clean Django boot may register diabetes but MUST NOT mount an alias.
 
-        The current test process cannot prove import order because Django and
-        URLconf are already initialized by pytest/Django's test runner.
-        Nothing is mounted or modified in this process or any live service.
+        The historical diagnostic confirmed an import-order problem; V1 option
+        A makes alias non-exposure intentional regardless of import timing.
         """
         script = textwrap.dedent(
             r"""
@@ -143,15 +145,66 @@ class P3DormantAliasRouteGuardTest(SimpleTestCase):
         self.assertIn("diabetes", observed["registered_final"])
         self.assertEqual(observed["mounts"], ["/v1"])
 
-        assembly = [
-            (i, e) for i, e in enumerate(observed["events"])
-            if e["step"] == "all"
-        ]
+        # V1 policy A (#929): unlike the historical startup-timing diagnosis,
+        # the API assembly no longer attempts ANY registry-driven alias mount.
+        assembly = [event for event in observed["events"] if event["step"] == "all"]
         registration = [
-            (i, e) for i, e in enumerate(observed["events"])
-            if e["step"] == "register"
+            event for event in observed["events"] if event["step"] == "register"
         ]
-        self.assertEqual(len(assembly), 1, msg=str(observed))
+        self.assertEqual(assembly, [], msg=str(observed))
         self.assertTrue(registration, msg=str(observed))
-        self.assertEqual(assembly[0][1]["registered_before"], [], msg=str(observed))
-        self.assertLess(assembly[0][0], registration[0][0], msg=str(observed))
+
+    def test_manifest_and_triage_declare_only_reachable_chat(self):
+        """No dormant namespace is advertised as an emergency-enabled API."""
+        from core.safety_registry import TRIAGE_REGISTRY
+
+        manifest = ModuleRegistry.get("diabetes").manifest
+        self.assertEqual(manifest.interactive_endpoints, ["/api/v1/ai/chat"])
+        self.assertIn("/api/v1/ai/chat", TRIAGE_REGISTRY._paths)
+        self.assertNotIn("/api/v1/diabetes/ai/chat", TRIAGE_REGISTRY._paths)
+        self.assertEqual(manifest.url_prefix, "/diabetes")  # Reserved only.
+
+    def test_all_p3_aliases_remain_absent_from_schema_and_resolver(self):
+        from diabetes.api.main import api
+
+        paths = api.get_openapi_schema()["paths"]
+        for alias in (
+            "/api/v1/diabetes/logs",
+            "/api/v1/diabetes/logs/batch",
+            "/api/v1/diabetes/ai/chat",
+            "/api/v1/diabetes/ai/chat/stream",
+        ):
+            with self.subTest(alias=alias):
+                self.assertNotIn(alias, paths)
+                with self.assertRaises(Resolver404):
+                    resolve(alias)
+        self.assertIn("/api/v1/ai/chat", paths)
+        self.assertIn("/api/v1/ai/chat/stream", paths)
+
+    def test_urgent_text_cannot_revive_dormant_patient_chat_route(self):
+        """Even emergency text must not turn a nonexistent P3 URL into HTTP 200."""
+        urgent = json.dumps({"message": "Je suis inconscient"}).encode()
+        with patch("companion.core.IAmina") as provider:
+            reply = Client().post(
+                "/api/v1/diabetes/ai/chat",
+                data=urgent,
+                content_type="application/json",
+            )
+            self.assertEqual(reply.status_code, 404)
+            stream = Client().post(
+                "/api/v1/diabetes/ai/chat/stream",
+                data=urgent,
+                content_type="application/json",
+            )
+            self.assertEqual(stream.status_code, 404)
+            provider.assert_not_called()
+
+        # Preserve the deterministic emergency guard on the real canonical
+        # patient chat endpoint despite dropping the misleading P3 alias.
+        req = RequestFactory().post(
+            "/api/v1/ai/chat", data=urgent, content_type="application/json"
+        )
+        req.user = AnonymousUser()
+        response = TriageVitalMiddleware(lambda _: None)(req)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(json.loads(response.content)["is_emergency"])
