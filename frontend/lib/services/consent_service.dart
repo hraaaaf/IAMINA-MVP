@@ -13,8 +13,11 @@ class ConsentService extends ChangeNotifier {
   bool _hasCompletedOnboarding = false;
   StreamSubscription<PatientProfileData?>? _sub;
 
-  ConsentService({bool hasVerifiedEvidence = false})
-    : _hasVerifiedEvidence = hasVerifiedEvidence;
+  ConsentService({
+    bool hasVerifiedEvidence = false,
+    bool initiallyDeclinedLocally = false,
+  }) : _hasVerifiedEvidence = hasVerifiedEvidence,
+       _hasDeclinedLocally = initiallyDeclinedLocally;
 
   /// True once the first profile stream event has been processed or seeded.
   bool get isInitialized => _hasConsent != null;
@@ -83,8 +86,8 @@ class ConsentService extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Decline (session-only) ────────────────────────────────────────────────
-  bool _hasDeclinedLocally = false;
+  // ── Per-device decline: seeded from encrypted storage on app startup ───────
+  bool _hasDeclinedLocally;
 
   bool get hasDeclinedLocally => _hasDeclinedLocally;
 
