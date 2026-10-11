@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:iamina/core/clinical/glucose_ocr_shield.dart';
+import 'package:amina/core/clinical/glucose_ocr_shield.dart';
 
 void main() {
   test('unlabelled OCR numbers cannot suggest a glucose unit or value', () {
