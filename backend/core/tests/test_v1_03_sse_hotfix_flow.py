@@ -94,7 +94,7 @@ class SseHotfixFlowTests(TestCase):
         self.assertEqual(response["Content-Type"], "text/event-stream")
         self.assertEqual(response["Cache-Control"], "no-store")
         data = b"".join(response.streaming_content).decode("utf-8")
-        first = data.split("\\n\\n")[0]
+        first = data.split("\n\n")[0]
         self.assertTrue(first.startswith("data: "))
         event = json.loads(first.removeprefix("data: "))
         self.assertTrue(event["is_emergency"])
