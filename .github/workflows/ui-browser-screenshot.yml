@@ -162,7 +162,7 @@ jobs:
           ws.close()
           PY
 
-          surfaces=(dashboard trend kpi insight next-action companion companion-unavailable amina-chat summary profile journal importer document-import add-log add-log-meal meal-picker medications reminders)
+          surfaces=(dashboard trend kpi insight next-action companion companion-unavailable amina-chat summary profile profile-ai-disabled journal importer document-import add-log add-log-meal meal-picker medications reminders)
           viewports=("${{ matrix.width }} ${{ matrix.height }} ${{ matrix.mobile }}")
 
           for viewport in "${viewports[@]}"; do
