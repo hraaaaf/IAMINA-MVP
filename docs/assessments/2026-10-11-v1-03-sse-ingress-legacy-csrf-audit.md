@@ -25,3 +25,7 @@ Succès: tests exact-head sur code + log-redaction ingress effectif + stratégie
 2. Comparer de façon observable les règles de logging effectives, APM/WAF, proxy, redaction, retention et absence d'URL query PHI; accès réel/autorisation nécessaires.
 3. Repasser CSRF login public, cookie+Bearer, SSE urgent, interruptions et ouverture scope sur tout changement; SQLite/PostgreSQL exact-head.
 4. Coordonner avec #929 seulement si nouveaux chemins montés; sinon ne pas élargir la surface API.
+
+## Complement technique — 2026-10-11
+- Test adversarial ajouté : `backend/core/tests/test_v1_03_legacy_sse_no_provider.py`. Il caractérise le refus du GET ancien contenant un marqueur synthétique en query et l'absence d'invocation fournisseur.
+- Pas de vérification des logs ingress réels ni des versions clients installées. Verdict CI exact-head à établir.
