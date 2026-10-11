@@ -6,10 +6,10 @@ Do not make a new patient mutation route reachable without auth/CSRF review.
 
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import textwrap
+from pathlib import Path
 
 from django.test import SimpleTestCase
 from django.urls import Resolver404, resolve
@@ -69,7 +69,7 @@ class P3DormantAliasRouteGuardTest(SimpleTestCase):
         Nothing is mounted or modified in this process or any live service.
         """
         script = textwrap.dedent(
-            """
+            r"""
             import json
             import os
             import sys
