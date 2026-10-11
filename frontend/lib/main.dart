@@ -71,16 +71,25 @@ Future<void> main() async {
   final db = AppDatabase.defaults();
   final consentEvidenceStore = ConsentEvidenceStore();
   var hasVerifiedConsentEvidence = false;
+  var hasPersistedLocalDecline = true; // Storage read failure must fail closed.
   try {
     hasVerifiedConsentEvidence = await consentEvidenceStore.hasCurrentEvidence();
   } catch (e) {
     // Fail closed: storage failure must never turn a timestamp into consent.
     debugPrint('Consent evidence read failed: $e');
   }
+  try {
+    hasPersistedLocalDecline =
+        await consentEvidenceStore.hasPersistedLocalDecline();
+  } catch (_) {
+    // Never restore a previous grant when the local refusal cannot be read.
+    hasPersistedLocalDecline = true;
+  }
   final initialProfile =
       await (db.select(db.patientProfiles)..limit(1)).getSingleOrNull();
   final consentService = ConsentService(
     hasVerifiedEvidence: hasVerifiedConsentEvidence,
+    initiallyDeclinedLocally: hasPersistedLocalDecline,
   )
     ..seedInitialProfile(initialProfile)
     ..attachStream(db.watchProfile());
