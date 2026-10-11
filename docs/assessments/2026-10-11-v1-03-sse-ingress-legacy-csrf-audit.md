@@ -45,3 +45,5 @@ Deux tests ajoutés à `backend/core/tests/test_v1_03_legacy_sse_no_provider.py`
 - schéma `api.get_openapi_schema()` : `/api/v1/ai/chat/stream` annonce `post`, **pas `get`**, avec `requestBody.content.application/json`.
 
 Le test initial GET 405 + aucun provider est conservé. **Sans changement runtime ni compatibilité GET réactivée**. Certifier ce nouveau HEAD en CI Django SQLite/PostgreSQL, puis restituer #935 à la base #932 ; n'inférer aucune politique CDN/WAF/log/retention depuis cette preuve. Avant release : analyser les anciens clients, concevoir une notification de version minimale ou migration côté client, et réaliser un audit ingress autorisé avec requêtes **strictement synthétiques**. Aucun déploiement Vercel, merge ni patient réel.
+
+**CI gate exact-HEAD :** après retour temporaire de #935 sur `main` pour activer les workflows GitHub `pull_request`, exécuter la suite complète et certifier le nouveau commit seulement si **tous** les workflows réussissent. Ensuite **restaurer la base #932**, confirmer le diff exclusif tests/documentation et conserver DRAFT/non fusionnée. Cet essai ne doit pas provoquer de tests ingress sur de vrais contenus patients.
