@@ -1,9 +1,13 @@
 """V1-03 #927: real Django-client cookie CSRF matrix, no patient mutation."""
 
+import re
+
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
+from django.urls import resolve
 
 from core.native_auth import issue_native_token, verify_native_token
+from diabetes.api.main import api
 
 
 class ProtectedApiCookieCsrfTests(TestCase):
@@ -121,3 +125,33 @@ class ProtectedApiCookieCsrfTests(TestCase):
     def test_cookie_safe_get_does_not_require_csrf(self):
         response = self.browser.get("/api/v1/account/consent")
         self.assertEqual(response.status_code, 200)
+
+    def test_every_mounted_protected_unsafe_route_rejects_cookie_csrf_bypass(self):
+        """Inventory routes from the live Ninja OpenAPI, not a guessed prefix.
+
+        The middleware rejects these requests before schema/body validation or
+        any endpoint side effects. Check canonical and forged Bearer headers.
+        """
+        schema = api.get_openapi_schema()
+        methods = {"post", "put", "patch", "delete"}
+        protected = [
+            (method.upper(), template)
+            for template, operations in schema["paths"].items()
+            for method, operation in operations.items()
+            if method in methods
+            and any(
+                "SessionAuth" in requirement
+                for requirement in operation.get("security", [])
+            )
+        ]
+        self.assertGreater(len(protected), 0, "No protected unsafe API routes found")
+
+        for method, template in protected:
+            # Synthetic URL values, never patient IDs. Resolve explicitly to
+            # exclude phantom registry aliases (see #929).
+            path = re.sub(r"\{[^{}]+\}", "1", template)
+            with self.subTest(method=method, path=template):
+                resolve(path)
+                for header in ({}, {"HTTP_AUTHORIZATION": "Bearer invalid.synthetic"}):
+                    response = self._send(self.browser, method, path, **header)
+                    self.assertEqual(response.status_code, 403)

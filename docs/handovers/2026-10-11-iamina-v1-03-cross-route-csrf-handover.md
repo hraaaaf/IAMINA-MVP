@@ -37,6 +37,8 @@
 
 **Revue adversariale isolée (NON indépendante) et score technique provisoire :** EXECUTION_SCORE 8.0/10, ADVERSARIAL_SCORE 7.8/10, écart 0.2, RETAINED 7.8/10. Même si les 15 workflows du HEAD fonctionnel sont verts, la revue externe sécurité/privacy obligatoire et les arbitrages humains ne sont pas clos ; **NO-GO / OPEN, non VERIFIED, non release-ready**. La mise à jour documentaire présente crée un **nouveau HEAD** et exigera une CI exacte ; le 15/15 ci-dessus n'est PAS transféré à ce futur SHA.
 
+**Inventaire supplémentaire en cours de certification :** l'OpenAPI source expose **39 opérations unsafe**, dont **28 avec `SessionAuth`** et 11 autres sans cette exigence. Un nouveau test de sécurité fait une boucle sur les 28 opérations effectivement décrites par `api.get_openapi_schema()`, vérifie que leurs chemins correspondent à une résolution Django (ne pas accepter l'alias fantôme #929) puis que cookie sans CSRF et cookie + faux Bearer reçoivent 403 avant toute mutation. Les tests ciblés Bearer valide et cookie+jeton sur quatre familles et SSE urgent sont conservés. **Nouveau commit de tests/docs à certifier** ; ne pas le compter comme PASS sur la CI de `7a6f62a`.
+
 **Gates humains réels :** revue indépendante sécurité/confidentialité ; politique mixte cookie+Bearer, exception login public, accessibilité triage d'urgence quand cookie+CSRF absent, ancienne compatibilité client, exposition ingress/proxy et routes dynamiques ; décision clinique #923, consentement #924, processor/CNDP et pilotes. Aucune fusion/déploiement/usage patient autorisé par la seule CI.
 
 ## NEXT EXACT et chemin de clôture
