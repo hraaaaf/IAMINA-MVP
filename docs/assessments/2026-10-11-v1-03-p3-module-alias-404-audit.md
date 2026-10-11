@@ -29,3 +29,7 @@ Next exact: script diagnostic non intrusif dans la branche, puis correction cond
 ## Complement technique — 2026-10-11
 - Test de caractérisation ajouté : `backend/core/tests/test_p3_dormant_alias_route_guard.py` sur registry, OpenAPI et resolver HTTP. Il prévient une activation accidentelle tant que l'alias est considéré dormant ; toute activation voulue requiert mise à jour explicite des tests et gate de sécurité.
 - Ce test n'établit pas la cause racine du 404. Verdict CI exact-head à établir.
+
+## Diagnostic discriminant ajouté — 2026-10-11
+Le test `backend/core/tests/test_p3_dormant_alias_route_guard.py::P3DormantAliasRouteGuardTest::test_current_ninja_mount_inventory_has_canonical_router_only` compare les préfixes effectivement enregistrés dans la collection `api._routers` pour **le même objet** `logs_router`, indépendamment du Django resolver et de l'OpenAPI déjà inspectés. Résultat attendu de caractérisation : **un seul montage `/v1`**, aucun `/v1/diabetes`. Une réussite sur SHA exact renforcera l'explication « alias jamais monté », tandis qu'un échec orientera vers un problème de construction des opérations / URL. Ce test ne peut pas à lui seul dater l'import avant `AppConfig.ready`.
+Django Ninja actuel documente `url_name_prefix` obligatoire pour remonter le même Router sur un même NinjaAPI ; cf. https://django-ninja.dev/guide/routers/ et https://django-ninja.dev/reference/api/. Rien n'est activé : pas de route nouvelle, pas d'auth/CSRF ou de contrat patient modifié.
