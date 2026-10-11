@@ -111,3 +111,9 @@ Après **deux runs avec échec de la même zone**, changement de stratégie : re
 La copie de référence a été confirmée par **égalité des SHA blob** avec #932, pas par une reformulation. Nouveau HEAD hotfix **`e2bbb9a34fccf643c62d329641217648522e7f41`**, 11 fichiers. Quatre nouveaux workflows déclenchés au HEAD, initialement `queued/in_progress` ; la CI de ce HEAD **n'est pas encore déclarée verte**. Ce changement de middleware est transverse, et doit être retenu comme risque de non-régression de toutes les routes protégées, publiques et de l'auth mobile, non pas traité comme une simple correction SSE.
 
 **Ni les 2 786 tests du HEAD précédent ni le succès CI #932 ne remplacent la preuve CI exacte pour #938.** Aucun merge, Vercel ou consultation PHI.
+
+## Dernière revue de la matrice d'authentification (2026-10-11)
+
+Troisième perspective indépendante du simple test SSE : portage **octet pour octet** de `backend/core/tests/test_v1_03_cross_route_csrf.py` depuis #932 (blob SHA `f8e8e180d5beda31c420f22b3344c8cae803fbaa`) vers la PR isolée #938. Ses **10 tests** couvrent la matrice cookie sans CSRF, faux Bearer, cookie+CSRF valide, native Bearer uniquement (sans cookie), re-login public et inventaire OpenAPI des routes unsafe réellement montées. Motif : une correction CSRF transverse doit aussi démontrer l'absence de régression d'authentification mobile et des routes publiques, pas seulement refuser un paquet synthétique. La réussite de ces tests **dans #932** est un indice de référence, pas un verdict pour #938.
+
+**HEAD #938 après portage : `1461e31419920459292d059819ffeced8f6c57fa` (12 fichiers), PR DRAFT.** La preuve CI devra être collectée sur **ce HEAD exact** ; les runs précédents peuvent être annulés ou rester liés à un commit précédent. Aucune fusion ni déploiement autorisé.
