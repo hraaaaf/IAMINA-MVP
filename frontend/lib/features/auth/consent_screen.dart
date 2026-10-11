@@ -60,12 +60,14 @@ class _ConsentScreenState extends State<ConsentScreen> {
     final consent = context.read<ConsentService>();
     final evidenceStore = context.read<ConsentEvidenceStore>();
     // Shut the current patient AI gate before any asynchronous storage work.
-    consent.declineLocally();
+    consent.declineLocally(notify: false);
     setState(() => _isLoading = true);
     try {
       // Never show a successful opt-out navigation until durable storage
       // acknowledges the per-device refusal.
       await evidenceStore.persistLocalDecline();
+      // Publishing the gate after storage success may refresh route guards.
+      consent.declineLocally();
       if (mounted) context.go('/dashboard');
     } catch (_) {
       // Fail closed in this session; don't claim restart durability.
