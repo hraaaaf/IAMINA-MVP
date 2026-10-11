@@ -29,3 +29,8 @@ Succès: tests exact-head sur code + log-redaction ingress effectif + stratégie
 ## Complement technique — 2026-10-11
 - Test adversarial ajouté : `backend/core/tests/test_v1_03_legacy_sse_no_provider.py`. Il caractérise le refus du GET ancien contenant un marqueur synthétique en query et l'absence d'invocation fournisseur.
 - Pas de vérification des logs ingress réels ni des versions clients installées. Verdict CI exact-head à établir.
+
+## Inspection Vercel en lecture seule — 2026-10-11
+Via le connecteur Vercel authentifié, `list_projects(search="iamina")` a renvoyé exactement deux projets accessibles sous le même compte : `iamina-review` (`prj_AYaUi32KTDHak8I7dmdQpDrqd8SI`) et `iamina-certified` (`prj_Pn9FnyconF3h2w9gOU74iV98kJoU`). `get_project` confirme ces deux identifiants ; son payload minimal ne fournit **ni stratégie de journalisation ni politique de rétention ni config de logs CDN/proxy**. `list_drains(teamId)` a répondu **HTTP 404 `not_found`** : il est interdit d'interpréter cet échec comme l'absence de drains. Aucun log runtime potentiellement patient n'a été consulté, aucun secret lu, aucune configuration/deployment modifiée.
+
+**Verdict de preuve corrigé :** vérification d'identité des projets uniquement. Pour vérifier la redaction réelle de query/body/headers et la rétention, un accès autorisé à la configuration et à un environnement synthetic dédié est encore nécessaire. Les 16/16 verts précédents portent sur le code/tests, non sur l'infrastructure Vercel.
