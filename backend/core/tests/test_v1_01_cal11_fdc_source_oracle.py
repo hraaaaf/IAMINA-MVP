@@ -49,6 +49,29 @@ def test_synthetic_fixture_accepts_all_required_ids_without_certifying_usda(tmp_
     assert all(row["carb_g_per_100g"] > 0 for value in result.values() for row in value)
 
 
+def test_official_json_null_placeholders_do_not_hide_source_rows(tmp_path):
+    # USDA April 2026 contains null placeholders in the official FoundationFoods
+    # array. Preserve all source objects and only ignore null array entries.
+    result = validate_zip(
+        _synthetic_archive(
+            tmp_path,
+            modify=lambda rows: rows.insert(0, None),
+        )
+    )
+    assert len(result["apple"]) == 5
+    assert len(result["banana"]) == 2
+
+
+def test_source_oracle_rejects_non_null_malformed_rows(tmp_path):
+    with pytest.raises(ValueError, match="objects or null only"):
+        validate_zip(
+            _synthetic_archive(
+                tmp_path,
+                modify=lambda rows: rows.insert(0, "SYNTHETIC_MALFORMED_ROW"),
+            )
+        )
+
+
 @pytest.mark.parametrize(
     ("change", "expected"),
     [
