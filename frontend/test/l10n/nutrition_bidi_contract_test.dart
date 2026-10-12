@@ -14,7 +14,7 @@ void main() {
       const expected = <String, String>{
         'fr': '≈ 14.1–15.7 g de glucides',
         'en': '≈ 14.1–15.7 g carbohydrates',
-        'ar': '≈ \\u206614.1–15.7\\u2069 غ كربوهيدرات',
+        'ar': '≈ \u206614.1–15.7\u2069 غ كربوهيدرات',
       };
       expect(estimateCarbsForGrams('apple', 100)!.low, 14.1);
       expect(estimateCarbsForGrams('apple', 100)!.high, 15.7);
