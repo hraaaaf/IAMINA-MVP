@@ -18,6 +18,8 @@
 | Backend `iamina-certified` | Vercel prod `dpl_7SogpUMHNHd9rF7s7rfALccKduv7`, commit `df004bcb25d2ae5c9004825ebee092306696b9e5` | `backend/ai/api/v1/ai.py` expose **GET** SSE ; `DEFAULT_LATEST_BUILD=1` | **POST** SSE authentifié avec urgence après auth/CSRF ; **GET ancien 405 sans redirect/provider** testé ; `DEFAULT_LATEST_BUILD=2`, minimum conservé `0.1.0+1` |
 | Hébergement / visibilité | Vercel `get_project` (lecture seule) : frontend password/SSO IP protection **non activés** ; backend SSO **activé pour `all_except_custom_domains`**, pas de preuve d'autorisation effective de l'API | `list_project_routes` retourne `routes=[]` pour les deux projets ; **cela ne prouve pas l'absence de `vercel.json` ou de rewrites déployées.** `list_drains` répond HTTP **404**, `list_project_connector_connections` HTTP **404**. Aucun inventaire rétention/sinks établi. | Aucun déploiement ; sans autorisation Vercel explicite, **ne pas** modifier/prober des données patients ou logs réels. |
 
+**Précision de périmètre :** le libellé `production` est la **cible de déploiement Vercel** des projets `iamina-review` et `iamina-certified`. `iamina-review` est un **site de revue**, pas une preuve qu'un patient réel y accède ; les paramètres de protection du projet ne permettent pas d'inférer la sécurité de chaque route. Les autres canaux effectivement distribués demeurent inconnus.
+
 **Limite fondamentale :** les commits des deux déploiements prouvent le code associé aux artefacts Vercel ; ils **ne** prouvent **ni** combien de PWA restent installées, **ni** quels stores iOS/Android ont distribué quelles versions, **ni** le volume de messages en URL, **ni** une fuite patient observée.
 
 ## 3. Conflit de séquencement qu'un CI 25/25 ne résout pas
