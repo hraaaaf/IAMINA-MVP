@@ -21,17 +21,24 @@ async function render(browser, lang, width, height) {
   try {
     const page = await context.newPage();
     const errors = [];
-    page.on('pageerror', e => errors.push(e.message));
+    let errorPhase = 'startup';
+    page.on('pageerror', e => errors.push({
+      phase: errorPhase,
+      message: e.message,
+      stack: (e.stack || '').slice(0, 2400),
+    }));
     await page.goto('http://127.0.0.1:7367/?locale='+lang,
       {waitUntil:'domcontentloaded',timeout:30000});
     // CanvasKit semantics are disabled until engine startup and keyboard activation.
     await page.waitForTimeout(9000);
+    errorPhase = 'semantics-activation';
     const placeholder=page.locator('flt-semantics-placeholder');
     if (await placeholder.count()) {
       await placeholder.first().focus();
       await page.keyboard.press('Enter');
       await page.waitForTimeout(800);
     }
+    errorPhase = 'observation';
     const sample = async() => page.locator('flt-semantics').evaluateAll(
       els => els.map(e => [(e.getAttribute('aria-label')||''),(e.textContent||'')].join(' ')).join(' ')
     ).catch(()=>'');
