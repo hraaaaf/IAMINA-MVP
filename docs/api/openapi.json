@@ -1919,7 +1919,7 @@
             }
           }
         },
-        "description": "GET /api/v1/ai/doctor-brief?days=14\n\nGenerates a compact medical summary (narrative + doctor_brief + key_insight)\nusing IAmina's narrator module. Intended for pre-consultation export.\n\nReturns all three fields from the SUMMARY_USER prompt:\n  - narrative: warm patient-facing summary\n  - key_insight: the single most important observation\n  - doctor_brief: one-sentence clinical digest for the physician",
+        "description": "Produce a deterministic, source-bound consultation-preparation snapshot.\n\nCAL-12 / V1-03: no gateway, LLM, prompt, memory or unconstrained patient\nnarration. Only approved facts from consultation-brief.v1 may become numbers.\nThe existing AI scope remains for route-contract compatibility; declaring\na scope does not itself authorize or cause external AI egress.",
         "tags": [
           "ai"
         ],
@@ -5828,6 +5828,14 @@
             "title": "Daily Averages",
             "type": "array"
           },
+          "agp_profile": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Agp Profile",
+            "type": "array"
+          },
           "generated_at": {
             "title": "Generated At",
             "type": "string"
@@ -5873,6 +5881,66 @@
         "title": "SummaryRequest",
         "type": "object"
       },
+      "DoctorBriefEvidence": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "truth_kind": {
+            "title": "Truth Kind",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_version": {
+            "title": "Source Version",
+            "type": "string"
+          },
+          "evidence_id": {
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "window_start": {
+            "title": "Window Start",
+            "type": "string"
+          },
+          "window_end": {
+            "title": "Window End",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "unit",
+          "truth_kind",
+          "source",
+          "source_version",
+          "evidence_id",
+          "window_start",
+          "window_end"
+        ],
+        "title": "DoctorBriefEvidence",
+        "type": "object"
+      },
       "DoctorBriefResponse": {
         "properties": {
           "doctor_brief": {
@@ -5898,6 +5966,59 @@
           "has_sufficient_data": {
             "title": "Has Sufficient Data",
             "type": "boolean"
+          },
+          "schema_version": {
+            "default": "consultation-brief.v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "authority": {
+            "default": "clinician_review_support_only",
+            "title": "Authority",
+            "type": "string"
+          },
+          "window_start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Start"
+          },
+          "window_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window End"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/DoctorBriefEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "missing_data": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Data",
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
           }
         },
         "required": [

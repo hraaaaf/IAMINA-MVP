@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/drift/database.dart';
 import '../../core/localization/dashboard_localized_copy.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/glucose_formatter.dart';
 import '../../core/widgets/clinical_card.dart';
 import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
@@ -132,7 +133,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     });
     final unit = _cachedUnit ?? 'mg/dL';
     final val = unit == 'mmol/L'
-        ? '${(latest.bloodSugar / 18.0).toStringAsFixed(1)} mmol/L'
+        ? '${GlucoseFormatter.convert(latest.bloodSugar, unit).toStringAsFixed(1)} mmol/L'
         : '${latest.bloodSugar.toInt()} mg/dL';
     return AppLocalizations.of(context)!.dashboardChatContext(
       value: val,

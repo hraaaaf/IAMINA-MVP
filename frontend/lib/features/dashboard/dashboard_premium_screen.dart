@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/localization/dashboard_localized_copy.dart';
+import '../../core/utils/glucose_formatter.dart';
 import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
@@ -167,7 +168,7 @@ class _DashboardBody extends StatelessWidget {
   });
 
   String _display(double mg) =>
-      unit == 'mmol/L' ? (mg / 18.0).toStringAsFixed(1) : mg.toStringAsFixed(0);
+      GlucoseFormatter.convert(mg, unit).toStringAsFixed(unit == 'mmol/L' ? 1 : 0);
 
   @override
   Widget build(BuildContext context) {
