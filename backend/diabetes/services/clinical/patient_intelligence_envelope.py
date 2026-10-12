@@ -156,6 +156,15 @@ def _governed_sources(
         raise ValueError("governed longitudinal result violates request contract")
 
     for fact in result.facts:
+        # Validate the actual source timestamp, not only the window metadata.
+        # This mirrors the V2-D inclusive interval, without deciding CAL-09's
+        # still-unapproved clinical-day/timezone semantics.
+        if (
+            not isinstance(fact.observed_at, datetime)
+            or not timezone.is_aware(fact.observed_at)
+            or not request.window_start <= fact.observed_at <= request.window_end
+        ):
+            raise ValueError("source fact observed_at outside governed window")
         if (
             fact.fact.subject_ref != f"patient:{patient_id}"
             or fact.population not in expected
@@ -180,6 +189,13 @@ def _governed_sources(
         )
         if item.fact_count != len(related) or item.source_refs != related:
             raise ValueError("governed source counts/provenance disagree")
+        observed_days = {
+            fact.observed_at.date()
+            for fact in result.facts
+            if fact.population == item.population
+        }
+        if item.distinct_days != len(observed_days):
+            raise ValueError("governed source distinct-day evidence disagrees")
         expected_sufficiency = (
             item.fact_count >= request.contract.minimum_facts_per_population
             and item.distinct_days >= request.contract.minimum_distinct_days_per_population
