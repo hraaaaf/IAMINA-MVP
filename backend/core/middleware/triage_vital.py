@@ -12,7 +12,7 @@ import json
 import logging
 import re
 
-from django.http import JsonResponse, StreamingHttpResponse
+from django.http import JsonResponse
 from django.utils import timezone
 
 from core.emergency_response import compose_emergency_response
@@ -249,21 +249,6 @@ class TriageVitalMiddleware:
                     locale=locale,
                     message=user_message,
                 )
-                if request.path.rstrip("/") in {
-                    "/api/v1/ai/chat/stream",
-                    "/api/v1/diabetes/ai/chat/stream",
-                }:
-                    # Critical: streaming Flutter clients consume SSE tokens,
-                    # not JSON middleware responses. Keep triage upstream of AI.
-                    event = json.dumps(response.as_stream_event(), ensure_ascii=False)
-                    return StreamingHttpResponse(
-                        iter((f"data: {event}\n\n", "data: [DONE]\n\n")),
-                        content_type="text/event-stream",
-                        headers={
-                            "Cache-Control": "no-store",
-                            "X-Accel-Buffering": "no",
-                        },
-                    )
                 return JsonResponse(
                     response.as_payload(timestamp=timezone.now().isoformat()),
                     status=200,
@@ -273,6 +258,11 @@ class TriageVitalMiddleware:
 
     def _is_chat_endpoint(self, request) -> bool:
         from core.safety_registry import TRIAGE_REGISTRY
+
+        # The SSE endpoint must pass through Ninja auth/CSRF before any
+        # patient-facing urgent response. Its view owns deterministic urgency.
+        if request.path.rstrip("/") == "/api/v1/ai/chat/stream":
+            return False
 
         return request.method == "POST" and any(
             request.path.startswith(path) for path in TRIAGE_REGISTRY._paths
@@ -346,8 +336,8 @@ class TriageVitalMiddleware:
         return _message_language(message)
 
     def _log_emergency(self, request, message: str, kind: str = "legacy") -> None:
-        # Never put patient-authored health text or identifiers into
-        # application logs; classification and path are enough for telemetry.
+        # Never log patient-authored symptoms, identifiers, or snippets.
+        # Keep only static classification and the Django-normalized path.
         logger.critical(
             "TriageVital: EMERGENCY DETECTED — kind=%s | path=%s",
             kind,
