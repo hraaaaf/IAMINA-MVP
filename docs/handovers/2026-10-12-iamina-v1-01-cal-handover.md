@@ -1,5 +1,9 @@
 # IAMINA — HANDOVER CANONIQUE V1-01 / Décision produit #19
 
+## GATE HUMAIN — DOSSIER FORMEL PRÊT (12 octobre 2026)
+**Dossier de relecture document-only :** [CAL-09/10/11/12 — options et cases de signature](../assessments/2026-10-12-v1-01-clinical-review-gates.md), publié sur la PR docs #933 `77fdd246cb7de88e2697243069261d518d935111`. **Aucun relecteur médical, diététique, privacy ou linguiste n'a encore signé**. CAL-11 : choix de portée de l'intervalle USDA; CAL-09 : sens du jour UTC/IANA/offset; CAL-10 : durée pré/post repas non bornée; CAL-12 : contrat PDF clinique typé, consentement et Unicode/RTL (PDF patient OFF). Aucune de ces options n'est approuvée par ce document.
+**Référence QA inchangée :** PR #945 HEAD `90855610f02d6e8d058527ec084cf5c853ef23ba`, 19/19 verts, Chrome 18/18 sans pageerror, USDA vérifié. **Next exact :** désigner des relecteurs qualifiés, collecter décisions signées et restrictions; ensuite tests/corrections sur nouveau SHA, puis autorisation explicite de merge, revue post-merge et Vercel distinct. **Human gate réel : aucun merge ni déploiement.**
+
 ## 🔒 ACTUALISATION LIVE CERTIFIÉE — 12 octobre 2026, 21h46 UTC — **LIRE AVANT SECTIONS HISTORIQUES**
 **Source de vérité actuelle :** [PR #945 DRAFT](https://github.com/hraaaaf/IAMINA-MVP/pull/945) sur `fix/v1-01-cal11-usda-2026-official-source-map-20261012`, HEAD exact **`90855610f02d6e8d058527ec084cf5c853ef23ba`**. GitHub `get_pr_info` confirme **OPEN, DRAFT, merged=false, mergeable=true, base main**. Aucun merge ni Vercel/patient.
 
