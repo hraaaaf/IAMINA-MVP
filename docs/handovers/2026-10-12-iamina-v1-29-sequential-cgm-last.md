@@ -49,6 +49,17 @@
 5. **Clôture seulement avec preuves proportionnées**, revue requise, merge **autorisé explicitement** et post-merge vérifié si livraison attendue ; Vercel nécessite **autorisation distincte**. Sans approbation, statut **READY_FOR_HUMAN_GATE / NON LIVRÉ**, puis passer au numéro suivant pour tout travail indépendant.
 6. À la fin de chaque étape : mettre à jour cette table et la checklist Notion avec **référence SHA, CI, capture/test, limites, Next exact**. Les cas à validation humaine restent ouverts et seront repris avant release et avant toute donnée patient.
 
+
+### Décision #2 — audit/protection API en cours, preuve distincte
+
+**Baseline vérifiée par SHA sur `main` et sur #941** : `proactive.py`, `proactive_preview.py`, `proactive_intelligence.py`, `proactive_insight.py` et les tests existants ont les mêmes blob SHA. La lecture seule GET `/api/v1/proactive-insights/preview/` ne consomme pas d'attention ; POST `/evaluate/` met à jour un état *in-app*, **pas un push système**. Les rappels Drift locaux restent séparés de ces observations ; l'interface rappelle que les notifications système ne sont pas actives.
+
+**Implémentation autorisée et limitée** : [PR DRAFT #949](https://github.com/hraaaaf/IAMINA-MVP/pull/949), HEAD `b0e20a4bcda85c4215a13d249193736608ddb053`, sur `main` : un seul fichier de **tests Django synthétiques**, contrôlant GET/POST anonymes, tentative de substitution `patient_id` par query/body, GET repeatable non mutable, POST exact-once sans second surfacing. **Aucun code runtime patient/Flutter, aucun push, consentement ou clinique changé.** [Migration drift #38317586482](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38317586482) et [CI #38317586620](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38317586620) ont démarré mais **leur verdict n'est pas transférable du parent**.
+
+La PR dépendante #948 a été **fermée non mergée** en faveur de #949, car les workflows du dépôt écoutent `main/dev` et non sa branche cible. Le vrai sujet reste [issue #947](https://github.com/hraaaaf/IAMINA-MVP/issues/947).
+
+**Restant pour #2** : vérifier tests SQLite/PG exact-HEAD, puis inventorier l'entrée notifications côté UI, la séparation notifications/rappels/chat et les droits de notification ; dossier UI BEFORE / mockup / AFTER aux mêmes viewports avant tout changement visuel ; revue privacy/clinique et permission explicite avant merge. **Décision #2 OPEN / NON LIVRÉE** ; passage #3 seulement après clôture réelle ou blocage humain/non technique justifié. CGM #1/#25 reste à la fin.
+
 ## Next exact : décision #2 — notifications et messages IAmina
 
 **Intention canonique :** icône notifications réservée aux événements d'information, **rappels séparés** (la boîte Accueil fait partie de #3) ; proactivité IAmina strictement contrôlée, éventuel message chat lié à une notification, préférences/opt-in/opt-out, pas de prédiction médicale non validée. La décision #2 correspond au lot V1-08 mais peut être étudiée sans l'ensemble de V1-08.
