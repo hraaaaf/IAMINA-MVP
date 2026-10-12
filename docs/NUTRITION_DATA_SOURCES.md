@@ -18,9 +18,9 @@ A source ranked earlier does not justify a loose mapping. Food identity, prepara
 
 Source: USDA FoodData Central Foundation Foods, April 2026 release.
 
-IAMINA deliberately stores a carbohydrate interval of **14.2–15.7 g/100 g** rather than a single generic apple value because the curated Foundation Food entries differ by cultivar.
+IAMINA deliberately stores a carbohydrate interval of **14.1–15.7 g/100 g** rather than a single generic apple value because the curated Foundation Food entries differ by cultivar.
 
-Curated FDC references: `1105664`, `1105547`, `1105781`, `1105430`, `1105897`.
+Curated FDC references: `1750339`, `1750340`, `1750341`, `1750342`, `1750343`.
 
 No natural-piece weight is claimed from this seed because the audited Foundation entries did not publish a compatible portion weight.
 
@@ -30,7 +30,13 @@ Source: USDA FoodData Central Foundation Foods, April 2026 release.
 
 IAMINA stores **20.1–23.0 g carbohydrate/100 g** across the audited overripe and ripe/slightly-ripe Foundation Food entries. A published peeled-banana portion is represented as **110–115 g**, preserving the source variation rather than manufacturing one exact weight.
 
-Curated FDC references: `790774`, `790991`.
+Curated FDC references: `1105073`, `1105314`.
+
+## CAL-11 USDA Foundation 2026-04 primary provenance
+
+The Apple and Banana rows above were reconciled to the official USDA Foundation Foods `FoodData_Central_foundation_food_json_2026-04-30.zip`, SHA-256 `186e988ec542e913f51ef62b86a47758e8cdd0d1dc3889e7b055581f3c09c77a`. See [CAL-11 source-row audit](assessments/2026-10-12-v1-01-cal11-official-source-reconciliation.md). The seven historical identifiers were absent from this specific Foundation snapshot; this does not establish their status in every USDA dataset or release.
+
+At **100 g edible apple**, the coded analytical carbohydrate estimate is **14.1–15.7 g**; this is a source-backed range, not a personalized meal amount, dose, treatment target or clinical recommendation. The patient may enter a different actual weight; unknown natural portions must not receive fabricated gram values.
 
 ## Explicit non-mappings
 
