@@ -28,6 +28,14 @@ _PROVIDER = "groq"
 _PURPOSE = "companion_chat"
 _MODALITY = "text"
 _BODY_TOKEN_RE = re.compile(r"^\{\{NVB_[A-F0-9]{32}\}\}$")
+# Provider-bound locale must not be a free-form patient-derived field.
+_ALLOWED_LOCALE_SCRIPTS = {
+    "fr": frozenset({"default"}),
+    "en": frozenset({"default"}),
+    "ar": frozenset({"default"}),
+    "ar-MA": frozenset({"arabic", "latin"}),
+}
+
 _SYSTEM = (
     "Generate one very short non-clinical relational wrapper around the exact "
     "opaque token. Keep the token unchanged exactly once. Obey the requested "
@@ -61,6 +69,15 @@ def build_protected_provider_shadow_request(
         script=envelope.locale.script,
         protected_body_token=envelope.protected_body_token,
     )
+
+
+def _verify_provider_shadow_payload(request: ProtectedProviderShadowRequest) -> None:
+    """Fail closed on unapproved locale/script and nonopaque token at the edge."""
+    allowed_scripts = _ALLOWED_LOCALE_SCRIPTS.get(request.locale)
+    if allowed_scripts is None or request.script not in allowed_scripts:
+        raise PermissionError("unapproved protected wrapper locale/script")
+    if not _BODY_TOKEN_RE.fullmatch(request.protected_body_token):
+        raise PermissionError("protected wrapper token format invalid")
 
 
 def _internal_live_allowed_subject_ids() -> frozenset[int]:
@@ -97,6 +114,11 @@ locale/script/random opaque body token.
         return None
 
     request = build_protected_provider_shadow_request(envelope)
+    try:
+        _verify_provider_shadow_payload(request)
+    except Exception:
+        record_protected_narration_shadow(status="blocked")
+        raise
     internal_live = bool(
         getattr(settings, "NARRATION_PROTECTED_PROVIDER_INTERNAL_LIVE", False)
     )
@@ -126,8 +148,6 @@ locale/script/random opaque body token.
                 raise PermissionError("protected wrapper script drift")
             if request.protected_body_token != envelope.protected_body_token:
                 raise PermissionError("protected wrapper token drift")
-            if not _BODY_TOKEN_RE.fullmatch(request.protected_body_token):
-                raise PermissionError("protected wrapper token format invalid")
         else:
             authorize_processor_policy(_PROVIDER, _PURPOSE, _MODALITY)
     except Exception:

@@ -14,10 +14,13 @@ class DiabetesConfig(AppConfig):
 
     def ready(self) -> None:
         from core.safety_registry import TRIAGE_REGISTRY
-        # Register the chat endpoint as a triage-eligible path.
-        # Both paths must remain registered: old Flutter path + new P3 namespaced path.
-        TRIAGE_REGISTRY.register_path("/api/v1/ai/chat")
-        TRIAGE_REGISTRY.register_path("/api/v1/diabetes/ai/chat")  # P3: new namespaced path
+        from diabetes.manifest import DIABETES_MANIFEST
+
+        # Only active manifest endpoints receive emergency triage.  P3
+        # namespaced aliases are intentionally dormant for V1 (#929).
+
+        for path in DIABETES_MANIFEST.interactive_endpoints:
+            TRIAGE_REGISTRY.register_path(path)
 
         # RGPD Art. 17: invalidate patient ephemeral caches before account deletion.
         from core.account_hooks import register_account_delete_hook
@@ -39,7 +42,6 @@ class DiabetesConfig(AppConfig):
         # authority with the deterministic alert history contract.
         from core.registry import ModuleRegistry
         from diabetes.api.v1.logs import router as _logs_router
-        from diabetes.manifest import DIABETES_MANIFEST
         from diabetes.services.clinical.alerting_authority import (
             EvidenceGuardedAlertingDiabetesEngine,
         )

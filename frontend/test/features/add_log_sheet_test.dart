@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
 import 'package:amina/features/dashboard/widgets/add_log_view.dart';
+import 'package:amina/services/consent_service.dart';
 import 'package:amina/l10n/app_localizations.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ Widget _sheet(
   AppDatabase db, {
   Locale locale = const Locale('fr'),
   AddLogSheet sheet = const AddLogSheet(),
+  ConsentService? consentService,
 }) {
   return MaterialApp(
     locale: locale,
@@ -27,6 +29,8 @@ Widget _sheet(
         providers: [
           Provider<AppDatabase>.value(value: db),
           Provider<PatientProfileData?>.value(value: null),
+          if (consentService != null)
+            ChangeNotifierProvider<ConsentService>.value(value: consentService),
         ],
         child: sheet,
       ),
@@ -53,6 +57,36 @@ void main() {
   tearDown(() async => db.close());
 
   group('Add Log focused glucose journal', () {
+    testWidgets('photo CTA follows verified consent and immediate local decline', (
+      tester,
+    ) async {
+      _narrow(tester);
+      final consent = ConsentService()..markVerifiedConsent();
+      addTearDown(consent.dispose);
+      await tester.pumpWidget(_sheet(db, consentService: consent));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('add-meal-button')));
+      await tester.pumpAndSettle();
+      var capture = tester.widget<AddLogMealCapture>(find.byType(AddLogMealCapture));
+      expect(capture.canUsePhotoRecognition, isTrue);
+      await tester.ensureVisible(find.byKey(const Key('meal-photo-button')));
+      expect(
+        tester.widget<OutlinedButton>(find.byKey(const Key('meal-photo-button'))).onPressed,
+        isNotNull,
+      );
+
+      consent.declineLocally();
+      await tester.pumpAndSettle();
+      capture = tester.widget<AddLogMealCapture>(find.byType(AddLogMealCapture));
+      expect(capture.canUsePhotoRecognition, isFalse);
+      expect(
+        tester.widget<OutlinedButton>(find.byKey(const Key('meal-photo-button'))).onPressed,
+        isNull,
+      );
+      expect(find.byKey(const Key('meal-food-search')), findsOneWidget);
+    });
+
     test('keeps hypoglycemia safety boundaries deterministic', () {
       expect(classifyGlucoseEntrySafety(53), GlucoseEntrySafety.level2Low);
       expect(classifyGlucoseEntrySafety(54), GlucoseEntrySafety.level1Low);

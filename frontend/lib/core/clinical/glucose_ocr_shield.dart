@@ -73,8 +73,11 @@ class GlucoseOcrShield {
   /// Matches glucometer "LO" or "LOW" display.
   static final _loPattern = RegExp(r'\bL[Oo](?:W)?\b');
 
-  /// Detects mmol/L unit anywhere in the OCR text.
-  static final _mmolPattern = RegExp(r'mmol', caseSensitive: false);
+  /// Unit must be visibly present; unlabelled numerals are not glucose values.
+  static final _mmolPattern =
+      RegExp(r'\bmmol\s*/?\s*l\b', caseSensitive: false);
+  static final _mgdlPattern =
+      RegExp(r'\bmg\s*/?\s*dl\b', caseSensitive: false);
 
   /// Core glucose number pattern.
   ///
@@ -117,13 +120,16 @@ class GlucoseOcrShield {
       );
     }
 
-    // ── mmol/L path ───────────────────────────────────────────────────────────
-    if (_mmolPattern.hasMatch(raw)) {
-      return _extractMmol(raw);
+    final unitIsMmol = _mmolPattern.hasMatch(raw);
+    final unitIsMgdl = _mgdlPattern.hasMatch(raw);
+
+    // A missing or conflicting visible unit must never be guessed by value.
+    // The caller can offer manual entry; no numeric suggestion is authorized.
+    if (unitIsMmol == unitIsMgdl) {
+      return GlucoseOcrResult(confidence: 0.0, rawText: raw);
     }
 
-    // ── mg/dL path (default) ─────────────────────────────────────────────────
-    return _extractMgdl(raw);
+    return unitIsMmol ? _extractMmol(raw) : _extractMgdl(raw);
   }
 
   // ── private helpers ────────────────────────────────────────────────────────

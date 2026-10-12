@@ -198,7 +198,9 @@ AppRouterHolder createAppRouterHolder({
             !isOnboardingPage) {
           return '/consent';
         }
-        if ((hasConsent || hasDeclined) && isConsentPage) return _homeRoute();
+        // Explicit re-acceptance remains reachable from Profile even when a
+        // per-device refusal is persisted. No implicit re-enablement occurs.
+        if (hasConsent && isConsentPage) return _homeRoute();
         if (activeConsent.hasCompletedOnboarding && isOnboardingPage) {
           return hasConsent || hasDeclined ? _homeRoute() : '/consent';
         }

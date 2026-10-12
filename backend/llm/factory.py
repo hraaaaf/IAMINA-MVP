@@ -23,6 +23,7 @@ from core.ai_processor_policy import (
     get_processor_policy,
 )
 from core.anonymization_gateway import minimize_external_text_payload
+from core.external_text_v1 import assert_v1_external_text_generic_only
 
 from .base import BaseLLMProvider
 from .circuit_breaker import (
@@ -154,6 +155,13 @@ def _execute_external_complete(
         raise RuntimeFinOpsConfigurationError(
             "authorized prompt exceeds configured conservative input ceiling"
         )
+
+    # The final irreversible network hop must never rely on regex minimization
+    # to prove absence of patient information. Reject dynamic prompts even if
+    # processor approval, consent and FinOps configuration all permit a call.
+    assert_v1_external_text_generic_only(
+        payload.system_prompt, payload.user_prompt
+    )
 
     now = timezone.now()
     binding.user_throttle.authorize(patient_id=context.patient_id, now=now)

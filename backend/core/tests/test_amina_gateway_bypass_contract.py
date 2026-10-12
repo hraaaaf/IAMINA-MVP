@@ -8,8 +8,12 @@ def test_ai_api_does_not_reintroduce_direct_text_provider_access():
 
     assert "from llm.factory import get_llm" not in source
     assert "get_llm()" not in source
-    assert "get_gateway_llm" in source
-    assert "Capability.SUMMARIZE_APPROVED_DATA" in source
+    # V1-03: clinical summary and doctor brief are now deterministic/local.
+    # Any reintroduction of a text gateway in the AI API is a regression.
+    assert "get_gateway_llm" not in source
+    assert "Capability.SUMMARIZE_APPROVED_DATA" not in source
+    assert "build_local_doctor_brief" in source
+    assert "report.insights" in source
 
 
 def test_structured_diabetes_formatter_uses_capability_aware_gateway():

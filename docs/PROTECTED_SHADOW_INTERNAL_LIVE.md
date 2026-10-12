@@ -16,6 +16,10 @@ The provider receives one static non-clinical wrapper instruction. Its dynamic u
 The deterministic clinical body, patient message, patient identity, facts, history,
 AdviceDecision details, rule ids and clinical values remain local.
 
+## 2026-10-10 — additional direct-provider allowlist gate (V1-03 candidate)
+
+Provider-bound metadata must pass a strict `locale/script` whitelist (`fr/default`, `en/default`, `ar/default`, `ar-MA/arabic`, `ar-MA/latin`) and exact opaque `NVB` token format **before provider creation**. Arbitrary `LocaleContract` strings do not authorize transport. [PR #922 code HEAD `bc31fe0`](https://github.com/hraaaaf/IAMINA-MVP/pull/922), [synthetic live #38042006598](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006598) SUCCESS, [CI #38042006742](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38042006742) SUCCESS; still draft/unmerged. Historical September certification remains separate; no clinical/patient release authorization.
+
 ## Activation
 
 Two independent switches are required:
