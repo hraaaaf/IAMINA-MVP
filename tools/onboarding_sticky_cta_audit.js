@@ -88,13 +88,25 @@ async function choose(page, label) {
         for (const choice of [
           'Français', 'Maroc', 'Diabète Type 2', 'Comprimés',
         ]) await choose(page, choice);
-        // Flutter merges the progress Semantics with welcome/questions in a
-        // parent aria-label (verified in the real Chrome debug-dom artifact).
-        // Match the exact step phrase *within* that accessible group.
-        const progress = page.locator(
-          'flt-semantics[aria-label*="Étape 5 sur 5"]',
-        );
-        await progress.first().waitFor({state:'attached', timeout:15000});
+        // Actual Chrome debug DOM: compact viewports merge step copy into a
+        // parent ARIA label; desktop exposes it as visible text without ARIA.
+        // Both must state exactly five steps after the four required choices.
+        let stepEvidence;
+        if (width < 900) {
+          const progress = page.locator(
+            'flt-semantics[aria-label*="Étape 5 sur 5"]',
+          );
+          await progress.first().waitFor({state:'attached', timeout:15000});
+          stepEvidence = await progress.first().getAttribute('aria-label');
+        } else {
+          await page.getByText('Étape 5 sur 5', {exact:false}).first()
+            .waitFor({state:'visible', timeout:15000});
+          stepEvidence = await page.locator('body').innerText();
+        }
+        if (!stepEvidence || !stepEvidence.includes('Étape 5 sur 5')) {
+          throw new Error('Expected five-step progress on ' + width + 'x' +
+            height + ', got ' + JSON.stringify(stepEvidence));
+        }
         const action = page.getByRole('button', {name: 'Commencer', exact: true});
         await action.first().waitFor({state:'visible', timeout: 15000});
         const count = await action.count();
