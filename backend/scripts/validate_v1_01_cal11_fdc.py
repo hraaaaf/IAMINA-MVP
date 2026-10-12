@@ -7,8 +7,9 @@ Example:
     python scripts/validate_v1_01_cal11_fdc.py /path/to/USDA_foundation_2026.zip
 
 Fail closed if a published FDC ID, food description, carbohydrate nutrient or
-catalogue numeric range does not match the *primary* archive. The banana 110g/115g peeled-portion weights are also checked against primary
-foodPortions rows. No individual portion/dosing recommendation is inferred.
+catalogue numeric range does not match the primary archive. Banana peeled
+portions (110 g / 115 g) are checked against USDA foodPortions source rows.
+No individual meal portion or treatment recommendation is inferred.
 """
 
 from __future__ import annotations
