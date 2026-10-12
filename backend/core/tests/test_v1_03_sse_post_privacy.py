@@ -168,7 +168,9 @@ class PatientSsePostPrivacyTests(TestCase):
     @patch("companion.core.IAmina")
     def test_urgent_post_stream_returns_canonical_sse_not_json(self, ai_cls):
         synthetic = "Je suis inconscient, urgence glycémie"
-        with self.assertLogs("core.middleware.triage_vital", level="CRITICAL") as observed:
+        # Stream urgency belongs to the authenticated Ninja view.
+        # Pre-auth middleware must neither log nor emit a patient response.
+        with patch("core.middleware.triage_vital.logger.critical") as critical_log:
             response = self._post(self.client, synthetic)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.streaming)
@@ -181,7 +183,7 @@ class PatientSsePostPrivacyTests(TestCase):
         self.assertTrue(event["is_emergency"])
         self.assertIn("token", event)
         self.assertTrue(event["token"])
-        self.assertNotIn(synthetic, "\\n".join(observed.output))
+        critical_log.assert_not_called()
         ai_cls.assert_not_called()
 
     @patch("companion.core.IAmina")
@@ -198,7 +200,7 @@ class PatientSsePostPrivacyTests(TestCase):
 
     @patch("companion.core.IAmina")
     @patch("core.middleware.triage_vital.logger.critical")
-    @patch("core.middleware.triage_vital.evaluate_input_safety")
+    @patch("core.input_safety.evaluate_input_safety")
     def test_urgent_post_preserves_sse_and_no_patient_message_logging(
         self, triage_decision, critical_log, ai_cls
     ):
@@ -221,9 +223,9 @@ class PatientSsePostPrivacyTests(TestCase):
         self.assertTrue(event["token"])
         self.assertIn("data: [DONE]", raw_events)
         ai_cls.assert_not_called()
-        critical_log.assert_called()
-        for call in critical_log.call_args_list:
-            self.assertNotIn(message, str(call))
+        # The authenticated SSE handler owns urgency; middleware must not
+        # preempt or record patient-authored emergency text.
+        critical_log.assert_not_called()
 
     @patch("companion.advice_filter.contains_medical_advice", return_value=False)
     @patch("companion.router.route")
