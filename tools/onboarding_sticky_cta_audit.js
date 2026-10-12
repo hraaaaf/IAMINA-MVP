@@ -88,8 +88,13 @@ async function choose(page, label) {
         for (const choice of [
           'Français', 'Maroc', 'Diabète Type 2', 'Comprimés',
         ]) await choose(page, choice);
-        const progress = page.locator('[aria-label="Étape 5 sur 5"]');
-        await progress.first().waitFor({state:'visible', timeout:15000});
+        // Flutter merges the progress Semantics with welcome/questions in a
+        // parent aria-label (verified in the real Chrome debug-dom artifact).
+        // Match the exact step phrase *within* that accessible group.
+        const progress = page.locator(
+          'flt-semantics[aria-label*="Étape 5 sur 5"]',
+        );
+        await progress.first().waitFor({state:'attached', timeout:15000});
         const action = page.getByRole('button', {name: 'Commencer', exact: true});
         await action.first().waitFor({state:'visible', timeout: 15000});
         const count = await action.count();
