@@ -60,19 +60,38 @@ class ProtectedApiCookieCsrfTests(TestCase):
                 self.assertEqual(response.status_code, expected)
 
     def test_native_bearer_only_is_not_subject_to_cookie_csrf(self):
+        from unittest.mock import patch
+        from diabetes.api.v1.security import HybridBearerAuth
+
         token = issue_native_token(self.user)
         self.assertEqual(verify_native_token(token).pk, self.user.pk)
         native = Client(enforce_csrf_checks=True)
+        original_auth = HybridBearerAuth.authenticate
+        observed = []
 
-        for method, path, expected in self.CASES:
-            with self.subTest(method=method, path=path):
-                response = self._send(
-                    native,
-                    method,
-                    path,
-                    HTTP_AUTHORIZATION=f"Bearer {token}",
-                )
-                self.assertEqual(response.status_code, expected)
+        def observe_auth(instance, request, supplied_token):
+            authenticated = original_auth(instance, request, supplied_token)
+            observed.append({
+                "token_matches": supplied_token == token,
+                "authenticated": authenticated is not None,
+                "cookie_present": bool(request.COOKIES.get("sessionid")),
+            })
+            return authenticated
+
+        with patch.object(HybridBearerAuth, "authenticate", observe_auth):
+            for method, path, expected in self.CASES:
+                with self.subTest(method=method, path=path):
+                    observed.clear()
+                    response = self._send(
+                        native,
+                        method,
+                        path,
+                        HTTP_AUTHORIZATION=f"Bearer {token}",
+                    )
+                    self.assertEqual(
+                        response.status_code, expected,
+                        f"Bearer auth trace (no secret values): {observed!r}"
+                    )
 
     def test_forged_bearer_without_session_cookie_is_unauthorized(self):
         native = Client(enforce_csrf_checks=True)
