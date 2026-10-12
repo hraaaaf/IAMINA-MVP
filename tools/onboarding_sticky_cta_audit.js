@@ -75,10 +75,21 @@ async function choose(page, label) {
             url: page.url(), placeholderCount, semantics: sem.slice(0, 80),
             visibleText: body.slice(0, 2000),
           }, null, 2));
+        // V1 decision #6 removes tone selection entirely. Explicitly assert
+        // that neither legacy tone choice nor its question is present.
+        const obsoleteTone = ['Quel ton préférez-vous ?', 'Simple et chaleureux',
+                              'Neutre et professionnel'];
+        for (const legacy of obsoleteTone) {
+          const match = page.getByText(legacy, {exact: true});
+          if (await match.count()) {
+            throw new Error('Obsolete tone picker still exposed: ' + legacy);
+          }
+        }
         for (const choice of [
-          'Français', 'Maroc', 'Simple et chaleureux',
-          'Diabète Type 2', 'Comprimés',
+          'Français', 'Maroc', 'Diabète Type 2', 'Comprimés',
         ]) await choose(page, choice);
+        const progress = page.locator('[aria-label="Étape 5 sur 5"]');
+        await progress.first().waitFor({state:'visible', timeout:15000});
         const action = page.getByRole('button', {name: 'Commencer', exact: true});
         await action.first().waitFor({state:'visible', timeout: 15000});
         const count = await action.count();
