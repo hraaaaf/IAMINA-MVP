@@ -155,6 +155,25 @@ class LocalePreferenceService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Persist only an explicitly chosen UI language during onboarding.
+  ///
+  /// A language selection must not silently persist Morocco or any other
+  /// country before the person completes the separate country question.
+  Future<void> setLanguageOnly(String language) async {
+    final locale = supportedLocale(language);
+    if (locale == null) {
+      throw ArgumentError.value(language, 'language', 'Unsupported language');
+    }
+    await Future.wait([
+      _storage.write(key: _languageKey, value: locale.languageCode),
+      _storage.write(key: _explicitKey, value: 'true'),
+    ]);
+    _locale = locale;
+    _resolutionSource = LocaleResolutionSource.explicitLocal;
+    _loaded = true;
+    notifyListeners();
+  }
+
   Future<void> setExperience({
     required String language,
     required String country,
