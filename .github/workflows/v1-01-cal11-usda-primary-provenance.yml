@@ -41,13 +41,11 @@ jobs:
           mkdir -p proof
           archive="/tmp/cal11-official-proof/USDA_foundation_food_json_2026-04-30.zip"
           test -s "$archive"
-          printf '%s  %s\\n' \\
-            "186e988ec542e913f51ef62b86a47758e8cdd0d1dc3889e7b055581f3c09c77a" \\
-            "$archive" | sha256sum --check --status
+          echo "186e988ec542e913f51ef62b86a47758e8cdd0d1dc3889e7b055581f3c09c77a  $archive" | sha256sum --check --status
           python -m zipfile -t "$archive"
           cp "$archive" /tmp/USDA_foundation_food_json_2026-04-30.zip
           sha256sum "$archive" > proof/archive_sha256.txt
-          printf '%s\\n' "USDA official 2026-04-30 snapshot, pinned SHA256, GitHub run 38273801139 artifact 11758012445" > proof/source_url.txt
+          echo "USDA official 2026-04-30 snapshot, pinned SHA256, GitHub run 38273801139 artifact 11758012445" > proof/source_url.txt
           cp "$archive" proof/
       - name: Reconcile seven FDC IDs against primary rows
         shell: bash
