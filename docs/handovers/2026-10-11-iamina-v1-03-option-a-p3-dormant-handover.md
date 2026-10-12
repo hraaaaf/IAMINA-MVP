@@ -1,5 +1,7 @@
 # IAMINA — Handover canonique de reprise V1-03 / P3 option A
 
+> **PASSATION 2026-10-12 — chantier prioritaire V1-01 déplacé vers son propre fichier canonique :** [HANDOVER CAL V1-01 — 2026-10-12](2026-10-12-iamina-v1-01-cal-handover.md). Le dernier [HEAD #945](https://github.com/hraaaaf/IAMINA-MVP/pull/945) `34dd3fbfab7c8b125f2097546ce18d1bbc3d5f58` est **18/18 CI verts**, dont USDA primaire 7/7 `SOURCE_ROWS_MATCH`, CI SQLite/PG/Flutter/PWA 6/6. Les notes §27+ ci-dessous « CI queued » sont des historiques précédents, non l'état actuel. **Next exact V1-01** : QA numérique avant/après même viewport puis gates médicaux CAL-09/10 et export CAL-12 ; pas de merge/Vercel. Le présent fichier reste la référence de **V1-03**, pas du chantier actif V1-01.
+
 > **RECTIFICATION CANONIQUE 2026-10-12 (propriétaire)** : **0 client** aujourd'hui ; IAMINA V1 patient **local-first** ; Vercel/Django/Neon dédiés au dev/cert, pas aux patients. Les anciens paragraphes de ce handover sur les clients réellement installés sont **supplantés par §23**. [Dossier pre-launch](../assessments/2026-10-12-v1-03-distribution-privacy-cutover-gates.md). PR #941 exact HEAD `d3562e8` : **25/25 CI verts**, DRAFT sans merge ni déploiement ; gates P5-6 avant **première donnée de santé identifiable**, autorisation merge et Vercel séparées.
 
 **Dernière vérification live : 2026-10-11 (Afrique/Casablanca).**  
