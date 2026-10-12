@@ -38,6 +38,9 @@ jobs:
           test -s /tmp/USDA_foundation_food_json_2026-04-30.zip
           sha256sum /tmp/USDA_foundation_food_json_2026-04-30.zip > proof/archive_sha256.txt
           python -m zipfile -t /tmp/USDA_foundation_food_json_2026-04-30.zip
+          # Retain only the public USDA source archive and its checksum;
+          # never include patient or application data in this artifact.
+          cp /tmp/USDA_foundation_food_json_2026-04-30.zip proof/
       - name: Reconcile seven FDC IDs against primary rows
         shell: bash
         run: |
@@ -45,7 +48,7 @@ jobs:
           python backend/scripts/validate_v1_01_cal11_fdc.py \
             /tmp/USDA_foundation_food_json_2026-04-30.zip \
             | tee proof/fdc_reconciliation.json.log
-      - name: Retain redacted public-source evidence only
+      - name: Retain public USDA primary-source snapshot and reconciliation
         uses: actions/upload-artifact@v4
         if: always()
         with:
