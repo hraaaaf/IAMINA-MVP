@@ -1,5 +1,8 @@
 # IAMINA — HANDOVER CANONIQUE V1-01 / Décision produit #19
 
+## Désignation des relecteurs par rôle — 12 octobre 2026
+Comité de six sièges défini dans [GitHub issue #946](https://github.com/hraaaaf/IAMINA-MVP/issues/946) : R1 clinicien endocrinologue (CAL-09/10 et CAL-12), R2 diététicien (CAL-11), R3 DPO santé (CAL-12), R4 relecteur médical FR/AR/Darija (CAL-11/12), R5 auditeur QA indépendant (CAL-09/10/11/12) et R6 responsable produit IAMINA (arbitrages et permissions séparées). **Aucune identité réelle ni acceptation de mandat n'a été vérifiée et 0 signature a été recueillie.** CAL-09/10/11/12 restent bloqués au gate humain, PDF OFF, #945 DRAFT. Next : trouver/mandater les titulaires, collecter avis signés; aucun merge ni Vercel.
+
 ## GATE HUMAIN — DOSSIER FORMEL PRÊT (12 octobre 2026)
 **Dossier de relecture document-only :** [CAL-09/10/11/12 — options et cases de signature](../assessments/2026-10-12-v1-01-clinical-review-gates.md), publié sur la PR docs #933 `77fdd246cb7de88e2697243069261d518d935111`. **Aucun relecteur médical, diététique, privacy ou linguiste n'a encore signé**. CAL-11 : choix de portée de l'intervalle USDA; CAL-09 : sens du jour UTC/IANA/offset; CAL-10 : durée pré/post repas non bornée; CAL-12 : contrat PDF clinique typé, consentement et Unicode/RTL (PDF patient OFF). Aucune de ces options n'est approuvée par ce document.
 **Référence QA inchangée :** PR #945 HEAD `90855610f02d6e8d058527ec084cf5c853ef23ba`, 19/19 verts, Chrome 18/18 sans pageerror, USDA vérifié. **Next exact :** désigner des relecteurs qualifiés, collecter décisions signées et restrictions; ensuite tests/corrections sur nouveau SHA, puis autorisation explicite de merge, revue post-merge et Vercel distinct. **Human gate réel : aucun merge ni déploiement.**
