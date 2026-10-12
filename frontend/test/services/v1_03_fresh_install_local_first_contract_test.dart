@@ -6,6 +6,7 @@ import 'package:amina/services/companion_service.dart';
 import 'package:amina/services/consent_evidence_store.dart';
 import 'package:amina/services/consent_service.dart';
 import 'package:amina/services/api_client.dart';
+import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -150,8 +151,8 @@ void main() {
     await database.into(database.patientProfiles).insert(
       PatientProfilesCompanion.insert(
         updatedAt: DateTime.utc(2026, 10, 12),
-        userId: const Value(1),
-        aiConsentGivenAt: Value(DateTime.utc(2026, 10, 12)),
+        userId: const drift.Value(1),
+        aiConsentGivenAt: drift.Value(DateTime.utc(2026, 10, 12)),
       ),
     );
     final profile = await database.select(database.patientProfiles).getSingle();
