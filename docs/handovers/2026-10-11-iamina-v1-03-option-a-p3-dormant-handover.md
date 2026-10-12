@@ -143,3 +143,14 @@ La [PR #938 DRAFT](https://github.com/hraaaaf/IAMINA-MVP/pull/938) est toujours 
 **Next exact :** préparer/soumettre les éléments pour la décision humaine de merge **puis** le déploiement Vercel séparément ; avant cela, établir l'inventaire réel des versions PWA/native et l'ingress/rétention, revue sécurité/clinique, scénario de mise à jour sans ancien GET et double audit des impacts UI à mêmes viewports. Après approbation : intégration/CI exacte, smoke synthétique et closeout post-déploiement. **Ne pas merger ni déployer sans autorisation explicite.**
 
 **État : P0 hotfix `TECHNICAL_CI_GREEN`, `DRAFT / NOT_MERGED / NOT_DEPLOYED`. IAMINA V1-03 : `NOT_RELEASE_AUTHORIZED`. P5 historique : 6/12 = 50 %.**
+
+
+## 15. 12 octobre — gate migration clients : preuve du risque cache, pas encore d'upgrade
+
+Audit GitHub source sur **#938 HEAD `beeed3ec`** : version Flutter `0.1.0+1`, `IAMINA_CACHE_SCHEMA='0.1.0+1'`, app shell `main.dart.js` cache-first et fallback bootstrap sur la même version. Hors domaine hosted-review, un ancien client PWA peut donc rester sur l'ancien code GET même après changement serveur ; **une modification web seule n'est pas preuve de migration**. Le SW ignore les réponses `/api/` pour la mise en cache applicative, sans empêcher le GET réseau historique. Contrat backend `/api/v1/app-compatibility` existe mais n'infère pas la version si métadonnées absentes et ne distingue pas les builds réutilisant `0.1.0+1`.
+
+Inspection Vercel **en métadonnées seulement**, le 12/10 : dernière production review `dpl_CJpLFLEQngvjsZXj23FinoXYoH1t` (2026-10-08 SHA `1e44ba57`) ; dernier backend certified `dpl_7SogpUMHNHd9rF7s7rfALccKduv7` (2026-10-02 SHA `df004bcb`). Ils n'ont **pas** été remplacés par #938. Les drains demeurent inconnus (API 404).
+
+**Next exact autorisé :** préparer matrice d'upgrade ancienne PWA/iOS/Android avec marqueurs synthétiques, vérifier politiques de rétention/ingress via accès autorisé et recenser versions distribuées ; préparer nouveau build/version/SW dans branche d'intégration DRAFT après arbitrage de la fenêtre de compatibilité, pas sur la PR P0 déjà verte. Tests exact-HEAD et double revue à faire. Aucun merge ni Vercel sans autorisation explicite.
+
+Détails complets : `docs/assessments/2026-10-11-v1-03-sse-production-drift-pr938.md` section 15. `TECHNICAL_CI_GREEN` pour #938 inchangé, mais `MIGRATION_NOT_PROVEN / NOT_RELEASE_AUTHORIZED`.
