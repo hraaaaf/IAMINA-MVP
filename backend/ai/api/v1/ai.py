@@ -8,7 +8,7 @@ POST /api/v1/ai/chat                 — Contextual conversation with English Pi
 GET  /api/v1/ai/doctor-brief         — Compact medical summary for pre-consultation export
 POST /api/v1/ai/analyze-meal-image   — Gemini Vision meal recognition
 POST /api/v1/ai/analyze-glucometer-image — Gemini Vision glucometer OCR (web fallback)
-GET  /api/v1/ai/chat/stream          — SSE streaming chat
+POST /api/v1/ai/chat/stream          — SSE streaming chat
 
 Architecture (Analytical-First):
   1. SQL KPIs computed by sql_analytics.compute_kpis() — no Python arithmetic.
@@ -32,7 +32,7 @@ from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
-from core.ai_egress import IMAGE, TEXT, patient_ai_egress_scope
+from core.ai_egress import IMAGE, TEXT, ai_egress_scope, patient_ai_egress_scope
 from core.contracts.capabilities import Capability
 from core.input_safety import INSULIN_BLOCK, PRESCRIPTION_BLOCK, evaluate_input_safety
 from core.llm_gateway import get_gateway_llm
@@ -470,14 +470,27 @@ def analyze_meal_image(request, data: MealImageRequest):
 # ──────────────────────────────────────────────────────────────
 
 
-@router.get("/ai/chat/stream")
+@router.post("/ai/chat/stream")
 @patient_ai_egress_scope("companion_chat", TEXT)
-def chat_stream(request, message: str, context_days: int = 14):
+def chat_stream(request, data: ChatRequest):
     """
-    GET /api/v1/ai/chat/stream?message=...
+    POST /api/v1/ai/chat/stream — JSON body; never put patient text in a URL.
     Returns Server-Sent Events — one `data:` line per token chunk.
     Terminal event: `data: [DONE]`
     """
+    # Ninja may accept Bearer auth ahead of SessionAuth. A session cookie must
+    # not bypass CSRF even when an Authorization header is supplied.
+    from django.conf import settings
+    from ninja.errors import HttpError
+
+    if request.COOKIES.get(settings.SESSION_COOKIE_NAME):
+        from amina.vercel_session_auth import check_iamina_csrf
+
+        if check_iamina_csrf(request):
+            raise HttpError(403, "CSRF check Failed")
+
+    message = data.message
+    context_days = data.context_days
     from core.input_safety import (
         INSULIN_BLOCK,
         PRESCRIPTION_BLOCK,
@@ -493,16 +506,23 @@ def chat_stream(request, message: str, context_days: int = 14):
     )
 
     if decision.action == URGENT:
+        from core.emergency_response import compose_emergency_for_patient
+
+        # Deterministic, canonical urgent guidance only after Ninja auth/CSRF.
+        # The streaming client needs SSE, never a JSON middleware response.
+        emergency = compose_emergency_for_patient(
+            decision, patient=user, language=language, message=message
+        )
 
         def _urgent_event_generator():
-            emergency_msg = (
-                "⚠️ Alerte : Votre glycémie semble être dans une zone critique. "
-                "Veuillez suivre les protocoles d'urgence ou contacter votre médecin."
-            )
-            yield f"data: {json.dumps({'token': emergency_msg})}\n\n"
+            yield f"data: {json.dumps(emergency.as_stream_event(), ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"
 
-        return StreamingHttpResponse(_urgent_event_generator(), content_type="text/event-stream")
+        return StreamingHttpResponse(
+            _urgent_event_generator(),
+            content_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
 
     if decision.action in (INSULIN_BLOCK, PRESCRIPTION_BLOCK):
 
@@ -513,7 +533,11 @@ def chat_stream(request, message: str, context_days: int = 14):
             yield f"data: {json.dumps({'token': refusal})}\n\n"
             yield "data: [DONE]\n\n"
 
-        return StreamingHttpResponse(_insulin_event_generator(), content_type="text/event-stream")
+        return StreamingHttpResponse(
+            _insulin_event_generator(),
+            content_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
 
     # Fetch entries only for the urgency glucose check in the router
     since = timezone.now() - timedelta(days=context_days)
@@ -576,16 +600,32 @@ def chat_stream(request, message: str, context_days: int = 14):
 
             yield "data: [DONE]\n\n"
 
-        except Exception:
-            logger.exception("SSE chat stream failed")
+        except Exception as exc:
+            # Do not emit provider exceptions or tracebacks containing patient text.
+            logger.error("SSE chat stream failed safely: %s", type(exc).__name__)
             yield f"data: {json.dumps({'token': 'Une erreur est survenue.'})}\n\n"
             yield "data: [DONE]\n\n"
 
+    def _scoped_event_generator():
+        """Restore the per-patient scope for every deferred SSE next()."""
+        stream = _event_generator()
+        try:
+            while True:
+                with ai_egress_scope(user.id, "companion_chat", TEXT):
+                    try:
+                        event = next(stream)
+                    except StopIteration:
+                        return
+                yield event
+        finally:
+            with ai_egress_scope(user.id, "companion_chat", TEXT):
+                stream.close()
+
     return StreamingHttpResponse(
-        _event_generator(),
+        _scoped_event_generator(),
         content_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-store",
             "X-Accel-Buffering": "no",
         },
     )
