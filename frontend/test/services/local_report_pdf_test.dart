@@ -117,6 +117,35 @@ void main() {
     );
   });
 
+  test('untyped local PDF cannot enter a patient library via import or export',
+      () {
+    // Stronger than searching for direct calls to LocalReportPdf.build:
+    // a new service must not import/re-export this untyped ASCII primitive
+    // and then publish it through aliases or wrappers by accident.
+    final sources = Directory('lib')
+        .listSync(recursive: true, followLinks: false)
+        .whereType<File>()
+        .where((file) =>
+            file.path.endsWith('.dart') &&
+            !file.path.endsWith('/local_report_pdf.dart'));
+    final linked = <String>[];
+    for (final file in sources) {
+      final directives = file.readAsLinesSync().where((line) {
+        final directive = line.trimLeft();
+        return (directive.startsWith('import ') ||
+                directive.startsWith('export ')) &&
+            directive.contains('local_report_pdf.dart');
+      });
+      if (directives.isNotEmpty) linked.add(file.path);
+    }
+    expect(
+      linked,
+      isEmpty,
+      reason: 'CAL-12: untyped ASCII-only PDF must stay quarantined until '
+          'source/subject/consent/Unicode-RTL clinical report approval: $linked',
+    );
+  });
+
   test('requires UTC timestamp for deterministic evidence', () {
     expect(
       () => LocalReportPdf.build(
