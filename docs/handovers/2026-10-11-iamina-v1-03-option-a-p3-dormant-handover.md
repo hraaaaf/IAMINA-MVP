@@ -1,5 +1,7 @@
 # IAMINA — Handover canonique de reprise V1-03 / P3 option A
 
+> **RECTIFICATION CANONIQUE 2026-10-12 (propriétaire)** : **0 client** aujourd'hui ; IAMINA V1 patient **local-first** ; Vercel/Django/Neon dédiés au dev/cert, pas aux patients. Les anciens paragraphes de ce handover sur les clients réellement installés sont **supplantés par §23**. [Dossier pre-launch](../assessments/2026-10-12-v1-03-distribution-privacy-cutover-gates.md). PR #941 exact HEAD `d3562e8` : **25/25 CI verts**, DRAFT sans merge ni déploiement ; gates P5-6 avant **première donnée de santé identifiable**, autorisation merge et Vercel séparées.
+
 **Dernière vérification live : 2026-10-11 (Afrique/Casablanca).**  
 **Repo :** `hraaaaf/IAMINA-MVP` · **Lot actif :** V1-03, P3 HTTP aliases dormants, décision utilisateur **A**.  
 **Source de vérité sur l'avancement global :** `docs/ROADMAP.md`, présente dans la PR DRAFT #933.  
@@ -296,3 +298,20 @@ D. OCR image glycémie reste OFF, demander preuve d'unité explicite, HI/LO/401�
 E. Préparer dossier de revue + stratégie merge sans régression ; **demander autorisation explicite du merge**, CI post-merge, puis **autorisation Vercel séparée**, smoke synthétique de deployment, closeout des docs canoniques. Même avec 25/25, **aucun merge ni Vercel automatique**.
 
 **Verdict** : **CERTIFICATION CI TECHNIQUE #941 TERMINÉE** sur SHA `d3562e8` ; **LOT V1-03 GLOBAL NON CLÔTURÉ / NOT_RELEASE_AUTHORIZED** jusqu'aux gates terrain, clinique, privacy/security, merge/deploy. P5 global historique **6/12 = 50 %**, non réestimé par cette certification.
+
+
+## 23. 12 octobre 2026 — RECTIFICATION propriétaire : ZÉRO CLIENT et architecture LOCAL-FIRST
+
+**Information nouvelle et prioritaire du propriétaire : IAMINA a actuellement 0 client.** Cette information **annule les tâches de migration de clients existants** suggérées dans les sections historiques 15–22. Ne pas refaire un inventaire de clients, chercher des sessions patients historiques, ni attendre un cutover de parc inexistant ; ne pas présenter l'ancien code GET sur les builds de **revue/certification** comme une fuite réelle.
+
+**Source de vérité que nous avions négligée** : `docs/LOCAL_FIRST_RUNTIME_BOUNDARY.md` établit que l'exécution patient est **local-first** (enrollment, stockage et actes cliniques locaux disponibles sans réseau) et que le Vercel `iamina-certified`/Django/Neon sert au **développement et à la certification**, hors runtime patient tant que l'architecture n'est pas changée. `docs/ROADMAP.md` §9 permet le développement et le merge de code après preuve, sans exiger avant chaque commit/merge les gates P5-6A/B qui sont exigés **avant la première donnée de santé identifiable**. Les déploiements Vercel nécessitent **toujours** une permission distincte et ne constituent pas une release patient.
+
+**Autre contre-preuve historique à préserver** : le [dossier d'inspection du bundle web servi](../assessments/2026-10-11-v1-03-deployed-sse-url-privacy-divergence.md) indique que le **`main.dart.js` web effectivement inspecté** ne contient aucun `chat/stream` ; le parcours visible utilise `CompanionService` **POST /ai/chat**. `ApiClient.chatStream GET` existe **dans la source historique**, mais ne prouve pas l'usage du GET dans le web review, encore moins sur une clientèle. Le hotfix #941 reste un durcissement pré-lancement pertinent : GET 405, POST JSON, auth/CSRF, refus local.
+
+**Goal révisé** : **premier lancement propre** à build `0.1.0+2` sur PWA/iOS/Android, avec test synthétique (enrollment sans réseau, persistance, consentement/refus AI, transport et reprise offline), garde OCR **OFF**. Aucun test de « migration client `0.1.0+1` » nécessaire pour un parc réel inexistant ; les tests SW de laboratoire sont des non-régressions utiles mais ne représentent pas un déploiement client.
+
+**État des preuves** : [#941](https://github.com/hraaaaf/IAMINA-MVP/pull/941), HEAD `d3562e814e39d412516f421e66cb285fa7df50ce` **25/25 SUCCESS**, DRAFT non mergé/non déployé ; Android certifié **émulateur seulement**. Nouveau [dossier de pré-lancement/first install](../assessments/2026-10-12-v1-03-distribution-privacy-cutover-gates.md), version remplacée pour éliminer le faux blocage. Aucune revue indépendante de #941 constatée. Aucun appareil physique/patient ni conformité clinique/privacy déclarés validés.
+
+**Séquence réelle** : qualification autonome sur installations **neuves synthétiques** → revue ciblée des protections et du merge (sans passer en revue de fausses données historiques) → **autorisation humaine merge** → CI post-merge/closeout → **autorisation Vercel distincte seulement si déploiement dev/cert souhaité** → **avant première donnée identifiable** : nouveau freeze SHA, P5-6A/#318 + P5-6B/#320, processeurs *effectivement* activés et topologie locale, audits fail-closed, validation de release humaine. L'avis clinique OCR reste un gate **d'activation OCR**, pas une condition qui force à interrompre du code dormant.
+
+**Verdict corrigé** : `ZERO_CLIENTS / LOCAL_FIRST / CI_25_OF_25_GREEN / NO_EXISTING_CLIENT_MIGRATION / NOT_MERGED / NOT_DEPLOYED / NOT_PATIENT_AUTHORIZED` ; P5 historique 6/12 = 50 %, aucun nouveau % inventé.
