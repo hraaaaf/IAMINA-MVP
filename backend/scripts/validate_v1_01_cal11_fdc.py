@@ -7,9 +7,8 @@ Example:
     python scripts/validate_v1_01_cal11_fdc.py /path/to/USDA_foundation_2026.zip
 
 Fail closed if a published FDC ID, food description, carbohydrate nutrient or
-catalogue numeric range does not match the *primary* archive. This script
-does not verify banana edible weight 110–115 g; that needs separate USDA
-portion-level provenance and human curation. No medical treatment inference.
+catalogue numeric range does not match the *primary* archive. The banana 110g/115g peeled-portion weights are also checked against primary
+foodPortions rows. No individual portion/dosing recommendation is inferred.
 """
 
 from __future__ import annotations
@@ -22,12 +21,13 @@ from zipfile import BadZipFile, ZipFile
 
 SEED = {
     "apple": {
-        "ids": (1105664, 1105547, 1105781, 1105430, 1105897),
-        "min": 14.2,
+        "ids": (1750339, 1750340, 1750341, 1750342, 1750343),
+        "min": 14.1,
         "max": 15.7,
     },
     "banana": {
-        "ids": (790774, 790991),
+        "ids": (1105073, 1105314),
+        "peeled_grams": {1105073: 110.0, 1105314: 115.0},
         "min": 20.1,
         "max": 23.0,
     },
@@ -73,7 +73,7 @@ def _carbohydrate_amount(food: dict) -> float:
         if not isinstance(nutrient, dict):
             continue
         if nutrient.get("id") == CARBOHYDRATE_NUTRIENT_ID:
-            if nutrient.get("unitName") != "G":
+            if str(nutrient.get("unitName", "")).lower() != "g":
                 raise ValueError("carbohydrate unit is not grams per 100g")
             value = item.get("amount")
             if not isinstance(value, (float, int)) or isinstance(value, bool):
@@ -86,6 +86,38 @@ def _carbohydrate_amount(food: dict) -> float:
             f"expected exactly one carbohydrate nutrient 1005; got {len(matches)}"
         )
     return matches[0]
+
+
+
+def _peeled_banana_weight(food: dict, expected_grams: float) -> float:
+    """USDA banana peeled portion weight from a uniquely matching source row."""
+    portions = food.get("foodPortions")
+    if not isinstance(portions, list):
+        raise ValueError("banana source foodPortions array absent")
+    weights = []
+    for row in portions:
+        if not isinstance(row, dict):
+            continue
+        unit = row.get("measureUnit")
+        if not isinstance(unit, dict):
+            continue
+        if unit.get("name") != "Banana" or row.get("modifier") != "Peeled":
+            continue
+        weight = row.get("gramWeight")
+        if isinstance(weight, bool) or not isinstance(weight, (float, int)):
+            raise ValueError("banana peeled source gramWeight is not numeric")
+        if not isfinite(weight) or weight <= 0:
+            raise ValueError("banana peeled source gramWeight invalid")
+        weights.append(float(weight))
+    if len(weights) != 1:
+        raise ValueError(
+            f"expected one banana peeled source portion; got {len(weights)}"
+        )
+    if abs(weights[0] - expected_grams) > 0.01:
+        raise ValueError(
+            f"banana peeled gramWeight {weights[0]} != pinned {expected_grams}"
+        )
+    return weights[0]
 
 
 def validate_zip(path: Path) -> dict[str, list[dict]]:
@@ -138,9 +170,16 @@ def validate_zip(path: Path) -> dict[str, list[dict]]:
                     f"{food_name} FDC {fdc_id}: carbohydrate {amount} outside "
                     f"pinned [{rule['min']}, {rule['max']}]"
                 )
-            evidence.append(
-                {"fdcId": fdc_id, "description": description, "carb_g_per_100g": amount}
-            )
+            item = {
+                "fdcId": fdc_id,
+                "description": description,
+                "carb_g_per_100g": amount,
+            }
+            if food_name == "banana":
+                item["peeled_grams"] = _peeled_banana_weight(
+                    food, rule["peeled_grams"][fdc_id]
+                )
+            evidence.append(item)
         output[food_name] = evidence
     return output
 
@@ -159,7 +198,7 @@ def main() -> int:
             indent=2,
         )
     )
-    print("NOTE: banana portion gram weights and clinical suitability NOT certified.")
+    print("NOTE: primary snapshot values matched; individual clinical suitability NOT certified.")
     return 0
 
 
