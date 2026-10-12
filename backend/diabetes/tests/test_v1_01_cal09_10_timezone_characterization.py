@@ -15,14 +15,14 @@ from diabetes.services.clinical.paired_meal_response import (
 
 
 def _episodes(offset: timezone) -> tuple[PairedMealEpisode, ...]:
-    # Same five *instants*, spanning only two UTC days but three calendar
+    # Same five *instants*, spanning one UTC day but two calendar
     # dates in UTC+01. No patient data and no proposed clinical threshold.
     moments_utc = (
         datetime(2026, 10, 10, 12, 0, tzinfo=timezone.utc),
+        datetime(2026, 10, 10, 14, 0, tzinfo=timezone.utc),
         datetime(2026, 10, 10, 23, 40, tzinfo=timezone.utc),
-        datetime(2026, 10, 11, 10, 0, tzinfo=timezone.utc),
-        datetime(2026, 10, 11, 23, 40, tzinfo=timezone.utc),
-        datetime(2026, 10, 11, 23, 45, tzinfo=timezone.utc),
+        datetime(2026, 10, 10, 23, 45, tzinfo=timezone.utc),
+        datetime(2026, 10, 10, 23, 50, tzinfo=timezone.utc),
     )
     return tuple(
         PairedMealEpisode(
@@ -47,15 +47,15 @@ def test_clinical_day_density_depends_on_timezone_policy_not_glucose():
     assert [p.pre_at.timestamp() for p in utc_pairs] == [
         p.pre_at.timestamp() for p in plus_one_pairs
     ]
-    assert len({p.pre_at.date() for p in utc_pairs}) == 2
-    assert len({p.pre_at.date() for p in plus_one_pairs}) == 3
+    assert len({p.pre_at.date() for p in utc_pairs}) == 1
+    assert len({p.pre_at.date() for p in plus_one_pairs}) == 2
 
     # Characterization of the *existing* implementation, not an endorsement.
     assert _patterns(utc_pairs) == ()
     local_patterns = _patterns(plus_one_pairs)
     assert len(local_patterns) == 1
     assert local_patterns[0].pairs == 5
-    assert local_patterns[0].distinct_days == 3
+    assert local_patterns[0].distinct_days == 2
     assert local_patterns[0].median_delta_mg_dl == 15.0
 
 
