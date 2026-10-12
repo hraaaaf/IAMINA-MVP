@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:amina/services/local_report_pdf.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -85,6 +86,63 @@ void main() {
         lines: <LocalReportLine>[LocalReportLine('Row', tooLongValue)],
       ),
       throwsArgumentError,
+    );
+  });
+
+  test('untyped local PDF primitive is not a patient-facing export route', () {
+    // CAL-12 release gate: the existing ASCII-only primitive intentionally
+    // accepts arbitrary strings. Before wiring it into any product runtime,
+    // a typed, consent-scoped, source-traceable clinical export must be
+    // explicitly reviewed and certified. Do not silently connect it now.
+    final sources = Directory('lib')
+        .listSync(recursive: true, followLinks: false)
+        .whereType<File>()
+        .where((file) => file.path.endsWith('.dart'))
+        .toList();
+    expect(sources.length, greaterThan(150));
+    final callers = sources
+        .where(
+          (file) =>
+              !file.path.endsWith('/local_report_pdf.dart') &&
+              file.readAsStringSync().contains('LocalReportPdf.build('),
+        )
+        .map((file) => file.path)
+        .toList();
+    expect(
+      callers,
+      isEmpty,
+      reason: 'CAL-12 clinical export authorization and provenance gate '
+          'is not satisfied; an untyped PDF builder must not be wired '
+          'to a patient-facing library: $callers',
+    );
+  });
+
+  test('untyped local PDF cannot enter a patient library via import or export',
+      () {
+    // Stronger than searching for direct calls to LocalReportPdf.build:
+    // a new service must not import/re-export this untyped ASCII primitive
+    // and then publish it through aliases or wrappers by accident.
+    final sources = Directory('lib')
+        .listSync(recursive: true, followLinks: false)
+        .whereType<File>()
+        .where((file) =>
+            file.path.endsWith('.dart') &&
+            !file.path.endsWith('/local_report_pdf.dart'));
+    final linked = <String>[];
+    for (final file in sources) {
+      final directives = file.readAsLinesSync().where((line) {
+        final directive = line.trimLeft();
+        return (directive.startsWith('import ') ||
+                directive.startsWith('export ')) &&
+            directive.contains('local_report_pdf.dart');
+      });
+      if (directives.isNotEmpty) linked.add(file.path);
+    }
+    expect(
+      linked,
+      isEmpty,
+      reason: 'CAL-12: untyped ASCII-only PDF must stay quarantined until '
+          'source/subject/consent/Unicode-RTL clinical report approval: $linked',
     );
   });
 

@@ -60,8 +60,9 @@ void main() {
       'lib/features/journal/journal_screen.dart',
     ).readAsStringSync();
 
-    expect(source, contains("unit == 'mmol/L'"));
-    expect(source, contains('(val / 18.0).toStringAsFixed(1)'));
+    expect(source, contains('GlucoseFormatter.convert(val, unit)'));
+    expect(source, contains(".toStringAsFixed(unit == 'mmol/L' ? 1 : 0)"));
+    expect(source, isNot(contains('val / 18.0')));
     expect(source, contains('displayValue'));
     expect(source, contains("Key('journal-glucose-unit')"));
   });

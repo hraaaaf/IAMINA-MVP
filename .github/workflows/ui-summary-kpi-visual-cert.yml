@@ -1,0 +1,101 @@
+name: IAmina summary CGM missingness visual proof
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/lib/features/journal/ai_summary_screen.dart'
+      - 'frontend/lib/features/journal/ai_summary_screen_presentation.dart'
+      - 'frontend/lib/ui_browser_audit_main.dart'
+      - 'frontend/test/ai_summary_kpi_missingness_widget_test.dart'
+      - 'tools/summary_kpi_visual_capture.cjs'
+      - '.github/workflows/ui-summary-kpi-visual-cert.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-chrome-before-after:
+    name: Real Flutter Chrome 390x844 BEFORE vs AFTER
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Lock exact tested product SHA
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Prepare Flutter and Playwright
+        working-directory: frontend
+        run: |
+          flutter pub get
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Analyze clinical widget and execute negative safety tests
+        working-directory: frontend
+        run: |
+          flutter analyze --no-fatal-infos lib/features/journal/ai_summary_screen.dart lib/ui_browser_audit_main.dart test/ai_summary_kpi_missingness_widget_test.dart
+          flutter test --no-pub test/ai_summary_kpi_missingness_widget_test.dart
+
+      - name: Capture BEFORE from original base presentation source
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          cp frontend/lib/features/journal/ai_summary_screen_presentation.dart /tmp/iamina-summary-after.dart
+          git show "${{ github.event.pull_request.base.sha }}:frontend/lib/features/journal/ai_summary_screen_presentation.dart" > frontend/lib/features/journal/ai_summary_screen_presentation.dart
+          cd frontend
+          flutter build web --release -t lib/ui_browser_audit_main.dart
+          python3 -m http.server 7367 --directory build/web >/tmp/iamina-summary-before.log 2>&1 &
+          SERVER=$!
+          trap 'kill "$SERVER" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7367/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:7367/ >/dev/null
+          NODE_PATH="$PWD/node_modules" AUDIT_PHASE=before AUDIT_OUT="$GITHUB_WORKSPACE/summary-kpi-visual-proof" node ../tools/summary_kpi_visual_capture.cjs
+
+      - name: Capture AFTER from exact PR HEAD
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          cp /tmp/iamina-summary-after.dart frontend/lib/features/journal/ai_summary_screen_presentation.dart
+          cd frontend
+          flutter build web --release -t lib/ui_browser_audit_main.dart
+          python3 -m http.server 7367 --directory build/web >/tmp/iamina-summary-after.log 2>&1 &
+          SERVER=$!
+          trap 'kill "$SERVER" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7367/ >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:7367/ >/dev/null
+          NODE_PATH="$PWD/node_modules" AUDIT_PHASE=after AUDIT_OUT="$GITHUB_WORKSPACE/summary-kpi-visual-proof" node ../tools/summary_kpi_visual_capture.cjs
+
+      - name: Upload same-viewport real-browser proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iamina-summary-cgm-before-after-390x844
+          path: summary-kpi-visual-proof/*.png
+          if-no-files-found: warn
+          retention-days: 21

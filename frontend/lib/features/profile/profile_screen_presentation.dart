@@ -121,18 +121,30 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           (val) => _setPresentationState(() => _treatment = val),
         ),
         const SizedBox(height: 28),
-        _buildSectionTitle(Icons.show_chart, l10n.glucoseTarget),
+        _buildSectionTitle(Icons.straighten, l10n.measureUnit),
+        const SizedBox(height: 12),
+        _buildChoiceGrid(
+          ['mg/dL', 'mmol/L'],
+          ['mg/dL', 'mmol/L'],
+          _unit,
+          (val) => _changeTargetUnit(val),
+        ),
+        const SizedBox(height: 28),
+        _buildSectionTitle(
+          Icons.show_chart,
+          l10n.glucoseTarget.replaceAll('mg/dL', _unit),
+        ),
         const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxWidth < 460;
             final low = _buildTextField(
-              AuditedPageCopy.of(context).minimum,
+              '${AuditedPageCopy.of(context).minimum} ($_unit)',
               _targetLowController,
               l10n,
             );
             final high = _buildTextField(
-              AuditedPageCopy.of(context).maximum,
+              '${AuditedPageCopy.of(context).maximum} ($_unit)',
               _targetHighController,
               l10n,
             );
@@ -149,18 +161,10 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
           },
         ),
         const SizedBox(height: 28),
-        _buildSectionTitle(Icons.straighten, l10n.measureUnit),
-        const SizedBox(height: 12),
-        _buildChoiceGrid(
-          ['mg/dL', 'mmol/L'],
-          ['mg/dL', 'mmol/L'],
-          _unit,
-          (val) => _setPresentationState(() => _unit = val),
-        ),
-        const SizedBox(height: 28),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
+            key: const Key('profile-save-targets-button'),
             onPressed: _saveProfile,
             style: ElevatedButton.styleFrom(
               backgroundColor: AminaVisualLanguage.actionGreen,
@@ -713,9 +717,12 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       children: [
         Icon(icon, size: 20, color: AminaVisualLanguage.primaryText(context)),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+        Flexible(
+          child: Text(
+            title,
+            softWrap: true,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
         ),
       ],
     );
@@ -768,7 +775,7 @@ extension _ProfileScreenPresentation on _ProfileScreenState {
       label: label,
       hint: l10n.enterValue,
       controller: controller,
-      keyboardType: TextInputType.number,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
     );
   }
 }

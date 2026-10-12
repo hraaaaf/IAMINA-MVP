@@ -147,3 +147,105 @@ class _AISummaryScreenState extends State<AISummaryScreen> {
 
 
 }
+
+
+/// Synthetic patient-safe view of real KPI widgets for browser screenshot CI.
+/// Not linked from production routes; no user data or backend access.
+@visibleForTesting
+class AISummaryKpiVisualFixture extends StatelessWidget {
+  final String mode;
+  const AISummaryKpiVisualFixture({super.key, required this.mode});
+
+  @override
+  Widget build(BuildContext context) {
+    final kpis = KpisResponse(
+      avgGlucose: 130.0,
+      logCount: 60,
+      daysWithData: 14,
+      hasSufficientData: true,
+      gmiBasis: 'couverture CGM non vérifiée',
+    );
+    final cgmKpis = KpisResponse(
+      avgGlucose: 114.0,
+      cvPct: 18.0,
+      tirPct: 84.0,
+      tarPct: 11.0,
+      tbrPct: 5.0,
+      logCount: 336,
+      daysWithData: 14,
+      hasSufficientData: true,
+      gmiBasis: 'règle GMI non promue',
+    );
+    final cgmProfile = List<Map<String, dynamic>>.generate(24, (hour) {
+      final adjustment = (hour - 12).abs();
+      return {
+        'hour': hour,
+        'avg': 115 + adjustment,
+        'p5': 95 + adjustment,
+        'p25': 105 + adjustment,
+        'p50': 115 + adjustment,
+        'p75': 125 + adjustment,
+        'p95': 135 + adjustment,
+      };
+    });
+    final summary = SummaryResponse(
+      insights: const [],
+      kpis: const {},
+      // A manual-only patient can still have a raw SQL percentile series.
+      dailyAverages: const [{'day': '2026-09-19', 'avg': 130}],
+      agpProfile: const [
+        {'hour': 12, 'p5': 110, 'p25': 120, 'p50': 130, 'p75': 140, 'p95': 150},
+      ],
+      generatedAt: '2026-09-20T12:00:00Z',
+      hasSufficientData: true,
+    );
+    final Widget subject = switch (mode) {
+      'hero' => _HeroInsightCard(
+          summary: summary,
+          kpis: kpis,
+          onDiscoverTap: () {},
+          onChatTap: () {},
+        ),
+      'agp-verified' => _AgpCard(
+          agpData: cgmProfile,
+          isHourly: true,
+          periodDays: 14,
+          kpis: cgmKpis,
+        ),
+      'agp' => _AgpCard(
+          agpData: const [
+            {'hour': 12, 'p5': 110, 'p25': 120, 'p50': 130, 'p75': 140, 'p95': 150},
+          ],
+          isHourly: true,
+          periodDays: 14,
+          kpis: kpis,
+        ),
+      _ => _KpiRow(kpis: kpis),
+    };
+    return Scaffold(
+      backgroundColor: AminaTheme.bg(context),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                mode == 'agp-verified'
+                    ? 'CERTIFICATION VISUELLE — CGM ADMISSIBLE, GMI NON PROMU'
+                    : 'CERTIFICATION VISUELLE — 60 MESURES MANUELLES, AUCUN CGM',
+                style: TextStyle(
+                  color: AminaTheme.textSecondary(context),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              subject,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

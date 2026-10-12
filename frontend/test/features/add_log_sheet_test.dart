@@ -5,6 +5,7 @@ import 'package:amina/data/drift/database.dart';
 import 'package:amina/features/dashboard/widgets/add_log_sheet.dart';
 import 'package:amina/features/dashboard/widgets/add_log_view.dart';
 import 'package:amina/l10n/app_localizations.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -53,6 +54,68 @@ void main() {
   tearDown(() async => db.close());
 
   group('Add Log focused glucose journal', () {
+    for (final size in <Size>[const Size(390, 844), const Size(768, 1024)]) {
+      testWidgets('typed mmol/L value keeps its unit after profile change '
+          '${size.width.toInt()}px', (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final timestamp = DateTime(2026, 9, 20, 10, 30);
+        await db.into(db.patientProfiles).insert(
+          PatientProfilesCompanion.insert(
+            userId: const Value(1),
+            updatedAt: timestamp,
+            unitPreference: const Value('mmol/L'),
+          ),
+        );
+        final profile = await db.select(db.patientProfiles).getSingle();
+        final notifier = ValueNotifier<PatientProfileData?>(profile);
+        addTearDown(notifier.dispose);
+        await tester.pumpWidget(
+          ValueListenableBuilder<PatientProfileData?>(
+            valueListenable: notifier,
+            builder: (_, value, __) => MaterialApp(
+              locale: const Locale('fr'),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Scaffold(
+                body: MultiProvider(
+                  providers: [
+                    Provider<AppDatabase>.value(value: db),
+                    Provider<PatientProfileData?>.value(value: value),
+                  ],
+                  child: const AddLogSheet(),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final glucose = find.byKey(const Key('glucose-input'));
+        await tester.enterText(glucose, '4.0');
+        await tester.pumpAndSettle();
+        notifier.value = profile.copyWith(unitPreference: 'mg/dL');
+        await tester.pumpAndSettle();
+        expect(tester.widget<TextField>(glucose).controller!.text, '4.0');
+        expect(tester.widget<Text>(find.byKey(const Key('glucose-unit'))).data,
+            'mmol/L');
+        tester.testTextInput.hide();
+        await tester.pumpAndSettle();
+        final save = find.byKey(const Key('save-log-button'));
+        await tester.ensureVisible(save);
+        await tester.pumpAndSettle();
+        await tester.tap(save);
+        await tester.pumpAndSettle();
+        final logs = await db.select(db.logEntries).get();
+        expect(logs, hasLength(1));
+        expect(logs.single.bloodSugar, closeTo(72.064, 1e-7));
+        expect(find.byType(AlertDialog), findsNothing);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpAndSettle();
+      });
+    }
+
     test('keeps hypoglycemia safety boundaries deterministic', () {
       expect(classifyGlucoseEntrySafety(53), GlucoseEntrySafety.level2Low);
       expect(classifyGlucoseEntrySafety(54), GlucoseEntrySafety.level1Low);

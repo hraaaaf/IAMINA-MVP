@@ -1,7 +1,9 @@
 import 'dart:math';
 
 class GlucoseFormatter {
-  static const double mgdlToMmolFactor = 18.018;
+  /// Same precision as the active backend log-entry normalization contract.
+  /// Display-only conversion; no change to clinical target thresholds.
+  static const double mgdlToMmolFactor = 18.016;
 
   /// Formate une valeur de glycémie selon la préférence de l'utilisateur.
   /// [valueMgDl] : Valeur brute en mg/dL (stockage standard).
@@ -20,6 +22,42 @@ class GlucoseFormatter {
       return valueMgDl / mgdlToMmolFactor;
     }
     return valueMgDl;
+  }
+
+  /// Only these persisted profile units can authorize a glucose write.
+  /// Read-only legacy screens are audited separately; writes fail closed.
+  static bool isSupportedUnit(String unit) {
+    final normalized = unit.trim().toLowerCase();
+    return normalized == 'mg/dl' || normalized == 'mmol/l';
+  }
+
+  /// Converts user-entered values into canonical mg/dL storage.
+  /// An unknown profile unit must never silently become mg/dL.
+  static double toMgDl(double value, String unit) {
+    if (!isSupportedUnit(unit)) {
+      throw ArgumentError.value(unit, 'unit', 'Unknown glucose unit');
+    }
+    return unit.trim().toLowerCase() == 'mmol/l'
+        ? value * mgdlToMmolFactor
+        : value;
+  }
+
+  /// An unchanged rounded display must never rewrite the recorded glucose.
+  static double editedToMgDl(
+    double value,
+    String unit, {
+    double? initialDisplayedValue,
+    double? initialMgDl,
+  }) {
+    if (!isSupportedUnit(unit)) {
+      throw ArgumentError.value(unit, 'unit', 'Unknown glucose unit');
+    }
+    if (initialDisplayedValue != null &&
+        initialMgDl != null &&
+        value == initialDisplayedValue) {
+      return initialMgDl;
+    }
+    return toMgDl(value, unit);
   }
 
   /// Calcule les bornes optimales pour l'axe Y du graphique.

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:drift/drift.dart' as drift;
 import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/glucose_formatter.dart';
 import '../../core/widgets/amina_text_field.dart';
 import '../../core/widgets/responsive_content_surface.dart';
 import '../../core/widgets/mobile_page_header.dart';
@@ -54,6 +55,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _diabetesType;
   String? _treatment;
   String _unit = 'mg/dL';
+  // The DB always stores targets in mg/dL. Preserve exact canonical values
+  // separately from rounded display text, including the 69.9/70 boundary.
+  double? _targetLowMgDl;
+  double? _targetHighMgDl;
+  double? _targetLowShown;
+  double? _targetHighShown;
   bool _hasPersistedProfile = false;
   DateTime? _ramadanStartDate;
   DateTime? _ramadanEndDate;
@@ -76,12 +83,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _diabetesType = profile.diabetesType;
         _treatment = profile.treatment;
         _unit = profile.unitPreference;
-        _targetLowController.text = profile.targetRangeLow.toStringAsFixed(0);
-        _targetHighController.text = profile.targetRangeHigh.toStringAsFixed(0);
+        _showCanonicalTargets(
+          profile.targetRangeLow,
+          profile.targetRangeHigh,
+          _unit,
+        );
         _ramadanStartDate = profile.ramadanStartDate;
         _ramadanEndDate = profile.ramadanEndDate;
       });
     }
+  }
+
+
+  String _displayTarget(double canonicalMgDl, String unit) =>
+      GlucoseFormatter.convert(canonicalMgDl, unit)
+          .toStringAsFixed(unit.toLowerCase() == 'mmol/l' ? 1 : 0);
+
+  void _showCanonicalTargets(double? lowMgDl, double? highMgDl, String unit) {
+    _targetLowMgDl = lowMgDl;
+    _targetHighMgDl = highMgDl;
+    if (!GlucoseFormatter.isSupportedUnit(unit)) {
+      _targetLowController.clear();
+      _targetHighController.clear();
+      _targetLowShown = null;
+      _targetHighShown = null;
+      return;
+    }
+    final low = lowMgDl == null ? '' : _displayTarget(lowMgDl, unit);
+    final high = highMgDl == null ? '' : _displayTarget(highMgDl, unit);
+    _targetLowController.text = low;
+    _targetHighController.text = high;
+    _targetLowShown = double.tryParse(low);
+    _targetHighShown = double.tryParse(high);
+  }
+
+  double? _targetToCanonical(
+    TextEditingController controller,
+    double? originalMgDl,
+    double? originalShown,
+  ) {
+    if (!GlucoseFormatter.isSupportedUnit(_unit)) return null;
+    final input = double.tryParse(
+      controller.text.trim().replaceAll(',', '.'),
+    );
+    if (input == null || !input.isFinite) return null;
+    return GlucoseFormatter.editedToMgDl(
+      input,
+      _unit,
+      initialDisplayedValue: originalShown,
+      initialMgDl: originalMgDl,
+    );
+  }
+
+  void _changeTargetUnit(String nextUnit) {
+    if (!GlucoseFormatter.isSupportedUnit(nextUnit) || nextUnit == _unit) {
+      return;
+    }
+    final currentUnitValid = GlucoseFormatter.isSupportedUnit(_unit);
+    final low = currentUnitValid
+        ? _targetToCanonical(
+            _targetLowController, _targetLowMgDl, _targetLowShown,
+          )
+        : _targetLowMgDl;
+    final high = currentUnitValid
+        ? _targetToCanonical(
+            _targetHighController, _targetHighMgDl, _targetHighShown,
+          )
+        : _targetHighMgDl;
+    if ((currentUnitValid &&
+            _targetLowController.text.trim().isNotEmpty && low == null) ||
+        (currentUnitValid &&
+            _targetHighController.text.trim().isNotEmpty && high == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_profileValidationMessage(context))),
+      );
+      return;
+    }
+    setState(() {
+      _unit = nextUnit;
+      _showCanonicalTargets(low, high, nextUnit);
+    });
   }
 
   @override
@@ -407,9 +488,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _saveProfile() async {
     final diabetesType = _diabetesType;
     final treatment = _treatment;
-    final low = double.tryParse(_targetLowController.text.trim());
-    final high = double.tryParse(_targetHighController.text.trim());
+    final low = _targetToCanonical(
+      _targetLowController, _targetLowMgDl, _targetLowShown,
+    );
+    final high = _targetToCanonical(
+      _targetHighController, _targetHighMgDl, _targetHighShown,
+    );
     final validRange =
+        GlucoseFormatter.isSupportedUnit(_unit) &&
         low != null &&
         high != null &&
         low.isFinite &&
@@ -444,7 +530,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
 
     if (mounted) {
-      setState(() => _hasPersistedProfile = true);
+      setState(() {
+        _hasPersistedProfile = true;
+        _showCanonicalTargets(low, high, _unit);
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context)!.profileUpdated),

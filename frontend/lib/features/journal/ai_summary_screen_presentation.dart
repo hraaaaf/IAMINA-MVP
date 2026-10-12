@@ -326,19 +326,23 @@ extension _AISummaryScreenPresentation on _AISummaryScreenState {
     SummaryResponse summary,
     KpisResponse? kpis,
   ) {
-    final agpData = summary.agpProfile.isNotEmpty
-        ? summary.agpProfile
-        : summary.dailyAverages;
-    final useHourly = summary.agpProfile.isNotEmpty;
+    // Raw profile/daily series may include manual readings: never label
+    // them as verified CGM data without the governed KPI eligibility gate.
+    final hasVerifiedCgm = kpis?.tirPct != null &&
+        kpis?.tarPct != null &&
+        kpis?.tbrPct != null;
+    final agpData = hasVerifiedCgm ? summary.agpProfile : const <dynamic>[];
+    final hasSeries = summary.agpProfile.isNotEmpty ||
+        summary.dailyAverages.isNotEmpty;
     return [
       if (kpis != null && kpis.hasSufficientData) ...[
         _KpiRow(kpis: kpis),
         const SizedBox(height: 16),
       ],
-      if (agpData.isNotEmpty) ...[
+      if (hasSeries) ...[
         _AgpCard(
           agpData: agpData,
-          isHourly: useHourly,
+          isHourly: true,
           periodDays: _periodDays,
           kpis: kpis,
         ),
@@ -568,7 +572,7 @@ class _HeroInsightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final tir = kpis?.tirPct ?? 0.0;
+    final tir = kpis?.tirPct;
     final discussionCount = summary.insightCards
         .where((c) => c.action.isNotEmpty)
         .length;
@@ -615,7 +619,11 @@ class _HeroInsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Text(
-            tir >= 70 ? l10n.mostlyInTarget : l10n.someReadingsNeedReview,
+            tir == null
+                ? l10n.dashboardInsufficientData
+                : tir >= 70
+                    ? l10n.mostlyInTarget
+                    : l10n.someReadingsNeedReview,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 28,
@@ -638,14 +646,15 @@ class _HeroInsightCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 32),
-          Row(
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
             children: [
               _HeroButton(
                 label: l10n.seeFindings,
                 onTap: onDiscoverTap,
                 isPrimary: true,
               ),
-              const SizedBox(width: 12),
               _HeroButton(
                 label: l10n.discussWithIamina,
                 onTap: onChatTap,
@@ -702,31 +711,33 @@ class _KpiRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final tir = kpis.tirPct ?? 0.0;
-    final gmi = kpis.gmi ?? 0.0;
-    final cv = kpis.cvPct ?? 0.0;
+    final tir = kpis.tirPct;
+    final gmi = kpis.gmi;
+    final cv = kpis.cvPct;
     final coverage = l10n.coverage(kpis.logCount, kpis.daysWithData);
 
     final cards = <Widget>[
       _KpiCard(
         label: l10n.readingsInRange,
-        value: '${tir.toStringAsFixed(0)}%',
+        value: tir == null ? l10n.unavailable : '${tir.toStringAsFixed(0)}%',
         color: AminaTheme.teal500,
-        reference: l10n.generalRangeReference,
+        reference: tir == null ? l10n.dashboardInsufficientData : l10n.generalRangeReference,
       ),
       _KpiCard(
         label: l10n.estimatedGmi,
-        value: '${gmi.toStringAsFixed(1)}%',
+        value: gmi == null ? l10n.unavailable : '${gmi.toStringAsFixed(1)}%',
         color: AminaTheme.ocean500,
-        reference: kpis.gmiBasis.isNotEmpty
-            ? l10n.gmiBasis(kpis.gmiBasis)
-            : l10n.gmiAvailableMean,
+        reference: gmi == null
+            ? l10n.dashboardInsufficientData
+            : kpis.gmiBasis.isNotEmpty
+                ? l10n.gmiBasis(kpis.gmiBasis)
+                : l10n.gmiAvailableMean,
       ),
       _KpiCard(
         label: l10n.variabilityCv,
-        value: '${cv.toStringAsFixed(0)}%',
+        value: cv == null ? l10n.unavailable : '${cv.toStringAsFixed(0)}%',
         color: AminaTheme.ambre500,
-        reference: l10n.generalCvReference,
+        reference: cv == null ? l10n.dashboardInsufficientData : l10n.generalCvReference,
       ),
     ];
 
@@ -861,7 +872,9 @@ class _AgpCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final hasData = agpData.any((e) {
+    final hasVerifiedBreakdown =
+        kpis?.tirPct != null && kpis?.tarPct != null && kpis?.tbrPct != null;
+    final hasData = hasVerifiedBreakdown && agpData.any((e) {
       final m = e as Map<String, dynamic>;
       final v = (m['p50'] ?? m['avg'] ?? m['avg_glucose'] ?? 0);
       return (v as num) > 0;
@@ -920,7 +933,7 @@ class _AgpCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          if (kpis != null && kpis!.hasSufficientData)
+          if (hasVerifiedBreakdown)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -961,27 +974,30 @@ class _AgpCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Row(
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       _TirLegend(
                         color: AminaTheme.teal500,
                         label: l10n.inTarget,
                         value: '${tir.toStringAsFixed(0)}%',
                       ),
-                      const SizedBox(width: 10),
                       _TirLegend(
                         color: AminaTheme.ambre500,
                         label: l10n.elevated,
                         value: '${tar.toStringAsFixed(0)}%',
                       ),
-                      const SizedBox(width: 10),
                       _TirLegend(
                         color: AminaTheme.dangerFg,
                         label: l10n.lowLabel,
                         value: '${tbr.toStringAsFixed(0)}%',
                       ),
-                      const Spacer(),
-                      Text(
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
                         l10n.adaReference,
                         style: TextStyle(
                           fontSize: 9,
@@ -990,14 +1006,16 @@ class _AgpCard extends StatelessWidget {
                               : AminaTheme.textSecondary(context),
                         ),
                       ),
-                      if (tir >= 70) ...[
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.check_circle,
-                          size: 11,
-                          color: AminaTheme.teal500,
-                        ),
-                      ],
+                          if (tir >= 70) ...[
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.check_circle,
+                              size: 11,
+                              color: AminaTheme.teal500,
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -1060,14 +1078,19 @@ class _AgpCard extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: ClipRect(
-                                  child: CustomPaint(
-                                    painter: AgpPainter(
+                                  // Expanded in a Column constrains height but
+                                  // not width. A bare CustomPaint with no child
+                                  // otherwise paints into a zero-width canvas.
+                                  child: SizedBox.expand(
+                                    child: CustomPaint(
+                                      painter: AgpPainter(
                                       points: pts,
                                       minY: minY,
                                       maxY: maxY,
                                       low: 70,
                                       high: 180,
-                                      isDark: isDark,
+                                        isDark: isDark,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1086,22 +1109,23 @@ class _AgpCard extends StatelessWidget {
                 );
               },
             ),
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 12),
-            child: Row(
+          if (hasData)
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 12),
+              child: Wrap(
+                spacing: 10,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _LegendDot(color: AminaTheme.teal700, label: l10n.median),
-                const SizedBox(width: 10),
                 _LegendDot(
                   color: AminaTheme.teal400.withValues(alpha: 0.55),
                   label: '25–75%',
                 ),
-                const SizedBox(width: 10),
                 _LegendDot(
                   color: AminaTheme.teal400.withValues(alpha: 0.25),
                   label: '5–95%',
                 ),
-                const Spacer(),
                 Text(
                   l10n.generalRangeShort,
                   style: TextStyle(
