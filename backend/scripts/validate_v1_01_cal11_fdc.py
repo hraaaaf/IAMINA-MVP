@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from math import isfinite
 from pathlib import Path
 from zipfile import BadZipFile, ZipFile
 
@@ -71,8 +72,6 @@ def _carbohydrate_amount(food: dict) -> float:
             value = item.get("amount")
             if not isinstance(value, (float, int)) or isinstance(value, bool):
                 raise ValueError("carbohydrate amount not numeric")
-            from math import isfinite
-
             if not isfinite(value) or value < 0:
                 raise ValueError("carbohydrate amount invalid")
             matches.append(float(value))
@@ -130,7 +129,12 @@ def main() -> int:
         evidence = validate_zip(args.archive)
     except ValueError as exc:
         parser.exit(2, f"CAL-11 BLOCKED/FAIL: {exc}\n")
-    print(json.dumps({"status": "SOURCE_ROWS_MATCH", "release": RELEASE, "evidence": evidence}, indent=2))
+    print(
+        json.dumps(
+            {"status": "SOURCE_ROWS_MATCH", "release": RELEASE, "evidence": evidence},
+            indent=2,
+        )
+    )
     print("NOTE: banana portion gram weights and clinical suitability NOT certified.")
     return 0
 
