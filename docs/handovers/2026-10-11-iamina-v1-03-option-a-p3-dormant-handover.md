@@ -181,3 +181,12 @@ Comparaison **à trois HEAD exacts** #932 `15cfe25f`, #937 `4d287bb1` et #938 `b
 **Point de convergence (SEULE étape non parallèle)** : aligner branche d'intégration et choix de cutover ; scénario intégré auth/CSRF + SSE/urgence + refus IA + garde OCR + P3 dormant + PWA ; suite exacte GitHub (SQLite, PostgreSQL, Flutter, version SW, CI E2E). Cela **ne remplace pas** les validations indépendantes privacy/clinique ni les autorisations explicites de merge et de déploiement Vercel.
 
 **État : quatre pistes documentées et analyses sources effectuées dans cette session ; aucune preuve externe inventée, aucun appareil réel testé, pas de merge/deploy.** PR #938 conserve son HEAD `beeed3ec`, CI `38230019452` vert ; PR documentaire #933 reçoit cette mise à jour sans certification CI exacte de son nouveau HEAD. **Next exact :** poursuivre indépendamment A (matrice upgrade), B (QA réel), C (avis clinique), D (politiques journaux) puis intégrer seulement avec toutes les pièces requises. `V1-03 NOT_RELEASE_AUTHORIZED`.
+
+
+### Complément de contre-revue ligne/parcours : **garde de consentement SSE ABSENTE de #938 isolée**
+
+Après le comparatif de blobs, lecture côte à côte des méthodes :
+- `frontend/lib/services/api_client.dart::chatStream` sur **#932** commence par `final localDenial = _localAiDenialCode;` et rejette `ProviderApiException(... statusCode: 403)` **avant** `_authService.getIdToken()` et l'envoi réseau. Sur **#938** isolée, `chatStream` appelle immédiatement `_authService.getIdToken()` puis construit `buildPatientSseRequest`, **sans ce garde local en tête de méthode**. Ceci n'annule pas les tests de transport POST/CSRF du hotfix, mais interdit de prendre #938 comme intégration complète du refus IA #24.
+- `backend/core/middleware/triage_vital.py` sur #932 possède une interception spéciale de l'urgence SSE **avant** la vue ; #938 exclut expressément le stream du middleware et assure la réponse d'urgence SSE **dans la vue après auth/CSRF**. L'intégration doit préserver la seconde frontière tout en conservant le fonctionnement du chat canonique et du triage.
+- Les deux `backend/ai/api/v1/ai.py::chat_stream` sont des POST JSON, mais #938 introduit l'urgence déterministe via `compose_emergency_for_patient` dans la vue.
+**Test d'intégration obligatoire, pas encore exécuté :** refus local IA avant authentification/HTTP pour chat ET stream, ainsi que POST SSE urgence avec cookie/CSRF, Bearer natif et anonyme, sans PHI dans GET/log. Compléter la matrice avant un merge quelconque de la pile.
