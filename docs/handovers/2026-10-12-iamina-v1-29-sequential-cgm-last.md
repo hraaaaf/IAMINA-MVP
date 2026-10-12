@@ -8,7 +8,7 @@
 
 | Rang | Décision | Libellé canonique | État au changement de méthode |
 | --- | --- | --- | --- |
-| 01 | #2 | Notifications proactives et messages IAmina sous contrôle | AUDIT À OUVRIR |
+| 01 | #2 | Notifications proactives et messages IAmina sous contrôle | AUDIT OUVERT — [#947](https://github.com/hraaaaf/IAMINA-MVP/issues/947), PAS LIVRÉE |
 | 02 | #3 | Boîte « Rappels » sur l’Accueil | À TRAITER |
 | 03 | #4 | Exports Reports déterministes, multi-formats | À TRAITER |
 | 04 | #5 | Pays d’utilisation dans l’onboarding | À TRAITER |
@@ -53,7 +53,7 @@
 
 **Intention canonique :** icône notifications réservée aux événements d'information, **rappels séparés** (la boîte Accueil fait partie de #3) ; proactivité IAmina strictement contrôlée, éventuel message chat lié à une notification, préférences/opt-in/opt-out, pas de prédiction médicale non validée. La décision #2 correspond au lot V1-08 mais peut être étudiée sans l'ensemble de V1-08.
 
-**Premier travail autorisé** : inventorier code et états de notifications, rappels, opt-out, proactivité et ingestion messages, puis établir une matrice d'oracles synthétiques (zéro événement, opt-out, pas de source, urgence, répétition, consentement retiré, isolation patient) et la séparation notification/rappel/chat. **Aucun envoi réel, push, conseil médical, prédiction, appel LLM ou déploiement** avant preuve et gates qualifiés.
+**Audit commencé :** [issue #947](https://github.com/hraaaaf/IAMINA-MVP/issues/947), Goal et critères inscrits ; inspection des composants de rappels locaux, `proactive_preview`, `proactive_intelligence` et API GET/POST sur PR DRAFT #941. Rappels explicitement locaux, notifications OS non activées ; aucun nouveau push, prédiction, envoi patient, merge ni déploiement. Les autres chemins sont encore à auditer.\n\n**Premier travail autorisé** : inventorier code et états de notifications, rappels, opt-out, proactivité et ingestion messages, puis établir une matrice d'oracles synthétiques (zéro événement, opt-out, pas de source, urgence, répétition, consentement retiré, isolation patient) et la séparation notification/rappel/chat. **Aucun envoi réel, push, conseil médical, prédiction, appel LLM ou déploiement** avant preuve et gates qualifiés.
 
 **Exceptions préservées :** V1-01/CAL-09/10/11/12 = [gate qualifié #946](https://github.com/hraaaaf/IAMINA-MVP/issues/946), PR #945 DRAFT, PDF clinique OFF ; V1-02 [#921](https://github.com/hraaaaf/IAMINA-MVP/pull/921) dernier HEAD `ef93edf16746cee5cea4f15887495c05278b153f`, tests backend CI [#38315876015](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38315876015) SUCCESS + migration drift [#38315876021](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38315876021) SUCCESS, non fusionné ; V1-03 PR #941 DRAFT, non livré. Les trois peuvent servir de base/protection, mais ne changent pas l'ordre séquentiel.
 
