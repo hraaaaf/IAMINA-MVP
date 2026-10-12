@@ -49,9 +49,15 @@ def _foundation_rows(zip_file: ZipFile) -> list[dict]:
             continue
         rows = payload.get("FoundationFoods")
         if isinstance(rows, list):
-            if not all(isinstance(item, dict) for item in rows):
-                raise ValueError("FoundationFoods must contain objects only")
-            return rows
+            # The official 2026-04 USDA JSON contains null placeholders in
+            # FoundationFoods. Ignore only JSON null: never ignore unknown
+            # types or silently transform malformed nutritional source rows.
+            if any(item is not None and not isinstance(item, dict) for item in rows):
+                raise ValueError("FoundationFoods must contain objects or null only")
+            non_null_rows = [item for item in rows if item is not None]
+            if not non_null_rows:
+                raise ValueError("FoundationFoods has no source objects")
+            return non_null_rows
     raise ValueError("FoundationFoods list missing from primary USDA JSON archive")
 
 
