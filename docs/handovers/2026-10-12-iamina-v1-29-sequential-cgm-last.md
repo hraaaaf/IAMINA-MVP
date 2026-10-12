@@ -60,6 +60,15 @@ La PR dépendante #948 a été **fermée non mergée** en faveur de #949, car le
 
 **Restant pour #2** : vérifier tests SQLite/PG exact-HEAD, puis inventorier l'entrée notifications côté UI, la séparation notifications/rappels/chat et les droits de notification ; dossier UI BEFORE / mockup / AFTER aux mêmes viewports avant tout changement visuel ; revue privacy/clinique et permission explicite avant merge. **Décision #2 OPEN / NON LIVRÉE** ; passage #3 seulement après clôture réelle ou blocage humain/non technique justifié. CGM #1/#25 reste à la fin.
 
+
+### Décision #2 — deuxième étape, correction visuelle sous contrôle (12 octobre 2026)
+
+**BEFORE + référence écrite AVANT patch**, détails dans [issue #947](https://github.com/hraaaaf/IAMINA-MVP/issues/947) : [Chrome Dashboard responsive #38252290934](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38252290934) artifact [#11749017316](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38252290934/artifacts/11749017316), screenshots mobile 390×844, tablette 768×1024, desktop 1280×900. Bouton `dashboard-reminders-action` vers `/reminders` représenté à tort par cloche notifications. Blob Flutter dashboard même SHA sur `main` et #941. **Cible design** : garder cercle 48×48 identique, icône Material `event_note_outlined` comme écran Rappels, tooltip accessible « Rappels / Reminders / التذكيرات ». Aucune cloche notifications artificielle.
+
+**Nouveau HEAD candidate [PR #949](https://github.com/hraaaaf/IAMINA-MVP/pull/949) `e6563d8ca76dba6abe06017ac459433d59c11309`** : ajoute l'icône appropriée/tooltip et un test Flutter source (en complément des régressions API authentification/anti-rejeu). [CI complète #38318106071](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38318106071) et [vraie capture Dashboard #38318106112](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38318106112) avec 7 autres workflows déclenchés. **Tous résultats en cours/queued au lancement; aucune certification du nouveau SHA.** La preuve antérieure #949 `b0e20a4` (2/2 workflows success) reste sur ce SHA ancien et ne suffit plus. L'UI AFTER, la comparaison visuelle même viewport, le score, les contrôles Flutter/JS/RTL et les revues sont **à faire / vérifier**. Aucun changement de logique clinique, push OS, LLM, consentement ou SQL.
+
+**Statut réel :** #2 **EN COURS**, non livrée (notification inbox, consentement, opt-out, chat et vraies notifications encore ouverts). Next exact : verdict exact-HEAD 9 workflows, inspecter artefact 9 PNG et comparer BEFORE/AFTER; corriger si fail, puis décider suite indépendante en maintenant gates humains. #1 et #25 CGM dernières.
+
 ## Next exact : décision #2 — notifications et messages IAmina
 
 **Intention canonique :** icône notifications réservée aux événements d'information, **rappels séparés** (la boîte Accueil fait partie de #3) ; proactivité IAmina strictement contrôlée, éventuel message chat lié à une notification, préférences/opt-in/opt-out, pas de prédiction médicale non validée. La décision #2 correspond au lot V1-08 mais peut être étudiée sans l'ensemble de V1-08.
