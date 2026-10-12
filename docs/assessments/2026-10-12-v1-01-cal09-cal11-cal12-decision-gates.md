@@ -62,3 +62,10 @@
 4. Vérifier revue indépendante de #943 et prioriser décision #19 ; **aucun merge ni déploiement Vercel sans autorisation explicite**, aucune donnée patient réelle. P5 historique 6/12=50 % ; tracker V1 0/29 décisions intégralement livrées à ce stade.
 
 **Verdict :** `CAL_SUBLOTS_TESTED / CLINICAL_DAY_DECISION_OPEN / FDC_PRIMARY_IN_PROGRESS / CLINICAL_PDF_QUARANTINED / NOT_MERGED / NOT_PATIENT_AUTHORIZED`.
+
+
+## 6. 12 octobre — ZIP USDA atteint en CI, contrôle encore ouvert
+
+[PR #944](https://github.com/hraaaaf/IAMINA-MVP/pull/944) : [run 38272356607](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38272356607) a téléchargé et vérifié la structure ZIP **officielle USDA Foundation 2026-04-30** avec succès (artefact 11756709069). Première exécution de l'oracle : **échec du parseur** sur des entrées nulles du tableau FoundationFoods, avant toute comparaison des 7 identifiants.
+
+Correctif sur #944 HEAD `e77304be0d049516f4d8b07914427ae3ebe9552d` : seuls les placeholders JSON `null` sont ignorés, les autres types non-object restent refusés ; deux tests synthétiques ajoutés. [Nouveau run 38272863911](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38272863911) déclenché ; résultat source primaire à lire, sans présumer réussite. Les valeurs nutritionnelles actuelles et le runtime restent inchangés. CAL-09/10 et PDF CAL-12 gardent leurs revues humaines.
