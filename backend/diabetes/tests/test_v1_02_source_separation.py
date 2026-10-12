@@ -353,3 +353,72 @@ def test_forged_source_type_concept_unit_or_decision_fails_closed(field, value):
             build_patient_intelligence_envelope(
                 patient_id=patient.id, source_request=_request()
             )
+
+@pytest.mark.parametrize(
+    "tampered_time",
+    [
+        START - timedelta(seconds=1),
+        END + timedelta(seconds=1),
+        datetime(2026, 9, 1),
+    ],
+)
+def test_forged_out_of_window_or_naive_source_fact_is_rejected(tampered_time):
+    patient = get_user_model().objects.create_user(
+        username="v1-02-forged-source-window-" + str(tampered_time)
+    )
+    _seed(patient, source="manual", when=START, glucose=120)
+    genuine = compute_governed_longitudinal_intelligence(
+        patient_id=patient.id,
+        window_start=START,
+        window_end=END,
+        contract=_contract(),
+    )
+    forged = replace(
+        genuine,
+        facts=(
+            replace(genuine.facts[0], observed_at=tampered_time),
+        ),
+    )
+    with patch(
+        "diabetes.services.clinical.patient_intelligence_envelope."
+        "compute_governed_longitudinal_intelligence",
+        return_value=forged,
+    ):
+        with pytest.raises(ValueError, match="observed_at outside governed window"):
+            build_patient_intelligence_envelope(
+                patient_id=patient.id, source_request=_request()
+            )
+
+
+@pytest.mark.parametrize("forged_days", [-1, 0, 2])
+def test_forged_distinct_day_count_is_rejected(forged_days):
+    patient = get_user_model().objects.create_user(
+        username=f"v1-02-forged-day-count-{forged_days}"
+    )
+    _seed(patient, source="manual", when=START, glucose=120)
+    genuine = compute_governed_longitudinal_intelligence(
+        patient_id=patient.id,
+        window_start=START,
+        window_end=END,
+        contract=_contract(),
+    )
+    target = next(
+        item for item in genuine.populations
+        if item.population == FusionPopulation.JOURNAL
+    )
+    forged = replace(
+        genuine,
+        populations=tuple(
+            replace(item, distinct_days=forged_days) if item == target else item
+            for item in genuine.populations
+        ),
+    )
+    with patch(
+        "diabetes.services.clinical.patient_intelligence_envelope."
+        "compute_governed_longitudinal_intelligence",
+        return_value=forged,
+    ):
+        with pytest.raises(ValueError, match="distinct-day evidence disagrees"):
+            build_patient_intelligence_envelope(
+                patient_id=patient.id, source_request=_request()
+            )
