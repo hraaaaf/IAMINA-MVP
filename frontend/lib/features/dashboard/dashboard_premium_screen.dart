@@ -9,6 +9,7 @@ import '../../core/theme/amina_visual_language.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/drift/database.dart';
 import '../../services/companion_service.dart';
+import 'widgets/dashboard_reminders_summary_card.dart';
 import 'widgets/dashboard_responsive_sections.dart';
 import 'widgets/dashboard_today_section.dart';
 
@@ -266,6 +267,8 @@ class _DashboardBody extends StatelessWidget {
                             targetConfigured: hasTarget,
                             service: companionService,
                           ),
+                          const SizedBox(height: 18),
+                          const DashboardRemindersSummaryCard(),
                           const SizedBox(height: 18),
                           DashboardResponsiveSections(
                             unit: unit,
