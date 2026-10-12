@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: cal11-primary-${{ github.ref }}
@@ -26,21 +27,28 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Download immutable USDA Foundation 2026-04-30 source
+      - name: Retrieve retained official USDA ZIP from verified GitHub run
+        uses: actions/download-artifact@v4
+        with:
+          name: cal11-usda-primary-provenance
+          run-id: 38273801139
+          github-token: ${{ github.token }}
+          path: /tmp/cal11-official-proof
+      - name: Verify pinned official source snapshot and ZIP integrity
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p proof
-          url="https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_json_2026-04-30.zip"
-          printf '%s\n' "$url" > proof/source_url.txt
-          curl --fail --location --silent --show-error --max-time 90 \
-            "$url" --output /tmp/USDA_foundation_food_json_2026-04-30.zip
-          test -s /tmp/USDA_foundation_food_json_2026-04-30.zip
-          sha256sum /tmp/USDA_foundation_food_json_2026-04-30.zip > proof/archive_sha256.txt
-          python -m zipfile -t /tmp/USDA_foundation_food_json_2026-04-30.zip
-          # Retain only the public USDA source archive and its checksum;
-          # never include patient or application data in this artifact.
-          cp /tmp/USDA_foundation_food_json_2026-04-30.zip proof/
+          archive="/tmp/cal11-official-proof/USDA_foundation_food_json_2026-04-30.zip"
+          test -s "$archive"
+          printf '%s  %s\\n' \\
+            "186e988ec542e913f51ef62b86a47758e8cdd0d1dc3889e7b055581f3c09c77a" \\
+            "$archive" | sha256sum --check --status
+          python -m zipfile -t "$archive"
+          cp "$archive" /tmp/USDA_foundation_food_json_2026-04-30.zip
+          sha256sum "$archive" > proof/archive_sha256.txt
+          printf '%s\\n' "USDA official 2026-04-30 snapshot, pinned SHA256, GitHub run 38273801139 artifact 11758012445" > proof/source_url.txt
+          cp "$archive" proof/
       - name: Reconcile seven FDC IDs against primary rows
         shell: bash
         run: |
