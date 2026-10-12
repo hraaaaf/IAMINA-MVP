@@ -81,6 +81,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final rows = await (db.select(db.patientProfiles)..limit(2)).get();
     if (rows.length > 1 || !mounted) return; // Ambiguous owner: never pick one.
     final profile = rows.isEmpty ? null : rows.single;
+    final authenticatedUser = context.read<AuthService>().firebaseUser;
+    if (profile != null &&
+        authenticatedUser != null &&
+        profile.userId != authenticatedUser.uid.hashCode.abs()) {
+      return; // Never display another authenticated account's local profile.
+    }
     if (profile != null) {
       setState(() {
         _hasPersistedProfile = true;
