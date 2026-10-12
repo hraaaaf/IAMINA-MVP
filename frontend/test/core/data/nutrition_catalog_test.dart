@@ -164,15 +164,15 @@ void main() {
       final apple = nutritionProfileFor('apple')!;
       final banana = nutritionProfileFor('banana')!;
 
-      expect(apple.carbohydrate!.carbsPer100gLow, 14.2);
+      expect(apple.carbohydrate!.carbsPer100gLow, 14.1);
       expect(apple.carbohydrate!.carbsPer100gHigh, 15.7);
-      expect(apple.carbohydrate!.sourceFoodRef, contains('1105664'));
-      expect(apple.carbohydrate!.sourceFoodRef, contains('1105897'));
+      expect(apple.carbohydrate!.sourceFoodRef, contains('1750339'));
+      expect(apple.carbohydrate!.sourceFoodRef, contains('1750343'));
 
       expect(banana.carbohydrate!.carbsPer100gLow, 20.1);
       expect(banana.carbohydrate!.carbsPer100gHigh, 23.0);
-      expect(banana.carbohydrate!.sourceFoodRef, contains('790774'));
-      expect(banana.carbohydrate!.sourceFoodRef, contains('790991'));
+      expect(banana.carbohydrate!.sourceFoodRef, contains('1105073'));
+      expect(banana.carbohydrate!.sourceFoodRef, contains('1105314'));
       final oneBanana = banana.portions.single;
       expect(oneBanana.id, 'one_peeled');
       expect(oneBanana.gramsLow, 110);
@@ -182,6 +182,25 @@ void main() {
       expect(estimate.isExact, isFalse);
       expect(estimate.low, closeTo(22.11, 0.01));
       expect(estimate.high, closeTo(26.45, 0.01));
+    });
+
+    test('all CAL-11 IDs match the pinned 2026 USDA Foundation snapshot', () {
+      final apple = nutritionProfileFor('apple')!;
+      final banana = nutritionProfileFor('banana')!;
+      const appleIds = ['1750339', '1750340', '1750341', '1750342', '1750343'];
+      const bananaIds = ['1105073', '1105314'];
+      for (final id in appleIds) {
+        expect(apple.carbohydrate!.sourceFoodRef, contains(id));
+      }
+      for (final id in bananaIds) {
+        expect(banana.carbohydrate!.sourceFoodRef, contains(id));
+      }
+      // Source banana peeled portions are 110 g and 115 g; these are
+      // references, not assumptions about any individual's meal.
+      expect(banana.portions.single.gramsLow, 110);
+      expect(banana.portions.single.gramsHigh, 115);
+      expect(nutritionSourceFor(apple.carbohydrate!.sourceId)!.version, '2026-04');
+      expect(nutritionSourceFor(banana.carbohydrate!.sourceId)!.version, '2026-04');
     });
 
     test('portion selections encode and decode without derived nutrients', () {
