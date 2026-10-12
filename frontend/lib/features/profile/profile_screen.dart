@@ -11,6 +11,7 @@ import '../../core/widgets/mobile_page_header.dart';
 import '../../core/widgets/first_use_panel.dart';
 import '../../l10n/audited_page_copy.dart';
 import '../../data/drift/database.dart';
+import 'profile_owner_guard.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
 import '../../services/consent_service.dart';
@@ -27,6 +28,14 @@ String _profileUiText(
     'fr' => fr,
     'ar' => ar,
     _ => en,
+  };
+}
+
+String _profileIdentityConflictMessage(BuildContext context) {
+  return switch (Localizations.localeOf(context).languageCode) {
+    'ar' => 'تعذّر حفظ الملف بأمان. تحقّق من الحساب والملف المحلي.',
+    'en' => 'Profile was not saved. Check the account and local profile.',
+    _ => 'Profil non enregistré : vérifiez le compte et le profil local.',
   };
 }
 
@@ -69,7 +78,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _loadProfile() async {
     final db = context.read<AppDatabase>();
-    final profile = await db.select(db.patientProfiles).getSingleOrNull();
+    final rows = await (db.select(db.patientProfiles)..limit(2)).get();
+    if (rows.length > 1 || !mounted) return; // Ambiguous owner: never pick one.
+    final profile = rows.isEmpty ? null : rows.single;
     if (profile != null) {
       setState(() {
         _hasPersistedProfile = true;
@@ -426,11 +437,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     final db = context.read<AppDatabase>();
+    final rows = await (db.select(db.patientProfiles)..limit(2)).get();
+    late final int profileUserId;
+    try {
+      profileUserId = resolveProfileRecordOwner(
+        localUserIds: rows.map((row) => row.userId),
+        authenticatedUserId:
+            context.read<AuthService>().firebaseUser?.uid.hashCode.abs(),
+      );
+    } on StateError {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_profileIdentityConflictMessage(context))),
+        );
+      }
+      return;
+    }
     await db
         .into(db.patientProfiles)
         .insertOnConflictUpdate(
           PatientProfilesCompanion.insert(
-            userId: const drift.Value(1),
+            userId: drift.Value(profileUserId),
             preferredLanguage: drift.Value(
               Localizations.localeOf(context).languageCode,
             ),
