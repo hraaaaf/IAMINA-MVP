@@ -130,3 +130,16 @@ Run exact [`38185369954`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/381
 **Cause croisée vérifiée :** `main/backend/conftest.py` remplace en autouse `FirebaseAuth.__call__` ; `FirebaseAuth` est l'alias de `HybridBearerAuth` et la fixture rejette le natif sans session. C'est une **simulation de test trompeuse**, pas une panne native live prouvée. La version #932 du même `conftest.py` n'altère plus l'auth. Portage par blobs identiques de cette fixture + rétablissement du test de matrice depuis #932 sur la [PR #938 DRAFT](https://github.com/hraaaaf/IAMINA-MVP/pull/938).
 
 **État technique :** nouvelle HEAD #938 `beeed3ecb60b68a9a30b5a9d46736f9a6f520e4d`, **13 fichiers**, run exact **`38230019452`** queued au premier contrôle. Aucun merge, Vercel, PHI. **Next exact :** vérifier son verdict après travail indépendant ; si échec, analyser le job réel/corriger ; si vert, double review et package de migration clients PWA/backend, sans franchir human gates merge/deploy. Status `NOT_DEPLOYED / NOT_RELEASE_AUTHORIZED`.
+
+
+## 14. 12 octobre — hotfix SSE/CSRF #938 : **CI TECHNIQUE VERTE**, aucun déploiement
+
+La [PR #938 DRAFT](https://github.com/hraaaaf/IAMINA-MVP/pull/938) est toujours OPEN/non fusionnée, base `main` `13b7cce1`, HEAD exact **`beeed3ecb60b68a9a30b5a9d46736f9a6f520e4d`**, 13 fichiers. [CI `38230019452`](https://github.com/hraaaaf/IAMINA-MVP/actions/runs/38230019452) : **SUCCESS, 6/6**. Pytest : SQLite **2796 passed / 5 skipped / 3 xfailed**, PostgreSQL **2800 passed / 1 skipped / 3 xfailed**, **178 subtests** dans chaque job. Flutter **646 passed / 1 skipped**, web release build OK. Workflows migration `38230019366`, répétition P5-5 `38230019333`, E2E compagnon `38230019311` : tous SUCCESS.
+
+**Cause closeout :** quatre 401 natifs étaient causés par la fixture test globale `backend/conftest.py` sur `main` qui patchait `FirebaseAuth.__call__`, alias de `HybridBearerAuth`. Suppression du patch test seulement, maintien de la fixture DB de #932 et des vrais scénarios CSRF. Preuve du test intégré = CI ci-dessus, pas seulement source.
+
+**Limite fondamentale :** la PR corrige un **candidat**, pas les SHA du frontend/backend déjà déployés (anciens GET avec message dans URL). Elle n'intègre pas l'option A P3 dormant (#937), ni les autres PR #932–#937, toujours DRAFT. Dossier exact des preuves et risques : [`docs/assessments/2026-10-11-v1-03-sse-production-drift-pr938.md`](../assessments/2026-10-11-v1-03-sse-production-drift-pr938.md), section 14.
+
+**Next exact :** préparer/soumettre les éléments pour la décision humaine de merge **puis** le déploiement Vercel séparément ; avant cela, établir l'inventaire réel des versions PWA/native et l'ingress/rétention, revue sécurité/clinique, scénario de mise à jour sans ancien GET et double audit des impacts UI à mêmes viewports. Après approbation : intégration/CI exacte, smoke synthétique et closeout post-déploiement. **Ne pas merger ni déployer sans autorisation explicite.**
+
+**État : P0 hotfix `TECHNICAL_CI_GREEN`, `DRAFT / NOT_MERGED / NOT_DEPLOYED`. IAMINA V1-03 : `NOT_RELEASE_AUTHORIZED`. P5 historique : 6/12 = 50 %.**
